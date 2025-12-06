@@ -148,7 +148,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
                 >
                     {post.author.profile?.avatar ? (
                         <img
-                            src={post.author.profile.avatar}
+                            src={getImageUrl(post.author.profile.avatar)}
                             alt={post.author.username}
                             className="author-avatar"
                         />
@@ -221,9 +221,9 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
                 {post.media && (
                     <div className="post-media" onClick={(e) => e.stopPropagation()}>
                         {post.mediaType === 'video' ? (
-                            <video controls><source src={post.media} /></video>
+                            <video controls><source src={getImageUrl(post.media)} /></video>
                         ) : (
-                            <img src={post.media} alt="Post media" loading="lazy" />
+                            <img src={getImageUrl(post.media)} alt="Post media" loading="lazy" />
                         )}
                     </div>
                 )}
