@@ -29,12 +29,28 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
+// CORS Configuration
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://deepace.vercel.app',
+    process.env.CLIENT_URL
+].filter(Boolean);
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+};
+
 // Initialize Socket.IO
 const io = new Server(httpServer, {
-    cors: {
-        origin: process.env.CLIENT_URL || 'http://localhost:5173',
-        credentials: true,
-    },
+    cors: corsOptions,
 });
 
 // Make io accessible in routes
@@ -47,10 +63,7 @@ connectDB();
 configurePassport();
 
 // Middleware
-app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
