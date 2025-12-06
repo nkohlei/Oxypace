@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { getImageUrl } from '../utils/imageUtils';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import './Navbar.css';
@@ -158,7 +159,7 @@ const Navbar = () => {
                         className={`nav-item profile-link ${isActive('/profile') ? 'active' : ''}`}
                     >
                         {user?.profile?.avatar ? (
-                            <img src={user.profile.avatar} alt={user?.username || 'User'} className="nav-avatar" />
+                            <img src={getImageUrl(user.profile.avatar)} alt={user?.username || 'User'} className="nav-avatar" />
                         ) : (
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
