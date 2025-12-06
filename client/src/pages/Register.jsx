@@ -56,7 +56,10 @@ const Register = () => {
                 navigate('/login');
             }, 2000);
         } catch (err) {
-            setError(err.response?.data?.message || 'Kayıt başarısız');
+            console.error(err);
+            const baseURL = axios.defaults.baseURL || 'Tanımsız (Undefined)';
+            const errorMsg = err.response?.data?.message || `Bağlantı Hatası! (Hedef: ${baseURL})`;
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }
