@@ -17,7 +17,14 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showAnyway, setShowAnyway] = useState(false);
 
-    const isOwnPost = user?._id === post.author?._id;
+    // Safe check for author existence (Process orphaned posts)
+    const author = post.author || {
+        _id: 'deleted',
+        username: 'Silinmiş Kullanıcı',
+        profile: { displayName: 'Silinmiş Kullanıcı', avatar: null }
+    };
+
+    const isOwnPost = user?._id === author._id;
 
     useEffect(() => {
         const checkSaved = async () => {
