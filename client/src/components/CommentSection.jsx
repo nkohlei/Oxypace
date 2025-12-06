@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils/imageUtils';
 import './CommentSection.css';
 
 const CommentSection = ({ postId }) => {
@@ -165,7 +166,7 @@ const CommentSection = ({ postId }) => {
             {/* Comment Input */}
             <form onSubmit={handleSubmit} className="comment-form">
                 {user?.profile?.avatar ? (
-                    <img src={user.profile.avatar} alt={user.username} className="comment-avatar-small" />
+                    <img src={getImageUrl(user.profile.avatar)} alt={user.username} className="comment-avatar-small" />
                 ) : (
                     <div className="comment-avatar-placeholder-small">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -215,7 +216,7 @@ const CommentSection = ({ postId }) => {
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {comment.author?.profile?.avatar ? (
-                                    <img src={comment.author.profile.avatar} alt={comment.author.username} className="comment-avatar" />
+                                    <img src={getImageUrl(comment.author.profile.avatar)} alt={comment.author.username} className="comment-avatar" />
                                 ) : (
                                     <div className="comment-avatar-placeholder">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -280,7 +281,7 @@ const CommentSection = ({ postId }) => {
                                             <div key={reply._id} className="reply-item">
                                                 <Link to={`/profile/${reply.author?.username}`} className="reply-avatar-link">
                                                     {reply.author?.profile?.avatar ? (
-                                                        <img src={reply.author.profile.avatar} alt={reply.author.username} className="reply-avatar" />
+                                                        <img src={getImageUrl(reply.author.profile.avatar)} alt={reply.author.username} className="reply-avatar" />
                                                     ) : (
                                                         <div className="reply-avatar-placeholder">
                                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

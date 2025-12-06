@@ -12,6 +12,7 @@ export const ThemeProvider = ({ children }) => {
         const root = document.documentElement;
 
         if (isDark) {
+            root.setAttribute('data-theme', 'dark');
             // Deep Midnight Blue Theme
             root.style.setProperty('--bg-dark', '#020617'); // Dark Midnight Blue
             root.style.setProperty('--bg-darker', '#0f172a');
@@ -28,6 +29,7 @@ export const ThemeProvider = ({ children }) => {
             root.style.setProperty('--primary-cyan', 'rgb(0, 150, 200)');
             root.style.setProperty('--gradient-space', 'linear-gradient(180deg, #0a1520 0%, #0d1a28 50%, #081318 100%)'); // Dark Gradient
         } else {
+            root.setAttribute('data-theme', 'light');
             // Pure White Theme (User Request)
             root.style.setProperty('--bg-dark', '#ffffff'); // Pure White background
             root.style.setProperty('--bg-darker', '#f8fafc'); // Very light gray for contrast
