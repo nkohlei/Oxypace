@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -51,6 +52,13 @@ router.post('/:userId', protect, async (req, res) => {
 
             await currentUser.save();
             await userToFollow.save();
+
+            // Create Notification
+            await Notification.create({
+                recipient: userToFollow._id,
+                sender: req.user.id,
+                type: 'follow'
+            });
 
             res.json({
                 message: 'User followed',

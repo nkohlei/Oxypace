@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import Saved from './pages/Saved';
 import PostDetail from './pages/PostDetail';
 import CommentDetail from './pages/CommentDetail';
+import Notifications from './pages/Notifications';
 
 
 function App() {
@@ -85,6 +86,14 @@ function App() {
                                 element={
                                     <PrivateRoute>
                                         <Settings />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/notifications"
+                                element={
+                                    <PrivateRoute>
+                                        <Notifications />
                                     </PrivateRoute>
                                 }
                             />

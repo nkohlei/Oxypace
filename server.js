@@ -17,6 +17,7 @@ import messageRoutes from './routes/messages.js';
 import likesRoutes from './routes/likes.js';
 import commentsRoutes from './routes/comments.js';
 import followRoutes from './routes/follow.js';
+import notificationRoutes from './routes/notifications.js';
 
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -91,6 +92,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/likes', likesRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/follow', followRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
