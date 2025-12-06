@@ -21,8 +21,12 @@ if (import.meta.env.VITE_API_BASE_URL) {
     console.warn("VITE_API_BASE_URL not set in production!");
 }
 
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-        <App />
+        <ErrorBoundary>
+            <App />
+        </ErrorBoundary>
     </React.StrictMode>,
 )
