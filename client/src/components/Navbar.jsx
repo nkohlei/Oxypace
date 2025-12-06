@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useSocket } from '../context/SocketContext';
 import './Navbar.css';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
+    const { socket } = useSocket();
     const location = useLocation();
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const menuRef = useRef(null);
 
     const isActive = (path) => {
@@ -19,6 +23,47 @@ const Navbar = () => {
         }
         return location.pathname === path;
     };
+
+    // Fetch initial unread count
+    useEffect(() => {
+        if (user) {
+            const fetchUnreadCount = async () => {
+                try {
+                    const response = await axios.get('/api/notifications?limit=1');
+                    setUnreadCount(response.data.unreadCount || 0);
+                } catch (error) {
+                    console.error('Fetch unread count error:', error);
+                }
+            };
+            fetchUnreadCount();
+        }
+    }, [user]);
+
+    // Listen for real-time notifications
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNewNotification = (notification) => {
+            // Don't count own actions if they somehow come through
+            if (notification.sender._id !== user?._id) {
+                setUnreadCount(prev => prev + 1);
+            }
+        };
+
+        socket.on('newNotification', handleNewNotification);
+
+        return () => {
+            socket.off('newNotification', handleNewNotification);
+        };
+    }, [socket, user]);
+
+    // Reset count when visiting notifications page
+    useEffect(() => {
+        if (location.pathname === '/notifications') {
+            setUnreadCount(0);
+            // Optionally call backend to mark all as read here or keep it manual in Notifications page
+        }
+    }, [location.pathname]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -148,10 +193,13 @@ const Navbar = () => {
                     </Link>
 
                     <Link to="/notifications" className={`nav-item ${isActive('/notifications') ? 'active' : ''}`}>
-                        <svg viewBox="0 0 24 24" fill={isActive('/notifications') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                        </svg>
+                        <div className="nav-icon-wrapper">
+                            <svg viewBox="0 0 24 24" fill={isActive('/notifications') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                            {unreadCount > 0 && <span className="nav-badge"></span>}
+                        </div>
                     </Link>
 
                     <Link to="/inbox" className={`nav-item ${isActive('/inbox') ? 'active' : ''}`}>

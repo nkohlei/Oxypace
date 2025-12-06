@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 import './Notifications.css';
 
@@ -9,10 +10,23 @@ const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const { socket } = useSocket();
 
     useEffect(() => {
         fetchNotifications();
     }, []);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on('newNotification', (newNotif) => {
+            setNotifications(prev => [newNotif, ...prev]);
+        });
+
+        return () => {
+            socket.off('newNotification');
+        };
+    }, [socket]);
 
     const fetchNotifications = async () => {
         try {

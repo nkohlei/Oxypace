@@ -103,13 +103,16 @@ router.post('/post/:postId', protect, async (req, res) => {
 
         // Create Notification (if not own post)
         if (post.author.toString() !== req.user.id) {
-            await Notification.create({
+            const notification = await Notification.create({
                 recipient: post.author,
                 sender: req.user.id,
                 type: 'comment',
                 post: post._id,
                 comment: comment._id
             });
+
+            // Emit real-time notification
+            req.app.get('io').to(post.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar'));
         }
 
         // Populate author info
@@ -152,13 +155,16 @@ router.post('/comment/:commentId', protect, async (req, res) => {
 
         // Create Notification (if not own comment) - Notify the comment author
         if (parentComment.author.toString() !== req.user.id) {
-            await Notification.create({
+            const notification = await Notification.create({
                 recipient: parentComment.author,
                 sender: req.user.id,
                 type: 'reply',
                 post: parentComment.post,
                 comment: reply._id
             });
+
+            // Emit real-time notification
+            req.app.get('io').to(parentComment.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar'));
         }
 
         // Populate author info
