@@ -112,6 +112,23 @@
     object-fit: cover;
 }
 
+/* Avatar Wrapper */
+.avatar-wrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid var(--bg-card);
+    overflow: hidden;
+    background: var(--bg-main);
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 .profile-avatar-placeholder {
     width: 100%;
     height: 100%;
