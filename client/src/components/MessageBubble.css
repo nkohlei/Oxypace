@@ -3,7 +3,6 @@
     display: flex;
     align-items: center;
     gap: 0;
-    /* Handled by actions padding */
     margin-bottom: 8px;
     max-width: 100%;
     position: relative;
@@ -19,7 +18,7 @@
     justify-content: flex-start;
 }
 
-/* For 'other' messages, we need to physically swap bubble and actions order via CSS */
+/* For 'other' messages, swap order so actions are on the right */
 .message-row.other .message-actions {
     order: 2;
 }
@@ -35,22 +34,34 @@
     margin: 0 !important;
     animation: slideIn 0.2s ease;
     transition: all 0.2s ease;
-    overflow: hidden;
-    /* Contains overlay */
 }
 
 /* Message Actions Container */
 .message-actions {
     display: flex;
     align-items: center;
-    gap: 0px;
-    /* Closer spacing as requested */
-    opacity: 1;
-    /* Always visible */
+    gap: 2px;
+    /* Very tight spacing as requested (1 space approx) */
+    opacity: 0;
+    /* Hidden by default */
     transition: opacity 0.2s ease;
     padding: 0 4px;
-    /* Spacing between bubble and actions */
     z-index: 5;
+    background: transparent;
+    margin: 0;
+}
+
+/* Show actions on hover */
+.message-row:hover .message-actions {
+    opacity: 1;
+}
+
+/* Mobile: Always visible or on tap (User says mouse cursor, so desktop focus, but good to have fallback) */
+@media (max-width: 768px) {
+    .message-actions {
+        opacity: 1;
+        /* Always show on mobile since no hover */
+    }
 }
 
 .action-wrapper {
@@ -66,7 +77,8 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 6px;
+    padding: 4px;
+    /* Reduced padding for tighter feel */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -77,130 +89,91 @@
 .action-btn:hover {
     color: var(--primary-cyan, #00d2ff);
     background: rgba(255, 255, 255, 0.08);
+    /* Subtle hover bg */
 }
 
-.action-btn.delete-btn:hover {
-    color: #ff4d4d;
-    /* Red for delete */
-}
+/* No Red Border/Style for Delete Button as requested (Normal appearance) */
+/* .action-btn.delete-btn:hover { color: #ff4d4d; } */
+/* Removed specific red hover forcing */
 
 .action-btn svg {
     width: 16px;
     height: 16px;
 }
 
-/* Delete Confirmation Mode */
-.message-bubble.confirm-delete-mode {
-    cursor: pointer;
-    box-shadow: 0 0 10px rgba(255, 77, 77, 0.4);
-}
-
-.blurred-content {
-    filter: blur(4px) grayscale(0.5);
-    pointer-events: none;
-    transition: filter 0.2s ease;
-}
-
-.delete-overlay {
-    position: absolute;
+/* ------------------------------------------- */
+/* Full Screen Foggy Overlay for Delete Confirm */
+/* ------------------------------------------- */
+.delete-confirm-overlay {
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 10;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    /* Dark tint */
+    backdrop-filter: blur(8px);
+    /* Foggy effect */
+    z-index: 10000;
+    /* Highest z-index */
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.2);
-    /* Tint */
-    backdrop-filter: blur(2px);
-    /* Foggy effect */
-    color: #fff;
-    font-weight: 700;
-    font-size: 0.95rem;
-    gap: 8px;
     animation: fadeIn 0.2s ease;
 }
 
-.delete-text {
-    background: #ff4d4d;
-    padding: 4px 10px;
-    border-radius: 12px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.cancel-delete-btn {
-    background: rgba(0, 0, 0, 0.4);
-    border: none;
-    color: #fff;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.cancel-delete-btn:hover {
-    background: rgba(0, 0, 0, 0.6);
-}
-
-/* Menu Dropdowns */
-.message-actions-menu,
-.emoji-menu {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+.delete-confirm-modal {
     background: var(--bg-card);
+    padding: 24px 32px;
+    border-radius: 16px;
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    padding: 4px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 100;
-    min-width: 80px;
-    margin-bottom: 5px;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    min-width: 200px;
 }
 
-.emoji-menu {
-    flex-direction: row;
-    min-width: auto;
-    gap: 4px;
-    padding: 6px;
-}
-
-.menu-item,
-.emoji-item {
-    background: none;
-    border: none;
-    color: var(--text-primary);
-    padding: 8px 12px;
-    text-align: center;
-    cursor: pointer;
-    font-size: 0.9rem;
-    border-radius: 4px;
-    white-space: nowrap;
-}
-
-.emoji-item {
-    padding: 4px;
+.delete-confirm-modal p {
     font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
 }
 
-.menu-item:hover,
-.emoji-item:hover {
+.delete-confirm-actions {
+    display: flex;
+    gap: 16px;
+}
+
+.confirm-btn,
+.cancel-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s;
+}
+
+.confirm-btn {
+    background: #ff4d4d;
+    color: white;
+    font-weight: 600;
+}
+
+.cancel-btn {
     background: var(--bg-hover);
+    color: var(--text-primary);
 }
 
-.menu-item.delete {
-    color: #ff4d4d;
+.confirm-btn:active,
+.cancel-btn:active {
+    transform: scale(0.95);
 }
 
-/* Keep previous content styles... */
+/* Message Content Styling */
 .message-content {
     padding: 12px 16px;
     border-radius: 18px;
@@ -239,6 +212,7 @@
     text-align: left;
 }
 
+/* Animations */
 @keyframes slideIn {
     from {
         opacity: 0;
@@ -251,83 +225,6 @@
     }
 }
 
-.msg-download-btn {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.message-media {
-    position: relative;
-    display: inline-block;
-}
-
-.message-media:hover .msg-download-btn {
-    opacity: 1;
-}
-
-.msg-download-btn svg {
-    width: 16px;
-    height: 16px;
-}
-
-.message-media img {
-    max-width: 250px;
-    max-height: 250px;
-    width: auto;
-    height: auto;
-    object-fit: cover;
-    border-radius: 12px;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
-}
-
-.message-media img:active {
-    transform: scale(0.98);
-}
-
-.lightbox-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: zoom-out;
-    animation: fadeIn 0.2s ease;
-}
-
-.lightbox-content {
-    max-width: 90vw;
-    max-height: 90vh;
-    animation: zoomIn 0.2s ease;
-}
-
-.lightbox-content img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 4px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-}
-
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -338,18 +235,7 @@
     }
 }
 
-@keyframes zoomIn {
-    from {
-        transform: scale(0.9);
-        opacity: 0;
-    }
-
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
+/* Shared Post and Media styles (kept concise) */
 .shared-post-card {
     display: block;
     border: 1px solid var(--border-subtle);
@@ -410,7 +296,7 @@
     max-width: none;
 }
 
-/* Reactions Display */
+/* Reactions */
 .message-reactions {
     display: flex;
     flex-wrap: wrap;
@@ -428,7 +314,11 @@
     line-height: normal;
 }
 
-/* Reply Preview specific to Bubble */
+.own .message-reactions {
+    align-self: flex-end;
+}
+
+/* Reply Preview */
 .message-reply-preview {
     display: flex;
     margin-bottom: 6px;
@@ -499,6 +389,76 @@
     transform: scale(1.2);
 }
 
-.own .message-reactions {
-    align-self: flex-end;
+/* Download Button */
+.msg-download-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message-media:hover .msg-download-btn {
+    opacity: 1;
+}
+
+.msg-download-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.message-media img {
+    max-width: 250px;
+    max-height: 250px;
+    width: auto;
+    height: auto;
+    object-fit: cover;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.message-media img:active {
+    transform: scale(0.98);
+}
+
+/* Lightbox */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    animation: fadeIn 0.2s ease;
+}
+
+.lightbox-content {
+    max-width: 90vw;
+    max-height: 90vh;
+    animation: zoomIn 0.2s ease;
+}
+
+.lightbox-content img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
