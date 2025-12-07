@@ -33,7 +33,6 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     const [showLightbox, setShowLightbox] = React.useState(false);
     const [dynamicPost, setDynamicPost] = React.useState(null);
     const [loadingError, setLoadingError] = React.useState(false);
-    const [showMenu, setShowMenu] = React.useState(false); // Can keep for compatibility or remote if unused
     const [confirmDelete, setConfirmDelete] = React.useState(false);
     const [showEmojiMenu, setShowEmojiMenu] = React.useState(false);
     const [showActionsMobile, setShowActionsMobile] = React.useState(false);
@@ -58,16 +57,13 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     // Close menu when clicking outside
     React.useEffect(() => {
         const handleClickOutside = (event) => {
-            if (showMenu && !event.target.closest('.message-actions-menu')) {
-                setShowMenu(false);
-            }
             if (showEmojiMenu && !event.target.closest('.emoji-menu') && !event.target.closest('.react-btn')) {
                 setShowEmojiMenu(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showMenu]);
+    }, [showEmojiMenu]);
 
     const displayPost = (typeof message.sharedPost === 'object') ? message.sharedPost : dynamicPost;
 
@@ -88,16 +84,6 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         }
     };
 
-    const handleMenuClick = (e) => {
-        e.stopPropagation();
-        setShowMenu(!showMenu);
-    };
-
-    const handleDeleteClick = () => {
-        setShowMenu(false);
-        if (onDelete) onDelete(message._id);
-    };
-
     const handleReaction = (emoji) => {
         if (onReact) onReact(message._id, emoji);
         setShowEmojiMenu(false);
@@ -112,7 +98,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
             >
-                {/* Actions Bar (Left of bubble for own messages, Right for others - configured via CSS order) */}
+                {/* Actions Bar (Right for other, Left for own - handled by CSS order) */}
                 <div className="message-actions">
                     {/* Delete Button (Trash Icon) */}
                     <button
@@ -165,26 +151,39 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                 </div>
 
                 <div
-                    className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''} ${confirmDelete ? 'confirm-delete-mode' : ''}`}
-                    onClick={confirmDelete ? () => onDelete(message._id) : undefined}
-                    title={confirmDelete ? "Silmek için tıklayın" : ""}
+                    className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''}`}
                 >
+                    {/* Full Screen Foggy Overlay for Delete Confirmation */}
                     {confirmDelete && (
-                        <div className="delete-overlay">
-                            <span className="delete-text">Mesajı Sil</span>
-                            <button
-                                className="cancel-delete-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setConfirmDelete(false);
-                                }}
-                            >
-                                ✕
-                            </button>
+                        <div className="delete-confirm-overlay">
+                            <div className="delete-confirm-modal">
+                                <p>Sil?</p>
+                                <div className="delete-confirm-actions">
+                                    <button
+                                        className="confirm-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete(message._id);
+                                            setConfirmDelete(false);
+                                        }}
+                                    >
+                                        Evet
+                                    </button>
+                                    <button
+                                        className="cancel-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setConfirmDelete(false);
+                                        }}
+                                    >
+                                        İptal
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    <div className={`message-bubble-content ${confirmDelete ? 'blurred-content' : ''}`}>
+                    <div className="message-bubble-content">
                         {message.media && (
                             <div className="message-media" onClick={toggleLightbox}>
                                 <img
