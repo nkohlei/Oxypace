@@ -12,7 +12,7 @@ const router = express.Router();
 router.get('/:commentId', async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.commentId)
-            .populate('author', 'username profile.displayName profile.avatar')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .populate('post', '_id content');
 
         if (!comment) {
@@ -36,7 +36,7 @@ router.get('/:commentId/replies', async (req, res) => {
         const skip = (page - 1) * limit;
 
         const replies = await Comment.find({ parentComment: req.params.commentId })
-            .populate('author', 'username profile.displayName profile.avatar')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: 1 })
             .skip(skip)
             .limit(limit);
@@ -112,11 +112,11 @@ router.post('/post/:postId', protect, async (req, res) => {
             });
 
             // Emit real-time notification
-            req.app.get('io').to(post.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar'));
+            req.app.get('io').to(post.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge'));
         }
 
         // Populate author info
-        await comment.populate('author', 'username profile.displayName profile.avatar');
+        await comment.populate('author', 'username profile.displayName profile.avatar verificationBadge');
 
         res.status(201).json(comment);
     } catch (error) {
@@ -164,11 +164,11 @@ router.post('/comment/:commentId', protect, async (req, res) => {
             });
 
             // Emit real-time notification
-            req.app.get('io').to(parentComment.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar'));
+            req.app.get('io').to(parentComment.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge'));
         }
 
         // Populate author info
-        await reply.populate('author', 'username profile.displayName profile.avatar');
+        await reply.populate('author', 'username profile.displayName profile.avatar verificationBadge');
 
         res.status(201).json(reply);
     } catch (error) {
@@ -190,7 +190,7 @@ router.get('/post/:postId', async (req, res) => {
             post: req.params.postId,
             parentComment: null // Only top-level comments
         })
-            .populate('author', 'username profile.displayName profile.avatar')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -224,7 +224,7 @@ router.get('/comment/:commentId/replies', async (req, res) => {
         const replies = await Comment.find({
             parentComment: req.params.commentId
         })
-            .populate('author', 'username profile.displayName profile.avatar')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: 1 }) // Oldest first for replies
             .skip(skip)
             .limit(limit);
@@ -331,13 +331,13 @@ router.get('/user/:userId', protect, async (req, res) => {
         const skip = (page - 1) * limit;
 
         const comments = await Comment.find({ author: req.params.userId })
-            .populate('author', 'username profile.displayName profile.avatar')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .populate({
                 path: 'post',
                 select: 'content media author',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar'
+                    select: 'username profile.displayName profile.avatar verificationBadge'
                 }
             })
             .sort({ createdAt: -1 })

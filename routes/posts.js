@@ -58,7 +58,7 @@ router.post('/', protect, (req, res, next) => {
         }
 
         const post = await Post.create(postData);
-        await post.populate('author', 'username profile.displayName profile.avatar');
+        await post.populate('author', 'username profile.displayName profile.avatar verificationBadge');
 
         // Increment post count
         await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
@@ -86,7 +86,7 @@ router.get('/', protect, async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('author', 'username profile.displayName profile.avatar');
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge');
 
         const total = await Post.countDocuments();
 
@@ -108,7 +108,7 @@ router.get('/', protect, async (req, res) => {
 router.get('/:id', protect, async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
-            .populate('author', 'username profile.displayName profile.avatar');
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -134,7 +134,7 @@ router.get('/user/:userId', protect, async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('author', 'username profile.displayName profile.avatar');
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge');
 
         const total = await Post.countDocuments({ author: req.params.userId });
 
