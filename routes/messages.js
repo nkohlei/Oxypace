@@ -12,9 +12,11 @@ import multer from 'multer';
 import path from 'path';
 
 // Configure multer for message attachments
+// Configure multer for message attachments
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        // Use process.cwd() to be safe and consistent with server.js
+        cb(null, path.join(process.cwd(), 'uploads'));
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -40,19 +42,31 @@ const upload = multer({
 // @route   POST /api/messages
 // @desc    Send a message
 // @access  Private
-router.post('/', protect, upload.single('media'), async (req, res) => {
+router.post('/', protect, (req, res, next) => {
+    upload.single('media')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            // A Multer error occurred when uploading.
+            return res.status(400).json({ message: `Upload error: ${err.message}` });
+        } else if (err) {
+            // An unknown error occurred when uploading.
+            return res.status(400).json({ message: err.message });
+        }
+        // Everything went fine.
+        next();
+    });
+}, async (req, res) => {
     try {
         const { recipientId, content, postId } = req.body;
         const media = req.file ? `/uploads/${req.file.filename}` : undefined;
 
         if (!recipientId || (!content && !media && !postId)) {
-            return res.status(400).json({ message: 'Recipient and content/media/post are required' });
+            return res.status(400).json({ message: 'Mesaj veya resim boş olamaz.' });
         }
 
         // Check if recipient exists
         const recipient = await User.findById(recipientId);
         if (!recipient) {
-            return res.status(404).json({ message: 'Recipient not found' });
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
         const messageData = {
@@ -83,7 +97,7 @@ router.post('/', protect, upload.single('media'), async (req, res) => {
         res.status(201).json(message);
     } catch (error) {
         console.error('Send message error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Sunucu hatası: Mesaj gönderilemedi.' });
     }
 });
 

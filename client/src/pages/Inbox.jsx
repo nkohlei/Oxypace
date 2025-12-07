@@ -148,7 +148,8 @@ const Inbox = () => {
             console.error('Failed to send message:', err);
             // Remove optimistic message on error
             setMessages((prev) => prev.filter(msg => msg._id !== optimisticMessage._id));
-            alert('Mesaj gönderilemedi.');
+            const errorMsg = err.response?.data?.message || 'Mesaj gönderilemedi.';
+            alert(errorMsg);
             // Restore inputs (optional)
             setNewMessage(tempContent);
             setMedia(tempMedia);
