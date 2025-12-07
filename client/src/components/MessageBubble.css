@@ -92,9 +92,15 @@
     /* Subtle hover bg */
 }
 
-/* No Red Border/Style for Delete Button as requested (Normal appearance) */
-/* .action-btn.delete-btn:hover { color: #ff4d4d; } */
-/* Removed specific red hover forcing */
+/* Delete Button Red Style */
+.action-btn.delete-btn {
+    color: #ff4d4d;
+}
+
+.action-btn.delete-btn:hover {
+    color: #ff3333;
+    background: rgba(255, 77, 77, 0.1);
+}
 
 .action-btn svg {
     width: 16px;
