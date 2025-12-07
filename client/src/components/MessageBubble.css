@@ -37,11 +37,12 @@
 }
 
 /* Message Actions Container */
+/* Message Actions Container */
 .message-actions {
     display: flex;
     align-items: center;
-    gap: 2px;
-    /* Very tight spacing as requested (1 space approx) */
+    gap: 0;
+    /* Touching/Compact */
     opacity: 0;
     /* Hidden by default */
     transition: opacity 0.2s ease;
@@ -56,11 +57,10 @@
     opacity: 1;
 }
 
-/* Mobile: Always visible or on tap (User says mouse cursor, so desktop focus, but good to have fallback) */
+/* Mobile: Always visible or on tap */
 @media (max-width: 768px) {
     .message-actions {
         opacity: 1;
-        /* Always show on mobile since no hover */
     }
 }
 
@@ -77,19 +77,23 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 4px;
-    /* Reduced padding for tighter feel */
+    padding: 2px;
+    /* Very tight padding */
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: 0;
+    /* No border radius needed if no bg, but good reset */
     transition: all 0.2s;
 }
 
 .action-btn:hover {
     color: var(--primary-cyan, #00d2ff);
-    background: rgba(255, 255, 255, 0.08);
-    /* Subtle hover bg */
+    background: none;
+    /* NO BACKGROUND */
+    filter: drop-shadow(0 0 2px var(--primary-cyan, #00d2ff));
+    /* Shine effect */
+    transform: scale(1.1);
 }
 
 /* Delete Button Red Style */
@@ -99,12 +103,16 @@
 
 .action-btn.delete-btn:hover {
     color: #ff3333;
-    background: rgba(255, 77, 77, 0.1);
+    background: none;
+    /* NO BACKGROUND */
+    filter: drop-shadow(0 0 3px #ff3333);
+    /* Red Shine */
 }
 
 .action-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    /* Smaller Icon */
+    height: 14px;
 }
 
 /* ------------------------------------------- */
