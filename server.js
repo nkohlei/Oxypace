@@ -6,6 +6,7 @@ import cors from 'cors';
 import passport from 'passport';
 import session from 'express-session';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import { configurePassport } from './config/passport.js';
@@ -59,6 +60,13 @@ app.set('io', io);
 
 // Connect to MongoDB
 connectDB();
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log('Created uploads directory');
+}
 
 // Configure Passport
 configurePassport();
