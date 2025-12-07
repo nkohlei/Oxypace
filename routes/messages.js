@@ -105,7 +105,14 @@ router.get('/conversations', protect, async (req, res) => {
         })
             .sort({ createdAt: -1 })
             .populate('sender', 'username profile.displayName profile.avatar')
-            .populate('recipient', 'username profile.displayName profile.avatar');
+            .populate('recipient', 'username profile.displayName profile.avatar')
+            .populate({
+                path: 'sharedPost',
+                populate: {
+                    path: 'author',
+                    select: 'username profile.displayName profile.avatar'
+                }
+            });
 
         // Extract unique conversations
         const conversationsMap = new Map();
@@ -155,8 +162,16 @@ router.get('/:userId', protect, async (req, res) => {
             ],
         })
             .sort({ createdAt: 1 })
+            .sort({ createdAt: 1 })
             .populate('sender', 'username profile.displayName profile.avatar')
-            .populate('recipient', 'username profile.displayName profile.avatar');
+            .populate('recipient', 'username profile.displayName profile.avatar')
+            .populate({
+                path: 'sharedPost',
+                populate: {
+                    path: 'author',
+                    select: 'username profile.displayName profile.avatar'
+                }
+            });
 
         // Mark messages as read
         await Message.updateMany(
