@@ -42,8 +42,8 @@
     z-index: 10;
     margin-top: -60px;
     /* Overlap cover */
-    padding-top: 60px;
-    /* Space for avatar */
+    padding-top: 12px;
+    /* Reduced space, content moves up */
 }
 
 /* Updated Header Layout */
@@ -53,6 +53,10 @@
     align-items: flex-start;
     gap: 16px;
     margin-bottom: 24px;
+    padding-left: 115px;
+    /* Space for Avatar (100px + gap) */
+    margin-top: 8px;
+    /* Visual alignment with avatar top */
 }
 
 /* Left: Name and Username */
