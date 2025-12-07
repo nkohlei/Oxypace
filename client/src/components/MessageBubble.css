@@ -101,16 +101,17 @@
     outline: none !important;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 0 1px !important;
-    /* Extreme tight padding */
+    padding: 0 !important;
+    /* Zero padding */
     margin: 0 !important;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    width: auto !important;
-    /* Let content define width */
-    height: 18px !important;
+    width: 14px !important;
+    /* Exact icon width */
+    height: 14px !important;
+    /* Exact icon height */
     line-height: 0;
 }
 
