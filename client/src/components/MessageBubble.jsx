@@ -34,6 +34,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     const [dynamicPost, setDynamicPost] = React.useState(null);
     const [loadingError, setLoadingError] = React.useState(false);
     const [showMenu, setShowMenu] = React.useState(false);
+    const [showEmojiMenu, setShowEmojiMenu] = React.useState(false);
     const [showActionsMobile, setShowActionsMobile] = React.useState(false);
     const longPressTimer = React.useRef(null);
 
@@ -58,6 +59,9 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         const handleClickOutside = (event) => {
             if (showMenu && !event.target.closest('.message-actions-menu')) {
                 setShowMenu(false);
+            }
+            if (showEmojiMenu && !event.target.closest('.emoji-menu') && !event.target.closest('.react-btn')) {
+                setShowEmojiMenu(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -93,6 +97,13 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         if (onDelete) onDelete(message._id);
     };
 
+    const handleReaction = (emoji) => {
+        if (onReact) onReact(message._id, emoji);
+        setShowEmojiMenu(false);
+    };
+
+    const emojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+
     return (
         <>
             <div
@@ -118,21 +129,39 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                         </div>
                     )}
 
-                    <button className="action-btn reply-btn" title="Yanıtla">
+                    <button className="action-btn reply-btn" title="Yanıtla" onClick={() => onReply && onReply(message)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="9 10 4 15 9 20"></polyline>
                             <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
                         </svg>
                     </button>
 
-                    <button className="action-btn react-btn" title="İfade Bırak">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                        </svg>
-                    </button>
+                    <div className="reaction-wrapper" style={{ position: 'relative' }}>
+                        <button
+                            className="action-btn react-btn"
+                            title="İfade Bırak"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowEmojiMenu(!showEmojiMenu);
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                            </svg>
+                        </button>
+                        {showEmojiMenu && (
+                            <div className="emoji-menu">
+                                {emojis.map(emoji => (
+                                    <button key={emoji} onClick={() => handleReaction(emoji)} className="emoji-option">
+                                        {emoji}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''}`}>
@@ -151,6 +180,20 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                     </svg>
                                 </button>
                             )}
+                        </div>
+                    )}
+
+                    {message.replyTo && (
+                        <div className="message-reply-preview">
+                            <div className="reply-bar-line"></div>
+                            <div className="reply-content-box">
+                                <p className="reply-sender">
+                                    {message.replyTo.sender?.username || 'Kullanıcı'}
+                                </p>
+                                <p className="reply-text">
+                                    {message.replyTo.content || (message.replyTo.media ? '📷 Medya' : 'Mesaj')}
+                                </p>
+                            </div>
                         </div>
                     )}
 
@@ -184,6 +227,15 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                         {formatTime(message.createdAt)}
                         {message.isOptimistic && <span className="sending-indicator">...</span>}
                     </div>
+
+                    {/* Reactions Display */}
+                    {message.reactions && message.reactions.length > 0 && (
+                        <div className="message-reactions">
+                            {message.reactions.map((reaction, index) => (
+                                <span key={index} className="reaction-emoji">{reaction.emoji}</span>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 

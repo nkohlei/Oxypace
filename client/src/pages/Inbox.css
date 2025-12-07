@@ -401,3 +401,68 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Reply Preview Bar in Inbox */
+.reply-preview-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-darker);
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--primary-cyan);
+    animation: slideUp 0.2s ease;
+    margin-bottom: 0;
+}
+
+.reply-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85rem;
+    gap: 2px;
+}
+
+.reply-to-label {
+    font-weight: 600;
+    color: var(--primary-cyan);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reply-text-preview {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+    margin: 0;
+}
+
+.close-reply-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+}
+
+.close-reply-btn:hover {
+    color: var(--error-color, #ff4d4d);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

@@ -20,6 +20,9 @@ const Inbox = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef(null);
+    const [media, setMedia] = useState(null);
+    const [replyingTo, setReplyingTo] = useState(null);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         fetchConversations();
@@ -51,14 +54,22 @@ const Inbox = () => {
                 fetchConversations(); // Update previews if last message deleted
             };
 
+            const handleMessageReaction = ({ messageId, reactions }) => {
+                setMessages((prev) => prev.map(msg =>
+                    msg._id === messageId ? { ...msg, reactions } : msg
+                ));
+            };
+
             socket.on('newMessage', handleNewMessage);
             socket.on('messageSent', handleNewMessage);
             socket.on('messageDeleted', handleMessageDeleted);
+            socket.on('messageReaction', handleMessageReaction);
 
             return () => {
                 socket.off('newMessage', handleNewMessage);
                 socket.off('messageSent', handleNewMessage);
                 socket.off('messageDeleted', handleMessageDeleted);
+                socket.off('messageReaction', handleMessageReaction);
             };
         }
     }, [socket, selectedUser, user]);
@@ -111,10 +122,21 @@ const Inbox = () => {
         setMessages([]);
     };
 
-    const [media, setMedia] = useState(null);
-    const fileInputRef = useRef(null);
+    const handleReply = (message) => {
+        setReplyingTo(message);
+        // Focus input
+        const input = document.querySelector('.message-form input[type="text"]');
+        if (input) input.focus();
+    };
 
-    // ... (rest of the file until handleSendMessage)
+    const handleReact = async (messageId, emoji) => {
+        try {
+            await axios.post(`/api/messages/${messageId}/react`, { emoji });
+            // Socket will update state via messageReaction event
+        } catch (error) {
+            console.error('Reaction failed:', error);
+        }
+    };
 
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -139,17 +161,20 @@ const Inbox = () => {
             content: newMessage,
             media: media ? URL.createObjectURL(media) : null, // Preview
             createdAt: new Date().toISOString(),
-            isOptimistic: true // Flag to style potentially
+            isOptimistic: true, // Flag to style potentially
+            replyTo: replyingTo
         };
 
         setMessages((prev) => [...prev, optimisticMessage]);
 
         const tempContent = newMessage;
         const tempMedia = media;
+        const tempReplyTo = replyingTo;
 
         // Reset inputs immediately
         setNewMessage('');
         setMedia(null);
+        setReplyingTo(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
 
         try {
@@ -157,6 +182,7 @@ const Inbox = () => {
             formData.append('recipientId', selectedUser._id);
             if (tempContent) formData.append('content', tempContent);
             if (tempMedia) formData.append('media', tempMedia);
+            if (tempReplyTo) formData.append('replyToId', tempReplyTo._id);
 
             const response = await axios.post('/api/messages', formData);
 
@@ -173,6 +199,7 @@ const Inbox = () => {
             // Restore inputs (optional)
             setNewMessage(tempContent);
             setMedia(tempMedia);
+            setReplyingTo(tempReplyTo);
         }
     };
 
@@ -341,6 +368,8 @@ const Inbox = () => {
                                         message={message}
                                         isOwn={message.sender._id === user._id}
                                         onDelete={handleDeleteMessage}
+                                        onReply={handleReply}
+                                        onReact={handleReact}
                                     />
                                 ))}
                                 <div ref={messagesEndRef} />
@@ -352,6 +381,19 @@ const Inbox = () => {
                                 <div className="media-preview">
                                     <img src={URL.createObjectURL(media)} alt="Preview" />
                                     <button type="button" onClick={() => { setMedia(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>×</button>
+                                </div>
+                            )}
+
+                            {replyingTo && (
+                                <div className="reply-preview-bar">
+                                    <div className="reply-info">
+                                        <span className="reply-to-label">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 10 4 15 9 20" /><path d="M20 4v7a4 4 0 0 1-4 4H4" /></svg>
+                                            {replyingTo.sender.username} kullanıcısına yanıt veriyorsun
+                                        </span>
+                                        <p className="reply-text-preview">{replyingTo.content || (replyingTo.media ? '📷 Fotoğraf' : 'Paylaşım')}</p>
+                                    </div>
+                                    <button onClick={() => setReplyingTo(null)} className="close-reply-btn">×</button>
                                 </div>
                             )}
 

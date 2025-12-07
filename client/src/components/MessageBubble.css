@@ -40,18 +40,21 @@
 .message-actions {
     display: flex;
     align-items: center;
-    gap: 2px;
-    opacity: 0;
+    gap: 4px;
+    opacity: 1;
+    /* Force visible for debugging/usability */
     transition: opacity 0.2s ease;
     padding: 0 8px;
-    /* Spacing between bubble and actions */
-    z-index: 5;
+    z-index: 10;
+    /* Boost z-index */
+    background: rgba(0, 0, 0, 0.2);
+    /* Slight background to verify position */
+    border-radius: 12px;
+    margin: 0 4px;
 }
 
-/* Show actions on hover */
-.message-row:hover .message-actions {
-    opacity: 1;
-}
+/* Removed hover dependency for now to ensure they are usable */
+/* section deleted */
 
 /* On mobile, always show actions (or maybe show them subtly) 
    User asked to undo "Long press" setting. 
@@ -367,4 +370,97 @@
     margin: 0;
     border-radius: 0;
     max-width: none;
+}
+
+/* Reactions Display */
+.message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-top: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 4px;
+    border-radius: 10px;
+    align-self: flex-start;
+    font-size: 0.85rem;
+}
+
+.reaction-emoji {
+    font-size: 1rem;
+    line-height: normal;
+}
+
+/* Reply Preview specific to Bubble */
+.message-reply-preview {
+    display: flex;
+    margin-bottom: 6px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    position: relative;
+    cursor: pointer;
+}
+
+.reply-bar-line {
+    width: 3px;
+    background: var(--primary-cyan);
+    border-radius: 2px;
+    margin-right: 8px;
+}
+
+.reply-content-box {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.reply-sender {
+    font-weight: 600;
+    color: var(--primary-cyan);
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+}
+
+.reply-text {
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Emoji Menu */
+.emoji-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 20px;
+    padding: 6px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    margin-bottom: 8px;
+}
+
+.emoji-option {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.emoji-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.2);
+}
+
+.own .message-reactions {
+    align-self: flex-end;
 }
