@@ -1,6 +1,8 @@
-const mongoose = require('mongoose');
-const User = require('./models/User');
-require('dotenv').config();
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import User from './models/User.js';
+
+dotenv.config();
 
 const updateBadge = async (username, badgeType) => {
     try {
@@ -27,10 +29,10 @@ const updateBadge = async (username, badgeType) => {
 };
 
 const username = process.argv[2];
-const badge = process.argv[3] || 'blue'; // Default to blue
+const badge = process.argv[3] || 'blue';
 
 if (!username) {
-    console.log('Usage: node update_badge.js <username> [blue|gold|staff|none]');
+    console.log('Usage: node update_badge.js <username> [blue|gold|staff|iridescent|none]');
     process.exit(1);
 }
 
