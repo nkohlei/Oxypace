@@ -160,3 +160,67 @@
         opacity: 1;
     }
 }
+
+/* Shared Post Styles */
+.shared-post-card {
+    display: block;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    background: var(--bg-darker);
+    /* Slightly darker/different than bubble */
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s;
+    min-width: 200px;
+    /* Ensure visibility */
+}
+
+.shared-post-card:hover {
+    border-color: var(--primary-cyan);
+}
+
+.shared-post-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.shared-post-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.shared-post-username {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.shared-post-content {
+    padding: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+}
+
+.shared-post-media-preview img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    border-radius: 0;
+    max-width: none;
+    /* Override bubble img limit */
+}
