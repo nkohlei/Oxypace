@@ -206,6 +206,19 @@ const Profile = () => {
 
     const mediaPosts = userPosts.filter(post => post.media && post.media.length > 0);
 
+    if (!profileUser) {
+        return (
+            <div className="app-wrapper">
+                <Navbar />
+                <main className="app-content">
+                    <div className="spinner-container" style={{ display: 'flex', justifyContent: 'center', paddingTop: '50px' }}>
+                        <div className="spinner"></div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     if (!profileUser && !loadingPosts) {
         return (
             <div className="app-wrapper">
@@ -314,7 +327,7 @@ const Profile = () => {
                                     <line x1="8" y1="2" x2="8" y2="6"></line>
                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                 </svg>
-                                {profileUser.createdAt ? new Date(profileUser.createdAt).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' }) : 'Ocak 2021'} tarihinde katıldı
+                                {profileUser?.createdAt ? new Date(profileUser.createdAt).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' }) : 'Ocak 2021'} tarihinde katıldı
                             </span>
                         </div>
 
