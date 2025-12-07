@@ -96,17 +96,8 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
     };
 
     const handleShare = () => {
-        const url = `${window.location.origin}/post/${post._id}`;
-        if (navigator.share) {
-            navigator.share({
-                title: 'Deepace',
-                text: post.content,
-                url: url
-            });
-        } else {
-            navigator.clipboard.writeText(url);
-            alert('Link kopyalandı!');
-        }
+        // Navigate to search to select a user to share with
+        navigate(`/search?sharePostId=${post._id}`);
     };
 
     const formatLikeCount = (count) => {

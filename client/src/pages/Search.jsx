@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { getImageUrl } from '../utils/imageUtils';
 import './Search.css';
 
 const Search = () => {
@@ -91,34 +92,41 @@ const Search = () => {
                     {/* Results */}
                     {!loading && results.length > 0 && (
                         <div className="search-results">
-                            {results.map((user) => (
-                                <Link
-                                    key={user._id}
-                                    to={`/profile/${user.username}`}
-                                    className="user-result"
-                                >
-                                    {user.profile?.avatar ? (
-                                        <img
-                                            src={user.profile.avatar}
-                                            alt={user.username}
-                                            className="result-avatar"
-                                        />
-                                    ) : (
-                                        <div className="result-avatar-placeholder">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                                <circle cx="12" cy="7" r="4" />
-                                            </svg>
+                            {results.map((user) => {
+                                const sharePostId = new URLSearchParams(window.location.search).get('sharePostId');
+                                const targetLink = sharePostId
+                                    ? `/inbox?user=${user.username}&sharePostId=${sharePostId}`
+                                    : `/profile/${user.username}`;
+
+                                return (
+                                    <Link
+                                        key={user._id}
+                                        to={targetLink}
+                                        className="user-result"
+                                    >
+                                        {user.profile?.avatar ? (
+                                            <img
+                                                src={getImageUrl(user.profile.avatar)}
+                                                alt={user.username}
+                                                className="result-avatar"
+                                            />
+                                        ) : (
+                                            <div className="result-avatar-placeholder">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                    <circle cx="12" cy="7" r="4" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <div className="result-info">
+                                            <span className="result-name">
+                                                {user.profile?.displayName || user.username}
+                                            </span>
+                                            <span className="result-username">@{user.username}</span>
                                         </div>
-                                    )}
-                                    <div className="result-info">
-                                        <span className="result-name">
-                                            {user.profile?.displayName || user.username}
-                                        </span>
-                                        <span className="result-username">@{user.username}</span>
-                                    </div>
-                                </Link>
-                            ))}
+                                    </Link>
+                                )
+                            })}
                         </div>
                     )}
 

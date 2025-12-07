@@ -8,12 +8,45 @@ const router = express.Router();
 // @route   POST /api/messages
 // @desc    Send a message
 // @access  Private
-router.post('/', protect, async (req, res) => {
-    try {
-        const { recipientId, content } = req.body;
+import multer from 'multer';
+import path from 'path';
 
-        if (!recipientId || !content) {
-            return res.status(400).json({ message: 'Recipient and content are required' });
+// Configure multer for message attachments
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'msg-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (extname && mimetype) {
+            return cb(null, true);
+        }
+        cb(new Error('Only image files are allowed (jpeg, jpg, png, gif)'));
+    }
+});
+
+// @route   POST /api/messages
+// @desc    Send a message
+// @access  Private
+router.post('/', protect, upload.single('media'), async (req, res) => {
+    try {
+        const { recipientId, content, postId } = req.body;
+        const media = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+        if (!recipientId || (!content && !media && !postId)) {
+            return res.status(400).json({ message: 'Recipient and content/media/post are required' });
         }
 
         // Check if recipient exists
@@ -22,17 +55,30 @@ router.post('/', protect, async (req, res) => {
             return res.status(404).json({ message: 'Recipient not found' });
         }
 
-        const message = await Message.create({
+        const messageData = {
             sender: req.user._id,
             recipient: recipientId,
-            content,
-        });
+            content: content || '',
+            media,
+            sharedPost: postId
+        };
+
+        const message = await Message.create(messageData);
 
         await message.populate('sender', 'username profile.displayName profile.avatar');
         await message.populate('recipient', 'username profile.displayName profile.avatar');
 
+        if (postId) {
+            await message.populate({
+                path: 'sharedPost',
+                populate: { path: 'author', select: 'username profile.displayName profile.avatar' }
+            });
+        }
+
         // Emit socket event for real-time delivery
         req.app.get('io').to(recipientId).emit('newMessage', message);
+        // Also emit to sender for optimistic/confirmation update (optional but good practice)
+        req.app.get('io').to(req.user._id.toString()).emit('messageSent', message);
 
         res.status(201).json(message);
     } catch (error) {

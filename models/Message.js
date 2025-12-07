@@ -13,8 +13,15 @@ const messageSchema = new mongoose.Schema({
     },
     content: {
         type: String,
-        required: true,
+        required: false, // Content not required if there's media or sharedPost
         maxlength: 2000,
+    },
+    media: {
+        type: String, // URL to uploaded image
+    },
+    sharedPost: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Post',
     },
     read: {
         type: Boolean,

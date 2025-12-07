@@ -96,18 +96,64 @@ const Inbox = () => {
         setMessages([]);
     };
 
+    const [media, setMedia] = useState(null);
+    const fileInputRef = useRef(null);
+
+    // ... (rest of the file until handleSendMessage)
+
+    const handleFileSelect = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setMedia(e.target.files[0]);
+        }
+    };
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !selectedUser) return;
+        if ((!newMessage.trim() && !media) || !selectedUser) return;
+
+        // Optimistic UI Update
+        const optimisticMessage = {
+            _id: Date.now().toString(), // Temporary ID
+            sender: { _id: user._id, username: user.username, profile: user.profile },
+            recipient: { _id: selectedUser._id, username: selectedUser.username, profile: selectedUser.profile },
+            content: newMessage,
+            media: media ? URL.createObjectURL(media) : null, // Preview
+            createdAt: new Date().toISOString(),
+            isOptimistic: true // Flag to style potentially
+        };
+
+        setMessages((prev) => [...prev, optimisticMessage]);
+
+        const tempContent = newMessage;
+        const tempMedia = media;
+
+        // Reset inputs immediately
+        setNewMessage('');
+        setMedia(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
 
         try {
-            await axios.post('/api/messages', {
-                recipientId: selectedUser._id,
-                content: newMessage,
+            const formData = new FormData();
+            formData.append('recipientId', selectedUser._id);
+            if (tempContent) formData.append('content', tempContent);
+            if (tempMedia) formData.append('media', tempMedia);
+
+            const response = await axios.post('/api/messages', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setNewMessage('');
+
+            // Replace optimistic message with real one
+            setMessages((prev) => prev.map(msg =>
+                msg._id === optimisticMessage._id ? response.data : msg
+            ));
         } catch (err) {
             console.error('Failed to send message:', err);
+            // Remove optimistic message on error
+            setMessages((prev) => prev.filter(msg => msg._id !== optimisticMessage._id));
+            alert('Mesaj gönderilemedi.');
+            // Restore inputs (optional)
+            setNewMessage(tempContent);
+            setMedia(tempMedia);
         }
     };
 
@@ -269,24 +315,49 @@ const Inbox = () => {
                             </div>
 
                             {/* Message Input */}
+                            {/* Media Preview */}
+                            {media && (
+                                <div className="media-preview">
+                                    <img src={URL.createObjectURL(media)} alt="Preview" />
+                                    <button type="button" onClick={() => { setMedia(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>×</button>
+                                </div>
+                            )}
+
                             <form onSubmit={handleSendMessage} className="message-form">
+                                <button
+                                    type="button"
+                                    className="attach-btn"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                    </svg>
+                                </button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    accept="image/*"
+                                    onChange={handleFileSelect}
+                                />
                                 <input
                                     type="text"
                                     placeholder="Mesaj yaz..."
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                 />
-                                <button type="submit" className="send-btn" disabled={!newMessage.trim()}>
+                                <button type="submit" className="send-btn" disabled={!newMessage.trim() && !media}>
                                     <svg viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                                     </svg>
                                 </button>
                             </form>
                         </div>
+                        </div>
                     )}
-                </div>
-            </main>
         </div>
+            </main >
+        </div >
     );
 };
 
