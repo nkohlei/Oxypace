@@ -117,39 +117,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                         </svg>
                     </button>
 
-                    <button className="action-btn reply-btn" title="Yanıtla" onClick={() => onReply && onReply(message)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="9 10 4 15 9 20"></polyline>
-                            <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
-                        </svg>
-                    </button>
 
-                    <div className="reaction-wrapper" style={{ position: 'relative' }}>
-                        <button
-                            className="action-btn react-btn"
-                            title="İfade Bırak"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setShowEmojiMenu(!showEmojiMenu);
-                            }}
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                                <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                                <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                            </svg>
-                        </button>
-                        {showEmojiMenu && (
-                            <div className="emoji-menu">
-                                {emojis.map(emoji => (
-                                    <button key={emoji} onClick={() => handleReaction(emoji)} className="emoji-option">
-                                        {emoji}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 <div
