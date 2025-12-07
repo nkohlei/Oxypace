@@ -230,7 +230,7 @@ textarea:focus {
 /* Phone Frame Container */
 .app-wrapper {
   width: 100%;
-  max-width: 480px;
+  max-width: 720px;
   margin: 0 auto;
   min-height: 100vh;
   background: var(--gradient-space);
