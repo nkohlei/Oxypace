@@ -32,18 +32,26 @@ const Inbox = () => {
 
     useEffect(() => {
         if (socket) {
-            socket.on('newMessage', (message) => {
+            const handleNewMessage = (message) => {
                 if (
                     (message.sender._id === selectedUser?._id && message.recipient._id === user._id) ||
                     (message.sender._id === user._id && message.recipient._id === selectedUser?._id)
                 ) {
-                    setMessages((prev) => [...prev, message]);
+                    setMessages((prev) => {
+                        // Avoid duplicates
+                        if (prev.some(m => m._id === message._id)) return prev;
+                        return [...prev, message];
+                    });
                 }
                 fetchConversations();
-            });
+            };
+
+            socket.on('newMessage', handleNewMessage);
+            socket.on('messageSent', handleNewMessage);
 
             return () => {
-                socket.off('newMessage');
+                socket.off('newMessage', handleNewMessage);
+                socket.off('messageSent', handleNewMessage);
             };
         }
     }, [socket, selectedUser, user]);
