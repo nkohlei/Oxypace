@@ -204,13 +204,19 @@ const Inbox = () => {
     };
 
     const handleDeleteMessage = async (messageId) => {
+        // Optimistic update: Remove immediately from UI
+        const previousMessages = [...messages];
+        setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+
         try {
             await axios.delete(`/api/messages/${messageId}`);
-            // Manually remove from state immediately for better UX
-            setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
-            fetchConversations(); // Update previews
+            // Success: Do nothing (already removed) or update conversations
+            fetchConversations();
         } catch (err) {
             console.error('Failed to delete message:', err);
+            // Rollback on error
+            setMessages(previousMessages);
+            alert('Mesaj silinemedi, geri yüklendi.');
         }
     };
 
