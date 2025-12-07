@@ -162,7 +162,6 @@ router.get('/:userId', protect, async (req, res) => {
             ],
         })
             .sort({ createdAt: 1 })
-            .sort({ createdAt: 1 })
             .populate('sender', 'username profile.displayName profile.avatar')
             .populate('recipient', 'username profile.displayName profile.avatar')
             .populate({

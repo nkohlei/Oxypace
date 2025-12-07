@@ -57,7 +57,7 @@ const MessageBubble = ({ message, isOwn }) => {
                     </div>
                 )}
 
-                {message.sharedPost && (
+                {message.sharedPost && typeof message.sharedPost === 'object' && (
                     <Link to={`/post/${message.sharedPost._id}`} className="shared-post-card">
                         <div className="shared-post-header">
                             <img
