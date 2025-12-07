@@ -206,6 +206,35 @@ const Profile = () => {
 
     const mediaPosts = userPosts.filter(post => post.media && post.media.length > 0);
 
+    // Media Viewer State
+    const [selectedMedia, setSelectedMedia] = useState(null);
+
+    // Follow Modal Search
+    const [searchFollowTerm, setSearchFollowTerm] = useState('');
+
+    const filteredFollowList = followList.filter(user =>
+        user.username.toLowerCase().includes(searchFollowTerm.toLowerCase()) ||
+        (user.profile?.displayName && user.profile.displayName.toLowerCase().includes(searchFollowTerm.toLowerCase()))
+    );
+
+    const handleDownloadMedia = async (mediaUrl, filename) => {
+        try {
+            const response = await fetch(mediaUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Download failed:', error);
+            alert('İndirme başarısız.');
+        }
+    };
+
     if (!profileUser) {
         return (
             <div className="app-wrapper">
@@ -391,25 +420,39 @@ const Profile = () => {
                                     <div className="spinner"></div>
                                 </div>
                             ) : userComments.length > 0 ? (
-                                <div className="comments-feed">
+                                <div className="comments-feed-modern">
                                     {userComments.map(comment => (
                                         <Link
                                             to={`/post/${comment.post?._id}`}
                                             key={comment._id}
-                                            className="user-comment-item"
+                                            className="comment-card"
                                         >
-                                            <div className="comment-post-preview">
-                                                <span className="comment-on-text">Yorum yaptı:</span>
-                                                <p className="original-post-text">
-                                                    {comment.post?.content?.substring(0, 50) || 'Gönderi'}
+                                            <div className="comment-header">
+                                                <div className="comment-user-info">
+                                                    {profileUser.profile?.avatar ? (
+                                                        <img src={getImageUrl(profileUser.profile.avatar)} alt="" className="comment-avatar-small" />
+                                                    ) : (
+                                                        <div className="comment-avatar-placeholder-small">{profileUser.username[0].toUpperCase()}</div>
+                                                    )}
+                                                    <span className="comment-wroted-text">
+                                                        <span className="comment-author-name">{profileUser.profile?.displayName || profileUser.username}</span>
+                                                        <span className="comment-action-verb"> yanıtladı</span>
+                                                    </span>
+                                                    <span className="comment-dot">·</span>
+                                                    <span className="comment-time">{new Date(comment.createdAt).toLocaleDateString('tr-TR')}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="comment-body">
+                                                <p className="comment-text">{comment.content}</p>
+                                            </div>
+
+                                            <div className="comment-replying-to">
+                                                <span className="replying-label">Şuna yanıt olarak:</span>
+                                                <p className="original-post-snippet">
+                                                    {comment.post?.content?.substring(0, 60) || 'bir gönderi'}...
                                                 </p>
                                             </div>
-                                            <div className="comment-content-preview">
-                                                <p>{comment.content}</p>
-                                            </div>
-                                            <span className="comment-date">
-                                                {new Date(comment.createdAt).toLocaleDateString('tr-TR')}
-                                            </span>
                                         </Link>
                                     ))}
                                 </div>
@@ -420,11 +463,18 @@ const Profile = () => {
                             )
                         ) : activeTab === 'media' ? (
                             mediaPosts.length > 0 ? (
-                                <div className="media-grid">
+                                <div className="media-grid-container">
                                     {mediaPosts.map(post => (
-                                        <Link to={`/post/${post._id}`} key={post._id} className="media-item">
-                                            <img src={getImageUrl(post.media)} alt="" />
-                                        </Link>
+                                        <div key={post._id} className="media-grid-item" onClick={() => setSelectedMedia(post)}>
+                                            {post.mediaType === 'video' ? (
+                                                <div className="video-thumbnail-wrapper">
+                                                    <video src={getImageUrl(post.media)} className="media-thumbnail" />
+                                                    <div className="video-icon-overlay">▶</div>
+                                                </div>
+                                            ) : (
+                                                <img src={getImageUrl(post.media)} alt="" className="media-thumbnail" />
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             ) : (
@@ -438,51 +488,97 @@ const Profile = () => {
                     {/* Follow/Followers Modal */}
                     {showFollowModal && (
                         <div className="edit-modal-overlay" onClick={() => setShowFollowModal(null)}>
-                            <div className="edit-modal follow-modal" onClick={e => e.stopPropagation()}>
-                                <h3 className="edit-modal-title">{showFollowModal === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}</h3>
+                            <div className="edit-modal follow-modal-modern" onClick={e => e.stopPropagation()}>
+                                <div className="follow-modal-header">
+                                    <h3 className="follow-modal-title">{showFollowModal === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}</h3>
+                                    <button className="close-modal-btn" onClick={() => setShowFollowModal(null)}>✕</button>
+                                </div>
+
+                                <div className="follow-search-container">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="search-icon">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <input
+                                        type="text"
+                                        placeholder="Kullanıcı ara..."
+                                        value={searchFollowTerm}
+                                        onChange={(e) => setSearchFollowTerm(e.target.value)}
+                                        className="follow-search-input"
+                                    />
+                                </div>
+
                                 <div className="follow-list-content">
                                     {loadingFollow ? (
                                         <div className="spinner-container text-center">
                                             <div className="spinner"></div>
                                         </div>
-                                    ) : followList.length > 0 ? (
-                                        <div className="follow-list">
-                                            {followList.map(item => {
-                                                const user = showFollowModal === 'followers' ? item : item;
-                                                return (
-                                                    <Link
-                                                        to={`/profile/${user.username}`}
-                                                        key={user._id}
-                                                        className="follow-item"
-                                                        onClick={() => setShowFollowModal(null)}
-                                                    >
-                                                        <div className="follow-avatar">
-                                                            {user.profile?.avatar ? (
-                                                                <img src={getImageUrl(user.profile.avatar)} alt={user.username} />
-                                                            ) : (
-                                                                <div className="follow-avatar-placeholder">
-                                                                    {user.username[0].toUpperCase()}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="follow-info">
-                                                            <span className="follow-name">
+                                    ) : filteredFollowList.length > 0 ? (
+                                        <div className="follow-list-modern">
+                                            {filteredFollowList.map(user => (
+                                                <Link
+                                                    to={`/profile/${user.username}`}
+                                                    key={user._id}
+                                                    className="follow-item-modern"
+                                                    onClick={() => setShowFollowModal(null)}
+                                                >
+                                                    <div className="follow-avatar-modern">
+                                                        {user.profile?.avatar ? (
+                                                            <img src={getImageUrl(user.profile.avatar)} alt={user.username} />
+                                                        ) : (
+                                                            <div className="follow-avatar-placeholder-modern">
+                                                                {user.username[0].toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="follow-info-modern">
+                                                        <div className="follow-names">
+                                                            <span className="follow-display-name">
                                                                 {user.profile?.displayName || user.username}
-                                                                <Badge type={user.verificationBadge} />
+                                                                <Badge type={user.verificationBadge} size={16} />
                                                             </span>
-                                                            <span className="follow-username">@{user.username}</span>
+                                                            <span className="follow-username-handle">@{user.username}</span>
                                                         </div>
-                                                    </Link>
-                                                );
-                                            })}
+                                                        {user.profile?.bio && (
+                                                            <p className="follow-bio-snippet">{user.profile.bio.substring(0, 50)}{user.profile.bio.length > 50 && '...'}</p>
+                                                        )}
+                                                    </div>
+                                                </Link>
+                                            ))}
                                         </div>
                                     ) : (
-                                        <p className="empty-text">Henüz kimse yok.</p>
+                                        <div className="empty-search-state">
+                                            <p>Kullanıcı bulunamadı.</p>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="form-actions">
-                                    <button className="btn-cancel" onClick={() => setShowFollowModal(null)}>Kapat</button>
-                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Media Viewer Modal */}
+                    {selectedMedia && (
+                        <div className="media-viewer-overlay" onClick={() => setSelectedMedia(null)}>
+                            <button className="close-viewer-btn" onClick={() => setSelectedMedia(null)}>✕</button>
+
+                            <div className="media-viewer-content" onClick={e => e.stopPropagation()}>
+                                {selectedMedia.mediaType === 'video' ? (
+                                    <video controls autoPlay src={getImageUrl(selectedMedia.media)} className="media-viewer-element" />
+                                ) : (
+                                    <img src={getImageUrl(selectedMedia.media)} alt="" className="media-viewer-element" />
+                                )}
+                            </div>
+
+                            <div className="media-viewer-actions" onClick={e => e.stopPropagation()}>
+                                <button className="viewer-action-btn" onClick={() => {
+                                    navigate(`/post/${selectedMedia._id}`);
+                                    setSelectedMedia(null);
+                                }}>
+                                    Gönderiye Git
+                                </button>
+                                <button className="viewer-action-btn primary" onClick={() => handleDownloadMedia(getImageUrl(selectedMedia.media), `deepace-${selectedMedia._id}.${selectedMedia.mediaType === 'video' ? 'mp4' : 'png'}`)}>
+                                    İndir
+                                </button>
                             </div>
                         </div>
                     )}
