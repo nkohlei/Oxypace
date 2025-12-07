@@ -111,6 +111,11 @@ const Inbox = () => {
         e.preventDefault();
         if ((!newMessage.trim() && !media) || !selectedUser) return;
 
+        if (!selectedUser._id) {
+            alert('Hata: Kullanıcı ID bulunamadı.');
+            return;
+        }
+
         // Optimistic UI Update
         const optimisticMessage = {
             _id: Date.now().toString(), // Temporary ID
