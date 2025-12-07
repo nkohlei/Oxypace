@@ -353,11 +353,10 @@ const Inbox = () => {
                                 </button>
                             </form>
                         </div>
-                        </div>
                     )}
+                </div>
+            </main>
         </div>
-            </main >
-        </div >
     );
 };
 
