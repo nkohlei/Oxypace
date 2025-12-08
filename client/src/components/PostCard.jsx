@@ -31,22 +31,14 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
 
     const isOwnPost = user?._id === author._id;
 
+    // Optimized: Check saved status from AuthContext instead of API flood
     useEffect(() => {
-        const checkSaved = async () => {
-            try {
-                const response = await axios.get('/api/users/me');
-                const savedPosts = response.data.savedPosts || [];
-                // Robust comparison: convert both to strings
-                const isSaved = savedPosts.some(id => String(id) === String(post._id));
-                if (isSaved) {
-                    setSaved(true);
-                }
-            } catch (error) {
-                console.error('Check saved error:', error);
-            }
-        };
-        checkSaved();
-    }, [post._id]);
+        if (user && user.savedPosts) {
+            // Robust comparison
+            const isSaved = user.savedPosts.some(id => String(id) === String(post._id));
+            setSaved(isSaved);
+        }
+    }, [user, post._id]);
 
     const formatDate = (date) => {
         const now = new Date();
