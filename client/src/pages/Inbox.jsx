@@ -42,7 +42,6 @@ const Inbox = () => {
                     (message.sender._id === user._id && message.recipient._id === selectedUser?._id)
                 ) {
                     setMessages((prev) => {
-                        // Avoid duplicates
                         if (prev.some(m => m._id === message._id)) return prev;
                         return [...prev, message];
                     });
@@ -52,7 +51,7 @@ const Inbox = () => {
 
             const handleMessageDeleted = (id) => {
                 setMessages((prev) => prev.filter((msg) => msg._id !== id));
-                fetchConversations(); // Update previews if last message deleted
+                fetchConversations();
             };
 
             const handleMessageReaction = ({ messageId, reactions }) => {
@@ -125,15 +124,13 @@ const Inbox = () => {
 
     const handleReply = (message) => {
         setReplyingTo(message);
-        // Focus input
-        const input = document.querySelector('.message-form input[type="text"]');
+        const input = document.querySelector('.message-input-wrapper input');
         if (input) input.focus();
     };
 
     const handleReact = async (messageId, emoji) => {
         try {
             await axios.post(`/api/messages/${messageId}/react`, { emoji });
-            // Socket will update state via messageReaction event
         } catch (error) {
             console.error('Reaction failed:', error);
         }
@@ -154,15 +151,14 @@ const Inbox = () => {
             return;
         }
 
-        // Optimistic UI Update
         const optimisticMessage = {
-            _id: Date.now().toString(), // Temporary ID
+            _id: Date.now().toString(),
             sender: { _id: user._id, username: user.username, profile: user.profile },
             recipient: { _id: selectedUser._id, username: selectedUser.username, profile: selectedUser.profile },
             content: newMessage,
-            media: media ? URL.createObjectURL(media) : null, // Preview
+            media: media ? URL.createObjectURL(media) : null,
             createdAt: new Date().toISOString(),
-            isOptimistic: true, // Flag to style potentially
+            isOptimistic: true,
             replyTo: replyingTo
         };
 
@@ -172,7 +168,6 @@ const Inbox = () => {
         const tempMedia = media;
         const tempReplyTo = replyingTo;
 
-        // Reset inputs immediately
         setNewMessage('');
         setMedia(null);
         setReplyingTo(null);
@@ -187,17 +182,13 @@ const Inbox = () => {
 
             const response = await axios.post('/api/messages', formData);
 
-            // Replace optimistic message with real one
             setMessages((prev) => prev.map(msg =>
                 msg._id === optimisticMessage._id ? response.data : msg
             ));
         } catch (err) {
             console.error('Failed to send message:', err);
-            // Remove optimistic message on error
             setMessages((prev) => prev.filter(msg => msg._id !== optimisticMessage._id));
-            const errorMsg = err.response?.data?.message || 'Mesaj gönderilemedi.';
-            alert(errorMsg);
-            // Restore inputs (optional)
+            alert('Mesaj gönderilemedi.');
             setNewMessage(tempContent);
             setMedia(tempMedia);
             setReplyingTo(tempReplyTo);
@@ -205,19 +196,16 @@ const Inbox = () => {
     };
 
     const handleDeleteMessage = async (messageId) => {
-        // Optimistic update: Remove immediately from UI
         const previousMessages = [...messages];
         setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
 
         try {
             await axios.delete(`/api/messages/${messageId}`);
-            // Success: Do nothing (already removed) or update conversations
             fetchConversations();
         } catch (err) {
             console.error('Failed to delete message:', err);
-            // Rollback on error
             setMessages(previousMessages);
-            alert('Mesaj silinemedi, geri yüklendi.');
+            alert('Mesaj silinemedi.');
         }
     };
 
@@ -237,6 +225,12 @@ const Inbox = () => {
         }
     };
 
+    const formatJoinedDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return `Katıldı ${date.getFullYear()}`;
+    };
+
     const filteredConversations = conversations.filter(conv => {
         const name = conv.user.profile?.displayName || conv.user.username;
         return name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -247,100 +241,60 @@ const Inbox = () => {
             <Navbar />
             <main className="app-content">
                 <div className="inbox-container">
-                    {/* Conversation List View */}
                     {!selectedUser ? (
                         <div className="conversations-view">
-                            {/* Header */}
                             <div className="inbox-header">
                                 <h1>Mesajlar</h1>
-                                <button
-                                    className="compose-btn"
-                                    onClick={() => navigate('/search')}
-                                    title="Yeni mesaj"
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                <button className="compose-btn" onClick={() => navigate('/search')} title="Yeni mesaj">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
                                 </button>
                             </div>
-
-                            {/* Search */}
                             <div className="search-container">
                                 <div className="search-input-wrapper">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                        <circle cx="11" cy="11" r="8" />
-                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                                     </svg>
                                     <input
                                         type="text"
-                                        placeholder="Mesajlarda Ara"
+                                        placeholder="Ara"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
                                 </div>
                             </div>
-
-                            {/* Conversations List */}
                             {loading ? (
-                                <div className="spinner-container">
-                                    <div className="spinner"></div>
-                                </div>
+                                <div className="spinner-container"><div className="spinner"></div></div>
                             ) : filteredConversations.length === 0 ? (
-                                <div className="empty-inbox">
-                                    <p>Henüz mesaj yok</p>
-                                </div>
+                                <div className="empty-inbox"><p>Mesaj yok</p></div>
                             ) : (
                                 <div className="conversations-list">
                                     {filteredConversations.map((conv) => (
-                                        <div
-                                            key={conv.user._id}
-                                            className="conversation-item"
-                                            onClick={() => handleConversationClick(conv)}
-                                        >
-                                            {conv.unreadCount > 0 && (
-                                                <div className="unread-dot"></div>
-                                            )}
-                                            <div
-                                                className="conv-avatar-wrapper"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigate(`/profile/${conv.user.username}`);
-                                                }}
-                                                title="Profili Gör"
-                                            >
+                                        <div key={conv.user._id} className={`conversation-item ${conv.unreadCount > 0 ? 'unread' : ''}`} onClick={() => handleConversationClick(conv)}>
+                                            {conv.unreadCount > 0 && <div className="unread-dot"></div>}
+                                            <div className="conv-avatar-wrapper">
                                                 {conv.user.profile?.avatar ? (
-                                                    <img
-                                                        src={getImageUrl(conv.user.profile.avatar)}
-                                                        alt={conv.user.username}
-                                                        className="conv-avatar"
-                                                    />
+                                                    <img src={getImageUrl(conv.user.profile.avatar)} alt="" className="conv-avatar" />
                                                 ) : (
                                                     <div className="conv-avatar-placeholder">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                                            <circle cx="12" cy="7" r="4" />
-                                                        </svg>
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                                     </div>
                                                 )}
                                             </div>
                                             <div className="conv-content">
                                                 <div className="conv-header">
                                                     <div className="conv-user-info">
-                                                        <span className="conv-name">
-                                                            {conv.user.profile?.displayName || conv.user.username}
-                                                            <Badge type={conv.user.verificationBadge} />
-                                                        </span>
-                                                        <span className="conv-username">
-                                                            @{conv.user.username}
-                                                        </span>
+                                                        <span className="conv-name">{conv.user.profile?.displayName || conv.user.username}</span>
+                                                        <Badge type={conv.user.verificationBadge} />
                                                     </div>
-                                                    <span className="conv-time">
-                                                        {formatTime(conv.lastMessage.createdAt)}
-                                                    </span>
+                                                    <span className="conv-time">{formatTime(conv.lastMessage.createdAt)}</span>
                                                 </div>
                                                 <p className="conv-preview">
-                                                    {conv.lastMessage.content}
+                                                    {conv.user._id === conv.lastMessage.sender._id ? '' : 'Sen: '}
+                                                    {conv.lastMessage.content || (conv.lastMessage.media ? '📷 Fotoğraf' : 'Mesaj')}
                                                 </p>
                                             </div>
                                         </div>
@@ -349,37 +303,29 @@ const Inbox = () => {
                             )}
                         </div>
                     ) : (
-                        /* Chat View */
                         <div className="chat-view">
-                            {/* Chat Header */}
                             <div className="chat-header">
                                 <button className="back-btn" onClick={handleBackToList}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <polyline points="15 18 9 12 15 6" />
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                </button>
+                                <div className="chat-header-content">
+                                    <span className="chat-header-name">
+                                        {selectedUser.profile?.displayName || selectedUser.username}
+                                        <Badge type={selectedUser.verificationBadge} />
+                                    </span>
+                                    {selectedUser.createdAt && (
+                                        <span className="chat-header-joined">{formatJoinedDate(selectedUser.createdAt)}</span>
+                                    )}
+                                </div>
+                                <button className="chat-header-info-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
                                     </svg>
                                 </button>
-                                <div className="chat-user-info">
-                                    {selectedUser.profile?.avatar ? (
-                                        <img
-                                            src={selectedUser.profile.avatar}
-                                            alt={selectedUser.username}
-                                            className="chat-avatar"
-                                        />
-                                    ) : (
-                                        <div className="chat-avatar-placeholder">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                                <circle cx="12" cy="7" r="4" />
-                                            </svg>
-                                        </div>
-                                    )}
-                                    <span className="chat-username">
-                                        {selectedUser.profile?.displayName || selectedUser.username}
-                                    </span>
-                                </div>
                             </div>
 
-                            {/* Messages */}
                             <div className="messages-container">
                                 {messages.map((message) => (
                                     <MessageBubble
@@ -394,8 +340,6 @@ const Inbox = () => {
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Message Input */}
-                            {/* Media Preview */}
                             {media && (
                                 <div className="media-preview">
                                     <img src={URL.createObjectURL(media)} alt="Preview" />
@@ -408,39 +352,45 @@ const Inbox = () => {
                                     <div className="reply-info">
                                         <span className="reply-to-label">
                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 10 4 15 9 20" /><path d="M20 4v7a4 4 0 0 1-4 4H4" /></svg>
-                                            {replyingTo.sender.username} kullanıcısına yanıt veriyorsun
+                                            {replyingTo.sender.username}
                                         </span>
-                                        <p className="reply-text-preview">{replyingTo.content || (replyingTo.media ? '📷 Fotoğraf' : 'Paylaşım')}</p>
+                                        <p className="reply-text">{replyingTo.content || '📷 Medya'}</p>
                                     </div>
                                     <button onClick={() => setReplyingTo(null)} className="close-reply-btn">×</button>
                                 </div>
                             )}
 
                             <form onSubmit={handleSendMessage} className="message-form">
-                                <button
-                                    type="button"
-                                    className="attach-btn"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                                    </svg>
-                                </button>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    style={{ display: 'none' }}
-                                    accept="image/*"
-                                    onChange={handleFileSelect}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Mesaj yaz..."
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                />
-                                <button type="submit" className="send-btn" disabled={!newMessage.trim() && !media}>
-                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                <div className="input-actions-left">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        style={{ display: 'none' }}
+                                        accept="image/*"
+                                        onChange={handleFileSelect}
+                                    />
+                                    <button type="button" className="icon-btn" onClick={() => fileInputRef.current?.click()} title="Resim Ekle">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                    </button>
+                                    <button type="button" className="icon-btn" title="GIF">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 10h-2v4h2"></path><path d="M12 10v4"></path><path d="M15 10h2"></path><path d="M15 12h1.5"></path><path d="M15 14h2"></path></svg>
+                                    </button>
+                                    <button type="button" className="icon-btn" title="Emoji">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                                    </button>
+                                </div>
+
+                                <div className="message-input-wrapper">
+                                    <input
+                                        type="text"
+                                        placeholder="Mesaj yaz..."
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                    />
+                                </div>
+
+                                <button type="submit" className="send-btn-small" disabled={!newMessage.trim() && !media}>
+                                    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
                                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                                     </svg>
                                 </button>
@@ -448,8 +398,8 @@ const Inbox = () => {
                         </div>
                     )}
                 </div>
-            </main >
-        </div >
+            </main>
+        </div>
     );
 };
 

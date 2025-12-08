@@ -2,16 +2,11 @@ import express from 'express';
 import { protect } from '../middleware/auth.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
-
-const router = express.Router();
-
-// @route   POST /api/messages
-// @desc    Send a message
-// @access  Private
 import multer from 'multer';
 import path from 'path';
-
 import { storage } from '../config/cloudinary.js';
+
+const router = express.Router();
 
 // Configure multer for message attachments with Cloudinary
 const upload = multer({
@@ -28,8 +23,6 @@ const upload = multer({
         cb(new Error('Only image files are allowed (jpeg, jpg, png, gif)'));
     }
 });
-
-
 
 // @route   POST /api/messages/:id/react
 // @desc    React to a message
@@ -117,8 +110,8 @@ router.post('/', protect, (req, res, next) => {
         const message = await Message.create(messageData);
 
         const populatedMessage = await Message.findById(message._id)
-            .populate('sender', 'username profile.displayName profile.avatar')
-            .populate('recipient', 'username profile.displayName profile.avatar')
+            .populate('sender', 'username profile.displayName profile.avatar createdAt')
+            .populate('recipient', 'username profile.displayName profile.avatar createdAt')
             .populate({
                 path: 'sharedPost',
                 populate: { path: 'author', select: 'username profile.displayName profile.avatar' }
@@ -149,8 +142,8 @@ router.get('/conversations', protect, async (req, res) => {
             $or: [{ sender: userId }, { recipient: userId }],
         })
             .sort({ createdAt: -1 })
-            .populate('sender', 'username profile.displayName profile.avatar')
-            .populate('recipient', 'username profile.displayName profile.avatar')
+            .populate('sender', 'username profile.displayName profile.avatar createdAt')
+            .populate('recipient', 'username profile.displayName profile.avatar createdAt')
             .populate({
                 path: 'sharedPost',
                 populate: {
@@ -212,8 +205,8 @@ router.get('/:userId', protect, async (req, res) => {
             ],
         })
             .sort({ createdAt: 1 })
-            .populate('sender', 'username profile.displayName profile.avatar')
-            .populate('recipient', 'username profile.displayName profile.avatar')
+            .populate('sender', 'username profile.displayName profile.avatar createdAt')
+            .populate('recipient', 'username profile.displayName profile.avatar createdAt')
             .populate({
                 path: 'sharedPost',
                 populate: {

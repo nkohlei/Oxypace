@@ -35,7 +35,10 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
         const checkSaved = async () => {
             try {
                 const response = await axios.get('/api/users/me');
-                if (response.data.savedPosts?.includes(post._id)) {
+                const savedPosts = response.data.savedPosts || [];
+                // Robust comparison: convert both to strings
+                const isSaved = savedPosts.some(id => String(id) === String(post._id));
+                if (isSaved) {
                     setSaved(true);
                 }
             } catch (error) {

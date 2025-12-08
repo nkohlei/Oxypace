@@ -1,12 +1,225 @@
 /* Message Wrapper */
 .message-row {
     display: flex;
-    align-items: center;
-    gap: 0;
-    margin-bottom: 8px;
+    align-items: flex-end;
+    /* Align to bottom for avatar feel */
+    gap: 8px;
+    margin-bottom: 2px;
     max-width: 100%;
     position: relative;
+    padding: 2px 0;
 }
+
+.message-row.own {
+    justify-content: flex-end;
+}
+
+.message-row.other {
+    justify-content: flex-start;
+}
+
+/* Actions/Avatar Spacing */
+.message-row.other .message-actions {
+    order: 2;
+    margin-left: 4px;
+}
+
+.message-row.own .message-actions {
+    margin-right: 4px;
+}
+
+/* Bubble */
+.message-bubble {
+    max-width: 70%;
+    position: relative;
+    animation: slideIn 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-content {
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Own Message Style */
+.message-bubble.own .message-content {
+    background: linear-gradient(135deg, #00C6FF 0%, #0072FF 100%);
+    /* Neon Blue Gradient */
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+/* Other Message Style */
+.message-bubble.other .message-content {
+    background: #262626;
+    /* Dark Grey */
+    color: #e0e0e0;
+    border: 1px solid #333;
+    border-bottom-left-radius: 4px;
+}
+
+/* Time */
+.message-time {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
+    padding: 0 4px;
+}
+
+.message-bubble.own .message-time {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.7);
+    /* Lighter on gradient? No outside */
+}
+
+/* Media */
+.message-media img {
+    border-radius: 16px;
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Actions (Hover) */
+.message-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.message-row:hover .message-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    color: var(--primary-cyan);
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.1);
+}
+
+.action-btn.delete-btn:hover {
+    color: #ff4d4d;
+}
+
+.action-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Reactions */
+.message-reactions {
+    position: absolute;
+    bottom: -10px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+
+.own .message-reactions {
+    right: 0;
+}
+
+.other .message-reactions {
+    left: 0;
+}
+
+/* Emoji Picker Menu usually handled by separate component/styles, basic styles here */
+.emoji-menu {
+    position: absolute;
+    bottom: 30px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 20px;
+    padding: 8px;
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.emoji-option {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+    padding: 0;
+}
+
+.emoji-option:hover {
+    transform: scale(1.3);
+}
+
+/* Reply Preview specific to bubble */
+.message-reply-preview {
+    font-size: 0.8rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    border-left: 2px solid var(--primary-cyan);
+    cursor: pointer;
+}
+
+.reply-sender {
+    font-weight: 700;
+    color: var(--primary-cyan);
+    margin-bottom: 2px;
+}
+
+.reply-text {
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Delete Confirm Overlay - Reuse from previous/global if possible, ensuring here too */
+.delete-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ... rest of delete modal same as before ... */
 
 /* Own Message Alignment: Actions (Left) - Bubble (Right) */
 .message-row.own {

@@ -36,7 +36,16 @@ const commentSchema = new mongoose.Schema({
     mentions: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }]
+    }],
+    media: {
+        type: String,
+        default: null
+    },
+    mediaType: {
+        type: String,
+        enum: ['image', 'video', 'gif', 'none'],
+        default: 'none'
+    }
 }, {
     timestamps: true
 });

@@ -69,15 +69,25 @@ const extractMentions = (text) => {
     return mentions;
 };
 
+import multer from 'multer';
+import { storage } from '../config/cloudinary.js';
+
+const upload = multer({ storage });
+
+// ... (GET logic remains)
+
 // @route   POST /api/comments/post/:postId
 // @desc    Add comment to post
 // @access  Private
-router.post('/post/:postId', protect, async (req, res) => {
+router.post('/post/:postId', protect, upload.single('media'), async (req, res) => {
     try {
         const { content } = req.body;
+        // Content might be optional if media exists, but usually text is required?
+        // Let's make content optional if media is present, or just allow both.
+        // User request didn't specify, but typical is mix.
 
-        if (!content || content.trim().length === 0) {
-            return res.status(400).json({ message: 'Comment content is required' });
+        if ((!content || content.trim().length === 0) && !req.file) {
+            return res.status(400).json({ message: 'Comment content or media is required' });
         }
 
         const post = await Post.findById(req.params.postId);
@@ -86,15 +96,23 @@ router.post('/post/:postId', protect, async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        // Extract mentions
-        const mentionUsernames = extractMentions(content);
-        // TODO: Convert usernames to user IDs
+        const mentionUsernames = extractMentions(content || '');
+
+        let media = null;
+        let mediaType = 'none';
+
+        if (req.file) {
+            media = req.file.path;
+            mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+        }
 
         const comment = await Comment.create({
             post: req.params.postId,
             author: req.user.id,
-            content,
-            mentions: [] // Will be populated with user IDs
+            content: content || '',
+            media,
+            mediaType,
+            mentions: []
         });
 
         // Update post comment count
@@ -110,14 +128,10 @@ router.post('/post/:postId', protect, async (req, res) => {
                 post: post._id,
                 comment: comment._id
             });
-
-            // Emit real-time notification
             req.app.get('io').to(post.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge'));
         }
 
-        // Populate author info
         await comment.populate('author', 'username profile.displayName profile.avatar verificationBadge');
-
         res.status(201).json(comment);
     } catch (error) {
         console.error('Create comment error:', error);
@@ -128,12 +142,12 @@ router.post('/post/:postId', protect, async (req, res) => {
 // @route   POST /api/comments/comment/:commentId
 // @desc    Reply to comment
 // @access  Private
-router.post('/comment/:commentId', protect, async (req, res) => {
+router.post('/comment/:commentId', protect, upload.single('media'), async (req, res) => {
     try {
         const { content } = req.body;
 
-        if (!content || content.trim().length === 0) {
-            return res.status(400).json({ message: 'Reply content is required' });
+        if ((!content || content.trim().length === 0) && !req.file) {
+            return res.status(400).json({ message: 'Reply content or media is required' });
         }
 
         const parentComment = await Comment.findById(req.params.commentId);
@@ -142,18 +156,26 @@ router.post('/comment/:commentId', protect, async (req, res) => {
             return res.status(404).json({ message: 'Comment not found' });
         }
 
+        let media = null;
+        let mediaType = 'none';
+
+        if (req.file) {
+            media = req.file.path;
+            mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+        }
+
         const reply = await Comment.create({
             post: parentComment.post,
             parentComment: req.params.commentId,
             author: req.user.id,
-            content
+            content: content || '',
+            media,
+            mediaType
         });
 
-        // Update parent comment reply count
         parentComment.replyCount += 1;
         await parentComment.save();
 
-        // Create Notification (if not own comment) - Notify the comment author
         if (parentComment.author.toString() !== req.user.id) {
             const notification = await Notification.create({
                 recipient: parentComment.author,
@@ -162,14 +184,10 @@ router.post('/comment/:commentId', protect, async (req, res) => {
                 post: parentComment.post,
                 comment: reply._id
             });
-
-            // Emit real-time notification
             req.app.get('io').to(parentComment.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge'));
         }
 
-        // Populate author info
         await reply.populate('author', 'username profile.displayName profile.avatar verificationBadge');
-
         res.status(201).json(reply);
     } catch (error) {
         console.error('Create reply error:', error);
