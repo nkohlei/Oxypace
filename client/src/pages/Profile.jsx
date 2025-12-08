@@ -583,24 +583,73 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Edit Form Modal */}
+                    {/* Edit Form Modal (Modern Redesign) */}
                     {editing && (
                         <div className="edit-modal-overlay" onClick={() => setEditing(false)}>
-                            <div className="edit-modal" onClick={e => e.stopPropagation()}>
-                                <h2 className="edit-modal-title">Profili Düzenle</h2>
-                                <form onSubmit={handleSubmit}>
-                                    <div className="edit-media-section">
-                                        <div className="edit-media-item">
-                                            <div className="edit-media-preview">
-                                                {profileUser?.profile?.avatar ? (
-                                                    <img src={getImageUrl(profileUser.profile.avatar)} alt="Avatar" className="edit-avatar-preview" />
-                                                ) : (
-                                                    <div className="edit-avatar-placeholder">PP</div>
-                                                )}
-                                            </div>
-                                            <button type="button" className="btn-secondary btn-sm" onClick={() => avatarInputRef.current.click()}>
-                                                Değiştir
+                            <div className="edit-modal-modern" onClick={e => e.stopPropagation()}>
+                                {/* Header */}
+                                <div className="edit-modal-header-modern">
+                                    <div className="header-left">
+                                        <button className="close-btn-modern" onClick={() => setEditing(false)}>✕</button>
+                                        <h2 className="header-title-modern">Profili düzenle</h2>
+                                    </div>
+                                    <button className="save-btn-modern" onClick={handleSubmit} disabled={loading}>
+                                        {loading ? '...' : 'Kaydet'}
+                                    </button>
+                                </div>
+
+                                {/* Content Scrollable Area */}
+                                <div className="edit-modal-content-modern">
+                                    {/* Cover Image Area */}
+                                    <div className="edit-cover-container">
+                                        {profileUser?.profile?.coverImage ? (
+                                            <img src={getImageUrl(profileUser.profile.coverImage)} alt="Cover" className="edit-cover-image" />
+                                        ) : (
+                                            <div className="edit-cover-placeholder"></div>
+                                        )}
+                                        <div className="image-overlay-actions">
+                                            <button className="image-overlay-btn" onClick={() => coverInputRef.current.click()} title="Fotoğraf ekle">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                                    <circle cx="12" cy="13" r="4"></circle>
+                                                </svg>
                                             </button>
+                                            {profileUser?.profile?.coverImage && (
+                                                <button className="image-overlay-btn" onClick={() => {/* Handle remove cover logic if needed */ }} title="Kaldır">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="file"
+                                            ref={coverInputRef}
+                                            onChange={handleCoverChange}
+                                            style={{ display: 'none' }}
+                                            accept="image/*"
+                                        />
+                                    </div>
+
+                                    {/* Avatar Area */}
+                                    <div className="edit-avatar-container">
+                                        <div className="edit-avatar-wrapper">
+                                            {profileUser?.profile?.avatar ? (
+                                                <img src={getImageUrl(profileUser.profile.avatar)} alt="Avatar" className="edit-avatar-image" />
+                                            ) : (
+                                                <div className="edit-avatar-placeholder">
+                                                    {profileUser.username[0].toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div className="avatar-overlay-actions">
+                                                <button className="image-overlay-btn" onClick={() => avatarInputRef.current.click()} title="Fotoğraf ekle">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                                        <circle cx="12" cy="13" r="4"></circle>
+                                                    </svg>
+                                                </button>
+                                            </div>
                                             <input
                                                 type="file"
                                                 ref={avatarInputRef}
@@ -609,56 +658,37 @@ const Profile = () => {
                                                 accept="image/*"
                                             />
                                         </div>
-                                        <div className="edit-media-item">
-                                            <div className="edit-banner-preview">
-                                                {profileUser?.profile?.coverImage && (
-                                                    <img src={getImageUrl(profileUser.profile.coverImage)} alt="Cover" />
-                                                )}
-                                            </div>
-                                            <button type="button" className="btn-secondary btn-sm" onClick={() => coverInputRef.current.click()}>
-                                                Kapak Fotoğrafı
-                                            </button>
+                                    </div>
+
+                                    {/* Form Fields */}
+                                    <div className="edit-form-fields">
+                                        <div className="floating-label-group">
                                             <input
-                                                type="file"
-                                                ref={coverInputRef}
-                                                onChange={handleCoverChange}
-                                                style={{ display: 'none' }}
-                                                accept="image/*"
+                                                type="text"
+                                                name="displayName"
+                                                value={formData.displayName}
+                                                onChange={handleChange}
+                                                className="floating-input"
+                                                placeholder=" "
+                                                id="input-name"
                                             />
+                                            <label htmlFor="input-name" className="floating-label">İsim</label>
+                                        </div>
+
+                                        <div className="floating-label-group">
+                                            <textarea
+                                                name="bio"
+                                                value={formData.bio}
+                                                onChange={handleChange}
+                                                className="floating-input floating-textarea"
+                                                placeholder=" "
+                                                id="input-bio"
+                                                rows="3"
+                                            />
+                                            <label htmlFor="input-bio" className="floating-label">Kişisel bilgiler</label>
                                         </div>
                                     </div>
-
-                                    <div className="form-group">
-                                        <label>Görünen İsim</label>
-                                        <input
-                                            type="text"
-                                            name="displayName"
-                                            value={formData.displayName}
-                                            onChange={handleChange}
-                                            placeholder="İsim Soyisim"
-                                            className="form-input"
-                                        />
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Biyografi</label>
-                                        <textarea
-                                            name="bio"
-                                            value={formData.bio}
-                                            onChange={handleChange}
-                                            placeholder="Kendinizden bahsedin"
-                                            className="form-input"
-                                            rows="3"
-                                        />
-                                    </div>
-
-                                    <div className="form-actions">
-                                        <button type="button" className="btn-cancel" onClick={() => setEditing(false)}>İptal</button>
-                                        <button type="submit" className="btn-save" disabled={loading}>
-                                            {loading ? 'Kaydediliyor...' : 'Kaydet'}
-                                        </button>
-                                    </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     )}
