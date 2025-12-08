@@ -118,6 +118,14 @@ router.get('/:username', protect, async (req, res) => {
         const userObj = user.toObject();
         userObj.postCount = postCount;
 
+        // Check if current user follows this user
+        if (req.user) {
+            const currentUser = await User.findById(req.user._id);
+            userObj.isFollowing = currentUser.following.includes(user._id);
+        } else {
+            userObj.isFollowing = false;
+        }
+
         res.json(userObj);
     } catch (error) {
         console.error('Get user error:', error);
