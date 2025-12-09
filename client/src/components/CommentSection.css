@@ -42,7 +42,7 @@
 .comment-input-wrapper {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 8px;
     /* Space between input box and send button */
 }
