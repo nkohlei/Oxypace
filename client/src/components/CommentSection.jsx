@@ -382,7 +382,7 @@ const CommentSection = ({ postId }) => {
                         </div>
                     )}
 
-                    <div style={{ flex: 1 }}>
+                    <div className="comment-input-container">
                         {previewUrl && (
                             <div className="comment-media-preview-container">
                                 <img src={previewUrl} alt="Preview" className="comment-media-preview" />
@@ -396,7 +396,7 @@ const CommentSection = ({ postId }) => {
                             placeholder={replyingTo ? `Yanıt yaz...` : "Yorum ekle..."}
                             className="comment-input"
                         />
-                        {/* Image Upload Button (Moved Inside Input Wrapper) */}
+                        {/* Image Upload Button (Inside Input Box) */}
                         <input
                             type="file"
                             accept="image/*,video/*"
@@ -408,7 +408,7 @@ const CommentSection = ({ postId }) => {
                             type="button"
                             className="file-input-btn"
                             onClick={() => fileInputRef.current.click()}
-                            style={{ marginLeft: '8px', color: 'var(--primary-cyan)' }}
+                            style={{ position: 'absolute', right: '8px', color: 'var(--primary-cyan)' }}
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="20" height="20">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -418,14 +418,11 @@ const CommentSection = ({ postId }) => {
                         </button>
                     </div>
 
-                    <div className="comment-input-actions">
-
-                        <button type="submit" className="comment-submit-btn" disabled={!newComment.trim() && !selectedFile}>
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                            </svg>
-                        </button>
-                    </div>
+                    <button type="submit" className="comment-submit-btn" disabled={!newComment.trim() && !selectedFile}>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                        </svg>
+                    </button>
                 </div>
             </form>
 
