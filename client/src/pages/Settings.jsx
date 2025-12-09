@@ -1,24 +1,123 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import './Settings.css';
 
 const Settings = () => {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const navigate = useNavigate();
+
+    // Settings State
     const [notifications, setNotifications] = useState({
         email: true,
         push: true,
         mentions: true,
         likes: false
     });
+    const [privacy, setPrivacy] = useState({
+        isPrivate: false
+    });
 
-    const handleToggle = (setting) => {
-        setNotifications(prev => ({
-            ...prev,
-            [setting]: !prev[setting]
-        }));
+    // UI State
+    const [loading, setLoading] = useState(true);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+    // Forms State
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const fetchSettings = async () => {
+        try {
+            // Since we don't have a dedicated GET /settings, we might need to rely on what's in 'user'
+            // or fetch the user again. Let's fetch the user profile again to get fresh settings.
+            const response = await axios.get('/api/users/me');
+            if (response.data.settings) {
+                setNotifications(prev => ({ ...prev, ...response.data.settings.notifications }));
+                setPrivacy(prev => ({ ...prev, ...response.data.settings.privacy }));
+            }
+        } catch (error) {
+            console.error('Failed to fetch settings:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggle = async (setting, type = 'notifications') => {
+        const newValue = type === 'notifications' ? !notifications[setting] : !privacy[setting];
+
+        // Optimistic update
+        if (type === 'notifications') {
+            setNotifications(prev => ({ ...prev, [setting]: newValue }));
+        } else {
+            setPrivacy(prev => ({ ...prev, [setting]: newValue }));
+        }
+
+        try {
+            const payload = type === 'notifications'
+                ? { notifications: { [setting]: newValue } }
+                : { privacy: { [setting]: newValue } };
+
+            await axios.put('/api/users/settings', payload);
+        } catch (error) {
+            console.error('Failed to update settings:', error);
+            // Revert on error
+            if (type === 'notifications') {
+                setNotifications(prev => ({ ...prev, [setting]: !newValue }));
+            } else {
+                setPrivacy(prev => ({ ...prev, [setting]: !newValue }));
+            }
+        }
+    };
+
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+        setPasswordError('');
+        setPasswordSuccess('');
+
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setPasswordError('Yeni şifreler eşleşmiyor.');
+            return;
+        }
+
+        if (passwordForm.newPassword.length < 6) {
+            setPasswordError('Şifre en az 6 karakter olmalıdır.');
+            return;
+        }
+
+        try {
+            await axios.put('/api/users/password', {
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword
+            });
+            setPasswordSuccess('Şifreniz başarıyla güncellendi.');
+            setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            setTimeout(() => setShowPasswordModal(false), 2000);
+        } catch (error) {
+            setPasswordError(error.response?.data?.message || 'Şifre değiştirilemedi.');
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        try {
+            await axios.delete('/api/users/me');
+            logout();
+            navigate('/register');
+        } catch (error) {
+            console.error('Delete account error:', error);
+            alert('Hesap silinirken bir hata oluştu.');
+        }
     };
 
     const handleLogout = () => {
@@ -72,21 +171,6 @@ const Settings = () => {
                                 <span className="slider"></span>
                             </label>
                         </div>
-
-                        <div className="setting-item">
-                            <div className="setting-info">
-                                <h3>Bahsetmeler</h3>
-                                <p>Biri senden bahsettiğinde bildir</p>
-                            </div>
-                            <label className="switch">
-                                <input
-                                    type="checkbox"
-                                    checked={notifications.mentions}
-                                    onChange={() => handleToggle('mentions')}
-                                />
-                                <span className="slider"></span>
-                            </label>
-                        </div>
                     </div>
 
                     {/* Account Section */}
@@ -99,7 +183,7 @@ const Settings = () => {
                             Hesap
                         </h2>
 
-                        <div className="setting-item clickable">
+                        <div className="setting-item clickable" onClick={() => setShowPasswordModal(true)}>
                             <div className="setting-info">
                                 <h3>Şifre Değiştir</h3>
                                 <p>Hesabını güvende tutmak için şifreni güncelle</p>
@@ -109,14 +193,19 @@ const Settings = () => {
                             </svg>
                         </div>
 
-                        <div className="setting-item clickable">
+                        <div className="setting-item">
                             <div className="setting-info">
-                                <h3>Gizlilik</h3>
-                                <p>Hesap gizlilik ayarlarını yönet</p>
+                                <h3>Gizli Hesap</h3>
+                                <p>Hesabını sadece takipçilerin görebilsin</p>
                             </div>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="chevron-icon">
-                                <polyline points="9 18 15 12 9 6" />
-                            </svg>
+                            <label className="switch">
+                                <input
+                                    type="checkbox"
+                                    checked={privacy.isPrivate}
+                                    onChange={() => handleToggle('isPrivate', 'privacy')}
+                                />
+                                <span className="slider"></span>
+                            </label>
                         </div>
                     </div>
 
@@ -140,7 +229,7 @@ const Settings = () => {
                             Çıkış Yap
                         </button>
 
-                        <button className="delete-btn">
+                        <button className="delete-btn" onClick={() => setShowDeleteModal(true)}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <polyline points="3 6 5 6 21 6" />
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -148,6 +237,62 @@ const Settings = () => {
                             Hesabı Sil
                         </button>
                     </div>
+
+                    {/* Password Modal */}
+                    {showPasswordModal && (
+                        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+                            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                <h2>Şifre Değiştir</h2>
+                                <form onSubmit={handlePasswordChange}>
+                                    <input
+                                        type="password"
+                                        placeholder="Mevcut Şifre"
+                                        value={passwordForm.currentPassword}
+                                        onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                        required
+                                        className="modal-input"
+                                    />
+                                    <input
+                                        type="password"
+                                        placeholder="Yeni Şifre"
+                                        value={passwordForm.newPassword}
+                                        onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                        required
+                                        className="modal-input"
+                                        minLength={6}
+                                    />
+                                    <input
+                                        type="password"
+                                        placeholder="Yeni Şifre (Tekrar)"
+                                        value={passwordForm.confirmPassword}
+                                        onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                        required
+                                        className="modal-input"
+                                    />
+                                    {passwordError && <p className="error-msg">{passwordError}</p>}
+                                    {passwordSuccess && <p className="success-msg">{passwordSuccess}</p>}
+                                    <div className="modal-actions">
+                                        <button type="button" onClick={() => setShowPasswordModal(false)} className="cancel-btn">İptal</button>
+                                        <button type="submit" className="confirm-btn">Güncelle</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Delete Confirm Modal */}
+                    {showDeleteModal && (
+                        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+                            <div className="modal-content danger" onClick={e => e.stopPropagation()}>
+                                <h2>Hesabı Sil?</h2>
+                                <p>Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.</p>
+                                <div className="modal-actions">
+                                    <button onClick={() => setShowDeleteModal(false)} className="cancel-btn">İptal</button>
+                                    <button onClick={handleDeleteAccount} className="delete-confirm-btn">Evet, Sil</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>

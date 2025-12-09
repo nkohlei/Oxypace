@@ -88,7 +88,18 @@ const userSchema = new mongoose.Schema({
     hiddenPosts: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Post'
-    }]
+    }],
+    settings: {
+        notifications: {
+            email: { type: Boolean, default: true },
+            push: { type: Boolean, default: true },
+            mentions: { type: Boolean, default: true },
+            likes: { type: Boolean, default: false }
+        },
+        privacy: {
+            isPrivate: { type: Boolean, default: false }
+        }
+    }
 }, {
     timestamps: true
 });

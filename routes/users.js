@@ -345,4 +345,72 @@ router.get('/:id/following', protect, async (req, res) => {
     }
 });
 
+// @route   PUT /api/users/settings
+// @desc    Update user settings (notifications, privacy)
+// @access  Private
+router.put('/settings', protect, async (req, res) => {
+    try {
+        const { notifications, privacy } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (notifications) {
+            user.settings.notifications = { ...user.settings.notifications, ...notifications };
+        }
+        if (privacy) {
+            user.settings.privacy = { ...user.settings.privacy, ...privacy };
+        }
+
+        await user.save();
+        res.json({ message: 'Settings updated', settings: user.settings });
+    } catch (error) {
+        console.error('Update settings error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/users/password
+// @desc    Change password
+// @access  Private
+router.put('/password', protect, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user.password && user.googleId) {
+            return res.status(400).json({ message: 'Google users cannot change password' });
+        }
+
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        user.password = newPassword; // Pre-save hook will hash it
+        await user.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   DELETE /api/users/me
+// @desc    Delete user account
+// @access  Private
+router.delete('/me', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        // Optional: Clean up posts, comments, etc. logic here
+        // For now, simple delete. Orphaned data is handled by frontend safeguards.
+
+        await User.findByIdAndDelete(req.user._id);
+        res.json({ message: 'Account deleted successfully' });
+    } catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 export default router;
