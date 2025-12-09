@@ -396,9 +396,7 @@ const CommentSection = ({ postId }) => {
                             placeholder={replyingTo ? `Yanıt yaz...` : "Yorum ekle..."}
                             className="comment-input"
                         />
-                    </div>
-
-                    <div className="comment-input-actions">
+                        {/* Image Upload Button (Moved Inside Input Wrapper) */}
                         <input
                             type="file"
                             accept="image/*,video/*"
@@ -406,13 +404,22 @@ const CommentSection = ({ postId }) => {
                             ref={fileInputRef}
                             onChange={handleFileSelect}
                         />
-                        <button type="button" className="file-input-btn" onClick={() => fileInputRef.current.click()}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <button
+                            type="button"
+                            className="file-input-btn"
+                            onClick={() => fileInputRef.current.click()}
+                            style={{ marginLeft: '8px', color: 'var(--primary-cyan)' }}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="20" height="20">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                                 <circle cx="8.5" cy="8.5" r="1.5" />
                                 <polyline points="21 15 16 10 5 21" />
                             </svg>
                         </button>
+                    </div>
+
+                    <div className="comment-input-actions">
+
                         <button type="submit" className="comment-submit-btn" disabled={!newComment.trim() && !selectedFile}>
                             <svg viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
