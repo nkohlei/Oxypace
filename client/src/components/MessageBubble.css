@@ -4,7 +4,7 @@
     align-items: flex-end;
     /* Align to bottom for avatar feel */
     gap: 8px;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
     max-width: 100%;
     position: relative;
     padding: 2px 0;
@@ -19,31 +19,41 @@
 }
 
 /* Actions/Avatar Spacing */
+/* For 'other' messages, allow space for actions on the right */
 .message-row.other .message-actions {
     order: 2;
-    margin-left: 4px;
+    margin-left: 8px;
 }
 
+/* For 'own' messages, actions on the left */
 .message-row.own .message-actions {
-    margin-right: 4px;
+    margin-right: 8px;
 }
 
-/* Bubble */
+/* The Bubble Itself */
 .message-bubble {
-    max-width: 70%;
+    max-width: 75%;
     position: relative;
-    animation: slideIn 0.2s ease;
     display: flex;
     flex-direction: column;
+    animation: slideIn 0.2s ease;
 }
 
+.message-row.other .message-bubble {
+    order: 1;
+}
+
+/* Content Styling */
 .message-content {
-    padding: 8px 14px;
-    border-radius: 20px;
+    padding: 10px 14px;
+    /* Slightly more padding */
+    border-radius: 18px;
     font-size: 0.95rem;
-    line-height: 1.4;
+    line-height: 1.5;
     word-wrap: break-word;
+    /* Ensure long words break */
     white-space: pre-wrap;
+    /* Preserve newlines */
     position: relative;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -51,9 +61,10 @@
 /* Own Message Style */
 .message-bubble.own .message-content {
     background: linear-gradient(135deg, #00C6FF 0%, #0072FF 100%);
-    /* Neon Blue Gradient */
+    /* Maintain neon gradient */
     color: white;
     border-bottom-right-radius: 4px;
+    /* Message tail effect */
 }
 
 /* Other Message Style */
@@ -63,51 +74,111 @@
     color: #e0e0e0;
     border: 1px solid #333;
     border-bottom-left-radius: 4px;
+    /* Message tail effect */
 }
 
-/* Time */
+/* Time Stamp */
 .message-time {
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.5);
-    margin-top: 2px;
+    margin-top: 4px;
     padding: 0 4px;
+    display: inline-block;
 }
 
 .message-bubble.own .message-time {
     text-align: right;
     color: rgba(255, 255, 255, 0.7);
-    /* Lighter on gradient? No outside */
 }
 
-/* Media */
+/* Media (Images) */
+.message-media {
+    position: relative;
+    /* For download button positioning */
+    display: inline-block;
+}
+
 .message-media img {
-    border-radius: 16px;
+    border-radius: 12px;
     max-width: 100%;
     max-height: 300px;
+    /* Limit height */
     object-fit: cover;
     margin-bottom: 4px;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: zoom-in;
+    transition: transform 0.2s;
 }
 
-/* Actions (Hover) */
-.message-actions {
-    opacity: 0;
-    transition: opacity 0.2s;
+.message-media img:active {
+    transform: scale(0.98);
+}
+
+/* Download Button on Media */
+.msg-download-btn {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 5;
 }
 
-.message-row:hover .message-actions {
+.message-media:hover .msg-download-btn {
     opacity: 1;
 }
 
+.msg-download-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Message Actions Bar (Hidden by default, shown on hover) */
+.message-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+    /* Ensure it doesn't take up space when hidden to avoid layout jumps if possible, 
+       but opacity is better for maintaining layout stability. */
+    visibility: hidden;
+    /* Or just opacity */
+}
+
+/* Show actions on hover */
+.message-row:hover .message-actions {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Mobile: Always visible actions or handle differently */
+@media (max-width: 768px) {
+    .message-row.mobile-actions-visible .message-actions {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+
+/* Action Buttons (Reply, React, Delete) */
 .action-btn {
     background: none;
     border: none;
-    color: var(--text-tertiary);
+    color: var(--text-tertiary, #888);
     cursor: pointer;
-    padding: 4px;
+    padding: 6px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -115,25 +186,30 @@
     transition: all 0.2s;
 }
 
-.action-btn:hover {
-    color: var(--primary-cyan);
-    background: rgba(255, 255, 255, 0.05);
-    transform: scale(1.1);
-}
-
-.action-btn.delete-btn:hover {
-    color: #ff4d4d;
-}
-
 .action-btn svg {
     width: 16px;
     height: 16px;
+    stroke-width: 2px;
 }
 
-/* Reactions */
+.action-btn:hover {
+    color: var(--primary-cyan, #00d2ff);
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
+/* Specific colors */
+.action-btn.delete-btn:hover {
+    color: #ff4d4d;
+    /* Red for delete */
+}
+
+/* Reactions Display (Under the bubble) */
 .message-reactions {
     position: absolute;
-    bottom: -10px;
+    bottom: -12px;
+    /* Slight overlap or just below */
+    z-index: 2;
     background: #1a1a1a;
     border: 1px solid #333;
     padding: 2px 6px;
@@ -142,59 +218,68 @@
     display: flex;
     gap: 2px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    z-index: 2;
+    white-space: nowrap;
 }
 
-.own .message-reactions {
+/* Position reactions based on ownership */
+.message-bubble.own .message-reactions {
     right: 0;
 }
 
-.other .message-reactions {
+.message-bubble.other .message-reactions {
     left: 0;
 }
 
-/* Emoji Picker Menu usually handled by separate component/styles, basic styles here */
+/* Emoji Picker Menu */
 .emoji-menu {
     position: absolute;
-    bottom: 30px;
-    background: #1a1a1a;
-    border: 1px solid #333;
+    bottom: 100%;
+    /* Above the action bar */
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card, #1e1e1e);
+    border: 1px solid var(--border-subtle, #333);
     border-radius: 20px;
     padding: 8px;
     display: flex;
     gap: 6px;
-    z-index: 10;
+    z-index: 100;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    margin-bottom: 8px;
+    /* Space from button */
 }
 
 .emoji-option {
     background: none;
     border: none;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     cursor: pointer;
     transition: transform 0.2s;
-    padding: 0;
+    padding: 2px;
 }
 
 .emoji-option:hover {
     transform: scale(1.3);
 }
 
-/* Reply Preview specific to bubble */
+/* Reply Preview (Attached to message) */
 .message-reply-preview {
     font-size: 0.8rem;
     background: rgba(0, 0, 0, 0.2);
-    padding: 6px 10px;
+    padding: 8px 10px;
     border-radius: 8px;
-    margin-bottom: 4px;
-    border-left: 2px solid var(--primary-cyan);
+    margin-bottom: 6px;
+    border-left: 3px solid var(--primary-cyan, #00d2ff);
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
 }
 
 .reply-sender {
     font-weight: 700;
-    color: var(--primary-cyan);
+    color: var(--primary-cyan, #00d2ff);
     margin-bottom: 2px;
+    font-size: 0.75rem;
 }
 
 .reply-text {
@@ -204,259 +289,64 @@
     text-overflow: ellipsis;
 }
 
-/* Delete Confirm Overlay - Reuse from previous/global if possible, ensuring here too */
-.delete-confirm-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(5px);
-    z-index: 10000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* ... rest of delete modal same as before ... */
-
-/* Own Message Alignment: Actions (Left) - Bubble (Right) */
-.message-row.own {
-    justify-content: flex-end;
-}
-
-/* Other Message Alignment: Bubble (Left) - Actions (Right) */
-.message-row.other {
-    justify-content: flex-start;
-}
-
-/* For 'other' messages, swap order so actions are on the right */
-.message-row.other .message-actions {
-    order: 2;
-}
-
-.message-row.other .message-bubble {
-    order: 1;
-}
-
-/* The bubble itself */
-/* The bubble itself */
-.message-bubble {
-    max-width: 75%;
-    position: relative;
-    margin: 0 !important;
-    animation: slideIn 0.2s ease;
-    transition: all 0.2s ease;
-}
-
-/* Message Actions Container */
-.message-actions {
-    display: flex;
-    align-items: center;
-    gap: 0 !important;
-    /* FORCE ZERO GAP */
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    padding: 0 !important;
-    z-index: 5;
-    background: transparent;
-    margin: 0 4px 0 0 !important;
-    /* Small margin between actions and bubble */
-}
-
-/* Specific margins for own/other to keep actions close to bubble */
-.message-row.own .message-actions {
-    margin: 0 4px 0 0 !important;
-    /* Actions on left of bubble */
-}
-
-.message-row.other .message-actions {
-    margin: 0 0 0 4px !important;
-    /* Actions on right of bubble */
-}
-
-/* Show actions on hover */
-.message-row:hover .message-actions {
-    opacity: 1;
-}
-
-/* Mobile: Always visible */
-@media (max-width: 768px) {
-    .message-actions {
-        opacity: 1;
-    }
-}
-
-.action-wrapper {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0;
-    padding: 0;
-}
-
-/* Reaction Wrapper Correction */
-.reaction-wrapper {
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 0;
-}
-
-/* Action Buttons */
-.action-btn {
-    background: transparent !important;
-    border: none !important;
-    outline: none !important;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0 !important;
-    /* Zero padding */
-    margin: 0 !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    width: 14px !important;
-    /* Exact icon width */
-    height: 14px !important;
-    /* Exact icon height */
-    line-height: 0;
-}
-
-.action-btn:hover {
-    color: var(--primary-cyan, #00d2ff);
-    background: transparent !important;
-    transform: scale(1.15);
-    filter: drop-shadow(0 0 4px var(--primary-cyan, #00d2ff));
-}
-
-/* Delete Button Red Style */
-.action-btn.delete-btn {
-    color: #ff4d4d;
-}
-
-.action-btn.delete-btn:hover {
-    color: #ff3333;
-    background: transparent !important;
-    filter: drop-shadow(0 0 5px #ff3333);
-}
-
-.action-btn svg {
-    width: 14px;
-    height: 14px;
-    stroke-width: 2px;
+/* Shared Post Card */
+.shared-post-card {
     display: block;
-}
-
-/* Full Screen Foggy Overlay for Delete Confirm */
-.delete-confirm-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.2s ease;
-}
-
-.delete-confirm-modal {
-    background: var(--bg-card);
-    padding: 24px 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border-subtle);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-subtle, #333);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s;
     min-width: 200px;
 }
 
-.delete-confirm-modal p {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin: 0;
-    color: var(--text-primary);
+.shared-post-card:hover {
+    border-color: var(--primary-cyan, #00d2ff);
 }
 
-.delete-confirm-actions {
+.shared-post-header {
     display: flex;
-    gap: 16px;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
 }
 
-.confirm-btn,
-.cancel-btn {
-    padding: 8px 20px;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    cursor: pointer;
-    border: none;
-    transition: transform 0.1s;
+.shared-post-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
-.confirm-btn {
-    background: #ff4d4d;
-    color: white;
+.shared-post-username {
     font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-primary, #fff);
 }
 
-.cancel-btn {
-    background: var(--bg-hover);
-    color: var(--text-primary);
+.shared-post-content {
+    padding: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #ccc);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
 }
 
-.confirm-btn:active,
-.cancel-btn:active {
-    transform: scale(0.95);
-}
-
-/* Message Content Styling */
-.message-content {
-    padding: 12px 16px;
-    border-radius: 18px;
-    word-wrap: break-word;
-    white-space: pre-wrap;
-    font-size: 0.95rem;
-    line-height: 1.4;
-}
-
-.message-bubble.own .message-content {
-    background: var(--gradient-neon);
-    color: #000;
-    border-bottom-right-radius: 6px;
-    box-shadow: 0 2px 10px var(--primary-glow-soft);
-}
-
-.message-bubble.other .message-content {
-    background: var(--bg-card);
-    color: var(--text-primary);
-    border: 1px solid var(--border-subtle);
-    border-bottom-left-radius: 6px;
-}
-
-.message-time {
-    font-size: 0.7rem;
-    color: var(--text-tertiary);
-    margin-top: 4px;
-    padding: 0 6px;
-}
-
-.message-bubble.own .message-time {
-    text-align: right;
-}
-
-.message-bubble.other .message-time {
-    text-align: left;
+.shared-post-media-preview img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    border-radius: 0;
 }
 
 /* Animations */
@@ -482,202 +372,84 @@
     }
 }
 
-/* Shared Post and Media styles */
-.shared-post-card {
-    display: block;
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 8px;
-    background: var(--bg-darker);
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.2s;
-    min-width: 200px;
+@keyframes zoomIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
-.shared-post-card:hover {
-    border-color: var(--primary-cyan);
-}
-
-.shared-post-header {
+/* Delete Modal & Overlay */
+.delete-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    z-index: 10000;
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-bottom: 1px solid var(--border-subtle);
-    background: rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.2s ease;
 }
 
-.shared-post-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.shared-post-username {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--text-primary);
-}
-
-.shared-post-content {
-    padding: 8px;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin: 0;
-}
-
-.shared-post-media-preview img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-    display: block;
-    margin: 0;
-    border-radius: 0;
-    max-width: none;
-}
-
-/* Reactions */
-.message-reactions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    margin-top: 4px;
-    background: rgba(0, 0, 0, 0.2);
-    padding: 2px 4px;
-    border-radius: 10px;
-    align-self: flex-start;
-    font-size: 0.85rem;
-}
-
-.reaction-emoji {
-    font-size: 1rem;
-    line-height: normal;
-}
-
-.own .message-reactions {
-    align-self: flex-end;
-}
-
-/* Reply Preview */
-.message-reply-preview {
-    display: flex;
-    margin-bottom: 6px;
-    padding: 6px 10px;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    position: relative;
-    cursor: pointer;
-}
-
-.reply-bar-line {
-    width: 3px;
-    background: var(--primary-cyan);
-    border-radius: 2px;
-    margin-right: 8px;
-}
-
-.reply-content-box {
+.delete-confirm-modal {
+    background: #1e1e1e;
+    /* Fallback */
+    background: var(--bg-card, #1e1e1e);
+    padding: 24px 32px;
+    border-radius: 16px;
+    border: 1px solid var(--border-subtle, #333);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-}
-
-.reply-sender {
-    font-weight: 600;
-    color: var(--primary-cyan);
-    font-size: 0.75rem;
-    margin-bottom: 2px;
-}
-
-.reply-text {
-    color: rgba(255, 255, 255, 0.7);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Emoji Menu */
-.emoji-menu {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: 20px;
-    padding: 6px;
-    display: flex;
-    gap: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 100;
-    margin-bottom: 8px;
-}
-
-.emoji-option {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 50%;
-    transition: transform 0.2s;
-}
-
-.emoji-option:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.2);
-}
-
-/* Download Button */
-.msg-download-btn {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.delete-confirm-modal p {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: #fff;
+}
+
+.delete-confirm-actions {
+    display: flex;
+    gap: 16px;
+}
+
+.confirm-btn,
+.cancel-btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 0.95rem;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s;
+    border: none;
+    font-weight: 600;
+    transition: transform 0.1s;
 }
 
-.message-media:hover .msg-download-btn {
-    opacity: 1;
+.confirm-btn {
+    background: #ff4d4d;
+    color: white;
 }
 
-.msg-download-btn svg {
-    width: 16px;
-    height: 16px;
+.cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
-.message-media img {
-    max-width: 250px;
-    max-height: 250px;
-    width: auto;
-    height: auto;
-    object-fit: cover;
-    border-radius: 12px;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
-}
-
-.message-media img:active {
-    transform: scale(0.98);
+.confirm-btn:active,
+.cancel-btn:active {
+    transform: scale(0.95);
 }
 
 /* Lightbox */

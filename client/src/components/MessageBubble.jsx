@@ -101,6 +101,56 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
             >
                 {/* Actions Bar (Right for other, Left for own - handled by CSS order) */}
                 <div className="message-actions">
+                    {/* Reply Button */}
+                    <button
+                        className="action-btn reply-btn"
+                        title="Yanıtla"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onReply(message);
+                        }}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 10 4 15 9 20"></polyline>
+                            <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
+                        </svg>
+                    </button>
+
+                    {/* React Button */}
+                    <button
+                        className="action-btn react-btn"
+                        title="Tepki Ver"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowEmojiMenu(!showEmojiMenu);
+                        }}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                        </svg>
+                    </button>
+
+                    {/* Emoji Menu */}
+                    {showEmojiMenu && (
+                        <div className="emoji-menu fade-in">
+                            {emojis.map((emoji) => (
+                                <button
+                                    key={emoji}
+                                    className="emoji-option"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleReaction(emoji);
+                                    }}
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {/* Delete Button (Trash Icon) */}
                     <button
                         className="action-btn delete-btn"
