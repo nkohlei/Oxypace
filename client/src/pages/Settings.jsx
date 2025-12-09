@@ -116,7 +116,8 @@ const Settings = () => {
             navigate('/register');
         } catch (error) {
             console.error('Delete account error:', error);
-            alert('Hesap silinirken bir hata oluştu.');
+            const msg = error.response?.data?.message || error.message || 'Hesap silinirken bir hata oluştu.';
+            alert(`Hata: ${msg} (${error.response?.status})`);
         }
     };
 
