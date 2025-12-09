@@ -113,7 +113,12 @@ app.use((err, req, res, next) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'GlobalMessage API is running' });
+    res.json({
+        status: 'ok',
+        message: 'GlobalMessage API is running',
+        version: '2.2 - Schema Fix Applied',
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Initialize Socket.IO
