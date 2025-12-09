@@ -109,7 +109,7 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
         const comment = await Comment.create({
             post: req.params.postId,
             author: req.user.id,
-            content: content || '',
+            content: content || ' ', // Fallback to space to pass required validation if media exists
             media,
             mediaType,
             mentions: []
@@ -168,7 +168,7 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
             post: parentComment.post,
             parentComment: req.params.commentId,
             author: req.user.id,
-            content: content || '',
+            content: content || ' ', // Fallback to space
             media,
             mediaType
         });
