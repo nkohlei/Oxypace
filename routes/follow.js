@@ -21,6 +21,9 @@ router.post('/:userId', protect, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        if (!currentUser.following) currentUser.following = [];
+        if (!userToFollow.followers) userToFollow.followers = [];
+
         const followingIndex = currentUser.following.indexOf(req.params.userId);
 
         if (followingIndex > -1) {

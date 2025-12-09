@@ -215,6 +215,7 @@ router.post('/me/save/:postId', protect, async (req, res) => {
         const user = await User.findById(req.user._id);
         const postId = req.params.postId;
 
+        if (!user.savedPosts) user.savedPosts = [];
         const isSaved = user.savedPosts.includes(postId);
 
         if (isSaved) {
@@ -264,6 +265,7 @@ router.post('/me/hide/:postId', protect, async (req, res) => {
         const user = await User.findById(req.user._id);
         const postId = req.params.postId;
 
+        if (!user.hiddenPosts) user.hiddenPosts = [];
         const isHidden = user.hiddenPosts.includes(postId);
 
         if (isHidden) {
