@@ -116,7 +116,7 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         message: 'GlobalMessage API is running',
-        version: '2.2 - Schema Fix Applied',
+        version: '2.3 - Feature Settings Active',
         timestamp: new Date().toISOString()
     });
 });
