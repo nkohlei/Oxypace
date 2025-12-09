@@ -240,7 +240,13 @@ router.post('/me/save/:postId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Save post error:', error);
-        res.status(500).json({ message: 'Server error: ' + error.message }); // Expose error for debugging
+
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({ message: 'Validation Error: ' + messages.join(', ') });
+        }
+
+        res.status(500).json({ message: 'Server error: ' + error.message });
     }
 });
 
