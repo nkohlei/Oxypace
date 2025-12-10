@@ -129,5 +129,7 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📡 Socket.IO ready for real-time connections`);
-    console.log('✅ Backend updated: v2.0 - Fixes active');
+    console.log('✅ Backend updated: v2.3 - Feature Settings Active');
 });
+
+export default app;
