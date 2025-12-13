@@ -331,3 +331,31 @@
     border-top: 1px solid var(--border-subtle);
     padding-top: 12px;
 }
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.translation-toggle {
+    background: transparent;
+    border: none;
+    color: #d600ad;
+    /* Dark Pink */
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 0;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s ease;
+}
+
+.translation-toggle:hover {
+    opacity: 0.8;
+    text-decoration: none;
+}
+
+.translation-toggle svg {
+    width: 14px;
+    height: 14px;
+}
