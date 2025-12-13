@@ -222,18 +222,32 @@ const Settings = () => {
                 {/* Existing Verification UI Logic */}
                 {user?.verificationRequest?.status === 'pending' ? (
                     <div className="verification-status pending">
-                        <div className="status-icon">⏳</div>
+                        <div className="status-icon-large">⏳</div>
                         <div className="status-info">
                             <h4>Başvurunuz İnceleniyor</h4>
-                            <p><strong>{user.verificationRequest.badgeType?.toUpperCase() || 'ROZET'}</strong> rozeti için başvurunuz alındı.</p>
+                            <p>Talebini aldık ve ekibimiz tarafından değerlendiriliyor.</p>
+
+                            <div className="badge-display-row">
+                                <span>Talep Edilen:</span>
+                                <strong>
+                                    {user.verificationRequest.category === 'creator' && 'Mavi Tik (Tanınmış Kişi)'}
+                                    {user.verificationRequest.category === 'business' && 'Altın Tik (İşletme)'}
+                                    {user.verificationRequest.category === 'government' && 'Platin Tik (Devlet)'}
+                                    {user.verificationRequest.category === 'partner' && 'Özel Tik (Partner)'}
+                                    {!user.verificationRequest.category && 'Doğrulama Rozeti'}
+                                </strong>
+                            </div>
+
+                            <div className="pending-progress-bar"></div>
+                            <p style={{ fontSize: '0.8rem', marginTop: '12px', opacity: 0.7 }}>Sonuçlandığında bildirim alacaksınız.</p>
                         </div>
                     </div>
                 ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' ? (
                     <div className="verification-status approved">
-                        <div className="status-icon">✅</div>
+                        <div className="status-icon-large">✅</div>
                         <div className="status-info">
                             <h4>Hesabınız Doğrulandı</h4>
-                            <p>Mavi tik rozetine sahipsiniz.</p>
+                            <p>Tebrikler! Mavi tik rozetine sahipsiniz.</p>
                         </div>
                     </div>
                 ) : (
@@ -328,6 +342,9 @@ const Settings = () => {
                                 }
                             }}
                         >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                            </svg>
                             Başvuruyu Gönder
                         </button>
                     </div>
