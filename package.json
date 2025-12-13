@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "build": "cd client && npm install && npm run build"
+    "build": "CI=false NODE_OPTIONS=\"--max-old-space-size=4096\" cd client && npm install && npm run build"
   },
   "keywords": [
     "social-media",
