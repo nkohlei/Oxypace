@@ -3,34 +3,26 @@
 }
 
 /* Back Button - Modern */
-/* Back Button - Modern Glassmorphism */
+/* Back Button - Modern */
 .back-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-subtle);
-    border-radius: 50%;
+    gap: 8px;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
     color: var(--text-primary);
     cursor: pointer;
-    transition: all 0.2s ease;
-    margin: 10px 16px 0;
-    /* Adjusted margins */
-    backdrop-filter: blur(10px);
+    transition: color var(--transition-fast);
 }
 
 .back-btn svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
 }
 
 .back-btn:hover {
-    background: rgba(29, 155, 240, 0.1);
-    border-color: var(--primary-cyan);
     color: var(--primary-cyan);
-    transform: translateX(-2px);
 }
 
 /* Post Detail */
@@ -46,14 +38,8 @@
 /* Post Actions */
 .post-detail-actions {
     display: flex;
-    justify-content: space-between;
-    /* Better spacing */
-    padding: 12px 24px;
-    /* More breathing room */
-    max-width: 400px;
-    /* Constrain width to prevent stretching */
-    margin: 0 auto;
-    /* Center action bar */
+    justify-content: space-around;
+    padding: 10px 16px;
 }
 
 .post-detail-actions .action-btn {
