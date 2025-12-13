@@ -21,7 +21,6 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showAnyway, setShowAnyway] = useState(false);
-    const [showAnyway, setShowAnyway] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Translation State
