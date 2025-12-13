@@ -29,7 +29,8 @@ const Settings = () => {
     const [passwordForm, setPasswordForm] = useState({
         currentPassword: '',
         newPassword: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        selectedBadge: 'blue'
     });
     const [passwordError, setPasswordError] = useState('');
     const [passwordSuccess, setPasswordSuccess] = useState('');
@@ -207,6 +208,67 @@ const Settings = () => {
                                 />
                                 <span className="slider"></span>
                             </label>
+                        </div>
+                    </div>
+
+                    {/* Verification Section */}
+                    <div className="settings-section">
+                        <h2 className="section-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                            </svg>
+                            Doğrulanmış Hesap
+                        </h2>
+
+                        <div className="setting-item verification-container">
+                            {user?.verificationRequest?.status === 'pending' ? (
+                                <div className="verification-status pending">
+                                    <div className="status-icon">⏳</div>
+                                    <div className="status-info">
+                                        <h4>Başvurunuz İnceleniyor</h4>
+                                        <p><strong>{user.verificationRequest.badgeType.toUpperCase()}</strong> rozeti için başvurunuz alındı.</p>
+                                    </div>
+                                </div>
+                            ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' ? (
+                                <div className="verification-status approved">
+                                    <div className="status-icon">✅</div>
+                                    <div className="status-info">
+                                        <h4>Hesabınız Doğrulandı</h4>
+                                        <p>Mavi tik rozetine sahipsiniz.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="verification-apply">
+                                    <p className="verification-desc">Profilinize resmiyet kazandırmak için bir rozet seçin.</p>
+                                    <div className="badge-selection">
+                                        {['blue', 'gold', 'platinum', 'special'].map(badge => (
+                                            <div
+                                                key={badge}
+                                                className={`badge-option ${passwordForm.selectedBadge === badge ? 'selected' : ''}`}
+                                                onClick={() => setPasswordForm(prev => ({ ...prev, selectedBadge: badge }))}
+                                            >
+                                                <div className={`badge-preview badge-${badge}`}></div>
+                                                <span>{badge === 'blue' ? 'Mavi' : badge === 'gold' ? 'Altın' : badge === 'platinum' ? 'Platin' : 'Özel'}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        className="apply-btn"
+                                        onClick={async () => {
+                                            if (!passwordForm.selectedBadge) return;
+                                            try {
+                                                await axios.post('/api/users/request-verification', { badgeType: passwordForm.selectedBadge });
+                                                // Refresh page or user to show pending
+                                                window.location.reload();
+                                            } catch (err) {
+                                                alert(err.response?.data?.message || 'Hata oluştu');
+                                            }
+                                        }}
+                                    >
+                                        Başvuruyu Tamamla
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 

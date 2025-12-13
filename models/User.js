@@ -34,8 +34,23 @@ const userSchema = new mongoose.Schema({
     },
     verificationBadge: {
         type: String,
-        enum: ['blue', 'gold', 'staff', 'none'],
+        enum: ['blue', 'gold', 'platinum', 'special', 'staff', 'none'],
         default: 'none'
+    },
+    verificationRequest: {
+        status: {
+            type: String,
+            enum: ['none', 'pending', 'approved', 'rejected'],
+            default: 'none'
+        },
+        badgeType: {
+            type: String,
+            enum: ['blue', 'gold', 'platinum', 'special'],
+            default: 'blue'
+        },
+        requestedAt: {
+            type: Date
+        }
     },
     verificationToken: {
         type: String
