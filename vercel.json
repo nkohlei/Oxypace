@@ -1,6 +1,6 @@
 {
     "version": 2,
-    "outputDirectory": "dist",
+    "outputDirectory": "client/dist",
     "rewrites": [
         {
             "source": "/api/(.*)",
@@ -8,7 +8,7 @@
         },
         {
             "source": "/(.*)",
-            "destination": "/dist/index.html"
+            "destination": "/index.html"
         }
     ]
 }
