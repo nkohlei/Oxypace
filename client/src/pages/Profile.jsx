@@ -382,18 +382,28 @@ const Profile = () => {
                     </div>
                 </div>
 
-                {/* Private Account Lock Screen */}
+                {/* Private Account Lock Screen with Blurred Feed */}
                 {
                     isLocked ? (
-                        <div className="private-account-lock">
-                            <div className="lock-icon-container">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="60" height="60">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
+                        <div className="private-locked-wrapper">
+                            {/* Blurred Background Layer */}
+                            <div className="blurred-feed-overlay">
+                                {[1, 2, 3, 4, 5, 6].map(i => (
+                                    <div key={i} className="mock-post-item"></div>
+                                ))}
                             </div>
-                            <h2>Bu Hesap Gizli</h2>
-                            <p>Fotoğraflarını ve videolarını görmek için bu hesabı takip et.</p>
+
+                            {/* Lock Content */}
+                            <div className="private-account-lock">
+                                <div className="lock-icon-container">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="60" height="60">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </div>
+                                <h2>Bu Hesap Gizli</h2>
+                                <p>Fotoğraflarını ve videolarını görmek için bu hesabı takip et.</p>
+                            </div>
                         </div>
                     ) : (
                         <>
