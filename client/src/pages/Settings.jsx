@@ -36,7 +36,9 @@ const Settings = () => {
         selectedCategory: ''
     });
     const [passwordError, setPasswordError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
     const [passwordSuccess, setPasswordSuccess] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false); // For custom verification dropdown
 
     // Extract query params to open specific section
     useEffect(() => {
@@ -241,51 +243,77 @@ const Settings = () => {
                             Hesabınızın türünü en iyi anlatan kategoriyi seçerek başvurun.
                         </p>
 
-                        <div className="category-selection-grid">
-                            {/* Existing Cards Logic */}
+                        <div className="custom-dropdown-container">
                             <div
-                                className={`category-card ${passwordForm.selectedCategory === 'creator' ? 'selected' : ''}`}
-                                onClick={() => setPasswordForm(prev => ({ ...prev, selectedCategory: 'creator' }))}
+                                className={`dropdown-trigger ${isDropdownOpen ? 'open' : ''} ${passwordForm.selectedCategory ? 'has-selection' : ''}`}
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                             >
-                                <div className="cat-icon blue-glow">⭐</div>
-                                <div className="cat-info">
-                                    <h4>Tanınmış Kişi / Üretici</h4>
-                                    <p>Mavi Tik Alırsınız</p>
-                                </div>
-                            </div>
-                            {/* ... Add other cards here similarly or copy existing ones ... */}
-                            <div
-                                className={`category-card ${passwordForm.selectedCategory === 'business' ? 'selected' : ''}`}
-                                onClick={() => setPasswordForm(prev => ({ ...prev, selectedCategory: 'business' }))}
-                            >
-                                <div className="cat-icon gold-glow">🏢</div>
-                                <div className="cat-info">
-                                    <h4>İşletme / Kurum</h4>
-                                    <p>Altın Tik Alırsınız</p>
-                                </div>
+                                {passwordForm.selectedCategory ? (
+                                    <div className="selected-preview">
+                                        <span className="cat-icon-small">
+                                            {passwordForm.selectedCategory === 'creator' && '⭐'}
+                                            {passwordForm.selectedCategory === 'business' && '🏢'}
+                                            {passwordForm.selectedCategory === 'government' && '🏛️'}
+                                            {passwordForm.selectedCategory === 'partner' && '🤝'}
+                                        </span>
+                                        <div className="selected-text-group">
+                                            <span className="selected-title">
+                                                {passwordForm.selectedCategory === 'creator' && 'Tanınmış Kişi / Üretici'}
+                                                {passwordForm.selectedCategory === 'business' && 'İşletme / Kurum'}
+                                                {passwordForm.selectedCategory === 'government' && 'Devlet Yetkilisi'}
+                                                {passwordForm.selectedCategory === 'partner' && 'Platform Ortağı'}
+                                            </span>
+                                            <span className="selected-badge-preview">
+                                                {passwordForm.selectedCategory === 'creator' && 'Mavi Tik'}
+                                                {passwordForm.selectedCategory === 'business' && 'Altın Tik'}
+                                                {passwordForm.selectedCategory === 'government' && 'Platin Tik'}
+                                                {passwordForm.selectedCategory === 'partner' && 'Özel Tik'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <span className="placeholder-text">Bir Kategori Seçin...</span>
+                                )}
+                                <svg className="dropdown-arrow" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
                             </div>
 
-                            <div
-                                className={`category-card ${passwordForm.selectedCategory === 'government' ? 'selected' : ''}`}
-                                onClick={() => setPasswordForm(prev => ({ ...prev, selectedCategory: 'government' }))}
-                            >
-                                <div className="cat-icon platinum-glow">🏛️</div>
-                                <div className="cat-info">
-                                    <h4>Devlet Yetkilisi</h4>
-                                    <p>Platin Tik Alırsınız</p>
-                                </div>
-                            </div>
+                            {isDropdownOpen && (
+                                <div className="dropdown-options">
+                                    <div className="dropdown-option" onClick={() => { setPasswordForm(prev => ({ ...prev, selectedCategory: 'creator' })); setIsDropdownOpen(false); }}>
+                                        <div className="cat-icon-box blue-glow">⭐</div>
+                                        <div className="option-info">
+                                            <h4>Tanınmış Kişi / Üretici</h4>
+                                            <p>Mavi Tik Alırsınız</p>
+                                        </div>
+                                    </div>
 
-                            <div
-                                className={`category-card ${passwordForm.selectedCategory === 'partner' ? 'selected' : ''}`}
-                                onClick={() => setPasswordForm(prev => ({ ...prev, selectedCategory: 'partner' }))}
-                            >
-                                <div className="cat-icon special-glow">🤝</div>
-                                <div className="cat-info">
-                                    <h4>Platform Ortağı</h4>
-                                    <p>Özel Tik Alırsınız</p>
+                                    <div className="dropdown-option" onClick={() => { setPasswordForm(prev => ({ ...prev, selectedCategory: 'business' })); setIsDropdownOpen(false); }}>
+                                        <div className="cat-icon-box gold-glow">🏢</div>
+                                        <div className="option-info">
+                                            <h4>İşletme / Kurum</h4>
+                                            <p>Altın Tik Alırsınız</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="dropdown-option" onClick={() => { setPasswordForm(prev => ({ ...prev, selectedCategory: 'government' })); setIsDropdownOpen(false); }}>
+                                        <div className="cat-icon-box platinum-glow">🏛️</div>
+                                        <div className="option-info">
+                                            <h4>Devlet Yetkilisi</h4>
+                                            <p>Platin Tik Alırsınız</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="dropdown-option" onClick={() => { setPasswordForm(prev => ({ ...prev, selectedCategory: 'partner' })); setIsDropdownOpen(false); }}>
+                                        <div className="cat-icon-box special-glow">🤝</div>
+                                        <div className="option-info">
+                                            <h4>Platform Ortağı</h4>
+                                            <p>Özel Tik Alırsınız</p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         <button
@@ -301,7 +329,7 @@ const Settings = () => {
                                 }
                             }}
                         >
-                            {passwordForm.selectedCategory ? 'Başvuruyu Gönder' : 'Bir Kategori Seçin'}
+                            Başvuruyu Gönder
                         </button>
                     </div>
                 )}
