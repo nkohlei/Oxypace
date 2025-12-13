@@ -576,10 +576,9 @@ const Profile = () => {
                                     </div>
                                 )
                             ) : null}
-                        </div>
-                </>
-                )
-                }
+                        </>
+                    )}
+                </div>
 
                 {/* Follow/Followers Modal */}
                 {
