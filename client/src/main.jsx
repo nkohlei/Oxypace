@@ -16,9 +16,8 @@ if (import.meta.env.VITE_API_BASE_URL) {
         baseUrl = baseUrl.slice(0, -1);
     }
     axios.defaults.baseURL = baseUrl;
-    console.log('API Base URL set to:', baseUrl);
 } else if (!import.meta.env.DEV) {
-    console.warn("VITE_API_BASE_URL not set in production!");
+    // console.warn("VITE_API_BASE_URL not set in production!");
 }
 
 import ErrorBoundary from './components/ErrorBoundary.jsx'
