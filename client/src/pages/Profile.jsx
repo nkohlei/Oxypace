@@ -308,23 +308,25 @@ const Profile = () => {
                             </button>
                         ) : (
                             <>
-                                <button className="icon-btn-circle" onClick={handleMessageClick} title="Mesaj Gönder">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                        <polyline points="22,6 12,13 2,6"></polyline>
-                                    </svg>
-                                </button>
-                                <FollowButton
-                                    userId={profileUser._id}
-                                    initialIsFollowing={profileUser.isFollowing}
-                                    initialHasRequested={profileUser.hasRequested}
-                                    onFollowChange={(isFollowing) => {
-                                        setProfileUser(prev => {
-                                            const countDiff = isFollowing === prev.isFollowing ? 0 : (isFollowing ? 1 : -1);
-                                            return { ...prev, isFollowing, followerCount: prev.followerCount + countDiff };
-                                        });
-                                    }}
-                                />
+                                <div className="profile-action-buttons">
+                                    <button className="icon-btn-circle" onClick={handleMessageClick} title="Mesaj Gönder">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                            <polyline points="22,6 12,13 2,6"></polyline>
+                                        </svg>
+                                    </button>
+                                    <FollowButton
+                                        userId={profileUser._id}
+                                        initialIsFollowing={profileUser.isFollowing}
+                                        initialHasRequested={profileUser.hasRequested}
+                                        onFollowChange={(isFollowing) => {
+                                            setProfileUser(prev => {
+                                                const countDiff = isFollowing === prev.isFollowing ? 0 : (isFollowing ? 1 : -1);
+                                                return { ...prev, isFollowing, followerCount: prev.followerCount + countDiff };
+                                            });
+                                        }}
+                                    />
+                                </div>
                             </>
                         )}
                     </div>
