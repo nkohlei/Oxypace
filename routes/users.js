@@ -280,7 +280,7 @@ router.get('/search', protect, async (req, res) => {
 router.get('/:username', protect, async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
-            .select('username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings');
+            .select('username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
