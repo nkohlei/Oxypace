@@ -76,9 +76,14 @@ app.use(async (req, res, next) => {
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log('Created uploads directory');
+// Only create directory if NOT in Vercel environment to avoid Read-Only Filesystem errors
+if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
+    try {
+        fs.mkdirSync(uploadDir, { recursive: true });
+        console.log('Created uploads directory');
+    } catch (err) {
+        console.warn('Could not create uploads directory (likely read-only fs):', err.message);
+    }
 }
 
 // Configure Passport
