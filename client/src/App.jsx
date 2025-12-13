@@ -16,7 +16,6 @@ import Settings from './pages/Settings';
 import Saved from './pages/Saved';
 import PostDetail from './pages/PostDetail';
 import CommentDetail from './pages/CommentDetail';
-import CommentDetail from './pages/CommentDetail';
 import Notifications from './pages/Notifications';
 import AdminDashboard from './pages/AdminDashboard';
 
