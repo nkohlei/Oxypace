@@ -38,15 +38,26 @@ const FollowButton = ({ userId, initialIsFollowing, initialHasRequested, onFollo
         }
     };
 
+    // Derived state for button class
+    const isRequested = requested;
+    const isFollowing = following;
+
     const getButtonText = () => {
-        if (following) return hover ? 'Takibi Bırak' : 'Takip Ediliyor';
-        if (requested) return hover ? 'İsteği İptal Et' : 'İstek Gönderildi';
+        if (loading) {
+            return '...';
+        }
+        if (isFollowing) {
+            return hover ? 'Takibi Bırak' : 'Takip Ediliyor';
+        }
+        if (isRequested) {
+            return hover ? 'İsteği İptal Et' : 'İstek Gönderildi';
+        }
         return 'Takip Et';
     };
 
     return (
         <button
-            className={`follow-button ${following ? 'following' : ''} ${requested ? 'requested' : ''}`}
+            className={`follow-button ${isFollowing ? 'following' : ''} ${isRequested ? 'requested' : ''}`}
             onClick={handleFollow}
             disabled={loading}
             onMouseEnter={() => setHover(true)}

@@ -18,26 +18,23 @@ const Notifications = () => {
         e.preventDefault();
         try {
             await axios.post(`/api/users/follow/accept/${senderId}`);
-            // Update local user state
-            const updatedRequests = currentUser.followRequests.filter(id => id !== senderId);
-            // Increment follower count as well
-            const updatedUser = {
-                ...currentUser,
-                followRequests: updatedRequests,
-                followerCount: (currentUser.followerCount || 0) + 1
-            };
-            // Also add the new follower to the followers list if we had it loaded, but simple stat update is safer
-            updateUser(updatedUser);
 
-            // Mark notification as read or update UI locally to remove buttons
+            // Immediately hide buttons for this notification
             setNotifications(prev => prev.map(n => {
                 if (n._id === notifId) {
-                    // Update the type or remove the request ability
-                    // Or just filter out the request from the currentUser which triggers re-render of buttons
-                    return n;
+                    return { ...n, type: 'follow_request_handled' }; // Change type to hide buttons
                 }
                 return n;
             }));
+
+            // Update local user state (optional but good for consistency)
+            const updatedRequests = currentUser.followRequests.filter(id => id !== senderId);
+            updateUser({
+                ...currentUser,
+                followRequests: updatedRequests,
+                followerCount: (currentUser.followerCount || 0) + 1
+            });
+
         } catch (error) {
             console.error('Accept error:', error);
         }
@@ -47,6 +44,14 @@ const Notifications = () => {
         e.preventDefault();
         try {
             await axios.post(`/api/users/follow/decline/${senderId}`);
+
+            setNotifications(prev => prev.map(n => {
+                if (n._id === notifId) {
+                    return { ...n, type: 'follow_request_handled' };
+                }
+                return n;
+            }));
+
             const updatedRequests = currentUser.followRequests.filter(id => id !== senderId);
             updateUser({ ...currentUser, followRequests: updatedRequests });
         } catch (error) {
@@ -176,8 +181,8 @@ const Notifications = () => {
                                                 <p className="notif-text-preview">"{notif.comment.content}"</p>
                                             )}
 
-                                            {/* Follow Request Actions */}
-                                            {notif.type === 'follow_request' && currentUser?.followRequests && currentUser.followRequests.includes(notif.sender._id) && (
+                                            {/* Follow Request Actions - Trust the notification type, but hide if we know it's handled */}
+                                            {notif.type === 'follow_request' && (
                                                 <div className="notif-actions">
                                                     <button className="notif-btn-primary" onClick={(e) => handleAccept(e, notif.sender._id, notif._id)}>Onayla</button>
                                                     <button className="notif-btn-secondary" onClick={(e) => handleDecline(e, notif.sender._id, notif._id)}>Reddet</button>

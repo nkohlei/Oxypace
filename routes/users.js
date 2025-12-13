@@ -29,8 +29,8 @@ router.post('/follow/:id', protect, async (req, res) => {
         if (!targetUser.followRequests) targetUser.followRequests = [];
         if (!currentUser.following) currentUser.following = [];
 
-        const isFollowing = targetUser.followers.includes(req.user._id);
-        const hasRequested = targetUser.followRequests.includes(req.user._id);
+        const isFollowing = targetUser.followers.some(id => id.toString() === req.user._id.toString());
+        const hasRequested = targetUser.followRequests.some(id => id.toString() === req.user._id.toString());
 
         if (isFollowing) {
             // Unfollow
@@ -56,8 +56,10 @@ router.post('/follow/:id', protect, async (req, res) => {
         // START FOLLOW PROCESS
         if (targetUser.settings?.privacy?.isPrivate) {
             // Send Request
-            targetUser.followRequests.push(req.user._id);
-            await targetUser.save();
+            if (!hasRequested) {
+                targetUser.followRequests.push(req.user._id);
+                await targetUser.save();
+            }
 
             // Notify
             const notification = await Notification.create({
@@ -117,7 +119,7 @@ router.post('/follow/accept/:id', protect, async (req, res) => {
 
         if (!requester) return res.status(404).json({ message: 'User not found' });
 
-        if (!currentUser.followRequests.includes(requesterId)) {
+        if (!currentUser.followRequests.some(id => id.toString() === requesterId)) {
             return res.status(400).json({ message: 'No request found from this user' });
         }
 
@@ -295,7 +297,7 @@ router.get('/:username', protect, async (req, res) => {
             const currentUser = await User.findById(req.user._id);
             userObj.isFollowing = currentUser.following.includes(user._id);
             // Check if request is pending
-            userObj.hasRequested = user.followRequests && user.followRequests.includes(req.user._id);
+            userObj.hasRequested = user.followRequests && user.followRequests.some(id => id.toString() === req.user._id.toString());
         } else {
             userObj.isFollowing = false;
             userObj.hasRequested = false;
