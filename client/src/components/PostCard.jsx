@@ -346,7 +346,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
                         </div>
                     )
                 }
-            </div >
+            </div>
 
             {/* Delete Modal */}
             {
@@ -369,7 +369,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
                     <ShareModal postId={post._id} onClose={() => setShowShareModal(false)} />
                 )
             }
-        </article >
+        </article>
     );
 };
 
