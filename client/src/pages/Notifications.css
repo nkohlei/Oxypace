@@ -174,7 +174,8 @@
     border: 1px solid var(--border-color);
 }
 
-background-color: var(--bg-hover-dark);
+.notif-btn-secondary:hover {
+    background-color: var(--bg-hover-dark);
 }
 
 .delete-notif-btn {
