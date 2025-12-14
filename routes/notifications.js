@@ -78,4 +78,29 @@ router.put('/:id/read', protect, async (req, res) => {
     }
 });
 
+// @route   DELETE /api/notifications/:id
+// @desc    Delete a notification
+// @access  Private
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        const notification = await Notification.findById(req.params.id);
+
+        if (!notification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+
+        // Verify ownership
+        if (notification.recipient.toString() !== req.user.id) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        await notification.deleteOne();
+
+        res.json({ message: 'Notification removed' });
+    } catch (error) {
+        console.error('Delete notification error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 export default router;
