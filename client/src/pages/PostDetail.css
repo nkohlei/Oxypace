@@ -3,7 +3,6 @@
 }
 
 /* Back Button - Modern */
-/* Back Button - Modern */
 .back-btn {
     display: flex;
     align-items: center;
@@ -29,11 +28,113 @@
 .post-detail {
     background: var(--bg-card);
     border-bottom: 1px solid var(--border-subtle);
-    margin-top: 10px;
-    /* Reduced gap */
 }
 
-/* ... existing styles ... */
+.post-detail-header {
+    padding: 16px;
+}
+
+.author-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+}
+
+.author-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-neon);
+}
+
+.author-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--border-neon);
+    background: rgba(0, 30, 50, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-cyan);
+}
+
+.author-avatar-placeholder svg {
+    width: 24px;
+    height: 24px;
+}
+
+.author-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.author-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.author-username {
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+/* Post Text */
+.post-detail-text {
+    padding: 0 16px 16px;
+}
+
+.post-detail-text p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+/* Post Media */
+.post-detail-media {
+    width: 100%;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.post-detail-media img {
+    width: 100%;
+    height: auto;
+    max-height: 500px;
+    object-fit: contain;
+    background: var(--bg-darker);
+}
+
+/* Post Meta */
+.post-detail-meta {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.post-date {
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+/* Post Stats */
+.post-detail-stats {
+    display: flex;
+    gap: 20px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.post-detail-stats span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.post-detail-stats strong {
+    color: var(--text-primary);
+}
 
 /* Post Actions */
 .post-detail-actions {
