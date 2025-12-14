@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { protect } from '../middleware/auth.js';
+import { protect, optionalProtect } from '../middleware/auth.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 
@@ -75,35 +75,40 @@ router.post('/', protect, (req, res, next) => {
 
 // @route   GET /api/posts
 // @desc    Get all posts (global feed)
-// @access  Private
-router.get('/', protect, async (req, res) => {
+// @access  Public (Optional Auth)
+router.get('/', optionalProtect, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        // Fetch slightly more to account for filtered private posts
-        // Ideally this should be done with aggregation for true pagination
         const posts = await Post.find()
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit + 10) // buffer
+            .limit(limit + 10)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy');
 
-        if (!req.user.following) req.user.following = []; // Safety
+        if (req.user && !req.user.following) req.user.following = [];
 
         const visiblePosts = posts.filter(post => {
             if (!post.author) return false;
-            // Public
+
+            // 1. Account is NOT private -> Visible to everyone
             if (!post.author.settings?.privacy?.isPrivate) return true;
-            // Own
+
+            // 2. If User is NOT logged in -> Only public posts (already handled above)
+            // Since we are here, author is private.
+            if (!req.user) return false;
+
+            // 3. User logged in:
+            // Own post
             if (post.author._id.toString() === req.user._id.toString()) return true;
             // Following
             return req.user.following.some(id => id.toString() === post.author._id.toString());
         });
 
         const paginatedPosts = visiblePosts.slice(0, limit);
-        const total = await Post.countDocuments(); // This is total raw posts, not visible. Fixing strict count would require complex query.
+        const total = await Post.countDocuments(); // Approximate
 
         res.json({
             posts: paginatedPosts,
@@ -119,8 +124,8 @@ router.get('/', protect, async (req, res) => {
 
 // @route   GET /api/posts/:id
 // @desc    Get single post by ID
-// @access  Private
-router.get('/:id', protect, async (req, res) => {
+// @access  Public (Optional Auth)
+router.get('/:id', optionalProtect, async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy');
@@ -131,6 +136,11 @@ router.get('/:id', protect, async (req, res) => {
 
         // Privacy Check
         if (post.author.settings?.privacy?.isPrivate) {
+            // Not logged in -> cannot see private post
+            if (!req.user) {
+                return res.status(403).json({ message: 'This account is private' });
+            }
+
             const isOwn = post.author._id.toString() === req.user._id.toString();
             const isFollowing = req.user.following.some(id => id.toString() === post.author._id.toString());
 
@@ -148,15 +158,21 @@ router.get('/:id', protect, async (req, res) => {
 
 // @route   GET /api/posts/user/:userId
 // @desc    Get posts by user ID
-// @access  Private
-router.get('/user/:userId', protect, async (req, res) => {
+// @access  Public (Optional Auth)
+router.get('/user/:userId', optionalProtect, async (req, res) => {
     try {
         // Privacy Check First
         const targetUser = await User.findById(req.params.userId);
         if (!targetUser) return res.status(404).json({ message: 'User not found' });
 
         if (targetUser.settings?.privacy?.isPrivate) {
+            if (!req.user) {
+                return res.status(403).json({ message: 'This account is private' });
+            }
+
             const isOwn = req.params.userId === req.user._id.toString();
+            // ensure following is array
+            if (!req.user.following) req.user.following = [];
             const isFollowing = req.user.following.some(id => id.toString() === req.params.userId);
 
             if (!isOwn && !isFollowing) {

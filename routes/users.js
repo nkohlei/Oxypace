@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { protect } from '../middleware/auth.js';
+import { protect, optionalProtect } from '../middleware/auth.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
@@ -277,8 +277,8 @@ router.get('/search', protect, async (req, res) => {
 
 // @route   GET /api/users/:username
 // @desc    Get user profile by username
-// @access  Private
-router.get('/:username', protect, async (req, res) => {
+// @access  Public (Optional Auth)
+router.get('/:username', optionalProtect, async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
             .select('username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge');
@@ -296,7 +296,10 @@ router.get('/:username', protect, async (req, res) => {
         // Check if current user follows this user
         if (req.user) {
             const currentUser = await User.findById(req.user._id);
-            userObj.isFollowing = currentUser.following.includes(user._id);
+            // safe check for array
+            if (!currentUser.following) currentUser.following = [];
+
+            userObj.isFollowing = currentUser.following.some(id => id.toString() === user._id.toString());
             // Check if request is pending
             userObj.hasRequested = user.followRequests && user.followRequests.some(id => id.toString() === req.user._id.toString());
         } else {

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import Navbar from '../components/Navbar';
 import PostCard from '../components/PostCard';
+import Footer from '../components/Footer';
 import './Home.css';
 
 const Home = () => {
@@ -68,6 +69,7 @@ const Home = () => {
                         ))}
                     </div>
                 </div>
+                <Footer />
             </main>
         </div>
     );

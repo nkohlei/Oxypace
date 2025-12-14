@@ -1,0 +1,33 @@
+.app-footer {
+    padding: 30px 16px;
+    margin-top: auto;
+    /* Push to bottom if flex container */
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    background-color: var(--bg-primary);
+    width: 100%;
+}
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+    color: var(--primary-cyan);
+}
+
+.footer-copyright {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}

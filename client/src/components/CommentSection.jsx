@@ -142,6 +142,10 @@ const CommentSection = ({ postId }) => {
     };
 
     const handleReplyClick = (comment) => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
         const authorName = comment.author?.username || 'silinmis-kullanici';
         setReplyingTo({ id: comment._id, username: authorName });
         setNewComment(`@${authorName} `);
@@ -195,6 +199,10 @@ const CommentSection = ({ postId }) => {
 
     const handleLikeComment = async (commentId, e) => {
         e.stopPropagation();
+        if (!user) {
+            navigate('/login');
+            return;
+        }
         try {
             const response = await axios.post(`/api/comments/${commentId}/like`);
             const updateComment = (list) => list.map(c => c._id === commentId ? { ...c, isLiked: response.data.liked, likeCount: response.data.likeCount } : c);
@@ -370,71 +378,91 @@ const CommentSection = ({ postId }) => {
 
     return (
         <div className="comment-section">
-            <form onSubmit={handleSubmit} className="comment-form">
-                {user?.profile?.avatar ? (
-                    <img src={getImageUrl(user.profile.avatar)} alt={user.username} className="comment-avatar-small" />
-                ) : (
-                    <div className="comment-avatar-placeholder-small">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                        </svg>
-                    </div>
-                )}
-
-                <div className="comment-input-wrapper">
-                    {replyingTo && (
-                        <div className="replying-badge">
-                            <span>Yanıtlanıyor: @{replyingTo.username}</span>
-                            <button type="button" onClick={() => { setReplyingTo(null); setNewComment(''); }}>×</button>
+            {user ? (
+                <form onSubmit={handleSubmit} className="comment-form">
+                    {user.profile?.avatar ? (
+                        <img src={getImageUrl(user.profile.avatar)} alt={user.username} className="comment-avatar-small" />
+                    ) : (
+                        <div className="comment-avatar-placeholder-small">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
                         </div>
                     )}
 
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        {previewUrl && (
-                            <div className="comment-media-preview-container">
-                                <img src={previewUrl} alt="Preview" className="comment-media-preview" />
-                                <button type="button" className="remove-media-btn" onClick={clearFile}>×</button>
+                    <div className="comment-input-wrapper">
+                        {replyingTo && (
+                            <div className="replying-badge">
+                                <span>Yanıtlanıyor: @{replyingTo.username}</span>
+                                <button type="button" onClick={() => { setReplyingTo(null); setNewComment(''); }}>×</button>
                             </div>
                         )}
-                        <div className="comment-input-container">
-                            <input
-                                type="text"
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                placeholder={replyingTo ? `Yanıt yaz...` : "Yorum ekle..."}
-                                className="comment-input"
-                            />
-                            {/* Image Upload Button (Inside Input Box) */}
-                            <input
-                                type="file"
-                                accept="image/*,video/*"
-                                style={{ display: 'none' }}
-                                ref={fileInputRef}
-                                onChange={handleFileSelect}
-                            />
-                            <button
-                                type="button"
-                                className="file-input-btn"
-                                onClick={() => fileInputRef.current.click()}
-                                style={{ position: 'absolute', right: '8px', color: 'var(--primary-cyan)' }}
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="20" height="20">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                    <circle cx="8.5" cy="8.5" r="1.5" />
-                                    <polyline points="21 15 16 10 5 21" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
 
-                    <button type="submit" className="comment-submit-btn" disabled={!newComment.trim() && !selectedFile}>
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                        </svg>
-                    </button>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            {previewUrl && (
+                                <div className="comment-media-preview-container">
+                                    <img src={previewUrl} alt="Preview" className="comment-media-preview" />
+                                    <button type="button" className="remove-media-btn" onClick={clearFile}>×</button>
+                                </div>
+                            )}
+                            <div className="comment-input-container">
+                                <input
+                                    type="text"
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    placeholder={replyingTo ? `Yanıt yaz...` : "Yorum ekle..."}
+                                    className="comment-input"
+                                />
+                                {/* Image Upload Button (Inside Input Box) */}
+                                <input
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    style={{ display: 'none' }}
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                />
+                                <button
+                                    type="button"
+                                    className="file-input-btn"
+                                    onClick={() => fileInputRef.current.click()}
+                                    style={{ position: 'absolute', right: '8px', color: 'var(--primary-cyan)' }}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="20" height="20">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <circle cx="8.5" cy="8.5" r="1.5" />
+                                        <polyline points="21 15 16 10 5 21" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" className="comment-submit-btn" disabled={!newComment.trim() && !selectedFile}>
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            ) : (
+                <div
+                    className="login-prompt-banner"
+                    onClick={() => navigate('/login')}
+                    style={{
+                        cursor: 'pointer',
+                        padding: '16px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '12px',
+                        textAlign: 'center',
+                        marginBottom: '20px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}
+                >
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        Yorum yapmak için <span style={{ color: 'var(--primary-cyan)', fontWeight: '600' }}>giriş yap</span>
+                    </p>
                 </div>
-            </form>
+            )}
 
             <div className="comments-list">
                 {loading ? (

@@ -7,7 +7,8 @@ import Navbar from '../components/Navbar';
 import FollowButton from '../components/FollowButton';
 import PostCard from '../components/PostCard';
 import Badge from '../components/Badge';
-import './Profile.css';
+import Footer from '../components/Footer';
+// ... imports
 
 const Profile = () => {
     const { username } = useParams();
@@ -47,6 +48,16 @@ const Profile = () => {
             fetchUserProfile(username);
         }
     }, [username, isOwnProfile]);
+
+    const handleMessage = async () => {
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+        // Message logic here
+    };
+
+
 
     const fetchMyProfile = async () => {
         try {
@@ -196,6 +207,10 @@ const Profile = () => {
     };
 
     const handleMessageClick = () => {
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
         navigate(`/inbox?user=${profileUser.username}`);
     };
 
@@ -801,6 +816,7 @@ const Profile = () => {
                         </div>
                     )
                 }
+                <Footer />
             </main>
         </div>
     );

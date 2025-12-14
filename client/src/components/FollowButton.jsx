@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import './FollowButton.css';
 
 const FollowButton = ({ userId, initialIsFollowing, initialHasRequested, onFollowChange }) => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
     const [following, setFollowing] = useState(initialIsFollowing);
     const [requested, setRequested] = useState(initialHasRequested);
     const [loading, setLoading] = useState(false);
@@ -15,6 +18,11 @@ const FollowButton = ({ userId, initialIsFollowing, initialHasRequested, onFollo
     }, [initialIsFollowing, initialHasRequested]);
 
     const handleFollow = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+
         if (loading) return;
 
         setLoading(true);

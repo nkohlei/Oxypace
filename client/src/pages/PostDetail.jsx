@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import CommentSection from '../components/CommentSection';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
+import Footer from '../components/Footer';
 import './PostDetail.css';
 
 const PostDetail = () => {
@@ -70,6 +71,10 @@ const PostDetail = () => {
     };
 
     const handleLike = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
         try {
             const response = await axios.post(`/api/likes/post/${postId}`);
             setLiked(response.data.liked);
@@ -80,6 +85,10 @@ const PostDetail = () => {
     };
 
     const handleSave = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
         try {
             const response = await axios.post(`/api/users/me/save/${postId}`);
             setSaved(response.data.saved);
@@ -146,7 +155,6 @@ const PostDetail = () => {
                             <polyline points="15 18 9 12 15 6" />
                         </svg>
                     </button>
-
                     {/* Post Content */}
                     <article className="post-detail">
                         <header className="post-detail-header">
@@ -256,6 +264,7 @@ const PostDetail = () => {
                         <CommentSection postId={postId} />
                     </div>
                 </div>
+                <Footer />
             </main>
         </div>
     );

@@ -18,6 +18,9 @@ import PostDetail from './pages/PostDetail';
 import CommentDetail from './pages/CommentDetail';
 import Notifications from './pages/Notifications';
 import AdminDashboard from './pages/AdminDashboard';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import Contact from './pages/Contact';
 
 
 function App() {
@@ -32,16 +35,12 @@ function App() {
                             <Route path="/register" element={<Register />} />
                             <Route path="/verify-email" element={<VerifyEmail />} />
                             <Route path="/auth/google/success" element={<GoogleCallback />} />
+                            <Route path="/privacy" element={<PrivacyPolicy />} />
+                            <Route path="/terms" element={<TermsOfService />} />
+                            <Route path="/contact" element={<Contact />} />
 
                             {/* Private routes */}
-                            <Route
-                                path="/"
-                                element={
-                                    <PrivateRoute>
-                                        <Home />
-                                    </PrivateRoute>
-                                }
-                            />
+                            <Route path="/" element={<Home />} />
                             <Route
                                 path="/create"
                                 element={
@@ -66,14 +65,7 @@ function App() {
                                     </PrivateRoute>
                                 }
                             />
-                            <Route
-                                path="/profile/:username"
-                                element={
-                                    <PrivateRoute>
-                                        <Profile />
-                                    </PrivateRoute>
-                                }
-                            />
+                            <Route path="/profile/:username" element={<Profile />} />
                             <Route
                                 path="/inbox"
                                 element={
@@ -114,14 +106,7 @@ function App() {
                                     </PrivateRoute>
                                 }
                             />
-                            <Route
-                                path="/post/:postId"
-                                element={
-                                    <PrivateRoute>
-                                        <PostDetail />
-                                    </PrivateRoute>
-                                }
-                            />
+                            <Route path="/post/:postId" element={<PostDetail />} />
                             <Route
                                 path="/comment/:commentId"
                                 element={
