@@ -144,7 +144,7 @@ const ShareModal = ({ postId, onClose }) => {
     const listToRender = showSearchResults ? results : followers;
 
     return createPortal(
-        <div className="share-modal-overlay" onClick={onClose}>
+        <div className="share-modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
             <div className="share-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="share-header">
                     <button onClick={onClose} className="close-btn">
