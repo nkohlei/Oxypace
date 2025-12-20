@@ -151,7 +151,6 @@ const ShareModal = ({ postId, onClose }) => {
                         placeholder="Ara"
                         value={query}
                         onChange={handleInputChange}
-                        autoFocus
                     />
                 </div>
 
