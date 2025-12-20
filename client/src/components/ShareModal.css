@@ -8,8 +8,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 2000;
-    /* Higher than Navbar (1000) */
+    z-index: 10001;
+    /* Higher than PostCard (9999) */
     backdrop-filter: blur(8px);
     animation: fadeIn 0.2s ease-out;
 }
