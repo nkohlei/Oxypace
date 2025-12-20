@@ -8,6 +8,7 @@ import CommentSection from '../components/CommentSection';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import Footer from '../components/Footer';
+import ShareModal from '../components/ShareModal';
 import './PostDetail.css';
 
 const PostDetail = () => {
@@ -97,14 +98,10 @@ const PostDetail = () => {
         }
     };
 
+    const [showShareModal, setShowShareModal] = useState(false);
+
     const handleShare = () => {
-        const url = window.location.href;
-        if (navigator.share) {
-            navigator.share({ title: 'Deepace', url });
-        } else {
-            navigator.clipboard.writeText(url);
-            alert('Link kopyalandı!');
-        }
+        setShowShareModal(true);
     };
 
     const formatDate = (date) => {
@@ -265,6 +262,10 @@ const PostDetail = () => {
                     </div>
                 </div>
                 <Footer />
+
+                {showShareModal && (
+                    <ShareModal postId={postId} onClose={() => setShowShareModal(false)} />
+                )}
             </main>
         </div>
     );

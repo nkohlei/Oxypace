@@ -9,6 +9,7 @@ const ShareModal = ({ postId, onClose }) => {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [showCopyAlert, setShowCopyAlert] = useState(false);
 
     useEffect(() => {
         // Initial load of potential contacts (e.g., following or recent conversations)
@@ -47,13 +48,42 @@ const ShareModal = ({ postId, onClose }) => {
                 recipientId: userId,
                 postId: postId
             });
-            alert('Gönderildi!');
+            alert('Gönderildi!'); // Consider replacing with a nicer toast later
             onClose();
         } catch (error) {
             console.error('Share failed:', error);
             alert('Gönderilemedi.');
         } finally {
             setSending(false);
+        }
+    };
+
+    const getShareUrl = () => {
+        return `${window.location.origin}/post/${postId}`;
+    };
+
+    const handleCopyLink = () => {
+        const url = getShareUrl();
+        navigator.clipboard.writeText(url).then(() => {
+            setShowCopyAlert(true);
+            setTimeout(() => setShowCopyAlert(false), 2000);
+        });
+    };
+
+    const handleExternalShare = async () => {
+        const url = getShareUrl();
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Deepace Post',
+                    text: 'Bu gönderiye göz at!',
+                    url: url
+                });
+            } catch (err) {
+                console.log('Share canceled:', err);
+            }
+        } else {
+            handleCopyLink();
         }
     };
 
@@ -65,10 +95,34 @@ const ShareModal = ({ postId, onClose }) => {
                     <button onClick={onClose} className="close-btn">×</button>
                 </div>
 
+                <div className="share-options-grid">
+                    <button className="share-option-btn" onClick={handleCopyLink}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        {showCopyAlert ? 'Kopyalandı!' : 'Link\'i Kopyala'}
+                    </button>
+                    <button className="share-option-btn" onClick={handleExternalShare}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                        Diğer Uygulamalar
+                    </button>
+                </div>
+
+                <div className="share-divider">
+                    <span>ya da gönder</span>
+                </div>
+
                 <div className="share-search">
                     <input
                         type="text"
-                        placeholder="Kime..."
+                        placeholder="Kullanıcı ara..."
                         value={query}
                         onChange={handleInputChange}
                         autoFocus
@@ -77,12 +131,12 @@ const ShareModal = ({ postId, onClose }) => {
 
                 <div className="share-results">
                     {loading ? (
-                        <div className="spinner-small"></div>
+                        <div className="spinner-small" style={{ margin: '20px auto', display: 'block' }}></div>
                     ) : results.length === 0 && query ? (
                         <p className="no-results">Kullanıcı bulunamadı</p>
                     ) : (
                         results.map(user => (
-                            <div key={user._id} className="share-user-item">
+                            <div key={user._id} className="share-user-item" onClick={() => handleSend(user._id)}>
                                 <div className="user-info">
                                     <img
                                         src={getImageUrl(user.profile?.avatar)}
@@ -99,7 +153,7 @@ const ShareModal = ({ postId, onClose }) => {
                                 </div>
                                 <button
                                     className="send-share-btn"
-                                    onClick={() => handleSend(user._id)}
+                                    onClick={(e) => { e.stopPropagation(); handleSend(user._id); }}
                                     disabled={sending}
                                 >
                                     {sending ? '...' : 'Gönder'}
