@@ -1,14 +1,10 @@
 /* Navigation Bar Styles */
 .top-header {
-    position: fixed;
+    position: sticky;
     top: 0;
-    left: 50%;
-    /* Center horizontally */
-    transform: translateX(-50%);
-    /* Align center */
     width: 100%;
-    max-width: 600px;
-    /* Constrain to phone width */
+    /* Remove fixed centering and width constraint */
+    /* max-width: 600px; */
     height: 60px;
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
@@ -19,7 +15,6 @@
 html[data-theme='dark'] .top-header,
 [data-theme='dark'] .top-header {
     background: rgba(15, 23, 42, 0.9) !important;
-    /* Force update */
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -28,7 +23,8 @@ html[data-theme='dark'] .top-header,
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
+    padding: 0 24px;
+    /* Increased padding to match typical desktop layouts */
 }
 
 /* ... (unchanged parts) */
@@ -37,13 +33,22 @@ html[data-theme='dark'] .top-header,
 .bottom-nav {
     position: fixed;
     bottom: 0;
-    left: 50%;
-    /* Center horizontally */
-    transform: translateX(-50%);
-    /* Align center */
+    /* Center it if desired but user issue was alignment "left" */
+    /* Let's make it span the content width if possible, or keep fixed */
+    /* If fixed, it sits over everything. User screenshot shows it aligned with content? */
+    /* If I remove left:50%, it becomes left:0 relative to... viewport? */
+    /* Typically bottom nav is for mobile. Desktop hides it? Navbar.css line 323 tries to hide it. */
+    /* User screenshot shows it on desktop? Maybe window was narrow? */
+    /* Or media query didn't trigger. */
+    /* I will try to make it sticky bottom if possible, or just remove the weird 600px constraint */
+    left: 0;
+    right: 0;
+    transform: none;
     width: 100%;
-    max-width: 600px;
-    /* Constrain to phone width */
+    max-width: 100%;
+    /* Full width of its container? No, fixed makes it viewport. */
+    /* If we want it inside main-content-wrapper, it can't be fixed (unless width inherited). */
+    /* Let's keep position fixed but remove the formatting that pushed it left */
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
     border-top: 1px solid var(--border-color);
@@ -322,7 +327,7 @@ html[data-theme='dark'] .bottom-nav,
 /* Hide bottom nav on desktop */
 @media (min-width: 769px) {
     .bottom-nav {
-        /* display: none; */
+        display: none;
         /* Keep it visible for now since we are mobile first */
     }
 }
