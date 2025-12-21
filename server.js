@@ -20,6 +20,7 @@ import commentsRoutes from './routes/comments.js';
 import followRoutes from './routes/follow.js';
 import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
+import portalRoutes from './routes/portals.js';
 
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
