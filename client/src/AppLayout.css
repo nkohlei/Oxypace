@@ -1,20 +1,24 @@
-/* Main App Layout - Full width, no gap */
+/* Main App Layout - Narrow phone-frame, centered */
 .app-container {
     display: flex;
+    margin: 0 auto;
     width: 100%;
+    max-width: 600px;
+    /* Phone-width frame */
     min-height: 100vh;
     position: relative;
-    /* No max-width, no centering - fills viewport */
+    /* For absolute positioning of arrow */
+    background-color: var(--bg-primary);
 }
 
-/* Sidebar Wrapper - Hidden by default */
+/* Sidebar Wrapper - Hidden by default, slides in from left of phone-frame */
 .portal-sidebar-wrapper {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100%;
     width: 72px;
-    z-index: 1000;
+    z-index: 100;
     background-color: var(--card-bg);
     border-right: 1px solid var(--border-color);
     transform: translateX(-100%);
@@ -26,9 +30,9 @@
     transform: translateX(0);
 }
 
-/* Sidebar Toggle Arrow - On the left edge of CONTENT, not viewport */
+/* Sidebar Toggle Arrow - On the LEFT EDGE of the phone-frame */
 .sidebar-toggle-arrow {
-    position: fixed;
+    position: absolute;
     left: 0;
     top: 50%;
     transform: translateY(-50%);
@@ -42,7 +46,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 900;
+    z-index: 101;
     color: var(--text-secondary);
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
     transition: left 0.3s ease, background 0.2s ease;
@@ -58,19 +62,27 @@
     left: 72px;
 }
 
-/* Main Content Wrapper - Full width */
+/* Main Content Wrapper */
 .main-content-wrapper {
     flex-grow: 1;
     min-width: 0;
     position: relative;
     background-color: var(--bg-primary);
     width: 100%;
+    /* When sidebar opens, content shifts right */
+    transition: margin-left 0.3s ease;
+}
+
+/* When sidebar is open, shift content */
+.app-container.sidebar-active .main-content-wrapper {
+    margin-left: 72px;
 }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     .app-container {
-        display: block;
+        max-width: 100%;
+        /* Full width on mobile */
         overflow-x: hidden;
     }
 
@@ -80,15 +92,13 @@
     }
 
     .portal-sidebar-wrapper {
+        position: fixed;
         width: 80px;
+        z-index: 1000;
     }
 
     .main-content-wrapper {
         padding-bottom: 80px;
-    }
-
-    body:has(.portal-sidebar) .app-wrapper {
-        padding-left: 0 !important;
     }
 }
 
@@ -107,4 +117,17 @@
 .mobile-sidebar-overlay.active {
     opacity: 1;
     pointer-events: auto;
+}
+
+/* Desktop phone-frame effect */
+@media (min-width: 769px) {
+    body {
+        background: var(--bg-dark, #0a0a0a);
+    }
+
+    .app-container {
+        border-left: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        box-shadow: 0 0 60px rgba(0, 212, 255, 0.1);
+    }
 }
