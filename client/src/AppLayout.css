@@ -3,11 +3,12 @@
     display: flex;
     margin: 0 auto;
     width: 100%;
-    /* Revert to moderate width to fix "upside down" feel */
-    max-width: 900px;
+    /* Sidebar (72px) + Content (~750px) + Gap = ~850px */
+    max-width: 850px;
     min-height: 100vh;
     position: relative;
-    /* For absolute positioning context if needed */
+    /* Ensure sidebar and content are centered together */
+    justify-content: center;
 }
 
 /* Sidebar Wrapper */
@@ -27,7 +28,6 @@
 .main-content-wrapper {
     flex-grow: 1;
     min-width: 0;
-    /* Prevents flex child overflow */
     position: relative;
     background-color: var(--bg-primary);
     width: 100%;
@@ -37,33 +37,26 @@
 @media (max-width: 768px) {
     .app-container {
         display: block;
-        /* Stack blocking on mobile */
         max-width: 100%;
         overflow-x: hidden;
-        /* Prevent horizontal scroll */
     }
 
-    /* Hide Sidebar by default on mobile, transform it off-screen */
     .portal-sidebar-wrapper {
         position: fixed;
         top: 0;
         left: 0;
         height: 100%;
         transform: translateX(-100%);
-        /* Slide out */
         width: 80px;
-        /* Slight wider touch target if needed */
         z-index: 1000;
         box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
         border-right: none;
     }
 
-    /* Open State for Sidebar */
     .portal-sidebar-wrapper.mobile-open {
         transform: translateX(0);
     }
 
-    /* Overlay when sidebar is open */
     .mobile-sidebar-overlay {
         position: fixed;
         inset: 0;
@@ -84,19 +77,9 @@
         width: 100%;
         min-width: 0;
         padding-bottom: 80px;
-        /* Space for bottom nav if present, or just general padding */
     }
 
-    /* Ensure body doesn't have left padding on mobile */
     body:has(.portal-sidebar) .app-wrapper {
         padding-left: 0 !important;
-    }
-}
-
-/* Desktop Wider Enhancements */
-@media (min-width: 1600px) {
-    .app-container {
-        max-width: 1800px;
-        /* Even wider on massive screens */
     }
 }
