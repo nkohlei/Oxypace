@@ -5,12 +5,14 @@ import { getImageUrl } from '../utils/imageUtils';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
+import { useUI } from '../context/UIContext';
 import './Navbar.css';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
+    const { toggleSidebar } = useUI();
     const location = useLocation();
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
@@ -65,6 +67,7 @@ const Navbar = () => {
         }
     }, [location.pathname]);
 
+    // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -72,14 +75,16 @@ const Navbar = () => {
             }
         };
 
-        document.addEventListener('mousedown', handleClickOutside);
+        if (showMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, []);
+    }, [showMenu]);
 
     const handleLogout = () => {
-        setShowMenu(false);
         logout();
         navigate('/');
     };
@@ -87,14 +92,25 @@ const Navbar = () => {
     return (
         <>
             {/* Top Header */}
-            <header className="top-header">
-                <div className="header-container">
-                    <Link to="/" className="logo">
-                        <img src="/logo.png" alt="Logo" className="logo-img" />
-                        <span className="logo-text">deepace</span>
-                    </Link>
+            <header className="navbar">
+                <div className="nav-container">
+                    <div className="nav-left">
+                        {/* Mobile Sidebar Toggle - Visible only on mobile */}
+                        <button className="mobile-menu-btn" onClick={toggleSidebar}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </button>
 
-                    <div className="header-actions">
+                        <Link to="/" className="brand-logo">
+                            <span className="logo-icon">🖇</span>
+                            <span className="logo-text">deepace</span>
+                        </Link>
+                    </div>
+
+                    <div className="nav-right">
                         {/* Theme Toggle Button */}
                         <button className="theme-toggle-btn" onClick={toggleTheme} title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
                             {isDark ? (

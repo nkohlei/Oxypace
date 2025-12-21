@@ -26,113 +26,133 @@ import PortalSidebar from './components/PortalSidebar';
 import './AppLayout.css';
 
 
+import { useUI, UIProvider } from './context/UIContext';
+
+// Separate layout component to use useUI hook
+const AppLayout = () => {
+    const { isSidebarOpen, closeSidebar } = useUI();
+
+    return (
+        <div className="app-container">
+            {/* Mobile Overlay */}
+            <div
+                className={`mobile-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
+                onClick={closeSidebar}
+            />
+
+            <div className={`portal-sidebar-wrapper ${isSidebarOpen ? 'mobile-open' : ''}`}>
+                <PortalSidebar />
+            </div>
+
+            <div className="main-content-wrapper">
+                <Routes>
+                    {/* Public routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/verify-email" element={<VerifyEmail />} />
+                    <Route path="/auth/google/success" element={<GoogleCallback />} />
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/contact" element={<Contact />} />
+
+                    {/* Private routes */}
+                    <Route path="/" element={<Home />} />
+
+                    {/* Portal Route */}
+                    <Route path="/portal/:id" element={<Portal />} />
+
+                    <Route
+                        path="/create"
+                        element={
+                            <PrivateRoute>
+                                <CreatePost />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/search"
+                        element={
+                            <PrivateRoute>
+                                <Search />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <PrivateRoute>
+                                <Profile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route path="/profile/:username" element={<Profile />} />
+                    <Route
+                        path="/inbox"
+                        element={
+                            <PrivateRoute>
+                                <Inbox />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/settings"
+                        element={
+                            <PrivateRoute>
+                                <Settings />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/notifications"
+                        element={
+                            <PrivateRoute>
+                                <Notifications />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin"
+                        element={
+                            <PrivateRoute>
+                                <AdminDashboard />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/saved"
+                        element={
+                            <PrivateRoute>
+                                <Saved />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route path="/post/:postId" element={<PostDetail />} />
+                    <Route
+                        path="/comment/:commentId"
+                        element={
+                            <PrivateRoute>
+                                <CommentDetail />
+                            </PrivateRoute>
+                        }
+                    />
+
+                    {/* Catch all */}
+                    <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+            </div>
+        </div>
+    );
+};
+
 function App() {
     return (
         <ThemeProvider>
             <Router>
                 <AuthProvider>
                     <SocketProvider>
-                        <div className="app-container">
-                            <div className="portal-sidebar-wrapper">
-                                <PortalSidebar />
-                            </div>
-                            <div className="main-content-wrapper">
-                                <Routes>
-                                    {/* Public routes */}
-                                    <Route path="/login" element={<Login />} />
-                                    <Route path="/register" element={<Register />} />
-                                    <Route path="/verify-email" element={<VerifyEmail />} />
-                                    <Route path="/auth/google/success" element={<GoogleCallback />} />
-                                    <Route path="/privacy" element={<PrivacyPolicy />} />
-                                    <Route path="/terms" element={<TermsOfService />} />
-                                    <Route path="/contact" element={<Contact />} />
-
-                                    {/* Private routes */}
-                                    <Route path="/" element={<Home />} />
-
-                                    {/* Portal Route */}
-                                    <Route path="/portal/:id" element={<Portal />} />
-
-                                    <Route
-                                        path="/create"
-                                        element={
-                                            <PrivateRoute>
-                                                <CreatePost />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/search"
-                                        element={
-                                            <PrivateRoute>
-                                                <Search />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/profile"
-                                        element={
-                                            <PrivateRoute>
-                                                <Profile />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route path="/profile/:username" element={<Profile />} />
-                                    <Route
-                                        path="/inbox"
-                                        element={
-                                            <PrivateRoute>
-                                                <Inbox />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/settings"
-                                        element={
-                                            <PrivateRoute>
-                                                <Settings />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/notifications"
-                                        element={
-                                            <PrivateRoute>
-                                                <Notifications />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin"
-                                        element={
-                                            <PrivateRoute>
-                                                <AdminDashboard />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/saved"
-                                        element={
-                                            <PrivateRoute>
-                                                <Saved />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route path="/post/:postId" element={<PostDetail />} />
-                                    <Route
-                                        path="/comment/:commentId"
-                                        element={
-                                            <PrivateRoute>
-                                                <CommentDetail />
-                                            </PrivateRoute>
-                                        }
-                                    />
-
-                                    {/* Catch all */}
-                                    <Route path="*" element={<Navigate to="/" />} />
-                                </Routes>
-                            </div>
-                        </div>
+                        <UIProvider>
+                            <AppLayout />
+                        </UIProvider>
                     </SocketProvider>
                 </AuthProvider>
             </Router>

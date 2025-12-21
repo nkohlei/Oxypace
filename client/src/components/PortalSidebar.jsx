@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useUI } from '../context/UIContext';
 import CreatePortalModal from './CreatePortalModal';
 import { getImageUrl } from '../utils/imageUtils';
 import './PortalSidebar.css';
 
 const PortalSidebar = () => {
     const { user, isAuthenticated } = useAuth();
+    const { closeSidebar } = useUI();
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -22,13 +24,18 @@ const PortalSidebar = () => {
         return location.pathname === `/portal/${portalId}`;
     };
 
+    const handleNavigation = (path) => {
+        navigate(path);
+        closeSidebar();
+    };
+
     return (
         <>
             <div className="portal-sidebar">
                 {/* Global Home / Dashboard */}
                 <div
                     className={`sidebar-item ${isActive('/') ? 'active' : ''}`}
-                    onClick={() => navigate('/')}
+                    onClick={() => handleNavigation('/')}
                     data-tooltip="Ana Sayfa"
                 >
                     <div className="portal-icon">
@@ -46,7 +53,7 @@ const PortalSidebar = () => {
                     <div
                         key={portal._id}
                         className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
-                        onClick={() => navigate(`/portal/${portal._id}`)}
+                        onClick={() => handleNavigation(`/portal/${portal._id}`)}
                         data-tooltip={portal.name}
                     >
                         <div className="portal-icon">
@@ -64,7 +71,7 @@ const PortalSidebar = () => {
                 {/* Search / Discover */}
                 <div
                     className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
-                    onClick={() => navigate('/search')}
+                    onClick={() => handleNavigation('/search')}
                     data-tooltip="Keşfet"
                 >
                     <div className="portal-icon">
@@ -78,7 +85,10 @@ const PortalSidebar = () => {
                 {/* Create Portal Button */}
                 <div
                     className="sidebar-item"
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => {
+                        setShowCreateModal(true);
+                        closeSidebar();
+                    }}
                     data-tooltip="Portal Oluştur"
                 >
                     <div className="portal-icon create-portal-btn">

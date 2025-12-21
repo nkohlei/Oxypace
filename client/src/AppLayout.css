@@ -1,69 +1,103 @@
 /* Main App Layout */
 .app-container {
     display: flex;
-    /* Center the container itself using margin */
     margin: 0 auto;
-    /* Allow width to fit content (Sidebar + Main), so they stay attached */
-    width: fit-content;
-    min-width: min-content;
-    /* Ensure it doesn't crush */
-    max-width: 100%;
+    width: 100%;
+    /* Remove width: fit-content which causes mobile issues */
+    max-width: 1400px;
+    /* Wider desktop layout */
     min-height: 100vh;
+    position: relative;
+    /* For absolute positioning context if needed */
 }
 
+/* Sidebar Wrapper */
 .portal-sidebar-wrapper {
     flex-shrink: 0;
     width: 72px;
-    /* Sticky sidebar behavior */
+    height: 100vh;
     position: sticky;
     top: 0;
-    height: 100vh;
-    border-right: 1px solid var(--border-color);
-    background-color: var(--card-bg);
     z-index: 100;
+    background-color: var(--card-bg);
+    border-right: 1px solid var(--border-color);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Main Content Wrapper */
 .main-content-wrapper {
-    /* Content wrapper */
     flex-grow: 1;
-    /* Ensure a decent base width for pages like Home on Desktop */
-    min-width: 650px;
-    /* Max width limit for readability? */
-    /* max-width: 900px; */
+    min-width: 0;
+    /* Prevents flex child overflow */
     position: relative;
     background-color: var(--bg-primary);
-    /* Ensure bg covers gaps */
-}
-
-@media (max-width: 768px) {
-    .main-content-wrapper {
-        min-width: 0;
-        width: 100%;
-        /* Fix mobile overflow */
-        overflow-x: hidden;
-    }
-
-    .app-container {
-        width: 100%;
-        display: block;
-        /* Stack sidebar (if we hide it or handle differently) OR keep flex */
-        /* If specific mobile layout needed, adjust here. Current flex sidebar+content works if content shrinks */
-    }
-
-    /* On mobile, usually Sidebar is hidden or a drawer. User wants 'Discord like' sidebar?
-       Discord mobile has drawer. But for now let's just ensure content fits. */
-}
-
-/* Override existing PortalSidebar fixed positioning */
-.portal-sidebar {
-    position: static !important;
-    /* Managed by wrapper */
-    height: 100%;
     width: 100%;
-    border-right: none;
 }
 
-/* Remove the padding-left from styling since we are using flex */
-body:has(.portal-sidebar) .app-wrapper {
-    padding-left: 0 !important;
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .app-container {
+        display: block;
+        /* Stack blocking on mobile */
+        max-width: 100%;
+        overflow-x: hidden;
+        /* Prevent horizontal scroll */
+    }
+
+    /* Hide Sidebar by default on mobile, transform it off-screen */
+    .portal-sidebar-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        /* Slide out */
+        width: 80px;
+        /* Slight wider touch target if needed */
+        z-index: 1000;
+        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
+        border-right: none;
+    }
+
+    /* Open State for Sidebar */
+    .portal-sidebar-wrapper.mobile-open {
+        transform: translateX(0);
+    }
+
+    /* Overlay when sidebar is open */
+    .mobile-sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 999;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .mobile-sidebar-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .main-content-wrapper {
+        width: 100%;
+        min-width: 0;
+        padding-bottom: 80px;
+        /* Space for bottom nav if present, or just general padding */
+    }
+
+    /* Ensure body doesn't have left padding on mobile */
+    body:has(.portal-sidebar) .app-wrapper {
+        padding-left: 0 !important;
+    }
+}
+
+/* Desktop Wider Enhancements */
+@media (min-width: 1600px) {
+    .app-container {
+        max-width: 1800px;
+        /* Even wider on massive screens */
+    }
 }
