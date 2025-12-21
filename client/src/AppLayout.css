@@ -1,0 +1,41 @@
+/* Main App Layout */
+.app-container {
+    display: flex;
+    justify-content: center;
+    max-width: 1280px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+.portal-sidebar-wrapper {
+    flex-shrink: 0;
+    width: 72px;
+    /* Sticky sidebar behavior */
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    border-right: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    z-index: 100;
+}
+
+.main-content-wrapper {
+    flex: 1;
+    min-width: 0;
+    /* Prevent overflow */
+    position: relative;
+}
+
+/* Override existing PortalSidebar fixed positioning */
+.portal-sidebar {
+    position: static !important;
+    /* Managed by wrapper */
+    height: 100%;
+    width: 100%;
+    border-right: none;
+}
+
+/* Remove the padding-left from styling since we are using flex */
+body:has(.portal-sidebar) .app-wrapper {
+    padding-left: 0 !important;
+}

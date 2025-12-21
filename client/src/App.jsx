@@ -23,6 +23,7 @@ import TermsOfService from './pages/TermsOfService';
 import Contact from './pages/Contact';
 import Portal from './pages/Portal';
 import PortalSidebar from './components/PortalSidebar';
+import './AppLayout.css';
 
 
 function App() {
@@ -31,108 +32,107 @@ function App() {
             <Router>
                 <AuthProvider>
                     <SocketProvider>
-                        <PortalSidebar />
-                        <Routes>
-                            {/* Public routes */}
-                            <Route path="/login" element={<Login />} />
-                            <Route path="/register" element={<Register />} />
-                            <Route path="/verify-email" element={<VerifyEmail />} />
-                            <Route path="/auth/google/success" element={<GoogleCallback />} />
-                            <Route path="/privacy" element={<PrivacyPolicy />} />
-                            <Route path="/terms" element={<TermsOfService />} />
-                            <Route path="/contact" element={<Contact />} />
+                        <div className="app-container">
+                            <div className="portal-sidebar-wrapper">
+                                <PortalSidebar />
+                            </div>
+                            <div className="main-content-wrapper">
+                                <Routes>
+                                    {/* Public routes */}
+                                    <Route path="/login" element={<Login />} />
+                                    <Route path="/register" element={<Register />} />
+                                    <Route path="/verify-email" element={<VerifyEmail />} />
+                                    <Route path="/auth/google/success" element={<GoogleCallback />} />
+                                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                                    <Route path="/terms" element={<TermsOfService />} />
+                                    <Route path="/contact" element={<Contact />} />
 
-                            {/* Private routes */}
-                            {/* Updated Home to be Portal-aware or just keep as is (redirects to first portal?) 
-                                For now keeping Home as "Global Feed" wasn't desired, user said "Artık global tek bir anasayfa yerine..." 
-                                User said: "Anasayfa akışı yerine portal sistemine geçeceğiz."
-                                But they also said "Global anasayfada herkese açık bir şekilde gözüküyordu. Şimdi artık öyle bir şey olamayacak."
-                                So the root `/` path should probably redirect to the user's first portal OR a generic "Welcome/Select Portal" page.
-                                I'll update Home page later or simply redirect within Home component.
-                            */}
-                            <Route path="/" element={<Home />} />
+                                    {/* Private routes */}
+                                    <Route path="/" element={<Home />} />
 
-                            {/* Portal Route */}
-                            <Route path="/portal/:id" element={<Portal />} />
+                                    {/* Portal Route */}
+                                    <Route path="/portal/:id" element={<Portal />} />
 
-                            <Route
-                                path="/create"
-                                element={
-                                    <PrivateRoute>
-                                        <CreatePost />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/search"
-                                element={
-                                    <PrivateRoute>
-                                        <Search />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/profile"
-                                element={
-                                    <PrivateRoute>
-                                        <Profile />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route path="/profile/:username" element={<Profile />} />
-                            <Route
-                                path="/inbox"
-                                element={
-                                    <PrivateRoute>
-                                        <Inbox />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/settings"
-                                element={
-                                    <PrivateRoute>
-                                        <Settings />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/notifications"
-                                element={
-                                    <PrivateRoute>
-                                        <Notifications />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/admin"
-                                element={
-                                    <PrivateRoute>
-                                        <AdminDashboard />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/saved"
-                                element={
-                                    <PrivateRoute>
-                                        <Saved />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route path="/post/:postId" element={<PostDetail />} />
-                            <Route
-                                path="/comment/:commentId"
-                                element={
-                                    <PrivateRoute>
-                                        <CommentDetail />
-                                    </PrivateRoute>
-                                }
-                            />
+                                    <Route
+                                        path="/create"
+                                        element={
+                                            <PrivateRoute>
+                                                <CreatePost />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/search"
+                                        element={
+                                            <PrivateRoute>
+                                                <Search />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/profile"
+                                        element={
+                                            <PrivateRoute>
+                                                <Profile />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route path="/profile/:username" element={<Profile />} />
+                                    <Route
+                                        path="/inbox"
+                                        element={
+                                            <PrivateRoute>
+                                                <Inbox />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/settings"
+                                        element={
+                                            <PrivateRoute>
+                                                <Settings />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/notifications"
+                                        element={
+                                            <PrivateRoute>
+                                                <Notifications />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/admin"
+                                        element={
+                                            <PrivateRoute>
+                                                <AdminDashboard />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/saved"
+                                        element={
+                                            <PrivateRoute>
+                                                <Saved />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route path="/post/:postId" element={<PostDetail />} />
+                                    <Route
+                                        path="/comment/:commentId"
+                                        element={
+                                            <PrivateRoute>
+                                                <CommentDetail />
+                                            </PrivateRoute>
+                                        }
+                                    />
 
-                            {/* Catch all */}
-                            <Route path="*" element={<Navigate to="/" />} />
-                        </Routes>
+                                    {/* Catch all */}
+                                    <Route path="*" element={<Navigate to="/" />} />
+                                </Routes>
+                            </div>
+                        </div>
                     </SocketProvider>
                 </AuthProvider>
             </Router>

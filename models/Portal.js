@@ -36,6 +36,10 @@ const portalSchema = new mongoose.Schema({
         type: String, // URL to uploaded image
         default: ''
     },
+    banner: {
+        type: String,
+        default: ''
+    },
     themeColor: {
         type: String,
         default: '#3b82f6' // Default blue
