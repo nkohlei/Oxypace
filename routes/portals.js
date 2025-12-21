@@ -3,6 +3,23 @@ import Portal from '../models/Portal.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
+import multer from 'multer';
+import path from 'path';
+import { storage } from '../config/cloudinary.js';
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (extname && mimetype) {
+            return cb(null, true);
+        }
+        cb(new Error('Only image files are allowed'));
+    }
+});
 
 const router = express.Router();
 
@@ -154,6 +171,89 @@ router.post('/:id/leave', protect, async (req, res) => {
         res.json({ message: 'Left portal successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Update portal settings
+// @route   PUT /api/portals/:id
+// @access  Private (Owner only)
+router.put('/:id', protect, async (req, res) => {
+    try {
+        const { name, description, privacy } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+
+        if (portal.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to update this portal' });
+        }
+
+        portal.name = name || portal.name;
+        portal.description = description || portal.description;
+        portal.privacy = privacy || portal.privacy;
+
+        await portal.save();
+
+        // Repopulate owner for frontend consistency
+        await portal.populate('owner', 'username profile.avatar');
+
+        res.json(portal);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Upload portal avatar
+// @route   POST /api/portals/:id/avatar
+// @access  Private (Owner only)
+router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+
+        if (portal.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        if (req.file) {
+            portal.avatar = req.file.path;
+            await portal.save();
+            await portal.populate('owner', 'username profile.avatar');
+            res.json(portal);
+        } else {
+            res.status(400).json({ message: 'No file uploaded' });
+        }
+    } catch (error) {
+        console.error('Avatar upload error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @desc    Upload portal banner
+// @route   POST /api/portals/:id/banner
+// @access  Private (Owner only)
+router.post('/:id/banner', protect, upload.single('banner'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+
+        if (portal.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        if (req.file) {
+            portal.banner = req.file.path; // Make sure Portal model has banner field
+            await portal.save();
+            await portal.populate('owner', 'username profile.avatar');
+            res.json(portal);
+        } else {
+            res.status(400).json({ message: 'No file uploaded' });
+        }
+    } catch (error) {
+        console.error('Banner upload error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

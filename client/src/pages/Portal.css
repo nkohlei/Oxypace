@@ -1,64 +1,108 @@
-.portal-header {
-    background: linear-gradient(to right, var(--bg-secondary), var(--card-bg));
-    padding: 32px 24px;
+.portal-header-container {
+    background: var(--bg-card);
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 24px;
+    position: relative;
+}
+
+.portal-banner-section {
+    height: 200px;
+    background: var(--bg-darker);
+    position: relative;
+    overflow: hidden;
+}
+
+.portal-banner-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.portal-banner-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+}
+
+.portal-header-content {
+    padding: 0 24px 24px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 24px;
+    position: relative;
+    margin-top: -40px;
+    /* Overlap banner */
 }
 
 .portal-avatar-large {
-    width: 80px;
-    height: 80px;
+    width: 120px;
+    height: 120px;
     border-radius: 24px;
-    background-color: var(--primary-color);
+    background-color: var(--bg-card);
+    /* Border effect */
+    border: 4px solid var(--bg-card);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
+    font-size: 40px;
     font-weight: bold;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    overflow: hidden;
 }
 
 .portal-avatar-large img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 24px;
+}
+
+.portal-info {
+    flex: 1;
+    padding-bottom: 8px;
+    /* Alignment */
 }
 
 .portal-info h1 {
-    margin: 0 0 8px 0;
+    margin: 0 0 4px 0;
     font-size: 2rem;
     color: var(--text-primary);
+    font-weight: 800;
 }
 
 .portal-description {
     color: var(--text-secondary);
-    margin: 0 0 16px 0;
+    margin: 4px 0 8px 0;
     max-width: 600px;
+    font-size: 0.95rem;
+    line-height: 1.4;
 }
 
 .portal-meta {
     display: flex;
     gap: 16px;
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
 }
 
 .portal-actions {
     margin-left: auto;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding-bottom: 8px;
 }
 
-.join-btn {
-    padding: 8px 24px;
+.join-btn,
+.portal-edit-btn {
+    padding: 8px 20px;
     border-radius: 20px;
     border: none;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 0.9rem;
 }
 
 .join-btn.primary {
@@ -66,16 +110,19 @@
     color: white;
 }
 
-.join-btn.outline {
+.join-btn.outline,
+.portal-edit-btn {
     background-color: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
 }
 
-.join-btn:hover {
+.join-btn:hover,
+.portal-edit-btn:hover {
+    background-color: var(--bg-hover);
     transform: translateY(-1px);
-    filter: brightness(1.1);
 }
+
 
 .portal-feed-container {
     max-width: 680px;
@@ -92,4 +139,231 @@
 .empty-portal-icon {
     font-size: 48px;
     margin-bottom: 16px;
+}
+
+/* --- Modal Styles (Reused from Profile) --- */
+.edit-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.edit-modal-modern {
+    background: var(--bg-card);
+    width: 100%;
+    max-width: 550px;
+    max-height: 90vh;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.edit-modal-header-modern {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.close-btn-modern {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 20px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn-modern:hover {
+    background: var(--bg-hover);
+}
+
+.header-title-modern {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.save-btn-modern {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border: none;
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.save-btn-modern:disabled {
+    opacity: 0.5;
+}
+
+.edit-modal-content-modern {
+    overflow-y: auto;
+    flex: 1;
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.edit-cover-container {
+    height: 160px;
+    background: var(--bg-darker);
+    position: relative;
+    overflow: hidden;
+}
+
+.edit-cover-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.8);
+}
+
+.edit-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #333;
+}
+
+.image-overlay-actions {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.image-overlay-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.edit-avatar-container {
+    padding: 0 20px;
+    margin-top: -45px;
+    position: relative;
+    z-index: 10;
+    margin-bottom: 10px;
+}
+
+.edit-avatar-wrapper {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 4px solid var(--bg-card);
+    position: relative;
+    overflow: hidden;
+}
+
+.edit-avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: var(--bg-card);
+}
+
+.edit-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 32px;
+}
+
+.avatar-overlay-actions {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.edit-form-fields {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.floating-label-group {
+    position: relative;
+    /* Simplified for Portal Edit */
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.floating-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.floating-input {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 15px;
+}
+
+.floating-textarea {
+    resize: none;
+    height: 100px;
+}
+
+@media (max-width: 600px) {
+    .portal-header-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-top: -60px;
+    }
+
+    .portal-actions {
+        margin-left: 0;
+        margin-top: 16px;
+    }
 }

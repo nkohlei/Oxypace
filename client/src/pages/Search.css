@@ -256,3 +256,46 @@
     color: var(--text-secondary);
     font-size: 1.1rem;
 }
+
+.result-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.result-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.result-avatar-placeholder svg {
+    width: 24px;
+    height: 24px;
+}
+
+.result-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.result-name {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.result-username {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
