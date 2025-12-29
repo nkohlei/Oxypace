@@ -13,7 +13,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
 
     return (
         <div className="channel-sidebar" style={{
-            width: '280px', /* Upscaled from 240px */
+            width: '300px', /* Upscaled from 280px */
             height: '100%',
             backgroundColor: '#111827', // Gray-900 
             display: 'flex',
