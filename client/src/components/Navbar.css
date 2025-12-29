@@ -154,13 +154,15 @@
     /* Use solid color to prevent see-through mess */
     border-top: 1px solid var(--border-color);
     padding-bottom: env(safe-area-inset-bottom);
-    z-index: 1000;
+    z-index: 2000;
     height: 60px;
     /* Explicit height */
 }
 
 /* Mobile Responsiveness */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+
+    /* Increased breakpoint for visibility on tablets/small laptops */
     .mobile-menu-btn {
         display: flex;
         /* Show Hamburger */
