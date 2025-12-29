@@ -19,7 +19,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
 
     return (
         <div className="channel-sidebar" style={{
-            width: '300px',
+            width: '350px',
             height: '100%',
             backgroundColor: '#2b2d31',
             display: 'flex',
@@ -33,7 +33,8 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                 height: '135px',
                 position: 'relative',
                 cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                background: '#1a1b1e' // Fallback color
             }} onClick={onEdit}>
                 {/* Banner Image */}
                 <div style={{
@@ -42,7 +43,10 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    backgroundImage: portal.coverImage ? `url(${getImageUrl(portal.coverImage)})` : 'url("https://wallpapers.com/images/hd/wallstreetbets-neon-art-7f30v11f1j7g0h8d.jpg")',
+                    // Prefer portal cover, then banner, then default
+                    backgroundImage: portal.coverImage ? `url(${getImageUrl(portal.coverImage)})` :
+                        portal.banner ? `url(${getImageUrl(portal.banner)})` :
+                            'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                 }}>
@@ -53,7 +57,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                         left: 0,
                         width: '100%',
                         height: '100%',
-                        background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)'
+                        background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)'
                     }}></div>
                 </div>
 
