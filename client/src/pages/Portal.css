@@ -116,7 +116,66 @@
     color: #dcddde;
 }
 
-/* Old styling override/removal if needed */
+/* Message Input Area */
+.channel-input-area {
+    padding: 0 16px 24px 16px;
+    background-color: #36393f;
+    flex-shrink: 0;
+}
+
+.message-input-wrapper {
+    background-color: #40444b;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 44px;
+}
+
+.input-action-btn {
+    background: transparent;
+    border: none;
+    color: #b9bbbe;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.input-action-btn:hover {
+    color: #dcddde;
+}
+
+.input-action-btn.upload-btn {
+    margin-right: 12px;
+}
+
+.message-input-wrapper input {
+    background: transparent;
+    border: none;
+    color: #dcddde;
+    font-size: 15px;
+    flex: 1;
+    height: 100%;
+    margin-right: 12px;
+}
+
+.message-input-wrapper input::placeholder {
+    color: #72767d;
+}
+
+.message-input-wrapper input:focus {
+    outline: none;
+}
+
+.input-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .portal-header-container {
     display: none;
     /* Hide old header */

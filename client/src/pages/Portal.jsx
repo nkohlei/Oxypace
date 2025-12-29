@@ -20,6 +20,27 @@ const Portal = () => {
 
     // Channel State
     const [currentChannel, setCurrentChannel] = useState('general');
+    const [messageText, setMessageText] = useState('');
+
+    const handleSendMessage = async () => {
+        if (!messageText.trim()) return;
+
+        try {
+            const res = await axios.post('/api/posts', {
+                title: 'Message', // Backend expects title
+                content: messageText,
+                portalId: id,
+                type: 'text'
+            });
+
+            // Optimistic update or refresh
+            setPosts([res.data, ...posts]);
+            setMessageText('');
+        } catch (err) {
+            console.error('Send message failed', err);
+            alert('Mesaj gönderilemedi');
+        }
+    };
 
     // Edit State
     const [editing, setEditing] = useState(false);
@@ -265,6 +286,46 @@ const Portal = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Message Input Area (Fixed at Bottom) */}
+                {currentChannel === 'general' && isMember && (
+                    <div className="channel-input-area">
+                        <div className="message-input-wrapper">
+                            <button className="input-action-btn upload-btn">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
+                                </svg>
+                            </button>
+                            <input
+                                type="text"
+                                placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSendMessage();
+                                    }
+                                }}
+                            />
+                            <div className="input-right-actions">
+                                <button className="input-action-btn">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M14.828 14.828a4 4 0 1 0-5.656-5.656 4 4 0 0 0 5.656 5.656zm-8.485 2.829l-2.828 2.828 5.657 5.657 2.828-2.829a8 8 0 1 1-5.657-5.657z"></path>
+                                    </svg>
+                                </button>
+                                <button className="input-action-btn">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Edit Modal (Preserved) */}
                 {editing && (
