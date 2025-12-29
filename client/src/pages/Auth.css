@@ -4,14 +4,16 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
-    background: var(--gradient-space);
+    padding: 20px;
+    background: var(--bg-dark);
 }
 
 .auth-card {
     width: 100%;
     max-width: 400px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-neon);
+    max-width: 400px;
+    background: var(--bg-darkest);
+    border: 1px solid var(--border-subtle);
     border-radius: 24px;
     padding: 40px 32px;
     box-shadow: var(--shadow-card), 0 0 40px var(--primary-glow-soft);

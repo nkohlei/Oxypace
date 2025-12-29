@@ -41,7 +41,17 @@
   --shadow-card: 0 8px 16px rgba(0, 0, 0, 0.24);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.32);
 
-  /* Spacing */
+  /* Legacy Variable Mappings for "Blackout" Compatibility */
+  --bg-primary: var(--bg-dark);
+  --bg-secondary: var(--bg-darkest);
+  --card-bg: var(--bg-card);
+  --border-color: var(--border-subtle);
+  --hover-bg: var(--bg-hover);
+  --primary-color: var(--primary-cyan);
+
+  /* Remove Space Gradient - Force Dark */
+  --gradient-space: var(--bg-dark);
+
   --nav-top-height: 48px;
   --nav-bottom-height: 0px;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

@@ -10,7 +10,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: #36393f;
+    background-color: var(--bg-dark);
     /* Discord Chat Bckground */
     min-width: 0;
 }
@@ -23,7 +23,7 @@
     align-items: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: none;
-    background-color: #36393f;
+    background-color: var(--bg-dark);
     flex-shrink: 0;
 }
 
@@ -80,7 +80,7 @@
 
 /* Search Bar Mini */
 .search-bar-mini {
-    background-color: #202225;
+    background-color: var(--bg-darkest);
     padding: 4px 8px;
     border-radius: 4px;
     display: flex;
@@ -119,12 +119,12 @@
 /* Message Input Area */
 .channel-input-area {
     padding: 0 16px 24px 16px;
-    background-color: #36393f;
+    background-color: var(--bg-dark);
     flex-shrink: 0;
 }
 
 .message-input-wrapper {
-    background-color: #40444b;
+    background-color: var(--bg-darker);
     border-radius: 8px;
     display: flex;
     align-items: center;
