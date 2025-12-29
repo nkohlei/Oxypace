@@ -73,6 +73,11 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-left: auto;
+    /* Push to right */
+    position: relative;
+    z-index: 1102;
+    background: transparent;
 }
 
 /* ... Theme toggle and other buttons ... */
@@ -143,8 +148,8 @@
 
 /* Bottom Navigation (Mobile Only) */
 .bottom-nav {
-    display: none;
-    /* Default hidden */
+    display: block;
+    /* Visible by default as per request */
     position: fixed;
     bottom: 0;
     left: 0;
@@ -160,7 +165,7 @@
 }
 
 /* Mobile Responsiveness */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 
     /* Increased breakpoint for visibility on tablets/small laptops */
     .mobile-menu-btn {
