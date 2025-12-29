@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import FollowButton from '../components/FollowButton';
 import Badge from '../components/Badge';
 import './Profile.css';
 
@@ -19,13 +18,6 @@ const Profile = () => {
         bio: '',
     });
 
-    // Follow Modal State
-    const [showFollowModal, setShowFollowModal] = useState(null); // 'followers' or 'following'
-    const [followList, setFollowList] = useState([]);
-    const [loadingFollow, setLoadingFollow] = useState(false);
-    // Follow Search
-    const [searchFollowTerm, setSearchFollowTerm] = useState('');
-
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
@@ -34,7 +26,6 @@ const Profile = () => {
     const coverInputRef = useRef(null);
 
     const isOwnProfile = !username || (currentUser && currentUser.username === username);
-    const isLocked = !isOwnProfile && profileUser?.settings?.privacy?.isPrivate && !profileUser.isFollowing;
 
     useEffect(() => {
         if (isOwnProfile) {
@@ -43,14 +34,6 @@ const Profile = () => {
             fetchUserProfile(username);
         }
     }, [username, isOwnProfile]);
-
-    const handleMessageClick = () => {
-        if (!currentUser) {
-            navigate('/login');
-            return;
-        }
-        navigate(`/inbox?user=${profileUser.username}`);
-    };
 
     const fetchMyProfile = async () => {
         try {
@@ -73,26 +56,6 @@ const Profile = () => {
             console.error('Failed to fetch user profile:', err);
             setError('Kullanıcı bulunamadı');
         }
-    };
-
-    const fetchFollowList = async (type) => {
-        if (!profileUser?._id) return;
-        setLoadingFollow(true);
-        try {
-            const response = await axios.get(`/api/users/${profileUser._id}/${type}`);
-            setFollowList(response.data);
-        } catch (err) {
-            console.error(`Failed to fetch ${type}:`, err);
-        } finally {
-            setLoadingFollow(false);
-        }
-    };
-
-    const openFollowModal = (type) => {
-        setShowFollowModal(type);
-        setFollowList([]);
-        setSearchFollowTerm('');
-        fetchFollowList(type);
     };
 
     const handleChange = (e) => {
@@ -164,20 +127,6 @@ const Profile = () => {
             setLoading(false);
         }
     };
-
-    const formatCount = (count) => {
-        if (!count) return '0';
-        if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-        if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-        return count.toString();
-    };
-
-    const filteredFollowList = followList.filter(user =>
-        user && (
-            user.username?.toLowerCase().includes(searchFollowTerm.toLowerCase()) ||
-            (user.profile?.displayName && user.profile.displayName.toLowerCase().includes(searchFollowTerm.toLowerCase()))
-        )
-    );
 
     if (!profileUser) {
         return (
