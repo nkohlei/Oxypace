@@ -141,7 +141,7 @@ const Navbar = () => {
                                     </div>
                                 </Link>
 
-                                {/* Menu Button */}
+                                {/* Menu Button for Quick Actions */}
                                 <div className="header-menu-wrapper" ref={menuRef}>
                                     <button
                                         className="header-icon menu-trigger"
@@ -153,71 +153,51 @@ const Navbar = () => {
                                             <line x1="3" y1="18" x2="21" y2="18" />
                                         </svg>
                                     </button>
-
                                     {/* Dropdown Menu */}
                                     {showMenu && (
                                         <div className="header-dropdown fade-in">
                                             {user?.isAdmin && (
-                                                <Link
-                                                    to="/admin"
-                                                    className="dropdown-item admin-link"
-                                                    onClick={() => setShowMenu(false)}
-                                                >
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                                                    </svg>
+                                                <Link to="/admin" className="dropdown-item admin-link" onClick={() => setShowMenu(false)}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                                                     Yönetici Paneli
                                                 </Link>
                                             )}
-                                            <Link
-                                                to="/saved"
-                                                className="dropdown-item"
-                                                onClick={() => setShowMenu(false)}
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                                                </svg>
+                                            <Link to="/saved" className="dropdown-item" onClick={() => setShowMenu(false)}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
                                                 Kaydedilenler
                                             </Link>
-                                            <Link
-                                                to="/settings"
-                                                className="dropdown-item"
-                                                onClick={() => setShowMenu(false)}
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                    <circle cx="12" cy="12" r="3" />
-                                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                                                </svg>
+                                            <Link to="/settings" className="dropdown-item" onClick={() => setShowMenu(false)}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
                                                 Ayarlar
                                             </Link>
                                             <div className="dropdown-divider" />
                                             <button className="dropdown-item logout" onClick={handleLogout}>
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                                    <polyline points="16 17 21 12 16 7" />
-                                                    <line x1="21" y1="12" x2="9" y2="12" />
-                                                </svg>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
                                                 Çıkış Yap
                                             </button>
                                         </div>
                                     )}
                                 </div>
                             </>
-                        ) : (
-                            <Link to="/login" className="login-btn-header" style={{
-                                padding: '10px 20px',
-                                background: 'var(--primary-color)',
-                                color: 'white',
-                                borderRadius: '24px',
-                                textDecoration: 'none',
-                                fontWeight: '700',
-                                fontSize: '0.95rem',
-                                whiteSpace: 'nowrap',
-                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                            }}>
-                                Giriş Yap
-                            </Link>
-                        )}
+                        ) : null}
+
+                        {/* Unified Profile/Login Button (Always Visible) */}
+                        <Link
+                            to={user ? "/profile" : "/login"}
+                            className="header-icon profile-unified-btn"
+                            title={user ? "Profilim" : "Giriş Yap"}
+                        >
+                            {user?.profile?.avatar ? (
+                                <img src={getImageUrl(user.profile.avatar)} alt="Profile" className="nav-profile-img" />
+                            ) : (
+                                <div className="nav-profile-placeholder">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                </div>
+                            )}
+                        </Link>
                     </div>
                 </div>
             </header>

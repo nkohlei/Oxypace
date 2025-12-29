@@ -73,27 +73,65 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-left: auto;
+    position: relative;
+    z-index: 1102;
+    /* Ensure clickable */
 }
 
 /* ... Theme toggle and other buttons ... */
 .theme-toggle-btn,
-.notification-btn {
+.notification-btn,
+.profile-unified-btn,
+.menu-trigger {
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 8px;
+    padding: 6px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    width: 40px;
+    height: 40px;
 }
 
 .theme-toggle-btn:hover,
-.notification-btn:hover {
+.notification-btn:hover,
+.profile-unified-btn:hover,
+.menu-trigger:hover {
     background-color: var(--bg-hover);
     color: var(--text-primary);
+}
+
+.profile-unified-btn {
+    padding: 4px;
+    /* Less padding for image */
+    border: 1px solid transparent;
+}
+
+.profile-unified-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.nav-profile-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.nav-profile-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
 }
 
 .header-dropdown {
@@ -204,8 +242,9 @@
 
 .top-badge {
     position: absolute;
-    top: -2px;
-    right: -2px;
+    top: 4px;
+    /* Adjusted for icon container */
+    right: 4px;
     width: 8px;
     height: 8px;
     background-color: #ef4444;
