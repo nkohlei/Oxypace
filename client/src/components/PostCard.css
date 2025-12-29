@@ -5,8 +5,8 @@
     /* Exact Avatar Spacing */
     gap: 0;
     /* No huge gap, controlled by padding */
-    padding: 2px 16px;
-    /* Compact padding */
+    padding: 12px 16px;
+    /* Comfortable Spacing */
     background: transparent;
     /* No background */
     border-radius: 0;
