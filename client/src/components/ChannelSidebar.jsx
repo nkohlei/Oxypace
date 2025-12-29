@@ -13,7 +13,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
 
     return (
         <div className="channel-sidebar" style={{
-            width: '240px',
+            width: '280px', /* Upscaled from 240px */
             height: '100%',
             backgroundColor: '#111827', // Gray-900 
             display: 'flex',
@@ -23,8 +23,8 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
         }}>
             {/* Header / Portal Name Dropdown */}
             <div style={{
-                height: '48px',
-                padding: '0 16px',
+                height: '60px', /* Upscaled from 48px */
+                padding: '0 20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -37,7 +37,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                 onClick={onEdit} // Trigger edit modal ordropdown
             >
                 <h2 style={{
-                    fontSize: '15px',
+                    fontSize: '17px', /* Upscaled */
                     fontWeight: '700',
                     color: 'white',
                     whiteSpace: 'nowrap',

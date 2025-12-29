@@ -52,12 +52,19 @@
   --transition-slow: 0.4s ease;
 
   /* Spacing for mobile nav */
-  --nav-top-height: 60px;
-  --nav-bottom-height: 70px;
+  --nav-top-height: 70px;
+  /* Increased from 60px */
+  --nav-bottom-height: 80px;
+  /* Increased from 70px */
   --bg-input: #0f172a;
   /* Solid input background instead of rgba */
   /* Default dark input */
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html {
+  font-size: 17px;
+  /* Increase base font size from default 16px */
 }
 
 * {

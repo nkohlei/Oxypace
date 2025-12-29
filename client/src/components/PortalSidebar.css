@@ -51,9 +51,11 @@
 
 .sidebar-item {
     position: relative;
-    width: 48px;
-    height: 48px;
-    margin-bottom: 4px;
+    width: 64px;
+    /* Uppscaled from 48px */
+    height: 64px;
+    margin-bottom: 8px;
+    /* More spacing */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -62,8 +64,9 @@
 }
 
 .portal-icon {
-    width: 44px;
-    height: 44px;
+    width: 56px;
+    /* Upscaled from 44px */
+    height: 56px;
     border-radius: 50%;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
