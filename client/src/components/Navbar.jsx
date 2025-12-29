@@ -146,16 +146,38 @@ const Navbar = () => {
                                     <button
                                         className="header-icon menu-trigger"
                                         onClick={() => setShowMenu(!showMenu)}
+                                        title="Menü"
                                     >
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                            <line x1="3" y1="12" x2="21" y2="12" />
-                                            <line x1="3" y1="6" x2="21" y2="6" />
-                                            <line x1="3" y1="18" x2="21" y2="18" />
+                                            <circle cx="12" cy="12" r="1" />
+                                            <circle cx="12" cy="5" r="1" />
+                                            <circle cx="12" cy="19" r="1" />
                                         </svg>
                                     </button>
                                     {/* Dropdown Menu */}
                                     {showMenu && (
-                                        <div className="header-dropdown fade-in">
+                                        <div className="header-dropdown">
+                                            {/* Dropdown Header with User Info */}
+                                            <div className="dropdown-user-info" style={{
+                                                padding: '12px 16px',
+                                                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                                marginBottom: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px'
+                                            }}>
+                                                {user?.profile?.avatar ? (
+                                                    <img src={getImageUrl(user.profile.avatar)} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>{user?.username?.[0]?.toUpperCase()}</span>
+                                                    </div>
+                                                )}
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontWeight: '700', color: '#fff', fontSize: '0.95rem' }}>{user?.username}</span>
+                                                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Giriş Yapıldı</span>
+                                                </div>
+                                            </div>
                                             {user?.isAdmin && (
                                                 <Link to="/admin" className="dropdown-item admin-link" onClick={() => setShowMenu(false)}>
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
