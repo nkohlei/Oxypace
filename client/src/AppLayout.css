@@ -78,10 +78,7 @@
 
 /* When sidebar is open, arrow stays or moves? User said "menu opens...". Let's keep arrow visible or integrated. */
 /* If menu opens top-down, arrow should probably stay or rotate */
-.sidebar-toggle-arrow.open {
-    /* Maybe rotate icon? */
-    background: var(--bg-hover);
-}
+/* Cleaned up duplicate rule */
 
 /* Main Content Wrapper */
 .main-content-wrapper {
