@@ -43,7 +43,8 @@
     /* Aligned with top of sidebar area */
     width: 24px;
     height: 48px;
-    background: var(--card-bg);
+    background: #0f172a;
+    /* Solid dark background matching sidebar */
     border: 1px solid var(--border-color);
     border-left: none;
     border-radius: 0 16px 16px 0;

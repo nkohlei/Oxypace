@@ -14,7 +14,9 @@
 }
 
 .modal-content {
-    background-color: var(--card-bg);
+    background-color: #0f172a;
+    /* Solid dark background */
+    opacity: 1;
     padding: 24px;
     border-radius: 16px;
     width: 100%;

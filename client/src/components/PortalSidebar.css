@@ -2,7 +2,8 @@
     width: 72px;
     height: auto;
     /* remove min-height */
-    background-color: var(--card-bg);
+    background-color: #0f172a;
+    /* Solid dark background */
     display: flex;
     flex-direction: column;
     align-items: center;
