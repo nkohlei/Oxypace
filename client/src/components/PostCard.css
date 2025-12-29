@@ -11,10 +11,9 @@
     /* No background */
     border-radius: 0;
     /* No radius */
-    margin: 4px 0;
-    /* Minimal vertical Margin */
-    border: none;
-    /* NO BORDERS */
+    margin: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     cursor: default;
     /* Text cursor style mainly */
     transition: background-color 0.1s ease;
