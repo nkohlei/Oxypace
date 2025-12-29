@@ -1,64 +1,49 @@
 :root {
-  /* Deepace Color Palette - Elegant Theme */
-  --bg-dark: #020617;
-  /* Dark Midnight Blue (approx) */
-  --bg-darker: #0f172a;
-  --bg-card: #1e293b;
-  /* Solid Slate 800 */
-  --bg-glass: #1e293b;
-  /* Removed transparency, made solid */
-  --bg-hover: rgba(0, 150, 200, 0.15);
-  /* Slightly more visible hover */
+  /* Discord-like Color Palette */
+  --bg-dark: #313338;
+  /* Discord Main Chat Background */
+  --bg-darker: #2b2d31;
+  /* Sidebar / Header Background */
+  --bg-darkest: #1e1f22;
+  /* Server List / Tertiary Background */
+  --bg-card: #2b2d31;
+  /* Card Background */
+  --bg-hover: rgba(79, 84, 92, 0.16);
+  /* Discord Hover */
 
-  /* Primary Accent */
-  --primary-cyan: rgb(0, 150, 200);
-  --primary-red: #ff2400;
-  /* Bright Fire Red */
-  --primary-cyan-light: #40c8e0;
-  --primary-cyan-dark: #007a9a;
-  --primary-glow: rgba(0, 150, 200, 0.3);
-  --primary-glow-soft: rgba(0, 150, 200, 0.15);
+  --bg-input: #1e1f22;
+  /* Input Background */
+
+  /* Primary Accent - Blurple */
+  --primary-cyan: #5865F2;
+  /* Discord Blurple */
+  --primary-cyan-light: #4752c4;
+  --primary-cyan-dark: #404eed;
+  --primary-glow: rgba(88, 101, 242, 0.3);
+  --primary-glow-soft: rgba(88, 101, 242, 0.15);
+
+  --primary-green: #23a559;
+  --primary-red: #da373c;
 
   /* Text Colors */
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.85);
-  /* More opaque */
-  --text-tertiary: rgba(255, 255, 255, 0.55);
-  --text-muted: rgba(255, 255, 255, 0.35);
+  --text-primary: #dbdee1;
+  --text-secondary: #b5bac1;
+  --text-tertiary: #949ba4;
+  --text-muted: #72767d;
 
-  /* Borders - More subtle */
-  --border-neon: rgba(0, 150, 200, 0.4);
-  --border-subtle: rgba(255, 255, 255, 0.15);
-  /* More visible border */
-  --border-glass: rgba(255, 255, 255, 0.1);
+  /* Borders */
+  --border-subtle: #1e1f22;
+  /* Very subtle separation */
+  --border-neon: transparent;
+  /* Remove neon borders */
 
-  /* Gradients - Solid / Less Transparent */
-  --gradient-space: linear-gradient(180deg, #0a1520 0%, #0d1a28 50%, #081318 100%);
-  --gradient-card: linear-gradient(145deg, #0f1e32 0%, #0a1423 100%);
-  /* Solid gradient */
-  --gradient-neon: linear-gradient(135deg, rgb(0, 150, 200) 0%, rgb(0, 120, 160) 100%);
-  --gradient-button: linear-gradient(135deg, rgba(0, 150, 200, 0.2) 0%, rgba(0, 120, 160, 0.1) 100%);
+  /* Shadows */
+  --shadow-card: 0 8px 16px rgba(0, 0, 0, 0.24);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.32);
 
-  /* Shadows - Softer, more elegant */
-  --shadow-neon: 0 2px 15px rgba(0, 150, 200, 0.25);
-  --shadow-neon-soft: 0 2px 8px rgba(0, 150, 200, 0.15);
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
-  /* Stronger shadow for distinctness */
-  --shadow-glow: 0 4px 20px rgba(0, 150, 200, 0.3);
-
-  /* Animations */
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.25s ease;
-  --transition-slow: 0.4s ease;
-
-  /* Spacing for mobile nav */
-  --nav-top-height: 70px;
-  /* Increased from 60px */
-  --nav-bottom-height: 80px;
-  /* Increased from 70px */
-  --bg-input: #0f172a;
-  /* Solid input background instead of rgba */
-  /* Default dark input */
+  /* Spacing */
+  --nav-top-height: 48px;
+  --nav-bottom-height: 0px;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
