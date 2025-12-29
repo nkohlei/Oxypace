@@ -1,50 +1,64 @@
-/* Post Card - Twitter Layout */
+/* Post Card - Discord Clone Layout */
 .post-card.twitter-layout {
     display: grid;
-    grid-template-columns: 56px 1fr;
-    /* Avatar column */
-    gap: 16px;
-    padding: 16px 20px;
-    background: var(--bg-card);
-    border-radius: 12px;
-    margin: 8px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    /* Kept border as requested */
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+    grid-template-columns: 52px 1fr;
+    /* Exact Avatar Spacing */
+    gap: 0;
+    /* No huge gap, controlled by padding */
+    padding: 2px 16px;
+    /* Compact padding */
+    background: transparent;
+    /* No background */
+    border-radius: 0;
+    /* No radius */
+    margin: 4px 0;
+    /* Minimal vertical Margin */
+    border: none;
+    /* NO BORDERS */
+    cursor: default;
+    /* Text cursor style mainly */
+    transition: background-color 0.1s ease;
 }
 
 .post-card.twitter-layout:hover {
     background-color: rgba(4, 4, 5, 0.07);
+    /* Hover highlight */
 }
 
 /* Left Column - Avatar */
 .post-left {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
+    /* Align left */
     padding-top: 4px;
     /* Align with text line */
 }
 
 .author-avatar {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    /* Standard Discord Size */
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
     border: none;
+    cursor: pointer;
+}
+
+.author-avatar:hover {
+    opacity: 0.8;
 }
 
 .author-placeholder {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: var(--bg-darker);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-tertiary);
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 600;
 }
 
