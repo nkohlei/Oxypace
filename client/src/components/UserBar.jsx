@@ -7,8 +7,6 @@ const UserBar = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    if (!user) return null;
-
     const [showPopover, setShowPopover] = React.useState(false);
 
     // Close popover when clicking outside
@@ -21,6 +19,8 @@ const UserBar = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showPopover]);
+
+    if (!user) return null;
 
     return (
         <div className="user-bar-container" style={{ position: 'relative' }}>
