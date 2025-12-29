@@ -216,45 +216,105 @@
 }
 
 /* Dropdown Menu */
-.post-dropdown-menu {
+/* Hover Actions (Top Right) */
+.post-card {
+    position: relative;
+    /* Ensure relative positioning for absolute children */
+}
+
+.message-hover-actions {
     position: absolute;
-    top: 100%;
-    right: 0;
-    background: var(--bg-card);
+    top: -16px;
+    right: 16px;
+    background-color: var(--bg-card);
     border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    z-index: 50;
-    min-width: 150px;
-    overflow: hidden;
-    padding: 4px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    display: none;
+    align-items: center;
+    padding: 2px;
+    z-index: 10;
+}
+
+.post-card:hover .message-hover-actions {
+    display: flex;
+}
+
+.hover-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+
+.hover-action-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Expanded Context Menu */
+.post-dropdown-menu.expanded-menu {
+    width: 240px;
+    background: #111214;
+    /* Darker black for menu */
+    border: 1px solid #1e1f22;
+    padding: 6px 8px;
+    border-radius: 4px;
+    right: 0;
+    top: 100%;
+}
+
+.menu-group {
+    display: flex;
+    flex-direction: column;
 }
 
 .menu-item {
+    padding: 8px 8px;
+    border-radius: 2px;
+    font-size: 14px;
+    color: #b5bac1;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    cursor: pointer;
-    text-align: left;
+    justify-content: space-between;
+    transition: all 0.1s;
 }
 
 .menu-item:hover {
-    background: var(--bg-hover);
+    background-color: #5865f2;
+    /* Blurple selection */
+    color: white;
 }
 
-.menu-item.delete {
-    color: #ff4757;
+.menu-divider {
+    height: 1px;
+    background-color: #1e1f22;
+    margin: 4px 0;
 }
 
-.menu-item svg {
-    width: 18px;
-    height: 18px;
+.menu-icon-right {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+}
+
+.menu-item:hover .menu-icon-right {
+    opacity: 1;
+}
+
+.menu-item.delete-item {
+    color: #fa777c;
+}
+
+.menu-item.delete-item:hover {
+    background-color: #da373c;
+    color: white;
 }
 
 /* Foggy Hidden */

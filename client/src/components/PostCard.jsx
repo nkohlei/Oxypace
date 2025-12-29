@@ -201,13 +201,18 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
     };
 
     const handleCardClick = (e) => {
-        const selection = window.getSelection();
-        if (selection.toString().length > 0) return;
-        navigate(`/post/${post._id}`);
+        // Static message - no navigation
+        e.preventDefault();
     };
 
     const handleProfileClick = (e) => {
         e.stopPropagation();
+    };
+
+    // Placeholder handlers for new menu items
+    const handleMenuAction = (action) => {
+        console.log(`Action triggered: ${action}`);
+        setShowMenu(false);
     };
 
     if (hidden && !showAnyway) {
@@ -223,7 +228,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
     }
 
     return (
-        <article className="post-card twitter-layout" onClick={handleCardClick} style={{ cursor: 'pointer' }}>
+        <article className="post-card twitter-layout" onClick={handleCardClick}>
             {/* Left Column: Avatar */}
             <div className="post-left">
                 <Link
@@ -261,48 +266,88 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
                         <span className="post-time">· {formatDate(post.createdAt)}</span>
                     </div>
 
-                    <div className="header-right" style={{ position: 'relative' }}>
-                        <button
-                            className="more-options-btn"
-                            onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="1" />
-                                <circle cx="19" cy="12" r="1" />
-                                <circle cx="5" cy="12" r="1" />
-                            </svg>
+                    {/* Discord Style Hover Actions (Top Right) */}
+                    <div className="message-hover-actions">
+                        <button className="hover-action-btn" title="Tepki Ekle" onClick={() => handleMenuAction('reaction')}>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                        </button>
+                        <button className="hover-action-btn" title="Yanıtla" onClick={() => handleMenuAction('reply')}>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                        </button>
+                        <button className="hover-action-btn" title="Daha Fazla" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                         </button>
 
+                        {/* Context Menu (Three Dots) - Expanded */}
                         {showMenu && (
-                            <div className="post-dropdown-menu">
-                                {isOwnPost && (
-                                    <button
-                                        className="menu-item delete"
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(); }}
-                                    >
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                        </svg>
-                                        Sil
+                            <div className="post-dropdown-menu expanded-menu" onClick={(e) => e.stopPropagation()}>
+                                <div className="menu-group">
+                                    <button className="menu-item" onClick={() => handleMenuAction('add_reaction')}>
+                                        Tepki Ekle
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                                     </button>
-                                )}
-                                {post.media && (
-                                    <button className="menu-item" onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                            <polyline points="7 10 12 15 17 10" />
-                                            <line x1="12" y1="15" x2="12" y2="3" />
-                                        </svg>
-                                        İndir
+                                </div>
+                                <div className="menu-divider"></div>
+                                <div className="menu-group">
+                                    <button className="menu-item" onClick={() => handleMenuAction('reply')}>
+                                        Yanıtla
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
                                     </button>
-                                )}
-                                <button className="menu-item" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                                        <line x1="4" y1="22" x2="4" y2="15" />
-                                    </svg>
-                                    Bildir
-                                </button>
+                                    <button className="menu-item" onClick={() => handleMenuAction('forward')}>
+                                        İlet
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>
+                                    </button>
+                                    <button className="menu-item" onClick={() => handleMenuAction('create_thread')}>
+                                        Alt Başlık Oluştur
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="12" x2="9" y2="12"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
+                                    </button>
+                                </div>
+                                <div className="menu-divider"></div>
+                                <div className="menu-group">
+                                    <button className="menu-item" onClick={() => { navigator.clipboard.writeText(post.content); handleMenuAction('copy_text'); }}>
+                                        Metni Kopyala
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    </button>
+                                    <button className="menu-item" onClick={() => handleMenuAction('pin')}>
+                                        Twiti Sabitle
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+                                    </button>
+                                    <button className="menu-item" onClick={() => handleMenuAction('apps')}>
+                                        Uygulamalar
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                    </button>
+                                </div>
+                                <div className="menu-divider"></div>
+
+                                <div className="menu-group">
+                                    <button className="menu-item" onClick={() => handleMenuAction('mark_unread')}>
+                                        Okunmadı Olarak İşaretle
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38" /></svg>
+                                    </button>
+                                    <button className="menu-item" onClick={() => { navigator.clipboard.writeText(window.location.origin + '/post/' + post._id); handleMenuAction('copy_link'); }}>
+                                        Mesaj Bağlantısını Kopyala
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                    </button>
+                                    <button className="menu-item" onClick={() => handleMenuAction('speak')}>
+                                        Mesajı Söylet
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                                    </button>
+                                </div>
+
+                                <div className="menu-divider"></div>
+
+                                <div className="menu-group">
+                                    {isOwnPost && (
+                                        <button className="menu-item delete-item" onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowDeleteConfirm(true); }}>
+                                            Mesajı Sil
+                                            <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        </button>
+                                    )}
+                                    <button className="menu-item delete-item" onClick={() => handleMenuAction('report')}>
+                                        Mesaj Bildir
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -310,33 +355,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
 
                 <div className="post-content-text">
                     <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {(() => {
-                            const content = isTranslated ? translatedText : (post.content || '');
-                            const shouldTruncate = content.length > 280 && !isExpanded;
-                            const displayContent = shouldTruncate ? content.substring(0, 280) + '...' : content;
-
-                            // Simple URL regex
-                            const urlRegex = /(https?:\/\/[^\s]+)/g;
-                            const parts = displayContent.split(urlRegex);
-
-                            return (
-                                <>
-                                    {parts.map((part, i) => (
-                                        part.match(urlRegex) ? (
-                                            <a key={i} href={part} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="post-link">{part}</a>
-                                        ) : part
-                                    ))}
-                                    {shouldTruncate && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-                                            className="show-more-btn"
-                                        >
-                                            Devamını göster
-                                        </button>
-                                    )}
-                                </>
-                            );
-                        })()}
+                        {post.content}
                     </p>
                     {post.content && (
                         <button
@@ -361,9 +380,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
                     )
                 }
 
-                {/* Actions */}
-                {/* Actions */}
-                {/* Actions Removed as per request */}
+                {/* No Actions displayed below content */}
 
             </div>
 
