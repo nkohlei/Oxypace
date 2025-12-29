@@ -68,85 +68,50 @@ const PortalSidebar = () => {
                             )}
                         </div>
 
-                        {/* Hover Tooltip (Portal Profile) */}
-                        <div className="portal-hover-card">
-                            <div className="hover-card-header">
-                                {portal.avatar ? (
-                                    <img src={getImageUrl(portal.avatar)} alt={portal.name} className="hover-avatar" />
-                                ) : (
-                                    <div className="hover-avatar-placeholder">{portal.name.substring(0, 2).toUpperCase()}</div>
-                                )}
-                                <h4 className="hover-portal-name">{portal.name}</h4>
-                            </div>
-                            <div className="hover-portal-meta">
-                                <span>{portal.memberCount || 1} Üye</span>
-                            </div>
+                        {/* Hover Tooltip (Simple Bubble Style) */}
+                        <div className="portal-tooltip">
+                            <span className="tooltip-text">{portal.name}</span>
+                            <div className="tooltip-arrow"></div>
                         </div>
                     </div>
                 ))}
 
                 <style>{`
-                .portal-hover-card {
+                .portal-tooltip {
                     position: absolute;
-                    left: 72px; /* Right of sidebar */
-                    top: 0;
+                    left: 78px; /* Slightly further out */
+                    top: 50%;
+                    transform: translateY(-50%);
                     background-color: #111214;
-                    border: 1px solid #1e1f22;
-                    border-radius: 8px;
-                    padding: 12px;
-                    min-width: 180px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                    opacity: 0;
-                    visibility: hidden;
-                    transition: all 0.2s ease;
-                    z-index: 1000;
-                    pointer-events: none;
-                    text-align: left;
-                }
-
-                .sidebar-item:hover .portal-hover-card {
-                    opacity: 1;
-                    visibility: visible;
-                    top: -10px; /* Slight alignment adjustment */
-                }
-
-                .hover-card-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 8px;
-                }
-
-                .hover-avatar, .hover-avatar-placeholder {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    object-fit: cover;
-                }
-
-                .hover-avatar-placeholder {
-                    background: #5865F2;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
                     color: white;
-                    font-weight: bold;
-                }
-
-                .hover-portal-name {
+                    padding: 8px 12px;
+                    border-radius: 6px;
                     font-size: 14px;
                     font-weight: 700;
-                    color: white;
-                    margin: 0;
                     white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.1s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+                    z-index: 1000;
+                    pointer-events: none;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
                 }
 
-                .hover-portal-meta {
-                    font-size: 12px;
-                    color: #b9bbbe;
+                .portal-tooltip .tooltip-arrow {
+                    position: absolute;
+                    left: -6px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 0;
+                    height: 0;
+                    border-top: 6px solid transparent;
+                    border-bottom: 6px solid transparent;
+                    border-right: 6px solid #111214;
+                }
+
+                .sidebar-item:hover .portal-tooltip {
+                    opacity: 1;
+                    visibility: visible;
                 }
             `}</style>
 

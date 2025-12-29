@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import PostCard from '../components/PostCard';
 import ChannelSidebar from '../components/ChannelSidebar';
+import MembersSidebar from '../components/MembersSidebar';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import './Portal.css';
@@ -21,6 +22,9 @@ const Portal = () => {
     // Channel State
     const [currentChannel, setCurrentChannel] = useState('general');
     const [messageText, setMessageText] = useState('');
+
+    // UI Toggles
+    const [showMembers, setShowMembers] = useState(true); // Default to open like discord
 
     const handleSendMessage = async () => {
         if (!messageText.trim()) return;
@@ -247,7 +251,12 @@ const Portal = () => {
                                 <path d="m11 14 4 4" />
                             </svg>
                         </div>
-                        <div className="icon-btn" title="Üye Listesi" onClick={() => setCurrentChannel(prev => prev === 'members' ? 'general' : 'members')}>
+                        {/* Toggle Members Sidebar */}
+                        <div
+                            className={`icon-btn ${showMembers ? 'active' : ''}`}
+                            title="Üye Listesi"
+                            onClick={() => setShowMembers(!showMembers)}
+                        >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="9" cy="7" r="4"></circle>
@@ -263,94 +272,85 @@ const Portal = () => {
                     </div>
                 </header>
 
-                {/* Channel Content (Feed) */}
-                <div className="channel-messages-area">
-                    {currentChannel === 'general' && (
-                        <>
-                            <div className="portal-feed-container discord-feed">
-                                {/* Only show create post if member */}
-                                {isMember && (
-                                    <div className="create-post-trigger" onClick={() => navigate('/create', { state: { portalId: id } })}>
-                                        {/* Create Post trigger (could be styled better, standardizing for now) */}
-                                    </div>
-                                )}
+                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                    {/* Channel Content (Feed) */}
+                    <div className="channel-messages-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        {currentChannel === 'general' ? (
+                            <>
+                                <div className="portal-feed-container discord-feed">
+                                    {/* Only show create post if member */}
+                                    {isMember && (
+                                        <div className="create-post-trigger" onClick={() => navigate('/create', { state: { portalId: id } })}>
+                                            {/* Create Post trigger (could be styled better, standardizing for now) */}
+                                        </div>
+                                    )}
 
-                                {posts.length === 0 ? (
-                                    <div className="empty-portal">
-                                        <div className="empty-portal-icon">👋</div>
-                                        <h3>#genel kanalına hoş geldin!</h3>
-                                        <p>Burası {portal.name} sunucusunun başlangıcı.</p>
-                                    </div>
-                                ) : (
-                                    posts.map((post) => (
-                                        <PostCard key={post._id} post={post} />
-                                    ))
-                                )}
+                                    {posts.length === 0 ? (
+                                        <div className="empty-portal">
+                                            <div className="empty-portal-icon">👋</div>
+                                            <h3>#genel kanalına hoş geldin!</h3>
+                                            <p>Burası {portal.name} sunucusunun başlangıcı.</p>
+                                        </div>
+                                    ) : (
+                                        posts.map((post) => (
+                                            <PostCard key={post._id} post={post} />
+                                        ))
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <div style={{ padding: '40px', textAlign: 'center', color: '#72767d' }}>
+                                <h3>#{currentChannel}</h3>
+                                <p>Bu kanalda henüz mesaj yok.</p>
                             </div>
-                        </>
-                    )}
+                        )}
 
-                    {currentChannel === 'members' && (
-                        <div style={{ padding: '20px', color: '#dcddde' }}>
-                            <h3>Üyeler ({portal.members?.length || 0})</h3>
-                            <div style={{ marginTop: '20px' }}>
-                                {/* Placeholder for member list */}
-                                {portal.members?.map((memberId, idx) => (
-                                    <div key={idx} style={{ padding: '10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                        Üye ID: {memberId}
+                        {/* Message Input Area (Fixed at Bottom of middle col) */}
+                        {(currentChannel === 'general' || currentChannel.includes('text')) && isMember && (
+                            <div className="channel-input-area">
+                                <div className="message-input-wrapper">
+                                    <button className="input-action-btn upload-btn">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
+                                        </svg>
+                                    </button>
+                                    <input
+                                        type="text"
+                                        placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
+                                        value={messageText}
+                                        onChange={(e) => setMessageText(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleSendMessage();
+                                            }
+                                        }}
+                                    />
+                                    <div className="input-right-actions">
+                                        <button className="input-action-btn">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M14.828 14.828a4 4 0 1 0-5.656-5.656 4 4 0 0 0 5.656 5.656zm-8.485 2.829l-2.828 2.828 5.657 5.657 2.828-2.829a8 8 0 1 1-5.657-5.657z"></path>
+                                            </svg>
+                                        </button>
+                                        <button className="input-action-btn">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                                <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                                <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                            </svg>
+                                        </button>
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
-                    {currentChannel !== 'general' && currentChannel !== 'members' && (
-                        <div style={{ padding: '40px', textAlign: 'center', color: '#72767d' }}>
-                            <h3>#{currentChannel}</h3>
-                            <p>Bu kanalda henüz mesaj yok.</p>
-                        </div>
+                    {/* Members Sidebar (Right Column) */}
+                    {showMembers && (
+                        <MembersSidebar members={portal.members} />
                     )}
                 </div>
-
-                {/* Message Input Area (Fixed at Bottom) */}
-                {currentChannel === 'general' && isMember && (
-                    <div className="channel-input-area">
-                        <div className="message-input-wrapper">
-                            <button className="input-action-btn upload-btn">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
-                                </svg>
-                            </button>
-                            <input
-                                type="text"
-                                placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
-                                value={messageText}
-                                onChange={(e) => setMessageText(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleSendMessage();
-                                    }
-                                }}
-                            />
-                            <div className="input-right-actions">
-                                <button className="input-action-btn">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M14.828 14.828a4 4 0 1 0-5.656-5.656 4 4 0 0 0 5.656 5.656zm-8.485 2.829l-2.828 2.828 5.657 5.657 2.828-2.829a8 8 0 1 1-5.657-5.657z"></path>
-                                    </svg>
-                                </button>
-                                <button className="input-action-btn">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                                        <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                                        <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* Edit Modal (Preserved) */}
                 {editing && (
