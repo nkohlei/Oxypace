@@ -62,18 +62,25 @@
     gap: 16px;
 }
 
-/* Scrollable Messages Area */
+/* Scrollable Messages Area Container */
 .channel-messages-area {
     flex: 1;
-    overflow-y: auto;
-    padding-bottom: 20px;
+    overflow: hidden;
+    /* Prevent container scroll */
+    padding-bottom: 0;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
-/* Discord Feed Adaptation */
+/* Discord Feed Adaptation - This is the scrollable part */
 .discord-feed {
+    flex: 1;
+    overflow-y: auto;
+    /* Scroll enabled here */
+    overflow-x: hidden;
     padding-top: 20px;
+    padding-bottom: 20px;
     width: 100%;
     max-width: 100%;
 }
@@ -116,20 +123,90 @@
     color: #dcddde;
 }
 
-/* Message Input Area */
+/* Message Input Area - Fixed at bottom visually via flex */
 .channel-input-area {
     padding: 0 16px 24px 16px;
     background-color: var(--bg-dark);
     flex-shrink: 0;
+    z-index: 20;
 }
 
 .message-input-wrapper {
-    background-color: var(--bg-darker);
-    border-radius: 8px;
+    background-color: #383a40;
+    /* Lighter, more modern input bg */
+    border-radius: 16px;
+    /* More rounded */
     display: flex;
     align-items: center;
     padding: 0 16px;
-    height: 44px;
+    height: 56px;
+    /* Thicker input */
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.message-input-wrapper:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Plus Menu Popover */
+.plus-menu {
+    position: absolute;
+    bottom: 70px;
+    /* Above the input */
+    left: 16px;
+    width: 220px;
+    background-color: #2b2d31;
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 100;
+    animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.plus-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    color: #dbdee1;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.plus-menu-item:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.plus-menu-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .input-action-btn {

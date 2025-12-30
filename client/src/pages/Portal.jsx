@@ -28,6 +28,18 @@ const Portal = () => {
     // UI Toggles
     const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
 
+    // Plus Menu State
+    const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const fileInputRef = useRef(null);
+
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            alert(`Dosya seçildi: ${file.name}\n(Bu özellik yakında aktif olacak!)`);
+            setShowPlusMenu(false);
+        }
+    };
+
     const handleSendMessage = async () => {
         if (!messageText.trim()) return;
 
@@ -311,11 +323,57 @@ const Portal = () => {
 
                         {/* Message Input Area (Fixed at Bottom of middle col) */}
                         {(currentChannel === 'general' || currentChannel.includes('text')) && isMember && (
-                            <div className="channel-input-area">
+                            <div className="channel-input-area" style={{ position: 'relative' }}>
+                                {/* Plus Menu Popover */}
+                                {showPlusMenu && (
+                                    <>
+                                        <div
+                                            style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                                            onClick={() => setShowPlusMenu(false)}
+                                        />
+                                        <div className="plus-menu">
+                                            <div className="plus-menu-item" onClick={() => fileInputRef.current.click()}>
+                                                <div className="plus-menu-icon">
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                                </div>
+                                                Dosya Yükle
+                                            </div>
+                                            <div className="plus-menu-item" onClick={() => { alert('GIF seçici yakında!'); setShowPlusMenu(false); }}>
+                                                <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '12px' }}>GIF</div>
+                                                GIF Ara
+                                            </div>
+                                            <div className="plus-menu-item" onClick={() => { alert('Anket oluşturma yakında!'); setShowPlusMenu(false); }}>
+                                                <div className="plus-menu-icon">
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20v-6M6 20V10M18 20V4" /></svg>
+                                                </div>
+                                                Anket Oluştur
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                    style={{ display: 'none' }}
+                                    multiple
+                                />
+
                                 <div className="message-input-wrapper">
-                                    <button className="input-action-btn upload-btn">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
+                                    <button
+                                        className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
+                                        onClick={() => setShowPlusMenu(!showPlusMenu)}
+                                        style={{
+                                            backgroundColor: '#383a40',
+                                            borderRadius: '50%',
+                                            width: '32px',
+                                            height: '32px',
+                                            marginRight: '12px',
+                                            color: showPlusMenu ? 'var(--primary-color)' : '#b9bbbe'
+                                        }}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
                                         </svg>
                                     </button>
                                     <input
