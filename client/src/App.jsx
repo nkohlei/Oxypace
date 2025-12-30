@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -25,6 +26,7 @@ import Portal from './pages/Portal';
 import PortalSidebar from './components/PortalSidebar';
 import Maintenance from './pages/Maintenance';
 import UserBar from './components/UserBar';
+import SplashScreen from './components/SplashScreen';
 import './AppLayout.css';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
@@ -165,6 +167,8 @@ const AppLayout = () => {
 };
 
 function App() {
+    const [showSplash, setShowSplash] = useState(true);
+
     // If maintenance mode is on, show maintenance page
     if (MAINTENANCE_MODE) {
         return <Maintenance />;
@@ -172,6 +176,7 @@ function App() {
 
     return (
         <ThemeProvider>
+            {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
             <Router>
                 <AuthProvider>
                     <SocketProvider>

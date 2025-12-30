@@ -26,7 +26,7 @@ const Portal = () => {
     const [messageText, setMessageText] = useState('');
 
     // UI Toggles
-    const [showMembers, setShowMembers] = useState(true); // Default to open like discord
+    const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
 
     const handleSendMessage = async () => {
         if (!messageText.trim()) return;
