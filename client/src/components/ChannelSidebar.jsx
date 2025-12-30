@@ -2,7 +2,7 @@ import { useRef } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
 
-const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChannel }) => {
+const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChannel, className }) => {
     if (!portal) return null;
 
     // Hardcoded demo channels to match visual requested, assuming integration later
@@ -18,8 +18,8 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
     const isSelected = (id) => currentChannel === id;
 
     return (
-        <div className="channel-sidebar" style={{
-            width: '350px',
+        <div className={`channel-sidebar ${className || ''}`} style={{
+            // Width is handled by CSS class
             height: '100%',
             backgroundColor: '#2b2d31',
             display: 'flex',
@@ -250,6 +250,26 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
 
 
             <style>{`
+                .channel-sidebar {
+                    width: 350px;
+                    transition: width 0.3s ease, transform 0.3s ease;
+                }
+                @media (max-width: 768px) {
+                    .channel-sidebar {
+                        width: 240px; /* Smaller width on mobile */
+                        position: fixed;
+                        top: 0;
+                        left: 72px; /* Next to portal sidebar */
+                        z-index: 2000;
+                        height: 100%;
+                        transform: translateX(-200%); /* Hidden by default */
+                        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+                    }
+                    .channel-sidebar.mobile-open {
+                        transform: translateX(0); /* Shown when toggled */
+                    }
+                }
+
                 .channel-item:hover {
                     background-color: rgba(79, 84, 92, 0.32) !important;
                     color: #dcddde !important;

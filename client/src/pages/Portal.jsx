@@ -6,12 +6,14 @@ import ChannelSidebar from '../components/ChannelSidebar';
 import MembersSidebar from '../components/MembersSidebar';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
+import { useUI } from '../context/UIContext';
 import './Portal.css';
 
 const Portal = () => {
     const { id } = useParams();
     const { user, updateUser } = useAuth();
     const navigate = useNavigate();
+    const { isSidebarOpen } = useUI();
 
     const [portal, setPortal] = useState(null);
     const [posts, setPosts] = useState([]);
@@ -205,12 +207,14 @@ const Portal = () => {
     return (
         <div className="app-wrapper full-height discord-layout">
             {/* Channel Sidebar */}
+            {/* Channel Sidebar */}
             <ChannelSidebar
                 portal={portal}
                 isMember={isMember}
                 onEdit={() => isOwner && setEditing(true)}
                 currentChannel={currentChannel}
                 onChangeChannel={setCurrentChannel}
+                className={isSidebarOpen ? 'mobile-open' : ''}
             />
 
             {/* Main Content Area */}

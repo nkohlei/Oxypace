@@ -59,20 +59,31 @@
         position: fixed;
         top: 0;
         left: 0;
-        width: 280px;
+        width: 72px;
+        /* icon rail width only */
         /* Standard mobile drawer width */
         transform: translateX(-100%);
         border-right: none;
         transition: transform 0.3s ease;
-        z-index: 2000;
+        z-index: 2001;
+        /* Highest priority */
     }
 
     .portal-sidebar-wrapper.sidebar-open {
         transform: translateX(0);
     }
 
+    /* Show toggle button on mobile */
     .sidebar-toggle-arrow {
-        display: none;
+        display: flex !important;
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        background-color: rgba(0, 0, 0, 0.6);
+        border-radius: 50%;
+        padding: 8px;
+        z-index: 3000;
+        color: white;
     }
 }
 
