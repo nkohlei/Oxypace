@@ -26,8 +26,10 @@
 
 .floating-image {
     position: absolute;
-    bottom: -200px; /* Start below screen */
-    width: 300px; /* Medium size */
+    bottom: -200px;
+    /* Start below screen */
+    width: 300px;
+    /* Medium size */
     opacity: 0.6;
     animation-name: floatUp;
     animation-timing-function: linear;
@@ -47,6 +49,7 @@
         transform: translateY(0) rotate(0deg);
         bottom: -300px;
     }
+
     100% {
         transform: translateY(-120vh) rotate(360deg);
         bottom: 120%;
@@ -60,7 +63,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 80%);
+    background: radial-gradient(circle at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.8) 80%);
     z-index: 2;
     backdrop-filter: blur(2px);
 }
@@ -89,11 +92,25 @@
 }
 
 @keyframes glitch-anim {
-    0% { text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00; }
-    25% { text-shadow: -2px 2px 0px #ff0000, 2px -2px 0px #00ff00; }
-    50% { text-shadow: 2px -2px 0px #ff0000, -2px 2px 0px #00ff00; }
-    75% { text-shadow: -2px -2px 0px #ff0000, 2px 2px 0px #00ff00; }
-    100% { text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00; }
+    0% {
+        text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00;
+    }
+
+    25% {
+        text-shadow: -2px 2px 0px #ff0000, 2px -2px 0px #00ff00;
+    }
+
+    50% {
+        text-shadow: 2px -2px 0px #ff0000, -2px 2px 0px #00ff00;
+    }
+
+    75% {
+        text-shadow: -2px -2px 0px #ff0000, 2px 2px 0px #00ff00;
+    }
+
+    100% {
+        text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00;
+    }
 }
 
 .message-box {
@@ -103,7 +120,8 @@
     backdrop-filter: blur(10px);
     border-radius: 4px;
     transform: skewX(-10deg);
-    border-left: 5px solid #ff3333; /* Aggressive red accent */
+    border-left: 5px solid #ff3333;
+    /* Aggressive red accent */
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -112,14 +130,16 @@
     font-weight: 600;
     margin-bottom: 1rem;
     color: #e0e0e0;
-    transform: skewX(10deg); /* Counter skew */
+    transform: skewX(10deg);
+    /* Counter skew */
 }
 
 .secondary-message {
     font-size: 1.1rem;
     color: #a0a0a0;
     font-style: italic;
-    transform: skewX(10deg); /* Counter skew */
+    transform: skewX(10deg);
+    /* Counter skew */
 }
 
 /* Brand Tag */
@@ -140,16 +160,59 @@
 }
 
 /* Mobile Responsiveness */
+/* Mobile Responsiveness */
 @media (max-width: 768px) {
+    .maintenance-content {
+        padding: 1rem;
+        width: 100%;
+    }
+
     .glitch-text {
         font-size: 3rem;
+        margin-bottom: 1.5rem;
     }
-    
+
     .floating-image {
-        width: 150px;
+        width: 120px;
+        opacity: 0.4;
+        /* Fade out more on mobile to avoid distraction */
     }
-    
+
     .primary-message {
         font-size: 1.2rem;
+    }
+
+    .brand-tag {
+        bottom: 1rem;
+        right: 1rem;
+    }
+}
+
+/* Small Mobile Screens */
+@media (max-width: 480px) {
+    .glitch-text {
+        font-size: 2.5rem;
+        /* Even smaller for portrait phones */
+        letter-spacing: 2px;
+    }
+
+    .message-box {
+        padding: 1.5rem 1rem;
+        transform: skewX(-5deg);
+        /* Less skew on small screens */
+    }
+
+    .primary-message {
+        font-size: 1.1rem;
+        transform: skewX(5deg);
+    }
+
+    .secondary-message {
+        font-size: 0.9rem;
+        transform: skewX(5deg);
+    }
+
+    .floating-image {
+        width: 100px;
     }
 }
