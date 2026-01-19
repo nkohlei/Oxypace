@@ -207,7 +207,8 @@ router.get('/me', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
             .select('-password -verificationToken')
-            .populate('joinedPortals', 'name avatar');
+            .populate('joinedPortals', 'name avatar')
+            .populate('following', 'username profile.displayName profile.avatar');
 
         // Calculate post count
         const postCount = await Post.countDocuments({ author: req.user._id });

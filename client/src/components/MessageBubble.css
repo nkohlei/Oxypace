@@ -62,9 +62,13 @@
 /* Other Message Style - Dynamic Theme */
 .message-bubble.other .message-content {
     background: var(--bg-card);
+    /* Ensure this variable is dark enough in dark mode or distinct */
     color: var(--text-primary);
     border: 1px solid var(--border-subtle);
     border-bottom-left-radius: 4px;
+    /* High contrast fallback */
+    background-color: #2a2a2a;
+    color: #ffffff;
 }
 
 /* Time Stamp */
