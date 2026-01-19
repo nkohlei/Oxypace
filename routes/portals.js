@@ -276,4 +276,134 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
     }
 });
 
+// --- Channel Management ---
+
+// @desc    Add a channel
+// @route   POST /api/portals/:id/channels
+// @access  Private (Owner/Admin)
+router.post('/:id/channels', protect, async (req, res) => {
+    try {
+        const { name } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+
+        // Authorization: Owner or Admin
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isAdmin = portal.admins.includes(req.user._id);
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        portal.channels.push({ name });
+        await portal.save();
+        res.json(portal.channels);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Delete a channel
+// @route   DELETE /api/portals/:id/channels/:channelId
+// @access  Private (Owner/Admin)
+router.delete('/:id/channels/:channelId', protect, async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isAdmin = portal.admins.includes(req.user._id);
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        portal.channels = portal.channels.filter(ch => ch._id.toString() !== req.params.channelId);
+        await portal.save();
+        res.json(portal.channels);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+// --- Member & Role Management ---
+
+// @desc    Link/Unlink Admin (Er Yönetici Atama/Alma)
+// @route   POST /api/portals/:id/roles
+// @access  Private (Owner Only - As Yönetici)
+router.post('/:id/roles', protect, async (req, res) => {
+    try {
+        const { userId, action } = req.body; // action: 'promote' or 'demote'
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+
+        // Only Owner (As Yönetici) can manage roles
+        if (portal.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only the Owner (As Yönetici) can manage roles' });
+        }
+
+        if (action === 'promote') {
+            if (!portal.admins.includes(userId)) {
+                portal.admins.push(userId);
+            }
+        } else if (action === 'demote') {
+            portal.admins = portal.admins.filter(id => id.toString() !== userId);
+        }
+
+        await portal.save();
+        // Return full member details to look reactive
+        await portal.populate('admins', 'username profile.avatar');
+        res.json(portal.admins);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Kick Member
+// @route   POST /api/portals/:id/kick
+// @access  Private (Owner/Admin)
+router.post('/:id/kick', protect, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isAdmin = portal.admins.includes(req.user._id);
+
+        // Target user check
+        if (portal.owner.toString() === userId) {
+            return res.status(400).json({ message: 'Cannot kick the owner' });
+        }
+
+        // Permissions logic
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+        // Admin cannot kick another admin (Only Owner can)
+        if (isAdmin && portal.admins.includes(userId) && !isOwner) {
+            return res.status(403).json({ message: 'Admins cannot kick other admins' });
+        }
+
+        // Remove from members and admins
+        portal.members = portal.members.filter(id => id.toString() !== userId);
+        portal.admins = portal.admins.filter(id => id.toString() !== userId);
+
+        await portal.save();
+
+        // Remove from user's joined list
+        await User.findByIdAndUpdate(userId, {
+            $pull: { joinedPortals: portal._id }
+        });
+
+        res.json({ message: 'User kicked', userId });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 export default router;

@@ -43,7 +43,22 @@ const portalSchema = new mongoose.Schema({
     themeColor: {
         type: String,
         default: '#3b82f6' // Default blue
-    }
+    },
+    channels: [{
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        type: {
+            type: String, // 'text', 'voice' etc.
+            default: 'text'
+        }
+    }],
+    joinRequests: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }]
 }, {
     timestamps: true
 });

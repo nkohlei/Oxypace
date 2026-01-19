@@ -5,15 +5,12 @@ import { getImageUrl } from '../utils/imageUtils';
 const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChannel, className }) => {
     if (!portal) return null;
 
-    // Hardcoded demo channels to match visual requested, assuming integration later
-    const channels = [
-        { id: 'welcome', name: 'welcome', type: 'text' },
-        { id: 'verify-support', name: 'verify-support', type: 'text' },
-        { id: 'announcements', name: 'wsb-announcements', type: 'announcement' },
-        // keeping mapped channels if needed, but primary focus on visual replica
-        { id: 'general', name: 'genel', type: 'text' },
-        { id: 'voice-lounge', name: 'Canlı Sohbet', type: 'voice' }
-    ];
+    // Use portal channels or fallback
+    const channels = (portal?.channels && portal.channels.length > 0)
+        ? portal.channels.map(ch => ({ id: ch._id || ch.name, name: ch.name, type: ch.type || 'text' }))
+        : [
+            { id: 'general', name: 'genel', type: 'text' }
+        ];
 
     const isSelected = (id) => currentChannel === id;
 
