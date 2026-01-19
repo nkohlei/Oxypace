@@ -70,9 +70,27 @@ router.get('/', async (req, res) => {
             }
             : {};
 
-        const portals = await Portal.find({ ...keyword, privacy: 'public' })
-            .select('-members') // Exclude members list for list view performance
-            .limit(20);
+        // Use aggregation to count members efficiently
+        const portals = await Portal.aggregate([
+            {
+                $match: {
+                    ...keyword,
+                    privacy: 'public'
+                }
+            },
+            {
+                $addFields: {
+                    memberCount: { $size: { $ifNull: ["$members", []] } } // Handle null members array safely
+                }
+            },
+            {
+                $project: {
+                    members: 0, // Exclude heavy members array
+                    __v: 0
+                }
+            },
+            { $limit: 20 }
+        ]);
 
         res.json(portals);
     } catch (error) {

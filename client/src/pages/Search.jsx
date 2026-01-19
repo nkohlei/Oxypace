@@ -186,7 +186,7 @@ const Search = () => {
                                                     <div className="card-footer">
                                                         <div className="member-count">
                                                             <div className="status-dot"></div>
-                                                            <span>{portal.members?.length || 0} Üye</span>
+                                                            <span>{portal.memberCount || 0} Üye</span>
                                                         </div>
                                                         {/* 'View' button implicit by card click, maybe visually hint? */}
                                                     </div>
