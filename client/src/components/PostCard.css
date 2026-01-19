@@ -4,26 +4,19 @@
 .post-card.twitter-layout {
     display: grid;
     grid-template-columns: 52px 1fr;
-    /* Exact Avatar Spacing */
     gap: 0;
-    /* No huge gap, controlled by padding */
     padding: 12px 16px;
-    /* Comfortable Spacing */
     background: transparent;
-    /* No background */
     border-radius: 0;
-    /* No radius */
     margin: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
     cursor: default;
-    /* Text cursor style mainly */
     transition: background-color 0.1s ease;
 }
 
 .post-card.twitter-layout:hover {
-    background-color: rgba(4, 4, 5, 0.07);
-    /* Hover highlight */
+    background-color: var(--bg-hover);
 }
 
 /* Left Column - Avatar */
@@ -31,14 +24,11 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    /* Align left */
     padding-top: 4px;
-    /* Align with text line */
 }
 
 .author-avatar {
     width: 40px;
-    /* Standard Discord Size */
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
@@ -86,19 +76,18 @@
 
 .author-name {
     font-size: 1.1rem;
-    /* Larger Name */
     font-weight: 600;
-    color: white;
+    color: var(--text-primary);
 }
 
 .author-username {
     font-size: 1rem;
-    color: #b9bbbe;
+    color: var(--text-secondary);
 }
 
 .post-time {
     font-size: 0.9rem;
-    color: #72767d;
+    color: var(--text-tertiary);
 }
 
 /* Content Text */
@@ -109,9 +98,8 @@
 
 .post-content-text p {
     font-size: 1.15rem;
-    /* Larger Body Text */
     line-height: 1.5;
-    color: #dcddde;
+    color: var(--text-primary);
     margin: 0;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -124,7 +112,6 @@
     max-height: 600px;
     display: flex;
     justify-content: flex-start;
-    /* Align to the start (left) */
 }
 
 .post-media img,
@@ -140,11 +127,9 @@
 }
 
 /* Actions */
-/* Actions */
 .post-actions {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    /* Left (Comment) - Center (Like) - Right (Share/Save) */
     align-items: center;
     width: 100%;
     max-width: 100%;
@@ -161,11 +146,9 @@
     color: var(--text-tertiary);
     cursor: pointer;
     padding: 10px;
-    /* Slightly larger hit area */
     border-radius: 50%;
     transition: all 0.2s ease;
     justify-content: start;
-    /* Default left align */
     min-width: 40px;
 }
 
@@ -179,7 +162,6 @@
 .actions-right {
     display: flex;
     gap: 8px;
-    /* Space between Share and Save */
     justify-self: end;
     align-items: center;
 }
@@ -195,13 +177,12 @@
 }
 
 .action-btn:hover {
-    background: rgba(29, 155, 240, 0.1);
+    background: var(--bg-hover);
     color: var(--primary-cyan);
 }
 
 .action-btn.liked {
     color: #f91880;
-    /* Twitter Pink/Red */
 }
 
 .action-btn.liked:hover {
@@ -212,16 +193,9 @@
     color: var(--primary-cyan);
 }
 
-.actions-right {
-    display: flex;
-    gap: 4px;
-}
-
 /* Dropdown Menu */
-/* Hover Actions (Top Right) */
 .post-card {
     position: relative;
-    /* Ensure relative positioning for absolute children */
 }
 
 .message-hover-actions {
@@ -231,7 +205,7 @@
     background-color: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-popover);
     display: none;
     align-items: center;
     padding: 2px;
@@ -263,9 +237,8 @@
 /* Expanded Context Menu */
 .post-dropdown-menu.expanded-menu {
     width: 240px;
-    background: #111214;
-    /* Darker black for menu */
-    border: 1px solid #1e1f22;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
     padding: 6px 8px;
     border-radius: 4px;
     right: 0;
@@ -281,7 +254,7 @@
     padding: 8px 8px;
     border-radius: 2px;
     font-size: 14px;
-    color: #b5bac1;
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -289,14 +262,13 @@
 }
 
 .menu-item:hover {
-    background-color: #5865f2;
-    /* Blurple selection */
-    color: white;
+    background-color: var(--primary-cyan);
+    color: #000;
 }
 
 .menu-divider {
     height: 1px;
-    background-color: #1e1f22;
+    background-color: var(--border-subtle);
     margin: 4px 0;
 }
 
@@ -311,11 +283,11 @@
 }
 
 .menu-item.delete-item {
-    color: #fa777c;
+    color: var(--primary-red);
 }
 
 .menu-item.delete-item:hover {
-    background-color: #da373c;
+    background-color: var(--primary-red);
     color: white;
 }
 
@@ -360,10 +332,13 @@
     border-radius: 16px;
     text-align: center;
     width: 300px;
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-popover);
 }
 
 .delete-confirm-modal h3 {
     margin-bottom: 8px;
+    color: var(--text-primary);
 }
 
 .delete-confirm-modal p {
@@ -386,29 +361,27 @@
 }
 
 .btn-cancel {
-    background: var(--border-subtle);
+    background: var(--bg-input);
     color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
 }
 
 .btn-delete {
-    background: #e0245e;
+    background: var(--primary-red);
     color: white;
 }
 
-/* Comment Section Wrapper - Indent slightly less than full content width if needed */
+/* Comment Section Wrapper */
 .post-comments-wrapper {
     margin-top: 12px;
     border-top: 1px solid var(--border-subtle);
     padding-top: 12px;
 }
 
-
-
 .translation-toggle {
     background: transparent;
     border: none;
     color: #d600ad;
-    /* Dark Pink */
     font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
