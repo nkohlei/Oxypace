@@ -9,8 +9,6 @@ import NewMessageModal from '../components/NewMessageModal';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import './Inbox.css';
-import Badge from '../components/Badge';
-import './Inbox.css';
 
 const Inbox = () => {
     const [searchParams] = useSearchParams();
