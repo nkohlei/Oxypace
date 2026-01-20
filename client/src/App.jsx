@@ -63,8 +63,7 @@ const AppLayout = () => {
                 <PortalSidebar />
             </div>
 
-            {/* Global User Bar */}
-            <UserBar />
+            {/* Global User Bar Removed - Moved to Sidebars */}
 
             <div className="main-content-wrapper">
                 <Routes>
