@@ -161,6 +161,11 @@ router.get('/conversations', protect, async (req, res) => {
         const conversationsMap = new Map();
 
         messages.forEach((msg) => {
+            // Safety check for orphaned messages
+            if (!msg.sender || !msg.recipient) {
+                return;
+            }
+
             const otherUser = msg.sender._id.toString() === userId.toString()
                 ? msg.recipient
                 : msg.sender;
