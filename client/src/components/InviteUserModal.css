@@ -52,6 +52,32 @@
     margin: 0;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.copy-link-btn {
+    background: #2f3136;
+    border: none;
+    color: #b9bbbe;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.copy-link-btn:hover {
+    background: #40444b;
+    color: #fff;
+}
+
 .close-btn {
     background: none;
     border: none;

@@ -63,6 +63,27 @@ const Search = () => {
         }
     };
 
+    const handleJoinPortal = async (e, portalId, isPrivate) => {
+        e.stopPropagation();
+        try {
+            const res = await axios.post(`/api/portals/${portalId}/join`);
+            // Update local state to reflect change
+            setPortalResults(prev => prev.map(p => {
+                if (p._id === portalId) {
+                    if (res.data.status === 'requested') {
+                        return { ...p, isRequested: true };
+                    } else {
+                        return { ...p, isMember: true, memberCount: (p.memberCount || 0) + 1 };
+                    }
+                }
+                return p;
+            }));
+        } catch (err) {
+            console.error('Join failed:', err);
+            alert(err.response?.data?.message || 'İşlem başarısız oldu.');
+        }
+    };
+
     const handleInputChange = (e) => {
         const value = e.target.value;
         setQuery(value);
@@ -188,7 +209,23 @@ const Search = () => {
                                                             <div className="status-dot"></div>
                                                             <span>{portal.memberCount || 0} Üye</span>
                                                         </div>
-                                                        {/* 'View' button implicit by card click, maybe visually hint? */}
+
+                                                        {portal.isMember ? (
+                                                            <button className="join-status-btn joined" onClick={(e) => e.stopPropagation()}>
+                                                                Üyesiniz
+                                                            </button>
+                                                        ) : portal.isRequested ? (
+                                                            <button className="join-status-btn requested" onClick={(e) => e.stopPropagation()}>
+                                                                İstek Gönderildi
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                className={`join-action-btn ${portal.privacy === 'private' ? 'request' : 'join'}`}
+                                                                onClick={(e) => handleJoinPortal(e, portal._id, portal.privacy === 'private')}
+                                                            >
+                                                                {portal.privacy === 'private' ? 'İstek Gönder' : 'Katıl'}
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

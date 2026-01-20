@@ -60,8 +60,8 @@ router.post('/', protect, async (req, res) => {
 
 // @desc    Get all portals (Search & Popular)
 // @route   GET /api/portals
-// @access  Public
-router.get('/', async (req, res) => {
+// @access  Public (Optional Auth)
+router.get('/', optionalProtect, async (req, res) => {
     try {
         const keyword = req.query.keyword
             ? {
@@ -72,34 +72,32 @@ router.get('/', async (req, res) => {
             }
             : {};
 
-        // Use aggregation to count members efficiently
-        const portals = await Portal.aggregate([
-            {
-                $match: {
-                    ...keyword,
-                    privacy: 'public'
-                }
-            },
-            {
-                $addFields: {
-                    memberCount: { $size: { $ifNull: ["$members", []] } } // Handle null members array safely
-                }
-            },
-            {
-                $project: {
-                    members: 0, // Exclude heavy members array
-                    __v: 0
-                }
-            },
-            { $limit: 20 }
-        ]);
+        const portals = await Portal.find(keyword)
+            .select('name description avatar banner privacy members joinRequests themeColor')
+            .limit(20);
 
-        res.json(portals);
+        const userId = req.user?._id?.toString();
+        const formattedPortals = portals.map(portal => {
+            const portalObj = portal.toObject();
+            portalObj.memberCount = portal.members?.length || 0;
+
+            if (userId) {
+                portalObj.isMember = portal.members.some(m => m.toString() === userId);
+                portalObj.isRequested = portal.joinRequests?.some(r => r.toString() === userId);
+            }
+
+            // Remove potentially large arrays before sending
+            delete portalObj.members;
+            delete portalObj.joinRequests;
+
+            return portalObj;
+        });
+
+        res.json(formattedPortals);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
-
 // @desc    Get portal by ID
 // @route   GET /api/portals/:id
 // @access  Private (if private) / Public
@@ -123,24 +121,34 @@ router.get('/:id', async (req, res) => {
 // @desc    Get posts for a specific portal
 // @route   GET /api/portals/:id/posts
 // @access  Public (if public portal) / Private (if private)
-router.get('/:id/posts', async (req, res) => {
+router.get('/:id/posts', optionalProtect, async (req, res) => {
     try {
         const portalId = req.params.id;
         const channel = req.query.channel || 'general';
+
+        const portal = await Portal.findById(portalId);
+        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+
+        // Privacy Check
+        if (portal.privacy === 'private') {
+            const userId = req.user?._id;
+            const isMember = userId && portal.members.some(m => m.toString() === userId.toString());
+            if (!isMember) {
+                return res.status(403).json({ message: 'Bu portal gizlidir. İçeriği görmek için üye olmalısınız.' });
+            }
+        }
 
         // Define query based on channel
         let query = { portal: portalId };
 
         if (channel === 'general') {
-            // Match 'general' explicitly, OR posts with no channel (legacy)
             query.$or = [
                 { channel: 'general' },
-                { channel: 'genel' }, // Handle turkish var
+                { channel: 'genel' },
                 { channel: { $exists: false } },
                 { channel: null }
             ];
         } else {
-            // Specific channel ID or name
             query.channel = channel;
         }
 
@@ -162,13 +170,25 @@ router.post('/:id/join', protect, async (req, res) => {
         const portal = await Portal.findById(req.params.id);
 
         if (!portal) {
-            return res.status(404).json({ message: 'Portal not found' });
+            return res.status(404).json({ message: 'Portal bulunamadı' });
         }
 
-        if (portal.members.includes(req.user._id)) {
-            return res.status(400).json({ message: 'Already a member' });
+        if (portal.members.some(m => m.toString() === req.user._id.toString())) {
+            return res.status(400).json({ message: 'Zaten üyesiniz' });
         }
 
+        if (portal.privacy === 'private') {
+            // Check if already requested
+            if (portal.joinRequests && portal.joinRequests.some(r => r.toString() === req.user._id.toString())) {
+                return res.status(400).json({ message: 'Zaten üyelik isteği gönderdiniz' });
+            }
+
+            portal.joinRequests.push(req.user._id);
+            await portal.save();
+            return res.json({ message: 'Üyelik isteğiniz gönderildi', status: 'requested' });
+        }
+
+        // Public portal: Join immediately
         portal.members.push(req.user._id);
         await portal.save();
 
@@ -176,7 +196,7 @@ router.post('/:id/join', protect, async (req, res) => {
             $addToSet: { joinedPortals: portal._id }
         });
 
-        res.json({ message: 'Joined portal successfully' });
+        res.json({ message: 'Portala başarıyla katıldınız', status: 'joined' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

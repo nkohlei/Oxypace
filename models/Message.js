@@ -23,6 +23,10 @@ const messageSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Post',
     },
+    sharedPortal: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Portal',
+    },
     read: {
         type: Boolean,
         default: false,

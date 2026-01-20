@@ -33,7 +33,9 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
 
     const [showLightbox, setShowLightbox] = React.useState(false);
     const [dynamicPost, setDynamicPost] = React.useState(null);
+    const [dynamicPortal, setDynamicPortal] = React.useState(null);
     const [loadingError, setLoadingError] = React.useState(false);
+    const [portalLoadingError, setPortalLoadingError] = React.useState(false);
     const [confirmDelete, setConfirmDelete] = React.useState(false);
     const [showEmojiMenu, setShowEmojiMenu] = React.useState(false);
     const [showActionsMobile, setShowActionsMobile] = React.useState(false);
@@ -43,7 +45,6 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         if (message.sharedPost && typeof message.sharedPost === 'string') {
             const fetchSharedPost = async () => {
                 try {
-                    // Use axios to leverage global config (base URL + auth headers)
                     const response = await axios.get(`/api/posts/${message.sharedPost}`);
                     setDynamicPost(response.data);
                 } catch (error) {
@@ -53,7 +54,20 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
             };
             fetchSharedPost();
         }
-    }, [message.sharedPost]);
+
+        if (message.sharedPortal && typeof message.sharedPortal === 'string') {
+            const fetchSharedPortal = async () => {
+                try {
+                    const response = await axios.get(`/api/portals/${message.sharedPortal}`);
+                    setDynamicPortal(response.data);
+                } catch (error) {
+                    console.error('Failed to fetch shared portal details:', error);
+                    setPortalLoadingError(true);
+                }
+            };
+            fetchSharedPortal();
+        }
+    }, [message.sharedPost, message.sharedPortal]);
 
     // Close menu when clicking outside
     React.useEffect(() => {
@@ -67,6 +81,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     }, [showEmojiMenu]);
 
     const displayPost = (typeof message.sharedPost === 'object') ? message.sharedPost : dynamicPost;
+    const displayPortal = (typeof message.sharedPortal === 'object') ? message.sharedPortal : dynamicPortal;
 
     const toggleLightbox = (e) => {
         if (e) e.stopPropagation();
@@ -214,6 +229,34 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                     {loadingError ? 'Gönderi yüklenemedi (Silinmiş olabilir)' : 'Gönderi yükleniyor...'}
                                 </div>
                             </Link>
+                        ) : null}
+
+                        {displayPortal ? (
+                            <div className="shared-portal-card">
+                                <div className="shared-portal-header">
+                                    <img
+                                        src={getImageUrl(displayPortal.avatar)}
+                                        alt={displayPortal.name}
+                                        className="shared-portal-avatar"
+                                    />
+                                    <div className="shared-portal-info">
+                                        <h4>{displayPortal.name}</h4>
+                                        <p>{displayPortal.description?.substring(0, 60) || 'Dinamik bir portal...'}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    className="view-portal-btn"
+                                    onClick={() => window.location.href = `/portal/${displayPortal._id}`}
+                                >
+                                    Portalı Görüntüle
+                                </button>
+                            </div>
+                        ) : message.sharedPortal ? (
+                            <div className="shared-portal-card fallback">
+                                <div className="shared-portal-content" style={{ color: portalLoadingError ? 'var(--error-color)' : 'inherit' }}>
+                                    {portalLoadingError ? 'Portal yüklenemedi' : 'Portal yükleniyor...'}
+                                </div>
+                            </div>
                         ) : null}
 
                         {message.content && <div className="message-content">{message.content}</div>}

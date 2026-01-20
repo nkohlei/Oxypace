@@ -86,11 +86,11 @@ router.post('/', protect, (req, res, next) => {
     });
 }, async (req, res) => {
     try {
-        const { recipientId, content, postId, replyToId } = req.body;
+        const { recipientId, content, postId, portalId, replyToId } = req.body;
         const media = req.file ? req.file.path : undefined;
 
-        if (!recipientId || (!content && !media && !postId)) {
-            return res.status(400).json({ message: 'Mesaj veya resim boş olamaz.' });
+        if (!recipientId || (!content && !media && !postId && !portalId)) {
+            return res.status(400).json({ message: 'Mesaj veya paylaşılan içerik boş olamaz.' });
         }
 
         const recipient = await User.findById(recipientId);
@@ -104,6 +104,7 @@ router.post('/', protect, (req, res, next) => {
             content: content || '',
             media,
             sharedPost: postId,
+            sharedPortal: portalId,
             replyTo: replyToId
         };
 
@@ -115,6 +116,10 @@ router.post('/', protect, (req, res, next) => {
             .populate({
                 path: 'sharedPost',
                 populate: { path: 'author', select: 'username profile.displayName profile.avatar' }
+            })
+            .populate({
+                path: 'sharedPortal',
+                select: 'name avatar description'
             })
             .populate({
                 path: 'replyTo',
@@ -150,6 +155,10 @@ router.get('/conversations', protect, async (req, res) => {
                     path: 'author',
                     select: 'username profile.displayName profile.avatar'
                 }
+            })
+            .populate({
+                path: 'sharedPortal',
+                select: 'name avatar description'
             })
             .populate({
                 path: 'replyTo',
@@ -218,6 +227,10 @@ router.get('/:userId', protect, async (req, res) => {
                     path: 'author',
                     select: 'username profile.displayName profile.avatar'
                 }
+            })
+            .populate({
+                path: 'sharedPortal',
+                select: 'name avatar description'
             })
             .populate({
                 path: 'replyTo',

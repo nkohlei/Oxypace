@@ -124,15 +124,16 @@ const Portal = () => {
 
     const fetchChannelPosts = async () => {
         try {
-            // If currentChannel is a name (like 'general') or ID. 
-            // Our backend handles 'general' or ID.
-            // But wait, sidebar uses names for display? 
-            // Sidebar uses: { id: ch._id || ch.name, ... }
-            // If it uses ID, we send ID. If it uses 'general', we send 'general'.
             const res = await axios.get(`/api/portals/${id}/posts?channel=${currentChannel}`);
             setPosts(res.data);
+            setError(''); // Clear any privacy error
         } catch (err) {
             console.error('Fetch posts failed', err);
+            if (err.response?.status === 403) {
+                setError('private');
+            } else {
+                setError('Gönderiler yüklenemedi');
+            }
         } finally {
             setLoading(false);
         }
@@ -140,17 +141,24 @@ const Portal = () => {
 
     const handleJoin = async () => {
         try {
-            await axios.post(`/api/portals/${id}/join`);
-            setIsMember(true);
-            const updatedUser = {
-                ...user,
-                joinedPortals: [...(user.joinedPortals || []), portal]
-            };
-            updateUser(updatedUser);
-            // Refresh portal members count
-            setPortal(prev => ({ ...prev, members: [...(prev.members || []), user._id] }));
+            const res = await axios.post(`/api/portals/${id}/join`);
+            if (res.data.status === 'joined') {
+                setIsMember(true);
+                const updatedUser = {
+                    ...user,
+                    joinedPortals: [...(user.joinedPortals || []), portal]
+                };
+                updateUser(updatedUser);
+                setPortal(prev => ({ ...prev, members: [...(prev.members || []), user._id] }));
+                // Fetch posts now that we are a member
+                fetchChannelPosts();
+            } else {
+                alert('Üyelik isteğiniz gönderildi!');
+                setPortal(prev => ({ ...prev, isRequested: true }));
+            }
         } catch (err) {
             console.error('Join failed', err);
+            alert(err.response?.data?.message || 'Katılma başarısız');
         }
     };
 
@@ -232,27 +240,46 @@ const Portal = () => {
                     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                         {/* Channel Content (Feed) */}
                         <div className="channel-messages-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <div className="portal-feed-container discord-feed">
-                                {/* Feed Header / Welcome */}
-                                {posts.length === 0 && !loading && (
-                                    <div className="empty-portal">
-                                        <div className="empty-portal-icon">👋</div>
-                                        <h3>#{currentChannel === 'general' ? 'genel' : currentChannel} kanalına hoş geldin!</h3>
-                                        <p>
-                                            {currentChannel === 'general'
-                                                ? `Burası ${portal.name} sunucusunun başlangıcı.`
-                                                : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
-                                        </p>
+                            {error === 'private' ? (
+                                <div className="portal-privacy-screen">
+                                    <div className="privacy-card">
+                                        <div className="privacy-icon">🔒</div>
+                                        <img src={getImageUrl(portal.avatar)} alt="" className="privacy-avatar" />
+                                        <h2>{portal.name}</h2>
+                                        <p className="privacy-desc">{portal.description || 'Bu portal gizlidir.'}</p>
+                                        <p className="privacy-hint">İçeriği görmek ve mesajlaşmak için üye olmalısın.</p>
+
+                                        {portal.isRequested ? (
+                                            <button className="privacy-join-btn requested" disabled>İstek Gönderildi</button>
+                                        ) : (
+                                            <button className="privacy-join-btn" onClick={handleJoin}>
+                                                {portal.privacy === 'private' ? 'Üyelik İsteği Gönder' : 'Portala Katıl'}
+                                            </button>
+                                        )}
                                     </div>
-                                )}
+                                </div>
+                            ) : (
+                                <div className="portal-feed-container discord-feed">
+                                    {/* Feed Header / Welcome */}
+                                    {posts.length === 0 && !loading && (
+                                        <div className="empty-portal">
+                                            <div className="empty-portal-icon">👋</div>
+                                            <h3>#{currentChannel === 'general' ? 'genel' : currentChannel} kanalına hoş geldin!</h3>
+                                            <p>
+                                                {currentChannel === 'general'
+                                                    ? `Burası ${portal.name} sunucusunun başlangıcı.`
+                                                    : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
+                                            </p>
+                                        </div>
+                                    )}
 
-                                {/* Posts List */}
-                                {posts.map((post) => (
-                                    <PostCard key={post._id} post={post} />
-                                ))}
-                            </div>
+                                    {/* Posts List */}
+                                    {posts.map((post) => (
+                                        <PostCard key={post._id} post={post} />
+                                    ))}
+                                </div>
+                            )}
 
-                            {/* Message Input Area */}
                             {/* Message Input Area */}
                             {isMember && (
                                 <div className="channel-input-area" style={{ position: 'relative' }}>

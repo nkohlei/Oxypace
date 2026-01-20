@@ -50,13 +50,19 @@ router.post('/', protect, (req, res, next) => {
         const postData = {
             author: req.user._id,
             content: content || '',
-        };
+        }; if (portalId) {
+            const Portal = (await import('../models/Portal.js')).default;
+            const portal = await Portal.findById(portalId);
+            if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
 
-        if (portalId) {
+            const isMember = portal.members.some(m => m.toString() === req.user._id.toString());
+            if (!isMember) {
+                return res.status(403).json({ message: 'Gönderi paylaşmak için bu portala üye olmalısınız.' });
+            }
+
             postData.portal = portalId;
             postData.channel = req.body.channel || 'general'; // Default to general if in portal
         }
-
         if (req.file) {
             postData.media = req.file.path;
             if (req.file.mimetype.includes('video')) {
