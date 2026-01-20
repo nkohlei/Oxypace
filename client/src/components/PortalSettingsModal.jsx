@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import './PortalSettingsModal.css';
@@ -19,29 +19,34 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
     // Channel State
     const [newChannelName, setNewChannelName] = useState('');
 
-    // Safe Accessors
+    // Member State
+    const [memberSearch, setMemberSearch] = useState('');
+
+    // Access Control
     const ownerId = portal.owner?._id || portal.owner;
     const currentUserId = currentUser?._id;
-    const isOwner = ownerId && currentUserId && (ownerId === currentUserId);
-
-    // Admins IDs are simple strings if not populated deep, handled carefully
-    const isAdmin = isOwner || (portal.admins && currentUserId && portal.admins.some(a => (a._id || a) === currentUserId));
+    // Strict Owner check
+    const isOwner = ownerId && currentUserId && (String(ownerId) === String(currentUserId));
+    // Admin check
+    const isAdmin = isOwner || (portal.admins && currentUserId && portal.admins.some(a => (String(a._id || a) === String(currentUserId))));
 
     // --- Overview Handlers ---
     const handleSaveOverview = async () => {
+        if (!isOwner) return; // double check
         setLoading(true);
         try {
             const res = await axios.put(`/api/portals/${portal._id}`, formData);
             onUpdate(res.data);
             alert('Ayarlar kaydedildi');
         } catch (err) {
-            alert('Kaydetme hatası');
+            alert('Kaydetme hatası: ' + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
     };
 
     const handleFileUpload = async (e, type) => {
+        if (!isOwner) return;
         const file = e.target.files[0];
         if (!file) return;
         const form = new FormData();
@@ -60,9 +65,9 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
     // --- Channel Handlers ---
     const handleAddChannel = async () => {
         if (!newChannelName.trim()) return;
+        if (!isAdmin) return;
         try {
             const res = await axios.post(`/api/portals/${portal._id}/channels`, { name: newChannelName });
-            // res.data is channels array
             onUpdate({ ...portal, channels: res.data });
             setNewChannelName('');
         } catch (err) {
@@ -71,7 +76,8 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
     };
 
     const handleDeleteChannel = async (channelId) => {
-        if (!window.confirm('Kanalı silmek istediğinize emin misiniz?')) return;
+        if (!isAdmin) return;
+        if (!window.confirm('Bu kanalı silmek istediğinize emin misiniz?')) return;
         try {
             const res = await axios.delete(`/api/portals/${portal._id}/channels/${channelId}`);
             onUpdate({ ...portal, channels: res.data });
@@ -82,141 +88,233 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
 
     // --- Member Handlers ---
     const handleKick = async (userId) => {
+        if (!isAdmin) return;
         if (!window.confirm('Üyeyi portaldan atmak istiyor musunuz?')) return;
         try {
             await axios.post(`/api/portals/${portal._id}/kick`, { userId });
+            const kickedUserId = String(userId);
             onUpdate({
                 ...portal,
-                members: portal.members.filter(m => (m._id || m) !== userId),
-                admins: portal.admins.filter(a => (a._id || a) !== userId)
+                members: portal.members.filter(m => String(m._id || m) !== kickedUserId),
+                admins: portal.admins.filter(a => String(a._id || a) !== kickedUserId)
             });
         } catch (err) {
-            alert('Üye atılamadı');
+            alert('Üye atılamadı: ' + (err.response?.data?.message || 'Yetkisiz işlem'));
         }
     };
 
     const handleRole = async (userId, action) => {
-        // action: 'promote' | 'demote'
+        if (!isOwner) return; // Only Owner can promote/demote admins
         try {
             const res = await axios.post(`/api/portals/${portal._id}/roles`, { userId, action });
-            // Update local admins list essentially
-            // For simplicity, we might need to refresh full portal or verify response
-            // Currently assuming optimistic or response usage
-            // The backend returns updated admins array
-            // We need to fetch full portal usually to sync everything, but lets try to patch
-            // Ideally we'd map the full objects. 
-            // For now, let's just trigger a lightweight refresh request from parent or use returned IDs?
-            // Route returns populated admins. 
             onUpdate({ ...portal, admins: res.data });
         } catch (err) {
             alert('Yetki değiştirilemedi');
         }
     };
 
+    const filteredMembers = (portal.members || []).filter(m => {
+        const username = m.username || '';
+        return username.toLowerCase().includes(memberSearch.toLowerCase());
+    });
+
     return (
         <div className="settings-modal-overlay" onClick={onClose}>
             <div className="settings-modal" onClick={e => e.stopPropagation()}>
+                {/* Sidebar */}
                 <div className="settings-sidebar">
-                    <h3>Portal Ayarları</h3>
-                    <div className={`settings-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Genel Bakış</div>
-                    <div className={`settings-tab ${activeTab === 'channels' ? 'active' : ''}`} onClick={() => setActiveTab('channels')}>Kanallar</div>
-                    <div className={`settings-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>Üyeler & Roller</div>
+                    <div className="sidebar-header">
+                        <div className="sidebar-portal-name">{portal.name}</div>
+                    </div>
+
+                    <div className="form-label" style={{ paddingLeft: '10px', marginBottom: '8px' }}>Genel</div>
+                    <div
+                        className={`settings-tab ${activeTab === 'overview' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('overview')}
+                    >
+                        Genel Bakış
+                    </div>
+
+                    <div className="form-label" style={{ paddingLeft: '10px', marginTop: '20px', marginBottom: '8px' }}>Yönetim</div>
+                    <div
+                        className={`settings-tab ${activeTab === 'channels' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('channels')}
+                    >
+                        Kanallar
+                    </div>
+                    <div
+                        className={`settings-tab ${activeTab === 'members' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('members')}
+                    >
+                        Üyeler
+                    </div>
                 </div>
 
+                {/* Content */}
                 <div className="settings-content">
-                    <button className="close-settings-btn" onClick={onClose}>✕</button>
+                    <button className="close-settings-btn" onClick={onClose}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
 
                     {activeTab === 'overview' && (
-                        <div className="tab-pane">
-                            <h2>Genel Bakış</h2>
-                            <div className="input-group">
-                                <label>Portal Adı</label>
-                                <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                        <div className="animate-fade-in">
+                            <h2 className="settings-title">Genel Bakış</h2>
+
+                            <div className="images-grid">
+                                <div className="image-preview-box banner-box" onClick={() => isOwner && bannerRef.current.click()}>
+                                    {portal.banner ?
+                                        <img src={getImageUrl(portal.banner)} alt="" className="banner-img" /> :
+                                        <div style={{ color: '#72767d' }}>Banner Yok</div>
+                                    }
+                                    {isOwner && <div className="upload-overlay">Banner Değiştir</div>}
+                                </div>
+                                <div className="image-preview-box avatar-box" onClick={() => isOwner && avatarRef.current.click()}>
+                                    {portal.avatar ?
+                                        <img src={getImageUrl(portal.avatar)} alt="" className="avatar-img" /> :
+                                        <div style={{ color: '#72767d', fontSize: '2rem', fontWeight: 'bold' }}>{portal.name[0]}</div>
+                                    }
+                                    {isOwner && <div className="upload-overlay">Logo</div>}
+                                </div>
                             </div>
-                            <div className="input-group">
-                                <label>Açıklama</label>
-                                <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+
+                            <input type="file" ref={bannerRef} onChange={e => handleFileUpload(e, 'banner')} hidden accept="image/*" />
+                            <input type="file" ref={avatarRef} onChange={e => handleFileUpload(e, 'avatar')} hidden accept="image/*" />
+
+                            <div className="form-group">
+                                <label className="form-label">Portal Adı</label>
+                                <input
+                                    className="form-input"
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    disabled={!isOwner}
+                                />
                             </div>
-                            <div className="action-buttons">
-                                <button className="save-btn" onClick={handleSaveOverview} disabled={loading}>
-                                    {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+
+                            <div className="form-group">
+                                <label className="form-label">Açıklama</label>
+                                <textarea
+                                    className="form-textarea"
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    disabled={!isOwner}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Gizlilik</label>
+                                <select
+                                    className="form-input"
+                                    value={formData.privacy}
+                                    onChange={e => setFormData({ ...formData, privacy: e.target.value })}
+                                    disabled={!isOwner}
+                                >
+                                    <option value="public">Herkese Açık</option>
+                                    <option value="private">Gizli (Sadece Davet)</option>
+                                </select>
+                            </div>
+
+                            {isOwner && (
+                                <button className="btn-save" onClick={handleSaveOverview} disabled={loading}>
+                                    {loading ? '...' : 'Değişiklikleri Kaydet'}
                                 </button>
-                            </div>
-
-                            <hr className="divider" />
-
-                            <h3>Görseller</h3>
-                            <div className="upload-section">
-                                <div className="upload-item">
-                                    <label>Banner</label>
-                                    <div className="banner-preview" onClick={() => bannerRef.current.click()}>
-                                        {portal.banner ? <img src={getImageUrl(portal.banner)} alt="" /> : <div className="placeholder">Banner Ekle</div>}
-                                    </div>
-                                    <input type="file" ref={bannerRef} onChange={e => handleFileUpload(e, 'banner')} hidden />
-                                </div>
-                                <div className="upload-item">
-                                    <label>Logo</label>
-                                    <div className="avatar-preview" onClick={() => avatarRef.current.click()}>
-                                        {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt="" /> : <div className="placeholder">Logo</div>}
-                                    </div>
-                                    <input type="file" ref={avatarRef} onChange={e => handleFileUpload(e, 'avatar')} hidden />
-                                </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
                     {activeTab === 'channels' && (
-                        <div className="tab-pane">
-                            <h2>Kanallar</h2>
-                            <div className="add-channel-row">
-                                <input
-                                    placeholder="Yeni kanal adı (örn: sohbet)"
-                                    value={newChannelName}
-                                    onChange={e => setNewChannelName(e.target.value)}
-                                />
-                                <button className="btn-primary-small" onClick={handleAddChannel}>Ekle +</button>
-                            </div>
-                            <div className="channels-list">
+                        <div className="animate-fade-in">
+                            <h2 className="settings-title">Kanallar</h2>
+
+                            {isAdmin && (
+                                <div className="add-channel-bar">
+                                    <input
+                                        className="form-input"
+                                        placeholder="Yeni kanal adı (örn: oyun, müzik)"
+                                        value={newChannelName}
+                                        onChange={e => setNewChannelName(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleAddChannel()}
+                                    />
+                                    <button className="btn-save" style={{ background: '#5865f2' }} onClick={handleAddChannel}>Oluştur</button>
+                                </div>
+                            )}
+
+                            <div className="channel-list">
                                 {portal.channels && portal.channels.map(ch => (
-                                    <div key={ch._id} className="channel-item">
-                                        <span># {ch.name}</span>
-                                        <button className="btn-delete-icon" onClick={() => handleDeleteChannel(ch._id)}>🗑️</button>
+                                    <div key={ch._id} className="channel-row">
+                                        <div className="channel-name">
+                                            <span style={{ color: '#72767d', marginRight: '4px' }}>#</span>
+                                            {ch.name}
+                                        </div>
+                                        {isAdmin && (
+                                            <div className="channel-actions">
+                                                <button onClick={() => handleDeleteChannel(ch._id)} title="Kanalı Sil">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
-                                {(!portal.channels || portal.channels.length === 0) && <p className="empty-text">Henüz özel kanal yok.</p>}
+                                {(!portal.channels || portal.channels.length === 0) && (
+                                    <div style={{ padding: '20px', textAlign: 'center', color: '#72767d' }}>Hiç kanal yok.</div>
+                                )}
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'members' && (
-                        <div className="tab-pane">
-                            <h2>Üyeler ({portal.members?.length})</h2>
-                            <div className="members-list-scroll">
-                                {portal.members && portal.members.map(member => {
+                        <div className="animate-fade-in">
+                            <h2 className="settings-title">Üyeler ({portal.members?.length || 0})</h2>
+
+                            <div className="form-group">
+                                <input
+                                    className="form-input"
+                                    placeholder="Üye ara..."
+                                    value={memberSearch}
+                                    onChange={e => setMemberSearch(e.target.value)}
+                                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                                />
+                            </div>
+
+                            <div className="members-list">
+                                {filteredMembers.map(member => {
                                     const memberId = member._id || member;
-                                    const isAdminMember = portal.admins.some(a => (a._id || a) === memberId);
-                                    const isOwnerMember = ownerId === memberId;
+                                    const isAdminMember = portal.admins.some(a => String(a._id || a) === String(memberId));
+                                    const isOwnerMember = String(ownerId) === String(memberId);
 
                                     return (
-                                        <div key={memberId} className="member-row">
-                                            <div className="member-info">
-                                                <img src={getImageUrl(member.profile?.avatar)} alt="" className="member-avatar-small" onError={(e) => e.target.style.display = 'none'} />
-                                                <div>
-                                                    <span className="member-name">{member.username || 'Kullanıcı'}</span>
-                                                    {isOwnerMember && <span className="badge owner">As Yönetici</span>}
-                                                    {isAdminMember && !isOwnerMember && <span className="badge admin">Er Yönetici</span>}
+                                        <div key={memberId} className="member-card">
+                                            <img src={getImageUrl(member.profile?.avatar)} alt="" className="member-avatar" onError={(e) => e.target.style.display = 'none'} />
+                                            <div className="member-details">
+                                                <div className="member-username">
+                                                    {member.username || 'Kullanıcı'}
+                                                    {isOwnerMember && <span className="role-badge owner">👑 As Yönetici</span>}
+                                                    {isAdminMember && !isOwnerMember && <span className="role-badge admin">🛡️ Er Yönetici</span>}
                                                 </div>
                                             </div>
 
-                                            {isOwner && !isOwnerMember && (
-                                                <div className="member-actions">
-                                                    {!isAdminMember ? (
-                                                        <button className="btn-small promote" onClick={() => handleRole(memberId, 'promote')}>Yönetici Yap</button>
-                                                    ) : (
-                                                        <button className="btn-small demote" onClick={() => handleRole(memberId, 'demote')}>Yönetici Al</button>
-                                                    )}
-                                                    <button className="btn-small kick" onClick={() => handleKick(memberId)}>At</button>
-                                                </div>
+                                            {/* Action Menu */}
+                                            {isAdmin && !isOwnerMember && (
+                                                // Hide actions if I am Admin but target is also Admin (unless I am Owner)
+                                                (isOwner || !isAdminMember) && (
+                                                    <div className="channel-actions" style={{ display: 'flex', gap: '8px' }}>
+
+                                                        {isOwner && (
+                                                            !isAdminMember ? (
+                                                                <button onClick={() => handleRole(memberId, 'promote')} title="Er Yönetici Yap" style={{ color: '#5865f2' }}>
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                                                                </button>
+                                                            ) : (
+                                                                <button onClick={() => handleRole(memberId, 'demote')} title="Yöneticiliği Al" style={{ color: '#faa61a' }}>
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                                                                </button>
+                                                            )
+                                                        )}
+
+                                                        <button onClick={() => handleKick(memberId)} title="Portaldan At" style={{ color: '#ed4245' }}>
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                                                        </button>
+                                                    </div>
+                                                )
                                             )}
                                         </div>
                                     );
