@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
-import UserBar from './UserBar';
+import { getImageUrl } from '../utils/imageUtils';
 
 const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChannel, className, canManage }) => {
     if (!portal) return null;
@@ -250,8 +250,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
 
             </div>
 
-            {/* User Control Bar - Fixed at bottom of sidebar */}
-            <UserBar />
+            {/* User Control Bar Removed */}
 
 
 

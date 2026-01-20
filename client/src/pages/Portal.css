@@ -1,15 +1,22 @@
-/* Discord Layout */
 .discord-layout {
     display: flex;
+    flex-direction: column;
+    /* Stack Navbar and Content */
     width: 100%;
-    height: 100vh;
-    /* Fixed viewport height */
+    height: 100%;
+    /* Fill parent (main-content-wrapper) */
     overflow: hidden;
-    /* No global scroll */
-    position: fixed;
-    /* Ensure it sticks */
-    top: 0;
-    left: 0;
+    position: relative;
+    /* Respect parent layout */
+}
+
+/* Container for Sidebar + Chat */
+.discord-split-view {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
 }
 
 .discord-main-content {

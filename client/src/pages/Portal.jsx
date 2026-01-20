@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { useUI } from '../context/UIContext';
 import PortalSettingsModal from '../components/PortalSettingsModal';
+import Navbar from '../components/Navbar';
 import './Portal.css';
 
 const Portal = () => {
@@ -170,160 +171,169 @@ const Portal = () => {
 
     // ... (Edit handlers can be removed/simplified as they move to modal, but keep key state like setPortal)
 
+    // ...
+
+    // ...
+
     return (
         <div className="app-wrapper full-height discord-layout">
-            <ChannelSidebar
-                portal={portal}
-                isMember={isMember}
-                canManage={isOwner || isAdmin}
-                onEdit={(tab) => {
-                    const targetTab = typeof tab === 'string' ? tab : 'overview';
-                    setSettingsTab(targetTab);
-                    setEditing(true);
-                }}
-                currentChannel={currentChannel}
-                onChangeChannel={setCurrentChannel}
-                className={isSidebarOpen ? 'mobile-open' : ''}
-            />
+            {/* Global Navbar */}
+            <Navbar />
 
-            <main className="discord-main-content">
-                {/* ... Header and Feed as before ... */}
-                <header className="channel-top-bar">
-                    <div className="channel-title-wrapper">
-                        <span className="hashtag">#</span>
-                        <h3 className="channel-name">{currentChannel === 'general' ? 'genel' : currentChannel}</h3>
-                    </div>
-                    {/* ... */}
-                </header>
-                {/* ... */}
+            <div className="discord-split-view">
+                <ChannelSidebar
+                    portal={portal}
+                    isMember={isMember}
+                    canManage={isOwner || isAdmin}
+                    onEdit={(tab) => {
+                        const targetTab = typeof tab === 'string' ? tab : 'overview';
+                        setSettingsTab(targetTab);
+                        setEditing(true);
+                    }}
+                    currentChannel={currentChannel}
+                    onChangeChannel={setCurrentChannel}
+                    className={isSidebarOpen ? 'mobile-open' : ''}
+                />
 
-                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                    {/* Channel Content (Feed) */}
-                    <div className="channel-messages-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div className="portal-feed-container discord-feed">
-                            {/* Feed Header / Welcome */}
-                            {posts.length === 0 && !loading && (
-                                <div className="empty-portal">
-                                    <div className="empty-portal-icon">👋</div>
-                                    <h3>#{currentChannel === 'general' ? 'genel' : currentChannel} kanalına hoş geldin!</h3>
-                                    <p>
-                                        {currentChannel === 'general'
-                                            ? `Burası ${portal.name} sunucusunun başlangıcı.`
-                                            : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Posts List */}
-                            {posts.map((post) => (
-                                <PostCard key={post._id} post={post} />
-                            ))}
+                <main className="discord-main-content">
+                    {/* ... Header and Feed as before ... */}
+                    <header className="channel-top-bar">
+                        <div className="channel-title-wrapper">
+                            <span className="hashtag">#</span>
+                            <h3 className="channel-name">{currentChannel === 'general' ? 'genel' : currentChannel}</h3>
                         </div>
+                        {/* ... */}
+                    </header>
+                    {/* ... */}
 
-                        {/* Message Input Area */}
-                        {isMember && (
-                            <div className="channel-input-area" style={{ position: 'relative' }}>
-                                {/* Plus Menu Popover */}
-                                {showPlusMenu && (
-                                    <>
-                                        <div
-                                            style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                                            onClick={() => setShowPlusMenu(false)}
-                                        />
-                                        <div className="plus-menu">
-                                            <div className="plus-menu-item" onClick={() => fileInputRef.current.click()}>
-                                                <div className="plus-menu-icon">
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                                                </div>
-                                                Dosya Yükle
-                                            </div>
-                                            <div className="plus-menu-item" onClick={() => { alert('GIF seçici yakında!'); setShowPlusMenu(false); }}>
-                                                <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '12px' }}>GIF</div>
-                                                GIF Ara
-                                            </div>
-                                            <div className="plus-menu-item" onClick={() => { alert('Anket oluşturma yakında!'); setShowPlusMenu(false); }}>
-                                                <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '12px' }}>GIF</div>
-                                                Anket Oluştur
-                                            </div>
-                                        </div>
-                                    </>
+                    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                        {/* Channel Content (Feed) */}
+                        <div className="channel-messages-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <div className="portal-feed-container discord-feed">
+                                {/* Feed Header / Welcome */}
+                                {posts.length === 0 && !loading && (
+                                    <div className="empty-portal">
+                                        <div className="empty-portal-icon">👋</div>
+                                        <h3>#{currentChannel === 'general' ? 'genel' : currentChannel} kanalına hoş geldin!</h3>
+                                        <p>
+                                            {currentChannel === 'general'
+                                                ? `Burası ${portal.name} sunucusunun başlangıcı.`
+                                                : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
+                                        </p>
+                                    </div>
                                 )}
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileSelect}
-                                    style={{ display: 'none' }}
-                                    multiple
-                                />
 
-                                <div className="message-input-wrapper">
-                                    <button
-                                        className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                        onClick={() => setShowPlusMenu(!showPlusMenu)}
-                                        style={{
-                                            backgroundColor: '#383a40',
-                                            borderRadius: '50%',
-                                            width: '32px',
-                                            height: '32px',
-                                            marginRight: '12px',
-                                            color: showPlusMenu ? 'var(--primary-color)' : '#b9bbbe'
-                                        }}
-                                    >
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
-                                        </svg>
-                                    </button>
+                                {/* Posts List */}
+                                {posts.map((post) => (
+                                    <PostCard key={post._id} post={post} />
+                                ))}
+                            </div>
+
+                            {/* Message Input Area */}
+                            {isMember && (
+                                <div className="channel-input-area" style={{ position: 'relative' }}>
+                                    {/* Plus Menu Popover */}
+                                    {showPlusMenu && (
+                                        <>
+                                            <div
+                                                style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                                                onClick={() => setShowPlusMenu(false)}
+                                            />
+                                            <div className="plus-menu">
+                                                <div className="plus-menu-item" onClick={() => fileInputRef.current.click()}>
+                                                    <div className="plus-menu-icon">
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                                    </div>
+                                                    Dosya Yükle
+                                                </div>
+                                                <div className="plus-menu-item" onClick={() => { alert('GIF seçici yakında!'); setShowPlusMenu(false); }}>
+                                                    <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '12px' }}>GIF</div>
+                                                    GIF Ara
+                                                </div>
+                                                <div className="plus-menu-item" onClick={() => { alert('Anket oluşturma yakında!'); setShowPlusMenu(false); }}>
+                                                    <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '12px' }}>GIF</div>
+                                                    Anket Oluştur
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                     <input
-                                        type="text"
-                                        placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
-                                        value={messageText}
-                                        onChange={(e) => setMessageText(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleSendMessage();
-                                            }
-                                        }}
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileSelect}
+                                        style={{ display: 'none' }}
+                                        multiple
                                     />
-                                    <div className="input-right-actions">
-                                        <button className="input-action-btn">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M14.828 14.828a4 4 0 1 0-5.656-5.656 4 4 0 0 0 5.656 5.656zm-8.485 2.829l-2.828 2.828 5.657 5.657 2.828-2.829a8 8 0 1 1-5.657-5.657z"></path>
+
+                                    <div className="message-input-wrapper">
+                                        <button
+                                            className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
+                                            onClick={() => setShowPlusMenu(!showPlusMenu)}
+                                            style={{
+                                                backgroundColor: '#383a40',
+                                                borderRadius: '50%',
+                                                width: '32px',
+                                                height: '32px',
+                                                marginRight: '12px',
+                                                color: showPlusMenu ? 'var(--primary-color)' : '#b9bbbe'
+                                            }}
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
                                             </svg>
                                         </button>
-                                        <button className="input-action-btn">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <circle cx="12" cy="12" r="10"></circle>
-                                                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                                                <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                                                <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                                            </svg>
-                                        </button>
+                                        <input
+                                            type="text"
+                                            placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
+                                            value={messageText}
+                                            onChange={(e) => setMessageText(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleSendMessage();
+                                                }
+                                            }}
+                                        />
+                                        <div className="input-right-actions">
+                                            <button className="input-action-btn">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M14.828 14.828a4 4 0 1 0-5.656-5.656 4 4 0 0 0 5.656 5.656zm-8.485 2.829l-2.828 2.828 5.657 5.657 2.828-2.829a8 8 0 1 1-5.657-5.657z"></path>
+                                                </svg>
+                                            </button>
+                                            <button className="input-action-btn">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
+                        </div>
+
+                        {/* Members Sidebar (Right Column) */}
+                        {showMembers && (
+                            <MembersSidebar members={portal.members} />
                         )}
                     </div>
 
-                    {/* Members Sidebar (Right Column) */}
-                    {showMembers && (
-                        <MembersSidebar members={portal.members} />
+                    {/* New Settings Modal Integration */}
+                    {editing && (
+                        <PortalSettingsModal
+                            portal={portal}
+                            currentUser={user}
+                            initialTab={settingsTab}
+                            onClose={() => setEditing(false)}
+                            onUpdate={(updatedPortal) => {
+                                setPortal(updatedPortal);
+                            }}
+                        />
                     )}
-                </div>
-
-                {/* New Settings Modal Integration */}
-                {editing && (
-                    <PortalSettingsModal
-                        portal={portal}
-                        currentUser={user}
-                        initialTab={settingsTab}
-                        onClose={() => setEditing(false)}
-                        onUpdate={(updatedPortal) => {
-                            setPortal(updatedPortal);
-                        }}
-                    />
-                )}
-            </main>
+                </main>
+            </div>
         </div>
     );
 };
