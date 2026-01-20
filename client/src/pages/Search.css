@@ -102,200 +102,194 @@
 
 /* Card Grid (Discord Style) */
 .modern-portals-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 24px;
+    justify-content: center;
+    /* Center items if few */
 }
 
 .modern-portal-card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    /* Smoother radius */
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-    height: 320px;
-    /* Fixed height for consistency */
-    display: flex;
-    flex-direction: column;
-}
+    /* Fixed width for flex items to look like grid */
+    width: 280px;
+    flex-grow: 1;
+    max-width: 320px;
 
-.modern-portal-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-    border-color: var(--primary-color);
-}
+    .modern-portal-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        border-color: var(--primary-color);
+    }
 
-.card-banner {
-    height: 120px;
-    background-color: var(--bg-secondary);
-    position: relative;
-}
+    .card-banner {
+        height: 120px;
+        background-color: var(--bg-secondary);
+        position: relative;
+    }
 
-.card-icon-wrapper {
-    margin-top: -32px;
-    /* Overlap banner */
-    margin-left: 16px;
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-    /* Squircle */
-    padding: 4px;
-    background-color: var(--card-bg);
-    /* Match card bg to create 'cutout' effect */
-    position: relative;
-    z-index: 1;
-}
+    .card-icon-wrapper {
+        margin-top: -32px;
+        /* Overlap banner */
+        margin-left: 16px;
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        /* Squircle */
+        padding: 4px;
+        background-color: var(--card-bg);
+        /* Match card bg to create 'cutout' effect */
+        position: relative;
+        z-index: 1;
+    }
 
-.card-icon-img,
-.card-icon-placeholder {
-    width: 100%;
-    height: 100%;
-    border-radius: 12px;
-    object-fit: cover;
-}
+    .card-icon-img,
+    .card-icon-placeholder {
+        width: 100%;
+        height: 100%;
+        border-radius: 12px;
+        object-fit: cover;
+    }
 
-.card-icon-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--primary-color);
-    color: white;
-    font-weight: bold;
-    font-size: 1.5rem;
-}
+    .card-icon-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--primary-color);
+        color: white;
+        font-weight: bold;
+        font-size: 1.5rem;
+    }
 
-.card-body {
-    padding: 12px 16px 20px;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
+    .card-body {
+        padding: 12px 16px 20px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
 
-.card-title {
-    margin: 8px 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
+    .card-title {
+        margin: 8px 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
 
-.private-badge {
-    font-size: 0.8rem;
-}
+    .private-badge {
+        font-size: 0.8rem;
+    }
 
-.card-desc {
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin-bottom: auto;
-    /* Push footer down */
-}
+    .card-desc {
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: auto;
+        /* Push footer down */
+    }
 
-.card-footer {
-    margin-top: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+    .card-footer {
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
 
-.member-count {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    background-color: var(--bg-secondary);
-    padding: 4px 8px;
-    border-radius: 6px;
-}
+    .member-count {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        background-color: var(--bg-secondary);
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
 
-.status-dot {
-    width: 8px;
-    height: 8px;
-    background-color: #22c55e;
-    border-radius: 50%;
-}
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #22c55e;
+        border-radius: 50%;
+    }
 
-/* User List Style */
-.users-list {
-    max-width: 800px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
+    /* User List Style */
+    .users-list {
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 
-.user-result-modern {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 16px;
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    text-decoration: none;
-    transition: all 0.2s;
-}
+    .user-result-modern {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
 
-.user-result-modern:hover {
-    border-color: var(--primary-color);
-    background-color: var(--bg-secondary);
-}
+    .user-result-modern:hover {
+        border-color: var(--primary-color);
+        background-color: var(--bg-secondary);
+    }
 
-.empty-search {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-}
+    .empty-search {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
 
-.result-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-}
+    .result-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
 
-.result-avatar-placeholder {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background-color: var(--bg-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
+    .result-avatar-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background-color: var(--bg-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+    }
 
-.result-avatar-placeholder svg {
-    width: 24px;
-    height: 24px;
-}
+    .result-avatar-placeholder svg {
+        width: 24px;
+        height: 24px;
+    }
 
-.result-info {
-    display: flex;
-    flex-direction: column;
-}
+    .result-info {
+        display: flex;
+        flex-direction: column;
+    }
 
-.result-name {
-    font-weight: 700;
-    color: var(--text-primary);
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
+    .result-name {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
 
-.result-username {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
+    .result-username {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
