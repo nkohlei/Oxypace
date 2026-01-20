@@ -5,7 +5,9 @@
 
 .search-container {
     padding: 24px;
-    max-width: 1000px;
+    width: 100%;
+    max-width: 1200px;
+    /* Increased max width for better side-by-side on large screens */
     margin: 0 auto;
 }
 
