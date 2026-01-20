@@ -491,4 +491,124 @@ router.post('/:id/invite', protect, async (req, res) => {
     }
 });
 
+// @desc    Get portal notifications (join requests and recent members)
+// @route   GET /api/portals/:id/notifications
+// @access  Private (Admin only)
+router.get('/:id/notifications', protect, async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id)
+            .populate('joinRequests', 'username profile.avatar profile.displayName createdAt')
+            .populate('members', 'username profile.avatar profile.displayName createdAt');
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        // Check if user is admin or owner
+        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+        }
+
+        // Get recent members (last 10)
+        const recentMembers = portal.members
+            .slice(-10)
+            .reverse()
+            .map(member => ({
+                _id: member._id,
+                username: member.username,
+                profile: member.profile,
+                joinedAt: member.createdAt
+            }));
+
+        res.json({
+            joinRequests: portal.joinRequests,
+            recentMembers
+        });
+    } catch (error) {
+        console.error('Get notifications error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Approve join request
+// @route   POST /api/portals/:id/approve-member
+// @access  Private (Admin only)
+router.post('/:id/approve-member', protect, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        // Check if user is admin or owner
+        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+        }
+
+        // Check if user is in joinRequests
+        if (!portal.joinRequests.some(r => r.toString() === userId)) {
+            return res.status(400).json({ message: 'Bu kullanıcı için bekleyen istek yok' });
+        }
+
+        // Remove from joinRequests and add to members
+        portal.joinRequests = portal.joinRequests.filter(r => r.toString() !== userId);
+        portal.members.push(userId);
+        await portal.save();
+
+        // Update user's joinedPortals
+        await User.findByIdAndUpdate(userId, {
+            $addToSet: { joinedPortals: portal._id }
+        });
+
+        res.json({ message: 'Üyelik isteği onaylandı', userId });
+    } catch (error) {
+        console.error('Approve member error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Reject join request
+// @route   POST /api/portals/:id/reject-member
+// @access  Private (Admin only)
+router.post('/:id/reject-member', protect, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        // Check if user is admin or owner
+        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+        }
+
+        // Check if user is in joinRequests
+        if (!portal.joinRequests.some(r => r.toString() === userId)) {
+            return res.status(400).json({ message: 'Bu kullanıcı için bekleyen istek yok' });
+        }
+
+        // Remove from joinRequests
+        portal.joinRequests = portal.joinRequests.filter(r => r.toString() !== userId);
+        await portal.save();
+
+        res.json({ message: 'Üyelik isteği reddedildi', userId });
+    } catch (error) {
+        console.error('Reject member error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 export default router;

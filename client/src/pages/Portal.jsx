@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { useUI } from '../context/UIContext';
 import PortalSettingsModal from '../components/PortalSettingsModal';
+import PortalNotifications from '../components/PortalNotifications';
 import Navbar from '../components/Navbar';
 import './Portal.css';
 
@@ -394,7 +395,7 @@ const Portal = () => {
                     </div>
 
                     {/* New Settings Modal Integration */}
-                    {editing && (
+                    {editing && settingsTab !== 'notifications' && (
                         <PortalSettingsModal
                             portal={portal}
                             currentUser={user}
@@ -404,6 +405,21 @@ const Portal = () => {
                                 setPortal(updatedPortal);
                             }}
                         />
+                    )}
+
+                    {/* Portal Notifications Section */}
+                    {editing && settingsTab === 'notifications' && (
+                        <div className="portal-notifications-modal" onClick={() => setEditing(false)}>
+                            <div className="notifications-modal-content" onClick={(e) => e.stopPropagation()}>
+                                <button className="close-notifications-btn" onClick={() => setEditing(false)}>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                                <PortalNotifications portalId={portal._id} />
+                            </div>
+                        </div>
                     )}
                 </main>
             </div>

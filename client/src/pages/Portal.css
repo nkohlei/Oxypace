@@ -710,4 +710,10 @@
 .privacy-join-btn.requested:hover {
     transform: none;
     box-shadow: none;
-}
+} 
+ 
+/* Portal Notifications Modal */
+.portal-notifications-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease; }
+.notifications-modal-content { position: relative; background: var(--bg-primary); border-radius: 16px; max-width: 900px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); animation: slideUp 0.3s ease; }
+.close-notifications-btn { position: absolute; top: 20px; right: 20px; background: var(--bg-hover); border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); z-index: 10; transition: all 0.2s; }
+.close-notifications-btn:hover { background: var(--bg-input); color: var(--text-primary); transform: rotate(90deg); }

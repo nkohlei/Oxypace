@@ -118,33 +118,41 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
             {/* Scrollable Area */}
             <div className="custom-scrollbar" style={{ flex: 1, padding: '0 8px 8px 8px', overflowY: 'auto' }}>
 
-                {/* 2. Boost Goal Bar (Takviye Hedefi) */}
-                <div style={{
-                    marginTop: '16px',
-                    marginBottom: '16px',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(90deg, #48304c 0%, #38253a 100%)', // Dark purple style
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    userSelect: 'none'
-                }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ fontSize: '12px', color: '#dbdee1', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            Takviye Hedefi
-                            <span style={{ fontSize: '14px' }}>🎉</span>
+                {/* 2. Bildirimler (Portal Notifications - Admin Only) */}
+                {canManage && (
+                    <div
+                        onClick={() => onEdit && onEdit('notifications')}
+                        style={{
+                            marginTop: '16px',
+                            marginBottom: '16px',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(90deg, #48304c 0%, #38253a 100%)',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(90deg, #5a3c62 0%, #46304a 100%)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(90deg, #48304c 0%, #38253a 100%)'}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#f59e0b' }}>
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                            <span style={{ fontSize: '13px', color: '#dbdee1', fontWeight: '700' }}>
+                                Bildirimler
+                            </span>
                         </div>
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#dbdee1', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
-                        159 Takviye
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ marginLeft: '4px' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ color: '#dbdee1' }}>
                             <path d="M9 18l6-6-6-6" />
                         </svg>
                     </div>
-                </div>
+                )}
 
                 {/* 3. Browse Channels (Kanallara Göz At) replaced/augmented with Header */}
                 <div style={{
