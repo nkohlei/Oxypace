@@ -103,8 +103,8 @@
 /* Card Grid (Discord Style) */
 .modern-portals-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 20px;
     padding-bottom: 40px;
 }
 
