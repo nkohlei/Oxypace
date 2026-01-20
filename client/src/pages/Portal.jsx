@@ -175,6 +175,18 @@ const Portal = () => {
 
     // ...
 
+    // Loading State
+    if (loading || !portal) {
+        return (
+            <div className="app-wrapper full-height">
+                <Navbar />
+                <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="spinner"></div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="app-wrapper full-height discord-layout">
             {/* Global Navbar */}
