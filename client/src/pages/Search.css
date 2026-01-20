@@ -103,9 +103,10 @@
 /* Card Grid (Discord Style) */
 .modern-portals-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
     padding-bottom: 40px;
+    width: 100%;
 }
 
 .modern-portal-card {
@@ -120,6 +121,7 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    /* Removed width constraints to let grid handle it */
 }
 
 .modern-portal-card:hover {
