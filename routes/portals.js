@@ -2,6 +2,7 @@ import express from 'express';
 import Portal from '../models/Portal.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import { protect } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
@@ -422,6 +423,49 @@ router.post('/:id/kick', protect, async (req, res) => {
         res.json({ message: 'User kicked', userId });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Invite user to portal
+// @route   POST /api/portals/:id/invite
+// @access  Private
+router.post('/:id/invite', protect, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!userId) return res.status(400).json({ message: 'User ID is required' });
+
+        if (!portal.members.includes(req.user._id)) {
+            return res.status(403).json({ message: 'You are not a member of this portal' });
+        }
+
+        if (portal.members.includes(userId)) {
+            return res.status(400).json({ message: 'User is already a member' });
+        }
+
+        const notification = await Notification.create({
+            recipient: userId,
+            sender: req.user._id,
+            type: 'portal_invite',
+            portal: portal._id
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            const populated = await notification.populate('sender', 'username profile.displayName profile.avatar');
+            // Populate portal details for the notification payload if needed, currently notification model usually populates standard fields in frontend
+            // But we might need portal details in the socket event
+            const fullyPopulated = await populated.populate('portal', 'name avatar');
+
+            io.to(userId.toString()).emit('newNotification', fullyPopulated);
+        }
+
+        res.json({ message: 'Invitation sent' });
+    } catch (error) {
+        console.error('Invite error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

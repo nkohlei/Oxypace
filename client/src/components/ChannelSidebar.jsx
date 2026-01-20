@@ -1,8 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import InviteUserModal from './InviteUserModal';
 
 import { getImageUrl } from '../utils/imageUtils';
 
 const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChannel, className, canManage }) => {
+    const [showInviteModal, setShowInviteModal] = useState(false);
+
     if (!portal) return null;
 
     // Combine default 'general' with dynamic channels
@@ -93,7 +96,14 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                             </svg>
                         </div>
                         {/* Invite/People Icon */}
-                        <div style={{ color: 'white', cursor: 'pointer', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}>
+                        <div
+                            style={{ color: 'white', cursor: 'pointer', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowInviteModal(true);
+                            }}
+                            title="Kullanıcı Davet Et"
+                        >
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="8.5" cy="7" r="4"></circle>
@@ -296,6 +306,12 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                 background - color: transparent;
                 }
             `}</style>
+            {showInviteModal && (
+                <InviteUserModal
+                    portalId={portal._id}
+                    onClose={() => setShowInviteModal(false)}
+                />
+            )}
         </div >
     );
 };
