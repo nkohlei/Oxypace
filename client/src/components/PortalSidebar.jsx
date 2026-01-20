@@ -52,7 +52,7 @@ const PortalSidebar = () => {
 
                 {/* User's Portals */}
                 {/* User's Portals */}
-                {user?.joinedPortals && user.joinedPortals.map((portal) => (
+                {user?.joinedPortals && user.joinedPortals.filter(p => p).map((portal) => (
                     <div
                         key={portal._id}
                         className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
@@ -63,13 +63,13 @@ const PortalSidebar = () => {
                             {portal.avatar ? (
                                 <img src={getImageUrl(portal.avatar)} alt={portal.name} />
                             ) : (
-                                <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                <span>{portal.name ? portal.name.substring(0, 2).toUpperCase() : '??'}</span>
                             )}
                         </div>
 
                         {/* Hover Tooltip (Simple Bubble Style) */}
                         <div className="portal-tooltip">
-                            <span className="tooltip-text">{portal.name}</span>
+                            <span className="tooltip-text">{portal.name || 'İsimsiz Portal'}</span>
                             <div className="tooltip-arrow"></div>
                         </div>
                     </div>
