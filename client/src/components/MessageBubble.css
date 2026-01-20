@@ -550,3 +550,16 @@
     border-radius: 4px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
+
+/* Linkified URLs */
+.linkified-url {
+    color: #3b82f6;
+    text-decoration: none;
+    word-break: break-all;
+    transition: color 0.2s;
+}
+
+.linkified-url:hover {
+    color: #60a5fa;
+    text-decoration: underline;
+}

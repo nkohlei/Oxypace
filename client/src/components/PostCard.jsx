@@ -7,6 +7,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
 import Badge from './Badge';
+import { linkifyText } from '../utils/linkify';
 import './PostCard.css';
 
 const PostCard = ({ post, onDelete, onUnsave }) => {
@@ -355,7 +356,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
 
                 <div className="post-content-text">
                     <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {post.content}
+                        {linkifyText(post.content)}
                     </p>
                     {post.content && (
                         <button

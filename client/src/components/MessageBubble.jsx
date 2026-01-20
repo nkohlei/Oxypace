@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
+import { linkifyText } from '../utils/linkify';
 import './MessageBubble.css';
 
 const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
@@ -262,7 +263,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                             </div>
                         ) : null}
 
-                        {message.content && <div className="message-content">{message.content}</div>}
+                        {message.content && <div className="message-content">{linkifyText(message.content)}</div>}
                         <div className="message-time">
                             {formatTime(message.createdAt)}
                             {message.isOptimistic && <span className="sending-indicator">...</span>}
