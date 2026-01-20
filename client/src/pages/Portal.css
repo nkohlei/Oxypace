@@ -2,8 +2,14 @@
 .discord-layout {
     display: flex;
     width: 100%;
-    height: 100%;
+    height: 100vh;
+    /* Fixed viewport height */
     overflow: hidden;
+    /* No global scroll */
+    position: fixed;
+    /* Ensure it sticks */
+    top: 0;
+    left: 0;
 }
 
 .discord-main-content {
@@ -66,11 +72,12 @@
 .channel-messages-area {
     flex: 1;
     overflow: hidden;
-    /* Prevent container scroll */
-    padding-bottom: 0;
+    /* This is CRITICAL. It constraints the child (feed) */
     display: flex;
     flex-direction: column;
     position: relative;
+    height: 100%;
+    /* Fill parent */
 }
 
 /* Discord Feed Adaptation - This is the scrollable part */
@@ -79,10 +86,11 @@
     overflow-y: auto;
     /* Scroll enabled here */
     overflow-x: hidden;
-    padding-top: 20px;
-    padding-bottom: 20px;
+    padding: 20px 40px;
     width: 100%;
-    max-width: 100%;
+    /* Remove automatic padding that might cause scroll on empty */
+    min-height: 0;
+    /* Flexbox trick for nested scroll */
 }
 
 /* Search Bar Mini */
