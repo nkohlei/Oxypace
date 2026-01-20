@@ -102,45 +102,56 @@
 
 /* Card Grid (Discord Style) */
 .modern-portals-grid {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
-    justify-content: center;
-    /* Center items if few */
+    padding-bottom: 40px;
 }
 
 .modern-portal-card {
-    /* Fixed width for flex items to look like grid */
-    width: 280px;
-    flex-grow: 1;
-    max-width: 320px;
+    background-color: #1a1b1e;
+    /* Darker, more premium bg */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 340px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
 .modern-portal-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-    border-color: var(--primary-color);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--primary-cyan);
 }
 
 .card-banner {
-    height: 120px;
-    background-color: var(--bg-secondary);
+    height: 130px;
+    background-color: #2b2d31;
     position: relative;
+    transition: height 0.3s ease;
+}
+
+.modern-portal-card:hover .card-banner {
+    height: 140px;
+    /* Slight expansion effect */
 }
 
 .card-icon-wrapper {
-    margin-top: -32px;
-    /* Overlap banner */
-    margin-left: 16px;
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-    /* Squircle */
-    padding: 4px;
-    background-color: var(--card-bg);
-    /* Match card bg to create 'cutout' effect */
+    margin-top: -40px;
+    margin-left: 20px;
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    padding: 5px;
+    background-color: #1a1b1e;
+    /* Match card bg */
     position: relative;
-    z-index: 1;
+    z-index: 2;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .card-icon-img,
