@@ -25,10 +25,7 @@
     pointer-events: auto;
 }
 
-/* Override existing sidebar transition/hiding for Desktop */
-.portal-sidebar-wrapper.sidebar-open {
-    /* No change needed for desktop if always open, but keep class handling implies mobile toggle */
-}
+
 
 /* Sidebar Toggle Arrow - HIDDEN on Desktop for V3 (Permanent Sidebar) */
 .sidebar-toggle-arrow {
@@ -39,10 +36,12 @@
 .main-content-wrapper {
     flex-grow: 1;
     min-width: 0;
+    max-width: 100%;
     height: 100%;
     position: relative;
     background-color: var(--bg-primary);
     overflow-y: auto;
+    overflow-x: hidden;
     /* Scrollable content area */
     display: flex;
     flex-direction: column;

@@ -274,45 +274,47 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
             <style>{`
             .channel-sidebar {
                 width: 350px;
-            transition: width 0.3s ease, transform 0.3s ease;
-                }
+                transition: width 0.3s ease, transform 0.3s ease;
+                flex-shrink: 0;
+            }
+            
             @media (max-width: 768px) {
-                    .channel - sidebar {
-                width: 240px; /* Smaller width on mobile */
-            position: fixed;
-            top: 0;
-            left: 72px; /* Next to portal sidebar */
-            z-index: 2000;
-            height: 100%;
-            transform: translateX(-200%); /* Hidden by default */
-            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-                    }
-            .channel-sidebar.mobile-open {
-                transform: translateX(0); /* Shown when toggled */
-                    }
+                .channel-sidebar {
+                    width: 240px;
+                    position: fixed;
+                    top: 0;
+                    left: 72px;
+                    z-index: 2000;
+                    height: 100vh;
+                    transform: translateX(-100%);
+                    box-shadow: 2px 0 10px rgba(0,0,0,0.5);
                 }
+                .channel-sidebar.mobile-open {
+                    transform: translateX(0);
+                }
+            }
 
             .channel-item:hover {
-                background - color: var(--bg-hover) !important;
-            color: var(--text-primary) !important;
-                }
+                background-color: var(--bg-hover) !important;
+                color: var(--text-primary) !important;
+            }
             .channel-item.active {
-                background - color: var(--bg-hover) !important;
-            color: var(--primary-color) !important;
-                }
+                background-color: var(--bg-hover) !important;
+                color: var(--primary-color) !important;
+            }
             .channel-item.active svg {
                 color: var(--primary-color);
-                }
+            }
             .custom-scrollbar::-webkit-scrollbar {
                 width: 4px;
-                }
+            }
             .custom-scrollbar::-webkit-scrollbar-thumb {
                 background: var(--border-subtle);
-            border-radius: 4px;
-                }
+                border-radius: 4px;
+            }
             .custom-scrollbar::-webkit-scrollbar-track {
-                background - color: transparent;
-                }
+                background-color: transparent;
+            }
             `}</style>
             {showInviteModal && (
                 <InviteUserModal
