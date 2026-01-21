@@ -157,12 +157,30 @@
 
 @media (max-width: 768px) {
     .channel-input-area {
-        position: sticky;
-        /* Or fixed if container scroll is weird, but sticky usually better in flex col */
+        position: fixed;
         bottom: 0;
-        padding: 12px;
+        left: 42px;
+        /* Match mobile sidebar width */
+        width: calc(100% - 42px);
+        padding: 10px;
+        /* Slightly tighter padding */
         border-top: 1px solid var(--border-subtle);
-        /* Separator on mobile */
+        background-color: var(--bg-dark);
+        z-index: 900;
+        /* Ensure it stays on top */
+        padding-bottom: env(safe-area-inset-bottom, 10px);
+        /* Handle safe areas */
+    }
+
+    .discord-feed {
+        padding-bottom: 80px;
+        /* Space for the fixed input */
+    }
+
+    .plus-menu {
+        bottom: 80px;
+        /* Adjust popover position */
+        left: 50px;
     }
 }
 

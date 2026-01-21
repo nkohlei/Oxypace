@@ -251,10 +251,8 @@
 
     /* Increased breakpoint for visibility on tablets/small laptops */
     .mobile-menu-btn {
-        display: flex;
-        /* Show Hamburger */
-        padding: 4px;
-        /* Smaller touch target visual but keep hit area */
+        display: none !important;
+        /* Removed as per user request */
     }
 
     .bottom-nav {
@@ -303,43 +301,9 @@
     }
 }
 
-/* Mobile Floating Action Button */
+/* Mobile FAB removed as per user request for Fixed Input Bar */
 .mobile-fab-create {
-    display: none;
-    /* Hidden on desktop */
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 2000;
-    text-decoration: none;
-}
-
-.fab-icon {
-    width: 56px;
-    height: 56px;
-    background: var(--primary-color);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-    transition: transform 0.2s;
-}
-
-.mobile-fab-create:active .fab-icon {
-    transform: scale(0.95);
-}
-
-.fab-icon svg {
-    width: 28px;
-    height: 28px;
-}
-
-@media (max-width: 900px) {
-    .mobile-fab-create {
-        display: block;
-    }
+    display: none !important;
 }
 
 /* Shared Nav Item Styles */
