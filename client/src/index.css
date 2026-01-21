@@ -222,3 +222,10 @@ textarea:focus {
     /* Prevent zoom on iOS */
   }
 }
+
+/* GLOBAL IMAGE SAFETY */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}

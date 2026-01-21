@@ -143,49 +143,22 @@ const Profile = () => {
 
     return (
         <div className="app-wrapper full-height" style={{ backgroundColor: '#111214', color: '#dbdee1' }}>
-            <main className="app-content profile-page-content" style={{ display: 'flex', justifyContent: 'center', padding: '40px 20px' }}>
+            <main className="app-content profile-page-content">
 
                 {/* Wide Profile Card */}
-                <div style={{
-                    width: '100%',
-                    maxWidth: '680px',
-                    backgroundColor: '#111214', /* Main dark bg */
-                    borderRadius: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    boxShadow: '0 0 0 1px #1e1f22, 0 8px 32px rgba(0,0,0,0.45)'
-                }}>
+                <div className="profile-card">
 
                     {/* Banner */}
-                    <div style={{ height: '210px', backgroundColor: profileUser?.profile?.bannerColor || '#1e1f22', position: 'relative' }}>
+                    <div className="profile-banner" style={{ backgroundColor: profileUser?.profile?.bannerColor || '#1e1f22' }}>
                         {profileUser?.profile?.coverImage && (
                             <img
                                 src={getImageUrl(profileUser.profile.coverImage)}
                                 alt="Banner"
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                         )}
                         {/* Status Bubble (Top Right) */}
                         {profileUser?.profile?.bio && (
-                            <div style={{
-                                position: 'absolute',
-                                right: '20px',
-                                bottom: '-40px', /* Hang below banner slightly */
-                                top: 'auto',
-                                maxWidth: '300px',
-                                backgroundColor: '#111214',
-                                padding: '12px',
-                                borderRadius: '8px',
-                                border: '1px solid #1e1f22',
-                                color: '#dbdee1',
-                                fontSize: '14px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                zIndex: 10
-                            }}>
+                            <div className="status-bubble">
                                 <span role="img" aria-label="thought">💭</span>
                                 {profileUser.profile.bio}
                             </div>
@@ -193,113 +166,48 @@ const Profile = () => {
                     </div>
 
                     {/* Profile Header (Avatar & Actions) */}
-                    <div style={{ padding: '0 24px', position: 'relative', top: '-60px', marginBottom: '-50px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <div className="profile-header">
                         {/* Avatar */}
-                        <div style={{
-                            width: '136px',
-                            height: '136px',
-                            borderRadius: '50%',
-                            backgroundColor: '#111214',
-                            border: '8px solid #111214',
-                            position: 'relative',
-                            zIndex: 5
-                        }}>
+                        <div className="profile-avatar-container">
                             {profileUser?.profile?.avatar ? (
                                 <img
                                     src={getImageUrl(profileUser.profile.avatar)}
                                     alt={profileUser.username}
-                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                                 />
                             ) : (
-                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '50px', color: 'white' }}>
+                                <div className="profile-avatar-placeholder">
                                     {profileUser.username?.[0]?.toUpperCase()}
                                 </div>
                             )}
-                            <div style={{
-                                position: 'absolute',
-                                bottom: '6px',
-                                right: '6px',
-                                width: '28px',
-                                height: '28px',
-                                backgroundColor: '#23a559',
-                                borderRadius: '50%',
-                                border: '4px solid #111214'
-                            }} />
+                            <div className="profile-status-indicator" />
                         </div>
 
                         {/* Actions */}
-                        <div style={{ paddingBottom: '16px', display: 'flex', gap: '8px' }}>
+                        <div className="profile-actions">
                             {isOwnProfile ? (
                                 <>
-                                    <button className="btn" style={{
-                                        backgroundColor: '#4e5058',
-                                        color: 'white',
-                                        padding: '8px 16px',
-                                        borderRadius: '4px',
-                                        fontWeight: '600',
-                                        fontSize: '14px',
-                                        cursor: 'pointer'
-                                    }} onClick={() => setEditing(true)}>
+                                    <button className="profile-action-btn" onClick={() => setEditing(true)}>
                                         Profili Düzenle
                                     </button>
-                                    <button className="btn" style={{
-                                        backgroundColor: '#4e5058',
-                                        color: 'white',
-                                        padding: '8px',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center'
-                                    }}>
+                                    <button className="profile-action-btn icon-only">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                                     </button>
                                 </>
                             ) : (
                                 <>
-                                    <button className="btn"
+                                    <button
+                                        className="profile-action-btn primary"
                                         onClick={() => {
-                                            // TODO: Real message logic
                                             alert('Mesajlaşma özelliği yakında!');
                                         }}
-                                        style={{
-                                            backgroundColor: '#5865F2',
-                                            color: 'white',
-                                            padding: '8px 16px',
-                                            borderRadius: '4px',
-                                            fontWeight: '600',
-                                            cursor: 'pointer',
-                                            border: 'none',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px'
-                                        }}>
+                                    >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="0"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" /></svg>
                                         Mesaj
                                     </button>
-                                    <button className="btn" style={{
-                                        backgroundColor: '#4e5058',
-                                        color: 'white',
-                                        padding: '8px',
-                                        borderRadius: '4px',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        border: 'none',
-                                        display: 'flex',
-                                        alignItems: 'center'
-                                    }}>
+                                    <button className="profile-action-btn icon-only">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                                     </button>
-                                    <button className="btn" style={{
-                                        backgroundColor: '#4e5058',
-                                        color: 'white',
-                                        padding: '8px',
-                                        borderRadius: '4px',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        border: 'none',
-                                        display: 'flex',
-                                        alignItems: 'center'
-                                    }}>
+                                    <button className="profile-action-btn icon-only">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                                     </button>
                                 </>
@@ -308,49 +216,51 @@ const Profile = () => {
                     </div>
 
                     {/* Main Content Area */}
-                    <div style={{ padding: '70px 24px 24px 24px', backgroundColor: '#111214', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div className="profile-body">
 
                         {/* User Info */}
-                        <div style={{ marginBottom: '24px' }}>
-                            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                        <div className="profile-user-title">
+                            <h1>
                                 {profileUser?.profile?.displayName || profileUser?.username}
                                 <Badge type={profileUser?.verificationBadge} />
                             </h1>
-                            <span style={{ fontSize: '16px', color: '#dbdee1' }}>{profileUser?.username}</span>
+                            <span className="profile-username-tag">{profileUser?.username}</span>
                         </div>
 
                         {/* Divider */}
                         <div style={{ height: '1px', backgroundColor: '#3f4147', margin: '16px 0' }}></div>
 
                         {/* Info Tabs */}
-                        {isOwnProfile ? (
-                            <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', borderBottom: '1px solid #3f4147' }}>
-                                <div style={{ padding: '8px 0', borderBottom: '2px solid #dbdee1', color: '#dbdee1', fontWeight: '500', cursor: 'pointer', fontSize: '15px' }}>Pano</div>
-                                <div style={{ padding: '8px 0', borderBottom: '2px solid transparent', color: '#b5bac1', fontWeight: '500', cursor: 'pointer', fontSize: '15px' }}>Etkinlik</div>
-                                <div style={{ padding: '8px 0', borderBottom: '2px solid transparent', color: '#b5bac1', fontWeight: '500', cursor: 'pointer', fontSize: '15px' }}>İstek Listesi</div>
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', borderBottom: '1px solid #3f4147' }}>
-                                <div style={{ padding: '8px 0', borderBottom: '2px solid #dbdee1', color: '#dbdee1', fontWeight: '500', cursor: 'pointer', fontSize: '15px' }}>Etkinlik</div>
-                                <div style={{ padding: '8px 0', borderBottom: '2px solid transparent', color: '#b5bac1', fontWeight: '500', cursor: 'pointer', fontSize: '15px' }}>1 Ortak Arkadaş</div>
-                                <div style={{ padding: '8px 0', borderBottom: '2px solid transparent', color: '#b5bac1', fontWeight: '500', cursor: 'pointer', fontSize: '15px' }}>1 Ortak Sunucu</div>
-                            </div>
-                        )}
+                        <div className="profile-tabs">
+                            {isOwnProfile ? (
+                                <>
+                                    <div className="profile-tab-item active">Pano</div>
+                                    <div className="profile-tab-item">Etkinlik</div>
+                                    <div className="profile-tab-item">İstek Listesi</div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="profile-tab-item active">Etkinlik</div>
+                                    <div className="profile-tab-item">1 Ortak Arkadaş</div>
+                                    <div className="profile-tab-item">1 Ortak Sunucu</div>
+                                </>
+                            )}
+                        </div>
 
                         {/* Profile Body Content */}
                         <div style={{ flex: 1 }}>
                             {/* Bio / About */}
                             {profileUser?.profile?.bio && (
                                 <div style={{ marginBottom: '24px' }}>
-                                    <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#949ba4', textTransform: 'uppercase', marginBottom: '8px' }}>HAKKIMDA</h4>
-                                    <div style={{ fontSize: '14px', color: '#dbdee1', whiteSpace: 'pre-wrap' }}>
+                                    <h4 className="section-header">HAKKIMDA</h4>
+                                    <div className="section-content">
                                         {profileUser.profile.bio}
                                     </div>
                                 </div>
                             )}
 
                             <div style={{ marginBottom: '24px' }}>
-                                <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#949ba4', textTransform: 'uppercase', marginBottom: '8px' }}>ÜYELİK TARİHİ</h4>
+                                <h4 className="section-header">ÜYELİK TARİHİ</h4>
                                 <div style={{ fontSize: '14px', color: '#dbdee1', display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -361,7 +271,7 @@ const Profile = () => {
 
                             {/* Not (Only visible to you) */}
                             <div style={{ marginBottom: '24px' }}>
-                                <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#949ba4', textTransform: 'uppercase', marginBottom: '8px' }}>Not (sadece sana görünür)</h4>
+                                <h4 className="section-header">Not (sadece sana görünür)</h4>
                                 <div style={{ fontSize: '13px', color: '#dbdee1', cursor: 'pointer' }}>
                                     Not eklemek için tıkla
                                 </div>
@@ -374,7 +284,7 @@ const Profile = () => {
                                         <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#f2f3f5', margin: '0 0 4px 0' }}>Profilini Widget'larla özelleştir</h3>
                                         <p style={{ fontSize: '13px', color: '#b5bac1', margin: 0 }}>Kendin ve ilgi alanların hakkında daha fazla paylaşım yapmak için Widget kitaplığımızdan seçim yap</p>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                                    <div className="widgets-grid">
                                         {/* Widget 1: Marvel Rivals */}
                                         <div className="profile-widget-card" style={{ background: 'linear-gradient(135deg, #2b2d31 0%, #1e1f22 100%)' }}>
                                             <div className="widget-add-btn">+</div>
@@ -396,7 +306,7 @@ const Profile = () => {
                                             <span className="widget-text">Dönüşümlü oyunlar</span>
                                         </div>
                                         {/* Widget 5 (Span 2 col?) - Oynamak istiyorum */}
-                                        <div className="profile-widget-card" style={{ gridColumn: 'span 2', justifyContent: 'center' }}>
+                                        <div className="profile-widget-card" style={{ gridColumn: 'span 2' }}>
                                             <div className="widget-add-btn">+</div>
                                             <span className="widget-text">Oynamak istiyorum</span>
                                         </div>
@@ -439,44 +349,6 @@ const Profile = () => {
                             )}
 
                         </div>
-
-                        <style>{`
-                            .profile-widget-card {
-                                background-color: #1e1f22;
-                                border-radius: 8px;
-                                padding: 20px;
-                                display: flex;
-                                flex-direction: column;
-                                alignItems: center;
-                                justify-content: center;
-                                gap: 12px;
-                                cursor: pointer;
-                                border: 1px dashed #4e5058;
-                                transition: all 0.2s;
-                                min-height: 100px;
-                            }
-                            .profile-widget-card:hover {
-                                background-color: #2b2d31;
-                                border-color: #dbdee1;
-                            }
-                            .widget-add-btn {
-                                width: 32px;
-                                height: 32px;
-                                background-color: #4e5058;
-                                border-radius: 50%;
-                                display: flex;
-                                alignItems: center;
-                                justify-content: center;
-                                color: white;
-                                font-size: 20px;
-                                font-weight: bold;
-                            }
-                            .widget-text {
-                                font-size: 14px;
-                                fontWeight: 700;
-                                color: '#dbdee1';
-                            }
-                        `}</style>
                     </div>
                 </div>
 
