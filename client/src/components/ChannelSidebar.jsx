@@ -32,13 +32,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
             borderRight: '1px solid var(--border-subtle)'
         }}>
             {/* 1. Header with Full Image Banner */}
-            <div style={{
-                height: '135px',
-                position: 'relative',
-                cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                background: 'var(--bg-card)' // Fallback color
-            }} onClick={() => onEdit('overview')}>
+            <div className="channel-header" onClick={() => onEdit('overview')}>
                 {/* Banner Image */}
                 <div style={{
                     position: 'absolute',
@@ -46,7 +40,6 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    // Prefer portal cover, then banner, then default
                     backgroundImage: portal.coverImage ? `url(${getImageUrl(portal.coverImage)})` :
                         portal.banner ? `url(${getImageUrl(portal.banner)})` :
                             'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
@@ -276,11 +269,23 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                 width: 350px;
                 transition: width 0.3s ease, transform 0.3s ease;
                 flex-shrink: 0;
+                max-width: 100vw;
+                overflow-x: hidden;
+            }
+            
+            .channel-header {
+                height: 135px;
+                position: relative;
+                cursor: pointer;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                background: var(--bg-card);
+                flex-shrink: 0;
             }
             
             @media (max-width: 768px) {
                 .channel-sidebar {
                     width: 240px;
+                    max-width: 85vw;
                     position: fixed;
                     top: 0;
                     left: 72px;
@@ -291,6 +296,20 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
                 }
                 .channel-sidebar.mobile-open {
                     transform: translateX(0);
+                }
+                
+                .channel-header {
+                    height: 80px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .channel-sidebar {
+                    max-width: calc(100vw - 72px);
+                }
+                
+                .channel-header {
+                    height: 60px;
                 }
             }
 

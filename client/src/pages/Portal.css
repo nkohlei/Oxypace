@@ -770,20 +770,18 @@
 /* Mobile and Small Screen Responsive */
 @media (max-width: 768px) {
     .discord-split-view {
-        flex-direction: column;
-    }
-
-    .channel-sidebar {
-        width: 100%;
-        max-width: 300px;
+        position: relative;
+        overflow-x: hidden;
     }
 
     .discord-main-content {
         width: 100%;
+        margin-left: 0;
     }
 
     .channel-top-bar {
         padding: 0 12px;
+        height: 56px;
     }
 
     .discord-feed {
@@ -797,20 +795,23 @@
     .channel-input {
         font-size: 14px;
     }
+
+    .portal-feed-container {
+        padding: 12px;
+    }
 }
 
-@media (max-width: 1024px) {
-    .discord-split-view {
-        position: relative;
+@media (max-width: 480px) {
+    .channel-top-bar {
+        height: 48px;
+        padding: 0 8px;
     }
 
-    .channel-sidebar {
-        position: absolute;
-        left: 0;
-        z-index: 100;
+    .discord-feed {
+        padding: 12px 8px;
     }
 
-    .discord-main-content {
-        margin-left: 0;
+    .channel-input-area {
+        padding: 8px;
     }
 }
