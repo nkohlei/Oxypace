@@ -158,27 +158,47 @@
 @media (max-width: 768px) {
     .channel-input-area {
         position: fixed;
-        bottom: 70px;
-        /* Moved up as requested */
-        left: 42px;
-        /* Match mobile sidebar width */
-        width: calc(100% - 42px);
-        padding: 10px;
-        border-top: 1px solid var(--border-subtle);
-        background-color: var(--bg-dark);
-        z-index: 900;
-        padding-bottom: 0;
+        bottom: 24px;
+        left: 58px;
+        /* 42px sidebar + 16px gap */
+        right: 16px;
+        /* 16px gap from right */
+        width: auto;
+        padding: 8px;
+        /* Tighter internal padding */
+        background: rgba(15, 23, 42, 0.65);
+        /* Translucent modern dark */
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        /* Fully rounded capsule look */
+        z-index: 5000;
+        /* Very high z-index */
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        padding-bottom: 8px;
+        /* Reset padding */
+    }
+
+    .message-input-wrapper {
+        background: rgba(0, 0, 0, 0.2);
+        /* Darker inner input */
+        border: none;
+        height: 48px;
+        /* Slightly smaller height */
+        border-radius: 16px;
     }
 
     .discord-feed {
-        padding-bottom: 140px;
-        /* Increased padding to account for higher input */
+        padding-bottom: 100px;
+        /* Space for the floating bar */
     }
 
     .plus-menu {
-        bottom: 140px;
-        /* Adjust popover position */
-        left: 50px;
+        bottom: 90px;
+        left: 60px;
+        z-index: 5001;
+        /* Above input */
     }
 }
 
