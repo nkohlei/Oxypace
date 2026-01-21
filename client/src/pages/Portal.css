@@ -158,27 +158,25 @@
 @media (max-width: 768px) {
     .channel-input-area {
         position: fixed;
-        bottom: 0;
+        bottom: 70px;
+        /* Moved up as requested */
         left: 42px;
         /* Match mobile sidebar width */
         width: calc(100% - 42px);
         padding: 10px;
-        /* Slightly tighter padding */
         border-top: 1px solid var(--border-subtle);
         background-color: var(--bg-dark);
         z-index: 900;
-        /* Ensure it stays on top */
-        padding-bottom: env(safe-area-inset-bottom, 10px);
-        /* Handle safe areas */
+        padding-bottom: 0;
     }
 
     .discord-feed {
-        padding-bottom: 80px;
-        /* Space for the fixed input */
+        padding-bottom: 140px;
+        /* Increased padding to account for higher input */
     }
 
     .plus-menu {
-        bottom: 80px;
+        bottom: 140px;
         /* Adjust popover position */
         left: 50px;
     }

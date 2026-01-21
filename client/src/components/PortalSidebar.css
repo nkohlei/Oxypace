@@ -45,12 +45,13 @@
 }
 
 /* Tiny Sidebar Styles */
+/* Standard Desktop Sizes */
 .sidebar-item {
     position: relative;
-    width: 38px;
-    /* Fit in 42px */
-    height: 38px;
-    margin-bottom: 6px;
+    width: 48px;
+    /* Restored to standard */
+    height: 48px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -59,9 +60,9 @@
 }
 
 .portal-icon {
-    width: 32px;
-    /* Small icons */
-    height: 32px;
+    width: 48px;
+    /* Restored */
+    height: 48px;
     border-radius: 50%;
     background-color: var(--bg-card);
     color: var(--text-primary);
@@ -69,11 +70,40 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    /* Smaller font */
+    font-size: 16px;
+    /* Larger font */
     font-weight: bold;
     overflow: hidden;
     transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.sidebar-item:hover .portal-icon,
+.sidebar-item.active .portal-icon {
+    border-radius: 16px;
+    /* Squircle */
+    border-color: var(--primary-cyan);
+    transform: none;
+    background-color: var(--bg-hover);
+}
+
+@media (max-width: 768px) {
+    .sidebar-item {
+        width: 38px;
+        height: 38px;
+        margin-bottom: 6px;
+    }
+
+    .portal-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .sidebar-item:hover .portal-icon,
+    .sidebar-item.active .portal-icon {
+        border-radius: 10px;
+    }
 }
 
 /* Hover effect */
