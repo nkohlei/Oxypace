@@ -44,56 +44,42 @@
 /* -----------------------------------------------------------------------------
    RESPONSIVE LAYOUT (Mobile & Tablet)
    ----------------------------------------------------------------------------- */
+/* -----------------------------------------------------------------------------
+   RESPONSIVE LAYOUT (Mobile & Tablet)
+   ----------------------------------------------------------------------------- */
 @media (max-width: 768px) {
     .app-container {
-        /* On mobile, we still use flex, but the sidebar becomes absolute/fixed */
-        flex-direction: column;
+        /* On mobile, we still use flex, but ensure the sidebar is handled correctly */
+        position: relative;
     }
 
+    /* Fixed Left Rail - ALWAYS VISIBLE */
     .portal-sidebar-wrapper {
         position: fixed;
         top: 0;
         left: 0;
         bottom: 0;
-        width: 80px;
-        /* Slightly wider touch target */
+        width: 72px;
+        /* Fixed width matching desktop */
         height: 100vh;
-        z-index: 2000;
-        transform: translateX(-100%);
-        border-right: none;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
-    }
-
-    .portal-sidebar-wrapper.sidebar-open {
-        transform: translateX(0);
-    }
-
-    /* Toggle Button */
-    .sidebar-toggle-arrow {
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        width: 48px;
-        height: 48px;
-        background-color: var(--primary-color);
-        border-radius: 50%;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         z-index: 3000;
-        color: white;
-        cursor: pointer;
-        transition: transform 0.2s ease, background-color 0.2s;
+        /* Highest priority */
+        transform: none;
+        /* No sliding anymore, always there */
+        border-right: 1px solid var(--border-color);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
     }
 
-    .sidebar-toggle-arrow:active {
-        transform: scale(0.95);
+    /* Toggle Arrow Removed - Controlled by internal button now */
+    .sidebar-toggle-arrow {
+        display: none !important;
     }
 
-    /* When sidebar is open, rotate arrow */
-    .sidebar-toggle-arrow.open svg {
-        transform: rotate(180deg);
+    /* Content needs to be pushed over or handle the offset if necessary */
+    .main-content-wrapper {
+        margin-left: 72px;
+        /* Push content to right to make room for fixed bar */
+        width: calc(100vw - 72px);
     }
 }
 

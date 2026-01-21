@@ -64,14 +64,17 @@
 
 /* Avatar */
 .profile-avatar-container {
-    width: 136px;
-    height: 136px;
+    width: clamp(90px, 20vw, 136px);
+    /* Responsive sizing: min 90px, max 136px */
+    height: clamp(90px, 20vw, 136px);
     border-radius: 50%;
     background-color: #111214;
     border: 8px solid #111214;
     position: relative;
     z-index: 5;
     flex-shrink: 0;
+    overflow: hidden;
+    /* Ensure image stays inside */
 }
 
 .profile-avatar-container img {
@@ -303,7 +306,9 @@
     }
 
     .profile-avatar-container {
+        /* Mobile specific adjustments if needed, though clamp handles most */
         width: 100px;
+        /* Fallback/Specific mobile size */
         height: 100px;
         border-width: 6px;
     }

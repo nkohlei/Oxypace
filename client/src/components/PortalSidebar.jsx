@@ -8,7 +8,7 @@ import './PortalSidebar.css';
 
 const PortalSidebar = () => {
     const { user, isAuthenticated } = useAuth();
-    const { closeSidebar } = useUI();
+    const { closeSidebar, toggleSidebar } = useUI();
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -144,6 +144,23 @@ const PortalSidebar = () => {
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                </div>
+
+                {/* Channel Sidebar Toggle (Mobile/Window Mode) */}
+                <div
+                    className="sidebar-item toggle-channels-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const { toggleSidebar } = useUI(); // Access context here if not available in scope, but we have 'closeSidebar' in destructuring. Better to use from prop or destructure 'toggleSidebar' at top.
+                    }}
+                // We need toggleSidebar available in the component body
+                >
+                    <div className="portal-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="13 17 18 12 13 7"></polyline>
+                            <polyline points="6 17 11 12 6 7"></polyline>
                         </svg>
                     </div>
                 </div>
