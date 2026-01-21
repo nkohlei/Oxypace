@@ -44,11 +44,13 @@
     color: var(--primary-color);
 }
 
+/* Tiny Sidebar Styles */
 .sidebar-item {
     position: relative;
-    width: 64px;
-    height: 64px;
-    margin-bottom: 8px;
+    width: 38px;
+    /* Fit in 42px */
+    height: 38px;
+    margin-bottom: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -57,19 +59,18 @@
 }
 
 .portal-icon {
-    width: 56px;
-    height: 56px;
+    width: 32px;
+    /* Small icons */
+    height: 32px;
     border-radius: 50%;
     background-color: var(--bg-card);
-    /* Use variable */
     color: var(--text-primary);
-    /* Use variable */
     border: 1px solid var(--border-subtle);
-    /* Add border for better visibility */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 14px;
+    /* Smaller font */
     font-weight: bold;
     overflow: hidden;
     transition: all 0.2s ease;
@@ -78,59 +79,19 @@
 /* Hover effect */
 .sidebar-item:hover .portal-icon,
 .sidebar-item.active .portal-icon {
-    border-radius: 14px;
+    border-radius: 10px;
+    /* Tighter radius */
     border-color: var(--primary-cyan);
     transform: scale(1.05);
     background-color: var(--bg-hover);
 }
 
-.sidebar-item.active .portal-icon {
-    background-color: var(--primary-cyan);
-    color: #000;
-    /* Black icon on active orange */
-    border: none;
-}
-
-.portal-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
 .sidebar-separator {
-    width: 28px;
+    width: 20px;
     height: 2px;
     background-color: var(--border-subtle);
-    margin: 10px 0;
+    margin: 6px 0;
     border-radius: 1px;
-}
-
-/* Tooltip on hover */
-.sidebar-item::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: 70px;
-    background: var(--bg-card);
-    /* Use variable */
-    color: var(--text-primary);
-    /* Use variable */
-    border: 1px solid var(--border-subtle);
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    z-index: 1001;
-    box-shadow: var(--shadow-popover);
-}
-
-.sidebar-item:hover::after {
-    opacity: 1;
-    visibility: visible;
 }
 
 .create-portal-btn {

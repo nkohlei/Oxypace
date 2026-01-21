@@ -114,7 +114,17 @@
 @media (max-width: 768px) {
     .modern-portals-grid {
         grid-template-columns: 1fr;
-        /* Force vertical single column */
+        padding-bottom: 80px;
+        /* Ensure space for scrolling past sticky elements if any */
+    }
+
+    .search-container {
+        padding: 16px;
+        /* Smaller padding on mobile */
+    }
+
+    .search-header {
+        margin-bottom: 20px;
     }
 }
 

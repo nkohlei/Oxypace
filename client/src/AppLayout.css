@@ -59,8 +59,8 @@
         top: 0;
         left: 0;
         bottom: 0;
-        width: 72px;
-        /* Fixed width matching desktop */
+        width: 42px;
+        /* Aggressive downsizing to 42px */
         height: 100vh;
         z-index: 3000;
         /* Highest priority */
@@ -77,9 +77,9 @@
 
     /* Content needs to be pushed over or handle the offset if necessary */
     .main-content-wrapper {
-        margin-left: 72px;
+        margin-left: 42px;
         /* Push content to right to make room for fixed bar */
-        width: calc(100vw - 72px);
+        width: calc(100vw - 42px);
     }
 }
 

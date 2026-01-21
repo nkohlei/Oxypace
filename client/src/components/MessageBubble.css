@@ -29,7 +29,8 @@
 
 /* The Bubble Itself */
 .message-bubble {
-    max-width: 75%;
+    max-width: 85%;
+    /* Wider on mobile */
     position: relative;
     display: flex;
     flex-direction: column;
@@ -42,14 +43,18 @@
 
 /* Content Styling */
 .message-content {
-    padding: 10px 16px;
-    border-radius: 24px;
-    font-size: 0.95rem;
-    line-height: 1.5;
+    padding: 8px 14px;
+    /* Slightly tighter padding */
+    border-radius: 18px;
+    /* Classic round app style */
+    font-size: 0.9rem;
+    /* Smaller text */
+    line-height: 1.4;
     word-wrap: break-word;
     white-space: pre-wrap;
     position: relative;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+    /* Subtle shadow */
 }
 
 /* Own Message Style */
@@ -62,13 +67,9 @@
 /* Other Message Style - Dynamic Theme */
 .message-bubble.other .message-content {
     background: var(--bg-card);
-    /* Ensure this variable is dark enough in dark mode or distinct */
     color: var(--text-primary);
     border: 1px solid var(--border-subtle);
     border-bottom-left-radius: 4px;
-    /* High contrast fallback */
-    background-color: #2a2a2a;
-    color: #ffffff;
 }
 
 /* Time Stamp */

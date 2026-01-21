@@ -420,8 +420,17 @@
     }
 
     .post-content-text p {
+        font-size: 0.95rem;
+        /* Reduced from 1.15rem */
+        line-height: 1.4;
+    }
+
+    .author-name {
         font-size: 1rem;
-        /* readable but compact */
+    }
+
+    .author-username {
+        font-size: 0.9rem;
     }
 
     .post-actions {
