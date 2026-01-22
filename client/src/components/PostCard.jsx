@@ -10,7 +10,7 @@ import Badge from './Badge';
 import { linkifyText } from '../utils/linkify';
 import './PostCard.css';
 
-const PostCard = ({ post, onDelete, onUnsave }) => {
+const PostCard = ({ post, onDelete, onUnsave, isAdmin }) => {
     const { user, updateUser } = useAuth(); // Destructure updateUser
 
     const navigate = useNavigate();
@@ -283,57 +283,23 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
                         {showMenu && (
                             <div className="post-dropdown-menu expanded-menu" onClick={(e) => e.stopPropagation()}>
                                 <div className="menu-group">
-                                    <button className="menu-item" onClick={() => handleMenuAction('add_reaction')}>
-                                        Tepki Ekle
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                    <button className="menu-item" onClick={handleShare}>
+                                        Arkadaşa Gönder
+                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                                     </button>
                                 </div>
-                                <div className="menu-divider"></div>
-                                <div className="menu-group">
-                                    <button className="menu-item" onClick={() => handleMenuAction('reply')}>
-                                        Yanıtla
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                                    </button>
-                                    <button className="menu-item" onClick={() => handleMenuAction('forward')}>
-                                        İlet
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>
-                                    </button>
-                                    <button className="menu-item" onClick={() => handleMenuAction('create_thread')}>
-                                        Alt Başlık Oluştur
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="12" x2="9" y2="12"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
-                                    </button>
-                                </div>
-                                <div className="menu-divider"></div>
-                                <div className="menu-group">
-                                    <button className="menu-item" onClick={() => { navigator.clipboard.writeText(post.content); handleMenuAction('copy_text'); }}>
-                                        Metni Kopyala
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                    </button>
-                                    <button className="menu-item" onClick={() => handleMenuAction('pin')}>
-                                        Twiti Sabitle
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
-                                    </button>
-                                    <button className="menu-item" onClick={() => handleMenuAction('apps')}>
-                                        Uygulamalar
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                    </button>
-                                </div>
-                                <div className="menu-divider"></div>
 
-                                <div className="menu-group">
-                                    <button className="menu-item" onClick={() => handleMenuAction('mark_unread')}>
-                                        Okunmadı Olarak İşaretle
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38" /></svg>
-                                    </button>
-                                    <button className="menu-item" onClick={() => { navigator.clipboard.writeText(window.location.origin + '/post/' + post._id); handleMenuAction('copy_link'); }}>
-                                        Mesaj Bağlantısını Kopyala
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                                    </button>
-                                    <button className="menu-item" onClick={() => handleMenuAction('speak')}>
-                                        Mesajı Söylet
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                                    </button>
-                                </div>
+                                {isAdmin && (
+                                    <>
+                                        <div className="menu-divider"></div>
+                                        <div className="menu-group">
+                                            <button className="menu-item" onClick={() => handleMenuAction('pin')}>
+                                                Başa Sabitle
+                                                <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
 
                                 <div className="menu-divider"></div>
 

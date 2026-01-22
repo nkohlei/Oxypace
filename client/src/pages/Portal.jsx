@@ -421,7 +421,12 @@ const Portal = () => {
 
                                     {/* Posts List */}
                                     {posts.map((post) => (
-                                        <PostCard key={post._id} post={post} onDelete={handleDeletePost} />
+                                        <PostCard
+                                            key={post._id}
+                                            post={post}
+                                            onDelete={handleDeletePost}
+                                            isAdmin={isAdmin}
+                                        />
                                     ))}
                                 </div>
                             )}
