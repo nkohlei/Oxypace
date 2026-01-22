@@ -18,6 +18,25 @@ const Portal = () => {
     const navigate = useNavigate();
     const { isSidebarOpen, closeSidebar } = useUI();
 
+    const [portal, setPortal] = useState(null);
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [isMember, setIsMember] = useState(false);
+
+    // Channel State
+    const [currentChannel, setCurrentChannel] = useState('general');
+    const [messageText, setMessageText] = useState('');
+
+    // UI Toggles
+    const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
+
+    const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const fileInputRef = useRef(null);
+    const videoInputRef = useRef(null);
+    const gifInputRef = useRef(null);
+    const [mediaFile, setMediaFile] = useState(null);
+
     const handleChannelSelect = (channelId) => {
         setCurrentChannel(channelId);
         if (window.innerWidth <= 768) {
@@ -25,7 +44,169 @@ const Portal = () => {
         }
     };
 
-    // ...
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 25 * 1024 * 1024) {
+                alert('Dosya boyutu 25MB\'dan büyük olamaz.');
+                return;
+            }
+            setMediaFile(file);
+            setShowPlusMenu(false);
+        }
+    };
+
+    const handleSendMessage = async () => {
+        if (!messageText.trim() && !mediaFile) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('title', 'Message');
+            if (messageText) formData.append('content', messageText);
+            formData.append('portalId', id);
+            formData.append('channel', currentChannel);
+            formData.append('type', 'text');
+            if (mediaFile) formData.append('media', mediaFile);
+
+            const res = await axios.post('/api/posts', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            // Optimistic update or refresh
+            setPosts([res.data, ...posts]);
+            setMessageText('');
+            setMediaFile(null);
+        } catch (err) {
+            console.error('Send message failed', err);
+            alert(`Mesaj gönderilemedi: ${err.response?.data?.message || err.message}`);
+        }
+    };
+
+    // Edit State
+    const [editing, setEditing] = useState(false);
+    const [settingsTab, setSettingsTab] = useState('overview');
+    const [editLoading, setEditLoading] = useState(false);
+    const [editFormData, setEditFormData] = useState({
+        name: '',
+        description: '',
+        privacy: 'public'
+    });
+    const avatarInputRef = useRef(null);
+    const bannerInputRef = useRef(null);
+
+    useEffect(() => {
+        fetchPortalData();
+    }, [id]);
+
+    useEffect(() => {
+        if (id) {
+            fetchChannelPosts();
+        }
+    }, [id, currentChannel]);
+
+    useEffect(() => {
+        if (portal && user) {
+            const memberCheck = portal.members?.includes(user._id) ||
+                user.joinedPortals?.some(p => p._id === portal._id || p === portal._id);
+            setIsMember(!!memberCheck);
+        }
+    }, [portal, user]);
+
+    const fetchPortalData = async () => {
+        setLoading(true);
+        try {
+            const res = await axios.get(`/api/portals/${id}`);
+            setPortal(res.data);
+            setEditFormData({
+                name: res.data.name,
+                description: res.data.description || '',
+                privacy: res.data.privacy || 'public'
+            });
+            // Initial post fetch will trigger by useEffect depending on default channel
+        } catch (err) {
+            setError('Portal yüklenemedi');
+            console.error(err);
+            setLoading(false);
+        }
+    };
+
+    const fetchChannelPosts = async () => {
+        try {
+            const res = await axios.get(`/api/portals/${id}/posts?channel=${currentChannel}`);
+            setPosts(res.data);
+            setError(''); // Clear any privacy error
+        } catch (err) {
+            console.error('Fetch posts failed', err);
+            if (err.response?.status === 403) {
+                setError('private');
+            } else {
+                setError('Gönderiler yüklenemedi');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleJoin = async () => {
+        try {
+            const res = await axios.post(`/api/portals/${id}/join`);
+            if (res.data.status === 'joined') {
+                setIsMember(true);
+                const updatedUser = {
+                    ...user,
+                    joinedPortals: [...(user.joinedPortals || []), portal]
+                };
+                updateUser(updatedUser);
+                setPortal(prev => ({ ...prev, members: [...(prev.members || []), user._id] }));
+                // Fetch posts now that we are a member
+                fetchChannelPosts();
+            } else {
+                alert('Üyelik isteğiniz gönderildi!');
+                setPortal(prev => ({ ...prev, isRequested: true }));
+            }
+        } catch (err) {
+            console.error('Join failed', err);
+            alert(err.response?.data?.message || 'Katılma başarısız');
+        }
+    };
+
+    const handleLeave = async () => {
+        if (!window.confirm('Bu portaldan ayrılmak istediğine emin misin?')) return;
+        try {
+            await axios.post(`/api/portals/${id}/leave`);
+            setIsMember(false);
+            const updatedUser = {
+                ...user,
+                joinedPortals: user.joinedPortals.filter(p => p._id !== id && p !== id)
+            };
+            updateUser(updatedUser);
+            navigate('/');
+        } catch (err) {
+            console.error('Leave failed', err);
+            alert(err.response?.data?.message || 'Ayrılma başarısız');
+        }
+    };
+
+
+    // Owner Check
+
+    const isOwner = user && portal && portal.owner && (
+        portal.owner._id === user._id || portal.owner === user._id
+    );
+
+    const isAdmin = isOwner || (user && portal && portal.admins && portal.admins.some(a => (a._id || a) === user._id));
+
+    // Loading State
+    if (loading || !portal) {
+        return (
+            <div className="app-wrapper full-height">
+                <Navbar />
+                <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="spinner"></div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="app-wrapper full-height discord-layout">
