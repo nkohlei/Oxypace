@@ -416,3 +416,101 @@
     background-color: var(--bg-tertiary);
     border-radius: 4px;
 }
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .settings-modal-overlay {
+        background-color: var(--bg-primary);
+        /* Full screen opacity */
+        padding: 0;
+        z-index: 9999;
+    }
+
+    .settings-modal {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        border: none;
+        flex-direction: row;
+        /* Sidebar left, content right */
+        display: flex;
+    }
+
+    /* Sidebar Layout */
+    .settings-sidebar {
+        width: 60px;
+        /* Narrow strip */
+        min-width: 60px;
+        padding: 16px 8px;
+        align-items: center;
+        background-color: var(--bg-secondary);
+        border-right: 1px solid var(--border-subtle);
+    }
+
+    /* Hide text elements in sidebar */
+    .sidebar-header,
+    .desktop-only,
+    .tab-label {
+        display: none !important;
+    }
+
+    /* Icon-only tabs */
+    .settings-tab {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        background-color: transparent;
+        color: var(--text-muted);
+    }
+
+    .settings-tab svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .settings-tab:hover {
+        background-color: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .settings-tab.active {
+        background-color: #5865f2;
+        /* Highlight active state properly */
+        color: white;
+        border-radius: 12px;
+        /* Squircle for active */
+    }
+
+    /* Content Area Adjustment */
+    .settings-content {
+        padding: 20px 20px 80px 20px;
+        width: 100%;
+    }
+
+    .close-settings-btn {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background-color: var(--bg-input);
+        color: var(--text-primary);
+        z-index: 50;
+    }
+
+    .settings-title {
+        font-size: 1.5rem;
+        margin-top: 40px;
+        /* Space for close button */
+    }
+
+    .images-grid {
+        grid-template-columns: 1fr;
+        /* Stack images */
+    }
+}
