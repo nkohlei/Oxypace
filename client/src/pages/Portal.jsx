@@ -59,26 +59,57 @@ const Portal = () => {
     const handleSendMessage = async () => {
         if (!messageText.trim() && !mediaFile) return;
 
+        // Store current data for rollback if needed
+        const currentData = { content: messageText, media: mediaFile };
+
+        // 1. Optimistic Update
+        const tempId = `temp-${Date.now()}`;
+        const optimisticPost = {
+            _id: tempId,
+            content: messageText,
+            media: mediaFile ? URL.createObjectURL(mediaFile) : null,
+            mediaType: mediaFile ? (mediaFile.type.startsWith('video') ? 'video' : 'image') : null,
+            author: user,
+            createdAt: new Date().toISOString(),
+            likes: [],
+            likeCount: 0,
+            isOptimistic: true // Flag for styling
+        };
+
+        // Add to feed immediately
+        setPosts([optimisticPost, ...posts]);
+
+        // Clear input immediately
+        setMessageText('');
+        setMediaFile(null);
+        setShowPlusMenu(false);
+
         try {
             const formData = new FormData();
             formData.append('title', 'Message');
-            if (messageText) formData.append('content', messageText);
+            if (currentData.content) formData.append('content', currentData.content);
             formData.append('portalId', id);
             formData.append('channel', currentChannel);
             formData.append('type', 'text');
-            if (mediaFile) formData.append('media', mediaFile);
+            if (currentData.media) formData.append('media', currentData.media);
 
             const res = await axios.post('/api/posts', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            // Optimistic update or refresh
-            setPosts([res.data, ...posts]);
-            setMessageText('');
-            setMediaFile(null);
+            // 2. Success: Replace temp post with real data
+            setPosts(currentPosts => currentPosts.map(p =>
+                p._id === tempId ? res.data : p
+            ));
+
         } catch (err) {
             console.error('Send message failed', err);
             alert(`Mesaj gönderilemedi: ${err.response?.data?.message || err.message}`);
+
+            // 3. Failure: Remove optimistic post and restore input (optional)
+            setPosts(currentPosts => currentPosts.filter(p => p._id !== tempId));
+            setMessageText(currentData.content);
+            setMediaFile(currentData.media);
         }
     };
 
@@ -334,14 +365,16 @@ const Portal = () => {
                                             }}
                                         />
                                         <div className="input-right-actions">
-                                            <button className="input-action-btn" title="Emoji (Yakında)">
+                                            <button
+                                                className="input-action-btn send-btn"
+                                                onClick={handleSendMessage}
+                                                disabled={!messageText.trim() && !mediaFile}
+                                                title="Gönder"
+                                                style={{ color: (messageText.trim() || mediaFile) ? 'var(--primary-color)' : 'var(--text-tertiary)' }}
+                                            >
                                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <smile cx="12" cy="12" r="10"></smile>
-                                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                                                 </svg>
                                             </button>
                                         </div>

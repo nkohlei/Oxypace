@@ -19,6 +19,36 @@
     background-color: var(--bg-hover);
 }
 
+/* Optimistic UI Styles */
+.post-card.optimistic {
+    opacity: 0.7;
+    pointer-events: none;
+    position: relative;
+    transition: all 0.5s ease;
+    filter: blur(1px);
+}
+
+.post-card.optimistic::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+    width: 50%;
+    animation: loadingBar 1.5s infinite;
+}
+
+@keyframes loadingBar {
+    0% {
+        left: -50%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
 /* Left Column - Avatar */
 .post-left {
     display: flex;

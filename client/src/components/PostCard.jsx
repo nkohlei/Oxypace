@@ -229,7 +229,7 @@ const PostCard = ({ post, onDelete, onUnsave }) => {
     }
 
     return (
-        <article className="post-card twitter-layout" onClick={handleCardClick}>
+        <article className={`post-card twitter-layout ${post.isOptimistic ? 'optimistic' : ''}`} onClick={handleCardClick}>
             {/* Left Column: Avatar */}
             <div className="post-left">
                 <Link
