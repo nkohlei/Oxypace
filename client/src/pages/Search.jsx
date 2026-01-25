@@ -7,8 +7,6 @@ import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import './Search.css';
 
-import { useAuth } from '../context/AuthContext';
-
 const Search = () => {
     const { user } = useAuth(); // Auth context
     const [query, setQuery] = useState('');
