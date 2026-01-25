@@ -274,7 +274,25 @@ const Portal = () => {
                             <span className="hashtag">#</span>
                             <h3 className="channel-name">{currentChannel === 'general' ? 'genel' : currentChannel}</h3>
                         </div>
-                        {/* ... */}
+
+                        <div className="channel-header-actions">
+                            {/* Toggle Members Button - Visible only to Members */}
+                            {isMember && (
+                                <button
+                                    className={`icon-btn ${showMembers ? 'active' : ''}`}
+                                    onClick={() => setShowMembers(!showMembers)}
+                                    title={showMembers ? "Üyeleri Gizle" : "Üyeleri Göster"}
+                                    style={{ background: 'none', border: 'none', color: showMembers ? 'var(--primary-color)' : 'var(--text-muted)' }}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
                     </header>
                     {/* ... */}
 

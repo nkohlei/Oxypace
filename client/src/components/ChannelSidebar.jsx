@@ -32,7 +32,7 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
             borderRight: '1px solid var(--border-subtle)'
         }}>
             {/* 1. Header with Full Image Banner */}
-            <div className="channel-header" onClick={() => onEdit('overview')}>
+            <div className="channel-header" onClick={() => canManage && onEdit('overview')} style={{ cursor: canManage ? 'pointer' : 'default' }}>
                 {/* Banner Image */}
                 <div style={{
                     position: 'absolute',
