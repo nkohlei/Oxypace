@@ -78,13 +78,40 @@
 }
 
 /* Hover effect */
-.sidebar-item:hover .portal-icon,
-.sidebar-item.active .portal-icon {
-    border-radius: 16px;
-    /* Squircle */
-    border-color: var(--primary-cyan);
-    transform: none;
+/* Hover effect */
+.sidebar-item:hover .portal-icon {
+    border-radius: 50% !important;
+    border-color: #FF4500;
+    transform: scale(1.05);
     background-color: var(--bg-hover);
+    box-shadow: 0 0 8px rgba(255, 69, 0, 0.4);
+}
+
+/* Active State - RGB Glow Mood */
+.sidebar-item.active .portal-icon {
+    border-radius: 50% !important;
+    border: 2px solid #FF4500;
+    /* Core OrangeRed */
+    background-color: var(--bg-hover);
+    transform: scale(1.05);
+    /* Neon Glow: Orange -> Red -> Yellow vibes */
+    box-shadow:
+        0 0 10px #FF4500,
+        0 0 20px #FFD700,
+        0 0 5px #ff0000;
+    animation: portalNeonPulse 2s infinite alternate;
+}
+
+@keyframes portalNeonPulse {
+    0% {
+        box-shadow: 0 0 8px #FF4500, 0 0 16px #FFD700;
+        border-color: #FF4500;
+    }
+
+    100% {
+        box-shadow: 0 0 12px #FF4500, 0 0 24px #FFD700, 0 0 8px #FFFF00;
+        border-color: #FF8C00;
+    }
 }
 
 @media (max-width: 768px) {
@@ -100,20 +127,11 @@
         font-size: 14px;
     }
 
+    /* Force circle on mobile too */
     .sidebar-item:hover .portal-icon,
     .sidebar-item.active .portal-icon {
-        border-radius: 10px;
+        border-radius: 50% !important;
     }
-}
-
-/* Hover effect */
-.sidebar-item:hover .portal-icon,
-.sidebar-item.active .portal-icon {
-    border-radius: 10px;
-    /* Tighter radius */
-    border-color: var(--primary-cyan);
-    transform: scale(1.05);
-    background-color: var(--bg-hover);
 }
 
 .sidebar-separator {
