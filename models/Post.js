@@ -42,7 +42,14 @@ const postSchema = new mongoose.Schema({
     mentions: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }]
+    }],
+    isPinned: {
+        type: Boolean,
+        default: false
+    },
+    pinnedAt: {
+        type: Date
+    }
 }, {
     timestamps: true
 });

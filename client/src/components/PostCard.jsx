@@ -10,7 +10,7 @@ import Badge from './Badge';
 import { linkifyText } from '../utils/linkify';
 import './PostCard.css';
 
-const PostCard = ({ post, onDelete, onUnsave, isAdmin }) => {
+const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const { user, updateUser } = useAuth(); // Destructure updateUser
 
     const navigate = useNavigate();
@@ -286,6 +286,20 @@ const PostCard = ({ post, onDelete, onUnsave, isAdmin }) => {
 
             {/* Right Column: Content */}
             <div className="post-right">
+                {post.isPinned && (
+                    <div className="pinned-indicator" style={{
+                        fontSize: '11px',
+                        color: 'var(--text-secondary)',
+                        fontWeight: '700',
+                        marginBottom: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+                        Sabitlendi
+                    </div>
+                )}
                 <div className="post-header-row">
                     <div className="header-left">
                         <Link
@@ -326,9 +340,15 @@ const PostCard = ({ post, onDelete, onUnsave, isAdmin }) => {
                                     <>
                                         <div className="menu-divider"></div>
                                         <div className="menu-group">
-                                            <button className="menu-item" onClick={() => handleMenuAction('pin')}>
-                                                Başa Sabitle
-                                                <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+                                            <button className="menu-item" onClick={() => { onPin(post._id); setShowMenu(false); }}>
+                                                {post.isPinned ? 'Sabitlemeyi Kaldır' : 'Başa Sabitle'}
+                                                <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    {post.isPinned ? (
+                                                        <line x1="2" y1="2" x2="22" y2="22"></line>
+                                                    ) : (
+                                                        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+                                                    )}
+                                                </svg>
                                             </button>
                                         </div>
                                     </>

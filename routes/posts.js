@@ -245,6 +245,50 @@ router.delete('/:id', protect, async (req, res) => {
         console.error('Delete post error:', error);
         res.status(500).json({ message: 'Server error' });
     }
+    res.status(500).json({ message: 'Server error' });
+}
+});
+
+// @route   PUT /api/posts/:id/pin
+// @desc    Toggle pin status of a post
+// @access  Private (Admin/Owner only)
+router.put('/:id/pin', protect, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        if (!post.portal) {
+            return res.status(400).json({ message: 'Only portal posts can be pinned' });
+        }
+
+        // Check permissions
+        const Portal = (await import('../models/Portal.js')).default;
+        const portal = await Portal.findById(post.portal);
+
+        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to pin posts in this portal' });
+        }
+
+        // Toggle pin status
+        post.isPinned = !post.isPinned;
+        post.pinnedAt = post.isPinned ? new Date() : null;
+        await post.save();
+
+        // Populate author for frontend update
+        await post.populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy');
+
+        res.json(post);
+    } catch (error) {
+        console.error('Pin post error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 
 export default router;

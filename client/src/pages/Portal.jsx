@@ -164,7 +164,13 @@ const Portal = () => {
     const fetchChannelPosts = async () => {
         try {
             const res = await axios.get(`/api/portals/${id}/posts?channel=${currentChannel}`);
-            setPosts(res.data);
+            const sortedPosts = res.data.sort((a, b) => {
+                if (a.isPinned === b.isPinned) {
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                }
+                return a.isPinned ? -1 : 1;
+            });
+            setPosts(sortedPosts);
             setError(''); // Clear any privacy error
         } catch (err) {
             console.error('Fetch posts failed', err);
@@ -180,6 +186,27 @@ const Portal = () => {
 
     const handleDeletePost = (postId) => {
         setPosts(prevPosts => prevPosts.filter(p => p._id !== postId));
+    };
+
+    const handlePin = async (postId) => {
+        try {
+            const res = await axios.put(`/api/posts/${postId}/pin`);
+            const updatedPost = res.data;
+
+            setPosts(prevPosts => {
+                const newPosts = prevPosts.map(p => p._id === postId ? updatedPost : p);
+                // Re-sort: Pinned first, then Newest
+                return newPosts.sort((a, b) => {
+                    if (a.isPinned === b.isPinned) {
+                        return new Date(b.createdAt) - new Date(a.createdAt);
+                    }
+                    return a.isPinned ? -1 : 1;
+                });
+            });
+        } catch (err) {
+            console.error('Pin failed', err);
+            alert('Sabitleme işlemi başarısız');
+        }
     };
 
     const handleJoin = async () => {
@@ -497,6 +524,7 @@ const Portal = () => {
                                             key={post._id}
                                             post={post}
                                             onDelete={handleDeletePost}
+                                            onPin={handlePin}
                                             isAdmin={isAdmin}
                                         />
                                     ))}
