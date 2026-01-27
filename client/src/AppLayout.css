@@ -31,10 +31,22 @@
     height: 100%;
     position: relative;
     background-color: var(--bg-primary);
+    overflow: hidden;
+    /* No scroll on main wrapper */
+    display: flex;
+    flex-direction: column;
+}
+
+.content-scroll-area {
+    flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    /* Ensure children fill width */
+    width: 100%;
+    /* Scroll behavior smooth if desired */
+    scroll-behavior: smooth;
 }
 
 /* Sidebar Toggle Arrow - Visible only on Mobile/Tablet */
