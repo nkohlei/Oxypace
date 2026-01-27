@@ -173,7 +173,9 @@ textarea:focus {
 /* App Structure */
 .app-wrapper {
   background: var(--bg-dark);
-  min-height: 100vh;
+  flex: 1;
+  /* Allow it to fill space provided by main-content-wrapper */
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
