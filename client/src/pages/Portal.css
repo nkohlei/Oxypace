@@ -437,6 +437,9 @@
     width: 100%;
     margin: 0;
     padding: 20px 40px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 .empty-portal {
