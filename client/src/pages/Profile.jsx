@@ -272,7 +272,6 @@ const Profile = () => {
                                     {profileUser.username?.[0]?.toUpperCase()}
                                 </div>
                             )}
-                            <div className="profile-status-indicator" />
                         </div>
 
                         {/* Actions */}
@@ -310,7 +309,20 @@ const Profile = () => {
                                 {profileUser?.profile?.displayName || profileUser?.username}
                                 <Badge type={profileUser?.verificationBadge} />
                             </h1>
-                            <span className="profile-username-tag">{profileUser?.username}</span>
+                            <span className="profile-username-tag">@{profileUser?.username}</span>
+
+                            {/* Moved Bio and Date */}
+                            <div className="profile-header-info">
+                                {profileUser?.profile?.bio && (
+                                    <div className="profile-bio-text">
+                                        {profileUser.profile.bio}
+                                    </div>
+                                )}
+                                <div className="profile-date-text">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    <span>{new Date(profileUser.createdAt || Date.now()).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Divider */}
@@ -390,26 +402,6 @@ const Profile = () => {
                                             )}
                                         </div>
                                     )}
-
-                                    {profileUser?.profile?.bio && (
-                                        <div style={{ marginTop: '32px' }}>
-                                            <h4 className="section-header">HAKKIMDA</h4>
-                                            <div className="modern-bio-box compact">
-                                                {/* Added 'compact' class for further styling */}
-                                                {profileUser.profile.bio}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div style={{ marginTop: '24px' }}>
-                                        <h4 className="section-header">ÜYELİK TARİHİ</h4>
-                                        <div style={{ fontSize: '14px', color: '#dbdee1', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                                <span>{new Date(profileUser.createdAt || Date.now()).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
 

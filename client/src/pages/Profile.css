@@ -31,27 +31,6 @@
     object-fit: cover;
 }
 
-/* Modern Bio Box */
-.modern-bio-box {
-    background-color: #1e1f22;
-    border: 1px solid #2b2d31;
-    border-radius: 8px;
-    padding: 16px;
-    color: #dbdee1;
-    font-size: 14px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    /* Preserves newlines */
-}
-
-.modern-bio-box.compact {
-    padding: 12px;
-    font-size: 13px;
-    line-height: 1.4;
-    background-color: #1a1b1e;
-    /* Slightly darker */
-}
-
 /* Privacy Select styling */
 .edit-form-fields select option {
     background-color: #1e1f22;
@@ -67,6 +46,11 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+}
+
+/* Header Info Section */
+.profile-header-info {
+    margin-top: 12px;
 }
 
 /* Avatar */
