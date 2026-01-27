@@ -461,12 +461,17 @@ const Profile = () => {
                                 </div>
                             )}
 
-                            {/* WISHLIST TAB (Placeholder) */}
+                            {/* WISHLIST TAB */}
                             {activeTab === 'wishlist' && (
                                 <div className="tab-content fade-in">
-                                    <h4 className="section-header">İSTEK LİSTESİ</h4>
-                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
-                                        Liste boş.
+                                    <h4 className="section-header">PORTALLAR</h4>
+                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px', marginBottom: '16px' }}>
+                                        İstek listesinde portal yok.
+                                    </div>
+
+                                    <h4 className="section-header">KULLANICILAR</h4>
+                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
+                                        İstek listesinde kullanıcı yok.
                                     </div>
                                 </div>
                             )}

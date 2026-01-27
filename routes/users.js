@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
 import Comment from '../models/Comment.js';
+import Portal from '../models/Portal.js';
 
 const router = express.Router();
 
@@ -363,6 +364,9 @@ router.get('/:username', optionalProtect, async (req, res) => {
         userObj.mutualPortals = mutualPortals;
         userObj.mutualPortalsCount = mutualPortals.length;
 
+        // Fetch portals owned by the user
+        const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar');
+
         // Privacy Check for Portals
         // Default to public if setting missing
         const portalVisibility = user.settings?.privacy?.portalVisibility || 'public';
@@ -377,7 +381,17 @@ router.get('/:username', optionalProtect, async (req, res) => {
             userObj.portalsHidden = true;
         } else {
             // Repopulate portals if needed or use what we have (we populated joinedPortals)
-            userObj.portals = user.joinedPortals;
+            // Merge joinedPortals and ownedPortals, distinct by _id
+            const allPortals = [...user.joinedPortals];
+
+            // Add owned portals if not already present
+            ownedPortals.forEach(owned => {
+                if (!allPortals.some(p => p._id.toString() === owned._id.toString())) {
+                    allPortals.push(owned);
+                }
+            });
+
+            userObj.portals = allPortals;
             userObj.portalsHidden = false;
         }
 
