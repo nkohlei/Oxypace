@@ -9,6 +9,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import Footer from '../components/Footer';
 import ShareModal from '../components/ShareModal';
+import AdUnit from '../components/AdUnit';
 import './PostDetail.css';
 
 const PostDetail = () => {
@@ -255,8 +256,10 @@ const PostDetail = () => {
                         </div>
                     </article>
 
+
                     {/* Comments Section */}
                     <div className="post-detail-comments">
+                        <AdUnit slot="9876543210" style={{ marginBottom: '20px' }} />
                         <h3>Yorumlar</h3>
                         <CommentSection postId={postId} />
                     </div>

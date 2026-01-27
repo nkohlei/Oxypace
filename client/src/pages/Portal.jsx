@@ -9,6 +9,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { useUI } from '../context/UIContext';
 import PortalSettingsModal from '../components/PortalSettingsModal';
 import PortalNotifications from '../components/PortalNotifications';
+import AdUnit from '../components/AdUnit';
 import Navbar from '../components/Navbar';
 import './Portal.css';
 
@@ -505,6 +506,7 @@ const Portal = () => {
                                 </div>
                             ) : (
                                 <div className="portal-feed-container discord-feed">
+                                    <AdUnit slot="5432167890" style={{ marginBottom: '10px' }} />
                                     {/* Feed Header / Welcome */}
                                     {posts.length === 0 && !loading && (
                                         <div className="empty-portal">

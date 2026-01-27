@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import AdUnit from '../components/AdUnit';
 import './Home.css';
 
 const Home = () => {
@@ -45,6 +46,7 @@ const Home = () => {
                         Artık topluluk odaklıyız! Sol menüden bir portala katılın veya arama sayfasından yeni topluluklar keşfedin.
                     </p>
 
+
                     <div className="action-buttons" style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
                         <button
                             className="btn-primary"
@@ -53,6 +55,10 @@ const Home = () => {
                         >
                             Topluluk Keşfet
                         </button>
+                    </div>
+
+                    <div style={{ marginTop: '40px' }}>
+                        <AdUnit slot="1234567890" />
                     </div>
                 </div>
                 <Footer />
