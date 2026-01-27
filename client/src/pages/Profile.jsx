@@ -21,6 +21,7 @@ const Profile = () => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState('memberships'); // Default tab
 
     const avatarInputRef = useRef(null);
     const coverInputRef = useRef(null);
@@ -143,6 +144,7 @@ const Profile = () => {
 
     return (
         <div className="app-wrapper full-height" style={{ backgroundColor: '#111214', color: '#dbdee1' }}>
+            <Navbar />
             <main className="app-content profile-page-content">
 
                 {/* Wide Profile Card */}
@@ -156,13 +158,7 @@ const Profile = () => {
                                 alt="Banner"
                             />
                         )}
-                        {/* Status Bubble (Top Right) */}
-                        {profileUser?.profile?.bio && (
-                            <div className="status-bubble">
-                                <span role="img" aria-label="thought">💭</span>
-                                {profileUser.profile.bio}
-                            </div>
-                        )}
+                        {/* Status Bubble REMOVED */}
                     </div>
 
                     {/* Profile Header (Avatar & Actions) */}
@@ -234,117 +230,136 @@ const Profile = () => {
                         <div className="profile-tabs">
                             {isOwnProfile ? (
                                 <>
-                                    <div className="profile-tab-item active">Pano</div>
-                                    <div className="profile-tab-item">Etkinlik</div>
-                                    <div className="profile-tab-item">İstek Listesi</div>
+                                    <div
+                                        className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('memberships')}
+                                    >
+                                        Üyelikler
+                                    </div>
+                                    <div
+                                        className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('friends')}
+                                    >
+                                        Arkadaşlar
+                                    </div>
+                                    <div
+                                        className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('wishlist')}
+                                    >
+                                        İstek Listesi
+                                    </div>
                                 </>
                             ) : (
                                 <>
-                                    <div className="profile-tab-item active">Etkinlik</div>
-                                    <div className="profile-tab-item">1 Ortak Arkadaş</div>
-                                    <div className="profile-tab-item">1 Ortak Sunucu</div>
+                                    <div
+                                        className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('memberships')}
+                                    >
+                                        Üyelikler
+                                    </div>
+                                    <div
+                                        className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('friends')}
+                                    >
+                                        Arkadaşlar
+                                    </div>
+                                    <div
+                                        className={`profile-tab-item ${activeTab === 'mutual' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('mutual')}
+                                    >
+                                        1 Ortak Sunucu
+                                    </div>
                                 </>
                             )}
                         </div>
 
                         {/* Profile Body Content */}
                         <div style={{ flex: 1 }}>
-                            {/* Bio / About */}
-                            {profileUser?.profile?.bio && (
-                                <div style={{ marginBottom: '24px' }}>
-                                    <h4 className="section-header">HAKKIMDA</h4>
-                                    <div className="section-content">
-                                        {profileUser.profile.bio}
-                                    </div>
-                                </div>
-                            )}
 
-                            <div style={{ marginBottom: '24px' }}>
-                                <h4 className="section-header">ÜYELİK TARİHİ</h4>
-                                <div style={{ fontSize: '14px', color: '#dbdee1', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                        <span>24 Mar 2023</span>
-                                    </div>
-                                </div>
-                            </div>
+                            {/* MEMBERSHIPS TAB */}
+                            {activeTab === 'memberships' && (
+                                <div className="tab-content fade-in">
+                                    <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
 
-                            {/* Not (Only visible to you) */}
-                            <div style={{ marginBottom: '24px' }}>
-                                <h4 className="section-header">Not (sadece sana görünür)</h4>
-                                <div style={{ fontSize: '13px', color: '#dbdee1', cursor: 'pointer' }}>
-                                    Not eklemek için tıkla
-                                </div>
-                            </div>
-
-                            {/* My Profile Widgets */}
-                            {isOwnProfile && (
-                                <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
-                                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                                        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#f2f3f5', margin: '0 0 4px 0' }}>Profilini Widget'larla özelleştir</h3>
-                                        <p style={{ fontSize: '13px', color: '#b5bac1', margin: 0 }}>Kendin ve ilgi alanların hakkında daha fazla paylaşım yapmak için Widget kitaplığımızdan seçim yap</p>
+                                    {/* Placeholder for Portals Grid - reusing widget style partially or new grid */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px' }}>
+                                        {profileUser.portals && profileUser.portals.length > 0 ? (
+                                            profileUser.portals.map(portal => (
+                                                <div key={portal._id} style={{
+                                                    backgroundColor: '#1e1f22',
+                                                    borderRadius: '8px',
+                                                    padding: '16px',
+                                                    border: '1px solid #2b2d31',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
+                                                        {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                                    </div>
+                                                    <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px' }}>{portal.name}</div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div style={{ color: '#949ba4', fontSize: '14px', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
+                                                Henüz üye olunan portal yok.
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="widgets-grid">
-                                        {/* Widget 1: Marvel Rivals */}
-                                        <div className="profile-widget-card" style={{ background: 'linear-gradient(135deg, #2b2d31 0%, #1e1f22 100%)' }}>
-                                            <div className="widget-add-btn">+</div>
-                                            <span className="widget-text">Marvel Rivals <span style={{ fontSize: '10px', verticalAlign: 'top' }}>Beta</span></span>
+
+                                    {/* Always show About Me in Memberships or separate? User didn't specify, but usually About is always visible or in a 'Profile' tab.
+                                        Let's keep About Me visible at the top of content OR inside the memberships tab?
+                                        Actually usually About Me is persistent. I will keep it persistent ABOVE tabs if standard, but User asked to rename 'Activity' to 'Memberships'.
+                                        In Discord 'User Info' tab has About Me.
+                                        Let's put 'About Me' inside the 'Memberships' tab as it serves as the main overview tab now.
+                                    */}
+                                    {profileUser?.profile?.bio && (
+                                        <div style={{ marginTop: '32px' }}>
+                                            <h4 className="section-header">HAKKIMDA</h4>
+                                            <div className="modern-bio-box">
+                                                {profileUser.profile.bio}
+                                            </div>
                                         </div>
-                                        {/* Widget 2: Favori Oyun */}
-                                        <div className="profile-widget-card">
-                                            <div className="widget-add-btn">+</div>
-                                            <span className="widget-text">Favori oyun</span>
-                                        </div>
-                                        {/* Widget 3: Sevdiğim oyunlar */}
-                                        <div className="profile-widget-card">
-                                            <div className="widget-add-btn">+</div>
-                                            <span className="widget-text">Sevdiğim oyunlar</span>
-                                        </div>
-                                        {/* Widget 4: Dönüşümlü oyunlar */}
-                                        <div className="profile-widget-card">
-                                            <div className="widget-add-btn">+</div>
-                                            <span className="widget-text">Dönüşümlü oyunlar</span>
-                                        </div>
-                                        {/* Widget 5 (Span 2 col?) - Oynamak istiyorum */}
-                                        <div className="profile-widget-card" style={{ gridColumn: 'span 2' }}>
-                                            <div className="widget-add-btn">+</div>
-                                            <span className="widget-text">Oynamak istiyorum</span>
+                                    )}
+
+                                    <div style={{ marginTop: '24px' }}>
+                                        <h4 className="section-header">ÜYELİK TARİHİ</h4>
+                                        <div style={{ fontSize: '14px', color: '#dbdee1', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                                <span>{new Date(profileUser.createdAt || Date.now()).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Other Profile Empty State */}
-                            {!isOwnProfile && (
-                                <div style={{
-                                    marginTop: '40px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    textAlign: 'center',
-                                    padding: '20px'
-                                }}>
-                                    <h3 style={{ color: '#dbdee1', fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                                        {profileUser?.username} adlı kişinin burada paylaşılacak bir etkinliği yok
-                                    </h3>
-                                    <p style={{ color: '#b5bac1', fontSize: '14px', maxWidth: '300px', margin: '0 0 24px 0' }}>
-                                        Bu profil hâlâ geliştirme aşamasında. Selam vermek için bir mesaj gönder!
-                                    </p>
-                                    <button style={{
-                                        backgroundColor: '#3f4147',
-                                        color: '#dbdee1',
-                                        border: 'none',
-                                        padding: '10px 24px',
-                                        borderRadius: '4px',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px'
-                                    }}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="0"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" /></svg>
-                                        Mesaj Gönder
-                                    </button>
+                            {/* FRIENDS TAB */}
+                            {activeTab === 'friends' && (
+                                <div className="tab-content fade-in">
+                                    <h4 className="section-header">ARKADAŞLAR</h4>
+                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '40px', background: '#1e1f22', borderRadius: '8px', marginTop: '16px' }}>
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4e5058" strokeWidth="1" style={{ marginBottom: '16px' }}><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                                        <p>Henüz ekli arkadaş yok.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* WISHLIST TAB (Placeholder) */}
+                            {activeTab === 'wishlist' && (
+                                <div className="tab-content fade-in">
+                                    <h4 className="section-header">İSTEK LİSTESİ</h4>
+                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
+                                        Liste boş.
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* MUTUAL SERVER TAB (Placeholder for other profiles) */}
+                            {activeTab === 'mutual' && !isOwnProfile && (
+                                <div className="tab-content fade-in">
+                                    <h4 className="section-header">ORTAK SUNUCULAR</h4>
+                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
+                                        Ortak sunucu bulunamadı.
+                                    </div>
                                 </div>
                             )}
 
@@ -352,7 +367,7 @@ const Profile = () => {
                     </div>
                 </div>
 
-                {/* Edit Profile Modal (Existing Logic) */}
+                {/* Edit Profile Modal */}
                 {editing && (
                     <div className="edit-modal-overlay" onClick={() => setEditing(false)}>
                         <div className="edit-modal-modern" onClick={e => e.stopPropagation()}>
@@ -367,7 +382,7 @@ const Profile = () => {
                             </div>
 
                             <div className="edit-modal-content-modern" style={{ backgroundColor: '#313338' }}>
-                                {/* ... Reusing existing edit modal content structure ... */}
+                                {/* ... content ... */}
                                 <div className="edit-cover-container">
                                     {profileUser?.profile?.coverImage ? (
                                         <img src={getImageUrl(profileUser.profile.coverImage)} alt="Cover" className="edit-cover-image" />
