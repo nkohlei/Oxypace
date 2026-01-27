@@ -284,31 +284,112 @@ router.get('/search', protect, async (req, res) => {
 router.get('/:username', optionalProtect, async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
-            .select('username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge');
+            .select('username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers')
+            .populate('joinedPortals', 'name avatar');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Calculate post count dynamically
-        const postCount = await Post.countDocuments({ author: user._id });
-
         const userObj = user.toObject();
-        userObj.postCount = postCount;
+        delete userObj.password;
+        delete userObj.verificationToken;
 
-        // Check if current user follows this user
+        // Calculate post count
+        userObj.postCount = await Post.countDocuments({ author: user._id });
+
+        let isOwner = false;
+        let isFriend = false;
+        let mutualFriends = [];
+        let mutualPortals = [];
+
         if (req.user) {
-            const currentUser = await User.findById(req.user._id);
-            // safe check for array
-            if (!currentUser.following) currentUser.following = [];
+            const currentUser = await User.findById(req.user._id).select('following joinedPortals');
+            isOwner = req.user._id.toString() === user._id.toString();
 
+            // Check following status
             userObj.isFollowing = currentUser.following.some(id => id.toString() === user._id.toString());
-            // Check if request is pending
+
+            // Check if friend (Mutual follow)
+            // Friend definition: I follow them AND they follow me.
+            // user.followers check is needed. user.followers contains IDs of people following user.
+            // If req.user._id is in user.followers => I follow them.
+            // If user._id is in currentUser.followers => They follow me.
+            // Wait, simpler:
+            // isFollowing = I follow them.
+            // isFollowedBy = They follow me.
+            const isFollowedBy = user.following.some(id => id.toString() === req.user._id.toString());
+            isFriend = userObj.isFollowing && isFollowedBy;
+
+            userObj.isFriend = isFriend;
             userObj.hasRequested = user.followRequests && user.followRequests.some(id => id.toString() === req.user._id.toString());
+
+            if (!isOwner) {
+                // Calculate Mutual Friends (Mutual follows of both)
+                // This can be expensive. For now, let's approximate or just intersect 'following' lists?
+                // Real "Friends" are mutual follows.
+                // Let's find users that both currentUser and targetUser follow.
+                // Or better: friends of currentUser INTERSECT friends of targetUser.
+                // For simplicity/performance now: Users that BOTH follow.
+                // Only if needed. User asked for "Common Friends".
+                // Let's find Intersection(currentUser.following, user.following).
+                const myFollowingIds = currentUser.following.map(id => id.toString());
+                const theirFollowingIds = user.following.map(id => id.toString());
+                const mutualIds = myFollowingIds.filter(id => theirFollowingIds.includes(id));
+
+                // We might want to populate these mutuals to show names/avatars
+                if (mutualIds.length > 0) {
+                    mutualFriends = await User.find({ _id: { $in: mutualIds } }).select('username profile.avatar').limit(5);
+                }
+
+                // Calculate Mutual Portals
+                const myPortalIds = currentUser.joinedPortals.map(id => id.toString());
+                const theirPortalIds = user.joinedPortals.map(p => p._id ? p._id.toString() : p.toString());
+                const mutualPortalIds = myPortalIds.filter(id => theirPortalIds.includes(id));
+
+                if (mutualPortalIds.length > 0) {
+                    // Filter from the already populated user.joinedPortals
+                    mutualPortals = user.joinedPortals.filter(p => mutualPortalIds.includes(p._id.toString()));
+                }
+            }
         } else {
             userObj.isFollowing = false;
             userObj.hasRequested = false;
+            userObj.isFriend = false;
         }
+
+        userObj.mutualFriends = mutualFriends;
+        userObj.mutualFriendsCount = mutualFriends.length; // Approximate, or count all mutuals
+        userObj.mutualPortals = mutualPortals;
+        userObj.mutualPortalsCount = mutualPortals.length;
+
+        // Privacy Check for Portals
+        // Default to public if setting missing
+        const portalVisibility = user.settings?.privacy?.portalVisibility || 'public';
+
+        let showPortals = false;
+        if (isOwner) showPortals = true;
+        else if (portalVisibility === 'public') showPortals = true;
+        else if (portalVisibility === 'friends' && isFriend) showPortals = true;
+
+        if (!showPortals) {
+            userObj.portals = []; // Hide
+            userObj.portalsHidden = true;
+        } else {
+            // Repopulate portals if needed or use what we have (we populated joinedPortals)
+            userObj.portals = user.joinedPortals;
+            userObj.portalsHidden = false;
+        }
+
+        // Remove raw lists not needed for client to see fully if private?
+        // We already stripped unnecessary fields by selective object creation, but userObj came from user.toObject() which has everything select()ed.
+        delete userObj.joinedPortals;
+        delete userObj.followers;
+        delete userObj.following; // Don't expose full following list blindly
+        // Depending on following/follower privacy setting (which users also have 'isPrivate' for account), we might hide counts/lists.
+        // For now respecting 'isPrivate' for general account visibility was handled in existing code?
+        // Existing code checks isPrivate in GET followers/following routes, but detailed profile view should also respect it?
+        // The previous code didn't seem to block basic profile info if private, only lists.
 
         res.json(userObj);
     } catch (error) {

@@ -36,12 +36,26 @@
     background-color: #1e1f22;
     border: 1px solid #2b2d31;
     border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 14px;
+    padding: 16px;
     color: #dbdee1;
+    font-size: 14px;
     line-height: 1.5;
-    max-width: 100%;
-    word-wrap: break-word;
+    white-space: pre-wrap;
+    /* Preserves newlines */
+}
+
+.modern-bio-box.compact {
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    background-color: #1a1b1e;
+    /* Slightly darker */
+}
+
+/* Privacy Select styling */
+.edit-form-fields select option {
+    background-color: #1e1f22;
+    color: white;
 }
 
 /* Header Section (Avatar + Actions) */

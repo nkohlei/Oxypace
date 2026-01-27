@@ -135,7 +135,12 @@ const userSchema = new mongoose.Schema({
             likes: { type: Boolean, default: false }
         },
         privacy: {
-            isPrivate: { type: Boolean, default: false }
+            isPrivate: { type: Boolean, default: false },
+            portalVisibility: {
+                type: String,
+                enum: ['public', 'friends', 'private'],
+                default: 'public'
+            }
         }
     }
 }, {

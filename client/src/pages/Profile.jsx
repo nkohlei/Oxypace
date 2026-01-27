@@ -16,6 +16,7 @@ const Profile = () => {
     const [formData, setFormData] = useState({
         displayName: '',
         bio: '',
+        portalVisibility: 'public' // Default
     });
 
     const [loading, setLoading] = useState(false);
@@ -31,8 +32,10 @@ const Profile = () => {
     useEffect(() => {
         if (isOwnProfile) {
             fetchMyProfile();
+            setActiveTab('memberships'); // Reset to default for own profile
         } else {
             fetchUserProfile(username);
+            setActiveTab('memberships'); // Reset for others
         }
     }, [username, isOwnProfile]);
 
@@ -43,6 +46,7 @@ const Profile = () => {
             setFormData({
                 displayName: response.data.profile?.displayName || '',
                 bio: response.data.profile?.bio || '',
+                portalVisibility: response.data.settings?.privacy?.portalVisibility || 'public'
             });
         } catch (err) {
             console.error('Failed to fetch my profile:', err);
@@ -117,15 +121,108 @@ const Profile = () => {
         setSuccess('');
         setLoading(true);
         try {
-            const response = await axios.put('/api/users/me', formData);
-            updateUser(response.data.user);
-            setProfileUser(prev => ({ ...prev, profile: { ...prev.profile, ...formData } }));
+            // Update profile info
+            const profileResponse = await axios.put('/api/users/me', {
+                displayName: formData.displayName,
+                bio: formData.bio
+            });
+
+            // Update settings (for privacy)
+            const settingsResponse = await axios.put('/api/users/settings', {
+                privacy: { portalVisibility: formData.portalVisibility }
+            });
+
+            const updatedUser = { ...currentUser };
+            // Deep merge might be needed for real app, but simplified:
+            if (updatedUser.profile) {
+                updatedUser.profile.displayName = formData.displayName;
+                updatedUser.profile.bio = formData.bio;
+            }
+            if (!updatedUser.settings) updatedUser.settings = {};
+            if (!updatedUser.settings.privacy) updatedUser.settings.privacy = {};
+            updatedUser.settings.privacy.portalVisibility = formData.portalVisibility;
+
+            updateUser(updatedUser);
+
+            // Update local state
+            setProfileUser(prev => ({
+                ...prev,
+                profile: { ...prev.profile, ...formData },
+                settings: settingsResponse.data.settings
+            }));
+
             setSuccess('Profil güncellendi!');
             setEditing(false);
         } catch (err) {
             setError(err.response?.data?.message || 'Profil güncellenemedi');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFollow = async () => {
+        if (!profileUser || isOwnProfile) return;
+        try {
+            const response = await axios.post(`/api/users/follow/${profileUser._id}`);
+            // Optimistic update or refetch
+            // For simplicity, update local state similar to response
+            setProfileUser(prev => ({
+                ...prev,
+                isFollowing: response.data.isFollowing,
+                hasRequested: response.data.hasRequested,
+                // If unfollowed, isFriend becomes false
+                isFriend: response.data.isFollowing ? prev.isFriend : false
+            }));
+        } catch (err) {
+            console.error('Follow action failed:', err);
+        }
+    };
+
+    const handleMessage = async () => {
+        if (!profileUser || isOwnProfile) return;
+        try {
+            // Create DM or get existing
+            const response = await axios.post('/api/channels', {
+                type: 'dm',
+                recipientId: profileUser._id
+            });
+            navigate(`/channels/me/${response.data._id}`);
+        } catch (err) {
+            console.error('Message action failed:', err);
+            // Fallback: If 400 (already exists), maybe we need to find it differently?
+            // Assuming API handles "get or create" logic. 
+            // If API not implemented for strict "get or create", we might error.
+            // Let's assume standard behavior for now.
+        }
+    };
+
+    // Helper for button text
+    const getFollowButton = () => {
+        if (profileUser.isFriend) {
+            return (
+                <button className="profile-action-btn success" onClick={handleFollow}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
+                    Arkadaşsın
+                </button>
+            );
+        } else if (profileUser.hasRequested) {
+            return (
+                <button className="profile-action-btn secondary" onClick={handleFollow}>
+                    İstek Gönderildi
+                </button>
+            );
+        } else if (profileUser.isFollowing) {
+            return (
+                <button className="profile-action-btn secondary" onClick={handleFollow}>
+                    Takip Ediliyor
+                </button>
+            );
+        } else {
+            return (
+                <button className="profile-action-btn primary" onClick={handleFollow} style={{ backgroundColor: '#248046', color: 'white' }}>
+                    Arkadaş Ekle
+                </button>
+            );
         }
     };
 
@@ -185,24 +282,17 @@ const Profile = () => {
                                     <button className="profile-action-btn" onClick={() => setEditing(true)}>
                                         Profili Düzenle
                                     </button>
-                                    <button className="profile-action-btn icon-only">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                    </button>
                                 </>
                             ) : (
                                 <>
                                     <button
                                         className="profile-action-btn primary"
-                                        onClick={() => {
-                                            alert('Mesajlaşma özelliği yakında!');
-                                        }}
+                                        onClick={handleMessage}
                                     >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="0"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" /></svg>
                                         Mesaj
                                     </button>
-                                    <button className="profile-action-btn icon-only">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                                    </button>
+                                    {getFollowButton()}
                                     <button className="profile-action-btn icon-only">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                                     </button>
@@ -228,48 +318,34 @@ const Profile = () => {
 
                         {/* Info Tabs */}
                         <div className="profile-tabs">
-                            {isOwnProfile ? (
-                                <>
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('memberships')}
-                                    >
-                                        Üyelikler
-                                    </div>
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('friends')}
-                                    >
-                                        Arkadaşlar
-                                    </div>
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('wishlist')}
-                                    >
-                                        İstek Listesi
-                                    </div>
-                                </>
+                            <div
+                                className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('memberships')}
+                            >
+                                Üyelikler
+                            </div>
+                            <div
+                                className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('friends')}
+                            >
+                                Arkadaşlar
+                                {profileUser.mutualFriendsCount > 0 && !isOwnProfile && <span className="tab-badge">{profileUser.mutualFriendsCount}</span>}
+                            </div>
+
+                            {!isOwnProfile ? (
+                                <div
+                                    className={`profile-tab-item ${activeTab === 'mutual_portals' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('mutual_portals')}
+                                >
+                                    {profileUser.mutualPortalsCount || 0} Ortak Sunucu
+                                </div>
                             ) : (
-                                <>
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('memberships')}
-                                    >
-                                        Üyelikler
-                                    </div>
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('friends')}
-                                    >
-                                        Arkadaşlar
-                                    </div>
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'mutual' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('mutual')}
-                                    >
-                                        1 Ortak Sunucu
-                                    </div>
-                                </>
+                                <div
+                                    className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('wishlist')}
+                                >
+                                    İstek Listesi
+                                </div>
                             )}
                         </div>
 
@@ -281,40 +357,45 @@ const Profile = () => {
                                 <div className="tab-content fade-in">
                                     <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
 
-                                    {/* Placeholder for Portals Grid - reusing widget style partially or new grid */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px' }}>
-                                        {profileUser.portals && profileUser.portals.length > 0 ? (
-                                            profileUser.portals.map(portal => (
-                                                <div key={portal._id} style={{
-                                                    backgroundColor: '#1e1f22',
-                                                    borderRadius: '8px',
-                                                    padding: '16px',
-                                                    border: '1px solid #2b2d31',
-                                                    textAlign: 'center'
-                                                }}>
-                                                    <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
-                                                        {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                    {profileUser.portalsHidden ? (
+                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px', background: '#1e1f22', borderRadius: '8px' }}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginBottom: '8px' }}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                            <p>Bu kullanıcının üyelikleri gizli.</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px' }}>
+                                            {profileUser.portals && profileUser.portals.length > 0 ? (
+                                                profileUser.portals.map(portal => (
+                                                    <div key={portal._id} style={{
+                                                        backgroundColor: '#1e1f22',
+                                                        borderRadius: '8px',
+                                                        padding: '16px',
+                                                        border: '1px solid #2b2d31',
+                                                        textAlign: 'center',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                        // Optional: Navigate to portal on click
+                                                        onClick={() => navigate(`/portal/${portal._id}`)}
+                                                    >
+                                                        <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
+                                                            {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                                        </div>
+                                                        <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{portal.name}</div>
                                                     </div>
-                                                    <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px' }}>{portal.name}</div>
+                                                ))
+                                            ) : (
+                                                <div style={{ color: '#949ba4', fontSize: '14px', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
+                                                    Henüz üye olunan portal yok.
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div style={{ color: '#949ba4', fontSize: '14px', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
-                                                Henüz üye olunan portal yok.
-                                            </div>
-                                        )}
-                                    </div>
+                                            )}
+                                        </div>
+                                    )}
 
-                                    {/* Always show About Me in Memberships or separate? User didn't specify, but usually About is always visible or in a 'Profile' tab.
-                                        Let's keep About Me visible at the top of content OR inside the memberships tab?
-                                        Actually usually About Me is persistent. I will keep it persistent ABOVE tabs if standard, but User asked to rename 'Activity' to 'Memberships'.
-                                        In Discord 'User Info' tab has About Me.
-                                        Let's put 'About Me' inside the 'Memberships' tab as it serves as the main overview tab now.
-                                    */}
                                     {profileUser?.profile?.bio && (
                                         <div style={{ marginTop: '32px' }}>
                                             <h4 className="section-header">HAKKIMDA</h4>
-                                            <div className="modern-bio-box">
+                                            <div className="modern-bio-box compact">
+                                                {/* Added 'compact' class for further styling */}
                                                 {profileUser.profile.bio}
                                             </div>
                                         </div>
@@ -335,11 +416,56 @@ const Profile = () => {
                             {/* FRIENDS TAB */}
                             {activeTab === 'friends' && (
                                 <div className="tab-content fade-in">
-                                    <h4 className="section-header">ARKADAŞLAR</h4>
-                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '40px', background: '#1e1f22', borderRadius: '8px', marginTop: '16px' }}>
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4e5058" strokeWidth="1" style={{ marginBottom: '16px' }}><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-                                        <p>Henüz ekli arkadaş yok.</p>
-                                    </div>
+                                    <h4 className="section-header">{isOwnProfile ? 'ARKADAŞLAR' : 'ORTAK ARKADAŞLAR'}</h4>
+
+                                    {!isOwnProfile && profileUser.mutualFriends && profileUser.mutualFriends.length > 0 ? (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                                            {profileUser.mutualFriends.map(friend => (
+                                                <div key={friend._id} className="friend-card-compact" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#1e1f22', borderRadius: '8px' }}>
+                                                    <img src={getImageUrl(friend.profile?.avatar)} alt={friend.username} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>{friend.username}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '40px', background: '#1e1f22', borderRadius: '8px', marginTop: '16px' }}>
+                                            {isOwnProfile ? (
+                                                <><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4e5058" strokeWidth="1" style={{ marginBottom: '16px' }}><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                                                    <p>Henüz ekli arkadaş yok.</p></>
+                                            ) : (
+                                                <p>Ortak arkadaş bulunamadı.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* MUTUAL PORTALS TAB */}
+                            {activeTab === 'mutual_portals' && !isOwnProfile && (
+                                <div className="tab-content fade-in">
+                                    <h4 className="section-header">ORTAK SUNUCULAR</h4>
+                                    {profileUser.mutualPortals && profileUser.mutualPortals.length > 0 ? (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px' }}>
+                                            {profileUser.mutualPortals.map(portal => (
+                                                <div key={portal._id} style={{
+                                                    backgroundColor: '#1e1f22',
+                                                    borderRadius: '8px',
+                                                    padding: '16px',
+                                                    border: '1px solid #2b2d31',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
+                                                        {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                                    </div>
+                                                    <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px' }}>{portal.name}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
+                                            Ortak sunucu bulunamadı.
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -349,16 +475,6 @@ const Profile = () => {
                                     <h4 className="section-header">İSTEK LİSTESİ</h4>
                                     <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
                                         Liste boş.
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* MUTUAL SERVER TAB (Placeholder for other profiles) */}
-                            {activeTab === 'mutual' && !isOwnProfile && (
-                                <div className="tab-content fade-in">
-                                    <h4 className="section-header">ORTAK SUNUCULAR</h4>
-                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
-                                        Ortak sunucu bulunamadı.
                                     </div>
                                 </div>
                             )}
@@ -447,6 +563,29 @@ const Profile = () => {
                                             style={{ backgroundColor: '#1e1f22', borderColor: '#1e1f22', color: 'white' }}
                                         />
                                         <label htmlFor="input-bio" className="floating-label">Bio (Kendinden bahset)</label>
+                                    </div>
+
+                                    {/* Privacy Settings */}
+                                    <div className="floating-label-group" style={{ marginTop: '16px' }}>
+                                        <label style={{ fontSize: '12px', color: '#b5bac1', marginBottom: '6px', display: 'block' }}>Üyeliklerin Görünürlüğü</label>
+                                        <select
+                                            name="portalVisibility"
+                                            value={formData.portalVisibility}
+                                            onChange={handleChange}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px',
+                                                backgroundColor: '#1e1f22',
+                                                border: '1px solid #2b2d31',
+                                                borderRadius: '4px',
+                                                color: 'white',
+                                                outline: 'none'
+                                            }}
+                                        >
+                                            <option value="public">Herkese Açık</option>
+                                            <option value="friends">Sadece Arkadaşlara</option>
+                                            <option value="private">Gizli</option>
+                                        </select>
                                     </div>
 
                                     {error && <div className="error-message">{error}</div>}
