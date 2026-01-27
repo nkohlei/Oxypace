@@ -2,8 +2,8 @@
     /* Ensure page takes full width in the new flex layout */
     width: 100%;
     /* Allow wrapper to grow beyond viewport to enable scrolling in parent */
-    height: auto;
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
 }
 
 .search-main-content {
