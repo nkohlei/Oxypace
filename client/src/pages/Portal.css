@@ -88,6 +88,7 @@
     position: relative;
     height: 100%;
     /* Fill parent */
+    justify-content: flex-start !important;
 }
 
 /* Discord Feed Adaptation - This is the scrollable part */
@@ -437,14 +438,14 @@
 .portal-feed-container {
     width: 100%;
     margin: 0;
-    padding: 85px 40px 20px 40px;
+    padding: 95px 40px 20px 40px;
     /* Top padding 85px to clear absolute input */
     flex: 1;
     overflow-y: auto;
     min-height: 0;
     display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
 }
 
 .empty-portal {
