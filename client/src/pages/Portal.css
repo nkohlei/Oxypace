@@ -96,12 +96,13 @@
     overflow-y: auto;
     /* Scroll enabled here */
     overflow-x: hidden;
-    padding: 100px 40px 20px 40px;
-    /* Top padding increased for overlay input box */
+    padding: 72px 40px 20px 40px;
+    /* Top padding adjusted for overlay input box */
     width: 100%;
     /* Remove automatic padding that might cause scroll on empty */
     min-height: 0;
     /* Flexbox trick for nested scroll */
+    justify-content: flex-start;
 }
 
 /* Search Bar Mini */
