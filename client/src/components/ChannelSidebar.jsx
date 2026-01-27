@@ -23,7 +23,8 @@ const ChannelSidebar = ({ portal, isMember, onEdit, currentChannel, onChangeChan
     return (
         <div className={`channel-sidebar ${className || ''}`} style={{
             // Width is handled by CSS class
-            height: '100%',
+            // Width is handled by CSS class
+            minHeight: '100%',
             backgroundColor: 'var(--bg-secondary)',
             display: 'flex',
             flexDirection: 'column',

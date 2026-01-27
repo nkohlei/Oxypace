@@ -437,10 +437,14 @@
 .portal-feed-container {
     width: 100%;
     margin: 0;
-    padding: 20px 40px;
+    padding: 85px 40px 20px 40px;
+    /* Top padding 85px to clear absolute input */
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
 }
 
 .empty-portal {
