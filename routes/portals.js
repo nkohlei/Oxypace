@@ -143,7 +143,20 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
         // Privacy Check
         if (portal.privacy === 'private') {
             const userId = req.user?._id;
-            const isMember = userId && portal.members.some(m => m.toString() === userId.toString());
+            let isMember = userId && portal.members.some(m => m.toString() === userId.toString());
+
+            // Self-Healing: Check if user has this portal in joinedPortals but is missing from portal.members
+            if (!isMember && userId) {
+                const user = await User.findById(userId);
+                if (user && user.joinedPortals.includes(portalId)) {
+                    console.log(`Self-healing membership for user ${userId} in portal ${portalId}`);
+                    // Repair: Add to portal members
+                    portal.members.push(userId);
+                    await portal.save();
+                    isMember = true;
+                }
+            }
+
             if (!isMember) {
                 return res.status(403).json({ message: 'Bu portal gizlidir. İçeriği görmek için üye olmalısınız.' });
             }
