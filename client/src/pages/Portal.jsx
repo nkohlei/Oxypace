@@ -95,9 +95,15 @@ const Portal = () => {
             formData.append('type', 'text');
             if (currentData.media) formData.append('media', currentData.media);
 
-            const res = await axios.post('/api/posts', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const token = localStorage.getItem('token');
+            const config = {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                }
+            };
+
+            const res = await axios.post('/api/posts', formData, config);
 
             // 2. Success: Replace temp post with real data
             setPosts(currentPosts => currentPosts.map(p =>
@@ -167,7 +173,10 @@ const Portal = () => {
 
     const fetchChannelPosts = async () => {
         try {
-            const res = await axios.get(`/api/portals/${id}/posts?channel=${currentChannel}`);
+            const token = localStorage.getItem('token');
+            const config = token ? { headers: { 'Authorization': `Bearer ${token}` } } : {};
+
+            const res = await axios.get(`/api/portals/${id}/posts?channel=${currentChannel}`, config);
             const sortedPosts = res.data.sort((a, b) => {
                 if (a.isPinned === b.isPinned) {
                     return new Date(b.createdAt) - new Date(a.createdAt);
@@ -220,332 +229,336 @@ const Portal = () => {
             setTimeout(() => setShowLoginWarning(false), 4000); // Wait for full animation (4s)
             return;
         }
-        try {
-            const res = await axios.post(`/api/portals/${id}/join`);
-            if (res.data.status === 'joined') {
-                setIsMember(true);
-                const updatedUser = {
-                    ...user,
-                    joinedPortals: [...(user.joinedPortals || []), portal]
-                };
-                updateUser(updatedUser);
-                setPortal(prev => ({ ...prev, members: [...(prev.members || []), user._id] }));
-                // Fetch posts now that we are a member
-                fetchChannelPosts();
-            } else {
-                alert('Üyelik isteğiniz gönderildi!');
-                setPortal(prev => ({ ...prev, isRequested: true }));
-            }
-        } catch (err) {
-            console.error('Join failed', err);
-            alert(err.response?.data?.message || 'Katılma başarısız');
-        }
-    };
+    }
+    try {
+        const token = localStorage.getItem('token');
+        const config = token ? { headers: { 'Authorization': `Bearer ${token}` } } : {};
 
-    const handleLeave = async () => {
-        if (!window.confirm('Bu portaldan ayrılmak istediğine emin misin?')) return;
-        try {
-            await axios.post(`/api/portals/${id}/leave`);
-            setIsMember(false);
+        const res = await axios.post(`/api/portals/${id}/join`, {}, config);
+        if (res.data.status === 'joined') {
+            setIsMember(true);
             const updatedUser = {
                 ...user,
-                joinedPortals: user.joinedPortals.filter(p => p._id !== id && p !== id)
+                joinedPortals: [...(user.joinedPortals || []), portal]
             };
             updateUser(updatedUser);
-            navigate('/');
-        } catch (err) {
-            console.error('Leave failed', err);
-            alert(err.response?.data?.message || 'Ayrılma başarısız');
+            setPortal(prev => ({ ...prev, members: [...(prev.members || []), user._id] }));
+            // Fetch posts now that we are a member
+            fetchChannelPosts();
+        } else {
+            alert('Üyelik isteğiniz gönderildi!');
+            setPortal(prev => ({ ...prev, isRequested: true }));
         }
-    };
-
-
-    // Owner Check
-
-    const isOwner = user && portal && portal.owner && (
-        portal.owner._id === user._id || portal.owner === user._id
-    );
-
-    const isAdmin = isOwner || (user && portal && portal.admins && portal.admins.some(a => (a._id || a) === user._id));
-
-    // Loading State
-    if (loading || authLoading || !portal) {
-        return (
-            <div className="app-wrapper full-height">
-                <Navbar />
-                <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="spinner"></div>
-                </div>
-            </div>
-        );
+    } catch (err) {
+        console.error('Join failed', err);
+        alert(err.response?.data?.message || 'Katılma başarısız');
     }
+};
 
+const handleLeave = async () => {
+    if (!window.confirm('Bu portaldan ayrılmak istediğine emin misin?')) return;
+    try {
+        await axios.post(`/api/portals/${id}/leave`);
+        setIsMember(false);
+        const updatedUser = {
+            ...user,
+            joinedPortals: user.joinedPortals.filter(p => p._id !== id && p !== id)
+        };
+        updateUser(updatedUser);
+        navigate('/');
+    } catch (err) {
+        console.error('Leave failed', err);
+        alert(err.response?.data?.message || 'Ayrılma başarısız');
+    }
+};
+
+
+// Owner Check
+
+const isOwner = user && portal && portal.owner && (
+    portal.owner._id === user._id || portal.owner === user._id
+);
+
+const isAdmin = isOwner || (user && portal && portal.admins && portal.admins.some(a => (a._id || a) === user._id));
+
+// Loading State
+if (loading || authLoading || !portal) {
     return (
-        <div className="app-wrapper full-height discord-layout">
-            {/* Global Navbar - Hide when editing settings */}
-            {!editing && <Navbar />}
-            {/* Guest Login Warning Toast */}
-            {showLoginWarning && (
-                <div className="guest-warning-toast">
-                    Lütfen giriş yapın veya kaydolun!
-                </div>
-            )}
-
-            <div className="discord-split-view">
-                {user && (
-                    <ChannelSidebar
-                        portal={portal}
-                        isMember={isMember}
-                        canManage={isOwner || isAdmin}
-                        onEdit={(tab) => {
-                            const targetTab = typeof tab === 'string' ? tab : 'overview';
-                            setSettingsTab(targetTab);
-                            setEditing(true);
-                        }}
-                        currentChannel={currentChannel}
-                        onChangeChannel={handleChannelSelect}
-                        className={isSidebarOpen ? 'mobile-open' : ''}
-                    />
-                )}
-
-                <main className="discord-main-content">
-                    {/* ... Header and Feed as before ... */}
-                    <header className="channel-top-bar">
-                        <div className="channel-title-wrapper">
-                            <span className="hashtag">#</span>
-                            <h3 className="channel-name">{currentChannel === 'general' ? 'genel' : currentChannel}</h3>
-                        </div>
-
-                        <div className="channel-header-actions">
-                            {/* Toggle Members Button - Visible only to Members */}
-                            {isMember && (
-                                <button
-                                    className={`icon-btn ${showMembers ? 'active' : ''}`}
-                                    onClick={() => setShowMembers(!showMembers)}
-                                    title={showMembers ? "Üyeleri Gizle" : "Üyeleri Göster"}
-                                    style={{ background: 'none', border: 'none', color: showMembers ? 'var(--primary-color)' : 'var(--text-muted)' }}
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                        <circle cx="9" cy="7" r="4"></circle>
-                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                    </svg>
-                                </button>
-                            )}
-                        </div>
-                    </header>
-                    {/* ... */}
-
-                    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                        {/* Channel Content (Feed) */}
-                        <div className="channel-messages-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-
-
-                            {error === 'private' ? (
-                                <div className="portal-privacy-screen">
-                                    <div className="privacy-card">
-                                        <div className="privacy-icon">🔒</div>
-                                        <img src={getImageUrl(portal.avatar)} alt="" className="privacy-avatar" />
-                                        <h2>{portal.name}</h2>
-                                        <p className="privacy-desc">{portal.description || 'Bu portal gizlidir.'}</p>
-                                        <p className="privacy-hint">İçeriği görmek ve mesajlaşmak için üye olmalısın.</p>
-
-                                        {portal.isRequested ? (
-                                            <button className="privacy-join-btn requested" disabled>İstek Gönderildi</button>
-                                        ) : (
-                                            <button className="privacy-join-btn" onClick={handleJoin}>
-                                                {portal.privacy === 'private' ? 'Üyelik İsteği Gönder' : 'Portala Katıl'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-
-                                    {/* Message Input Area */}
-                                    {user ? (
-                                        isMember ? (
-                                            <div className="channel-input-area">
-                                                {/* Plus Menu Popover */}
-                                                {showPlusMenu && (
-                                                    <>
-                                                        <div
-                                                            style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                                                            onClick={() => setShowPlusMenu(false)}
-                                                        />
-                                                        <div className="plus-menu">
-                                                            <div className="plus-menu-item" onClick={() => { fileInputRef.current.click(); setShowPlusMenu(false); }}>
-                                                                <div className="plus-menu-icon">
-                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                                                </div>
-                                                                Görsel Yükle
-                                                            </div>
-                                                            <div className="plus-menu-item" onClick={() => { videoInputRef.current.click(); setShowPlusMenu(false); }}>
-                                                                <div className="plus-menu-icon">
-                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-                                                                </div>
-                                                                Video Yükle
-                                                            </div>
-                                                            <div className="plus-menu-item" onClick={() => { gifInputRef.current.click(); setShowPlusMenu(false); }}>
-                                                                <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '10px' }}>GIF</div>
-                                                                GIF Yükle
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                                <input
-                                                    type="file"
-                                                    ref={fileInputRef}
-                                                    onChange={handleFileSelect}
-                                                    style={{ display: 'none' }}
-                                                    accept="image/png, image/jpeg, image/jpg"
-                                                />
-                                                <input
-                                                    type="file"
-                                                    ref={videoInputRef}
-                                                    onChange={handleFileSelect}
-                                                    style={{ display: 'none' }}
-                                                    accept="video/mp4, video/webm, video/quicktime"
-                                                />
-                                                <input
-                                                    type="file"
-                                                    ref={gifInputRef}
-                                                    onChange={handleFileSelect}
-                                                    style={{ display: 'none' }}
-                                                    accept="image/gif"
-                                                />
-
-                                                <div className="message-input-wrapper">
-                                                    <button
-                                                        className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                                        onClick={() => setShowPlusMenu(!showPlusMenu)}
-                                                        style={{
-                                                            backgroundColor: '#383a40',
-                                                            borderRadius: '50%',
-                                                            width: '32px',
-                                                            height: '32px',
-                                                            marginRight: '12px',
-                                                            color: showPlusMenu ? 'var(--primary-color)' : '#b9bbbe'
-                                                        }}
-                                                    >
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
-                                                        </svg>
-                                                    </button>
-
-                                                    {mediaFile && (
-                                                        <div className="input-media-preview" style={{ marginRight: '10px', display: 'flex', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: '4px' }}>
-                                                            <span style={{ fontSize: '12px', color: 'var(--text-primary)', marginRight: '6px' }}>
-                                                                {mediaFile.type.startsWith('video') ? '🎥' : (mediaFile.type.includes('gif') ? '👾' : '🖼️')}
-                                                            </span>
-                                                            <button onClick={() => setMediaFile(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>×</button>
-                                                        </div>
-                                                    )}
-
-                                                    <input
-                                                        type="text"
-                                                        placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
-                                                        value={messageText}
-                                                        onChange={(e) => setMessageText(e.target.value)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                                e.preventDefault();
-                                                                handleSendMessage();
-                                                            }
-                                                        }}
-                                                    />
-                                                    <div className="input-right-actions">
-                                                        <button
-                                                            className="input-action-btn send-btn"
-                                                            onClick={handleSendMessage}
-                                                            disabled={!messageText.trim() && !mediaFile}
-                                                            title="Gönder"
-                                                            style={{ color: (messageText.trim() || mediaFile) ? 'var(--primary-color)' : 'var(--text-tertiary)' }}
-                                                        >
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div style={{ padding: '20px', textAlign: 'center', color: '#b9bbbe', backgroundColor: 'var(--bg-card)', borderTop: '1px solid var(--border-subtle)' }}>
-                                                Bu kanala mesaj göndermek için üye olmalısın.
-                                            </div>
-                                        )
-                                    ) : null}
-
-                                    <div className="portal-feed-container discord-feed">
-                                        {/* Feed Header / Welcome */}
-                                        {posts.length === 0 && !loading && (
-                                            <div className="empty-portal">
-                                                <div className="empty-portal-icon">👋</div>
-                                                <h3>#{currentChannel === 'general' ? 'genel' : currentChannel} kanalına hoş geldin!</h3>
-                                                <p>
-                                                    {currentChannel === 'general'
-                                                        ? `Burası ${portal.name} sunucusunun başlangıcı.`
-                                                        : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Posts List */}
-                                        {posts.map((post) => (
-                                            <PostCard
-                                                key={post._id}
-                                                post={post}
-                                                onDelete={handleDeletePost}
-                                                onPin={handlePin}
-                                                isAdmin={isAdmin}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-
-
-                        </div>
-
-                        {/* Members Sidebar (Right Column) */}
-                        {showMembers && (
-                            <MembersSidebar members={portal.members} />
-                        )}
-                    </div>
-
-                    {/* New Settings Modal Integration */}
-                    {editing && settingsTab !== 'notifications' && (
-                        <PortalSettingsModal
-                            portal={portal}
-                            currentUser={user}
-                            initialTab={settingsTab}
-                            onClose={() => setEditing(false)}
-                            onUpdate={(updatedPortal) => {
-                                setPortal(updatedPortal);
-                            }}
-                        />
-                    )}
-
-                    {/* Portal Notifications Section */}
-                    {editing && settingsTab === 'notifications' && (
-                        <div className="portal-notifications-modal" onClick={() => setEditing(false)}>
-                            <div className="notifications-modal-content" onClick={(e) => e.stopPropagation()}>
-                                <button className="close-notifications-btn" onClick={() => setEditing(false)}>
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                                <PortalNotifications portalId={portal._id} />
-                            </div>
-                        </div>
-                    )}
-                </main>
+        <div className="app-wrapper full-height">
+            <Navbar />
+            <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <div className="spinner"></div>
             </div>
         </div>
     );
+}
+
+return (
+    <div className="app-wrapper full-height discord-layout">
+        {/* Global Navbar - Hide when editing settings */}
+        {!editing && <Navbar />}
+        {/* Guest Login Warning Toast */}
+        {showLoginWarning && (
+            <div className="guest-warning-toast">
+                Lütfen giriş yapın veya kaydolun!
+            </div>
+        )}
+
+        <div className="discord-split-view">
+            {user && (
+                <ChannelSidebar
+                    portal={portal}
+                    isMember={isMember}
+                    canManage={isOwner || isAdmin}
+                    onEdit={(tab) => {
+                        const targetTab = typeof tab === 'string' ? tab : 'overview';
+                        setSettingsTab(targetTab);
+                        setEditing(true);
+                    }}
+                    currentChannel={currentChannel}
+                    onChangeChannel={handleChannelSelect}
+                    className={isSidebarOpen ? 'mobile-open' : ''}
+                />
+            )}
+
+            <main className="discord-main-content">
+                {/* ... Header and Feed as before ... */}
+                <header className="channel-top-bar">
+                    <div className="channel-title-wrapper">
+                        <span className="hashtag">#</span>
+                        <h3 className="channel-name">{currentChannel === 'general' ? 'genel' : currentChannel}</h3>
+                    </div>
+
+                    <div className="channel-header-actions">
+                        {/* Toggle Members Button - Visible only to Members */}
+                        {isMember && (
+                            <button
+                                className={`icon-btn ${showMembers ? 'active' : ''}`}
+                                onClick={() => setShowMembers(!showMembers)}
+                                title={showMembers ? "Üyeleri Gizle" : "Üyeleri Göster"}
+                                style={{ background: 'none', border: 'none', color: showMembers ? 'var(--primary-color)' : 'var(--text-muted)' }}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                </header>
+                {/* ... */}
+
+                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                    {/* Channel Content (Feed) */}
+                    <div className="channel-messages-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+
+
+                        {error === 'private' ? (
+                            <div className="portal-privacy-screen">
+                                <div className="privacy-card">
+                                    <div className="privacy-icon">🔒</div>
+                                    <img src={getImageUrl(portal.avatar)} alt="" className="privacy-avatar" />
+                                    <h2>{portal.name}</h2>
+                                    <p className="privacy-desc">{portal.description || 'Bu portal gizlidir.'}</p>
+                                    <p className="privacy-hint">İçeriği görmek ve mesajlaşmak için üye olmalısın.</p>
+
+                                    {portal.isRequested ? (
+                                        <button className="privacy-join-btn requested" disabled>İstek Gönderildi</button>
+                                    ) : (
+                                        <button className="privacy-join-btn" onClick={handleJoin}>
+                                            {portal.privacy === 'private' ? 'Üyelik İsteği Gönder' : 'Portala Katıl'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+
+                                {/* Message Input Area */}
+                                {user ? (
+                                    isMember ? (
+                                        <div className="channel-input-area">
+                                            {/* Plus Menu Popover */}
+                                            {showPlusMenu && (
+                                                <>
+                                                    <div
+                                                        style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                                                        onClick={() => setShowPlusMenu(false)}
+                                                    />
+                                                    <div className="plus-menu">
+                                                        <div className="plus-menu-item" onClick={() => { fileInputRef.current.click(); setShowPlusMenu(false); }}>
+                                                            <div className="plus-menu-icon">
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                                            </div>
+                                                            Görsel Yükle
+                                                        </div>
+                                                        <div className="plus-menu-item" onClick={() => { videoInputRef.current.click(); setShowPlusMenu(false); }}>
+                                                            <div className="plus-menu-icon">
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                                                            </div>
+                                                            Video Yükle
+                                                        </div>
+                                                        <div className="plus-menu-item" onClick={() => { gifInputRef.current.click(); setShowPlusMenu(false); }}>
+                                                            <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '10px' }}>GIF</div>
+                                                            GIF Yükle
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                onChange={handleFileSelect}
+                                                style={{ display: 'none' }}
+                                                accept="image/png, image/jpeg, image/jpg"
+                                            />
+                                            <input
+                                                type="file"
+                                                ref={videoInputRef}
+                                                onChange={handleFileSelect}
+                                                style={{ display: 'none' }}
+                                                accept="video/mp4, video/webm, video/quicktime"
+                                            />
+                                            <input
+                                                type="file"
+                                                ref={gifInputRef}
+                                                onChange={handleFileSelect}
+                                                style={{ display: 'none' }}
+                                                accept="image/gif"
+                                            />
+
+                                            <div className="message-input-wrapper">
+                                                <button
+                                                    className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
+                                                    onClick={() => setShowPlusMenu(!showPlusMenu)}
+                                                    style={{
+                                                        backgroundColor: '#383a40',
+                                                        borderRadius: '50%',
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        marginRight: '12px',
+                                                        color: showPlusMenu ? 'var(--primary-color)' : '#b9bbbe'
+                                                    }}
+                                                >
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
+                                                    </svg>
+                                                </button>
+
+                                                {mediaFile && (
+                                                    <div className="input-media-preview" style={{ marginRight: '10px', display: 'flex', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: '4px' }}>
+                                                        <span style={{ fontSize: '12px', color: 'var(--text-primary)', marginRight: '6px' }}>
+                                                            {mediaFile.type.startsWith('video') ? '🎥' : (mediaFile.type.includes('gif') ? '👾' : '🖼️')}
+                                                        </span>
+                                                        <button onClick={() => setMediaFile(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>×</button>
+                                                    </div>
+                                                )}
+
+                                                <input
+                                                    type="text"
+                                                    placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
+                                                    value={messageText}
+                                                    onChange={(e) => setMessageText(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            handleSendMessage();
+                                                        }
+                                                    }}
+                                                />
+                                                <div className="input-right-actions">
+                                                    <button
+                                                        className="input-action-btn send-btn"
+                                                        onClick={handleSendMessage}
+                                                        disabled={!messageText.trim() && !mediaFile}
+                                                        title="Gönder"
+                                                        style={{ color: (messageText.trim() || mediaFile) ? 'var(--primary-color)' : 'var(--text-tertiary)' }}
+                                                    >
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                                                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '20px', textAlign: 'center', color: '#b9bbbe', backgroundColor: 'var(--bg-card)', borderTop: '1px solid var(--border-subtle)' }}>
+                                            Bu kanala mesaj göndermek için üye olmalısın.
+                                        </div>
+                                    )
+                                ) : null}
+
+                                <div className="portal-feed-container discord-feed">
+                                    {/* Feed Header / Welcome */}
+                                    {posts.length === 0 && !loading && (
+                                        <div className="empty-portal">
+                                            <div className="empty-portal-icon">👋</div>
+                                            <h3>#{currentChannel === 'general' ? 'genel' : currentChannel} kanalına hoş geldin!</h3>
+                                            <p>
+                                                {currentChannel === 'general'
+                                                    ? `Burası ${portal.name} sunucusunun başlangıcı.`
+                                                    : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Posts List */}
+                                    {posts.map((post) => (
+                                        <PostCard
+                                            key={post._id}
+                                            post={post}
+                                            onDelete={handleDeletePost}
+                                            onPin={handlePin}
+                                            isAdmin={isAdmin}
+                                        />
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+
+                    </div>
+
+                    {/* Members Sidebar (Right Column) */}
+                    {showMembers && (
+                        <MembersSidebar members={portal.members} />
+                    )}
+                </div>
+
+                {/* New Settings Modal Integration */}
+                {editing && settingsTab !== 'notifications' && (
+                    <PortalSettingsModal
+                        portal={portal}
+                        currentUser={user}
+                        initialTab={settingsTab}
+                        onClose={() => setEditing(false)}
+                        onUpdate={(updatedPortal) => {
+                            setPortal(updatedPortal);
+                        }}
+                    />
+                )}
+
+                {/* Portal Notifications Section */}
+                {editing && settingsTab === 'notifications' && (
+                    <div className="portal-notifications-modal" onClick={() => setEditing(false)}>
+                        <div className="notifications-modal-content" onClick={(e) => e.stopPropagation()}>
+                            <button className="close-notifications-btn" onClick={() => setEditing(false)}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                            <PortalNotifications portalId={portal._id} />
+                        </div>
+                    </div>
+                )}
+            </main>
+        </div>
+    </div>
+);
 };
 
 export default Portal;

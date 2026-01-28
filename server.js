@@ -153,7 +153,7 @@ if (process.argv[1] === __filename) {
     httpServer.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📡 Socket.IO ready for real-time connections`);
-        console.log('✅ Backend updated: v2.3 - Feature Settings Active');
+        console.log('✅ Backend updated: v2.4 - DB Connection & Auth Fixes');
     });
 }
 
