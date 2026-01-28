@@ -10,6 +10,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import GoogleCallback from './pages/GoogleCallback';
+import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
@@ -81,6 +82,7 @@ const AppLayout = () => {
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/verify-email" element={<VerifyEmail />} />
+                        <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
                         <Route path="/auth/google/success" element={<GoogleCallback />} />
                         <Route path="/privacy" element={<PrivacyPolicy />} />
                         <Route path="/terms" element={<TermsOfService />} />

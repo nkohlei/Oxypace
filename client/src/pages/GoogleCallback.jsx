@@ -20,7 +20,12 @@ const GoogleCallback = () => {
                 .then(res => res.json())
                 .then(userData => {
                     login(token, userData);
-                    navigate('/');
+                    const isNewUser = searchParams.get('isNewUser') === 'true';
+                    if (isNewUser) {
+                        navigate('/onboarding');
+                    } else {
+                        navigate('/');
+                    }
                 })
                 .catch(error => {
                     console.error('Failed to fetch user:', error);

@@ -46,6 +46,8 @@ export const configurePassport = () => {
                             },
                         });
 
+                        user._isNew = true;
+
                         done(null, user);
                     } catch (error) {
                         done(error, null);

@@ -229,9 +229,19 @@ router.get('/me', protect, async (req, res) => {
 // @access  Private
 router.put('/me', protect, async (req, res) => {
     try {
-        const { displayName, bio, avatar } = req.body;
+        const { displayName, bio, avatar, username } = req.body;
 
         const user = await User.findById(req.user._id);
+
+        // Handle Username Change
+        if (username && username !== user.username) {
+            // Check if username taken
+            const existingUser = await User.findOne({ username });
+            if (existingUser) {
+                return res.status(400).json({ message: 'Bu kullanıcı adı zaten alınmış.' });
+            }
+            user.username = username;
+        }
 
         if (displayName !== undefined) user.profile.displayName = displayName;
         if (bio !== undefined) user.profile.bio = bio;

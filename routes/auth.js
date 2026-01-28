@@ -173,9 +173,10 @@ router.get('/google/callback',
     (req, res) => {
         // Generate token
         const token = generateToken(req.user._id);
+        const isNewUser = req.user._isNew || false;
 
         // Redirect to frontend with token
-        res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}`);
+        res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&isNewUser=${isNewUser}`);
     }
 );
 
