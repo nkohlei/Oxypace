@@ -20,19 +20,31 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            fetchUser();
+            // If user is already set (e.g. via login), don't re-fetch
+            if (!user) {
+                fetchUser(token);
+            } else {
+                setLoading(false);
+            }
         } else {
             setLoading(false);
         }
-    }, [token]);
+    }, [token, user]);
 
-    const fetchUser = async () => {
+    const fetchUser = async (authToken = token) => {
         try {
-            const response = await axios.get('/api/users/me');
+            const response = await axios.get('/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
             setUser(response.data);
         } catch (error) {
             console.error('Failed to fetch user:', error);
-            logout();
+            // Only logout if it's a 401 (Unauthorized) to avoid logout on network errors
+            if (error.response && error.response.status === 401) {
+                logout();
+            }
         } finally {
             setLoading(false);
         }
