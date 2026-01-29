@@ -12,44 +12,62 @@ export const configurePassport = () => {
                     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
                     callbackURL: process.env.GOOGLE_CALLBACK_URL,
                     proxy: true,
+                    passReqToCallback: true
                 },
-                async (accessToken, refreshToken, profile, done) => {
+                async (req, accessToken, refreshToken, profile, done) => {
                     try {
-                        // Check if user exists
+                        const state = req.query.state ? JSON.parse(decodeURIComponent(req.query.state)) : {};
+                        const flow = state.action || 'login'; // 'login' or 'register'
+
+                        console.log(`🔄 Passport Strategy: Flow=${flow}`);
+
+                        // 1. Check if user exists
                         let user = await User.findOne({ googleId: profile.id });
-
-                        if (user) {
-                            return done(null, user);
+                        if (!user) {
+                            user = await User.findOne({ email: profile.emails[0].value });
                         }
 
-                        // Check if email already exists
-                        user = await User.findOne({ email: profile.emails[0].value });
-
-                        if (user) {
-                            // Link Google account to existing user
-                            user.googleId = profile.id;
-                            user.isVerified = true; // Auto-verify Google users
-                            await user.save();
-                            return done(null, user);
+                        // --- LOGIN FLOW ---
+                        if (flow === 'login') {
+                            if (user) {
+                                // Provide googleId if linked via email match
+                                if (!user.googleId) {
+                                    user.googleId = profile.id;
+                                    await user.save();
+                                }
+                                return done(null, user);
+                            } else {
+                                // User not found implies login failure
+                                console.log('❌ Login failed: User not found');
+                                return done(null, false, { message: 'Account not found. Please register.' });
+                            }
                         }
 
-                        // Create new user
-                        const username = profile.emails[0].value.split('@')[0] + Math.floor(Math.random() * 1000);
+                        // --- REGISTER FLOW ---
+                        if (flow === 'register') {
+                            if (user) {
+                                // User already exists, just login
+                                if (!user.googleId) {
+                                    user.googleId = profile.id;
+                                    await user.save();
+                                }
+                                return done(null, user);
+                            } else {
+                                // New User: Return TEMP profile (do not create in DB yet)
+                                console.log('✅ New User detected (Register Flow). Returning temp profile.');
+                                const tempUser = {
+                                    _isTemp: true,
+                                    googleId: profile.id,
+                                    email: profile.emails[0].value,
+                                    displayName: profile.displayName,
+                                    avatar: profile.photos[0]?.value || ''
+                                };
+                                return done(null, tempUser);
+                            }
+                        }
 
-                        user = await User.create({
-                            googleId: profile.id,
-                            email: profile.emails[0].value,
-                            username,
-                            isVerified: true,
-                            profile: {
-                                displayName: profile.displayName,
-                                avatar: profile.photos[0]?.value || '',
-                            },
-                        });
+                        done(new Error('Invalid flow state'));
 
-                        user._isNew = true;
-
-                        done(null, user);
                     } catch (error) {
                         done(error, null);
                     }

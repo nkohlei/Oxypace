@@ -43,8 +43,23 @@ const Login = () => {
     };
 
     const handleGoogleLogin = () => {
-        window.location.href = '/api/auth/google';
+        window.location.href = '/api/auth/google/login';
     };
+
+    // Check for errors in URL (e.g. from Google Login)
+    useState(() => {
+        const query = new URLSearchParams(window.location.search);
+        const errorMsg = query.get('error');
+        if (errorMsg) {
+            if (errorMsg === 'AccountNotFound') {
+                setError('Hesap bulunamadı. Lütfen önce kayıt olun.');
+            } else if (errorMsg === 'NoUser') {
+                setError('Giriş başarısız. Google hesabınızdan bilgi alınamadı.');
+            } else {
+                setError('Giriş başarısız. Lütfen tekrar deneyin.');
+            }
+        }
+    }, []);
 
     return (
         <div className="auth-container">

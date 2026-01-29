@@ -161,12 +161,36 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// @route   GET /api/auth/google
-// @desc    Google OAuth login
+// @route   GET /api/auth/google/login
+// @desc    Google OAuth login (Force account selection)
 // @access  Public
-router.get('/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
+router.get('/google/login',
+    (req, res, next) => {
+        const state = encodeURIComponent(JSON.stringify({ action: 'login' }));
+        passport.authenticate('google', {
+            scope: ['profile', 'email'],
+            state: state,
+            prompt: 'select_account'
+        })(req, res, next);
+    }
 );
+
+// @route   GET /api/auth/google/register
+// @desc    Google OAuth register (Force account selection)
+// @access  Public
+router.get('/google/register',
+    (req, res, next) => {
+        const state = encodeURIComponent(JSON.stringify({ action: 'register' }));
+        passport.authenticate('google', {
+            scope: ['profile', 'email'],
+            state: state,
+            prompt: 'select_account'
+        })(req, res, next);
+    }
+);
+
+// DEPRECATED: Old regular /google route - redirect to login
+router.get('/google', (req, res) => res.redirect('/api/auth/google/login'));
 
 // @route   GET /api/auth/google/callback
 // @desc    Google OAuth callback
@@ -174,27 +198,110 @@ router.get('/google',
 router.get('/google/callback',
     (req, res, next) => {
         console.log('🔗 Google Callback Hit');
-        console.log('Query:', req.query);
         next();
     },
-    passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL}/login` }),
-    (req, res) => {
-        // Generate token
-        console.log('✅ Google Auth Success. User:', req.user ? req.user.email : 'No User');
+    (req, res, next) => {
+        passport.authenticate('google', { session: false }, (err, user, info) => {
+            if (err) {
+                console.error('❌ Passport Error:', err);
+                return res.redirect(`${process.env.CLIENT_URL}/login?error=ServerError`);
+            }
 
-        if (!req.user) {
-            console.error('❌ User missing in callback request');
-            return res.redirect(`${process.env.CLIENT_URL}/login?error=NoUser`);
-        }
+            // Handle Authentication Failure (e.g. Account not found during Login flow)
+            if (!user) {
+                console.warn('⚠️ Passport Failure:', info?.message);
+                const errorMsg = info?.message === 'Account not found. Please register.'
+                    ? 'AccountNotFound'
+                    : 'AuthFailed';
+                return res.redirect(`${process.env.CLIENT_URL}/login?error=${errorMsg}`);
+            }
 
-        const token = generateToken(req.user._id);
-        const isNewUser = req.user._isNew || false;
+            // Handle Temporary User (Register Flow -> Onboarding)
+            if (user._isTemp) {
+                console.log('📝 Redirecting new user to Onboarding...');
+                // Create a short-lived token containing the Google Profile data
+                const preAuthToken = jwt.sign(
+                    {
+                        googleId: user.googleId,
+                        email: user.email,
+                        displayName: user.displayName,
+                        avatar: user.avatar
+                    },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '1h' } // 1 hour to complete registration
+                );
+                return res.redirect(`${process.env.CLIENT_URL}/onboarding?preToken=${preAuthToken}`);
+            }
 
-        console.log(`🚀 Redirecting to frontend with token...`);
-        // Redirect to frontend with token
-        res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&isNewUser=${isNewUser}`);
+            // Handle Existing User (Login Flow / Auto-Login)
+            console.log('✅ Google Auth Success. User:', user.email);
+            const token = generateToken(user._id);
+            res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&isNewUser=false`);
+
+        })(req, res, next);
     }
 );
+
+// @route   POST /api/auth/google/complete
+// @desc    Complete registration for Google users
+// @access  Public
+router.post('/google/complete', async (req, res) => {
+    try {
+        const { preToken, username } = req.body;
+
+        if (!preToken || !username) {
+            return res.status(400).json({ message: 'Missing token or username' });
+        }
+
+        // Verify pre-auth token
+        const decoded = jwt.verify(preToken, process.env.JWT_SECRET);
+        const { googleId, email, displayName, avatar } = decoded;
+
+        // Double check if user already exists
+        let user = await User.findOne({ email });
+        if (user) {
+            return res.status(400).json({ message: 'User already registered' });
+        }
+
+        // Check if username taken
+        const usernameExists = await User.findOne({ username });
+        if (usernameExists) {
+            return res.status(400).json({ message: 'Username is already taken' });
+        }
+
+        // Create User
+        user = await User.create({
+            googleId,
+            email,
+            username,
+            isVerified: true,
+            profile: {
+                displayName: displayName || username,
+                avatar: avatar || '',
+            },
+        });
+
+        // Generate real auth token
+        const token = generateToken(user._id);
+
+        res.status(201).json({
+            token,
+            user: {
+                id: user._id,
+                email: user.email,
+                username: user.username,
+                profile: user.profile,
+                joinedPortals: [],
+                isAdmin: user.isAdmin,
+                verificationBadge: user.verificationBadge
+            }
+        });
+
+    } catch (error) {
+        console.error('Registration completion error:', error);
+        res.status(500).json({ message: 'Registration failed or token expired' });
+    }
+});
 
 // @route   POST /api/auth/forgot-password
 // @desc    Request password reset

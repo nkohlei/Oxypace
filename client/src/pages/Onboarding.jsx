@@ -15,15 +15,24 @@ const Onboarding = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const [preToken, setPreToken] = useState(null);
+    const { login } = useAuth(); // Destructure login
+
     useEffect(() => {
-        if (user) {
+        const query = new URLSearchParams(window.location.search);
+        const token = query.get('preToken');
+        if (token) {
+            setPreToken(token);
+            // Optional: Decode token to pre-fill displayName if you have jwt-decode
+            // For now, leave empty or static
+        } else if (user) {
             setFormData({
                 username: user.username || '',
                 displayName: user.profile?.displayName || user.username || '',
                 bio: ''
             });
         }
-    }, [user]);
+    }, [user, window.location.search]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,45 +45,37 @@ const Onboarding = () => {
         setLoading(true);
 
         try {
-            // Check username availability if changed (optional optimization, basic check here)
             if (formData.username.length < 3) {
                 setError('Kullanıcı adı en az 3 karakter olmalı');
                 setLoading(false);
                 return;
             }
 
-            // Update user profile
-            // We reuse the existing PUT /api/users/me endpoint which handles displayName, bio
-            // But we might need a specific/new endpoint if updating username is restricted?
-            // Usually username update is restricted. Let's check user controller.
-            // Looking at routes/users.js, PUT /api/users/me allows updating displayName, bio, avatar.
-            // It does NOT update username.
-            // We need to implement a way to update username for new users, OR rely on a new endpoint.
-            // For now, let's assume we need to add username update capability or a specific "complete-profile" endpoint.
-            // Since I can't easily change backend massively right now without checking constraints,
-            // let's try to update what we can (Display Name & Bio) and inform user Username might be fixed
-            // OR simpler: Let's add a quick endpoint or field to the PUT request if the backend supports it.
-            // Wait, I am the developer. I should check `routes/users.js` logic again.
-            // The `routes/users.js` `PUT /me` only updates `displayName`, `bio`, `avatar`.
+            if (preToken) {
+                // --- GOOGLE COMPLETION FLOW ---
+                const response = await axios.post('/api/auth/google/complete', {
+                    preToken,
+                    username: formData.username
+                    // Backend extracts other fields from token
+                });
 
-            // To properly support changing username, I need to update the backend route `PUT /api/users/me` 
-            // to allow username change OR create `POST /api/users/onboarding`.
-            // Let's create `POST /api/users/onboarding` or update `PUT /api/users/me` on the fly.
-            // Updating `PUT /api/users/me` is cleaner.
+                // Login the user with the new token
+                login(response.data.token, response.data.user);
+                navigate('/');
+            } else {
+                // --- EXISTING USER PROFILE UPDATE ---
+                const response = await axios.put('/api/users/me', {
+                    username: formData.username,
+                    displayName: formData.displayName,
+                    bio: formData.bio
+                });
 
-            // For this specific step, I will assume the backend WILL be updated to support username change.
-            // I will write the frontend code to send `username` as well.
-
-            const response = await axios.put('/api/users/me', {
-                username: formData.username,
-                displayName: formData.displayName,
-                bio: formData.bio
-            });
-
-            updateUser(response.data.user);
-            navigate('/');
+                updateUser(response.data.user);
+                navigate('/');
+            }
         } catch (err) {
-            setError(err.response?.data?.message || 'Profil güncellenemedi');
+            console.error(err);
+            setError(err.response?.data?.message || 'İşlem başarısız');
         } finally {
             setLoading(false);
         }
