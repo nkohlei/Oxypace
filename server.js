@@ -31,6 +31,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 console.log('🔍 Checking Environment Variables...');
+console.log('Available Env Keys:', Object.keys(process.env).join(', '));
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Defined' : 'Not Defined');
 console.log('MONGO_URI:', process.env.MONGO_URI ? 'Defined' : 'Not Defined');
 console.log('CLIENT_URL:', process.env.CLIENT_URL);
