@@ -116,16 +116,31 @@ router.post('/follow/accept/:id', protect, async (req, res) => {
         await currentUser.save();
         await requester.save();
 
-        // Notify Requester
+        // Update EXISTING notification for the Receiver (Me)
+        // Convert "Request" -> "Friendship Confirmed"
+        await Notification.findOneAndUpdate(
+            { recipient: currentUser._id, sender: requester._id, type: 'follow_request' },
+            { type: 'friend_connected', read: true }
+        );
+
+        // Notify Requester (They are now friends with me)
         const notification = await Notification.create({
             recipient: requester._id,
             sender: currentUser._id,
-            type: 'follow' // Uses 'follow' type for "Friendship Accepted" semantics
+            type: 'friend_connected'
         });
 
         const io = req.app.get('io');
         if (io) {
-            io.to(requesterId.toString()).emit('requestAccepted', { userId: currentUser._id });
+            // Notify Requester
+            const populated = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
+            io.to(requesterId.toString()).emit('newNotification', populated);
+
+            // Notify Receiver (Self) to update UI immediately
+            io.to(currentUser._id.toString()).emit('friendRequestAccepted', {
+                senderId: requester._id,
+                notificationId: notification._id
+            });
         }
 
         res.json({ message: 'Tanışma isteği kabul edildi. Artık arkadaşsınız.' });

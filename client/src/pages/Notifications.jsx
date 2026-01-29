@@ -14,20 +14,20 @@ const Notifications = () => {
     const [error, setError] = useState('');
     const { socket } = useSocket();
 
+
     const handleAccept = async (e, senderId, notifId) => {
         e.preventDefault();
         try {
             await axios.post(`/api/users/follow/accept/${senderId}`);
 
-            // Immediately hide buttons for this notification
+            // Immediately transform this notification to "Friend Connected"
             setNotifications(prev => prev.map(n => {
                 if (n._id === notifId) {
-                    return { ...n, type: 'follow_request_handled' }; // Change type to hide buttons
+                    return { ...n, type: 'friend_connected' };
                 }
                 return n;
             }));
-
-            // Update local user state (optional but good for consistency)
+            // ... rest of logic ...
             const updatedRequests = currentUser.followRequests.filter(id => id !== senderId);
             updateUser({
                 ...currentUser,
@@ -90,6 +90,13 @@ const Notifications = () => {
         try {
             const response = await axios.get('/api/notifications');
             setNotifications(response.data.notifications);
+
+            // Auto mark as read when page loads (User is viewing)
+            if (response.data.notifications.some(n => !n.read)) {
+                // We call the API to mark read, and client state updates via handleMarkAllRead or we can just do it silently here?
+                // handleMarkAllRead updates state too.
+                handleMarkAllRead();
+            }
         } catch (err) {
             console.error('Fetch notifications error:', err);
             setError('Bildirimler yüklenemedi');
@@ -188,7 +195,8 @@ const Notifications = () => {
                                                 {notif.type === 'comment' && ' gönderine yorum yaptı: '}
                                                 {notif.type === 'reply' && ' yorumuna yanıt verdi: '}
                                                 {notif.type === 'follow' && ' seni takip etmeye başladı.'}
-                                                {notif.type === 'follow_request' && ' seni takip etmek istiyor.'}
+                                                {notif.type === 'follow_request' && ' seninle tanışmak istiyor.'}
+                                                {notif.type === 'friend_connected' && ' ile artık arkadaşsınız! 🤝'}
                                                 {notif.type === 'message' && ' sana bir mesaj gönderdi.'}
                                                 {notif.type === 'portal_invite' && ' seni bir portala davet etti.'}
                                             </p>
