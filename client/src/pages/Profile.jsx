@@ -404,12 +404,12 @@ const Profile = () => {
                                 <div className="tab-content fade-in">
                                     <h4 className="section-header">{isOwnProfile ? 'ARKADAŞLAR' : 'ORTAK ARKADAŞLAR'}</h4>
 
-                                    {!isOwnProfile && profileUser.mutualFriends && profileUser.mutualFriends.length > 0 ? (
+                                    {(isOwnProfile ? profileUser.following : profileUser.mutualFriends) && (isOwnProfile ? profileUser.following : profileUser.mutualFriends).length > 0 ? (
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
-                                            {profileUser.mutualFriends.map(friend => (
-                                                <div key={friend._id} className="friend-card-compact" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#1e1f22', borderRadius: '8px' }}>
+                                            {(isOwnProfile ? profileUser.following : profileUser.mutualFriends).map(friend => (
+                                                <div key={friend._id} className="friend-card-compact" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#1e1f22', borderRadius: '8px', cursor: 'pointer' }} onClick={() => navigate(`/profile/${friend.username}`)}>
                                                     <img src={getImageUrl(friend.profile?.avatar)} alt={friend.username} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-                                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>{friend.username}</span>
+                                                    <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{friend.username}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -417,7 +417,7 @@ const Profile = () => {
                                         <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '40px', background: '#1e1f22', borderRadius: '8px', marginTop: '16px' }}>
                                             {isOwnProfile ? (
                                                 <><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4e5058" strokeWidth="1" style={{ marginBottom: '16px' }}><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-                                                    <p>Henüz ekli arkadaş yok.</p></>
+                                                    <p>Henüz ekli arkadaşın yok.</p></>
                                             ) : (
                                                 <p>Ortak arkadaş bulunamadı.</p>
                                             )}
@@ -438,8 +438,9 @@ const Profile = () => {
                                                     borderRadius: '8px',
                                                     padding: '16px',
                                                     border: '1px solid #2b2d31',
-                                                    textAlign: 'center'
-                                                }}>
+                                                    textAlign: 'center',
+                                                    cursor: 'pointer'
+                                                }} onClick={() => navigate(`/portal/${portal._id}`)}>
                                                     <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
                                                         {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
                                                     </div>
@@ -458,15 +459,50 @@ const Profile = () => {
                             {/* WISHLIST TAB */}
                             {activeTab === 'wishlist' && (
                                 <div className="tab-content fade-in">
-                                    <h4 className="section-header">PORTALLAR</h4>
-                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px', marginBottom: '16px' }}>
-                                        İstek listesinde portal yok.
-                                    </div>
+                                    <h4 className="section-header">PORTAL İSTEKLERİ</h4>
+                                    {currentUser?.outgoingPortalRequests && currentUser.outgoingPortalRequests.length > 0 ? (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px', marginBottom: '24px' }}>
+                                            {currentUser.outgoingPortalRequests.map(portal => (
+                                                <div key={portal._id} style={{
+                                                    backgroundColor: '#1e1f22',
+                                                    borderRadius: '8px',
+                                                    padding: '16px',
+                                                    border: '1px solid #2b2d31',
+                                                    textAlign: 'center',
+                                                    opacity: 0.8
+                                                }}>
+                                                    <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
+                                                        {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                                    </div>
+                                                    <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px' }}>{portal.name}</div>
+                                                    <div style={{ fontSize: '12px', color: '#f0ad4e', marginTop: '8px' }}>Beklemede</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px', marginBottom: '16px' }}>
+                                            İstek listesinde portal yok.
+                                        </div>
+                                    )}
 
-                                    <h4 className="section-header">KULLANICILAR</h4>
-                                    <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
-                                        İstek listesinde kullanıcı yok.
-                                    </div>
+                                    <h4 className="section-header">KULLANICI İSTEKLERİ (TANIŞMA)</h4>
+                                    {currentUser?.outgoingUserRequests && currentUser.outgoingUserRequests.length > 0 ? (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                                            {currentUser.outgoingUserRequests.map(reqUser => (
+                                                <div key={reqUser._id} className="friend-card-compact" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#1e1f22', borderRadius: '8px' }}>
+                                                    <img src={getImageUrl(reqUser.profile?.avatar)} alt={reqUser.username} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{reqUser.username}</span>
+                                                        <span style={{ fontSize: '11px', color: '#f0ad4e' }}>İstek Gönderildi</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
+                                            İstek listesinde kullanıcı yok.
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

@@ -204,6 +204,18 @@ router.get('/me', protect, async (req, res) => {
         const userObj = user.toObject();
         userObj.postCount = postCount;
 
+        // Fetch Outgoing Friend Requests (Users I want to meet)
+        const outgoingUserRequests = await User.find({
+            followRequests: req.user._id
+        }).select('username profile.displayName profile.avatar');
+        userObj.outgoingUserRequests = outgoingUserRequests;
+
+        // Fetch Outgoing Portal Requests (Portals I want to join)
+        const outgoingPortalRequests = await Portal.find({
+            joinRequests: req.user._id
+        }).select('name avatar privacy');
+        userObj.outgoingPortalRequests = outgoingPortalRequests;
+
         res.json(userObj);
     } catch (error) {
         console.error('Get profile error:', error);
