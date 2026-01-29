@@ -55,54 +55,27 @@ router.post('/follow/:id', protect, async (req, res) => {
             return res.json({ message: 'Request cancelled', isFollowing: false, hasRequested: false });
         }
 
-        // START FOLLOW PROCESS
-        if (targetUser.settings?.privacy?.isPrivate) {
-            // Send Request
-            if (!hasRequested) {
-                targetUser.followRequests.push(req.user._id);
-                await targetUser.save();
-            }
-
-            // Notify
-            const notification = await Notification.create({
-                recipient: targetUser._id,
-                sender: currentUser._id,
-                type: 'follow_request'
-            });
-
-            const io = req.app.get('io');
-            if (io) {
-                const populated = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
-                io.to(targetUser._id.toString()).emit('newNotification', populated);
-            }
-
-            return res.json({ message: 'Follow request sent', isFollowing: false, hasRequested: true });
-
-        } else {
-            // Direct Follow
-            targetUser.followers.push(req.user._id);
-            targetUser.followerCount += 1;
-            currentUser.following.push(targetUser._id);
-            currentUser.followingCount += 1;
-
+        // START FOLLOW (TANIŞMA) PROCESS
+        // Force Request Logic for Everyone (No direct follow)
+        if (!hasRequested) {
+            targetUser.followRequests.push(req.user._id);
             await targetUser.save();
-            await currentUser.save();
-
-            // Notify
-            const notification = await Notification.create({
-                recipient: targetUser._id,
-                sender: currentUser._id,
-                type: 'follow'
-            });
-
-            const io = req.app.get('io');
-            if (io) {
-                const populated = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
-                io.to(targetUser._id.toString()).emit('newNotification', populated);
-            }
-
-            return res.json({ message: 'Followed', isFollowing: true, hasRequested: false });
         }
+
+        // Notify
+        const notification = await Notification.create({
+            recipient: targetUser._id,
+            sender: currentUser._id,
+            type: 'follow_request'
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            const populated = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
+            io.to(targetUser._id.toString()).emit('newNotification', populated);
+        }
+
+        return res.json({ message: 'Tanışma isteği gönderildi', isFollowing: false, hasRequested: true });
 
     } catch (error) {
         console.error('Follow error:', error);
@@ -111,7 +84,7 @@ router.post('/follow/:id', protect, async (req, res) => {
 });
 
 // @route   POST /api/users/follow/accept/:id
-// @desc    Accept follow request
+// @desc    Accept follow request (Enable Mutual Friendship)
 // @access  Private
 router.post('/follow/accept/:id', protect, async (req, res) => {
     try {
@@ -125,14 +98,20 @@ router.post('/follow/accept/:id', protect, async (req, res) => {
             return res.status(400).json({ message: 'No request found from this user' });
         }
 
-        // Move from requests to followers
+        // Move from requests to followers (Requester follows User)
         currentUser.followRequests = currentUser.followRequests.filter(id => id.toString() !== requesterId);
         currentUser.followers.push(requesterId);
         currentUser.followerCount += 1;
+        // User follows Requester (Make it mutual Friend)
+        currentUser.following.push(requesterId);
+        currentUser.followingCount += 1;
 
-        // Add to requester's following
+        // Requester follows User (Already set above by implicit graph, but explicit lists needed)
         requester.following.push(currentUser._id);
         requester.followingCount += 1;
+        // Requester is followed by User (Mutual)
+        requester.followers.push(currentUser._id);
+        requester.followerCount += 1;
 
         await currentUser.save();
         await requester.save();
@@ -141,22 +120,15 @@ router.post('/follow/accept/:id', protect, async (req, res) => {
         const notification = await Notification.create({
             recipient: requester._id,
             sender: currentUser._id,
-            type: 'follow' // Or 'request_accepted' generic
+            type: 'follow' // Uses 'follow' type for "Friendship Accepted" semantics
         });
-        // We reuse 'follow' type to say "XYZ followed you" (technically they are now following you)
-        // Or we could trigger a "XYZ accepted your follow request" if we had that type. 
-        // For now, let's just let them know they are following. 
-        // Actually, Instagram sends "XYZ accepted your follow request". 
-        // But since we don't have that enum, we create a 'follow' notification from the requester perspective? 
-        // No, let's keep it simple.
 
         const io = req.app.get('io');
         if (io) {
-            // Maybe emit an event to update their UI
             io.to(requesterId.toString()).emit('requestAccepted', { userId: currentUser._id });
         }
 
-        res.json({ message: 'Request accepted' });
+        res.json({ message: 'Tanışma isteği kabul edildi. Artık arkadaşsınız.' });
 
     } catch (error) {
         console.error('Accept follow error:', error);

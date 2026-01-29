@@ -202,7 +202,7 @@ const Profile = () => {
             return (
                 <button className="profile-action-btn success" onClick={handleFollow}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
-                    Arkadaşsın
+                    Arkadaşsınız
                 </button>
             );
         } else if (profileUser.hasRequested) {
@@ -211,16 +211,10 @@ const Profile = () => {
                     İstek Gönderildi
                 </button>
             );
-        } else if (profileUser.isFollowing) {
-            return (
-                <button className="profile-action-btn secondary" onClick={handleFollow}>
-                    Takip Ediliyor
-                </button>
-            );
         } else {
             return (
                 <button className="profile-action-btn primary" onClick={handleFollow} style={{ backgroundColor: '#248046', color: 'white' }}>
-                    Arkadaş Ekle
+                    Tanış
                 </button>
             );
         }
