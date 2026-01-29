@@ -122,7 +122,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Find user
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).populate('joinedPortals', 'name avatar');
 
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });
@@ -150,6 +150,9 @@ router.post('/login', async (req, res) => {
                 email: user.email,
                 username: user.username,
                 profile: user.profile,
+                joinedPortals: user.joinedPortals,
+                isAdmin: user.isAdmin,
+                verificationBadge: user.verificationBadge
             },
         });
     } catch (error) {
