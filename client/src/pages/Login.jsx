@@ -43,7 +43,8 @@ const Login = () => {
     };
 
     const handleGoogleLogin = () => {
-        window.location.href = '/api/auth/google/login';
+        sessionStorage.setItem('auth_intent', 'login');
+        window.location.href = '/api/auth/google';
     };
 
     // Check for errors in URL (e.g. from Google Login)

@@ -161,120 +161,102 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// @route   GET /api/auth/google/login
-// @desc    Google OAuth login (Force account selection)
+// @route   GET /api/auth/google
+// @desc    Initiate Google OAuth (Client handles intent)
 // @access  Public
-router.get('/google/login',
-    (req, res, next) => {
-        // Set cookie to track flow (Backup)
-        res.cookie('auth_flow_type', 'login', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 5 * 60 * 1000
-        });
-
-        passport.authenticate('google', {
-            scope: ['profile', 'email'],
-            prompt: 'select_account',
-            state: 'login' // PRIMARY Flow Indicator
-        })(req, res, next);
-    }
+router.get('/google',
+    passport.authenticate('google', {
+        scope: ['profile', 'email'],
+        prompt: 'select_account'
+    })
 );
 
-// @route   GET /api/auth/google/register
-// @desc    Google OAuth register (Force account selection)
-// @access  Public
-router.get('/google/register',
-    (req, res, next) => {
-        // Set cookie to track flow (Backup)
-        res.cookie('auth_flow_type', 'register', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 5 * 60 * 1000
-        });
+// Aliases for compatibility (Client will set intent before calling these)
+router.get('/google/login', (req, res) => res.redirect('/api/auth/google'));
+router.get('/google/register', (req, res) => res.redirect('/api/auth/google'));
 
-        passport.authenticate('google', {
-            scope: ['profile', 'email'],
-            prompt: 'select_account',
-            state: 'register' // PRIMARY Flow Indicator
-        })(req, res, next);
-    }
-);
-
-// DEPRECATED: Old regular /google route - redirect to login
-router.get('/google', (req, res) => res.redirect('/api/auth/google/login'));
 
 // @route   GET /api/auth/google/callback
-// @desc    Google OAuth callback
+// @desc    Google OAuth callback -> Redirect to Frontend Processor
 // @access  Public
 router.get('/google/callback',
-    (req, res, next) => {
-        console.log('🔗 Google Callback Hit');
-        console.log('Query State:', req.query.state); // Debug State
-        next();
-    },
-    (req, res, next) => {
-        passport.authenticate('google', { session: false }, (err, user, info) => {
-            if (err) {
-                console.error('❌ Passport Error:', err);
-                return res.redirect(`${process.env.CLIENT_URL}/login?error=ServerError`);
-            }
+    passport.authenticate('google', { session: false, failureRedirect: '/login?error=GoogleAuthFailed' }),
+    (req, res) => {
+        // User here is either a real DB user or a Temp Link object from Passport
+        const user = req.user;
 
-            // DETERMINE FLOW TYPE:
-            // 1. Check Query 'state' (Most reliable, comes from Google)
-            // 2. Check Cookie (Backup)
-            // 3. Default to 'login'
-            let flowType = req.query.state;
-            if (!flowType || (flowType !== 'login' && flowType !== 'register')) {
-                flowType = req.cookies['auth_flow_type'] || 'login';
-            }
+        // Generate a temporary "Process Token" to hand off to the frontend
+        // This token contains the identity and whether it's a new or existing user
+        const payload = {
+            id: user._isTemp ? null : user._id,
+            googleId: user.googleId,
+            email: user.email,
+            isNew: !!user._isTemp,
+            tempProfile: user._isTemp ? {
+                displayName: user.displayName,
+                avatar: user.avatar
+            } : null
+        };
 
-            console.log(`📡 Final Auth Flow Type: ${flowType}`);
+        const processToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '5m' });
 
-            // Clear the cookie
-            res.clearCookie('auth_flow_type');
-
-            if (!user) {
-                return res.redirect(`${process.env.CLIENT_URL}/login?error=AuthFailed`);
-            }
-
-            // --- LOGIC MATRIX ---
-
-            // Case 1: Temp User (New) + Login Flow -> ERROR
-            if (user._isTemp && flowType === 'login') {
-                console.log('❌ Login attempt by New User -> Rejected');
-                return res.redirect(`${process.env.CLIENT_URL}/login?error=AccountNotFound`);
-            }
-
-            // Case 2: Temp User (New) + Register Flow -> ONBOARDING
-            if (user._isTemp && flowType === 'register') {
-                console.log('✅ Register attempt by New User -> Onboarding');
-                const preAuthToken = jwt.sign(
-                    {
-                        googleId: user.googleId,
-                        email: user.email,
-                        displayName: user.displayName,
-                        avatar: user.avatar
-                    },
-                    process.env.JWT_SECRET,
-                    { expiresIn: '1h' }
-                );
-                return res.redirect(`${process.env.CLIENT_URL}/onboarding?preToken=${preAuthToken}`);
-            }
-
-            // Case 3: Existing User + ANY Flow -> LOGIN
-            if (!user._isTemp) {
-                console.log('✅ Existing User -> Logged In');
-                const token = generateToken(user._id);
-                return res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&isNewUser=false`);
-            }
-
-            // Fallback
-            res.redirect(`${process.env.CLIENT_URL}/login?error=UnknownState`);
-
-        })(req, res, next);
+        // Redirect to Frontend "Auth Process" page
+        res.redirect(`${process.env.CLIENT_URL}/auth/process?token=${processToken}`);
     }
 );
+
+// @route   POST /api/auth/google/validate
+// @desc    Validate Google Login/Register Intent
+// @access  Public
+router.post('/google/validate', async (req, res) => {
+    try {
+        const { token, intent } = req.body; // intent: 'login' | 'register'
+
+        if (!token) return res.status(400).json({ message: 'No token provided' });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // CASE: REGISTER Intent
+        if (intent === 'register') {
+            if (decoded.isNew) {
+                // Return "Needs Onboarding" signal
+                // We reuse the token for the onboarding step since it has the profile data
+                return res.json({
+                    action: 'onboarding',
+                    preToken: token
+                });
+            } else {
+                // User exists -> Auto Login
+                const realToken = generateToken(decoded.id);
+                const user = await User.findById(decoded.id);
+                return res.json({
+                    action: 'login',
+                    token: realToken,
+                    user: user
+                });
+            }
+        }
+
+        // CASE: LOGIN Intent (or unknown)
+        if (decoded.isNew) {
+            // User is new but wanted to Login -> ERROR
+            return res.status(404).json({ message: 'Account not found. Please register.' });
+        } else {
+            // User exists -> Success
+            const realToken = generateToken(decoded.id);
+            const user = await User.findById(decoded.id);
+            return res.json({
+                action: 'login',
+                token: realToken,
+                user: user
+            });
+        }
+
+    } catch (error) {
+        console.error('Validation Error:', error);
+        res.status(500).json({ message: 'Authentication validation failed' });
+    }
+});
 
 // @route   POST /api/auth/google/complete
 // @desc    Complete registration for Google users

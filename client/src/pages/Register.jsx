@@ -66,7 +66,8 @@ const Register = () => {
     };
 
     const handleGoogleLogin = () => {
-        window.location.href = '/api/auth/google/register';
+        sessionStorage.setItem('auth_intent', 'register');
+        window.location.href = '/api/auth/google';
     };
 
     const PasswordToggleIcon = ({ show }) => (
