@@ -31,6 +31,9 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
+// Enable proxy trust for Vercel/Heroku (fixes HTTP/HTTPS redirect loop)
+app.set('trust proxy', 1);
+
 const httpServer = createServer(app);
 
 // CORS Configuration
