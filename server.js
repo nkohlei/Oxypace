@@ -100,11 +100,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session middleware (required for Passport)
+// Session middleware (required for Passport)
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(
     session({
         secret: process.env.JWT_SECRET || 'fallback-secret',
         resave: false,
         saveUninitialized: false,
+        proxy: true, // Required for Vercel/proxies
+        cookie: {
+            secure: isProduction, // Secure only in production (HTTPS)
+            sameSite: isProduction ? 'none' : 'lax', // None required for cross-site auth flows
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        }
     })
 );
 
