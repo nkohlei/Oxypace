@@ -16,10 +16,19 @@ export const configurePassport = () => {
                 },
                 async (req, accessToken, refreshToken, profile, done) => {
                     try {
-                        const state = req.query.state ? JSON.parse(decodeURIComponent(req.query.state)) : {};
-                        const flow = state.action || 'login'; // 'login' or 'register'
+                        // Robust state checking: handle both parsed object and raw string
+                        let flow = 'login';
+                        const stateQuery = req.query.state;
 
-                        console.log(`🔄 Passport Strategy: Flow=${flow}`);
+                        // Check if state contains 'register' (whether encoded, JSON, or plain string)
+                        if (stateQuery && (
+                            stateQuery.includes('register') ||
+                            stateQuery.includes('%22register%22')
+                        )) {
+                            flow = 'register';
+                        }
+
+                        console.log(`🔄 Passport Strategy: Flow=${flow} (State: ${stateQuery})`);
 
                         // 1. Check if user exists
                         let user = await User.findOne({ googleId: profile.id });
@@ -38,7 +47,7 @@ export const configurePassport = () => {
                                 return done(null, user);
                             } else {
                                 // User not found implies login failure
-                                console.log('❌ Login failed: User not found');
+                                console.log('❌ Login failed: User not found in Login Flow');
                                 return done(null, false, { message: 'Account not found. Please register.' });
                             }
                         }
@@ -67,8 +76,8 @@ export const configurePassport = () => {
                         }
 
                         done(new Error('Invalid flow state'));
-
                     } catch (error) {
+                        console.error('Passport Strategy Error:', error);
                         done(error, null);
                     }
                 }
