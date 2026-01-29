@@ -30,6 +30,17 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config();
 
+console.log('🔍 Checking Environment Variables...');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Defined' : 'Not Defined');
+console.log('MONGO_URI:', process.env.MONGO_URI ? 'Defined' : 'Not Defined');
+console.log('CLIENT_URL:', process.env.CLIENT_URL);
+
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+if (!mongoUri) {
+    console.error('❌ CRITICAL ERROR: MongoDB URI is missing. Session storage will fail.');
+}
+
 // Initialize Express app
 const app = express();
 // Enable proxy trust for Vercel/Heroku (fixes HTTP/HTTPS redirect loop)
@@ -108,7 +119,7 @@ app.use(
         resave: false,
         saveUninitialized: false,
         store: MongoStore.create({
-            mongoUrl: process.env.MONGODB_URI,
+            mongoUrl: mongoUri,
             collectionName: 'sessions',
             ttl: 24 * 60 * 60 // 1 day
         }),
