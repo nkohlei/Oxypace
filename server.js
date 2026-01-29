@@ -110,10 +110,15 @@ if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
 // Configure Passport
 configurePassport();
 
+import cookieParser from 'cookie-parser';
+
+// ... (existing imports)
+
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser()); // Add cookie-parser middleware
 
 // Session middleware (required for Passport)
 const isProduction = process.env.NODE_ENV === 'production';

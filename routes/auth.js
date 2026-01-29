@@ -166,12 +166,15 @@ router.post('/login', async (req, res) => {
 // @access  Public
 router.get('/google/login',
     (req, res, next) => {
-        // Simple string state to avoid encoding complexity
-        const state = 'flow_login';
-        console.log('👉 Initiating Google Login with state:', state);
+        // Set cookie to track flow
+        res.cookie('auth_flow_type', 'login', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 5 * 60 * 1000 // 5 minutes
+        });
+
         passport.authenticate('google', {
             scope: ['profile', 'email'],
-            state: state,
             prompt: 'select_account'
         })(req, res, next);
     }
@@ -182,12 +185,15 @@ router.get('/google/login',
 // @access  Public
 router.get('/google/register',
     (req, res, next) => {
-        // Simple string state to avoid encoding complexity
-        const state = 'flow_register';
-        console.log('👉 Initiating Google Register with state:', state);
+        // Set cookie to track flow
+        res.cookie('auth_flow_type', 'register', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 5 * 60 * 1000 // 5 minutes
+        });
+
         passport.authenticate('google', {
             scope: ['profile', 'email'],
-            state: state,
             prompt: 'select_account'
         })(req, res, next);
     }
@@ -211,19 +217,28 @@ router.get('/google/callback',
                 return res.redirect(`${process.env.CLIENT_URL}/login?error=ServerError`);
             }
 
-            // Handle Authentication Failure (e.g. Account not found during Login flow)
+            // Retrieve Flow Type from Cookie
+            const flowType = req.cookies['auth_flow_type'] || 'login'; // Default to login if missing
+            console.log(`📡 Auth Flow Type (Cookie): ${flowType}`);
+
+            // Clear the cookie
+            res.clearCookie('auth_flow_type');
+
             if (!user) {
-                console.warn('⚠️ Passport Failure:', info?.message);
-                const errorMsg = info?.message === 'Account not found. Please register.'
-                    ? 'AccountNotFound'
-                    : 'AuthFailed';
-                return res.redirect(`${process.env.CLIENT_URL}/login?error=${errorMsg}`);
+                return res.redirect(`${process.env.CLIENT_URL}/login?error=AuthFailed`);
             }
 
-            // Handle Temporary User (Register Flow -> Onboarding)
-            if (user._isTemp) {
-                console.log('📝 Redirecting new user to Onboarding...');
-                // Create a short-lived token containing the Google Profile data
+            // --- LOGIC MATRIX ---
+
+            // Case 1: Temp User (New) + Login Flow -> ERROR
+            if (user._isTemp && flowType === 'login') {
+                console.log('❌ Login attempt by New User -> Rejected');
+                return res.redirect(`${process.env.CLIENT_URL}/login?error=AccountNotFound`);
+            }
+
+            // Case 2: Temp User (New) + Register Flow -> ONBOARDING
+            if (user._isTemp && flowType === 'register') {
+                console.log('✅ Register attempt by New User -> Onboarding');
                 const preAuthToken = jwt.sign(
                     {
                         googleId: user.googleId,
@@ -232,15 +247,20 @@ router.get('/google/callback',
                         avatar: user.avatar
                     },
                     process.env.JWT_SECRET,
-                    { expiresIn: '1h' } // 1 hour to complete registration
+                    { expiresIn: '1h' }
                 );
                 return res.redirect(`${process.env.CLIENT_URL}/onboarding?preToken=${preAuthToken}`);
             }
 
-            // Handle Existing User (Login Flow / Auto-Login)
-            console.log('✅ Google Auth Success. User:', user.email);
-            const token = generateToken(user._id);
-            res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&isNewUser=false`);
+            // Case 3: Existing User + ANY Flow -> LOGIN
+            if (!user._isTemp) {
+                console.log('✅ Existing User -> Logged In');
+                const token = generateToken(user._id);
+                return res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&isNewUser=false`);
+            }
+
+            // Fallback
+            res.redirect(`${process.env.CLIENT_URL}/login?error=UnknownState`);
 
         })(req, res, next);
     }
