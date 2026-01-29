@@ -1,30 +1,40 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const GoogleCallback = () => {
     const [searchParams] = useSearchParams();
     const { login } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation(); // Added useLocation hook
 
     useEffect(() => {
-        const token = searchParams.get('token');
+        const query = new URLSearchParams(location.search);
+        const token = query.get('token');
+        const isNewUser = query.get('isNewUser') === 'true';
+
+        console.log('📥 GoogleCallback Mounted');
+        console.log('Search:', location.search);
+        console.log('Token exists:', !!token);
 
         if (token) {
-            // Pass token to login, let AuthContext handle the user fetching via its useEffect
-            // passing null as second arg ensures 'user' state is null, triggering the fetch
-            login(token, null);
+            console.log('✅ Token found on URL, attempting login...');
+            login(token, null); // Pass null for user, AuthContext will fetch /me
 
-            const isNewUser = searchParams.get('isNewUser') === 'true';
+            // Wait a bit before redirect to ensure state is set (though login triggers fetchUser)
+            // But login is async if we wait for fetch? No, login is usually sync state update initiation.
+            // Let's assume login() handles it.
+
             if (isNewUser) {
                 navigate('/onboarding');
             } else {
                 navigate('/');
             }
         } else {
+            console.warn('⚠️ No token found, redirecting to login');
             navigate('/login');
         }
-    }, [searchParams, login, navigate]);
+    }, [location, login, navigate]);
 
     return (
         <div className="auth-container">

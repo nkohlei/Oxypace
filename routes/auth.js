@@ -172,12 +172,25 @@ router.get('/google',
 // @desc    Google OAuth callback
 // @access  Public
 router.get('/google/callback',
+    (req, res, next) => {
+        console.log('🔗 Google Callback Hit');
+        console.log('Query:', req.query);
+        next();
+    },
     passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL}/login` }),
     (req, res) => {
         // Generate token
+        console.log('✅ Google Auth Success. User:', req.user ? req.user.email : 'No User');
+
+        if (!req.user) {
+            console.error('❌ User missing in callback request');
+            return res.redirect(`${process.env.CLIENT_URL}/login?error=NoUser`);
+        }
+
         const token = generateToken(req.user._id);
         const isNewUser = req.user._isNew || false;
 
+        console.log(`🚀 Redirecting to frontend with token...`);
         // Redirect to frontend with token
         res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&isNewUser=${isNewUser}`);
     }
