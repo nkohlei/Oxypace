@@ -84,7 +84,7 @@ const AppLayout = () => {
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/verify-email" element={<VerifyEmail />} />
                         <Route path="/verify-email" element={<VerifyEmail />} />
-                        <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
+                        <Route path="/onboarding" element={<Onboarding />} />
                         <Route path="/auth/process" element={<AuthProcess />} />
                         <Route path="/auth/google/success" element={<GoogleCallback />} />
                         <Route path="/privacy" element={<PrivacyPolicy />} />
