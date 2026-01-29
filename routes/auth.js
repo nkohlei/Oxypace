@@ -210,40 +210,29 @@ router.get('/google/callback',
 // @access  Public
 router.post('/google/validate', async (req, res) => {
     try {
-        const { token, intent } = req.body; // intent: 'login' | 'register'
+        const { token } = req.body;
 
         if (!token) return res.status(400).json({ message: 'No token provided' });
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // CASE: REGISTER Intent
-        if (intent === 'register') {
-            if (decoded.isNew) {
-                // Return "Needs Onboarding" signal
-                // We reuse the token for the onboarding step since it has the profile data
-                return res.json({
-                    action: 'onboarding',
-                    preToken: token
-                });
-            } else {
-                // User exists -> Auto Login
-                const realToken = generateToken(decoded.id);
-                const user = await User.findById(decoded.id);
-                return res.json({
-                    action: 'login',
-                    token: realToken,
-                    user: user
-                });
-            }
-        }
+        // SMART AUTH LOGIC:
+        // Use the User's existence as the ultimate source of truth.
+        // If they are new, they MUST go to onboarding (even if they clicked 'Login').
+        // If they exist, they MUST login (even if they clicked 'Register').
 
-        // CASE: LOGIN Intent (or unknown)
         if (decoded.isNew) {
-            // User is new but wanted to Login -> ERROR
-            return res.status(404).json({ message: 'Account not found. Please register.' });
+            // New User -> Always Onboarding
+            console.log('✨ Smart Auth: New User detected -> Directing to Onboarding');
+            return res.json({
+                action: 'onboarding',
+                preToken: token
+            });
         } else {
-            // User exists -> Success
+            // Existing User -> Always Login
+            console.log('✨ Smart Auth: Existing User detected -> Auto Login');
             const realToken = generateToken(decoded.id);
+            // Fetch fresh user data
             const user = await User.findById(decoded.id);
             return res.json({
                 action: 'login',
