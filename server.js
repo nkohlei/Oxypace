@@ -34,6 +34,9 @@ console.log('🔍 Checking Environment Variables...');
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Defined' : 'Not Defined');
 console.log('MONGO_URI:', process.env.MONGO_URI ? 'Defined' : 'Not Defined');
 console.log('CLIENT_URL:', process.env.CLIENT_URL);
+console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Defined' : 'Not Defined');
+console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Defined' : 'Not Defined');
+console.log('GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL);
 
 const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
 
