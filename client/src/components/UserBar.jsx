@@ -160,7 +160,7 @@ const UserBar = () => {
                         {user.username}
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                        #{user._id.substring(0, 4)}
+                        #{user._id?.substring(0, 4)}
                     </span>
                 </div>
             </div>

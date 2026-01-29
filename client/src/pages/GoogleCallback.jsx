@@ -11,26 +11,16 @@ const GoogleCallback = () => {
         const token = searchParams.get('token');
 
         if (token) {
-            // The token is provided, but we need to fetch user data
-            fetch('/api/users/me', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-                .then(res => res.json())
-                .then(userData => {
-                    login(token, userData);
-                    const isNewUser = searchParams.get('isNewUser') === 'true';
-                    if (isNewUser) {
-                        navigate('/onboarding');
-                    } else {
-                        navigate('/');
-                    }
-                })
-                .catch(error => {
-                    console.error('Failed to fetch user:', error);
-                    navigate('/login');
-                });
+            // Pass token to login, let AuthContext handle the user fetching via its useEffect
+            // passing null as second arg ensures 'user' state is null, triggering the fetch
+            login(token, null);
+
+            const isNewUser = searchParams.get('isNewUser') === 'true';
+            if (isNewUser) {
+                navigate('/onboarding');
+            } else {
+                navigate('/');
+            }
         } else {
             navigate('/login');
         }

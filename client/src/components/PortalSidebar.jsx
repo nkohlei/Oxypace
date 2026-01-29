@@ -63,7 +63,7 @@ const PortalSidebar = () => {
                             {portal.avatar ? (
                                 <img src={getImageUrl(portal.avatar)} alt={portal.name} />
                             ) : (
-                                <span>{portal.name ? portal.name.substring(0, 2).toUpperCase() : '??'}</span>
+                                <span>{portal.name ? portal.name?.substring(0, 2).toUpperCase() : '??'}</span>
                             )}
                         </div>
 
