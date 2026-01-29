@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import passport from 'passport';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -100,13 +101,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session middleware (required for Passport)
-// Session middleware (required for Passport)
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(
     session({
         secret: process.env.JWT_SECRET || 'fallback-secret',
         resave: false,
         saveUninitialized: false,
+        store: MongoStore.create({
+            mongoUrl: process.env.MONGODB_URI,
+            collectionName: 'sessions',
+            ttl: 24 * 60 * 60 // 1 day
+        }),
         proxy: true, // Required for Vercel/proxies
         cookie: {
             secure: isProduction, // Secure only in production (HTTPS)
