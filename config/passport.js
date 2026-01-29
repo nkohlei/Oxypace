@@ -16,19 +16,12 @@ export const configurePassport = () => {
                 },
                 async (req, accessToken, refreshToken, profile, done) => {
                     try {
-                        // Robust state checking: handle both parsed object and raw string
-                        let flow = 'login';
                         const stateQuery = req.query.state;
-
-                        // Check if state contains 'register' (whether encoded, JSON, or plain string)
-                        if (stateQuery && (
-                            stateQuery.includes('register') ||
-                            stateQuery.includes('%22register%22')
-                        )) {
-                            flow = 'register';
-                        }
+                        // Simple check for our specific string
+                        const flow = (stateQuery === 'flow_register') ? 'register' : 'login';
 
                         console.log(`🔄 Passport Strategy: Flow=${flow} (State: ${stateQuery})`);
+                        console.log(`🔍 Req Query Params:`, req.query); // Debug log
 
                         // 1. Check if user exists
                         let user = await User.findOne({ googleId: profile.id });

@@ -166,7 +166,9 @@ router.post('/login', async (req, res) => {
 // @access  Public
 router.get('/google/login',
     (req, res, next) => {
-        const state = encodeURIComponent(JSON.stringify({ action: 'login' }));
+        // Simple string state to avoid encoding complexity
+        const state = 'flow_login';
+        console.log('👉 Initiating Google Login with state:', state);
         passport.authenticate('google', {
             scope: ['profile', 'email'],
             state: state,
@@ -180,7 +182,9 @@ router.get('/google/login',
 // @access  Public
 router.get('/google/register',
     (req, res, next) => {
-        const state = encodeURIComponent(JSON.stringify({ action: 'register' }));
+        // Simple string state to avoid encoding complexity
+        const state = 'flow_register';
+        console.log('👉 Initiating Google Register with state:', state);
         passport.authenticate('google', {
             scope: ['profile', 'email'],
             state: state,
