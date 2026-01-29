@@ -166,16 +166,17 @@ router.post('/login', async (req, res) => {
 // @access  Public
 router.get('/google/login',
     (req, res, next) => {
-        // Set cookie to track flow
+        // Set cookie to track flow (Backup)
         res.cookie('auth_flow_type', 'login', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 5 * 60 * 1000 // 5 minutes
+            maxAge: 5 * 60 * 1000
         });
 
         passport.authenticate('google', {
             scope: ['profile', 'email'],
-            prompt: 'select_account'
+            prompt: 'select_account',
+            state: 'login' // PRIMARY Flow Indicator
         })(req, res, next);
     }
 );
@@ -185,16 +186,17 @@ router.get('/google/login',
 // @access  Public
 router.get('/google/register',
     (req, res, next) => {
-        // Set cookie to track flow
+        // Set cookie to track flow (Backup)
         res.cookie('auth_flow_type', 'register', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 5 * 60 * 1000 // 5 minutes
+            maxAge: 5 * 60 * 1000
         });
 
         passport.authenticate('google', {
             scope: ['profile', 'email'],
-            prompt: 'select_account'
+            prompt: 'select_account',
+            state: 'register' // PRIMARY Flow Indicator
         })(req, res, next);
     }
 );
@@ -208,6 +210,7 @@ router.get('/google', (req, res) => res.redirect('/api/auth/google/login'));
 router.get('/google/callback',
     (req, res, next) => {
         console.log('🔗 Google Callback Hit');
+        console.log('Query State:', req.query.state); // Debug State
         next();
     },
     (req, res, next) => {
@@ -217,9 +220,16 @@ router.get('/google/callback',
                 return res.redirect(`${process.env.CLIENT_URL}/login?error=ServerError`);
             }
 
-            // Retrieve Flow Type from Cookie
-            const flowType = req.cookies['auth_flow_type'] || 'login'; // Default to login if missing
-            console.log(`📡 Auth Flow Type (Cookie): ${flowType}`);
+            // DETERMINE FLOW TYPE:
+            // 1. Check Query 'state' (Most reliable, comes from Google)
+            // 2. Check Cookie (Backup)
+            // 3. Default to 'login'
+            let flowType = req.query.state;
+            if (!flowType || (flowType !== 'login' && flowType !== 'register')) {
+                flowType = req.cookies['auth_flow_type'] || 'login';
+            }
+
+            console.log(`📡 Final Auth Flow Type: ${flowType}`);
 
             // Clear the cookie
             res.clearCookie('auth_flow_type');
