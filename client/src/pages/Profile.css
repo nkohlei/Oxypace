@@ -7,19 +7,26 @@
 }
 
 /* Profile Card Container - Centered & Modernized */
-.profile-card {
+/* Profile Card Container - Horizontal Redesign */
+.profile-card-horizontal {
     background-color: #111214;
-    /* Match existing look but contained */
     border-radius: 12px;
     overflow: hidden;
     position: relative;
     box-shadow: 0 0 0 1px #1e1f22, 0 8px 24px rgba(0, 0, 0, 0.4);
-    max-width: 400px;
-    /* Reduced width */
+    max-width: 1100px;
+    /* Much wider for horizontal layout */
     margin: 40px auto;
-    /* Centered */
     display: flex;
     flex-direction: column;
+    min-height: 600px;
+}
+
+.profile-horizontal-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background-color: #111214;
 }
 
 /* Banner */
@@ -35,6 +42,33 @@
     object-fit: cover;
 }
 
+.banner-placeholder {
+    width: 100%;
+    height: 100%;
+}
+
+.edit-banner-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.2s;
+    z-index: 10;
+}
+
+.edit-banner-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+}
+
 /* Privacy Select styling */
 .edit-form-fields select option {
     background-color: #1e1f22;
@@ -42,74 +76,98 @@
 }
 
 /* Header Section (Avatar + Actions) */
-.profile-header {
-    padding: 0 24px;
-    position: relative;
-    top: -60px;
-    margin-bottom: -50px;
+/* LEFT COLUMN: User Info Sidebar */
+.profile-left-column {
+    width: 340px;
+    padding: 24px;
+    background-color: #1e1f22;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
+    flex-direction: column;
+    border-right: 1px solid #2b2d31;
+    flex-shrink: 0;
 }
 
-/* Header Info Section */
-.profile-header-info {
-    margin-top: 12px;
+.profile-avatar-wrapper {
+    position: relative;
+    margin-bottom: 20px;
+    width: 136px;
 }
 
-/* Avatar */
 .profile-avatar-container {
-    width: clamp(90px, 20vw, 136px);
-    /* Responsive sizing: min 90px, max 136px */
-    height: clamp(90px, 20vw, 136px);
+    width: 136px;
+    height: 136px;
     border-radius: 50%;
     background-color: #111214;
-    border: 8px solid #111214;
+    border: 6px solid #111214;
     position: relative;
-    z-index: 5;
-    flex-shrink: 0;
     overflow: hidden;
-    /* Ensure image stays inside */
+    margin-top: -68px;
+    /* Offset into banner */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .profile-avatar-container img {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
     object-fit: cover;
 }
 
-.profile-avatar-placeholder {
-    width: 100%;
-    height: 100%;
+.edit-avatar-btn {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #5865f2;
+    color: white;
+    border: 3px solid #111214;
+    padding: 6px;
     border-radius: 50%;
-    background-color: #5865F2;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 50px;
+    z-index: 6;
+}
+
+.user-details-info {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.user-main-title h1 {
+    font-size: 24px;
+    font-weight: 700;
     color: white;
+    margin: 0;
 }
 
-/* Online Indicator */
-.profile-status-indicator {
-    position: absolute;
-    bottom: 6px;
-    right: 6px;
-    width: 28px;
-    height: 28px;
-    background-color: #23a559;
-    border-radius: 50%;
-    border: 4px solid #111214;
+.profile-username-tag {
+    color: #b5bac1;
+    font-size: 14px;
 }
 
-/* Actions */
-.profile-actions {
-    padding-bottom: 16px;
+.profile-bio-text {
+    font-size: 14px;
+    color: #dbdee1;
+    line-height: 1.4;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.profile-date-text {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: #949ba4;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.profile-actions-horizontal {
+    margin-top: 8px;
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    align-items: center;
 }
 
 .profile-action-btn {
@@ -143,75 +201,169 @@
     padding: 8px;
 }
 
-/* Main Body */
-.profile-body {
-    padding: 15px 24px 24px 24px;
-    background-color: #111214;
+/* RIGHT COLUMN: Content Area */
+.profile-right-column {
     flex: 1;
+    padding: 24px;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
-/* User Info Title */
-.profile-user-title {
-    margin-bottom: 24px;
-}
-
-.profile-user-title h1 {
-    font-size: 24px;
-    font-weight: 700;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    word-break: break-all;
-}
-
-.profile-username-tag {
-    font-size: 16px;
-    color: #dbdee1;
-}
-
-/* Tabs */
 .profile-tabs {
     display: flex;
     gap: 24px;
-    margin-bottom: 20px;
     border-bottom: 1px solid #3f4147;
-    overflow-x: auto;
-    /* Allow scrolling on small screens */
+    margin-bottom: 24px;
 }
 
 .profile-tab-item {
     padding: 8px 0;
-    border-bottom: 2px solid transparent;
-    color: #b5bac1;
-    font-weight: 500;
-    cursor: pointer;
     font-size: 15px;
-    white-space: nowrap;
+    font-weight: 600;
+    color: #b5bac1;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s;
+}
+
+.profile-tab-item:hover {
+    color: #dbdee1;
 }
 
 .profile-tab-item.active {
-    border-bottom-color: #dbdee1;
+    color: white;
+    border-bottom-color: white;
+}
+
+.tab-badge {
+    background: #313338;
+    color: #b5bac1;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-left: 6px;
+}
+
+.profile-tab-view {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Ellipsis Menu Styling */
+.ellipsis-menu-container {
+    position: relative;
+    margin-left: auto;
+}
+
+.ellipsis-btn {
+    background: #4e5058;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ellipsis-btn:hover {
+    background: #6d6f78;
+}
+
+.profile-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background-color: #111214;
+    border-radius: 4px;
+    padding: 8px;
+    width: 180px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    border: 1px solid #1e1f22;
+}
+
+.profile-dropdown-menu button {
+    width: 100%;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
     color: #dbdee1;
-}
-
-/* Section Headers */
-.section-header {
-    font-size: 12px;
-    font-weight: 700;
-    color: #949ba4;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-}
-
-.section-content {
+    text-align: left;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 2px;
     font-size: 14px;
-    color: #dbdee1;
-    white-space: pre-wrap;
-    margin-bottom: 24px;
+}
+
+.profile-dropdown-menu button:hover {
+    background-color: #5865f2;
+    color: white;
+}
+
+.menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+}
+
+/* Grids */
+.portals-grid,
+.friends-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.portal-item-card,
+.friend-item-card {
+    background: #1e1f22;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.portal-item-card:hover,
+.friend-item-card:hover {
+    background: #2b2d31;
+}
+
+.p-avatar,
+.friend-item-card img {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #313338;
+    overflow: hidden;
+}
+
+.friend-item-card img {
+    border-radius: 50%;
+}
+
+.p-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.p-name,
+.f-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 

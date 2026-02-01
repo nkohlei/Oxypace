@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
+import ImageCropperModal from '../components/ImageCropperModal';
 import './Profile.css';
 
 const Profile = () => {
@@ -23,6 +24,11 @@ const Profile = () => {
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('memberships'); // Default tab
+    const [showMenu, setShowMenu] = useState(false);
+
+    // Cropping State
+    const [tempImage, setTempImage] = useState(null);
+    const [cropperTarget, setCropperTarget] = useState(null);
 
     const avatarInputRef = useRef(null);
     const coverInputRef = useRef(null);
@@ -67,12 +73,24 @@ const Profile = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleAvatarChange = async (e) => {
+    const handleAvatarSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            setTempImage(reader.result);
+            setCropperTarget('avatar');
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleAvatarChange = async (croppedBlob) => {
+        setTempImage(null);
+        setCropperTarget(null);
+        if (!croppedBlob) return;
 
         const formData = new FormData();
-        formData.append('avatar', file);
+        formData.append('avatar', croppedBlob, 'avatar.jpg');
 
         try {
             setLoading(true);
@@ -92,11 +110,24 @@ const Profile = () => {
         }
     };
 
-    const handleCoverChange = async (e) => {
+    const handleCoverSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            setTempImage(reader.result);
+            setCropperTarget('cover');
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleCoverChange = async (croppedBlob) => {
+        setTempImage(null);
+        setCropperTarget(null);
+        if (!croppedBlob) return;
+
         const formData = new FormData();
-        formData.append('cover', file);
+        formData.append('cover', croppedBlob, 'cover.jpg');
         try {
             setLoading(true);
             const response = await axios.post('/api/users/me/cover', formData, {
@@ -189,10 +220,6 @@ const Profile = () => {
             navigate(`/channels/me/${response.data._id}`);
         } catch (err) {
             console.error('Message action failed:', err);
-            // Fallback: If 400 (already exists), maybe we need to find it differently?
-            // Assuming API handles "get or create" logic. 
-            // If API not implemented for strict "get or create", we might error.
-            // Let's assume standard behavior for now.
         }
     };
 
@@ -239,275 +266,236 @@ const Profile = () => {
             <main className="app-content profile-page-content">
 
                 {/* Wide Profile Card */}
-                <div className="profile-card">
+                <div className="profile-card profile-card-horizontal">
 
-                    {/* Banner */}
-                    <div className="profile-banner" style={{ backgroundColor: profileUser?.profile?.bannerColor || '#1e1f22' }}>
-                        {profileUser?.profile?.coverImage && (
+                    {/* Banner section */}
+                    <div className="profile-banner">
+                        {profileUser?.profile?.coverImage ? (
                             <img
                                 src={getImageUrl(profileUser.profile.coverImage)}
                                 alt="Banner"
                             />
+                        ) : (
+                            <div className="banner-placeholder" style={{ backgroundColor: profileUser?.profile?.bannerColor || '#1e1f22' }}></div>
                         )}
-                        {/* Status Bubble REMOVED */}
+
+                        {isOwnProfile && (
+                            <button className="edit-banner-btn" onClick={() => coverInputRef.current.click()}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                    <circle cx="12" cy="13" r="4"></circle>
+                                </svg>
+                            </button>
+                        )}
+                        <input type="file" ref={coverInputRef} onChange={handleCoverSelect} style={{ display: 'none' }} accept="image/*" />
                     </div>
 
-                    {/* Profile Header (Avatar & Actions) */}
-                    <div className="profile-header">
-                        {/* Avatar */}
-                        <div className="profile-avatar-container">
-                            {profileUser?.profile?.avatar ? (
-                                <img
-                                    src={getImageUrl(profileUser.profile.avatar)}
-                                    alt={profileUser.username}
-                                />
-                            ) : (
-                                <div className="profile-avatar-placeholder">
-                                    {profileUser.username?.[0]?.toUpperCase()}
+                    <div className="profile-horizontal-layout">
+                        {/* LEFT SECTION: User Info Sidebar */}
+                        <aside className="profile-left-column">
+                            <div className="profile-avatar-wrapper">
+                                <div className="profile-avatar-container">
+                                    {profileUser?.profile?.avatar ? (
+                                        <img
+                                            src={getImageUrl(profileUser.profile.avatar)}
+                                            alt={profileUser.username}
+                                        />
+                                    ) : (
+                                        <div className="profile-avatar-placeholder">
+                                            {profileUser.username?.[0]?.toUpperCase()}
+                                        </div>
+                                    )}
+                                    {isOwnProfile && (
+                                        <button className="edit-avatar-btn" onClick={() => avatarInputRef.current.click()}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                            </svg>
+                                        </button>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                                <input type="file" ref={avatarInputRef} onChange={handleAvatarSelect} style={{ display: 'none' }} accept="image/*" />
+                            </div>
 
-                        {/* Actions */}
-                        <div className="profile-actions">
-                            {isOwnProfile ? (
-                                <>
-                                    <button className="profile-action-btn" onClick={() => setEditing(true)}>
-                                        Profili Düzenle
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button
-                                        className="profile-action-btn primary"
-                                        onClick={handleMessage}
-                                    >
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="0"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" /></svg>
-                                        Mesaj
-                                    </button>
-                                    {getFollowButton()}
-                                    <button className="profile-action-btn icon-only">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
+                            <div className="user-details-info">
+                                <div className="user-main-title">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        <h1>{profileUser?.profile?.displayName || profileUser?.username}</h1>
+                                        <Badge type={profileUser?.verificationBadge} />
+                                    </div>
+                                    <span className="profile-username-tag">@{profileUser?.username}</span>
+                                </div>
 
-                    {/* Main Content Area */}
-                    <div className="profile-body">
-
-                        {/* User Info */}
-                        <div className="profile-user-title">
-                            <h1>
-                                {profileUser?.profile?.displayName || profileUser?.username}
-                                <Badge type={profileUser?.verificationBadge} />
-                            </h1>
-                            <span className="profile-username-tag">@{profileUser?.username}</span>
-
-                            {/* Moved Bio and Date */}
-                            <div className="profile-header-info">
                                 {profileUser?.profile?.bio && (
                                     <div className="profile-bio-text">
                                         {profileUser.profile.bio}
                                     </div>
                                 )}
+
                                 <div className="profile-date-text">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                    <span>{new Date(profileUser.createdAt || Date.now()).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                                    <span>{new Date(profileUser.createdAt || Date.now()).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' })} Katıldı</span>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Divider */}
-                        <div style={{ height: '1px', backgroundColor: '#3f4147', margin: '16px 0' }}></div>
-
-                        {/* Info Tabs */}
-                        <div className="profile-tabs">
-                            <div
-                                className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('memberships')}
-                            >
-                                Üyelikler
-                            </div>
-                            <div
-                                className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('friends')}
-                            >
-                                Arkadaşlar
-                                {profileUser.mutualFriendsCount > 0 && !isOwnProfile && <span className="tab-badge">{profileUser.mutualFriendsCount}</span>}
-                            </div>
-
-                            {!isOwnProfile ? (
-                                <div
-                                    className={`profile-tab-item ${activeTab === 'mutual_portals' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('mutual_portals')}
-                                >
-                                    {profileUser.mutualPortalsCount || 0} Ortak Sunucu
-                                </div>
-                            ) : (
-                                <div
-                                    className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('wishlist')}
-                                >
-                                    İstek Listesi
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Profile Body Content */}
-                        <div style={{ flex: 1 }}>
-
-                            {/* MEMBERSHIPS TAB */}
-                            {activeTab === 'memberships' && (
-                                <div className="tab-content fade-in">
-                                    <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
-
-                                    {profileUser.portalsHidden ? (
-                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px', background: '#1e1f22', borderRadius: '8px' }}>
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginBottom: '8px' }}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                                            <p>Bu kullanıcının üyelikleri gizli.</p>
+                                <div className="profile-actions-horizontal">
+                                    {isOwnProfile ? (
+                                        <div className="ellipsis-menu-container">
+                                            <button className="ellipsis-btn" onClick={() => setShowMenu(!showMenu)} title="Ayarlar">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                                    <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+                                                </svg>
+                                            </button>
+                                            {showMenu && (
+                                                <>
+                                                    <div className="menu-backdrop" onClick={() => setShowMenu(false)} />
+                                                    <div className="profile-dropdown-menu">
+                                                        <button onClick={() => { setEditing(true); setShowMenu(false); }}>
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                            Profili Düzenle
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px' }}>
-                                            {profileUser.portals && profileUser.portals.length > 0 ? (
-                                                profileUser.portals.map(portal => (
-                                                    <div key={portal._id} style={{
-                                                        backgroundColor: '#1e1f22',
-                                                        borderRadius: '8px',
-                                                        padding: '16px',
-                                                        border: '1px solid #2b2d31',
-                                                        textAlign: 'center',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                        // Optional: Navigate to portal on click
-                                                        onClick={() => navigate(`/portal/${portal._id}`)}
-                                                    >
-                                                        <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
-                                                            {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%' }}>
+                                            <button className="profile-action-btn primary" onClick={handleMessage} style={{ flex: 1 }}>Mesaj</button>
+                                            <div style={{ flex: 1 }}>{getFollowButton()}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* RIGHT SECTION: Content Area */}
+                        <section className="profile-right-column">
+                            <div className="profile-tabs">
+                                <div className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`} onClick={() => setActiveTab('memberships')}>
+                                    Üyelikler
+                                </div>
+                                <div className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}>
+                                    Arkadaşlar
+                                    {profileUser.mutualFriendsCount > 0 && !isOwnProfile && <span className="tab-badge">{profileUser.mutualFriendsCount}</span>}
+                                </div>
+                                {isOwnProfile ? (
+                                    <div className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`} onClick={() => setActiveTab('wishlist')}>
+                                        İstek Listesi
+                                    </div>
+                                ) : (
+                                    <div className={`profile-tab-item ${activeTab === 'mutual_portals' ? 'active' : ''}`} onClick={() => setActiveTab('mutual_portals')}>
+                                        Ortak Sunucular
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="profile-tab-view">
+                                {activeTab === 'memberships' && (
+                                    <div className="tab-content fade-in">
+                                        <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
+                                        {profileUser.portalsHidden ? (
+                                            <div className="locked-portals">
+                                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '12px', opacity: 0.5 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                                <p>Bu kullanıcının üyelikleri gizli.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="portals-grid">
+                                                {profileUser.portals?.length > 0 ? (
+                                                    profileUser.portals.map(p => (
+                                                        <div key={p._id} className="portal-item-card" onClick={() => navigate(`/portal/${p._id}`)}>
+                                                            <div className="p-avatar">
+                                                                {p.avatar ? (
+                                                                    <img src={getImageUrl(p.avatar)} alt="" />
+                                                                ) : (
+                                                                    <div className="p-avatar-placeholder">{p.name?.[0]}</div>
+                                                                )}
+                                                            </div>
+                                                            <span className="p-name">{p.name}</span>
                                                         </div>
-                                                        <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{portal.name}</div>
+                                                    ))
+                                                ) : <div className="empty-tab">Henüz bir portala üye olunmamış.</div>}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'friends' && (
+                                    <div className="tab-content fade-in">
+                                        <h4 className="section-header">{isOwnProfile ? 'ARKADAŞLAR' : 'ORTAK ARKADAŞLAR'}</h4>
+                                        <div className="friends-grid">
+                                            {(isOwnProfile ? profileUser.following : profileUser.mutualFriends)?.length > 0 ? (
+                                                (isOwnProfile ? profileUser.following : profileUser.mutualFriends).map(friend => (
+                                                    <div key={friend._id} className="friend-item-card" onClick={() => navigate(`/profile/${friend.username}`)}>
+                                                        <img src={getImageUrl(friend.profile?.avatar)} alt="" />
+                                                        <span className="f-name">{friend.username}</span>
                                                     </div>
                                                 ))
-                                            ) : (
-                                                <div style={{ color: '#949ba4', fontSize: '14px', gridColumn: '1/-1', textAlign: 'center', padding: '20px' }}>
-                                                    Henüz üye olunan portal yok.
-                                                </div>
-                                            )}
+                                            ) : <div className="empty-tab">Henüz ekli arkadaş yok.</div>}
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                    </div>
+                                )}
 
-                            {/* FRIENDS TAB */}
-                            {activeTab === 'friends' && (
-                                <div className="tab-content fade-in">
-                                    <h4 className="section-header">{isOwnProfile ? 'ARKADAŞLAR' : 'ORTAK ARKADAŞLAR'}</h4>
-
-                                    {(isOwnProfile ? profileUser.following : profileUser.mutualFriends) && (isOwnProfile ? profileUser.following : profileUser.mutualFriends).length > 0 ? (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
-                                            {(isOwnProfile ? profileUser.following : profileUser.mutualFriends).map(friend => (
-                                                <div key={friend._id} className="friend-card-compact" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#1e1f22', borderRadius: '8px', cursor: 'pointer' }} onClick={() => navigate(`/profile/${friend.username}`)}>
-                                                    <img src={getImageUrl(friend.profile?.avatar)} alt={friend.username} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-                                                    <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{friend.username}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '40px', background: '#1e1f22', borderRadius: '8px', marginTop: '16px' }}>
-                                            {isOwnProfile ? (
-                                                <><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4e5058" strokeWidth="1" style={{ marginBottom: '16px' }}><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-                                                    <p>Henüz ekli arkadaşın yok.</p></>
-                                            ) : (
-                                                <p>Ortak arkadaş bulunamadı.</p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* MUTUAL PORTALS TAB */}
-                            {activeTab === 'mutual_portals' && !isOwnProfile && (
-                                <div className="tab-content fade-in">
-                                    <h4 className="section-header">ORTAK SUNUCULAR</h4>
-                                    {profileUser.mutualPortals && profileUser.mutualPortals.length > 0 ? (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px' }}>
-                                            {profileUser.mutualPortals.map(portal => (
-                                                <div key={portal._id} style={{
-                                                    backgroundColor: '#1e1f22',
-                                                    borderRadius: '8px',
-                                                    padding: '16px',
-                                                    border: '1px solid #2b2d31',
-                                                    textAlign: 'center',
-                                                    cursor: 'pointer'
-                                                }} onClick={() => navigate(`/portal/${portal._id}`)}>
-                                                    <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
-                                                        {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                {activeTab === 'wishlist' && (
+                                    <div className="tab-content fade-in">
+                                        <h4 className="section-header">PORTAL İSTEKLERİ (ONAY BEKLEYEN)</h4>
+                                        <div className="portals-grid">
+                                            {currentUser?.outgoingPortalRequests?.length > 0 ? (
+                                                currentUser.outgoingPortalRequests.map(p => (
+                                                    <div key={p._id} className="portal-item-card pending">
+                                                        <div className="p-avatar">
+                                                            {p.avatar ? <img src={getImageUrl(p.avatar)} alt="" /> : <div className="p-avatar-placeholder">{p.name?.[0]}</div>}
+                                                        </div>
+                                                        <span className="p-name">{p.name}</span>
+                                                        <div className="p-status">Beklemede</div>
                                                     </div>
-                                                    <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px' }}>{portal.name}</div>
-                                                </div>
-                                            ))}
+                                                ))
+                                            ) : <div className="empty-tab">Bekleyen portal isteği bulunmuyor.</div>}
                                         </div>
-                                    ) : (
-                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
-                                            Ortak sunucu bulunamadı.
-                                        </div>
-                                    )}
-                                </div>
-                            )}
 
-                            {/* WISHLIST TAB */}
-                            {activeTab === 'wishlist' && (
-                                <div className="tab-content fade-in">
-                                    <h4 className="section-header">PORTAL İSTEKLERİ</h4>
-                                    {currentUser?.outgoingPortalRequests && currentUser.outgoingPortalRequests.length > 0 ? (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px', marginTop: '16px', marginBottom: '24px' }}>
-                                            {currentUser.outgoingPortalRequests.map(portal => (
-                                                <div key={portal._id} style={{
-                                                    backgroundColor: '#1e1f22',
-                                                    borderRadius: '8px',
-                                                    padding: '16px',
-                                                    border: '1px solid #2b2d31',
-                                                    textAlign: 'center',
-                                                    opacity: 0.8
-                                                }}>
-                                                    <div style={{ width: '48px', height: '48px', margin: '0 auto 12px auto', borderRadius: '50%', backgroundColor: '#5865F2', overflow: 'hidden' }}>
-                                                        {portal.avatar ? <img src={getImageUrl(portal.avatar)} alt={portal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                                        <h4 className="section-header" style={{ marginTop: '32px' }}>TANIŞMA İSTEKLERİ (GÖNDERİLEN)</h4>
+                                        <div className="friends-grid">
+                                            {currentUser?.outgoingUserRequests?.length > 0 ? (
+                                                currentUser.outgoingUserRequests.map(u => (
+                                                    <div key={u._id} className="friend-item-card pending">
+                                                        <img src={getImageUrl(u.profile?.avatar)} alt="" />
+                                                        <span className="f-name">{u.username}</span>
+                                                        <div className="f-status">İstek Gönderildi</div>
                                                     </div>
-                                                    <div style={{ color: '#dbdee1', fontWeight: 'bold', fontSize: '14px' }}>{portal.name}</div>
-                                                    <div style={{ fontSize: '12px', color: '#f0ad4e', marginTop: '8px' }}>Beklemede</div>
-                                                </div>
-                                            ))}
+                                                ))
+                                            ) : <div className="empty-tab">Gönderilmiş tanışma isteği bulunmuyor.</div>}
                                         </div>
-                                    ) : (
-                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px', marginBottom: '16px' }}>
-                                            İstek listesinde portal yok.
-                                        </div>
-                                    )}
+                                    </div>
+                                )}
 
-                                    <h4 className="section-header">KULLANICI İSTEKLERİ (TANIŞMA)</h4>
-                                    {currentUser?.outgoingUserRequests && currentUser.outgoingUserRequests.length > 0 ? (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
-                                            {currentUser.outgoingUserRequests.map(reqUser => (
-                                                <div key={reqUser._id} className="friend-card-compact" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: '#1e1f22', borderRadius: '8px' }}>
-                                                    <img src={getImageUrl(reqUser.profile?.avatar)} alt={reqUser.username} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{reqUser.username}</span>
-                                                        <span style={{ fontSize: '11px', color: '#f0ad4e' }}>İstek Gönderildi</span>
+                                {activeTab === 'mutual_portals' && (
+                                    <div className="tab-content fade-in">
+                                        <h4 className="section-header">ORTAK SUNUCULAR</h4>
+                                        <div className="portals-grid">
+                                            {profileUser.mutualPortals?.length > 0 ? (
+                                                profileUser.mutualPortals.map(p => (
+                                                    <div key={p._id} className="portal-item-card" onClick={() => navigate(`/portal/${p._id}`)}>
+                                                        <div className="p-avatar">
+                                                            {p.avatar ? <img src={getImageUrl(p.avatar)} alt="" /> : <div className="p-avatar-placeholder">{p.name?.[0]}</div>}
+                                                        </div>
+                                                        <span className="p-name">{p.name}</span>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))
+                                            ) : <div className="empty-tab">Ortak sunucu bulunamadı.</div>}
                                         </div>
-                                    ) : (
-                                        <div style={{ color: '#949ba4', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
-                                            İstek listesinde kullanıcı yok.
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
                     </div>
+
+                    {/* Image Cropper Modal */}
+                    {tempImage && (
+                        <ImageCropperModal
+                            image={tempImage}
+                            aspect={cropperTarget === 'avatar' ? 1 : null} // Square for avatar, free for cover
+                            onCropComplete={cropperTarget === 'avatar' ? handleAvatarChange : handleCoverChange}
+                            onCancel={() => { setTempImage(null); setCropperTarget(null); }}
+                            title={cropperTarget === 'avatar' ? "Profil Resmini Düzenle" : "Kapak Resmini Düzenle"}
+                        />
+                    )}
                 </div>
 
                 {/* Edit Profile Modal */}
@@ -524,47 +512,8 @@ const Profile = () => {
                                 </button>
                             </div>
 
-                            <div className="edit-modal-content-modern" style={{ backgroundColor: '#313338' }}>
-                                {/* ... content ... */}
-                                <div className="edit-cover-container">
-                                    {profileUser?.profile?.coverImage ? (
-                                        <img src={getImageUrl(profileUser.profile.coverImage)} alt="Cover" className="edit-cover-image" />
-                                    ) : (
-                                        <div className="edit-cover-placeholder"></div>
-                                    )}
-                                    <div className="image-overlay-actions">
-                                        <button className="image-overlay-btn" onClick={() => coverInputRef.current.click()} title="Fotoğraf ekle">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                                                <circle cx="12" cy="13" r="4"></circle>
-                                            </svg>
-                                        </button>
-                                        <input type="file" ref={coverInputRef} onChange={handleCoverChange} style={{ display: 'none' }} accept="image/*" />
-                                    </div>
-                                </div>
-
-                                <div className="edit-avatar-container">
-                                    <div className="edit-avatar-wrapper">
-                                        {profileUser?.profile?.avatar ? (
-                                            <img src={getImageUrl(profileUser.profile.avatar)} alt="Avatar" className="edit-avatar-image" />
-                                        ) : (
-                                            <div className="edit-avatar-placeholder">
-                                                {profileUser.username[0].toUpperCase()}
-                                            </div>
-                                        )}
-                                        <div className="avatar-overlay-actions">
-                                            <button className="image-overlay-btn" onClick={() => avatarInputRef.current.click()} title="Fotoğraf ekle">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                                                    <circle cx="12" cy="13" r="4"></circle>
-                                                </svg>
-                                            </button>
-                                            <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} style={{ display: 'none' }} accept="image/*" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="edit-form-fields">
+                            <div className="edit-modal-content-modern" style={{ backgroundColor: '#1e1f22' }}>
+                                <div className="edit-form-fields" style={{ padding: '24px' }}>
                                     <div className="floating-label-group">
                                         <input
                                             type="text"
@@ -574,12 +523,12 @@ const Profile = () => {
                                             className="floating-input"
                                             placeholder=" "
                                             id="input-name"
-                                            style={{ backgroundColor: '#1e1f22', borderColor: '#1e1f22', color: 'white' }}
+                                            style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', padding: '12px', borderRadius: '8px' }}
                                         />
-                                        <label htmlFor="input-name" className="floating-label">İsim</label>
+                                        <label htmlFor="input-name" className="floating-label" style={{ top: '-10px', left: '12px', background: '#1e1f22', padding: '0 4px' }}>İsim</label>
                                     </div>
 
-                                    <div className="floating-label-group">
+                                    <div className="floating-label-group" style={{ marginTop: '20px' }}>
                                         <textarea
                                             name="bio"
                                             value={formData.bio}
@@ -587,36 +536,27 @@ const Profile = () => {
                                             className="floating-input floating-textarea"
                                             placeholder=" "
                                             id="input-bio"
-                                            style={{ backgroundColor: '#1e1f22', borderColor: '#1e1f22', color: 'white' }}
+                                            style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', padding: '12px', borderRadius: '8px', minHeight: '100px' }}
                                         />
-                                        <label htmlFor="input-bio" className="floating-label">Bio (Kendinden bahset)</label>
+                                        <label htmlFor="input-bio" className="floating-label" style={{ top: '-10px', left: '12px', background: '#1e1f22', padding: '0 4px' }}>Biyografi</label>
                                     </div>
 
-                                    {/* Privacy Settings */}
-                                    <div className="floating-label-group" style={{ marginTop: '16px' }}>
-                                        <label style={{ fontSize: '12px', color: '#b5bac1', marginBottom: '6px', display: 'block' }}>Üyeliklerin Görünürlüğü</label>
+                                    <div className="form-group" style={{ marginTop: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '12px', color: '#b5bac1', marginBottom: '8px', fontWeight: 'bold' }}>PORTAL GÖRÜNÜRLÜĞÜ</label>
                                         <select
                                             name="portalVisibility"
                                             value={formData.portalVisibility}
                                             onChange={handleChange}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px',
-                                                backgroundColor: '#1e1f22',
-                                                border: '1px solid #2b2d31',
-                                                borderRadius: '4px',
-                                                color: 'white',
-                                                outline: 'none'
-                                            }}
+                                            style={{ width: '100%', padding: '12px', backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', borderRadius: '8px', outline: 'none' }}
                                         >
                                             <option value="public">Herkese Açık</option>
-                                            <option value="friends">Sadece Arkadaşlara</option>
+                                            <option value="friends">Sadece Arkadaşlar</option>
                                             <option value="private">Gizli</option>
                                         </select>
                                     </div>
 
-                                    {error && <div className="error-message">{error}</div>}
-                                    {success && <div className="success-message">{success}</div>}
+                                    {error && <div className="error-message" style={{ color: '#ff4444', marginTop: '12px' }}>{error}</div>}
+                                    {success && <div className="success-message" style={{ color: '#00c851', marginTop: '12px' }}>{success}</div>}
                                 </div>
                             </div>
                         </div>
