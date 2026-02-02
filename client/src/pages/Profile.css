@@ -90,7 +90,13 @@
     margin-top: -85px;
     /* Deeper offset into banner */
     margin-bottom: 24px;
-    width: fit-content;
+    /* Deeper offset into banner */
+    margin-bottom: 24px;
+    width: 100%;
+    /* Changed to full width to handle flex children */
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
     z-index: 30;
     /* Avatar highly visible */
 }
@@ -228,6 +234,27 @@
     font-weight: 700;
     font-size: 15px;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+}
+
+.profile-action-btn.icon-only {
+    width: 48px;
+    padding: 0;
+}
+
+.profile-header-actions {
+    padding-bottom: 10px;
+    /* Align with avatar bottom visually */
+}
+
+.action-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 /* Content Area (RIGHT) */

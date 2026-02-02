@@ -227,20 +227,19 @@ const Profile = () => {
     const getFollowButton = () => {
         if (profileUser.isFriend) {
             return (
-                <button className="profile-action-btn success" onClick={handleFollow}>
+                <button className="profile-action-btn success icon-only" onClick={handleFollow} title="Arkadaşsınız">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
-                    Arkadaşsınız
                 </button>
             );
         } else if (profileUser.hasRequested) {
             return (
-                <button className="profile-action-btn secondary" onClick={handleFollow}>
-                    İstek Gönderildi
+                <button className="profile-action-btn secondary icon-only" onClick={handleFollow} title="İstek Gönderildi">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                 </button>
             );
         } else {
             return (
-                <button className="profile-action-btn primary" onClick={handleFollow} style={{ backgroundColor: '#248046', color: 'white' }}>
+                <button className="profile-action-btn primary" onClick={handleFollow} style={{ backgroundColor: '#248046', color: 'white', padding: '0 16px' }}>
                     Tanış
                 </button>
             );
@@ -313,6 +312,16 @@ const Profile = () => {
                                         </button>
                                     )}
                                 </div>
+                                {!isOwnProfile && (
+                                    <div className="profile-header-actions">
+                                        <div className="action-row">
+                                            {getFollowButton()}
+                                            <button className="profile-action-btn primary" onClick={handleMessage} style={{ minWidth: '80px' }}>
+                                                Mesaj
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                                 <input type="file" ref={avatarInputRef} onChange={handleAvatarSelect} style={{ display: 'none' }} accept="image/*" />
                             </div>
 
@@ -342,14 +351,10 @@ const Profile = () => {
                                     <span>{new Date(profileUser.createdAt || Date.now()).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' })} Katıldı</span>
                                 </div>
 
-                                <div className="profile-actions-horizontal">
-                                    {!isOwnProfile && (
-                                        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%' }}>
-                                            <button className="profile-action-btn primary" onClick={handleMessage} style={{ flex: 1 }}>Mesaj</button>
-                                            <div style={{ flex: 1 }}>{getFollowButton()}</div>
-                                        </div>
-                                    )}
-                                </div>
+                                {activeTab === 'profile_actions_legacy_removed' && (
+                                    /* Legancy Actions were here */
+                                    <div />
+                                )}
                             </div>
                         </aside>
 
