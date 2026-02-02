@@ -76,8 +76,11 @@
 
 /* User Info Sidebar (LEFT) */
 .profile-left-column {
-    width: 360px;
-    padding: 0 24px 30px 24px;
+    width: 50%;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    /* Optional: visual divider if needed, but creates the 'imaginary' line */
+    padding: 0 40px 30px 40px;
+    /* Slight increase in internal padding for centering content */
     background-color: #111214;
     display: flex;
     flex-direction: column;
@@ -260,7 +263,8 @@
 /* Content Area (RIGHT) */
 .profile-right-column {
     flex: 1;
-    padding: 30px 30px 30px 60px;
+    width: 50%;
+    padding: 30px 40px;
     display: flex;
     flex-direction: column;
     min-width: 0;
