@@ -337,7 +337,22 @@
     border-color: rgba(255, 69, 0, 0.4);
 }
 
-.p-avatar,
+
+.p-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.p-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
 .friend-item-card img {
     width: 36px;
     height: 36px;
