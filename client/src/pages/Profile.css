@@ -250,8 +250,10 @@
 }
 
 .profile-header-actions {
-    padding-bottom: 10px;
-    /* Align with avatar bottom visually */
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 40;
 }
 
 .action-row {
