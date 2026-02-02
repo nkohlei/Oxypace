@@ -312,18 +312,19 @@ const Profile = () => {
                                         </button>
                                     )}
                                 </div>
-                                {!isOwnProfile && (
-                                    <div className="profile-header-actions">
-                                        <div className="action-row">
-                                            {getFollowButton()}
-                                            <button className="profile-action-btn primary" onClick={handleMessage} style={{ minWidth: '80px' }}>
-                                                Mesaj
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                                 <input type="file" ref={avatarInputRef} onChange={handleAvatarSelect} style={{ display: 'none' }} accept="image/*" />
                             </div>
+
+                            {!isOwnProfile && (
+                                <div className="profile-header-actions">
+                                    <div className="action-row">
+                                        {getFollowButton()}
+                                        <button className="profile-action-btn primary" onClick={handleMessage} style={{ minWidth: '80px' }}>
+                                            Mesaj
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="user-details-info">
                                 <div className="user-main-title">
