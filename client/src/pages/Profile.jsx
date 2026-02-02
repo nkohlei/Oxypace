@@ -343,26 +343,7 @@ const Profile = () => {
                                 </div>
 
                                 <div className="profile-actions-horizontal">
-                                    {isOwnProfile ? (
-                                        <div className="ellipsis-menu-container">
-                                            <button className="ellipsis-btn" onClick={() => setShowMenu(!showMenu)} title="Ayarlar">
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                                    <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
-                                                </svg>
-                                            </button>
-                                            {showMenu && (
-                                                <>
-                                                    <div className="menu-backdrop" onClick={() => setShowMenu(false)} />
-                                                    <div className="profile-dropdown-menu">
-                                                        <button onClick={() => { /* Gelecekte farklı ayarlar eklenebilir */ setShowMenu(false); }}>
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-                                                            Hesap Ayarları
-                                                        </button>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    ) : (
+                                    {!isOwnProfile && (
                                         <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%' }}>
                                             <button className="profile-action-btn primary" onClick={handleMessage} style={{ flex: 1 }}>Mesaj</button>
                                             <div style={{ flex: 1 }}>{getFollowButton()}</div>
@@ -440,33 +421,37 @@ const Profile = () => {
                                 )}
 
                                 {activeTab === 'wishlist' && (
-                                    <div className="tab-content fade-in">
-                                        <h4 className="section-header">PORTAL İSTEKLERİ (ONAY BEKLEYEN)</h4>
-                                        <div className="portals-grid">
-                                            {currentUser?.outgoingPortalRequests?.length > 0 ? (
-                                                currentUser.outgoingPortalRequests.map(p => (
-                                                    <div key={p._id} className="portal-item-card pending">
-                                                        <div className="p-avatar">
-                                                            {p.avatar ? <img src={getImageUrl(p.avatar)} alt="" /> : <div className="p-avatar-placeholder">{p.name?.[0]}</div>}
+                                    <div className="tab-content fade-in wishlist-split-view">
+                                        <div className="wishlist-column">
+                                            <h4 className="section-header">PORTAL İSTEKLERİ (ONAY BEKLEYEN)</h4>
+                                            <div className="portals-grid compact-grid">
+                                                {currentUser?.outgoingPortalRequests?.length > 0 ? (
+                                                    currentUser.outgoingPortalRequests.map(p => (
+                                                        <div key={p._id} className="portal-item-card pending compact">
+                                                            <div className="p-avatar small">
+                                                                {p.avatar ? <img src={getImageUrl(p.avatar)} alt="" /> : <div className="p-avatar-placeholder">{p.name?.[0]}</div>}
+                                                            </div>
+                                                            <span className="p-name">{p.name}</span>
+                                                            <div className="p-status-dot" title="Beklemede"></div>
                                                         </div>
-                                                        <span className="p-name">{p.name}</span>
-                                                        <div className="p-status">Beklemede</div>
-                                                    </div>
-                                                ))
-                                            ) : <div className="empty-tab">Bekleyen portal isteği bulunmuyor.</div>}
+                                                    ))
+                                                ) : <div className="empty-tab">Bekleyen portal isteği yok.</div>}
+                                            </div>
                                         </div>
 
-                                        <h4 className="section-header" style={{ marginTop: '32px' }}>TANIŞMA İSTEKLERİ (GÖNDERİLEN)</h4>
-                                        <div className="friends-grid">
-                                            {currentUser?.outgoingUserRequests?.length > 0 ? (
-                                                currentUser.outgoingUserRequests.map(u => (
-                                                    <div key={u._id} className="friend-item-card pending">
-                                                        <img src={getImageUrl(u.profile?.avatar)} alt="" />
-                                                        <span className="f-name">{u.username}</span>
-                                                        <div className="f-status">İstek Gönderildi</div>
-                                                    </div>
-                                                ))
-                                            ) : <div className="empty-tab">Gönderilmiş tanışma isteği bulunmuyor.</div>}
+                                        <div className="wishlist-column">
+                                            <h4 className="section-header">TANIŞMA İSTEKLERİ (GÖNDERİLEN)</h4>
+                                            <div className="friends-grid compact-grid">
+                                                {currentUser?.outgoingUserRequests?.length > 0 ? (
+                                                    currentUser.outgoingUserRequests.map(u => (
+                                                        <div key={u._id} className="friend-item-card pending compact">
+                                                            <img src={getImageUrl(u.profile?.avatar)} alt="" />
+                                                            <span className="f-name">{u.username}</span>
+                                                            <div className="f-status-dot" title="İstek Gönderildi"></div>
+                                                        </div>
+                                                    ))
+                                                ) : <div className="empty-tab">Bekleyen arkadaş isteği yok.</div>}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
