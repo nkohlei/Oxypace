@@ -59,7 +59,7 @@
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 10px;
-    border-radius: 12px;
+    border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -119,13 +119,15 @@
 
 .edit-avatar-btn {
     position: absolute;
-    bottom: 8px;
-    right: 8px;
+    top: 6px;
+    right: 6px;
     background: #ff4500;
     color: white;
-    border: 5px solid #111214;
-    padding: 8px;
-    border-radius: 14px;
+    border: 3px solid #111214;
+    padding: 6px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;

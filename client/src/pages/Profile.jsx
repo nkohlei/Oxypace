@@ -361,7 +361,6 @@ const Profile = () => {
                                 </div>
                                 <div className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}>
                                     Arkadaşlar
-                                    {profileUser.mutualFriendsCount > 0 && !isOwnProfile && <span className="tab-badge">{profileUser.mutualFriendsCount}</span>}
                                 </div>
                                 {isOwnProfile ? (
                                     <div className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`} onClick={() => setActiveTab('wishlist')}>
