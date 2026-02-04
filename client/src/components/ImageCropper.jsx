@@ -291,18 +291,33 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         if (!imageObj) return;
 
         e.preventDefault();
-        const delta = e.deltaY > 0 ? -0.05 : 0.05;
-        const newZoom = Math.max(0.2, Math.min(4, zoom + delta));
 
+        // Larger delta for faster zooming, proportional to current zoom
+        const zoomSpeed = 0.1;
+        const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+
+        const container = containerRef.current;
+        if (!container) return;
+
+        const containerRect = container.getBoundingClientRect();
         const cropArea = getCropArea();
 
-        // Minimum zoom: görsel kırpma alanını kaplamalı
-        const minZoom = Math.max(
+        // Minimum zoom: image should at least cover the crop area
+        // Allow zooming out until the smallest dimension just covers the crop
+        const minZoomForCrop = Math.max(
             cropArea.width / imageObj.width,
             cropArea.height / imageObj.height
         );
 
-        const clampedZoom = Math.max(newZoom, minZoom);
+        // Allow slightly more zoom out for flexibility (80% of minimum)
+        const absoluteMinZoom = minZoomForCrop * 0.5;
+
+        // Maximum zoom: up to 10x for detailed cropping
+        const maxZoom = 10;
+
+        // Calculate new zoom
+        const newZoom = zoom * (1 + delta);
+        const clampedZoom = Math.max(absoluteMinZoom, Math.min(maxZoom, newZoom));
 
         // Zoom değişirken merkezi koru
         const cropCenterX = cropArea.x + cropArea.width / 2;
@@ -316,15 +331,19 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             y: cropCenterY - imageCenterY * clampedZoom
         };
 
-        const clampedPosition = clampPosition(
-            newPosition,
-            { width: imageObj.width, height: imageObj.height },
-            clampedZoom,
-            cropArea
-        );
+        // Only clamp position if zoomed in enough to cover crop area
+        let finalPosition = newPosition;
+        if (clampedZoom >= minZoomForCrop) {
+            finalPosition = clampPosition(
+                newPosition,
+                { width: imageObj.width, height: imageObj.height },
+                clampedZoom,
+                cropArea
+            );
+        }
 
         setZoom(clampedZoom);
-        setPosition(clampedPosition);
+        setPosition(finalPosition);
     }, [imageObj, zoom, position, getCropArea]);
 
     // Attach wheel listener for all modes
