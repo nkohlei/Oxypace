@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
+import ImageCropper from '../components/ImageCropper';
 import './Profile.css';
 
 const Profile = () => {
@@ -25,8 +26,9 @@ const Profile = () => {
     const [activeTab, setActiveTab] = useState('memberships'); // Default tab
     const [showMenu, setShowMenu] = useState(false);
 
-    // Direct Upload State
-    // Removed Cropping State
+    // Cropping State
+    const [cropperImage, setCropperImage] = useState(null);
+    const [cropperMode, setCropperMode] = useState(null); // 'avatar' or 'cover'
 
     const avatarInputRef = useRef(null);
     const coverInputRef = useRef(null);
@@ -71,28 +73,72 @@ const Profile = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleAvatarSelect = async (e) => {
+    const handleAvatarSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        if (file.size > 10 * 1024 * 1024) {
             setError('Dosya boyutu 10MB\'dan küçük olmalıdır.');
             return;
         }
 
-        const formData = new FormData();
-        formData.append('avatar', file);
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCropperImage(reader.result);
+            setCropperMode('avatar');
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleCoverSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 15 * 1024 * 1024) {
+            setError('Kapak resmi 15MB\'dan küçük olmalıdır.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCropperImage(reader.result);
+            setCropperMode('cover');
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleCropComplete = async (blob) => {
+        setCropperImage(null);
+        const mode = cropperMode;
+        setCropperMode(null);
+
+        if (!blob) return;
+
+        const formDataObj = new FormData();
+        const endpoint = mode === 'avatar' ? '/api/users/me/avatar' : '/api/users/me/cover';
+        const fieldName = mode === 'avatar' ? 'avatar' : 'cover';
+
+        formDataObj.append(fieldName, blob, `${fieldName}.jpg`);
 
         try {
             setLoading(true);
-            const response = await axios.post('/api/users/me/avatar', formData, {
+            const response = await axios.post(endpoint, formDataObj, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
+
             const updatedUser = { ...currentUser };
-            updatedUser.profile.avatar = response.data.avatar;
+            if (mode === 'avatar') {
+                updatedUser.profile.avatar = response.data.avatar;
+                setProfileUser(prev => ({ ...prev, profile: { ...prev.profile, avatar: response.data.avatar } }));
+                setSuccess('Profil fotoğrafı güncellendi!');
+            } else {
+                updatedUser.profile.coverImage = response.data.coverImage;
+                setProfileUser(prev => ({ ...prev, profile: { ...prev.profile, coverImage: response.data.coverImage } }));
+                setSuccess('Kapak resmi güncellendi!');
+            }
             updateUser(updatedUser);
-            setProfileUser(prev => ({ ...prev, profile: { ...prev.profile, avatar: response.data.avatar } }));
-            setSuccess('Profil fotoğrafı güncellendi!');
         } catch (err) {
             console.error('Upload error:', err);
             setError('Resim yüklenemedi');
@@ -101,33 +147,9 @@ const Profile = () => {
         }
     };
 
-    const handleCoverSelect = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.size > 15 * 1024 * 1024) { // 15MB limit for cover
-            setError('Kapak resmi 15MB\'dan küçük olmalıdır.');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('cover', file);
-        try {
-            setLoading(true);
-            const response = await axios.post('/api/users/me/cover', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            const updatedUser = { ...currentUser };
-            updatedUser.profile.coverImage = response.data.coverImage;
-            updateUser(updatedUser);
-            setProfileUser(prev => ({ ...prev, profile: { ...prev.profile, coverImage: response.data.coverImage } }));
-            setSuccess('Kapak fotoğrafı güncellendi!');
-        } catch (err) {
-            console.error('Upload cover error:', err);
-            setError('Kapak resmi yüklenemedi');
-        } finally {
-            setLoading(false);
-        }
+    const handleCropCancel = () => {
+        setCropperImage(null);
+        setCropperMode(null);
     };
 
     const handleSubmit = async (e) => {
@@ -538,6 +560,17 @@ const Profile = () => {
                     )}
                 </div>
             </main>
+
+            {/* Image Cropper Modal */}
+            {cropperImage && (
+                <ImageCropper
+                    image={cropperImage}
+                    mode={cropperMode}
+                    onComplete={handleCropComplete}
+                    onCancel={handleCropCancel}
+                    title={cropperMode === 'avatar' ? 'Profil Fotoğrafı' : 'Kapak Resmi'}
+                />
+            )}
         </div>
     );
 };
