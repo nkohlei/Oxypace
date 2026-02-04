@@ -198,28 +198,51 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* Unify modal background */
+.cropper-modal-header,
+.cropper-controls,
+.cropper-actions,
+.cropper-modal-container {
+    background: #1e1f22 !important;
+    border: none !important;
+}
+
+.cropper-modal-header {
+    padding-bottom: 0;
+}
+
+.cropper-controls {
+    padding-top: 0;
+    padding-bottom: 10px;
+}
+
+.cropper-actions {
+    padding-top: 0;
+}
+
 .apply-btn {
-    background: var(--primary-color, #ff4500);
+    background: #ff4500 !important;
+    /* Solid Orange */
     color: white;
     min-width: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: none !important;
+    transition: opacity 0.2s;
+    border-radius: 6px;
 }
 
 .apply-btn:hover {
-    background: var(--primary-color-hover, #ff5714);
-    /* Fallback */
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(255, 69, 0, 0.3);
+    background: #ff5714 !important;
+    transform: none !important;
+    filter: none !important;
+    opacity: 0.9;
 }
 
 .apply-btn:disabled {
     opacity: 0.7;
     cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
 }
 
 @keyframes fadeIn {
@@ -244,22 +267,20 @@
     }
 }
 
-/* Custom crop area border for cleaner look */
-.reactEasyCrop_CropArea {
-    border: 2px solid rgba(255, 255, 255, 0.8) !important;
-    box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.85) !important;
-    /* Make backdrop darker */
-    color: transparent !important;
-    /* Hide potential default text */
+/* Aggressively hide ANY internal lines in the cropper */
+div[class*="reactEasyCrop_CropArea"]::before,
+div[class*="reactEasyCrop_CropArea"]::after,
+div[class*="reactEasyCrop_CropAreaGrid"] {
+    display: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    content: none !important;
 }
 
-/* Force hide all grid lines and center markers including pseudo elements */
-.reactEasyCrop_CropAreaGrid,
-.reactEasyCrop_CropAreaGrid::before,
-.reactEasyCrop_CropAreaGrid::after,
-.reactEasyCrop_CropArea::before,
-.reactEasyCrop_CropArea::after {
-    display: none !important;
-    content: none !important;
-    border: none !important;
+/* Custom crop area border - thinner, cleaner */
+.reactEasyCrop_CropArea {
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.85) !important;
+    color: transparent !important;
 }
