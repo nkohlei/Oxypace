@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import { getImageUrl } from '../utils/imageUtils';
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTab = 'overview' }) => {

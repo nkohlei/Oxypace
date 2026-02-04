@@ -5,7 +5,6 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
-import Badge from '../components/Badge';
 import './Profile.css';
 
 const Profile = () => {
