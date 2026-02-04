@@ -90,6 +90,7 @@
 .zoom-range {
     flex: 1;
     -webkit-appearance: none;
+    appearance: none;
     height: 6px;
     background: #404249;
     border-radius: 3px;
