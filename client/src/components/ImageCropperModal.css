@@ -267,19 +267,24 @@
     }
 }
 
-/* Aggressively hide ANY internal lines in the cropper */
+/* Aggressively hide ANY internal lines in the cropper using custom classes */
+.custom-crop-area::before,
+.custom-crop-area::after,
+.custom-crop-area div,
 div[class*="reactEasyCrop_CropArea"]::before,
 div[class*="reactEasyCrop_CropArea"]::after,
 div[class*="reactEasyCrop_CropAreaGrid"] {
     display: none !important;
     opacity: 0 !important;
+    border: none !important;
+    content: "" !important;
+    /* Reset content */
     width: 0 !important;
     height: 0 !important;
-    content: none !important;
 }
 
 /* Custom crop area border - thinner, cleaner */
-.reactEasyCrop_CropArea {
+.custom-crop-area {
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
     box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.85) !important;
     color: transparent !important;

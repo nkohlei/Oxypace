@@ -69,6 +69,11 @@ const ImageCropperModal = ({ image, onCropComplete, onCancel, aspect = null, tit
                         onCropComplete={onCropCompleteInternal}
                         onZoomChange={onZoomChange}
                         objectFit="horizontal-cover"
+                        classes={{
+                            containerClassName: 'custom-cropper-container',
+                            mediaClassName: 'custom-cropper-media',
+                            cropAreaClassName: 'custom-crop-area'
+                        }}
                     />
                 </div>
 
