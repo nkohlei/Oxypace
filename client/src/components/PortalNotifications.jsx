@@ -3,7 +3,7 @@ import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import './PortalNotifications.css';
 
-const PortalNotifications = ({ portalId }) => {
+const PortalNotifications = ({ portalId, onUpdate }) => {
     const [activeTab, setActiveTab] = useState('requests'); // 'requests' or 'members'
     const [joinRequests, setJoinRequests] = useState([]);
     const [recentMembers, setRecentMembers] = useState([]);
@@ -33,6 +33,8 @@ const PortalNotifications = ({ portalId }) => {
             setJoinRequests(prev => prev.filter(r => r._id !== userId));
             // Refresh to get updated list
             fetchNotifications();
+            // Notify parent to update portal data (clears badge)
+            if (onUpdate) onUpdate();
         } catch (error) {
             console.error('Approve error:', error);
             alert(error.response?.data?.message || 'Onaylama başarısız');
@@ -43,6 +45,8 @@ const PortalNotifications = ({ portalId }) => {
         try {
             await axios.post(`/api/portals/${portalId}/reject-member`, { userId });
             setJoinRequests(prev => prev.filter(r => r._id !== userId));
+            // Notify parent to update portal data (clears badge)
+            if (onUpdate) onUpdate();
         } catch (error) {
             console.error('Reject error:', error);
             alert(error.response?.data?.message || 'Reddetme başarısız');
