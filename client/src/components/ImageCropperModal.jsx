@@ -38,7 +38,7 @@ const ImageCropperModal = ({ image, onCropComplete, onCancel, aspect = null, tit
             onCropComplete(croppedImage);
         } catch (e) {
             console.error("Crop error:", e);
-            alert("Kırpma işlemi sırasında bir hata oluştu. Lütfen görseli değiştirip tekrar deneyin.");
+            alert(`Kırpma işlemi başarısız oldu: ${e.message || "Bilinmeyen hata"}`);
         } finally {
             setLoading(false);
         }
