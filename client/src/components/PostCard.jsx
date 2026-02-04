@@ -375,7 +375,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                 <div className="post-content-text">
                     <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {linkifyText(post.content)}
+                        {isTranslated && translatedText ? translatedText : linkifyText(post.content)}
                     </p>
                     {post.content && (
                         <button
