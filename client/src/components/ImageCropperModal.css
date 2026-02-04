@@ -243,3 +243,23 @@
         opacity: 1;
     }
 }
+
+/* Custom crop area border for cleaner look */
+.reactEasyCrop_CropArea {
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.85) !important;
+    /* Make backdrop darker */
+    color: transparent !important;
+    /* Hide potential default text */
+}
+
+/* Force hide all grid lines and center markers including pseudo elements */
+.reactEasyCrop_CropAreaGrid,
+.reactEasyCrop_CropAreaGrid::before,
+.reactEasyCrop_CropAreaGrid::after,
+.reactEasyCrop_CropArea::before,
+.reactEasyCrop_CropArea::after {
+    display: none !important;
+    content: none !important;
+    border: none !important;
+}
