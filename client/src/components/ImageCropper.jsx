@@ -42,9 +42,9 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         if (mode === 'avatar') {
             return { width: 400, height: 400 };
         } else {
-            // Scale up proportionally for quality
+            // High resolution output for sharp header images
             const ratio = cropSize.width / cropSize.height;
-            const targetWidth = 1200;
+            const targetWidth = 1920; // Full HD width for crisp display
             return { width: targetWidth, height: Math.round(targetWidth / ratio) };
         }
     }, [mode, cropSize]);

@@ -69,7 +69,7 @@ export async function cropImage(image, crop, zoom, position, outputSize) {
                 }
             },
             'image/jpeg',
-            0.92
+            0.98 // High quality for sharp images
         );
     });
 }
