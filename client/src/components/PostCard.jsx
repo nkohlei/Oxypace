@@ -43,11 +43,15 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
         setIsTranslating(true);
         try {
-            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(post.content)}&langpair=AUTODETECT|tr`);
+            // Google Translate unofficial API endpoint
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(post.content)}`;
+            const response = await fetch(url);
             const data = await response.json();
 
-            if (data.responseData) {
-                setTranslatedText(data.responseData.translatedText);
+            if (data && data[0]) {
+                // Google returns array of translated segments
+                const translated = data[0].map(segment => segment[0]).join('');
+                setTranslatedText(translated);
                 setIsTranslated(true);
             }
         } catch (error) {
