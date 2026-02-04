@@ -17,6 +17,10 @@ const ImageCropperModal = ({ image, onCropComplete, onCancel, aspect = null, tit
         setZoom(zoom);
     };
 
+    const onCropCompleteInternal = useCallback((_croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
+
     const handleCrop = async () => {
         if (loading) return;
         if (!croppedAreaPixels) {
