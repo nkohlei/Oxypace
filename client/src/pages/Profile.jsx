@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
-import ImageCropperModal from '../components/ImageCropperModal';
+import Badge from '../components/Badge';
 import './Profile.css';
 
 const Profile = () => {
@@ -26,9 +26,8 @@ const Profile = () => {
     const [activeTab, setActiveTab] = useState('memberships'); // Default tab
     const [showMenu, setShowMenu] = useState(false);
 
-    // Cropping State
-    const [tempImage, setTempImage] = useState(null);
-    const [cropperTarget, setCropperTarget] = useState(null);
+    // Direct Upload State
+    // Removed Cropping State
 
     const avatarInputRef = useRef(null);
     const coverInputRef = useRef(null);
@@ -73,7 +72,7 @@ const Profile = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleAvatarSelect = (e) => {
+    const handleAvatarSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -82,21 +81,8 @@ const Profile = () => {
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setTempImage(reader.result);
-            setCropperTarget('avatar');
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const handleAvatarChange = async (croppedBlob) => {
-        setTempImage(null);
-        setCropperTarget(null);
-        if (!croppedBlob) return;
-
         const formData = new FormData();
-        formData.append('avatar', croppedBlob, 'avatar.jpg');
+        formData.append('avatar', file);
 
         try {
             setLoading(true);
@@ -116,7 +102,7 @@ const Profile = () => {
         }
     };
 
-    const handleCoverSelect = (e) => {
+    const handleCoverSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -125,21 +111,8 @@ const Profile = () => {
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setTempImage(reader.result);
-            setCropperTarget('cover');
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const handleCoverChange = async (croppedBlob) => {
-        setTempImage(null);
-        setCropperTarget(null);
-        if (!croppedBlob) return;
-
         const formData = new FormData();
-        formData.append('cover', croppedBlob, 'cover.jpg');
+        formData.append('cover', file);
         try {
             setLoading(true);
             const response = await axios.post('/api/users/me/cover', formData, {
@@ -494,82 +467,77 @@ const Profile = () => {
                         </section>
                     </div>
 
-                    {/* Image Cropper Modal */}
-                    {tempImage && (
-                        <ImageCropperModal
-                            image={tempImage}
-                            aspect={cropperTarget === 'avatar' ? 1 : null} // Square for avatar, free for cover
-                            onCropComplete={cropperTarget === 'avatar' ? handleAvatarChange : handleCoverChange}
-                            onCancel={() => { setTempImage(null); setCropperTarget(null); }}
-                            title={cropperTarget === 'avatar' ? "Profil Resmini Düzenle" : "Kapak Resmini Düzenle"}
-                        />
+                    {showMenu && (
+                        <div className="mobile-menu-overlay" onClick={() => setShowMenu(false)}>
+                            {userCard(profileUser)}
+                        </div>
                     )}
-                </div>
 
-                {/* Edit Profile Modal */}
-                {editing && (
-                    <div className="edit-modal-overlay" onClick={() => setEditing(false)}>
-                        <div className="edit-modal-modern" onClick={e => e.stopPropagation()}>
-                            <div className="edit-modal-header-modern">
-                                <div className="header-left">
-                                    <button className="close-btn-modern" onClick={() => setEditing(false)}>✕</button>
-                                    <h2 className="header-title-modern">Profili düzenle</h2>
+                    {/* Edit Profile Modal */}
+                    {editing && (
+                        <div className="edit-modal-overlay" onClick={() => setEditing(false)}>
+                            <div className="edit-modal-modern" onClick={e => e.stopPropagation()}>
+                                <div className="edit-modal-header-modern">
+                                    <div className="header-left">
+                                        <button className="close-btn-modern" onClick={() => setEditing(false)}>✕</button>
+                                        <h2 className="header-title-modern">Profili düzenle</h2>
+                                    </div>
+                                    <button className="save-btn-modern" onClick={handleSubmit} disabled={loading}>
+                                        {loading ? '...' : 'Kaydet'}
+                                    </button>
                                 </div>
-                                <button className="save-btn-modern" onClick={handleSubmit} disabled={loading}>
-                                    {loading ? '...' : 'Kaydet'}
-                                </button>
-                            </div>
 
-                            <div className="edit-modal-content-modern" style={{ backgroundColor: '#1e1f22' }}>
-                                <div className="edit-form-fields" style={{ padding: '24px' }}>
-                                    <div className="floating-label-group">
-                                        <input
-                                            type="text"
-                                            name="displayName"
-                                            value={formData.displayName}
-                                            onChange={handleChange}
-                                            className="floating-input"
-                                            placeholder=" "
-                                            id="input-name"
-                                            style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', padding: '12px', borderRadius: '8px' }}
-                                        />
-                                        <label htmlFor="input-name" className="floating-label" style={{ top: '-10px', left: '12px', background: '#1e1f22', padding: '0 4px' }}>İsim</label>
+                                <div className="edit-modal-content-modern" style={{ backgroundColor: '#1e1f22' }}>
+                                    <div className="edit-form-fields" style={{ padding: '24px' }}>
+                                        <div className="floating-label-group">
+                                            <input
+                                                type="text"
+                                                name="displayName"
+                                                value={formData.displayName}
+                                                onChange={handleChange}
+                                                className="floating-input"
+                                                placeholder=" "
+                                                id="input-name"
+                                                style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', padding: '12px', borderRadius: '8px' }}
+                                            />
+                                            <label htmlFor="input-name" className="floating-label" style={{ top: '-10px', left: '12px', background: '#1e1f22', padding: '0 4px' }}>İsim</label>
+                                        </div>
+
+                                        <div className="floating-label-group" style={{ marginTop: '20px' }}>
+                                            <textarea
+                                                name="bio"
+                                                value={formData.bio}
+                                                onChange={handleChange}
+                                                className="floating-input floating-textarea"
+                                                placeholder=" "
+                                                id="input-bio"
+                                                style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', padding: '12px', borderRadius: '8px', minHeight: '100px' }}
+                                            />
+                                            <label htmlFor="input-bio" className="floating-label" style={{ top: '-10px', left: '12px', background: '#1e1f22', padding: '0 4px' }}>Biyografi</label>
+                                        </div>
+
+                                        <div className="form-group" style={{ marginTop: '20px' }}>
+                                            <label style={{ display: 'block', fontSize: '12px', color: '#b5bac1', marginBottom: '8px', fontWeight: 'bold' }}>PORTAL GÖRÜNÜRLÜĞÜ</label>
+                                            <select
+                                                name="portalVisibility"
+                                                value={formData.portalVisibility}
+                                                onChange={handleChange}
+                                                style={{ width: '100%', padding: '12px', backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', borderRadius: '8px', outline: 'none' }}
+                                            >
+                                                <option value="public">Herkese Açık</option>
+                                                <option value="friends">Sadece Arkadaşlar</option>
+                                                <option value="private">Gizli</option>
+                                            </select>
+                                        </div>
+
+                                        {error && <div className="error-message" style={{ color: '#ff4444', marginTop: '12px' }}>{error}</div>}
+                                        {success && <div className="success-message" style={{ color: '#00c851', marginTop: '12px' }}>{success}</div>}
                                     </div>
-
-                                    <div className="floating-label-group" style={{ marginTop: '20px' }}>
-                                        <textarea
-                                            name="bio"
-                                            value={formData.bio}
-                                            onChange={handleChange}
-                                            className="floating-input floating-textarea"
-                                            placeholder=" "
-                                            id="input-bio"
-                                            style={{ backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', padding: '12px', borderRadius: '8px', minHeight: '100px' }}
-                                        />
-                                        <label htmlFor="input-bio" className="floating-label" style={{ top: '-10px', left: '12px', background: '#1e1f22', padding: '0 4px' }}>Biyografi</label>
-                                    </div>
-
-                                    <div className="form-group" style={{ marginTop: '20px' }}>
-                                        <label style={{ display: 'block', fontSize: '12px', color: '#b5bac1', marginBottom: '8px', fontWeight: 'bold' }}>PORTAL GÖRÜNÜRLÜĞÜ</label>
-                                        <select
-                                            name="portalVisibility"
-                                            value={formData.portalVisibility}
-                                            onChange={handleChange}
-                                            style={{ width: '100%', padding: '12px', backgroundColor: '#111214', border: '1px solid #1e1f22', color: 'white', borderRadius: '8px', outline: 'none' }}
-                                        >
-                                            <option value="public">Herkese Açık</option>
-                                            <option value="friends">Sadece Arkadaşlar</option>
-                                            <option value="private">Gizli</option>
-                                        </select>
-                                    </div>
-
-                                    {error && <div className="error-message" style={{ color: '#ff4444', marginTop: '12px' }}>{error}</div>}
-                                    {success && <div className="success-message" style={{ color: '#00c851', marginTop: '12px' }}>{success}</div>}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </main>
         </div>
     );

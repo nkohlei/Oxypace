@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import ImageCropperModal from './ImageCropperModal';
+import { getImageUrl } from '../utils/imageUtils';
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTab = 'overview' }) => {
@@ -17,9 +17,7 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
     const bannerRef = useRef(null);
     const avatarRef = useRef(null);
 
-    // Cropping State
-    const [tempImage, setTempImage] = useState(null);
-    const [cropperTarget, setCropperTarget] = useState(null);
+    // Removed Cropping State
 
     // Channel State
     const [newChannelName, setNewChannelName] = useState('');
@@ -50,37 +48,22 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
         }
     };
 
-    const handleFileSelect = (e, target) => {
+    const handleFileSelect = async (e, target) => {
         if (!isOwner) return;
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setTempImage(reader.result);
-            setCropperTarget(target);
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const handleCropComplete = async (croppedBlob) => {
-        if (!croppedBlob || !cropperTarget) return;
-
-        const type = cropperTarget; // 'avatar' or 'banner'
-        setTempImage(null);
-        setCropperTarget(null);
-
         const form = new FormData();
-        form.append(type, croppedBlob, `${type}.jpg`);
+        form.append(target, file, `${target}.jpg`);
 
         try {
             setLoading(true);
-            const res = await axios.post(`/api/portals/${portal._id}/${type}`, form, {
+            const res = await axios.post(`/api/portals/${portal._id}/${target}`, form, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             onUpdate(res.data);
         } catch (err) {
-            alert(`${type} yüklenemedi`);
+            alert(`${target} yüklenemedi`);
         } finally {
             setLoading(false);
         }
@@ -249,16 +232,8 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
                                 </button>
                             )}
 
-                            {/* Image Cropper Integration */}
-                            {tempImage && (
-                                <ImageCropperModal
-                                    image={tempImage}
-                                    aspect={cropperTarget === 'avatar' ? 1 : null} // Square for avatar, free for banner
-                                    onCropComplete={handleCropComplete}
-                                    onCancel={() => { setTempImage(null); setCropperTarget(null); }}
-                                    title={cropperTarget === 'avatar' ? "Portal Logosu Düzenle" : "Portal Bannerı Düzenle"}
-                                />
-                            )}
+                            <input type="file" ref={bannerRef} onChange={e => handleFileSelect(e, 'banner')} hidden accept="image/*" />
+                            <input type="file" ref={avatarRef} onChange={e => handleFileSelect(e, 'avatar')} hidden accept="image/*" />
                         </div>
                     )}
 
