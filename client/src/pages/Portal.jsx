@@ -324,8 +324,12 @@ const Portal = () => {
                     {/* ... Header and Feed as before ... */}
                     <header className="channel-top-bar">
                         <div className="channel-title-wrapper">
-                            <span className="hashtag">#</span>
-                            <h3 className="channel-name">{currentChannel === 'general' ? 'genel' : currentChannel}</h3>
+                            <span className="hashtag" style={{ color: 'var(--primary-color)' }}>#</span>
+                            <h3 className="channel-name" style={{ color: 'var(--primary-color)' }}>
+                                {currentChannel === 'general'
+                                    ? 'genel'
+                                    : (portal?.channels?.find(c => c._id === currentChannel)?.name || currentChannel)}
+                            </h3>
                         </div>
 
                         <div className="channel-header-actions">
@@ -457,7 +461,9 @@ const Portal = () => {
 
                                                     <input
                                                         type="text"
-                                                        placeholder={`#${currentChannel === 'general' ? 'genel' : currentChannel} kanalına mesaj gönder`}
+                                                        placeholder={`#${currentChannel === 'general'
+                                                            ? 'genel'
+                                                            : (portal?.channels?.find(c => c._id === currentChannel)?.name || currentChannel)} kanalına mesaj gönder`}
                                                         value={messageText}
                                                         onChange={(e) => setMessageText(e.target.value)}
                                                         onKeyDown={(e) => {
@@ -495,7 +501,9 @@ const Portal = () => {
                                         {posts.length === 0 && !loading && (
                                             <div className="empty-portal">
                                                 <div className="empty-portal-icon">👋</div>
-                                                <h3>#{currentChannel === 'general' ? 'genel' : currentChannel} kanalına hoş geldin!</h3>
+                                                <h3>#{currentChannel === 'general'
+                                                    ? 'genel'
+                                                    : (portal?.channels?.find(c => c._id === currentChannel)?.name || currentChannel)} kanalına hoş geldin!</h3>
                                                 <p>
                                                     {currentChannel === 'general'
                                                         ? `Burası ${portal.name} sunucusunun başlangıcı.`
