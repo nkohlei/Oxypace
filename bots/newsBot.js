@@ -26,6 +26,7 @@ const BOTS = [
         name: 'Tech News Bot',
         email: 'techbot@oxypace.com',
         password: 'password123',
+        channelId: '69835873dff9f89766c44c26', // Fastest Technology NEWS
         feeds: [
             'http://feeds.bbci.co.uk/news/technology/rss.xml',
             'https://techcrunch.com/feed/'
@@ -35,6 +36,7 @@ const BOTS = [
         name: 'Sports Bot',
         email: 'sportsbot@oxypace.com',
         password: 'password123',
+        channelId: '69835858dff9f89766c44c20', // Fastest Sports NEWS
         feeds: [
             'http://feeds.bbci.co.uk/sport/rss.xml'
         ]
