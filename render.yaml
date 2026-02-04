@@ -29,9 +29,9 @@ services:
         value: production
       - key: MONGODB_URI
         sync: false
-      - key: API_URL
+      - key: API_HOST_PORT
         fromService:
           type: web
           name: globalmessage-backend
-          property: url
+          property: hostport
     autoDeploy: true

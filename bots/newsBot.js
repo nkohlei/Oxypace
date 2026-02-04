@@ -18,7 +18,10 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Configuration
 // Use Process Env for API URL (Render provides this) or fallback to local
-const API_URL = process.env.API_URL || 'http://localhost:5000/api';
+// If API_HOST_PORT is present (Render Internal), construct the URL
+const API_URL = process.env.API_HOST_PORT
+    ? `http://${process.env.API_HOST_PORT}/api`
+    : (process.env.API_URL || 'http://localhost:5000/api');
 
 // Database Connection
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
