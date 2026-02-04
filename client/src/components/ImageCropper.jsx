@@ -1,16 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { loadImage, cropImage, calculateInitialFit, clampPosition } from '../utils/cropperUtils';
+import { loadImage, cropImage, clampPosition } from '../utils/cropperUtils';
 import './ImageCropper.css';
 
 /**
  * ImageCropper - Sıfırdan Canvas API ile görsel kırpma bileşeni
  * 
- * @param {Object} props
- * @param {string} props.image - Base64 veya URL
- * @param {string} props.mode - 'avatar' (1:1 daire) veya 'cover' (16:9 dikdörtgen)
- * @param {function} props.onComplete - Kırpılmış blob ile çağrılır
- * @param {function} props.onCancel - İptal edildiğinde çağrılır
- * @param {string} props.title - Modal başlığı
+ * Avatar: Sabit 1:1 daire, slider ile zoom
+ * Cover: Serbest boyut, kenarlardan resize, mouse wheel zoom
  */
 const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) => {
     const containerRef = useRef(null);
@@ -22,23 +18,38 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
 
+    // Cover mode: resizable crop area
+    const [cropSize, setCropSize] = useState({ width: 400, height: 225 });
+    const [isResizing, setIsResizing] = useState(false);
+    const [resizeHandle, setResizeHandle] = useState(null);
+    const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+
+    // Min/max crop sizes for cover mode
+    const MIN_CROP_WIDTH = 200;
+    const MIN_CROP_HEIGHT = 100;
+    const MAX_CROP_WIDTH = 480;
+    const MAX_CROP_HEIGHT = 320;
+
     // Mod'a göre kırpma alanı boyutları
     const getCropAreaSize = useCallback(() => {
         if (mode === 'avatar') {
-            return { width: 200, height: 200 }; // 1:1
+            return { width: 200, height: 200 }; // Fixed 1:1
         } else {
-            return { width: 400, height: 225 }; // 16:9
+            return cropSize; // Dynamic for cover
         }
-    }, [mode]);
+    }, [mode, cropSize]);
 
-    // Çıktı boyutları
+    // Çıktı boyutları - cover mode uses actual crop size ratio
     const getOutputSize = useCallback(() => {
         if (mode === 'avatar') {
-            return { width: 400, height: 400 }; // Yüksek çözünürlük avatar
+            return { width: 400, height: 400 };
         } else {
-            return { width: 1200, height: 675 }; // Yüksek çözünürlük kapak
+            // Scale up proportionally for quality
+            const ratio = cropSize.width / cropSize.height;
+            const targetWidth = 1200;
+            return { width: targetWidth, height: Math.round(targetWidth / ratio) };
         }
-    }, [mode]);
+    }, [mode, cropSize]);
 
     // Kırpma alanı pozisyonu (merkez)
     const getCropArea = useCallback(() => {
@@ -64,27 +75,26 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             .then((img) => {
                 setImageObj(img);
 
-                // Container boyutlarını al
                 const container = containerRef.current;
                 if (container) {
+                    const containerRect = container.getBoundingClientRect();
                     const cropArea = getCropArea();
-                    const fit = calculateInitialFit(
-                        img.width,
-                        img.height,
-                        cropArea.width,
-                        cropArea.height
-                    );
 
-                    // Zoom'u kırpma alanına göre ayarla
+                    // Görseli kırpma alanını kaplayacak şekilde zoom
                     const minZoom = Math.max(
                         cropArea.width / img.width,
                         cropArea.height / img.height
                     );
 
-                    setZoom(Math.max(fit.zoom, minZoom));
+                    const initialZoom = minZoom * 1.1; // Slightly larger
+                    setZoom(initialZoom);
+
+                    // Center the image
+                    const scaledWidth = img.width * initialZoom;
+                    const scaledHeight = img.height * initialZoom;
                     setPosition({
-                        x: cropArea.x + fit.x,
-                        y: cropArea.y + fit.y
+                        x: (containerRect.width - scaledWidth) / 2,
+                        y: (containerRect.height - scaledHeight) / 2
                     });
                 }
                 setLoading(false);
@@ -93,10 +103,28 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                 console.error('Görsel yükleme hatası:', err);
                 setLoading(false);
             });
-    }, [image, getCropArea]);
+    }, [image]);
+
+    // Recalculate position when crop size changes (cover mode)
+    useEffect(() => {
+        if (!imageObj || mode === 'avatar') return;
+
+        const cropArea = getCropArea();
+        const clampedPosition = clampPosition(
+            position,
+            { width: imageObj.width, height: imageObj.height },
+            zoom,
+            cropArea
+        );
+
+        if (clampedPosition.x !== position.x || clampedPosition.y !== position.y) {
+            setPosition(clampedPosition);
+        }
+    }, [cropSize]);
 
     // Mouse/Touch sürükleme başlat
     const handleDragStart = (e) => {
+        if (isResizing) return;
         e.preventDefault();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -110,7 +138,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
     // Sürükleme
     const handleDragMove = useCallback((e) => {
-        if (!isDragging || !imageObj) return;
+        if (!isDragging || !imageObj || isResizing) return;
 
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -129,14 +157,63 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         );
 
         setPosition(clampedPosition);
-    }, [isDragging, imageObj, dragStart, zoom, getCropArea]);
+    }, [isDragging, imageObj, dragStart, zoom, getCropArea, isResizing]);
 
     // Sürükleme bitir
     const handleDragEnd = () => {
         setIsDragging(false);
     };
 
-    // Global event listeners
+    // Resize handlers for cover mode
+    const handleResizeStart = (e, handle) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        setIsResizing(true);
+        setResizeHandle(handle);
+        setResizeStart({
+            x: clientX,
+            y: clientY,
+            width: cropSize.width,
+            height: cropSize.height
+        });
+    };
+
+    const handleResizeMove = useCallback((e) => {
+        if (!isResizing || !resizeHandle) return;
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const deltaX = clientX - resizeStart.x;
+        const deltaY = clientY - resizeStart.y;
+
+        let newWidth = resizeStart.width;
+        let newHeight = resizeStart.height;
+
+        // Handle different resize directions
+        if (resizeHandle.includes('e')) newWidth += deltaX;
+        if (resizeHandle.includes('w')) newWidth -= deltaX;
+        if (resizeHandle.includes('s')) newHeight += deltaY;
+        if (resizeHandle.includes('n')) newHeight -= deltaY;
+
+        // For corner handles, maintain free-form scaling (both dimensions)
+        // Clamp to min/max
+        newWidth = Math.max(MIN_CROP_WIDTH, Math.min(MAX_CROP_WIDTH, newWidth));
+        newHeight = Math.max(MIN_CROP_HEIGHT, Math.min(MAX_CROP_HEIGHT, newHeight));
+
+        setCropSize({ width: newWidth, height: newHeight });
+    }, [isResizing, resizeHandle, resizeStart]);
+
+    const handleResizeEnd = () => {
+        setIsResizing(false);
+        setResizeHandle(null);
+    };
+
+    // Global event listeners for drag
     useEffect(() => {
         if (isDragging) {
             document.addEventListener('mousemove', handleDragMove);
@@ -153,11 +230,30 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         };
     }, [isDragging, handleDragMove]);
 
-    // Zoom değişikliği
-    const handleZoomChange = (e) => {
-        const newZoom = parseFloat(e.target.value);
+    // Global event listeners for resize
+    useEffect(() => {
+        if (isResizing) {
+            document.addEventListener('mousemove', handleResizeMove);
+            document.addEventListener('mouseup', handleResizeEnd);
+            document.addEventListener('touchmove', handleResizeMove);
+            document.addEventListener('touchend', handleResizeEnd);
+        }
 
-        if (!imageObj) return;
+        return () => {
+            document.removeEventListener('mousemove', handleResizeMove);
+            document.removeEventListener('mouseup', handleResizeEnd);
+            document.removeEventListener('touchmove', handleResizeMove);
+            document.removeEventListener('touchend', handleResizeEnd);
+        };
+    }, [isResizing, handleResizeMove]);
+
+    // Mouse wheel zoom for cover mode
+    const handleWheel = useCallback((e) => {
+        if (mode === 'avatar' || !imageObj) return;
+
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        const newZoom = Math.max(0.2, Math.min(4, zoom + delta));
 
         const cropArea = getCropArea();
 
@@ -170,6 +266,52 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         const clampedZoom = Math.max(newZoom, minZoom);
 
         // Zoom değişirken merkezi koru
+        const cropCenterX = cropArea.x + cropArea.width / 2;
+        const cropCenterY = cropArea.y + cropArea.height / 2;
+
+        const imageCenterX = (cropCenterX - position.x) / zoom;
+        const imageCenterY = (cropCenterY - position.y) / zoom;
+
+        const newPosition = {
+            x: cropCenterX - imageCenterX * clampedZoom,
+            y: cropCenterY - imageCenterY * clampedZoom
+        };
+
+        const clampedPosition = clampPosition(
+            newPosition,
+            { width: imageObj.width, height: imageObj.height },
+            clampedZoom,
+            cropArea
+        );
+
+        setZoom(clampedZoom);
+        setPosition(clampedPosition);
+    }, [mode, imageObj, zoom, position, getCropArea]);
+
+    // Attach wheel listener
+    useEffect(() => {
+        const container = containerRef.current;
+        if (container && mode === 'cover') {
+            container.addEventListener('wheel', handleWheel, { passive: false });
+            return () => container.removeEventListener('wheel', handleWheel);
+        }
+    }, [handleWheel, mode]);
+
+    // Zoom slider for avatar mode only
+    const handleZoomChange = (e) => {
+        const newZoom = parseFloat(e.target.value);
+
+        if (!imageObj) return;
+
+        const cropArea = getCropArea();
+
+        const minZoom = Math.max(
+            cropArea.width / imageObj.width,
+            cropArea.height / imageObj.height
+        );
+
+        const clampedZoom = Math.max(newZoom, minZoom);
+
         const cropCenterX = cropArea.x + cropArea.width / 2;
         const cropCenterY = cropArea.y + cropArea.height / 2;
 
@@ -222,7 +364,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
     return (
         <div className="cropper-overlay">
-            <div className="cropper-modal">
+            <div className={`cropper-modal ${mode === 'cover' ? 'cropper-modal-wide' : ''}`}>
                 {/* Header */}
                 <div className="cropper-header">
                     <h3>{title || (mode === 'avatar' ? 'Profil Fotoğrafı' : 'Kapak Resmi')}</h3>
@@ -262,17 +404,14 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
                             {/* Karartma Overlay */}
                             <div className="cropper-overlay-mask">
-                                {/* Üst */}
                                 <div
                                     className="mask-section mask-top"
                                     style={{ height: `calc(50% - ${cropAreaSize.height / 2}px)` }}
                                 />
-                                {/* Alt */}
                                 <div
                                     className="mask-section mask-bottom"
                                     style={{ height: `calc(50% - ${cropAreaSize.height / 2}px)` }}
                                 />
-                                {/* Sol */}
                                 <div
                                     className="mask-section mask-left"
                                     style={{
@@ -281,7 +420,6 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                                         height: `${cropAreaSize.height}px`
                                     }}
                                 />
-                                {/* Sağ */}
                                 <div
                                     className="mask-section mask-right"
                                     style={{
@@ -299,36 +437,57 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                                     width: `${cropAreaSize.width}px`,
                                     height: `${cropAreaSize.height}px`
                                 }}
-                            />
+                            >
+                                {/* Resize handles for cover mode */}
+                                {mode === 'cover' && (
+                                    <>
+                                        <div className="resize-handle resize-n" onMouseDown={(e) => handleResizeStart(e, 'n')} onTouchStart={(e) => handleResizeStart(e, 'n')} />
+                                        <div className="resize-handle resize-s" onMouseDown={(e) => handleResizeStart(e, 's')} onTouchStart={(e) => handleResizeStart(e, 's')} />
+                                        <div className="resize-handle resize-e" onMouseDown={(e) => handleResizeStart(e, 'e')} onTouchStart={(e) => handleResizeStart(e, 'e')} />
+                                        <div className="resize-handle resize-w" onMouseDown={(e) => handleResizeStart(e, 'w')} onTouchStart={(e) => handleResizeStart(e, 'w')} />
+                                        <div className="resize-handle resize-corner resize-ne" onMouseDown={(e) => handleResizeStart(e, 'ne')} onTouchStart={(e) => handleResizeStart(e, 'ne')} />
+                                        <div className="resize-handle resize-corner resize-nw" onMouseDown={(e) => handleResizeStart(e, 'nw')} onTouchStart={(e) => handleResizeStart(e, 'nw')} />
+                                        <div className="resize-handle resize-corner resize-se" onMouseDown={(e) => handleResizeStart(e, 'se')} onTouchStart={(e) => handleResizeStart(e, 'se')} />
+                                        <div className="resize-handle resize-corner resize-sw" onMouseDown={(e) => handleResizeStart(e, 'sw')} onTouchStart={(e) => handleResizeStart(e, 'sw')} />
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Zoom hint for cover mode */}
+                            {mode === 'cover' && (
+                                <div className="cropper-hint">Yakınlaştırmak için fare tekerleğini kullanın</div>
+                            )}
                         </>
                     )}
                 </div>
 
-                {/* Controls */}
-                <div className="cropper-controls">
-                    <div className="zoom-control">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            <line x1="8" y1="11" x2="14" y2="11" />
-                        </svg>
-                        <input
-                            type="range"
-                            min="0.5"
-                            max="3"
-                            step="0.01"
-                            value={zoom}
-                            onChange={handleZoomChange}
-                            className="zoom-slider"
-                        />
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            <line x1="11" y1="8" x2="11" y2="14" />
-                            <line x1="8" y1="11" x2="14" y2="11" />
-                        </svg>
+                {/* Controls - Only show slider for avatar mode */}
+                {mode === 'avatar' && (
+                    <div className="cropper-controls">
+                        <div className="zoom-control">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                <line x1="8" y1="11" x2="14" y2="11" />
+                            </svg>
+                            <input
+                                type="range"
+                                min="0.5"
+                                max="3"
+                                step="0.01"
+                                value={zoom}
+                                onChange={handleZoomChange}
+                                className="zoom-slider"
+                            />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                <line x1="11" y1="8" x2="11" y2="14" />
+                                <line x1="8" y1="11" x2="14" y2="11" />
+                            </svg>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Actions */}
                 <div className="cropper-actions">

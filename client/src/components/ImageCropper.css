@@ -280,3 +280,114 @@
         text-align: center;
     }
 }
+
+/* Wide modal for cover mode */
+.cropper-modal-wide {
+    max-width: 650px;
+}
+
+.cropper-modal-wide .cropper-container {
+    height: 400px;
+}
+
+/* Resize Handles */
+.cropper-frame {
+    pointer-events: auto;
+    /* Enable for resize handles */
+}
+
+.resize-handle {
+    position: absolute;
+    background: #ff4500;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+/* Edge handles */
+.resize-n {
+    top: -4px;
+    left: 20%;
+    right: 20%;
+    height: 8px;
+    cursor: n-resize;
+    border-radius: 4px;
+}
+
+.resize-s {
+    bottom: -4px;
+    left: 20%;
+    right: 20%;
+    height: 8px;
+    cursor: s-resize;
+    border-radius: 4px;
+}
+
+.resize-e {
+    right: -4px;
+    top: 20%;
+    bottom: 20%;
+    width: 8px;
+    cursor: e-resize;
+    border-radius: 4px;
+}
+
+.resize-w {
+    left: -4px;
+    top: 20%;
+    bottom: 20%;
+    width: 8px;
+    cursor: w-resize;
+    border-radius: 4px;
+}
+
+/* Corner handles */
+.resize-corner {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #1a1a1a;
+}
+
+.resize-ne {
+    top: -7px;
+    right: -7px;
+    cursor: ne-resize;
+}
+
+.resize-nw {
+    top: -7px;
+    left: -7px;
+    cursor: nw-resize;
+}
+
+.resize-se {
+    bottom: -7px;
+    right: -7px;
+    cursor: se-resize;
+}
+
+.resize-sw {
+    bottom: -7px;
+    left: -7px;
+    cursor: sw-resize;
+}
+
+.resize-handle:hover {
+    background: #ff5722;
+    transform: scale(1.1);
+}
+
+/* Zoom hint */
+.cropper-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: #888;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    pointer-events: none;
+    white-space: nowrap;
+}
