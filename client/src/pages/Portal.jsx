@@ -135,6 +135,7 @@ const Portal = () => {
 
     useEffect(() => {
         if (!authLoading) {
+            setCurrentChannel('general'); // Reset channel on portal change
             fetchPortalData();
         }
     }, [id, authLoading]);
