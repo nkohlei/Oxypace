@@ -3,16 +3,27 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import FormData from 'form-data';
 import axios from 'axios';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
 import BotAuth from './utils/BotAuth.js';
 import MediaHandler from './utils/MediaHandler.js';
 import RSSService from './services/RSSService.js';
+import BotHistory from '../models/BotHistory.js';
+
+// Setup Env
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Configuration
-const API_URL = 'http://localhost:5000/api'; // Or your production URL
-const HISTORY_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data/history.json');
+// Use Process Env for API URL (Render provides this) or fallback to local
+const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
-// BOT CONFIGURATIONS - UPDATE THESE WITH REAL CREDENTIALS
+// Database Connection
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+// BOT CONFIGURATIONS
 const BOTS = [
     {
         name: 'Tech News Bot',
@@ -36,43 +47,32 @@ const BOTS = [
 const mediaHandler = new MediaHandler();
 const rssService = new RSSService();
 
-// Load history
-let history = [];
-try {
-    if (fs.existsSync(HISTORY_FILE)) {
-        history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+// History Management via MongoDB
+async function isAlreadyShared(guid) {
+    const exists = await BotHistory.exists({ guid });
+    return !!exists;
+}
+
+async function addToHistory(guid, botName) {
+    try {
+        await BotHistory.create({ guid, botName });
+    } catch (error) {
+        if (error.code !== 11000) { // Ignore duplicate key errors
+            console.error('Error saving history:', error.message);
+        }
     }
-} catch (error) {
-    console.error('Error loading history:', error);
-}
-
-function isAlreadyShared(guid) {
-    return history.includes(guid);
-}
-
-function addToHistory(guid) {
-    history.push(guid);
-    // Keep history size manageable (e.g., last 1000 items)
-    if (history.length > 1000) history.shift();
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 }
 
 function extractImage(item) {
-    // 1. Check enclosure
     if (item.enclosure && item.enclosure.url && item.enclosure.type && item.enclosure.type.startsWith('image')) {
         return item.enclosure.url;
     }
-
-    // 2. Check media:content (sometimes parsed as 'media')
     if (item['media:content'] && item['media:content'].$.url) {
         return item['media:content'].$.url;
     }
-
-    // 3. Regex in content
     const imgRegex = /<img[^>]+src="([^">]+)"/g;
     const match = imgRegex.exec(item.content || item['content:encoded']);
     if (match) return match[1];
-
     return null;
 }
 
@@ -90,35 +90,32 @@ async function runBot() {
             for (const feedUrl of botConfig.feeds) {
                 const items = await rssService.fetchFeed(feedUrl);
 
-                // Process newest first (reverse), or limit to 1 per cycle to look natural
-                // For now, let's just process the top 3 unshared items
                 let processedCount = 0;
 
                 for (const item of items) {
-                    if (processedCount >= 3) break; // Limit per feed per run
+                    if (processedCount >= 3) break;
 
                     const guid = item.guid || item.link;
-                    if (isAlreadyShared(guid)) continue;
+                    if (await isAlreadyShared(guid)) continue;
 
                     console.log(`New item found: ${item.title}`);
 
-                    // Prepare Post Data
                     const form = new FormData();
                     form.append('content', `${item.title}\n\n${item.contentSnippet || ''}\n\nRead more: ${item.link}`);
+                    form.append('portalId', '69485e416ce2eac8943a5de2'); // Oxypace Global
+                    form.append('channel', 'general');
 
-                    // Handle Image
                     const imageUrl = extractImage(item);
                     let localImagePath = null;
 
                     if (imageUrl) {
-                        console.log(`Downloading image: ${imageUrl}`);
+                        // console.log(`Downloading image: ${imageUrl}`);
                         localImagePath = await mediaHandler.downloadImage(imageUrl);
                         if (localImagePath) {
                             form.append('media', fs.createReadStream(localImagePath));
                         }
                     }
 
-                    // Send to API
                     try {
                         const headers = {
                             ...auth.getHeaders(),
@@ -128,7 +125,7 @@ async function runBot() {
                         await axios.post(`${API_URL}/posts`, form, { headers });
                         console.log(`--> Posted successfully!`);
 
-                        addToHistory(guid);
+                        await addToHistory(guid, botConfig.name);
                         processedCount++;
                     } catch (postError) {
                         console.error(`Failed to post: ${postError.response?.data?.message || postError.message}`);
@@ -145,12 +142,24 @@ async function runBot() {
     console.log('--- Bot Cycle Finished ---');
 }
 
-// Main Execution Loop
 const CHECK_INTERVAL = 10 * 60 * 1000; // 10 Minutes
 
 async function startBotLoop() {
     console.log(`\n=== Bot Service Started ===`);
     console.log(`Check Interval: ${CHECK_INTERVAL / 1000} seconds`);
+    console.log(`Target API: ${API_URL}`);
+
+    // Connect to DB for History
+    try {
+        if (mongoose.connection.readyState === 0) {
+            console.log('Connecting to MongoDB...');
+            await mongoose.connect(MONGO_URI);
+            console.log('Connected to DB.');
+        }
+    } catch (err) {
+        console.error('DB Connection Failed:', err);
+        process.exit(1);
+    }
 
     // Run immediately on start
     await runBot();
@@ -165,9 +174,9 @@ async function startBotLoop() {
     }, CHECK_INTERVAL);
 }
 
-// Handle Process Termination
 process.on('SIGINT', () => {
     console.log('\nStopping Bot Service...');
+    mongoose.connection.close();
     process.exit();
 });
 

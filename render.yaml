@@ -1,0 +1,38 @@
+services:
+  # Main Backend API
+  - type: web
+    name: globalmessage-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+    autoDeploy: true
+
+  # Bot Background Worker
+  - type: worker
+    name: news-bot-worker
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node bots/newsBot.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: API_URL
+        fromService:
+          type: web
+          name: globalmessage-backend
+          property: url
+          envVarKey: API_URL_INTERNAL
+    autoDeploy: true
