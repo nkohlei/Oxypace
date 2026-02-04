@@ -24,11 +24,9 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
     const [resizeHandle, setResizeHandle] = useState(null);
     const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
-    // Min/max crop sizes for cover mode
-    const MIN_CROP_WIDTH = 200;
-    const MIN_CROP_HEIGHT = 100;
-    const MAX_CROP_WIDTH = 480;
-    const MAX_CROP_HEIGHT = 320;
+    // Min crop sizes for cover mode (no max - dynamically calculated from image)
+    const MIN_CROP_WIDTH = 100;
+    const MIN_CROP_HEIGHT = 60;
 
     // Mod'a göre kırpma alanı boyutları
     const getCropAreaSize = useCallback(() => {
@@ -182,8 +180,47 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         });
     };
 
+    // Calculate the maximum allowed crop size based on image bounds
+    const getMaxCropSize = useCallback(() => {
+        if (!imageObj || !containerRef.current) {
+            return { width: 600, height: 400 };
+        }
+
+        const container = containerRef.current;
+        const containerRect = container.getBoundingClientRect();
+
+        // Scaled image dimensions
+        const scaledWidth = imageObj.width * zoom;
+        const scaledHeight = imageObj.height * zoom;
+
+        // Image bounds in container coordinates
+        const imageLeft = position.x;
+        const imageTop = position.y;
+        const imageRight = position.x + scaledWidth;
+        const imageBottom = position.y + scaledHeight;
+
+        // Crop area center
+        const cropCenterX = containerRect.width / 2;
+        const cropCenterY = containerRect.height / 2;
+
+        // Max dimensions such that crop stays within image
+        const maxWidth = Math.min(
+            (cropCenterX - imageLeft) * 2,  // Left edge constraint
+            (imageRight - cropCenterX) * 2   // Right edge constraint
+        );
+        const maxHeight = Math.min(
+            (cropCenterY - imageTop) * 2,    // Top edge constraint
+            (imageBottom - cropCenterY) * 2  // Bottom edge constraint
+        );
+
+        return {
+            width: Math.max(MIN_CROP_WIDTH, maxWidth),
+            height: Math.max(MIN_CROP_HEIGHT, maxHeight)
+        };
+    }, [imageObj, zoom, position]);
+
     const handleResizeMove = useCallback((e) => {
-        if (!isResizing || !resizeHandle) return;
+        if (!isResizing || !resizeHandle || !imageObj) return;
 
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -200,13 +237,15 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         if (resizeHandle.includes('s')) newHeight += deltaY;
         if (resizeHandle.includes('n')) newHeight -= deltaY;
 
-        // For corner handles, maintain free-form scaling (both dimensions)
-        // Clamp to min/max
-        newWidth = Math.max(MIN_CROP_WIDTH, Math.min(MAX_CROP_WIDTH, newWidth));
-        newHeight = Math.max(MIN_CROP_HEIGHT, Math.min(MAX_CROP_HEIGHT, newHeight));
+        // Get dynamic max based on image bounds
+        const maxCrop = getMaxCropSize();
+
+        // Clamp to min and dynamic max
+        newWidth = Math.max(MIN_CROP_WIDTH, Math.min(maxCrop.width, newWidth));
+        newHeight = Math.max(MIN_CROP_HEIGHT, Math.min(maxCrop.height, newHeight));
 
         setCropSize({ width: newWidth, height: newHeight });
-    }, [isResizing, resizeHandle, resizeStart]);
+    }, [isResizing, resizeHandle, resizeStart, imageObj, getMaxCropSize]);
 
     const handleResizeEnd = () => {
         setIsResizing(false);
