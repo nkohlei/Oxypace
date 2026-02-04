@@ -102,7 +102,7 @@ async function runBot(apiUrl) {
                     const form = new FormData();
                     form.append('content', `${item.title}\n\n${item.contentSnippet || ''}\n\nRead more: ${item.link}`);
                     form.append('portalId', '69485e416ce2eac8943a5de2'); // Oxypace Global
-                    form.append('channel', 'general');
+                    form.append('channel', botConfig.channelId || 'general');
 
                     const imageUrl = extractImage(item);
                     let localImagePath = null;
