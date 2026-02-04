@@ -78,46 +78,103 @@
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.zoom-control {
+.header-title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-subtitle {
+    font-size: 12px;
+    color: #b5bac1;
+    margin-top: 2px;
+    font-weight: 400;
+}
+
+.cropper-wrapper {
+    position: relative;
+    width: 100%;
+    background: #000;
+}
+
+.wrapper-avatar {
+    height: 350px;
+}
+
+.wrapper-cover {
+    height: 300px;
+    /* Shorter for cover to fit wider aspect implicitly */
+}
+
+.cropper-controls {
+    padding: 16px 24px;
+    background: #1e1f22;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.zoom-control-wrapper {
     display: flex;
     align-items: center;
-    gap: 16px;
-    color: #dbdee1;
-    font-size: 14px;
-    font-weight: 500;
+    gap: 12px;
+    background: #2b2d31;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.zoom-icon {
+    display: flex;
+    align-items: center;
+    color: #b5bac1;
+    padding: 4px;
 }
 
 .zoom-range {
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    height: 6px;
+    height: 4px;
     background: #404249;
-    border-radius: 3px;
+    border-radius: 2px;
     cursor: pointer;
 }
 
 .zoom-range::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    background: var(--primary-color, #ff4500);
+    width: 16px;
+    height: 16px;
+    background: white;
+    border: 3px solid var(--primary-color, #ff4500);
     border-radius: 50%;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 2px rgba(30, 31, 34, 0.5);
     transition: transform 0.1s;
 }
 
 .zoom-range::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
 }
 
 .cropper-actions {
-    padding: 20px 24px;
+    padding: 16px 24px;
     display: flex;
     justify-content: flex-end;
     gap: 12px;
     background: #1e1f22;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: none;
+    /* Merged visually with controls */
+}
+
+.loading-spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .cropper-actions button {

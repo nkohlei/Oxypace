@@ -76,6 +76,12 @@ const Profile = () => {
     const handleAvatarSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            setError('Dosya boyutu 10MB\'dan küçük olmalıdır.');
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = () => {
             setTempImage(reader.result);
@@ -113,6 +119,12 @@ const Profile = () => {
     const handleCoverSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        if (file.size > 15 * 1024 * 1024) { // 15MB limit for cover
+            setError('Kapak resmi 15MB\'dan küçük olmalıdır.');
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = () => {
             setTempImage(reader.result);

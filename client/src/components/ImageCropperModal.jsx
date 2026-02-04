@@ -17,70 +17,75 @@ const ImageCropperModal = ({ image, onCropComplete, onCancel, aspect = null, tit
         setZoom(zoom);
     };
 
-    const onCropCompleteInternal = useCallback((_croppedArea, croppedAreaPixels) => {
-        setCroppedAreaPixels(croppedAreaPixels);
-    }, []);
-
     const handleCrop = async () => {
-        if (loading) return; // Prevent double click
+        if (loading) return;
+        if (!croppedAreaPixels) {
+            console.warn("Cropped area pixels not ready");
+            return;
+        }
+
         setLoading(true);
         try {
-            // Slight delay to allow UI to show loading state if image processing is instant
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 100)); // UI update delay
             const croppedImage = await getCroppedImg(image, croppedAreaPixels);
+
+            if (!croppedImage) throw new Error("Crop result is empty");
+
             onCropComplete(croppedImage);
         } catch (e) {
-            console.error(e);
-            alert("Kırpma işlemi başarısız oldu. Lütfen tekrar deneyin.");
+            console.error("Crop error:", e);
+            alert("Kırpma işlemi sırasında bir hata oluştu. Lütfen görseli değiştirip tekrar deneyin.");
         } finally {
             setLoading(false);
         }
     };
 
+    const isAvatar = aspect === 1;
+
     return (
         <div className="cropper-modal-overlay">
-            <div className="cropper-modal-container">
+            <div className={`cropper-modal-container ${isAvatar ? 'modal-avatar-mode' : 'modal-cover-mode'}`}>
                 <div className="cropper-modal-header">
-                    <h3>{title}</h3>
+                    <div className="header-title-group">
+                        <h3>{title}</h3>
+                        <span className="header-subtitle">{isAvatar ? 'Kişisel profil fotoğrafını ayarla' : 'Profilin için şık bir kapak seç'}</span>
+                    </div>
                     <button className="close-btn" onClick={onCancel}>✕</button>
                 </div>
 
-                <div className="cropper-wrapper">
+                <div className={`cropper-wrapper ${isAvatar ? 'wrapper-avatar' : 'wrapper-cover'}`}>
                     <Cropper
                         image={image}
                         crop={crop}
                         zoom={zoom}
                         aspect={aspect}
-                        cropShape={aspect === 1 ? 'round' : 'rect'} // Circular mask for Avatar
+                        cropShape={isAvatar ? 'round' : 'rect'}
                         showGrid={false}
                         onCropChange={onCropChange}
                         onCropComplete={onCropCompleteInternal}
                         onZoomChange={onZoomChange}
+                        objectFit="horizontal-cover"
                     />
                 </div>
 
                 <div className="cropper-controls">
-                    <div className="zoom-control">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
+                    <div className="zoom-control-wrapper">
+                        <div className="zoom-icon minus">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
                         <input
                             type="range"
                             value={zoom}
                             min={1}
                             max={3}
-                            step={0.1}
+                            step={0.05}
                             aria-labelledby="Zoom"
-                            onChange={(e) => setZoom(e.target.value)}
+                            onChange={(e) => setZoom(Number(e.target.value))}
                             className="zoom-range"
                         />
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            <line x1="11" y1="8" x2="11" y2="14"></line>
-                            <line x1="8" y1="11" x2="14" y2="11"></line>
-                        </svg>
+                        <div className="zoom-icon plus">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
                     </div>
                 </div>
 
@@ -91,7 +96,9 @@ const ImageCropperModal = ({ image, onCropComplete, onCancel, aspect = null, tit
                         onClick={handleCrop}
                         disabled={loading}
                     >
-                        {loading ? 'İşleniyor...' : 'Uygula'}
+                        {loading ? (
+                            <div className="loading-spinner-small"></div>
+                        ) : 'Kaydet ve Uygula'}
                     </button>
                 </div>
             </div>
