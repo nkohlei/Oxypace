@@ -44,7 +44,9 @@ const Login = () => {
 
     const handleGoogleLogin = () => {
         sessionStorage.setItem('auth_intent', 'login');
-        window.location.href = '/api/auth/google';
+        // Use absolute URL for production (frontend and backend on different domains)
+        const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+        window.location.href = `${apiBase}/api/auth/google`;
     };
 
     // Check for errors in URL (e.g. from Google Login)

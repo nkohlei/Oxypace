@@ -138,7 +138,7 @@ const Portal = () => {
             setCurrentChannel('general'); // Reset channel on portal change
             fetchPortalData();
         }
-    }, [id, authLoading]);
+    }, [id, authLoading, user?._id]); // Refresh when user changes (re-login)
 
     useEffect(() => {
         if (id && !authLoading) {
