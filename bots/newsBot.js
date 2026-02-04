@@ -17,12 +17,6 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Configuration
-// Use Process Env for API URL (Render provides this) or fallback to local
-// If API_HOST_PORT is present (Render Internal), construct the URL
-const API_URL = process.env.API_HOST_PORT
-    ? `http://${process.env.API_HOST_PORT}/api`
-    : (process.env.API_URL || 'http://localhost:5000/api');
-
 // Database Connection
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
@@ -79,12 +73,12 @@ function extractImage(item) {
     return null;
 }
 
-async function runBot() {
+async function runBot(apiUrl) {
     console.log('--- Bot Cycle Started ---');
 
     for (const botConfig of BOTS) {
         console.log(`Processing bot: ${botConfig.name}`);
-        const auth = new BotAuth(API_URL);
+        const auth = new BotAuth(apiUrl);
 
         try {
             // Login
@@ -125,7 +119,7 @@ async function runBot() {
                             ...form.getHeaders()
                         };
 
-                        await axios.post(`${API_URL}/posts`, form, { headers });
+                        await axios.post(`${apiUrl}/posts`, form, { headers });
                         console.log(`--> Posted successfully!`);
 
                         await addToHistory(guid, botConfig.name);
@@ -145,12 +139,22 @@ async function runBot() {
     console.log('--- Bot Cycle Finished ---');
 }
 
-const CHECK_INTERVAL = 10 * 60 * 1000; // 10 Minutes
+// Main Execution Loop
+// Default to 10 minutes
+const CHECK_INTERVAL = 10 * 60 * 1000;
 
 async function startBotLoop() {
-    console.log(`\n=== Bot Service Started ===`);
+    console.log(`\n=== Bot Service Started (Embedded) ===`);
+
+    // Dynamic API URL based on current server port
+    const PORT = process.env.PORT || 5000;
+    const LOCAL_API_URL = `http://localhost:${PORT}/api`;
+
+    // Use configured API_URL or fallback to localhost
+    const FINAL_API_URL = process.env.API_URL || LOCAL_API_URL;
+
     console.log(`Check Interval: ${CHECK_INTERVAL / 1000} seconds`);
-    console.log(`Target API: ${API_URL}`);
+    console.log(`Target API: ${FINAL_API_URL}`);
 
     // Connect to DB for History
     try {
@@ -161,16 +165,22 @@ async function startBotLoop() {
         }
     } catch (err) {
         console.error('DB Connection Failed:', err);
-        process.exit(1);
+        // Do not exit, allow the application to continue without bot history
     }
 
-    // Run immediately on start
-    await runBot();
+    // Let's try to run immediately (with a slight delay to ensure server is fully up)
+    setTimeout(async () => {
+        try {
+            await runBot(FINAL_API_URL);
+        } catch (error) {
+            console.error('Initial Bot Run Error:', error);
+        }
+    }, 5000);
 
     // Schedule re-runs
     setInterval(async () => {
         try {
-            await runBot();
+            await runBot(FINAL_API_URL);
         } catch (error) {
             console.error('CRITICAL ERROR in Bot Loop:', error);
         }
@@ -183,4 +193,4 @@ process.on('SIGINT', () => {
     process.exit();
 });
 
-startBotLoop();
+export default startBotLoop;

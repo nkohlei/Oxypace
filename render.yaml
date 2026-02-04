@@ -16,22 +16,3 @@ services:
       - key: CLIENT_URL
         sync: false
     autoDeploy: true
-
-  # Bot Background Worker
-  - type: worker
-    name: news-bot-worker
-    env: node
-    plan: free
-    buildCommand: npm install
-    startCommand: node bots/newsBot.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: MONGODB_URI
-        sync: false
-      - key: API_HOST_PORT
-        fromService:
-          type: web
-          name: globalmessage-backend
-          property: hostport
-    autoDeploy: true

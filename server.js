@@ -110,6 +110,9 @@ if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
 // Configure Passport
 configurePassport();
 
+// Import Bot 
+import startBotLoop from './bots/newsBot.js';
+
 import cookieParser from 'cookie-parser';
 
 // ... (existing imports)
@@ -189,7 +192,10 @@ if (process.argv[1] === __filename) {
     httpServer.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📡 Socket.IO ready for real-time connections`);
-        console.log('✅ Backend updated: v2.4 - DB Connection & Auth Fixes');
+        console.log('✅ Backend updated: v2.4 - Bot Integrated');
+
+        // Start Bot Loop (in background)
+        startBotLoop();
     });
 }
 
