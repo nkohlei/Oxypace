@@ -44,9 +44,19 @@ const Login = () => {
 
     const handleGoogleLogin = () => {
         sessionStorage.setItem('auth_intent', 'login');
-        // Use absolute URL for production (frontend and backend on different domains)
-        const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-        // VITE_API_BASE_URL already includes /api, so just add /auth/google
+        let apiBase = import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+
+        // Ensure apiBase doesn't end with /
+        if (apiBase.endsWith('/')) {
+            apiBase = apiBase.slice(0, -1);
+        }
+
+        // Check if apiBase already contains /api, if not add it
+        // The backend expects /api/auth/google
+        if (!apiBase.endsWith('/api')) {
+            apiBase += '/api';
+        }
+
         window.location.href = `${apiBase}/auth/google`;
     };
 
