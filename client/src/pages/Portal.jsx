@@ -273,13 +273,16 @@ const Portal = () => {
     };
 
 
-    // Owner Check
+    // Safe ID comparison helper
+    const isSameId = (id1, id2) => {
+        if (!id1 || !id2) return false;
+        const s1 = typeof id1 === 'object' ? id1.toString() : id1;
+        const s2 = typeof id2 === 'object' ? id2.toString() : id2;
+        return s1 === s2;
+    };
 
-    const isOwner = user && portal && portal.owner && (
-        portal.owner._id === user._id || portal.owner === user._id
-    );
-
-    const isAdmin = isOwner || (user && portal && portal.admins && portal.admins.some(a => (a._id || a) === user._id));
+    const isOwner = user && portal && portal.owner && isSameId(portal.owner._id || portal.owner, user._id);
+    const isAdmin = isOwner || (user && portal && portal.admins && portal.admins.some(a => isSameId(a._id || a, user._id)));
 
     // Loading State
     if (loading || authLoading || !portal) {
