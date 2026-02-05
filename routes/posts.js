@@ -8,24 +8,7 @@ import User from '../models/User.js';
 const router = express.Router();
 
 // Configure multer for file uploads
-import { storage } from '../config/cloudinary.js';
-
-// Configure multer for file uploads with Cloudinary
-const upload = multer({
-    storage,
-    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|mp4|webm|mov|quicktime/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (extname && mimetype) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only images (jpg, png, gif) and videos (mp4, webm, mov) are allowed'));
-        }
-    },
-});
+import upload from '../middleware/upload.js';
 
 // @route   POST /api/posts
 // @desc    Create a new post
@@ -64,7 +47,7 @@ router.post('/', protect, (req, res, next) => {
             postData.channel = req.body.channel || 'general'; // Default to general if in portal
         }
         if (req.file) {
-            postData.media = req.file.path;
+            postData.media = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
             if (req.file.mimetype.includes('video')) {
                 postData.mediaType = 'video';
             } else {

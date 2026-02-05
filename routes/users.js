@@ -170,23 +170,7 @@ router.post('/follow/decline/:id', protect, async (req, res) => {
     }
 });
 
-import { storage } from '../config/cloudinary.js';
-
-// Configure multer for avatar uploads with Cloudinary
-const upload = multer({
-    storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (extname && mimetype) {
-            return cb(null, true);
-        }
-        cb(new Error('Only image files are allowed (jpeg, jpg, png, gif)'));
-    }
-});
+import upload from '../middleware/upload.js';
 
 // @route   GET /api/users/me
 // @desc    Get current user profile
@@ -445,7 +429,8 @@ router.post('/me/avatar', protect, (req, res, next) => {
         const user = await User.findById(req.user._id);
 
         // Update avatar URL
-        user.profile.avatar = req.file.path;
+        const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+        user.profile.avatar = publicUrl;
         await user.save();
 
         res.json({
@@ -482,7 +467,8 @@ router.post('/me/cover', protect, (req, res, next) => {
         const user = await User.findById(req.user._id);
 
         // Update cover image URL
-        user.profile.coverImage = req.file.path;
+        const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+        user.profile.coverImage = publicUrl;
         await user.save();
 
         res.json({

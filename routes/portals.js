@@ -6,21 +6,7 @@ import Notification from '../models/Notification.js';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
-import { storage } from '../config/cloudinary.js';
-
-const upload = multer({
-    storage,
-    limits: { fileSize: 10 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        if (extname && mimetype) {
-            return cb(null, true);
-        }
-        cb(new Error('Only image files are allowed'));
-    }
-});
+import upload from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -301,7 +287,8 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
         }
 
         if (req.file) {
-            portal.avatar = req.file.path;
+            const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+            portal.avatar = publicUrl;
             await portal.save();
             await portal.populate('owner', 'username profile.avatar');
             res.json(portal);
@@ -327,7 +314,8 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
         }
 
         if (req.file) {
-            portal.banner = req.file.path; // Make sure Portal model has banner field
+            const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+            portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
             await portal.populate('owner', 'username profile.avatar');
             res.json(portal);
