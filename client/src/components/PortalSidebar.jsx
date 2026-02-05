@@ -51,29 +51,29 @@ const PortalSidebar = () => {
                 <div className="sidebar-separator"></div>
 
                 {/* User's Portals */}
-                {/* User's Portals */}
-                {user?.joinedPortals && user.joinedPortals.filter(p => p).map((portal) => (
-                    <div
-                        key={portal._id}
-                        className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
-                        onClick={() => handleNavigation(`/portal/${portal._id}`)}
-                    // Removed data-tooltip to use custom hover card
-                    >
-                        <div className="portal-icon">
-                            {portal.avatar ? (
-                                <img src={getImageUrl(portal.avatar)} alt={portal.name} />
-                            ) : (
-                                <span>{portal.name ? portal.name?.substring(0, 2).toUpperCase() : '??'}</span>
-                            )}
-                        </div>
+                {user?.joinedPortals && user.joinedPortals
+                    .filter(p => p && p._id && p.name) // Strict filter
+                    .map((portal) => (
+                        <div
+                            key={portal._id}
+                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
+                            onClick={() => handleNavigation(`/portal/${portal._id}`)}
+                        >
+                            <div className="portal-icon">
+                                {portal.avatar ? (
+                                    <img src={getImageUrl(portal.avatar)} alt={portal.name} />
+                                ) : (
+                                    <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                )}
+                            </div>
 
-                        {/* Hover Tooltip (Simple Bubble Style) */}
-                        <div className="portal-tooltip">
-                            <span className="tooltip-text">{portal.name || 'İsimsiz Portal'}</span>
-                            <div className="tooltip-arrow"></div>
+                            {/* Hover Tooltip (Simple Bubble Style) */}
+                            <div className="portal-tooltip">
+                                <span className="tooltip-text">{portal.name}</span>
+                                <div className="tooltip-arrow"></div>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
 
                 <style>{`
                 .portal-tooltip {
