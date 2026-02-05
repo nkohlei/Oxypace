@@ -2,7 +2,7 @@ type: web
 name: globalmessage-backend
 runtime: node
 build:
-  command: npm install
+  command: npm install --legacy-peer-deps
 run:
   command: node server.js
 env:
