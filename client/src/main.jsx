@@ -15,9 +15,11 @@ if (import.meta.env.VITE_API_BASE_URL) {
     if (baseUrl.endsWith('/')) {
         baseUrl = baseUrl.slice(0, -1);
     }
+    console.log("🔗 VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
     axios.defaults.baseURL = baseUrl;
+    console.log("✅ Axios Base URL set to:", axios.defaults.baseURL);
 } else if (!import.meta.env.DEV) {
-    // console.warn("VITE_API_BASE_URL not set in production!");
+    console.warn("⚠️ VITE_API_BASE_URL not set! Axios will use relative paths.");
 }
 
 // Initialize Auth Header from localStorage immediately to prevent race conditions
