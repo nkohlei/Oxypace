@@ -1,4 +1,5 @@
 import React from 'react'
+console.log("🚀 APP STARTING - VERSION CHECK 1.0");
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
