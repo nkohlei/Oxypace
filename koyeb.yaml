@@ -1,8 +1,9 @@
 type: web
 name: globalmessage-backend
-runtime: node
-build:
-  command: npm install --legacy-peer-deps
+runtime: docker
+docker:
+  dockerfile: Dockerfile
+
 run:
   command: node server.js
 env:
