@@ -232,8 +232,8 @@ router.post('/google/validate', async (req, res) => {
             // Existing User -> Always Login
             console.log('✨ Smart Auth: Existing User detected -> Auto Login');
             const realToken = generateToken(decoded.id);
-            // Fetch fresh user data
-            const user = await User.findById(decoded.id);
+            // Fetch fresh user data with populated portals
+            const user = await User.findById(decoded.id).populate('joinedPortals', 'name avatar');
             return res.json({
                 action: 'login',
                 token: realToken,
