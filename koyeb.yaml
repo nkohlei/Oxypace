@@ -1,0 +1,11 @@
+type: web
+name: globalmessage-backend
+runtime: node
+build:
+  command: npm install
+run:
+  command: node server.js
+env:
+  NODE_ENV: production
+regions:
+  - fra
