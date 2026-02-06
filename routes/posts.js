@@ -67,10 +67,9 @@ router.post('/', protect, (req, res, next) => {
         }
 
         if (req.file) {
-            // SIMPLE SOLUTION: Use direct R2 public URL
-            // No proxy, no rewrite, just direct R2 access
-            const r2PublicUrl = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
-            postData.media = `${r2PublicUrl}/${req.file.key}`;
+            // Use Koyeb backend proxy - more reliable than R2.dev or workers.dev
+            const backendUrl = 'https://globalmessage-backend.koyeb.app';
+            postData.media = `${backendUrl}/api/media/${req.file.key}`;
             console.log('📤 Media URL:', postData.media);
 
             if (req.file.mimetype.includes('video')) {
