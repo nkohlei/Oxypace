@@ -67,11 +67,11 @@ router.post('/', protect, (req, res, next) => {
         }
 
         if (req.file) {
-            // Use backend proxy URL instead of R2 direct URL
-            // This bypasses CORS issues and ISP blocking
-            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
-            postData.media = `${backendUrl}/api/media/${req.file.key}`;
-            console.log('📤 Constructed media URL (via proxy):', postData.media);
+            // SIMPLE SOLUTION: Use direct R2 public URL
+            // No proxy, no rewrite, just direct R2 access
+            const r2PublicUrl = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+            postData.media = `${r2PublicUrl}/${req.file.key}`;
+            console.log('📤 Media URL:', postData.media);
 
             if (req.file.mimetype.includes('video')) {
                 postData.mediaType = 'video';
