@@ -89,7 +89,18 @@ router.post('/', protect, (req, res, next) => {
             }
         }
 
+        console.log('📤 About to create post with data:', {
+            author: postData.author,
+            content: postData.content ? postData.content.substring(0, 50) : '(empty)',
+            media: postData.media,
+            mediaType: postData.mediaType,
+            portal: postData.portal
+        });
+
         const post = await Post.create(postData);
+        console.log('✅ Post created successfully! ID:', post._id);
+        console.log('✅ Post media in DB:', post.media);
+
         await post.populate('author', 'username profile.displayName profile.avatar verificationBadge');
 
         // Increment post count
