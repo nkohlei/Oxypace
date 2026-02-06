@@ -69,10 +69,7 @@ const extractMentions = (text) => {
     return mentions;
 };
 
-import multer from 'multer';
-import { storage } from '../config/cloudinary.js';
-
-const upload = multer({ storage });
+import upload from '../middleware/upload.js';
 
 // ... (GET logic remains)
 
@@ -102,7 +99,7 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
         let mediaType = 'none';
 
         if (req.file) {
-            media = req.file.path;
+            media = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -160,7 +157,7 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
         let mediaType = 'none';
 
         if (req.file) {
-            media = req.file.path;
+            media = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
