@@ -6,7 +6,9 @@ import path from 'path';
 const upload = multer({
     storage: multerS3({
         s3: r2,
-        bucket: 'oxypace', // Hardcoded per user screenshot or env
+        bucket: function (req, file, cb) {
+            cb(null, process.env.R2_BUCKET_NAME || 'oxypace');
+        },
         acl: 'public-read', // R2 doesn't strictly support ACLs the same way but good for compatibility or ignored
         contentType: multerS3.AUTO_CONTENT_TYPE,
         key: function (req, file, cb) {
