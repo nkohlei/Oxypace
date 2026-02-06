@@ -17,7 +17,8 @@ if (import.meta.env.VITE_API_BASE_URL) {
     }
     axios.defaults.baseURL = baseUrl;
 } else if (!import.meta.env.DEV) {
-    console.warn("⚠️ VITE_API_BASE_URL not set! Axios will use relative paths.");
+    console.warn("⚠️ VITE_API_BASE_URL not set! Defaulting to production backend.");
+    axios.defaults.baseURL = "https://globalmessage-backend.koyeb.app";
 }
 
 
