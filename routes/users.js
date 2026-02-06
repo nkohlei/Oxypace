@@ -429,7 +429,7 @@ router.post('/me/avatar', protect, (req, res, next) => {
         const user = await User.findById(req.user._id);
 
         // Use backend proxy URL instead of R2 direct URL
-        const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+        const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
         const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
         user.profile.avatar = publicUrl;
         await user.save();
@@ -468,7 +468,7 @@ router.post('/me/cover', protect, (req, res, next) => {
         const user = await User.findById(req.user._id);
 
         // Use backend proxy URL instead of R2 direct URL
-        const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+        const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
         const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
         user.profile.coverImage = publicUrl;
         await user.save();

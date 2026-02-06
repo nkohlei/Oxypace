@@ -100,7 +100,7 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
@@ -160,7 +160,7 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }

@@ -288,7 +288,7 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
@@ -317,7 +317,7 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();

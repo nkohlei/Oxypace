@@ -75,7 +75,7 @@ router.post('/', protect, (req, res, next) => {
         let media = undefined;
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             media = `${backendUrl}/api/media/${req.file.key}`;
         }
 

@@ -68,7 +68,7 @@ router.post('/', protect, (req, res, next) => {
 
         if (req.file) {
             // Use Koyeb backend proxy - more reliable than R2.dev or workers.dev
-            const backendUrl = 'https://globalmessage-backend.koyeb.app';
+            const backendUrl = 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             postData.media = `${backendUrl}/api/media/${req.file.key}`;
             console.log('📤 Media URL:', postData.media);
 
