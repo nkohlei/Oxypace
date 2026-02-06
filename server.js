@@ -196,7 +196,7 @@ if (process.argv[1] === __filename) {
     httpServer.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📡 Socket.IO ready for real-time connections`);
-        console.log('✅ Backend updated: v2.4 - Bot Integrated');
+        console.log('✅ Backend updated: v2.5 - R2 Migration Complete');
 
         // Start Bot Loop (in background)
         startBotLoop();
