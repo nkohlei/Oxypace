@@ -402,7 +402,15 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             {post.mediaType === 'video' ? (
                                 <video controls><source src={getImageUrl(post.media)} /></video>
                             ) : (
-                                <img src={getImageUrl(post.media)} alt="Post media" loading="lazy" />
+                                <img
+                                    src={getImageUrl(post.media)}
+                                    alt="Post media"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        console.error("Image load failed:", getImageUrl(post.media));
+                                        e.target.style.display = 'none';
+                                    }}
+                                />
                             )}
                         </div>
                     )

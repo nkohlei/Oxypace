@@ -429,7 +429,11 @@ router.post('/me/avatar', protect, (req, res, next) => {
         const user = await User.findById(req.user._id);
 
         // Update avatar URL
-        const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+        let domain = process.env.R2_PUBLIC_DOMAIN;
+        if (!domain.startsWith('http')) {
+            domain = `https://${domain}`;
+        }
+        const publicUrl = `${domain}/${req.file.key}`;
         user.profile.avatar = publicUrl;
         await user.save();
 
@@ -467,7 +471,11 @@ router.post('/me/cover', protect, (req, res, next) => {
         const user = await User.findById(req.user._id);
 
         // Update cover image URL
-        const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+        let domain = process.env.R2_PUBLIC_DOMAIN;
+        if (!domain.startsWith('http')) {
+            domain = `https://${domain}`;
+        }
+        const publicUrl = `${domain}/${req.file.key}`;
         user.profile.coverImage = publicUrl;
         await user.save();
 

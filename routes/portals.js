@@ -287,7 +287,11 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
         }
 
         if (req.file) {
-            const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+            let domain = process.env.R2_PUBLIC_DOMAIN;
+            if (!domain.startsWith('http')) {
+                domain = `https://${domain}`;
+            }
+            const publicUrl = `${domain}/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
             await portal.populate('owner', 'username profile.avatar');
@@ -314,7 +318,11 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
         }
 
         if (req.file) {
-            const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+            let domain = process.env.R2_PUBLIC_DOMAIN;
+            if (!domain.startsWith('http')) {
+                domain = `https://${domain}`;
+            }
+            const publicUrl = `${domain}/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
             await portal.populate('owner', 'username profile.avatar');

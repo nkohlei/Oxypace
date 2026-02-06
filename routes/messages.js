@@ -72,7 +72,14 @@ router.post('/', protect, (req, res, next) => {
 }, async (req, res) => {
     try {
         const { recipientId, content, postId, portalId, replyToId } = req.body;
-        const media = req.file ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}` : undefined;
+        let media = undefined;
+        if (req.file) {
+            let domain = process.env.R2_PUBLIC_DOMAIN;
+            if (!domain.startsWith('http')) {
+                domain = `https://${domain}`;
+            }
+            media = `${domain}/${req.file.key}`;
+        }
 
         if (!recipientId || (!content && !media && !postId && !portalId)) {
             return res.status(400).json({ message: 'Mesaj veya paylaşılan içerik boş olamaz.' });

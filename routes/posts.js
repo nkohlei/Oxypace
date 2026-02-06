@@ -47,7 +47,11 @@ router.post('/', protect, (req, res, next) => {
             postData.channel = req.body.channel || 'general'; // Default to general if in portal
         }
         if (req.file) {
-            postData.media = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+            let domain = process.env.R2_PUBLIC_DOMAIN;
+            if (!domain.startsWith('http')) {
+                domain = `https://${domain}`;
+            }
+            postData.media = `${domain}/${req.file.key}`;
             if (req.file.mimetype.includes('video')) {
                 postData.mediaType = 'video';
             } else {

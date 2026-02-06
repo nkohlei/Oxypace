@@ -99,7 +99,11 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
         let mediaType = 'none';
 
         if (req.file) {
-            media = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+            let domain = process.env.R2_PUBLIC_DOMAIN;
+            if (!domain.startsWith('http')) {
+                domain = `https://${domain}`;
+            }
+            media = `${domain}/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -157,7 +161,11 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
         let mediaType = 'none';
 
         if (req.file) {
-            media = `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`;
+            let domain = process.env.R2_PUBLIC_DOMAIN;
+            if (!domain.startsWith('http')) {
+                domain = `https://${domain}`;
+            }
+            media = `${domain}/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
