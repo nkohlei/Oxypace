@@ -14,40 +14,45 @@ import upload from '../middleware/upload.js';
 // @desc    Create a new post
 // @access  Private
 router.post('/', protect, (req, res, next) => {
+    console.log('📤 POST /api/posts - Upload request received');
+    console.log('📤 Content-Type:', req.headers['content-type']);
+    console.log('📤 Content-Length:', req.headers['content-length']);
+
     upload.single('media')(req, res, (err) => {
         if (err instanceof multer.MulterError) {
+            console.error('❌ Multer Error:', err.message);
             return res.status(400).json({ message: `Upload error: ${err.message}` });
         } else if (err) {
+            console.error('❌ Upload Error:', err.message);
             return res.status(400).json({ message: err.message });
+        }
+        console.log('📤 Multer processing complete. File present:', !!req.file);
+        if (req.file) {
+            console.log('📤 File details:', {
+                key: req.file.key,
+                mimetype: req.file.mimetype,
+                size: req.file.size
+            });
         }
         next();
     });
 }, async (req, res) => {
     try {
+        console.log('📤 Handler started. Body keys:', Object.keys(req.body));
         const { content, portalId } = req.body;
 
-        // DEBUG PROBE: Check if we received a large payload (likely file) but Multer gave us no file
-        const contentLength = parseInt(req.headers['content-length'] || '0');
-        if (!req.file && contentLength > 5000) {
-            return res.status(400).json({
-                message: 'DEBUG: Upload Failed. Server received file data but could not process it.',
-                debug: {
-                    size: contentLength,
-                    bodyKeys: Object.keys(req.body),
-                    file: req.file ? 'Present' : 'Missing',
-                    contentType: req.headers['content-type']
-                }
-            });
-        }
-
+        // If no file and no content, reject
         if (!content && !req.file) {
+            console.log('📤 Rejected: No content and no file');
             return res.status(400).json({ message: 'Post must have content or media' });
         }
 
         const postData = {
             author: req.user._id,
             content: content || '',
-        }; if (portalId) {
+        };
+
+        if (portalId) {
             const Portal = (await import('../models/Portal.js')).default;
             const portal = await Portal.findById(portalId);
             if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
@@ -58,14 +63,25 @@ router.post('/', protect, (req, res, next) => {
             }
 
             postData.portal = portalId;
-            postData.channel = req.body.channel || 'general'; // Default to general if in portal
+            postData.channel = req.body.channel || 'general';
         }
+
         if (req.file) {
             let domain = process.env.R2_PUBLIC_DOMAIN;
+            console.log('📤 R2_PUBLIC_DOMAIN from env:', domain);
+
+            if (!domain) {
+                console.error('❌ R2_PUBLIC_DOMAIN is not set!');
+                return res.status(500).json({ message: 'Server config error: R2_PUBLIC_DOMAIN missing' });
+            }
+
             if (!domain.startsWith('http')) {
                 domain = `https://${domain}`;
             }
+
             postData.media = `${domain}/${req.file.key}`;
+            console.log('📤 Constructed media URL:', postData.media);
+
             if (req.file.mimetype.includes('video')) {
                 postData.mediaType = 'video';
             } else {
