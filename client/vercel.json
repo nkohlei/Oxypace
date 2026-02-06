@@ -5,8 +5,8 @@
             "destination": "https://globalmessage-backend.koyeb.app/api/$1"
         },
         {
-            "source": "/r2-media/:path*",
-            "destination": "https://pub-094a78010abf4ebf9726834268946cb8.r2.dev/:path*"
+            "source": "/r2-media/(.*)",
+            "destination": "https://pub-094a78010abf4ebf9726834268946cb8.r2.dev/$1"
         },
         {
             "source": "/(.*)",
