@@ -62,11 +62,7 @@ const CreatePost = () => {
                 ? '/api/posts'
                 : 'https://globalmessage-backend.koyeb.app/api/posts';
 
-            await axios.post(backendUrl, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            await axios.post(backendUrl, formData);
 
             // Redirect back to portal if from portal, else home
             if (portalId) {
