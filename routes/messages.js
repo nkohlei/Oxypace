@@ -7,6 +7,8 @@ import multer from 'multer';
 import path from 'path';
 import upload from '../middleware/upload.js';
 
+const router = express.Router();
+
 // @route   POST /api/messages/:id/react
 // @desc    React to a message
 // @access  Private
