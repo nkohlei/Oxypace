@@ -5,25 +5,7 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import multer from 'multer';
 import path from 'path';
-import { storage } from '../config/cloudinary.js';
-
-const router = express.Router();
-
-// Configure multer for message attachments with Cloudinary
-const upload = multer({
-    storage,
-    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|mp4|webm|mov|quicktime/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (extname && mimetype) {
-            return cb(null, true);
-        }
-        cb(new Error('Only images and videos are allowed'));
-    }
-});
+import upload from '../middleware/upload.js';
 
 // @route   POST /api/messages/:id/react
 // @desc    React to a message
@@ -88,7 +70,7 @@ router.post('/', protect, (req, res, next) => {
 }, async (req, res) => {
     try {
         const { recipientId, content, postId, portalId, replyToId } = req.body;
-        const media = req.file ? req.file.path : undefined;
+        const media = req.file ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}` : undefined;
 
         if (!recipientId || (!content && !media && !postId && !portalId)) {
             return res.status(400).json({ message: 'Mesaj veya paylaşılan içerik boş olamaz.' });
