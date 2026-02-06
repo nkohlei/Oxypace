@@ -26,6 +26,20 @@ router.post('/', protect, (req, res, next) => {
     try {
         const { content, portalId } = req.body;
 
+        // DEBUG PROBE: Check if we received a large payload (likely file) but Multer gave us no file
+        const contentLength = parseInt(req.headers['content-length'] || '0');
+        if (!req.file && contentLength > 5000) {
+            return res.status(400).json({
+                message: 'DEBUG: Upload Failed. Server received file data but could not process it.',
+                debug: {
+                    size: contentLength,
+                    bodyKeys: Object.keys(req.body),
+                    file: req.file ? 'Present' : 'Missing',
+                    contentType: req.headers['content-type']
+                }
+            });
+        }
+
         if (!content && !req.file) {
             return res.status(400).json({ message: 'Post must have content or media' });
         }
