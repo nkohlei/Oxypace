@@ -22,6 +22,7 @@ import followRoutes from './routes/follow.js';
 import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
 import portalRoutes from './routes/portals.js';
+import mediaRoutes from './routes/media.js';
 
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -166,6 +167,7 @@ app.use('/api/comments', commentsRoutes);
 app.use('/api/follow', followRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/media', mediaRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

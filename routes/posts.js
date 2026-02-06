@@ -67,20 +67,11 @@ router.post('/', protect, (req, res, next) => {
         }
 
         if (req.file) {
-            let domain = process.env.R2_PUBLIC_DOMAIN;
-            console.log('📤 R2_PUBLIC_DOMAIN from env:', domain);
-
-            if (!domain) {
-                console.error('❌ R2_PUBLIC_DOMAIN is not set!');
-                return res.status(500).json({ message: 'Server config error: R2_PUBLIC_DOMAIN missing' });
-            }
-
-            if (!domain.startsWith('http')) {
-                domain = `https://${domain}`;
-            }
-
-            postData.media = `${domain}/${req.file.key}`;
-            console.log('📤 Constructed media URL:', postData.media);
+            // Use backend proxy URL instead of R2 direct URL
+            // This bypasses CORS issues and ISP blocking
+            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            postData.media = `${backendUrl}/api/media/${req.file.key}`;
+            console.log('📤 Constructed media URL (via proxy):', postData.media);
 
             if (req.file.mimetype.includes('video')) {
                 postData.mediaType = 'video';

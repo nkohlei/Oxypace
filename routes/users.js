@@ -428,12 +428,9 @@ router.post('/me/avatar', protect, (req, res, next) => {
 
         const user = await User.findById(req.user._id);
 
-        // Update avatar URL
-        let domain = process.env.R2_PUBLIC_DOMAIN;
-        if (!domain.startsWith('http')) {
-            domain = `https://${domain}`;
-        }
-        const publicUrl = `${domain}/${req.file.key}`;
+        // Use backend proxy URL instead of R2 direct URL
+        const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+        const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
         user.profile.avatar = publicUrl;
         await user.save();
 
@@ -470,12 +467,9 @@ router.post('/me/cover', protect, (req, res, next) => {
 
         const user = await User.findById(req.user._id);
 
-        // Update cover image URL
-        let domain = process.env.R2_PUBLIC_DOMAIN;
-        if (!domain.startsWith('http')) {
-            domain = `https://${domain}`;
-        }
-        const publicUrl = `${domain}/${req.file.key}`;
+        // Use backend proxy URL instead of R2 direct URL
+        const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+        const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
         user.profile.coverImage = publicUrl;
         await user.save();
 

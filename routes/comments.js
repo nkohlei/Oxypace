@@ -99,11 +99,9 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
         let mediaType = 'none';
 
         if (req.file) {
-            let domain = process.env.R2_PUBLIC_DOMAIN;
-            if (!domain.startsWith('http')) {
-                domain = `https://${domain}`;
-            }
-            media = `${domain}/${req.file.key}`;
+            // Use backend proxy URL instead of R2 direct URL
+            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -161,11 +159,9 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
         let mediaType = 'none';
 
         if (req.file) {
-            let domain = process.env.R2_PUBLIC_DOMAIN;
-            if (!domain.startsWith('http')) {
-                domain = `https://${domain}`;
-            }
-            media = `${domain}/${req.file.key}`;
+            // Use backend proxy URL instead of R2 direct URL
+            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 

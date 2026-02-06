@@ -74,11 +74,9 @@ router.post('/', protect, (req, res, next) => {
         const { recipientId, content, postId, portalId, replyToId } = req.body;
         let media = undefined;
         if (req.file) {
-            let domain = process.env.R2_PUBLIC_DOMAIN;
-            if (!domain.startsWith('http')) {
-                domain = `https://${domain}`;
-            }
-            media = `${domain}/${req.file.key}`;
+            // Use backend proxy URL instead of R2 direct URL
+            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            media = `${backendUrl}/api/media/${req.file.key}`;
         }
 
         if (!recipientId || (!content && !media && !postId && !portalId)) {

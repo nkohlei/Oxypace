@@ -287,11 +287,9 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
         }
 
         if (req.file) {
-            let domain = process.env.R2_PUBLIC_DOMAIN;
-            if (!domain.startsWith('http')) {
-                domain = `https://${domain}`;
-            }
-            const publicUrl = `${domain}/${req.file.key}`;
+            // Use backend proxy URL instead of R2 direct URL
+            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
             await portal.populate('owner', 'username profile.avatar');
@@ -318,11 +316,9 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
         }
 
         if (req.file) {
-            let domain = process.env.R2_PUBLIC_DOMAIN;
-            if (!domain.startsWith('http')) {
-                domain = `https://${domain}`;
-            }
-            const publicUrl = `${domain}/${req.file.key}`;
+            // Use backend proxy URL instead of R2 direct URL
+            const backendUrl = process.env.BACKEND_URL || 'https://globalmessage-backend.koyeb.app';
+            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
             await portal.populate('owner', 'username profile.avatar');
