@@ -477,31 +477,30 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
                             </div>
                         </div>
                     )}
-                </div>
-                    )}
 
-                {activeTab === 'banned' && (
-                    <div className="animate-fade-in">
-                        <h2 className="settings-title">Engellenen Kullanıcılar</h2>
-                        <div className="members-list">
-                            {blockedUsers.length > 0 ? blockedUsers.map(user => (
-                                <div key={user._id} className="member-card">
-                                    <img src={getImageUrl(user.profile?.avatar)} alt="" className="member-avatar" onError={(e) => e.target.style.display = 'none'} />
-                                    <div className="member-details">
-                                        <div className="member-username">{user.username}</div>
+                    {activeTab === 'banned' && (
+                        <div className="animate-fade-in">
+                            <h2 className="settings-title">Engellenen Kullanıcılar</h2>
+                            <div className="members-list">
+                                {blockedUsers.length > 0 ? blockedUsers.map(user => (
+                                    <div key={user._id} className="member-card">
+                                        <img src={getImageUrl(user.profile?.avatar)} alt="" className="member-avatar" onError={(e) => e.target.style.display = 'none'} />
+                                        <div className="member-details">
+                                            <div className="member-username">{user.username}</div>
+                                        </div>
+                                        <div className="channel-actions">
+                                            <button onClick={() => handleUnblock(user._id)} title="Engeli Kaldır" className="btn-save" style={{ padding: '4px 12px', fontSize: '12px' }}>
+                                                Kaldır
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="channel-actions">
-                                        <button onClick={() => handleUnblock(user._id)} title="Engeli Kaldır" className="btn-save" style={{ padding: '4px 12px', fontSize: '12px' }}>
-                                            Kaldır
-                                        </button>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div style={{ color: '#72767d', padding: '20px', textAlign: 'center' }}>Engellenen kullanıcı yok.</div>
-                            )}
+                                )) : (
+                                    <div style={{ color: '#72767d', padding: '20px', textAlign: 'center' }}>Engellenen kullanıcı yok.</div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Image Cropper Modal */}
