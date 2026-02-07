@@ -198,7 +198,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                 <div className="reply-bar-line"></div>
                                 <div className="reply-content-box">
                                     <p className="reply-sender">
-                                        {message.replyTo.sender?.username || 'Kullanıcı'}
+                                        {message.replyTo.sender?.profile?.displayName || message.replyTo.sender?.username || 'Kullanıcı'}
                                     </p>
                                     <p className="reply-text">
                                         {message.replyTo.content || (message.replyTo.media ? '📷 Medya' : 'Mesaj')}

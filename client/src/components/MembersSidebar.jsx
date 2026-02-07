@@ -38,7 +38,7 @@ const MembersSidebar = ({ members = [] }) => {
                         </div>
                         <div className="member-info">
                             <span className="member-name active-role" style={{ color: '#2ecc71' }}>
-                                {username}
+                                {user.profile?.displayName || username}
                                 {(user.role === 'owner' || user.isAdmin) && <span style={{ marginLeft: '4px' }}>👑</span>}
                             </span>
                             {/* Status Message if any */}
@@ -69,7 +69,7 @@ const MembersSidebar = ({ members = [] }) => {
                             }
                         </div>
                         <div className="member-info">
-                            <span className="member-name" style={{ color: '#23a559' }}>{username}</span>
+                            <span className="member-name" style={{ color: '#23a559' }}>{user.profile?.displayName || username}</span>
                         </div>
                     </div>
                 );
