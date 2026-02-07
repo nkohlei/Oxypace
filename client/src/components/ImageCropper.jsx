@@ -421,7 +421,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
     const cropAreaSize = getCropAreaSize();
 
     return (
-        <div className="cropper-overlay">
+        <div className="cropper-overlay" onClick={(e) => e.stopPropagation()}>
             <div className={`cropper-modal ${mode === 'cover' ? 'cropper-modal-wide' : ''}`}>
                 {/* Header */}
                 <div className="cropper-header">
