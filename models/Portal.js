@@ -27,6 +27,10 @@ const portalSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
+    blockedUsers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
     privacy: {
         type: String,
         enum: ['public', 'private'],
@@ -53,6 +57,10 @@ const portalSchema = new mongoose.Schema({
         type: {
             type: String, // 'text', 'voice' etc.
             default: 'text'
+        },
+        isPrivate: {
+            type: Boolean,
+            default: false
         }
     }],
     joinRequests: [{
