@@ -491,40 +491,56 @@
 @media (max-width: 768px) {
     .post-card.twitter-layout {
         padding: 10px 12px;
-        grid-template-columns: 42px 1fr;
+        grid-template-columns: 38px 1fr;
         border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .post-left {
+        margin-left: 0;
     }
 
     .author-avatar,
     .author-placeholder {
-        width: 34px;
-        height: 34px;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
         aspect-ratio: 1/1;
+        flex-shrink: 0;
+        border-radius: 50%;
+    }
+
+    .header-left {
+        gap: 1px;
+    }
+
+    .header-info-link {
+        gap: 0;
+    }
+
+    /* İsim esnek olacak - daha çok gösterilecek */
+    .author-name {
+        font-size: 13px;
         flex-shrink: 0;
     }
 
-    .post-left {
-        margin-left: 2px;
+    /* Kullanıcı adı daha sınırlı - önce o kısaltılacak */
+    .author-username {
+        font-size: 12px;
+        max-width: 70px;
+        flex-shrink: 1;
+        margin-left: 3px;
+    }
+
+    .post-time {
+        font-size: 12px;
+        margin-left: 1px;
     }
 
     .post-content-text p {
         font-size: 14px;
         line-height: 1.4;
         margin-bottom: 4px;
-    }
-
-    .author-name {
-        font-size: 13px;
-        max-width: 100px;
-    }
-
-    .author-username {
-        font-size: 12px;
-        max-width: 80px;
-    }
-
-    .post-time {
-        font-size: 12px;
     }
 
     .post-actions {
