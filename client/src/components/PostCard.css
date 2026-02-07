@@ -101,7 +101,7 @@
 .header-left {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
     flex: 1;
     overflow: hidden;
@@ -110,9 +110,10 @@
 .header-info-link {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
     overflow: hidden;
+    text-decoration: none;
 }
 
 .author-name {
@@ -251,15 +252,17 @@
 
 /* Post Action Buttons - Inline with header */
 .post-action-buttons {
-    display: none;
+    display: flex;
     align-items: center;
     gap: 2px;
     flex-shrink: 0;
     position: relative;
+    opacity: 0;
+    transition: opacity 0.15s ease;
 }
 
 .post-card:hover .post-action-buttons {
-    display: flex;
+    opacity: 1;
 }
 
 .post-action-btn {
@@ -491,8 +494,14 @@
 
     .author-avatar,
     .author-placeholder {
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
+        aspect-ratio: 1/1;
+        flex-shrink: 0;
+    }
+
+    .post-left {
+        margin-left: 2px;
     }
 
     .post-content-text p {

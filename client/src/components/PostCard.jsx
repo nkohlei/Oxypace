@@ -312,7 +312,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             onClick={handleProfileClick}
                         >
                             <span className="author-name">{post.author.profile?.displayName || post.author.username}</span>
-                            <Badge type={post.author.verificationBadge} />
+                            <Badge type={post.author.verificationBadge} size={16} />
                             <span className="author-username">@{post.author.username}</span>
                         </Link>
                         <span className="post-time">· {formatDate(post.createdAt)}</span>
