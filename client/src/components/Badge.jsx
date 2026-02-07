@@ -27,8 +27,7 @@ const Badge = ({ type, size = 20, className = '' }) => {
             style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                marginLeft: '4px',
-                verticalAlign: 'sub', // Better alignment with text
+                verticalAlign: 'sub',
                 color: style.color
             }}
             title={type.charAt(0).toUpperCase() + type.slice(1) + " Badge"}

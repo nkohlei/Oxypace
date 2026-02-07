@@ -64,6 +64,8 @@
     object-fit: cover;
     border: none;
     cursor: pointer;
+    aspect-ratio: 1/1;
+    flex-shrink: 0;
 }
 
 .author-avatar:hover {
@@ -101,7 +103,7 @@
 .header-left {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
     flex: 1;
     overflow: hidden;
@@ -110,7 +112,7 @@
 .header-info-link {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 0;
     min-width: 0;
     overflow: hidden;
     text-decoration: none;
@@ -123,7 +125,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px;
 }
 
 .author-username {
@@ -132,7 +133,8 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 120px;
+    max-width: 140px;
+    margin-left: 4px;
 }
 
 .post-time {
@@ -140,6 +142,7 @@
     color: var(--text-tertiary);
     white-space: nowrap;
     flex-shrink: 0;
+    margin-left: 2px;
 }
 
 /* Content Text */
