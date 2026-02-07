@@ -35,6 +35,27 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
     // Admin check
     const isAdmin = isOwner || (portal.admins && currentUserId && portal.admins.some(a => (String(a._id || a) === String(currentUserId))));
 
+    // Blocked Users State
+    const [blockedUsers, setBlockedUsers] = useState([]);
+
+    // Channel Editing State
+    const [editingChannel, setEditingChannel] = useState(null); // { id, name, isPrivate }
+
+    useEffect(() => {
+        if (activeTab === 'banned' && (isAdmin || isOwner)) {
+            fetchBlockedUsers();
+        }
+    }, [activeTab, portal._id]);
+
+    const fetchBlockedUsers = async () => {
+        try {
+            const res = await axios.get(`/api/portals/${portal._id}/blocked`);
+            setBlockedUsers(res.data);
+        } catch (err) {
+            console.error('Failed to fetch blocked users', err);
+        }
+    };
+
     // --- Overview Handlers ---
     const handleSaveOverview = async () => {
         if (!isOwner) return; // double check
@@ -116,6 +137,26 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
         }
     };
 
+    const handleUpdateChannel = async () => {
+        if (!editingChannel || !editingChannel.name.trim()) return;
+        try {
+            await axios.put(`/api/portals/${portal._id}/channels/${editingChannel.id}`, {
+                name: editingChannel.name,
+                isPrivate: editingChannel.isPrivate
+            });
+            // Optimistic update or refresh
+            const updatedChannels = portal.channels.map(ch =>
+                ch._id === editingChannel.id
+                    ? { ...ch, name: editingChannel.name, isPrivate: editingChannel.isPrivate }
+                    : ch
+            );
+            onUpdate({ ...portal, channels: updatedChannels });
+            setEditingChannel(null);
+        } catch (err) {
+            alert('Kanal güncellenemedi');
+        }
+    };
+
     // --- Member Handlers ---
     const handleKick = async (userId) => {
         if (!isAdmin) return;
@@ -140,6 +181,34 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
             onUpdate({ ...portal, admins: res.data });
         } catch (err) {
             alert('Yetki değiştirilemedi');
+        }
+    };
+
+    const handleBlock = async (userId) => {
+        if (!isAdmin) return;
+        if (!window.confirm('Kullanıcıyı engellemek istediğinize emin misiniz?')) return;
+        try {
+            await axios.post(`/api/portals/${portal._id}/block`, { userId }); // Updated route
+            const blockedUserId = String(userId);
+            onUpdate({
+                ...portal,
+                members: portal.members.filter(m => String(m._id || m) !== blockedUserId),
+                admins: portal.admins.filter(a => String(a._id || a) !== blockedUserId)
+            });
+            // Refresh blocked list if active
+            if (activeTab === 'banned') fetchBlockedUsers();
+        } catch (err) {
+            alert('User could not be blocked: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleUnblock = async (userId) => {
+        if (!isAdmin) return;
+        try {
+            await axios.post(`/api/portals/${portal._id}/unblock`, { userId });
+            setBlockedUsers(prev => prev.filter(u => u._id !== userId));
+        } catch (err) {
+            alert('Engeli kaldırma başarısız');
         }
     };
 
@@ -183,6 +252,14 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ minWidth: '20px' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         <span className="tab-label">Üyeler</span>
+                    </div>
+                    <div
+                        className={`settings-tab ${activeTab === 'banned' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('banned')}
+                        title="Engellenenler"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ minWidth: '20px' }}><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                        <span className="tab-label">Engellenenler</span>
                     </div>
                 </div>
 
@@ -280,16 +357,51 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
                             <div className="channel-list">
                                 {portal.channels && portal.channels.map(ch => (
                                     <div key={ch._id} className="channel-row">
-                                        <div className="channel-name">
-                                            <span style={{ color: '#72767d', marginRight: '4px' }}>#</span>
-                                            {ch.name}
-                                        </div>
-                                        {isAdmin && (
-                                            <div className="channel-actions">
-                                                <button onClick={() => handleDeleteChannel(ch._id)} title="Kanalı Sil">
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        {editingChannel && editingChannel.id === ch._id ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                                                <input
+                                                    className="form-input"
+                                                    value={editingChannel.name}
+                                                    onChange={e => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                                                    style={{ padding: '4px 8px', height: '32px' }}
+                                                />
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#b9bbbe', cursor: 'pointer' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={editingChannel.isPrivate}
+                                                        onChange={e => setEditingChannel({ ...editingChannel, isPrivate: e.target.checked })}
+                                                    />
+                                                    Gizli
+                                                </label>
+                                                <button onClick={handleUpdateChannel} style={{ color: '#2ecc71', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                </button>
+                                                <button onClick={() => setEditingChannel(null)} style={{ color: '#ed4245', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                                 </button>
                                             </div>
+                                        ) : (
+                                            <>
+                                                <div className="channel-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <span style={{ color: '#72767d' }}>#</span>
+                                                    {ch.name}
+                                                    {ch.isPrivate && (
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#faa61a' }} title="Gizli Kanal">
+                                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                {isAdmin && (
+                                                    <div className="channel-actions">
+                                                        <button onClick={() => setEditingChannel({ id: ch._id, name: ch.name, isPrivate: ch.isPrivate || false })} title="Düzenle" style={{ marginRight: '4px' }}>
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                        </button>
+                                                        <button onClick={() => handleDeleteChannel(ch._id)} title="Kanalı Sil">
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 ))}
@@ -352,6 +464,10 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
                                                         <button onClick={() => handleKick(memberId)} title="Portaldan At" style={{ color: '#ed4245' }}>
                                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                                                         </button>
+
+                                                        <button onClick={() => handleBlock(memberId)} title="Engelle" style={{ color: '#ed4245' }}>
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                                                        </button>
                                                     </div>
                                                 )
                                             )}
@@ -362,6 +478,30 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
                         </div>
                     )}
                 </div>
+                    )}
+
+                {activeTab === 'banned' && (
+                    <div className="animate-fade-in">
+                        <h2 className="settings-title">Engellenen Kullanıcılar</h2>
+                        <div className="members-list">
+                            {blockedUsers.length > 0 ? blockedUsers.map(user => (
+                                <div key={user._id} className="member-card">
+                                    <img src={getImageUrl(user.profile?.avatar)} alt="" className="member-avatar" onError={(e) => e.target.style.display = 'none'} />
+                                    <div className="member-details">
+                                        <div className="member-username">{user.username}</div>
+                                    </div>
+                                    <div className="channel-actions">
+                                        <button onClick={() => handleUnblock(user._id)} title="Engeli Kaldır" className="btn-save" style={{ padding: '4px 12px', fontSize: '12px' }}>
+                                            Kaldır
+                                        </button>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div style={{ color: '#72767d', padding: '20px', textAlign: 'center' }}>Engellenen kullanıcı yok.</div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Image Cropper Modal */}
