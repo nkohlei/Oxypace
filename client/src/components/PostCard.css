@@ -228,56 +228,62 @@
     position: relative;
 }
 
-/* Post Menu Container - Fixed right, vertically centered */
-.post-menu-container {
+/* Post Action Buttons - Top Right */
+.post-action-buttons {
     position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
+    right: 12px;
+    top: 12px;
+    display: none;
+    align-items: center;
+    gap: 4px;
     z-index: 10;
 }
 
-.post-menu-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-tertiary);
-    padding: 8px;
-    cursor: pointer;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s;
-}
-
-.post-card:hover .post-menu-btn {
+.post-card:hover .post-action-buttons {
     display: flex;
 }
 
-.post-menu-btn:hover {
+.post-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.15s;
+}
+
+.post-action-btn:hover {
     background-color: var(--bg-hover);
     color: var(--text-primary);
+}
+
+.post-action-btn.saved {
+    color: var(--primary-cyan);
 }
 
 /* Floating Menu Popup */
 .post-floating-menu {
     position: absolute;
     right: 0;
-    top: calc(100% + 8px);
-    width: 220px;
+    top: calc(100% + 4px);
+    min-width: 120px;
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    padding: 4px;
     z-index: 100;
-    animation: menuFadeIn 0.15s ease-out;
+    animation: menuFadeIn 0.12s ease-out;
 }
 
 @keyframes menuFadeIn {
     from {
         opacity: 0;
-        transform: translateY(-8px);
+        transform: translateY(-4px);
     }
 
     to {
@@ -303,14 +309,15 @@
 }
 
 .menu-item {
-    padding: 8px 8px;
-    border-radius: 2px;
-    font-size: 14px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 13px;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: space-between;
     transition: all 0.1s;
+    gap: 12px;
 }
 
 .menu-item:hover {
