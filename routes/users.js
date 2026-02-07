@@ -262,7 +262,7 @@ router.get('/search', protect, async (req, res) => {
             username: { $regex: q, $options: 'i' },
             _id: { $ne: req.user._id }, // Exclude current user
         })
-            .select('username profile.displayName profile.avatar')
+            .select('username profile.displayName profile.avatar verificationBadge')
             .limit(20);
 
         res.json(users);
