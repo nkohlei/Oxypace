@@ -88,11 +88,11 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
 
-        if (minutes < 1) return 'now';
-        if (minutes < 60) return `${minutes}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        if (days < 7) return `${days}d ago`;
-        return postDate.toLocaleDateString('en-US');
+        if (minutes < 1) return 'şimdi';
+        if (minutes < 60) return `${minutes}d`;
+        if (hours < 24) return `${hours}s`;
+        if (days < 7) return `${days}g`;
+        return postDate.toLocaleDateString('tr-TR');
     };
 
     const handleAuthRequired = (action) => {
