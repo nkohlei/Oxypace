@@ -90,9 +90,9 @@ router.get('/', optionalProtect, async (req, res) => {
 router.get('/:id', optionalProtect, async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
-            .populate('owner', 'username profile.avatar')
-            .populate('admins', 'username profile.avatar')
-            .populate('members', 'username profile.avatar');
+            .populate('owner', 'username profile.displayName profile.avatar')
+            .populate('admins', 'username profile.displayName profile.avatar')
+            .populate('members', 'username profile.displayName profile.avatar');
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal not found' });
@@ -163,7 +163,7 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
         }
 
         const posts = await Post.find(query)
-            .populate('author', 'username profile.avatar verificationBadge')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: -1 });
 
         res.json(posts);
@@ -266,7 +266,7 @@ router.put('/:id', protect, async (req, res) => {
         await portal.save();
 
         // Repopulate owner for frontend consistency
-        await portal.populate('owner', 'username profile.avatar');
+        await portal.populate('owner', 'username profile.displayName profile.avatar');
 
         res.json(portal);
     } catch (error) {
@@ -292,7 +292,7 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
-            await portal.populate('owner', 'username profile.avatar');
+            await portal.populate('owner', 'username profile.displayName profile.avatar');
             res.json(portal);
         } else {
             res.status(400).json({ message: 'No file uploaded' });
@@ -321,7 +321,7 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
-            await portal.populate('owner', 'username profile.avatar');
+            await portal.populate('owner', 'username profile.displayName profile.avatar');
             res.json(portal);
         } else {
             res.status(400).json({ message: 'No file uploaded' });
@@ -411,7 +411,7 @@ router.post('/:id/roles', protect, async (req, res) => {
 
         await portal.save();
         // Return full member details to look reactive
-        await portal.populate('admins', 'username profile.avatar');
+        await portal.populate('admins', 'username profile.displayName profile.avatar');
         res.json(portal.admins);
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -114,7 +114,7 @@ router.post('/', protect, (req, res, next) => {
             .populate({
                 path: 'replyTo',
                 select: 'content media sender',
-                populate: { path: 'sender', select: 'username' }
+                populate: { path: 'sender', select: 'username profile.displayName' }
             });
 
         req.app.get('io').to(recipientId).emit('newMessage', populatedMessage);
@@ -170,7 +170,7 @@ router.get('/conversations', protect, async (req, res) => {
             .populate({
                 path: 'replyTo',
                 select: 'content media sender',
-                populate: { path: 'sender', select: 'username' }
+                populate: { path: 'sender', select: 'username profile.displayName' }
             });
 
         // Extract unique conversations
@@ -242,7 +242,7 @@ router.get('/:userId', protect, async (req, res) => {
             .populate({
                 path: 'replyTo',
                 select: 'content media sender',
-                populate: { path: 'sender', select: 'username' }
+                populate: { path: 'sender', select: 'username profile.displayName' }
             });
 
         // Mark messages as read
