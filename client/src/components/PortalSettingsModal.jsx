@@ -71,29 +71,11 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
         }
     };
 
-    const handleFileSelect = (e, target) => {
-        if (!isOwner) return;
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            setCropperImage(reader.result);
-            setCropperMode(target === 'avatar' ? 'avatar' : 'cover');
-        };
-        reader.readAsDataURL(file);
-        e.target.value = ''; // Reset input
-    };
-
-    const handleCropComplete = async (blob) => {
-        const mode = cropperMode;
-        setCropperImage(null);
-        setCropperMode(null);
-
-        if (!blob) return;
-
+    const uploadImage = async (fileOrBlob, mode) => {
         const form = new FormData();
-        form.append(mode, blob, `${mode}.jpg`);
+        // Use original name if File (GIF), otherwise default to .jpg for Blobs
+        const fileName = fileOrBlob.name || `${mode}.jpg`;
+        form.append(mode, fileOrBlob, fileName);
 
         try {
             setLoading(true);
@@ -106,6 +88,37 @@ const PortalSettingsModal = ({ portal, onClose, onUpdate, currentUser, initialTa
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleFileSelect = (e, target) => {
+        if (!isOwner) return;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Bypass cropper for GIFs
+        if (file.type === 'image/gif') {
+            const mode = target === 'avatar' ? 'avatar' : 'banner';
+            uploadImage(file, mode);
+            e.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCropperImage(reader.result);
+            setCropperMode(target === 'avatar' ? 'avatar' : 'banner');
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleCropComplete = async (blob) => {
+        const mode = cropperMode; // 'avatar' or 'banner' (mapped from 'cover' in render check if needed, but here it's set as string)
+        setCropperImage(null);
+        setCropperMode(null);
+
+        if (!blob) return;
+        await uploadImage(blob, mode);
     };
 
     const handleCropCancel = () => {

@@ -77,54 +77,14 @@ const Profile = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleAvatarSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.size > 10 * 1024 * 1024) {
-            setError('Dosya boyutu 10MB\'dan küçük olmalıdır.');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            setCropperImage(reader.result);
-            setCropperMode('avatar');
-        };
-        reader.readAsDataURL(file);
-        e.target.value = ''; // Reset input
-    };
-
-    const handleCoverSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.size > 15 * 1024 * 1024) {
-            setError('Kapak resmi 15MB\'dan küçük olmalıdır.');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            setCropperImage(reader.result);
-            setCropperMode('cover');
-        };
-        reader.readAsDataURL(file);
-        e.target.value = ''; // Reset input
-    };
-
-    const handleCropComplete = async (blob) => {
-        setCropperImage(null);
-        const mode = cropperMode;
-        setCropperMode(null);
-
-        if (!blob) return;
-
+    const uploadImage = async (fileOrBlob, mode) => {
         const formDataObj = new FormData();
         const endpoint = mode === 'avatar' ? '/api/users/me/avatar' : '/api/users/me/cover';
         const fieldName = mode === 'avatar' ? 'avatar' : 'cover';
 
-        formDataObj.append(fieldName, blob, `${fieldName}.jpg`);
+        // Use original name if File (GIF), otherwise default to .jpg for Blobs
+        const fileName = fileOrBlob.name || `${fieldName}.jpg`;
+        formDataObj.append(fieldName, fileOrBlob, fileName);
 
         try {
             setLoading(true);
@@ -149,6 +109,65 @@ const Profile = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAvatarSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 10 * 1024 * 1024) {
+            setError('Dosya boyutu 10MB\'dan küçük olmalıdır.');
+            return;
+        }
+
+        // Bypass cropper for GIFs to preserve animation
+        if (file.type === 'image/gif') {
+            uploadImage(file, 'avatar');
+            e.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCropperImage(reader.result);
+            setCropperMode('avatar');
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleCoverSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 15 * 1024 * 1024) {
+            setError('Kapak resmi 15MB\'dan küçük olmalıdır.');
+            return;
+        }
+
+        // Bypass cropper for GIFs to preserve animation
+        if (file.type === 'image/gif') {
+            uploadImage(file, 'cover');
+            e.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCropperImage(reader.result);
+            setCropperMode('cover');
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleCropComplete = async (blob) => {
+        const mode = cropperMode;
+        setCropperImage(null);
+        setCropperMode(null);
+
+        if (!blob) return;
+        await uploadImage(blob, mode);
     };
 
     const handleCropCancel = () => {
