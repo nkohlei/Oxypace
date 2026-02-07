@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
 import ImageCropper from '../components/ImageCropper';
+import ProfileImageModal from '../components/ProfileImageModal'; // Import the new modal
 import './Profile.css';
 
 const Profile = () => {
@@ -29,6 +30,9 @@ const Profile = () => {
     // Cropping State
     const [cropperImage, setCropperImage] = useState(null);
     const [cropperMode, setCropperMode] = useState(null); // 'avatar' or 'cover'
+
+    // Image Modal State
+    const [showImageModal, setShowImageModal] = useState(false);
 
     const avatarInputRef = useRef(null);
     const coverInputRef = useRef(null);
@@ -299,7 +303,11 @@ const Profile = () => {
                         {/* LEFT SECTION: User Info Sidebar */}
                         <aside className="profile-left-column">
                             <div className="profile-avatar-wrapper">
-                                <div className="profile-avatar-container">
+                                <div
+                                    className="profile-avatar-container"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => setShowImageModal(true)}
+                                >
                                     {profileUser?.profile?.avatar ? (
                                         <img
                                             src={getImageUrl(profileUser.profile.avatar)}
@@ -310,13 +318,7 @@ const Profile = () => {
                                             {profileUser.username?.[0]?.toUpperCase()}
                                         </div>
                                     )}
-                                    {isOwnProfile && (
-                                        <button className="edit-avatar-btn" onClick={() => avatarInputRef.current.click()}>
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                                            </svg>
-                                        </button>
-                                    )}
+                                    {/* Edit button removed from here, now in modal */}
                                 </div>
                                 <input type="file" ref={avatarInputRef} onChange={handleAvatarSelect} style={{ display: 'none' }} accept="image/*" />
                             </div>
@@ -560,6 +562,15 @@ const Profile = () => {
                     )}
                 </div>
             </main>
+
+            {/* Profile Image View Modal */}
+            <ProfileImageModal
+                isOpen={showImageModal}
+                onClose={() => setShowImageModal(false)}
+                imageSrc={profileUser?.profile?.avatar ? getImageUrl(profileUser.profile.avatar) : null}
+                isOwnProfile={isOwnProfile}
+                onEdit={() => avatarInputRef.current?.click()}
+            />
 
             {/* Image Cropper Modal */}
             {cropperImage && (
