@@ -318,21 +318,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         <span className="post-time">· {formatDate(post.createdAt)}</span>
                     </div>
 
-                    {/* Discord Style Hover Actions (Top Right) */}
-                    <div className="message-hover-actions">
-                        <button className="hover-action-btn" title="Tepki Ekle" onClick={() => handleMenuAction('reaction')}>
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-                        </button>
-                        <button className="hover-action-btn" title="Yanıtla" onClick={() => handleMenuAction('reply')}>
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                        </button>
-                        <button className="hover-action-btn" title="Daha Fazla" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    {/* Three-dot menu button - far right, vertically centered */}
+                    <div className="post-menu-container">
+                        <button className="post-menu-btn" title="Daha Fazla" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
                         </button>
 
-                        {/* Context Menu (Three Dots) - Expanded */}
+                        {/* Floating Context Menu */}
                         {showMenu && (
-                            <div className="post-dropdown-menu expanded-menu" onClick={(e) => e.stopPropagation()}>
+                            <div className="post-floating-menu" onClick={(e) => e.stopPropagation()}>
                                 <div className="menu-group">
                                     <button className="menu-item" onClick={() => { handleSave(); setShowMenu(false); }}>
                                         {saved ? 'Kaydedilenlerden Kaldır' : 'Gönderiyi Kaydet'}
@@ -367,12 +365,12 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 <div className="menu-group">
                                     {isOwnPost && (
                                         <button className="menu-item delete-item" onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowDeleteConfirm(true); }}>
-                                            Mesajı Sil
+                                            Gönderiyi Sil
                                             <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                         </button>
                                     )}
                                     <button className="menu-item delete-item" onClick={() => handleMenuAction('report')}>
-                                        Mesaj Bildir
+                                        Gönderiyi Bildir
                                         <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
                                     </button>
                                 </div>
