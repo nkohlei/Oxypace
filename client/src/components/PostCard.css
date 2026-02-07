@@ -93,31 +93,54 @@
 .post-header-row {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 4px;
+    gap: 8px;
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 6px;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.header-info-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .author-name {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .author-username {
     font-size: 1rem;
     color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .post-time {
     font-size: 0.9rem;
     color: var(--text-tertiary);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* Content Text */
@@ -228,15 +251,13 @@
     position: relative;
 }
 
-/* Post Action Buttons - Top Right */
+/* Post Action Buttons - Inline with header */
 .post-action-buttons {
-    position: absolute;
-    right: 12px;
-    top: 12px;
     display: none;
     align-items: center;
-    gap: 4px;
-    z-index: 10;
+    gap: 2px;
+    flex-shrink: 0;
+    position: relative;
 }
 
 .post-card:hover .post-action-buttons {
