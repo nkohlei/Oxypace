@@ -499,23 +499,27 @@
         margin-left: 0;
     }
 
+    /* Avatar - kesinlikle yuvarlak olacak */
     .author-avatar,
     .author-placeholder {
-        width: 32px;
-        height: 32px;
-        min-width: 32px;
-        min-height: 32px;
-        aspect-ratio: 1/1;
-        flex-shrink: 0;
-        border-radius: 50%;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        max-width: 32px !important;
+        max-height: 32px !important;
+        aspect-ratio: 1/1 !important;
+        flex-shrink: 0 !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
     }
 
     .header-left {
-        gap: 1px;
+        gap: 0 !important;
     }
 
     .header-info-link {
-        gap: 0;
+        gap: 0 !important;
     }
 
     /* İsim esnek olacak - daha çok gösterilecek */
@@ -529,12 +533,14 @@
         font-size: 12px;
         max-width: 70px;
         flex-shrink: 1;
-        margin-left: 3px;
+        margin-left: 2px !important;
     }
 
+    /* Zaman - minimum boşluk */
     .post-time {
         font-size: 12px;
-        margin-left: 1px;
+        margin-left: 0 !important;
+        padding-left: 2px;
     }
 
     .post-content-text p {
