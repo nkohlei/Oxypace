@@ -29,75 +29,143 @@ const UserBar = () => {
             {showPopover && (
                 <div className="user-popover">
                     {/* Banner */}
-                    <div style={{ height: '80px', backgroundColor: user.profile?.bannerColor || 'var(--bg-darker)' }}>
+                    <div
+                        style={{
+                            height: '80px',
+                            backgroundColor: user.profile?.bannerColor || 'var(--bg-darker)',
+                        }}
+                    >
                         {user.profile?.coverImage && (
-                            <img src={getImageUrl(user.profile.coverImage)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Cover" />
+                            <img
+                                src={getImageUrl(user.profile.coverImage)}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                alt="Cover"
+                            />
                         )}
                     </div>
 
                     {/* Avatar & Badges */}
                     <div style={{ padding: '0 16px', position: 'relative' }}>
-                        <div style={{
-                            position: 'absolute',
-                            top: '-40px',
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '50%',
-                            border: '6px solid var(--bg-card)',
-                            backgroundColor: 'var(--bg-card)',
-                            overflow: 'hidden',
-                            cursor: 'pointer'
-                        }} onClick={() => navigate(`/profile`)}>
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '-40px',
+                                width: '80px',
+                                height: '80px',
+                                borderRadius: '50%',
+                                border: '6px solid var(--bg-card)',
+                                backgroundColor: 'var(--bg-card)',
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => navigate(`/profile`)}
+                        >
                             {user.profile?.avatar ? (
-                                <img src={getImageUrl(user.profile.avatar)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" />
+                                <img
+                                    src={getImageUrl(user.profile.avatar)}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    alt="Avatar"
+                                />
                             ) : (
-                                <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--primary-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', color: '#000' }}>
+                                <div
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        backgroundColor: 'var(--primary-cyan)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '32px',
+                                        color: '#000',
+                                    }}
+                                >
                                     {user.username?.[0]?.toUpperCase()}
                                 </div>
                             )}
-                            <div style={{
-                                position: 'absolute',
-                                bottom: '4px',
-                                right: '4px',
-                                width: '16px',
-                                height: '16px',
-                                backgroundColor: 'var(--primary-green)',
-                                borderRadius: '50%',
-                                border: '3px solid var(--bg-card)'
-                            }} />
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    bottom: '4px',
+                                    right: '4px',
+                                    width: '16px',
+                                    height: '16px',
+                                    backgroundColor: 'var(--primary-green)',
+                                    borderRadius: '50%',
+                                    border: '3px solid var(--bg-card)',
+                                }}
+                            />
                         </div>
                     </div>
 
                     {/* Content */}
                     <div style={{ padding: '50px 16px 16px 16px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }} onClick={() => navigate(`/profile`)}>
-                            <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>{user.profile?.displayName || user.username}</h3>
-                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{user.username}</span>
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => navigate(`/profile`)}
+                        >
+                            <h3
+                                style={{
+                                    fontSize: '20px',
+                                    fontWeight: '700',
+                                    color: 'var(--text-primary)',
+                                    margin: 0,
+                                }}
+                            >
+                                {user.profile?.displayName || user.username}
+                            </h3>
+                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                                {user.username}
+                            </span>
                         </div>
 
                         {/* Status Message */}
-                        <div style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-tertiary)' }}>
-                            {user.profile?.bio || 'Evcil hayvanı olması için efsanevi bir yaratık seç'}
+                        <div
+                            style={{
+                                marginTop: '16px',
+                                fontSize: '14px',
+                                color: 'var(--text-tertiary)',
+                            }}
+                        >
+                            {user.profile?.bio ||
+                                'Evcil hayvanı olması için efsanevi bir yaratık seç'}
                         </div>
 
                         {/* Edit Button */}
-                        <button style={{
-                            width: '100%',
-                            marginTop: '16px',
-                            padding: '10px',
-                            backgroundColor: 'var(--bg-input)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--border-subtle)',
-                            borderRadius: '6px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px'
-                        }} onClick={() => navigate('/settings')}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <button
+                            style={{
+                                width: '100%',
+                                marginTop: '16px',
+                                padding: '10px',
+                                backgroundColor: 'var(--bg-input)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: '6px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                            }}
+                            onClick={() => navigate('/settings')}
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
                             Profili Düzenle
                         </button>
                     </div>
@@ -117,7 +185,7 @@ const UserBar = () => {
                     marginRight: 'auto',
                     transition: 'background-color 0.2s',
                     flex: 1,
-                    minWidth: 0
+                    minWidth: 0,
                 }}
                 onClick={() => setShowPopover(!showPopover)}
             >
@@ -126,37 +194,55 @@ const UserBar = () => {
                         <img
                             src={getImageUrl(user.profile.avatar)}
                             alt="User"
-                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                            }}
                         />
                     ) : (
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--primary-cyan)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#000',
-                            fontSize: '14px',
-                            fontWeight: 'bold'
-                        }}>
+                        <div
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                backgroundColor: 'var(--primary-cyan)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#000',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                            }}
+                        >
                             {user.username?.[0]?.toUpperCase()}
                         </div>
                     )}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '-2px',
-                        right: '-2px',
-                        width: '10px',
-                        height: '10px',
-                        backgroundColor: 'var(--primary-green)',
-                        borderRadius: '50%',
-                        border: '2px solid var(--bg-darker)'
-                    }} />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: '-2px',
+                            right: '-2px',
+                            width: '10px',
+                            height: '10px',
+                            backgroundColor: 'var(--primary-green)',
+                            borderRadius: '50%',
+                            border: '2px solid var(--bg-darker)',
+                        }}
+                    />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span
+                        style={{
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: 'var(--text-primary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
                         {user.username}
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
@@ -170,32 +256,91 @@ const UserBar = () => {
                 <button
                     className="user-control-btn"
                     title="Mikrofon"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        padding: '6px',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                    }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V5a3 3 0 0 1 3-3z" />
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path
+                            d="M19 10v2a7 7 0 0 1-14 0v-2"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                        <line
+                            x1="12"
+                            y1="19"
+                            x2="12"
+                            y2="23"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                        <line
+                            x1="8"
+                            y1="23"
+                            x2="16"
+                            y2="23"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
                     </svg>
                 </button>
                 <button
                     className="user-control-btn"
                     title="Kulaklık"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        padding: '6px',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                    }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 18v-6a9 9 0 0 1 18 0v6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" fill="currentColor" />
+                        <path
+                            d="M3 18v-6a9 9 0 0 1 18 0v6"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                        <path
+                            d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"
+                            fill="currentColor"
+                        />
                     </svg>
                 </button>
                 <button
                     className="user-control-btn"
                     title="Ayarlar"
                     onClick={() => navigate('/settings')}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        padding: '6px',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                    }}
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>

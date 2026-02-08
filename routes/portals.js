@@ -5,7 +5,6 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import multer from 'multer';
-import path from 'path';
 import upload from '../middleware/upload.js';
 
 const router = express.Router();
@@ -30,12 +29,12 @@ router.post('/', protect, async (req, res) => {
             owner: req.user._id,
             admins: [req.user._id],
             members: [req.user._id],
-            channels: [{ name: 'genel', type: 'text' }]
+            channels: [{ name: 'genel', type: 'text' }],
         });
 
         // Add to user's joined portals
         await User.findByIdAndUpdate(req.user._id, {
-            $addToSet: { joinedPortals: portal._id }
+            $addToSet: { joinedPortals: portal._id },
         });
 
         res.status(201).json(portal);
@@ -51,11 +50,11 @@ router.get('/', optionalProtect, async (req, res) => {
     try {
         const keyword = req.query.keyword
             ? {
-                name: {
-                    $regex: req.query.keyword,
-                    $options: 'i',
-                },
-            }
+                  name: {
+                      $regex: req.query.keyword,
+                      $options: 'i',
+                  },
+              }
             : {};
 
         const portals = await Portal.find(keyword)
@@ -63,13 +62,13 @@ router.get('/', optionalProtect, async (req, res) => {
             .limit(20);
 
         const userId = req.user?._id?.toString();
-        const formattedPortals = portals.map(portal => {
+        const formattedPortals = portals.map((portal) => {
             const portalObj = portal.toObject();
             portalObj.memberCount = portal.members?.length || 0;
 
             if (userId) {
-                portalObj.isMember = portal.members.some(m => m.toString() === userId);
-                portalObj.isRequested = portal.joinRequests?.some(r => r.toString() === userId);
+                portalObj.isMember = portal.members.some((m) => m.toString() === userId);
+                portalObj.isRequested = portal.joinRequests?.some((r) => r.toString() === userId);
             }
 
             // Remove potentially large arrays before sending
@@ -108,8 +107,8 @@ router.get('/:id', optionalProtect, async (req, res) => {
         const portalObj = portal.toObject();
 
         if (userId) {
-            portalObj.isMember = portal.members.some(m => (m._id || m).toString() === userId);
-            portalObj.isRequested = portal.joinRequests?.some(r => r.toString() === userId);
+            portalObj.isMember = portal.members.some((m) => (m._id || m).toString() === userId);
+            portalObj.isRequested = portal.joinRequests?.some((r) => r.toString() === userId);
         } else {
             portalObj.isMember = false;
             portalObj.isRequested = false;
@@ -117,7 +116,7 @@ router.get('/:id', optionalProtect, async (req, res) => {
 
         // Filter out private channels for non-members
         if (!portalObj.isMember) {
-            portalObj.channels = portalObj.channels.filter(ch => !ch.isPrivate);
+            portalObj.channels = portalObj.channels.filter((ch) => !ch.isPrivate);
         }
 
         res.json(portalObj);
@@ -135,7 +134,9 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
         const channel = req.query.channel || 'general';
 
         const portal = await Portal.findById(portalId);
-        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
 
         // Privacy Check
         const userId = req.user?._id;
@@ -146,7 +147,7 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
         }
 
         if (portal.privacy === 'private') {
-            let isMember = userId && portal.members.some(m => m.toString() === userId.toString());
+            let isMember = userId && portal.members.some((m) => m.toString() === userId.toString());
 
             // Self-Healing: Check if user has this portal in joinedPortals but is missing from portal.members
             if (!isMember && userId) {
@@ -161,14 +162,21 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
             }
 
             if (!isMember) {
-                return res.status(403).json({ message: 'Bu portal gizlidir. İçeriği görmek için üye olmalısınız.' });
+                return res
+                    .status(403)
+                    .json({ message: 'Bu portal gizlidir. İçeriği görmek için üye olmalısınız.' });
             }
         }
 
         // Channel Privacy Check
-        const targetChannel = portal.channels.find(c => c.name === channel || (channel === 'general' && (c.name === 'genel' || c.name === 'general')));
+        const targetChannel = portal.channels.find(
+            (c) =>
+                c.name === channel ||
+                (channel === 'general' && (c.name === 'genel' || c.name === 'general'))
+        );
         if (targetChannel && targetChannel.isPrivate) {
-            const isMember = userId && portal.members.some(m => m.toString() === userId.toString());
+            const isMember =
+                userId && portal.members.some((m) => m.toString() === userId.toString());
             // For now, private channels are only for members. Future: admins only etc.
             if (!isMember) {
                 return res.status(403).json({ message: 'Bu kanal gizlidir.' });
@@ -176,14 +184,14 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
         }
 
         // Define query based on channel
-        let query = { portal: portalId };
+        const query = { portal: portalId };
 
         if (channel === 'general') {
             query.$or = [
                 { channel: 'general' },
                 { channel: 'genel' },
                 { channel: { $exists: false } },
-                { channel: null }
+                { channel: null },
             ];
         } else {
             query.channel = channel;
@@ -210,7 +218,7 @@ router.post('/:id/join', protect, async (req, res) => {
             return res.status(404).json({ message: 'Portal bulunamadı' });
         }
 
-        if (portal.members.some(m => m.toString() === req.user._id.toString())) {
+        if (portal.members.some((m) => m.toString() === req.user._id.toString())) {
             return res.status(400).json({ message: 'Zaten üyesiniz' });
         }
 
@@ -220,7 +228,10 @@ router.post('/:id/join', protect, async (req, res) => {
 
         if (portal.privacy === 'private') {
             // Check if already requested
-            if (portal.joinRequests && portal.joinRequests.some(r => r.toString() === req.user._id.toString())) {
+            if (
+                portal.joinRequests &&
+                portal.joinRequests.some((r) => r.toString() === req.user._id.toString())
+            ) {
                 return res.status(400).json({ message: 'Zaten üyelik isteği gönderdiniz' });
             }
 
@@ -234,7 +245,7 @@ router.post('/:id/join', protect, async (req, res) => {
         await portal.save();
 
         await User.findByIdAndUpdate(req.user._id, {
-            $addToSet: { joinedPortals: portal._id }
+            $addToSet: { joinedPortals: portal._id },
         });
 
         res.json({ message: 'Portala başarıyla katıldınız', status: 'joined' });
@@ -256,7 +267,9 @@ router.post('/:id/leave', protect, async (req, res) => {
 
         // Prevent owner from leaving without transferring ownership (simplified: owner can't leave)
         if (portal.owner.toString() === req.user._id.toString()) {
-            return res.status(400).json({ message: 'Owner cannot leave the portal. Transfer ownership first.' });
+            return res
+                .status(400)
+                .json({ message: 'Owner cannot leave the portal. Transfer ownership first.' });
         }
 
         portal.members = portal.members.filter(
@@ -265,7 +278,7 @@ router.post('/:id/leave', protect, async (req, res) => {
         await portal.save();
 
         await User.findByIdAndUpdate(req.user._id, {
-            $pull: { joinedPortals: portal._id }
+            $pull: { joinedPortals: portal._id },
         });
 
         res.json({ message: 'Left portal successfully' });
@@ -311,7 +324,9 @@ router.put('/:id', protect, async (req, res) => {
 router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         if (portal.owner.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Not authorized' });
@@ -319,7 +334,8 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+            const backendUrl =
+                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
@@ -340,7 +356,9 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
 router.post('/:id/banner', protect, upload.single('banner'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         if (portal.owner.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Not authorized' });
@@ -348,7 +366,8 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+            const backendUrl =
+                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
@@ -373,7 +392,9 @@ router.post('/:id/channels', protect, async (req, res) => {
         const { name } = req.body;
         const portal = await Portal.findById(req.params.id);
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         // Authorization: Owner or Admin
         const isOwner = portal.owner.toString() === req.user._id.toString();
@@ -397,7 +418,9 @@ router.post('/:id/channels', protect, async (req, res) => {
 router.delete('/:id/channels/:channelId', protect, async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
@@ -406,7 +429,9 @@ router.delete('/:id/channels/:channelId', protect, async (req, res) => {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        portal.channels = portal.channels.filter(ch => ch._id.toString() !== req.params.channelId);
+        portal.channels = portal.channels.filter(
+            (ch) => ch._id.toString() !== req.params.channelId
+        );
         await portal.save();
         res.json(portal.channels);
     } catch (error) {
@@ -421,7 +446,9 @@ router.put('/:id/channels/:channelId', protect, async (req, res) => {
     try {
         const { name, isPrivate } = req.body;
         const portal = await Portal.findById(req.params.id);
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
@@ -431,10 +458,16 @@ router.put('/:id/channels/:channelId', protect, async (req, res) => {
         }
 
         const channel = portal.channels.id(req.params.channelId);
-        if (!channel) return res.status(404).json({ message: 'Channel not found' });
+        if (!channel) {
+            return res.status(404).json({ message: 'Channel not found' });
+        }
 
-        if (name) channel.name = name;
-        if (isPrivate !== undefined) channel.isPrivate = isPrivate;
+        if (name) {
+            channel.name = name;
+        }
+        if (isPrivate !== undefined) {
+            channel.isPrivate = isPrivate;
+        }
 
         await portal.save();
         res.json(portal.channels);
@@ -442,7 +475,6 @@ router.put('/:id/channels/:channelId', protect, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
-
 
 // --- Member & Role Management ---
 
@@ -454,11 +486,15 @@ router.post('/:id/roles', protect, async (req, res) => {
         const { userId, action } = req.body; // action: 'promote' or 'demote'
         const portal = await Portal.findById(req.params.id);
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         // Only Owner (As Yönetici) can manage roles
         if (portal.owner.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: 'Only the Owner (As Yönetici) can manage roles' });
+            return res
+                .status(403)
+                .json({ message: 'Only the Owner (As Yönetici) can manage roles' });
         }
 
         if (action === 'promote') {
@@ -466,7 +502,7 @@ router.post('/:id/roles', protect, async (req, res) => {
                 portal.admins.push(userId);
             }
         } else if (action === 'demote') {
-            portal.admins = portal.admins.filter(id => id.toString() !== userId);
+            portal.admins = portal.admins.filter((id) => id.toString() !== userId);
         }
 
         await portal.save();
@@ -486,7 +522,9 @@ router.post('/:id/kick', protect, async (req, res) => {
         const { userId } = req.body;
         const portal = await Portal.findById(req.params.id);
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
@@ -506,14 +544,14 @@ router.post('/:id/kick', protect, async (req, res) => {
         }
 
         // Remove from members and admins
-        portal.members = portal.members.filter(id => id.toString() !== userId);
-        portal.admins = portal.admins.filter(id => id.toString() !== userId);
+        portal.members = portal.members.filter((id) => id.toString() !== userId);
+        portal.admins = portal.admins.filter((id) => id.toString() !== userId);
 
         await portal.save();
 
         // Remove from user's joined list
         await User.findByIdAndUpdate(userId, {
-            $pull: { joinedPortals: portal._id }
+            $pull: { joinedPortals: portal._id },
         });
 
         res.json({ message: 'User kicked', userId });
@@ -530,18 +568,24 @@ router.post('/:id/block', protect, async (req, res) => {
         const { userId } = req.body;
         const portal = await Portal.findById(req.params.id);
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
 
-        if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Not authorized' });
-        if (portal.owner.toString() === userId) return res.status(400).json({ message: 'Cannot block owner' });
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+        if (portal.owner.toString() === userId) {
+            return res.status(400).json({ message: 'Cannot block owner' });
+        }
 
         // Remove from members/admins/requests
-        portal.members = portal.members.filter(id => id.toString() !== userId);
-        portal.admins = portal.admins.filter(id => id.toString() !== userId);
-        portal.joinRequests = portal.joinRequests.filter(id => id.toString() !== userId);
+        portal.members = portal.members.filter((id) => id.toString() !== userId);
+        portal.admins = portal.admins.filter((id) => id.toString() !== userId);
+        portal.joinRequests = portal.joinRequests.filter((id) => id.toString() !== userId);
 
         // Add to blocked
         if (!portal.blockedUsers.includes(userId)) {
@@ -552,7 +596,7 @@ router.post('/:id/block', protect, async (req, res) => {
 
         // Remove from user's joined list
         await User.findByIdAndUpdate(userId, {
-            $pull: { joinedPortals: portal._id }
+            $pull: { joinedPortals: portal._id },
         });
 
         res.json({ message: 'User blocked', userId });
@@ -569,14 +613,18 @@ router.post('/:id/unblock', protect, async (req, res) => {
         const { userId } = req.body;
         const portal = await Portal.findById(req.params.id);
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
 
-        if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Not authorized' });
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
 
-        portal.blockedUsers = portal.blockedUsers.filter(id => id.toString() !== userId);
+        portal.blockedUsers = portal.blockedUsers.filter((id) => id.toString() !== userId);
         await portal.save();
 
         res.json({ message: 'User unblocked', userId });
@@ -590,14 +638,21 @@ router.post('/:id/unblock', protect, async (req, res) => {
 // @access  Private (Owner/Admin)
 router.get('/:id/blocked', protect, async (req, res) => {
     try {
-        const portal = await Portal.findById(req.params.id).populate('blockedUsers', 'username profile.displayName profile.avatar');
+        const portal = await Portal.findById(req.params.id).populate(
+            'blockedUsers',
+            'username profile.displayName profile.avatar'
+        );
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         const isOwner = portal.owner.toString() === req.user._id.toString();
-        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
 
-        if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Not authorized' });
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
 
         res.json(portal.blockedUsers);
     } catch (error) {
@@ -613,14 +668,18 @@ router.post('/:id/invite', protect, async (req, res) => {
         const { userId } = req.body;
         const portal = await Portal.findById(req.params.id);
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
-        if (!userId) return res.status(400).json({ message: 'User ID is required' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
 
-        if (!portal.members.some(m => m.toString() === req.user._id.toString())) {
+        if (!portal.members.some((m) => m.toString() === req.user._id.toString())) {
             return res.status(403).json({ message: 'Bu portala üye değilsiniz.' });
         }
 
-        if (portal.members.some(m => m.toString() === userId.toString())) {
+        if (portal.members.some((m) => m.toString() === userId.toString())) {
             return res.status(400).json({ message: 'Bu kullanıcı zaten üye.' });
         }
 
@@ -633,7 +692,7 @@ router.post('/:id/invite', protect, async (req, res) => {
             portalId: req.params.id,
             targetUserId: req.body.userId,
             senderId: req.user?._id,
-            error: error.message
+            error: error.message,
         });
         res.status(500).json({ message: 'Sunucu hatası: ' + error.message });
     }
@@ -653,7 +712,7 @@ router.get('/:id/notifications', protect, async (req, res) => {
         }
 
         // Check if user is admin or owner
-        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
         const isOwner = portal.owner.toString() === req.user._id.toString();
 
         if (!isAdmin && !isOwner) {
@@ -664,16 +723,16 @@ router.get('/:id/notifications', protect, async (req, res) => {
         const recentMembers = portal.members
             .slice(-10)
             .reverse()
-            .map(member => ({
+            .map((member) => ({
                 _id: member._id,
                 username: member.username,
                 profile: member.profile,
-                joinedAt: member.createdAt
+                joinedAt: member.createdAt,
             }));
 
         res.json({
             joinRequests: portal.joinRequests,
-            recentMembers
+            recentMembers,
         });
     } catch (error) {
         console.error('Get notifications error:', error);
@@ -694,7 +753,7 @@ router.post('/:id/approve-member', protect, async (req, res) => {
         }
 
         // Check if user is admin or owner
-        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
         const isOwner = portal.owner.toString() === req.user._id.toString();
 
         if (!isAdmin && !isOwner) {
@@ -702,18 +761,18 @@ router.post('/:id/approve-member', protect, async (req, res) => {
         }
 
         // Check if user is in joinRequests
-        if (!portal.joinRequests.some(r => r.toString() === userId)) {
+        if (!portal.joinRequests.some((r) => r.toString() === userId)) {
             return res.status(400).json({ message: 'Bu kullanıcı için bekleyen istek yok' });
         }
 
         // Remove from joinRequests and add to members
-        portal.joinRequests = portal.joinRequests.filter(r => r.toString() !== userId);
+        portal.joinRequests = portal.joinRequests.filter((r) => r.toString() !== userId);
         portal.members.push(userId);
         await portal.save();
 
         // Update user's joinedPortals
         await User.findByIdAndUpdate(userId, {
-            $addToSet: { joinedPortals: portal._id }
+            $addToSet: { joinedPortals: portal._id },
         });
 
         res.json({ message: 'Üyelik isteği onaylandı', userId });
@@ -736,7 +795,7 @@ router.post('/:id/reject-member', protect, async (req, res) => {
         }
 
         // Check if user is admin or owner
-        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
         const isOwner = portal.owner.toString() === req.user._id.toString();
 
         if (!isAdmin && !isOwner) {
@@ -744,12 +803,12 @@ router.post('/:id/reject-member', protect, async (req, res) => {
         }
 
         // Check if user is in joinRequests
-        if (!portal.joinRequests.some(r => r.toString() === userId)) {
+        if (!portal.joinRequests.some((r) => r.toString() === userId)) {
             return res.status(400).json({ message: 'Bu kullanıcı için bekleyen istek yok' });
         }
 
         // Remove from joinRequests
-        portal.joinRequests = portal.joinRequests.filter(r => r.toString() !== userId);
+        portal.joinRequests = portal.joinRequests.filter((r) => r.toString() !== userId);
         await portal.save();
 
         res.json({ message: 'Üyelik isteği reddedildi', userId });

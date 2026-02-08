@@ -7,7 +7,7 @@ export const useUI = () => useContext(UIContext);
 export const UIProvider = ({ children }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
+    const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
     const closeSidebar = () => setIsSidebarOpen(false);
     const openSidebar = () => setIsSidebarOpen(true);
 

@@ -27,20 +27,15 @@ const BOTS = [
         email: 'techbot@oxypace.com',
         password: 'password123',
         channelId: '69835873dff9f89766c44c26', // Fastest Technology NEWS
-        feeds: [
-            'http://feeds.bbci.co.uk/news/technology/rss.xml',
-            'https://techcrunch.com/feed/'
-        ]
+        feeds: ['http://feeds.bbci.co.uk/news/technology/rss.xml', 'https://techcrunch.com/feed/'],
     },
     {
         name: 'Sports Bot',
         email: 'sportsbot@oxypace.com',
         password: 'password123',
         channelId: '69835858dff9f89766c44c20', // Fastest Sports NEWS
-        feeds: [
-            'http://feeds.bbci.co.uk/sport/rss.xml'
-        ]
-    }
+        feeds: ['http://feeds.bbci.co.uk/sport/rss.xml'],
+    },
 ];
 
 const mediaHandler = new MediaHandler();
@@ -56,14 +51,20 @@ async function addToHistory(guid, botName) {
     try {
         await BotHistory.create({ guid, botName });
     } catch (error) {
-        if (error.code !== 11000) { // Ignore duplicate key errors
+        if (error.code !== 11000) {
+            // Ignore duplicate key errors
             console.error('Error saving history:', error.message);
         }
     }
 }
 
 function extractImage(item) {
-    if (item.enclosure && item.enclosure.url && item.enclosure.type && item.enclosure.type.startsWith('image')) {
+    if (
+        item.enclosure &&
+        item.enclosure.url &&
+        item.enclosure.type &&
+        item.enclosure.type.startsWith('image')
+    ) {
         return item.enclosure.url;
     }
     if (item['media:content'] && item['media:content'].$.url) {
@@ -71,7 +72,9 @@ function extractImage(item) {
     }
     const imgRegex = /<img[^>]+src="([^">]+)"/g;
     const match = imgRegex.exec(item.content || item['content:encoded']);
-    if (match) return match[1];
+    if (match) {
+        return match[1];
+    }
     return null;
 }
 
@@ -92,15 +95,22 @@ async function runBot(apiUrl) {
                 let processedCount = 0;
 
                 for (const item of items) {
-                    if (processedCount >= 3) break;
+                    if (processedCount >= 3) {
+                        break;
+                    }
 
                     const guid = item.guid || item.link;
-                    if (await isAlreadyShared(guid)) continue;
+                    if (await isAlreadyShared(guid)) {
+                        continue;
+                    }
 
                     console.log(`New item found: ${item.title}`);
 
                     const form = new FormData();
-                    form.append('content', `${item.title}\n\n${item.contentSnippet || ''}\n\nRead more: ${item.link}`);
+                    form.append(
+                        'content',
+                        `${item.title}\n\n${item.contentSnippet || ''}\n\nRead more: ${item.link}`
+                    );
                     form.append('portalId', '69485e416ce2eac8943a5de2'); // Oxypace Global
                     form.append('channel', botConfig.channelId || 'general');
 
@@ -118,7 +128,7 @@ async function runBot(apiUrl) {
                     try {
                         const headers = {
                             ...auth.getHeaders(),
-                            ...form.getHeaders()
+                            ...form.getHeaders(),
                         };
 
                         await axios.post(`${apiUrl}/posts`, form, { headers });
@@ -127,13 +137,16 @@ async function runBot(apiUrl) {
                         await addToHistory(guid, botConfig.name);
                         processedCount++;
                     } catch (postError) {
-                        console.error(`Failed to post: ${postError.response?.data?.message || postError.message}`);
+                        console.error(
+                            `Failed to post: ${postError.response?.data?.message || postError.message}`
+                        );
                     } finally {
-                        if (localImagePath) mediaHandler.cleanup(localImagePath);
+                        if (localImagePath) {
+                            mediaHandler.cleanup(localImagePath);
+                        }
                     }
                 }
             }
-
         } catch (error) {
             console.error(`Error processing ${botConfig.name}:`, error.message);
         }

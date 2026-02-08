@@ -4,7 +4,7 @@ import './ImageCropper.css';
 
 /**
  * ImageCropper - Sıfırdan Canvas API ile görsel kırpma bileşeni
- * 
+ *
  * Avatar: Sabit 1:1 daire, slider ile zoom
  * Cover: Serbest boyut, kenarlardan resize, mouse wheel zoom
  */
@@ -60,7 +60,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             x: (containerRect.width - size.width) / 2,
             y: (containerRect.height - size.height) / 2,
             width: size.width,
-            height: size.height
+            height: size.height,
         };
     }, [getCropAreaSize]);
 
@@ -92,7 +92,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                     const scaledHeight = img.height * initialZoom;
                     setPosition({
                         x: (containerRect.width - scaledWidth) / 2,
-                        y: (containerRect.height - scaledHeight) / 2
+                        y: (containerRect.height - scaledHeight) / 2,
                     });
                 }
                 setLoading(false);
@@ -130,32 +130,35 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         setIsDragging(true);
         setDragStart({
             x: clientX - position.x,
-            y: clientY - position.y
+            y: clientY - position.y,
         });
     };
 
     // Sürükleme
-    const handleDragMove = useCallback((e) => {
-        if (!isDragging || !imageObj || isResizing) return;
+    const handleDragMove = useCallback(
+        (e) => {
+            if (!isDragging || !imageObj || isResizing) return;
 
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        const newPosition = {
-            x: clientX - dragStart.x,
-            y: clientY - dragStart.y
-        };
+            const newPosition = {
+                x: clientX - dragStart.x,
+                y: clientY - dragStart.y,
+            };
 
-        const cropArea = getCropArea();
-        const clampedPosition = clampPosition(
-            newPosition,
-            { width: imageObj.width, height: imageObj.height },
-            zoom,
-            cropArea
-        );
+            const cropArea = getCropArea();
+            const clampedPosition = clampPosition(
+                newPosition,
+                { width: imageObj.width, height: imageObj.height },
+                zoom,
+                cropArea
+            );
 
-        setPosition(clampedPosition);
-    }, [isDragging, imageObj, dragStart, zoom, getCropArea, isResizing]);
+            setPosition(clampedPosition);
+        },
+        [isDragging, imageObj, dragStart, zoom, getCropArea, isResizing]
+    );
 
     // Sürükleme bitir
     const handleDragEnd = () => {
@@ -176,7 +179,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             x: clientX,
             y: clientY,
             width: cropSize.width,
-            height: cropSize.height
+            height: cropSize.height,
         });
     };
 
@@ -205,47 +208,50 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
         // Max dimensions such that crop stays within image
         const maxWidth = Math.min(
-            (cropCenterX - imageLeft) * 2,  // Left edge constraint
-            (imageRight - cropCenterX) * 2   // Right edge constraint
+            (cropCenterX - imageLeft) * 2, // Left edge constraint
+            (imageRight - cropCenterX) * 2 // Right edge constraint
         );
         const maxHeight = Math.min(
-            (cropCenterY - imageTop) * 2,    // Top edge constraint
-            (imageBottom - cropCenterY) * 2  // Bottom edge constraint
+            (cropCenterY - imageTop) * 2, // Top edge constraint
+            (imageBottom - cropCenterY) * 2 // Bottom edge constraint
         );
 
         return {
             width: Math.max(MIN_CROP_WIDTH, maxWidth),
-            height: Math.max(MIN_CROP_HEIGHT, maxHeight)
+            height: Math.max(MIN_CROP_HEIGHT, maxHeight),
         };
     }, [imageObj, zoom, position]);
 
-    const handleResizeMove = useCallback((e) => {
-        if (!isResizing || !resizeHandle || !imageObj) return;
+    const handleResizeMove = useCallback(
+        (e) => {
+            if (!isResizing || !resizeHandle || !imageObj) return;
 
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        const deltaX = clientX - resizeStart.x;
-        const deltaY = clientY - resizeStart.y;
+            const deltaX = clientX - resizeStart.x;
+            const deltaY = clientY - resizeStart.y;
 
-        let newWidth = resizeStart.width;
-        let newHeight = resizeStart.height;
+            let newWidth = resizeStart.width;
+            let newHeight = resizeStart.height;
 
-        // Handle different resize directions
-        if (resizeHandle.includes('e')) newWidth += deltaX;
-        if (resizeHandle.includes('w')) newWidth -= deltaX;
-        if (resizeHandle.includes('s')) newHeight += deltaY;
-        if (resizeHandle.includes('n')) newHeight -= deltaY;
+            // Handle different resize directions
+            if (resizeHandle.includes('e')) newWidth += deltaX;
+            if (resizeHandle.includes('w')) newWidth -= deltaX;
+            if (resizeHandle.includes('s')) newHeight += deltaY;
+            if (resizeHandle.includes('n')) newHeight -= deltaY;
 
-        // Get dynamic max based on image bounds
-        const maxCrop = getMaxCropSize();
+            // Get dynamic max based on image bounds
+            const maxCrop = getMaxCropSize();
 
-        // Clamp to min and dynamic max
-        newWidth = Math.max(MIN_CROP_WIDTH, Math.min(maxCrop.width, newWidth));
-        newHeight = Math.max(MIN_CROP_HEIGHT, Math.min(maxCrop.height, newHeight));
+            // Clamp to min and dynamic max
+            newWidth = Math.max(MIN_CROP_WIDTH, Math.min(maxCrop.width, newWidth));
+            newHeight = Math.max(MIN_CROP_HEIGHT, Math.min(maxCrop.height, newHeight));
 
-        setCropSize({ width: newWidth, height: newHeight });
-    }, [isResizing, resizeHandle, resizeStart, imageObj, getMaxCropSize]);
+            setCropSize({ width: newWidth, height: newHeight });
+        },
+        [isResizing, resizeHandle, resizeStart, imageObj, getMaxCropSize]
+    );
 
     const handleResizeEnd = () => {
         setIsResizing(false);
@@ -287,64 +293,67 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
     }, [isResizing, handleResizeMove]);
 
     // Mouse wheel zoom for both modes
-    const handleWheel = useCallback((e) => {
-        if (!imageObj) return;
+    const handleWheel = useCallback(
+        (e) => {
+            if (!imageObj) return;
 
-        e.preventDefault();
+            e.preventDefault();
 
-        // Larger delta for faster zooming, proportional to current zoom
-        const zoomSpeed = 0.1;
-        const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+            // Larger delta for faster zooming, proportional to current zoom
+            const zoomSpeed = 0.1;
+            const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
 
-        const container = containerRef.current;
-        if (!container) return;
+            const container = containerRef.current;
+            if (!container) return;
 
-        const containerRect = container.getBoundingClientRect();
-        const cropArea = getCropArea();
+            const containerRect = container.getBoundingClientRect();
+            const cropArea = getCropArea();
 
-        // Minimum zoom: image should at least cover the crop area
-        // Allow zooming out until the smallest dimension just covers the crop
-        const minZoomForCrop = Math.max(
-            cropArea.width / imageObj.width,
-            cropArea.height / imageObj.height
-        );
-
-        // Allow slightly more zoom out for flexibility (80% of minimum)
-        const absoluteMinZoom = minZoomForCrop * 0.5;
-
-        // Maximum zoom: up to 10x for detailed cropping
-        const maxZoom = 10;
-
-        // Calculate new zoom
-        const newZoom = zoom * (1 + delta);
-        const clampedZoom = Math.max(absoluteMinZoom, Math.min(maxZoom, newZoom));
-
-        // Zoom değişirken merkezi koru
-        const cropCenterX = cropArea.x + cropArea.width / 2;
-        const cropCenterY = cropArea.y + cropArea.height / 2;
-
-        const imageCenterX = (cropCenterX - position.x) / zoom;
-        const imageCenterY = (cropCenterY - position.y) / zoom;
-
-        const newPosition = {
-            x: cropCenterX - imageCenterX * clampedZoom,
-            y: cropCenterY - imageCenterY * clampedZoom
-        };
-
-        // Only clamp position if zoomed in enough to cover crop area
-        let finalPosition = newPosition;
-        if (clampedZoom >= minZoomForCrop) {
-            finalPosition = clampPosition(
-                newPosition,
-                { width: imageObj.width, height: imageObj.height },
-                clampedZoom,
-                cropArea
+            // Minimum zoom: image should at least cover the crop area
+            // Allow zooming out until the smallest dimension just covers the crop
+            const minZoomForCrop = Math.max(
+                cropArea.width / imageObj.width,
+                cropArea.height / imageObj.height
             );
-        }
 
-        setZoom(clampedZoom);
-        setPosition(finalPosition);
-    }, [imageObj, zoom, position, getCropArea]);
+            // Allow slightly more zoom out for flexibility (80% of minimum)
+            const absoluteMinZoom = minZoomForCrop * 0.5;
+
+            // Maximum zoom: up to 10x for detailed cropping
+            const maxZoom = 10;
+
+            // Calculate new zoom
+            const newZoom = zoom * (1 + delta);
+            const clampedZoom = Math.max(absoluteMinZoom, Math.min(maxZoom, newZoom));
+
+            // Zoom değişirken merkezi koru
+            const cropCenterX = cropArea.x + cropArea.width / 2;
+            const cropCenterY = cropArea.y + cropArea.height / 2;
+
+            const imageCenterX = (cropCenterX - position.x) / zoom;
+            const imageCenterY = (cropCenterY - position.y) / zoom;
+
+            const newPosition = {
+                x: cropCenterX - imageCenterX * clampedZoom,
+                y: cropCenterY - imageCenterY * clampedZoom,
+            };
+
+            // Only clamp position if zoomed in enough to cover crop area
+            let finalPosition = newPosition;
+            if (clampedZoom >= minZoomForCrop) {
+                finalPosition = clampPosition(
+                    newPosition,
+                    { width: imageObj.width, height: imageObj.height },
+                    clampedZoom,
+                    cropArea
+                );
+            }
+
+            setZoom(clampedZoom);
+            setPosition(finalPosition);
+        },
+        [imageObj, zoom, position, getCropArea]
+    );
 
     // Attach wheel listener for all modes
     useEffect(() => {
@@ -378,7 +387,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
         const newPosition = {
             x: cropCenterX - imageCenterX * clampedZoom,
-            y: cropCenterY - imageCenterY * clampedZoom
+            y: cropCenterY - imageCenterY * clampedZoom,
         };
 
         const clampedPosition = clampPosition(
@@ -401,13 +410,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             const cropArea = getCropArea();
             const outputSize = getOutputSize();
 
-            const blob = await cropImage(
-                imageObj,
-                cropArea,
-                zoom,
-                position,
-                outputSize
-            );
+            const blob = await cropImage(imageObj, cropArea, zoom, position, outputSize);
 
             onComplete(blob);
         } catch (err) {
@@ -454,7 +457,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                                     style={{
                                         transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
                                         transformOrigin: '0 0',
-                                        cursor: isDragging ? 'grabbing' : 'grab'
+                                        cursor: isDragging ? 'grabbing' : 'grab',
                                     }}
                                     draggable="false"
                                 />
@@ -475,7 +478,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                                     style={{
                                         width: `calc(50% - ${cropAreaSize.width / 2}px)`,
                                         top: `calc(50% - ${cropAreaSize.height / 2}px)`,
-                                        height: `${cropAreaSize.height}px`
+                                        height: `${cropAreaSize.height}px`,
                                     }}
                                 />
                                 <div
@@ -483,7 +486,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                                     style={{
                                         width: `calc(50% - ${cropAreaSize.width / 2}px)`,
                                         top: `calc(50% - ${cropAreaSize.height / 2}px)`,
-                                        height: `${cropAreaSize.height}px`
+                                        height: `${cropAreaSize.height}px`,
                                     }}
                                 />
                             </div>
@@ -493,26 +496,60 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                                 className={`cropper-frame ${mode === 'avatar' ? 'cropper-frame-circle' : 'cropper-frame-rect'}`}
                                 style={{
                                     width: `${cropAreaSize.width}px`,
-                                    height: `${cropAreaSize.height}px`
+                                    height: `${cropAreaSize.height}px`,
                                 }}
                             >
                                 {/* Resize handles for cover mode */}
                                 {mode === 'cover' && (
                                     <>
-                                        <div className="resize-handle resize-n" onMouseDown={(e) => handleResizeStart(e, 'n')} onTouchStart={(e) => handleResizeStart(e, 'n')} />
-                                        <div className="resize-handle resize-s" onMouseDown={(e) => handleResizeStart(e, 's')} onTouchStart={(e) => handleResizeStart(e, 's')} />
-                                        <div className="resize-handle resize-e" onMouseDown={(e) => handleResizeStart(e, 'e')} onTouchStart={(e) => handleResizeStart(e, 'e')} />
-                                        <div className="resize-handle resize-w" onMouseDown={(e) => handleResizeStart(e, 'w')} onTouchStart={(e) => handleResizeStart(e, 'w')} />
-                                        <div className="resize-handle resize-corner resize-ne" onMouseDown={(e) => handleResizeStart(e, 'ne')} onTouchStart={(e) => handleResizeStart(e, 'ne')} />
-                                        <div className="resize-handle resize-corner resize-nw" onMouseDown={(e) => handleResizeStart(e, 'nw')} onTouchStart={(e) => handleResizeStart(e, 'nw')} />
-                                        <div className="resize-handle resize-corner resize-se" onMouseDown={(e) => handleResizeStart(e, 'se')} onTouchStart={(e) => handleResizeStart(e, 'se')} />
-                                        <div className="resize-handle resize-corner resize-sw" onMouseDown={(e) => handleResizeStart(e, 'sw')} onTouchStart={(e) => handleResizeStart(e, 'sw')} />
+                                        <div
+                                            className="resize-handle resize-n"
+                                            onMouseDown={(e) => handleResizeStart(e, 'n')}
+                                            onTouchStart={(e) => handleResizeStart(e, 'n')}
+                                        />
+                                        <div
+                                            className="resize-handle resize-s"
+                                            onMouseDown={(e) => handleResizeStart(e, 's')}
+                                            onTouchStart={(e) => handleResizeStart(e, 's')}
+                                        />
+                                        <div
+                                            className="resize-handle resize-e"
+                                            onMouseDown={(e) => handleResizeStart(e, 'e')}
+                                            onTouchStart={(e) => handleResizeStart(e, 'e')}
+                                        />
+                                        <div
+                                            className="resize-handle resize-w"
+                                            onMouseDown={(e) => handleResizeStart(e, 'w')}
+                                            onTouchStart={(e) => handleResizeStart(e, 'w')}
+                                        />
+                                        <div
+                                            className="resize-handle resize-corner resize-ne"
+                                            onMouseDown={(e) => handleResizeStart(e, 'ne')}
+                                            onTouchStart={(e) => handleResizeStart(e, 'ne')}
+                                        />
+                                        <div
+                                            className="resize-handle resize-corner resize-nw"
+                                            onMouseDown={(e) => handleResizeStart(e, 'nw')}
+                                            onTouchStart={(e) => handleResizeStart(e, 'nw')}
+                                        />
+                                        <div
+                                            className="resize-handle resize-corner resize-se"
+                                            onMouseDown={(e) => handleResizeStart(e, 'se')}
+                                            onTouchStart={(e) => handleResizeStart(e, 'se')}
+                                        />
+                                        <div
+                                            className="resize-handle resize-corner resize-sw"
+                                            onMouseDown={(e) => handleResizeStart(e, 'sw')}
+                                            onTouchStart={(e) => handleResizeStart(e, 'sw')}
+                                        />
                                     </>
                                 )}
                             </div>
 
                             {/* Zoom hint for all modes */}
-                            <div className="cropper-hint">Yakınlaştırmak için fare tekerleğini kullanın</div>
+                            <div className="cropper-hint">
+                                Yakınlaştırmak için fare tekerleğini kullanın
+                            </div>
                         </>
                     )}
                 </div>

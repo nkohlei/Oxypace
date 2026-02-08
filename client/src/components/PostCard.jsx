@@ -50,7 +50,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
             if (data && data[0]) {
                 // Google returns array of translated segments
-                const translated = data[0].map(segment => segment[0]).join('');
+                const translated = data[0].map((segment) => segment[0]).join('');
                 setTranslatedText(translated);
                 setIsTranslated(true);
             }
@@ -66,7 +66,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const author = post.author || {
         _id: 'deleted',
         username: 'Silinmiş Kullanıcı',
-        profile: { displayName: 'Silinmiş Kullanıcı', avatar: null }
+        profile: { displayName: 'Silinmiş Kullanıcı', avatar: null },
     };
 
     const isOwnPost = user?._id === author._id;
@@ -75,7 +75,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     useEffect(() => {
         if (user && user.savedPosts) {
             // Robust comparison
-            const isSaved = user.savedPosts.some(id => String(id) === String(post._id));
+            const isSaved = user.savedPosts.some((id) => String(id) === String(post._id));
             setSaved(isSaved);
         }
     }, [user, post._id]);
@@ -139,7 +139,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     newSavedPosts = [...currentSavedPosts, post._id];
                 } else {
                     // Remove from saved
-                    newSavedPosts = currentSavedPosts.filter(id => String(id) !== String(post._id));
+                    newSavedPosts = currentSavedPosts.filter(
+                        (id) => String(id) !== String(post._id)
+                    );
                 }
 
                 updateUser({ ...user, savedPosts: newSavedPosts });
@@ -291,16 +293,21 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
             {/* Right Column: Content */}
             <div className="post-right">
                 {post.isPinned && (
-                    <div className="pinned-indicator" style={{
-                        fontSize: '11px',
-                        color: 'var(--text-secondary)',
-                        fontWeight: '700',
-                        marginBottom: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+                    <div
+                        className="pinned-indicator"
+                        style={{
+                            fontSize: '11px',
+                            color: 'var(--text-secondary)',
+                            fontWeight: '700',
+                            marginBottom: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                        }}
+                    >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+                        </svg>
                         Sabitlendi
                     </div>
                 )}
@@ -311,7 +318,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             className="header-info-link"
                             onClick={handleProfileClick}
                         >
-                            <span className="author-name">{post.author.profile?.displayName || post.author.username}</span>
+                            <span className="author-name">
+                                {post.author.profile?.displayName || post.author.username}
+                            </span>
                             <Badge type={post.author.verificationBadge} size={16} />
                             <span className="author-username">@{post.author.username}</span>
                         </Link>
@@ -321,7 +330,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     {/* Post action buttons - top right */}
                     <div className="post-action-buttons">
                         {/* Three-dot menu button (horizontal) */}
-                        <button className="post-action-btn" title="Daha Fazla" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+                        <button
+                            className="post-action-btn"
+                            title="Daha Fazla"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMenu(!showMenu);
+                            }}
+                        >
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                                 <circle cx="5" cy="12" r="2"></circle>
                                 <circle cx="12" cy="12" r="2"></circle>
@@ -331,24 +347,60 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                         {/* Floating Context Menu */}
                         {showMenu && (
-                            <div className="post-floating-menu" onClick={(e) => e.stopPropagation()}>
-                                <button className="menu-item" onClick={() => { handleSave(); setShowMenu(false); }}>
+                            <div
+                                className="post-floating-menu"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    className="menu-item"
+                                    onClick={() => {
+                                        handleSave();
+                                        setShowMenu(false);
+                                    }}
+                                >
                                     {saved ? 'Kaydı Kaldır' : 'Kaydet'}
-                                    <svg className="menu-icon-right" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                                    <svg
+                                        className="menu-icon-right"
+                                        viewBox="0 0 24 24"
+                                        fill={saved ? 'currentColor' : 'none'}
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
                                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                                     </svg>
                                 </button>
                                 <button className="menu-item" onClick={handleShare}>
                                     Gönder
-                                    <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                    <svg
+                                        className="menu-icon-right"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
                                 </button>
 
                                 {isAdmin && (
                                     <>
                                         <div className="menu-divider"></div>
-                                        <button className="menu-item" onClick={() => { onPin(post._id); setShowMenu(false); }}>
+                                        <button
+                                            className="menu-item"
+                                            onClick={() => {
+                                                onPin(post._id);
+                                                setShowMenu(false);
+                                            }}
+                                        >
                                             {post.isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}
-                                            <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <svg
+                                                className="menu-icon-right"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
                                                 {post.isPinned ? (
                                                     <line x1="2" y1="2" x2="22" y2="22"></line>
                                                 ) : (
@@ -362,14 +414,42 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 <div className="menu-divider"></div>
 
                                 {isOwnPost && (
-                                    <button className="menu-item delete-item" onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowDeleteConfirm(true); }}>
+                                    <button
+                                        className="menu-item delete-item"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowMenu(false);
+                                            setShowDeleteConfirm(true);
+                                        }}
+                                    >
                                         Sil
-                                        <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        <svg
+                                            className="menu-icon-right"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
                                     </button>
                                 )}
-                                <button className="menu-item delete-item" onClick={() => handleMenuAction('report')}>
+                                <button
+                                    className="menu-item delete-item"
+                                    onClick={() => handleMenuAction('report')}
+                                >
                                     Bildir
-                                    <svg className="menu-icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                                    <svg
+                                        className="menu-icon-right"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
+                                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                                        <line x1="4" y1="22" x2="4" y2="15"></line>
+                                    </svg>
                                 </button>
                             </div>
                         )}
@@ -378,64 +458,75 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                 <div className="post-content-text">
                     <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {isTranslated && translatedText ? translatedText : linkifyText(post.content)}
+                        {isTranslated && translatedText
+                            ? translatedText
+                            : linkifyText(post.content)}
                     </p>
                     {post.content && (
                         <button
                             className="translation-toggle"
-                            onClick={(e) => { e.stopPropagation(); handleTranslate(); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleTranslate();
+                            }}
                         >
-                            {isTranslating ? 'Çevriliyor...' : (isTranslated ? 'Orijinalini gör' : 'Çevirisini gör')}
+                            {isTranslating
+                                ? 'Çevriliyor...'
+                                : isTranslated
+                                  ? 'Orijinalini gör'
+                                  : 'Çevirisini gör'}
                         </button>
                     )}
                 </div>
 
                 {/* Media */}
-                {
-                    post.media && (
-                        <div className="post-media" onClick={(e) => e.stopPropagation()}>
-                            {post.mediaType === 'video' ? (
-                                <video controls><source src={getImageUrl(post.media)} /></video>
-                            ) : (
-                                <img
-                                    src={getImageUrl(post.media)}
-                                    alt="Post media"
-                                    loading="lazy"
-                                    onError={(e) => {
-                                        console.error("Image load failed:", getImageUrl(post.media));
-                                        e.target.style.display = 'none';
-                                    }}
-                                />
-                            )}
-                        </div>
-                    )
-                }
+                {post.media && (
+                    <div className="post-media" onClick={(e) => e.stopPropagation()}>
+                        {post.mediaType === 'video' ? (
+                            <video controls>
+                                <source src={getImageUrl(post.media)} />
+                            </video>
+                        ) : (
+                            <img
+                                src={getImageUrl(post.media)}
+                                alt="Post media"
+                                loading="lazy"
+                                onError={(e) => {
+                                    console.error('Image load failed:', getImageUrl(post.media));
+                                    e.target.style.display = 'none';
+                                }}
+                            />
+                        )}
+                    </div>
+                )}
 
                 {/* No Actions displayed below content */}
-
             </div>
 
             {/* Delete Modal */}
-            {
-                showDeleteConfirm && (
-                    <div className="delete-confirm-overlay" onClick={(e) => e.stopPropagation()}>
-                        <div className="delete-confirm-modal">
-                            <h3>Gönderin Silinecek!</h3>
-                            <p>Emin misin?</p>
-                            <div className="confirm-buttons">
-                                <button className="confirm-btn btn-cancel" onClick={() => setShowDeleteConfirm(false)}>İptal</button>
-                                <button className="confirm-btn btn-delete" onClick={handleDelete}>Sil</button>
-                            </div>
+            {showDeleteConfirm && (
+                <div className="delete-confirm-overlay" onClick={(e) => e.stopPropagation()}>
+                    <div className="delete-confirm-modal">
+                        <h3>Gönderin Silinecek!</h3>
+                        <p>Emin misin?</p>
+                        <div className="confirm-buttons">
+                            <button
+                                className="confirm-btn btn-cancel"
+                                onClick={() => setShowDeleteConfirm(false)}
+                            >
+                                İptal
+                            </button>
+                            <button className="confirm-btn btn-delete" onClick={handleDelete}>
+                                Sil
+                            </button>
                         </div>
                     </div>
-                )
-            }
+                </div>
+            )}
 
-            {
-                showShareModal && (
-                    <ShareModal postId={post._id} onClose={() => setShowShareModal(false)} />
-                )
-            }
+            {showShareModal && (
+                <ShareModal postId={post._id} onClose={() => setShowShareModal(false)} />
+            )}
         </article>
     );
 };

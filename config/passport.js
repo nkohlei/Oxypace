@@ -12,7 +12,7 @@ export const configurePassport = () => {
                     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
                     callbackURL: process.env.GOOGLE_CALLBACK_URL,
                     proxy: true,
-                    passReqToCallback: true
+                    passReqToCallback: true,
                 },
                 async (req, accessToken, refreshToken, profile, done) => {
                     try {
@@ -33,18 +33,19 @@ export const configurePassport = () => {
                             return done(null, user);
                         }
 
-                        // User doesn't exist? Return TEMP profile. 
+                        // User doesn't exist? Return TEMP profile.
                         // The Controller will decide whether to allow Registration or Reject (Login flow)
-                        console.log('✅ New User detected. Returning temp profile for controller decision.');
+                        console.log(
+                            '✅ New User detected. Returning temp profile for controller decision.'
+                        );
                         const tempUser = {
                             _isTemp: true,
                             googleId: profile.id,
                             email: profile.emails[0].value,
                             displayName: profile.displayName,
-                            avatar: profile.photos[0]?.value || ''
+                            avatar: profile.photos[0]?.value || '',
                         };
                         return done(null, tempUser);
-
                     } catch (error) {
                         console.error('Passport Strategy Error:', error);
                         done(error, null);

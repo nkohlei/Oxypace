@@ -41,7 +41,9 @@ const ForgotPassword = () => {
                     <div className="success-message" style={{ textAlign: 'center' }}>
                         <p>{message}</p>
                         <br />
-                        <Link to="/reset-password" className="btn btn-primary">Kodu Girin</Link>
+                        <Link to="/reset-password" className="btn btn-primary">
+                            Kodu Girin
+                        </Link>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="auth-form">
@@ -66,7 +68,9 @@ const ForgotPassword = () => {
                 )}
 
                 <div className="auth-footer">
-                    <Link to="/login" className="auth-link">Giriş Yap'a Dön</Link>
+                    <Link to="/login" className="auth-link">
+                        Giriş Yap'a Dön
+                    </Link>
                 </div>
             </div>
         </div>

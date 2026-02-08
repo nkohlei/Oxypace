@@ -4,6 +4,13 @@ import crypto from 'crypto';
 import passport from 'passport';
 import User from '../models/User.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email.js';
+import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rate-limit.js';
+import {
+    registerValidation,
+    loginValidation,
+    passwordResetValidation,
+    newPasswordValidation,
+} from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -17,7 +24,7 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 // @desc    Register new user
 // @access  Public
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, registerValidation, async (req, res) => {
     try {
         const { email, username, password } = req.body;
 
@@ -113,7 +120,7 @@ router.get('/verify-email', async (req, res) => {
 // @route   POST /api/auth/login
 // @desc    Login user
 // @access  Public
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, loginValidation, async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -152,7 +159,7 @@ router.post('/login', async (req, res) => {
                 profile: user.profile,
                 joinedPortals: user.joinedPortals,
                 isAdmin: user.isAdmin,
-                verificationBadge: user.verificationBadge
+                verificationBadge: user.verificationBadge,
             },
         });
     } catch (error) {
@@ -164,10 +171,11 @@ router.post('/login', async (req, res) => {
 // @route   GET /api/auth/google
 // @desc    Initiate Google OAuth (Client handles intent)
 // @access  Public
-router.get('/google',
+router.get(
+    '/google',
     passport.authenticate('google', {
         scope: ['profile', 'email'],
-        prompt: 'select_account'
+        prompt: 'select_account',
     })
 );
 
@@ -175,12 +183,15 @@ router.get('/google',
 router.get('/google/login', (req, res) => res.redirect('/api/auth/google'));
 router.get('/google/register', (req, res) => res.redirect('/api/auth/google'));
 
-
 // @route   GET /api/auth/google/callback
 // @desc    Google OAuth callback -> Redirect to Frontend Processor
 // @access  Public
-router.get('/google/callback',
-    passport.authenticate('google', { session: false, failureRedirect: '/login?error=GoogleAuthFailed' }),
+router.get(
+    '/google/callback',
+    passport.authenticate('google', {
+        session: false,
+        failureRedirect: '/login?error=GoogleAuthFailed',
+    }),
     (req, res) => {
         // User here is either a real DB user or a Temp Link object from Passport
         const user = req.user;
@@ -192,10 +203,12 @@ router.get('/google/callback',
             googleId: user.googleId,
             email: user.email,
             isNew: !!user._isTemp,
-            tempProfile: user._isTemp ? {
-                displayName: user.displayName,
-                avatar: user.avatar
-            } : null
+            tempProfile: user._isTemp
+                ? {
+                      displayName: user.displayName,
+                      avatar: user.avatar,
+                  }
+                : null,
         };
 
         const processToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '5m' });
@@ -212,7 +225,9 @@ router.post('/google/validate', async (req, res) => {
     try {
         const { token } = req.body;
 
-        if (!token) return res.status(400).json({ message: 'No token provided' });
+        if (!token) {
+            return res.status(400).json({ message: 'No token provided' });
+        }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
@@ -226,7 +241,7 @@ router.post('/google/validate', async (req, res) => {
             console.log('✨ Smart Auth: New User detected -> Directing to Onboarding');
             return res.json({
                 action: 'onboarding',
-                preToken: token
+                preToken: token,
             });
         } else {
             // Existing User -> Always Login
@@ -237,10 +252,9 @@ router.post('/google/validate', async (req, res) => {
             return res.json({
                 action: 'login',
                 token: realToken,
-                user: user
+                user: user,
             });
         }
-
     } catch (error) {
         console.error('Validation Error:', error);
         res.status(500).json({ message: 'Authentication validation failed' });
@@ -298,10 +312,9 @@ router.post('/google/complete', async (req, res) => {
                 profile: user.profile,
                 joinedPortals: [],
                 isAdmin: user.isAdmin,
-                verificationBadge: user.verificationBadge
-            }
+                verificationBadge: user.verificationBadge,
+            },
         });
-
     } catch (error) {
         console.error('Registration completion error:', error);
         res.status(500).json({ message: 'Registration failed or token expired' });
@@ -311,7 +324,7 @@ router.post('/google/complete', async (req, res) => {
 // @route   POST /api/auth/forgot-password
 // @desc    Request password reset
 // @access  Public
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, passwordResetValidation, async (req, res) => {
     try {
         const { email } = req.body;
 
@@ -319,7 +332,9 @@ router.post('/forgot-password', async (req, res) => {
 
         if (!user) {
             // Security: Don't reveal if user exists
-            return res.json({ message: 'If an account exists with this email, a reset code has been sent.' });
+            return res.json({
+                message: 'If an account exists with this email, a reset code has been sent.',
+            });
         }
 
         // Generate 6-digit code
@@ -333,7 +348,9 @@ router.post('/forgot-password', async (req, res) => {
 
         try {
             await sendPasswordResetEmail(user.email, user.username, resetCode);
-            res.json({ message: 'If an account exists with this email, a reset code has been sent.' });
+            res.json({
+                message: 'If an account exists with this email, a reset code has been sent.',
+            });
         } catch (emailError) {
             user.resetPasswordToken = undefined;
             user.resetPasswordExpires = undefined;
@@ -349,7 +366,7 @@ router.post('/forgot-password', async (req, res) => {
 // @route   POST /api/auth/reset-password
 // @desc    Reset password
 // @access  Public
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', newPasswordValidation, async (req, res) => {
     try {
         const { email, code, newPassword } = req.body;
 

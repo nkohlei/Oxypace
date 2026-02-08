@@ -1,4 +1,3 @@
-
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 
@@ -6,13 +5,13 @@ const MembersSidebar = ({ members = [] }) => {
     const { onlineUsers } = useSocket();
 
     // Filter members based on socket status
-    const online = members.filter(m => {
+    const online = members.filter((m) => {
         // Handle both string IDs (if not populated) and objects
         const id = m._id || m.id || m;
         return onlineUsers.includes(id);
     });
 
-    const offline = members.filter(m => {
+    const offline = members.filter((m) => {
         const id = m._id || m.id || m;
         return !onlineUsers.includes(id);
     });
@@ -21,7 +20,7 @@ const MembersSidebar = ({ members = [] }) => {
         <div className="members-sidebar custom-scrollbar">
             {/* Online Category */}
             <div className="members-category">Çevrim içi — {online.length}</div>
-            {online.map(user => {
+            {online.map((user) => {
                 // Safeguard against malformed data
                 if (!user) return null;
                 const username = user.username || 'Unknown';
@@ -30,20 +29,27 @@ const MembersSidebar = ({ members = [] }) => {
                 return (
                     <div key={user._id || user.id || Math.random()} className="member-item">
                         <div className="member-avatar-wrapper">
-                            {avatar ?
-                                <img src={getImageUrl(avatar)} alt="" className="member-avatar" /> :
-                                <div className="member-avatar-placeholder">{username[0]?.toUpperCase() || '?'}</div>
-                            }
+                            {avatar ? (
+                                <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
+                            ) : (
+                                <div className="member-avatar-placeholder">
+                                    {username[0]?.toUpperCase() || '?'}
+                                </div>
+                            )}
                             <div className="status-indicator online"></div>
                         </div>
                         <div className="member-info">
                             <span className="member-name active-role" style={{ color: '#2ecc71' }}>
                                 {user.profile?.displayName || username}
-                                {(user.role === 'owner' || user.isAdmin) && <span style={{ marginLeft: '4px' }}>👑</span>}
+                                {(user.role === 'owner' || user.isAdmin) && (
+                                    <span style={{ marginLeft: '4px' }}>👑</span>
+                                )}
                             </span>
                             {/* Status Message if any */}
                             <div className="member-custom-status">
-                                <span role="img" aria-label="activity">🎮</span>
+                                <span role="img" aria-label="activity">
+                                    🎮
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -52,7 +58,7 @@ const MembersSidebar = ({ members = [] }) => {
 
             {/* Offline Category */}
             <div className="members-category">Çevrim dışı — {offline.length}</div>
-            {offline.map(user => {
+            {offline.map((user) => {
                 if (!user) return null;
                 // Handle if user is just an ID (fallback if populate failed)
                 if (typeof user === 'string') return null;
@@ -63,13 +69,21 @@ const MembersSidebar = ({ members = [] }) => {
                 return (
                     <div key={user._id || user.id || Math.random()} className="member-item offline">
                         <div className="member-avatar-wrapper">
-                            {avatar ?
-                                <img src={getImageUrl(avatar)} alt="" className="member-avatar" /> :
-                                <div className="member-avatar-placeholder" style={{ backgroundColor: '#1e1f22' }}>{username[0]?.toUpperCase() || '?'}</div>
-                            }
+                            {avatar ? (
+                                <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
+                            ) : (
+                                <div
+                                    className="member-avatar-placeholder"
+                                    style={{ backgroundColor: '#1e1f22' }}
+                                >
+                                    {username[0]?.toUpperCase() || '?'}
+                                </div>
+                            )}
                         </div>
                         <div className="member-info">
-                            <span className="member-name" style={{ color: '#23a559' }}>{user.profile?.displayName || username}</span>
+                            <span className="member-name" style={{ color: '#23a559' }}>
+                                {user.profile?.displayName || username}
+                            </span>
                         </div>
                     </div>
                 );

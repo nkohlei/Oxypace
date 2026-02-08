@@ -26,8 +26,8 @@ const run = async () => {
                 Key: `debug/${testFileName}`,
                 Body: fileStream,
                 ContentType: 'text/plain',
-                ACL: 'public-read'
-            }
+                ACL: 'public-read',
+            },
         });
 
         console.log('Uploading...');
@@ -38,7 +38,6 @@ const run = async () => {
         const result = await upload.done();
         console.log('✅ UPLOAD SUCCESS!');
         console.log('Location:', result.Location);
-
     } catch (error) {
         console.error('❌ UPLOAD FAILED:', error);
     } finally {

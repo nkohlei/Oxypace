@@ -57,9 +57,16 @@ const AppLayout = () => {
                 <div
                     className={`sidebar-toggle-arrow ${isSidebarOpen ? 'open' : ''}`}
                     onClick={toggleSidebar}
-                    title={isSidebarOpen ? "Menüyü Kapat" : "Menüyü Aç"}
+                    title={isSidebarOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
                 >
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                        viewBox="0 0 24 24"
+                        width="24"
+                        height="24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
                         {/* Arrow direction flips via CSS rotation */}
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
@@ -105,10 +112,7 @@ const AppLayout = () => {
                                 </PrivateRoute>
                             }
                         />
-                        <Route
-                            path="/search"
-                            element={<Search />}
-                        />
+                        <Route path="/search" element={<Search />} />
                         <Route
                             path="/profile"
                             element={
@@ -176,7 +180,7 @@ const AppLayout = () => {
                 {/* Global Footer */}
                 <Footer />
             </div>
-        </div >
+        </div>
     );
 };
 
@@ -205,5 +209,3 @@ function App() {
 }
 
 export default App;
-
-

@@ -24,6 +24,11 @@ import adminRoutes from './routes/admin.js';
 import portalRoutes from './routes/portals.js';
 import mediaRoutes from './routes/media.js';
 
+// Security middleware imports
+import helmetConfig from './middleware/helmet-config.js';
+import { generalLimiter } from './middleware/rate-limit.js';
+import mongoSanitize from 'express-mongo-sanitize';
+
 // ES Module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,15 +63,21 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
     'https://oxypace.vercel.app',
-    process.env.CLIENT_URL
+    process.env.CLIENT_URL,
 ].filter(Boolean);
 
 const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
+        if (!origin) {
+            return callback(null, true);
+        }
 
-        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
+        if (
+            allowedOrigins.includes(origin) ||
+            origin.endsWith('.vercel.app') ||
+            origin.includes('localhost')
+        ) {
             callback(null, true);
         } else {
             console.log('CORS blocked origin:', origin);
@@ -115,7 +126,7 @@ if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
 // Configure Passport
 configurePassport();
 
-// Import Bot 
+// Import Bot
 import startBotLoop from './bots/newsBot.js';
 
 import cookieParser from 'cookie-parser';
@@ -123,9 +134,12 @@ import cookieParser from 'cookie-parser';
 // ... (existing imports)
 
 // Middleware
+app.use(helmetConfig); // Security headers
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize()); // Prevent NoSQL injection
+app.use('/api', generalLimiter); // Rate limiting for API routes
+app.use(express.json({ limit: '10mb' })); // Limit payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser()); // Add cookie-parser middleware
 
 // Session middleware (required for Passport)
@@ -138,14 +152,14 @@ app.use(
         store: MongoStore.create({
             mongoUrl: mongoUri,
             collectionName: 'sessions',
-            ttl: 24 * 60 * 60 // 1 day
+            ttl: 24 * 60 * 60, // 1 day
         }),
         proxy: true, // Required for Vercel/proxies
         cookie: {
             secure: isProduction, // Secure only in production (HTTPS)
             sameSite: isProduction ? 'none' : 'lax', // None required for cross-site auth flows
-            maxAge: 24 * 60 * 60 * 1000 // 24 hours
-        }
+            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        },
     })
 );
 
@@ -174,7 +188,7 @@ app.use((err, req, res, next) => {
     console.error('Unhandled Error:', err);
     res.status(500).json({
         message: err.message || 'Global Server Error',
-        stack: process.env.NODE_ENV === 'production' ? null : err.stack
+        stack: process.env.NODE_ENV === 'production' ? null : err.stack,
     });
 });
 
@@ -184,7 +198,7 @@ app.get('/api/health', (req, res) => {
         status: 'ok',
         message: 'GlobalMessage API is running',
         version: '2.3 - Feature Settings Active',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     });
 });
 

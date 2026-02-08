@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -25,7 +24,9 @@ if (fs.existsSync(envPath)) {
 const deletePortal = async () => {
     try {
         const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-        if (!MONGO_URI) throw new Error('MONGO_URI missing');
+        if (!MONGO_URI) {
+            throw new Error('MONGO_URI missing');
+        }
 
         await mongoose.connect(MONGO_URI);
         console.log('MongoDB Connected.');
@@ -33,7 +34,7 @@ const deletePortal = async () => {
         const portalName = 'test 1';
         // Fuzzy match
         const portals = await Portal.find({});
-        const portal = portals.find(p => /test\s?1/i.test(p.name));
+        const portal = portals.find((p) => /test\s?1/i.test(p.name));
 
         if (!portal) {
             console.log(`Portal '${portalName}' not found. Nothing to delete.`);
@@ -46,7 +47,9 @@ const deletePortal = async () => {
         const postCount = await Post.countDocuments({ portal: portal._id });
         if (postCount > 0) {
             console.warn(`WARNING: There are still ${postCount} posts linked to this portal.`);
-            console.warn('Aborting deletion to prevent data loss. Please run merge_portals.js first.');
+            console.warn(
+                'Aborting deletion to prevent data loss. Please run merge_portals.js first.'
+            );
             process.exit(1);
         }
 

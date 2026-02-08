@@ -22,7 +22,7 @@ async function findChannels() {
     }
 
     console.log(`Channels for portal '${portal.name}':`);
-    portal.channels.forEach(ch => {
+    portal.channels.forEach((ch) => {
         console.log(`Name: ${ch.name}, ID: ${ch._id}`);
     });
 

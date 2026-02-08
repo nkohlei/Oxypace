@@ -18,7 +18,7 @@ const debugPost = async () => {
             // Extract Key (everything after the domain)
             // Assuming format: https://domain.com/FOLDER/FILE.ext
             const parts = post.media.split('/');
-            // We want everything after the domain. 
+            // We want everything after the domain.
             // format: https: / / domain / path / to / file
             // parts: [0]https: [1] [2]domain [3]path...
             if (parts.length > 3) {
@@ -30,7 +30,6 @@ const debugPost = async () => {
         } else {
             console.log('No posts with media found.');
         }
-
     } catch (error) {
         console.error(error);
     } finally {

@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Portal from './models/Portal.js';
@@ -21,7 +20,7 @@ const listPortals = async () => {
         console.log('Connected. Listing Portals:');
 
         const portals = await Portal.find({});
-        portals.forEach(p => {
+        portals.forEach((p) => {
             console.log(`- "${p.name}" (ID: ${p._id}) | Members: ${p.members.length}`);
         });
 

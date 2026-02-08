@@ -43,11 +43,12 @@ const Inbox = () => {
         if (socket) {
             const handleNewMessage = (message) => {
                 if (
-                    (message.sender._id === selectedUser?._id && message.recipient._id === user._id) ||
+                    (message.sender._id === selectedUser?._id &&
+                        message.recipient._id === user._id) ||
                     (message.sender._id === user._id && message.recipient._id === selectedUser?._id)
                 ) {
                     setMessages((prev) => {
-                        if (prev.some(m => m._id === message._id)) return prev;
+                        if (prev.some((m) => m._id === message._id)) return prev;
                         return [...prev, message];
                     });
                 }
@@ -60,9 +61,9 @@ const Inbox = () => {
             };
 
             const handleMessageReaction = ({ messageId, reactions }) => {
-                setMessages((prev) => prev.map(msg =>
-                    msg._id === messageId ? { ...msg, reactions } : msg
-                ));
+                setMessages((prev) =>
+                    prev.map((msg) => (msg._id === messageId ? { ...msg, reactions } : msg))
+                );
             };
 
             socket.on('newMessage', handleNewMessage);
@@ -131,7 +132,7 @@ const Inbox = () => {
         setSelectedUser(user);
         fetchMessages(user._id);
         setShowNewMessageModal(false);
-    }
+    };
 
     const handleReply = (message) => {
         setReplyingTo(message);
@@ -165,12 +166,16 @@ const Inbox = () => {
         const optimisticMessage = {
             _id: Date.now().toString(),
             sender: { _id: user._id, username: user.username, profile: user.profile },
-            recipient: { _id: selectedUser._id, username: selectedUser.username, profile: selectedUser.profile },
+            recipient: {
+                _id: selectedUser._id,
+                username: selectedUser.username,
+                profile: selectedUser.profile,
+            },
             content: newMessage,
             media: media ? URL.createObjectURL(media) : null,
             createdAt: new Date().toISOString(),
             isOptimistic: true,
-            replyTo: replyingTo
+            replyTo: replyingTo,
         };
 
         setMessages((prev) => [...prev, optimisticMessage]);
@@ -193,12 +198,12 @@ const Inbox = () => {
 
             const response = await axios.post('/api/messages', formData);
 
-            setMessages((prev) => prev.map(msg =>
-                msg._id === optimisticMessage._id ? response.data : msg
-            ));
+            setMessages((prev) =>
+                prev.map((msg) => (msg._id === optimisticMessage._id ? response.data : msg))
+            );
         } catch (err) {
             console.error('Failed to send message:', err);
-            setMessages((prev) => prev.filter(msg => msg._id !== optimisticMessage._id));
+            setMessages((prev) => prev.filter((msg) => msg._id !== optimisticMessage._id));
             alert('Mesaj gönderilemedi.');
             setNewMessage(tempContent);
             setMedia(tempMedia);
@@ -242,7 +247,7 @@ const Inbox = () => {
         return `Katıldı ${date.getFullYear()}`;
     };
 
-    const filteredConversations = conversations.filter(conv => {
+    const filteredConversations = conversations.filter((conv) => {
         const name = conv.user.profile?.displayName || conv.user.username;
         return name.toLowerCase().includes(searchQuery.toLowerCase());
     });
@@ -256,8 +261,17 @@ const Inbox = () => {
                     <div className="conversations-view">
                         <div className="inbox-header">
                             <h1>Mesajlar</h1>
-                            <button className="compose-btn" onClick={() => setShowNewMessageModal(true)} title="Yeni Mesaj">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <button
+                                className="compose-btn"
+                                onClick={() => setShowNewMessageModal(true)}
+                                title="Yeni Mesaj"
+                            >
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
@@ -265,7 +279,12 @@ const Inbox = () => {
                         </div>
                         <div className="search-container">
                             <div className="search-input-wrapper">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
                                     <circle cx="11" cy="11" r="8"></circle>
                                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                                 </svg>
@@ -278,11 +297,17 @@ const Inbox = () => {
                             </div>
                         </div>
                         {loading ? (
-                            <div className="spinner-container"><div className="spinner"></div></div>
+                            <div className="spinner-container">
+                                <div className="spinner"></div>
+                            </div>
                         ) : filteredConversations.length === 0 ? (
                             <div className="empty-inbox">
                                 <p>Henüz mesajın yok.</p>
-                                <button className="btn-secondary" onClick={() => setShowNewMessageModal(true)} style={{ marginTop: '10px' }}>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => setShowNewMessageModal(true)}
+                                    style={{ marginTop: '10px' }}
+                                >
                                     Mesaj Başlat
                                 </button>
                             </div>
@@ -297,24 +322,40 @@ const Inbox = () => {
                                         {conv.unreadCount > 0 && <div className="unread-dot"></div>}
                                         <div className="conv-avatar-wrapper">
                                             {conv.user.profile?.avatar ? (
-                                                <img src={getImageUrl(conv.user.profile.avatar)} alt="" className="conv-avatar" />
+                                                <img
+                                                    src={getImageUrl(conv.user.profile.avatar)}
+                                                    alt=""
+                                                    className="conv-avatar"
+                                                />
                                             ) : (
                                                 <div className="conv-avatar-placeholder">
-                                                    <span style={{ fontWeight: 'bold' }}>{conv.user.username?.[0]?.toUpperCase()}</span>
+                                                    <span style={{ fontWeight: 'bold' }}>
+                                                        {conv.user.username?.[0]?.toUpperCase()}
+                                                    </span>
                                                 </div>
                                             )}
                                         </div>
                                         <div className="conv-content">
                                             <div className="conv-header">
                                                 <div className="conv-user-info">
-                                                    <span className="conv-name">{conv.user.profile?.displayName || conv.user.username}</span>
+                                                    <span className="conv-name">
+                                                        {conv.user.profile?.displayName ||
+                                                            conv.user.username}
+                                                    </span>
                                                     <Badge type={conv.user.verificationBadge} />
                                                 </div>
-                                                <span className="conv-time">{formatTime(conv.lastMessage.createdAt)}</span>
+                                                <span className="conv-time">
+                                                    {formatTime(conv.lastMessage.createdAt)}
+                                                </span>
                                             </div>
                                             <p className="conv-preview">
-                                                {conv.user._id === conv.lastMessage.sender._id ? '' : 'Sen: '}
-                                                {conv.lastMessage.content || (conv.lastMessage.media ? '📷 Fotoğraf' : 'Mesaj')}
+                                                {conv.user._id === conv.lastMessage.sender._id
+                                                    ? ''
+                                                    : 'Sen: '}
+                                                {conv.lastMessage.content ||
+                                                    (conv.lastMessage.media
+                                                        ? '📷 Fotoğraf'
+                                                        : 'Mesaj')}
                                             </p>
                                         </div>
                                     </div>
@@ -329,22 +370,45 @@ const Inbox = () => {
                         <div className="chat-view">
                             <div className="chat-header">
                                 <button className="back-btn" onClick={handleBackToList}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        width="24"
+                                        height="24"
+                                    >
                                         <line x1="19" y1="12" x2="5" y2="12"></line>
                                         <polyline points="12 19 5 12 12 5"></polyline>
                                     </svg>
                                 </button>
-                                <div className="chat-header-content" style={{ cursor: 'pointer' }} onClick={() => navigate(`/profile/${selectedUser.username}`)}>
+                                <div
+                                    className="chat-header-content"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => navigate(`/profile/${selectedUser.username}`)}
+                                >
                                     <span className="chat-header-name">
                                         {selectedUser.profile?.displayName || selectedUser.username}
                                         <Badge type={selectedUser.verificationBadge} />
                                     </span>
                                     {selectedUser.username && (
-                                        <span className="chat-header-joined">@{selectedUser.username}</span>
+                                        <span className="chat-header-joined">
+                                            @{selectedUser.username}
+                                        </span>
                                     )}
                                 </div>
-                                <button className="chat-header-info-btn" onClick={() => navigate(`/profile/${selectedUser.username}`)}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                                <button
+                                    className="chat-header-info-btn"
+                                    onClick={() => navigate(`/profile/${selectedUser.username}`)}
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        width="24"
+                                        height="24"
+                                    >
                                         <circle cx="12" cy="12" r="10"></circle>
                                         <line x1="12" y1="16" x2="12" y2="12"></line>
                                         <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -367,16 +431,59 @@ const Inbox = () => {
                             </div>
 
                             {media && (
-                                <div className="media-preview" style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
+                                <div
+                                    className="media-preview"
+                                    style={{
+                                        padding: '8px',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderRadius: '8px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                    }}
+                                >
                                     {media.type.startsWith('video') ? (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                color: 'var(--text-primary)',
+                                            }}
+                                        >
                                             <span>🎥</span>
                                             <span>Video seçildi</span>
                                         </div>
                                     ) : (
-                                        <img src={URL.createObjectURL(media)} alt="Preview" style={{ maxHeight: '200px', maxWidth: '100%', borderRadius: '4px' }} />
+                                        <img
+                                            src={URL.createObjectURL(media)}
+                                            alt="Preview"
+                                            style={{
+                                                maxHeight: '200px',
+                                                maxWidth: '100%',
+                                                borderRadius: '4px',
+                                            }}
+                                        />
                                     )}
-                                    <button type="button" onClick={() => { setMedia(null); if (fileInputRef.current) fileInputRef.current.value = ''; if (videoInputRef.current) videoInputRef.current.value = ''; }} style={{ marginLeft: '10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px' }}>×</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMedia(null);
+                                            if (fileInputRef.current)
+                                                fileInputRef.current.value = '';
+                                            if (videoInputRef.current)
+                                                videoInputRef.current.value = '';
+                                        }}
+                                        style={{
+                                            marginLeft: '10px',
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            fontSize: '16px',
+                                        }}
+                                    >
+                                        ×
+                                    </button>
                                 </div>
                             )}
 
@@ -384,12 +491,30 @@ const Inbox = () => {
                                 <div className="reply-preview-bar">
                                     <div className="reply-info">
                                         <span className="reply-to-label">
-                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 10 4 15 9 20" /><path d="M20 4v7a4 4 0 0 1-4 4H4" /></svg>
-                                            {replyingTo.sender.profile?.displayName || replyingTo.sender.username}
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                width="14"
+                                                height="14"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
+                                                <polyline points="9 10 4 15 9 20" />
+                                                <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+                                            </svg>
+                                            {replyingTo.sender.profile?.displayName ||
+                                                replyingTo.sender.username}
                                         </span>
-                                        <p className="reply-text">{replyingTo.content || '📷 Medya'}</p>
+                                        <p className="reply-text">
+                                            {replyingTo.content || '📷 Medya'}
+                                        </p>
                                     </div>
-                                    <button onClick={() => setReplyingTo(null)} className="close-reply-btn">×</button>
+                                    <button
+                                        onClick={() => setReplyingTo(null)}
+                                        className="close-reply-btn"
+                                    >
+                                        ×
+                                    </button>
                                 </div>
                             )}
 
@@ -402,7 +527,12 @@ const Inbox = () => {
                                         onClick={() => setShowPlusMenu(!showPlusMenu)}
                                         title="Yükle"
                                     >
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <svg
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                        >
                                             <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
                                         </svg>
                                     </button>
@@ -414,21 +544,89 @@ const Inbox = () => {
                                                 style={{ position: 'fixed', inset: 0, zIndex: 90 }}
                                                 onClick={() => setShowPlusMenu(false)}
                                             />
-                                            <div className="plus-menu" style={{ bottom: '80px', left: '20px' }}>
-                                                <div className="plus-menu-item" onClick={() => { fileInputRef.current.click(); setShowPlusMenu(false); }}>
+                                            <div
+                                                className="plus-menu"
+                                                style={{ bottom: '80px', left: '20px' }}
+                                            >
+                                                <div
+                                                    className="plus-menu-item"
+                                                    onClick={() => {
+                                                        fileInputRef.current.click();
+                                                        setShowPlusMenu(false);
+                                                    }}
+                                                >
                                                     <div className="plus-menu-icon">
-                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                                        <svg
+                                                            width="20"
+                                                            height="20"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                        >
+                                                            <rect
+                                                                x="3"
+                                                                y="3"
+                                                                width="18"
+                                                                height="18"
+                                                                rx="2"
+                                                                ry="2"
+                                                            ></rect>
+                                                            <circle
+                                                                cx="8.5"
+                                                                cy="8.5"
+                                                                r="1.5"
+                                                            ></circle>
+                                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                                        </svg>
                                                     </div>
                                                     Görsel Yükle
                                                 </div>
-                                                <div className="plus-menu-item" onClick={() => { videoInputRef.current.click(); setShowPlusMenu(false); }}>
+                                                <div
+                                                    className="plus-menu-item"
+                                                    onClick={() => {
+                                                        videoInputRef.current.click();
+                                                        setShowPlusMenu(false);
+                                                    }}
+                                                >
                                                     <div className="plus-menu-icon">
-                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                                                        <svg
+                                                            width="20"
+                                                            height="20"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                        >
+                                                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                                            <rect
+                                                                x="1"
+                                                                y="5"
+                                                                width="15"
+                                                                height="14"
+                                                                rx="2"
+                                                                ry="2"
+                                                            ></rect>
+                                                        </svg>
                                                     </div>
                                                     Video Yükle
                                                 </div>
-                                                <div className="plus-menu-item" onClick={() => { alert('GIF yükleme yakında!'); setShowPlusMenu(false); }}>
-                                                    <div className="plus-menu-icon" style={{ fontWeight: 800, fontSize: '10px' }}>GIF</div>
+                                                <div
+                                                    className="plus-menu-item"
+                                                    onClick={() => {
+                                                        alert('GIF yükleme yakında!');
+                                                        setShowPlusMenu(false);
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="plus-menu-icon"
+                                                        style={{
+                                                            fontWeight: 800,
+                                                            fontSize: '10px',
+                                                        }}
+                                                    >
+                                                        GIF
+                                                    </div>
                                                     GIF Yükle
                                                 </div>
                                             </div>
@@ -465,8 +663,19 @@ const Inbox = () => {
 
                                     {/* Right Side Icons */}
                                     <div className="input-right-actions">
-                                        <button type="button" className="input-action-btn" title="Emoji (Yakında)">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <button
+                                            type="button"
+                                            className="input-action-btn"
+                                            title="Emoji (Yakında)"
+                                        >
+                                            <svg
+                                                width="24"
+                                                height="24"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
                                                 <smile cx="12" cy="12" r="10"></smile>
                                                 <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
                                                 <line x1="9" y1="9" x2="9.01" y2="9"></line>
@@ -479,31 +688,43 @@ const Inbox = () => {
                             </form>
                         </div>
                     ) : (
-                        <div className="chat-view" style={{ alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+                        <div
+                            className="chat-view"
+                            style={{
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text-tertiary)',
+                            }}
+                        >
                             <div style={{ textAlign: 'center' }}>
                                 <h2>Mesaj seç</h2>
                                 <p>Mevcut sohbetlerinden birini seç veya yeni bir mesaj başlat.</p>
-                                <button className="btn-primary" onClick={() => setShowNewMessageModal(true)} style={{ marginTop: '20px', padding: '10px 24px', borderRadius: '24px' }}>
+                                <button
+                                    className="btn-primary"
+                                    onClick={() => setShowNewMessageModal(true)}
+                                    style={{
+                                        marginTop: '20px',
+                                        padding: '10px 24px',
+                                        borderRadius: '24px',
+                                    }}
+                                >
                                     Yeni Mesaj
                                 </button>
                             </div>
                         </div>
-                    )
-                    }
-                </div >
+                    )}
+                </div>
 
                 {/* New Message Modal */}
-                {
-                    showNewMessageModal && (
-                        <NewMessageModal
-                            currentUser={user}
-                            onClose={() => setShowNewMessageModal(false)}
-                            onSelectUser={handleStartNewConversation}
-                        />
-                    )
-                }
-            </main >
-        </div >
+                {showNewMessageModal && (
+                    <NewMessageModal
+                        currentUser={user}
+                        onClose={() => setShowNewMessageModal(false)}
+                        onSelectUser={handleStartNewConversation}
+                    />
+                )}
+            </main>
+        </div>
     );
 };
 

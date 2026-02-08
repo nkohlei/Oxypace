@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './AdminDashboard.css';
@@ -57,7 +56,7 @@ const AdminDashboard = () => {
         if (!window.confirm('Bu kullanıcıyı onaylamak istiyor musunuz?')) return;
         try {
             await axios.post(`/api/admin/verify-user/${id}`);
-            setRequests(requests.filter(req => req._id !== id));
+            setRequests(requests.filter((req) => req._id !== id));
             alert('Kullanıcı doğrulandı!');
         } catch (err) {
             alert('İşlem başarısız.');
@@ -68,7 +67,7 @@ const AdminDashboard = () => {
         if (!window.confirm('Bu başvuruyu reddetmek istiyor musunuz?')) return;
         try {
             await axios.post(`/api/admin/reject-verification/${id}`);
-            setRequests(requests.filter(req => req._id !== id));
+            setRequests(requests.filter((req) => req._id !== id));
             alert('Başvuru reddedildi.');
         } catch (err) {
             alert('İşlem başarısız.');
@@ -78,9 +77,13 @@ const AdminDashboard = () => {
     const handleBadgeChange = async (userId, newBadge) => {
         try {
             await axios.put(`/api/admin/users/${userId}/badge`, { badge: newBadge });
-            setUsers(users.map(user =>
-                user._id === userId ? { ...user, verificationBadge: newBadge, isVerified: newBadge !== 'none' } : user
-            ));
+            setUsers(
+                users.map((user) =>
+                    user._id === userId
+                        ? { ...user, verificationBadge: newBadge, isVerified: newBadge !== 'none' }
+                        : user
+                )
+            );
         } catch (err) {
             alert('Rozet güncellenemedi.');
         }
@@ -119,7 +122,10 @@ const AdminDashboard = () => {
                                 <div key={user._id} className="request-card">
                                     <div className="request-header">
                                         <img
-                                            src={user.profile.avatar || 'https://via.placeholder.com/150'}
+                                            src={
+                                                user.profile.avatar ||
+                                                'https://via.placeholder.com/150'
+                                            }
                                             alt={user.username}
                                             className="request-avatar"
                                         />
@@ -131,16 +137,30 @@ const AdminDashboard = () => {
                                     <div className="request-details">
                                         <div className="detail-item">
                                             <span>Kategori:</span>
-                                            <strong>{user.verificationRequest.category?.toUpperCase()}</strong>
+                                            <strong>
+                                                {user.verificationRequest.category?.toUpperCase()}
+                                            </strong>
                                         </div>
                                         <div className="detail-item">
                                             <span>Talep:</span>
-                                            <span className="badge-pill">{user.verificationRequest.badgeType?.toUpperCase()}</span>
+                                            <span className="badge-pill">
+                                                {user.verificationRequest.badgeType?.toUpperCase()}
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="request-actions">
-                                        <button className="reject-btn" onClick={() => handleReject(user._id)}>Reddet</button>
-                                        <button className="approve-btn" onClick={() => handleApprove(user._id)}>Onayla</button>
+                                        <button
+                                            className="reject-btn"
+                                            onClick={() => handleReject(user._id)}
+                                        >
+                                            Reddet
+                                        </button>
+                                        <button
+                                            className="approve-btn"
+                                            onClick={() => handleApprove(user._id)}
+                                        >
+                                            Onayla
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -165,7 +185,10 @@ const AdminDashboard = () => {
                                 <div key={user._id} className="user-list-item">
                                     <div className="user-item-left">
                                         <img
-                                            src={user.profile.avatar || 'https://via.placeholder.com/150'}
+                                            src={
+                                                user.profile.avatar ||
+                                                'https://via.placeholder.com/150'
+                                            }
                                             alt={user.username}
                                             className="user-list-avatar"
                                         />
@@ -178,14 +201,15 @@ const AdminDashboard = () => {
                                         <select
                                             className={`badge-select ${user.verificationBadge}`}
                                             value={user.verificationBadge}
-                                            onChange={(e) => handleBadgeChange(user._id, e.target.value)}
+                                            onChange={(e) =>
+                                                handleBadgeChange(user._id, e.target.value)
+                                            }
                                         >
                                             <option value="none">Rozet Yok</option>
                                             <option value="blue">Mavi Tik</option>
                                             <option value="gold">Altın Tik</option>
                                             <option value="platinum">Platin Tik</option>
                                             <option value="special">Özel Tik</option>
-
                                         </select>
                                     </div>
                                 </div>

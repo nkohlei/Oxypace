@@ -1,6 +1,5 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'path';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
@@ -13,98 +12,112 @@ import upload from '../middleware/upload.js';
 // @route   POST /api/posts
 // @desc    Create a new post
 // @access  Private
-router.post('/', protect, (req, res, next) => {
-    console.log('📤 POST /api/posts - Upload request received');
-    console.log('📤 Content-Type:', req.headers['content-type']);
-    console.log('📤 Content-Length:', req.headers['content-length']);
+router.post(
+    '/',
+    protect,
+    (req, res, next) => {
+        console.log('📤 POST /api/posts - Upload request received');
+        console.log('📤 Content-Type:', req.headers['content-type']);
+        console.log('📤 Content-Length:', req.headers['content-length']);
 
-    upload.single('media')(req, res, (err) => {
-        if (err instanceof multer.MulterError) {
-            console.error('❌ Multer Error:', err.message);
-            return res.status(400).json({ message: `Upload error: ${err.message}` });
-        } else if (err) {
-            console.error('❌ Upload Error:', err.message);
-            return res.status(400).json({ message: err.message });
-        }
-        console.log('📤 Multer processing complete. File present:', !!req.file);
-        if (req.file) {
-            console.log('📤 File details:', {
-                key: req.file.key,
-                mimetype: req.file.mimetype,
-                size: req.file.size
-            });
-        }
-        next();
-    });
-}, async (req, res) => {
-    try {
-        console.log('📤 Handler started. Body keys:', Object.keys(req.body));
-        const { content, portalId } = req.body;
-
-        // If no file and no content, reject
-        if (!content && !req.file) {
-            console.log('📤 Rejected: No content and no file');
-            return res.status(400).json({ message: 'Post must have content or media' });
-        }
-
-        const postData = {
-            author: req.user._id,
-            content: content || '',
-        };
-
-        if (portalId) {
-            const Portal = (await import('../models/Portal.js')).default;
-            const portal = await Portal.findById(portalId);
-            if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
-
-            const isMember = portal.members.some(m => m.toString() === req.user._id.toString());
-            if (!isMember) {
-                return res.status(403).json({ message: 'Gönderi paylaşmak için bu portala üye olmalısınız.' });
+        upload.single('media')(req, res, (err) => {
+            if (err instanceof multer.MulterError) {
+                console.error('❌ Multer Error:', err.message);
+                return res.status(400).json({ message: `Upload error: ${err.message}` });
+            } else if (err) {
+                console.error('❌ Upload Error:', err.message);
+                return res.status(400).json({ message: err.message });
             }
-
-            postData.portal = portalId;
-            postData.channel = req.body.channel || 'general';
-        }
-
-        if (req.file) {
-            // Use Koyeb backend proxy - more reliable than R2.dev or workers.dev
-            const backendUrl = 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-            postData.media = `${backendUrl}/api/media/${req.file.key}`;
-            console.log('📤 Media URL:', postData.media);
-
-            if (req.file.mimetype.includes('video')) {
-                postData.mediaType = 'video';
-            } else {
-                postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
+            console.log('📤 Multer processing complete. File present:', !!req.file);
+            if (req.file) {
+                console.log('📤 File details:', {
+                    key: req.file.key,
+                    mimetype: req.file.mimetype,
+                    size: req.file.size,
+                });
             }
-        }
-
-        console.log('📤 About to create post with data:', {
-            author: postData.author,
-            content: postData.content ? postData.content.substring(0, 50) : '(empty)',
-            media: postData.media,
-            mediaType: postData.mediaType,
-            portal: postData.portal
+            next();
         });
+    },
+    async (req, res) => {
+        try {
+            console.log('📤 Handler started. Body keys:', Object.keys(req.body));
+            const { content, portalId } = req.body;
 
-        const post = await Post.create(postData);
-        console.log('✅ Post created successfully! ID:', post._id);
-        console.log('✅ Post media in DB:', post.media);
+            // If no file and no content, reject
+            if (!content && !req.file) {
+                console.log('📤 Rejected: No content and no file');
+                return res.status(400).json({ message: 'Post must have content or media' });
+            }
 
-        await post.populate('author', 'username profile.displayName profile.avatar verificationBadge');
+            const postData = {
+                author: req.user._id,
+                content: content || '',
+            };
 
-        // Increment post count
-        await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
+            if (portalId) {
+                const Portal = (await import('../models/Portal.js')).default;
+                const portal = await Portal.findById(portalId);
+                if (!portal) {
+                    return res.status(404).json({ message: 'Portal bulunamadı' });
+                }
 
-        // Emit socket event for real-time update (handled in server.js)
-        req.app.get('io').emit('newPost', post);
+                const isMember = portal.members.some(
+                    (m) => m.toString() === req.user._id.toString()
+                );
+                if (!isMember) {
+                    return res
+                        .status(403)
+                        .json({ message: 'Gönderi paylaşmak için bu portala üye olmalısınız.' });
+                }
 
-        res.status(201).json(post);
-    } catch (error) {
-        console.error('Create post error:', error);
-        res.status(500).json({ message: 'Server error' });
+                postData.portal = portalId;
+                postData.channel = req.body.channel || 'general';
+            }
+
+            if (req.file) {
+                // Use Koyeb backend proxy - more reliable than R2.dev or workers.dev
+                const backendUrl = 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                postData.media = `${backendUrl}/api/media/${req.file.key}`;
+                console.log('📤 Media URL:', postData.media);
+
+                if (req.file.mimetype.includes('video')) {
+                    postData.mediaType = 'video';
+                } else {
+                    postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
+                }
+            }
+
+            console.log('📤 About to create post with data:', {
+                author: postData.author,
+                content: postData.content ? postData.content.substring(0, 50) : '(empty)',
+                media: postData.media,
+                mediaType: postData.mediaType,
+                portal: postData.portal,
+            });
+
+            const post = await Post.create(postData);
+            console.log('✅ Post created successfully! ID:', post._id);
+            console.log('✅ Post media in DB:', post.media);
+
+            await post.populate(
+                'author',
+                'username profile.displayName profile.avatar verificationBadge'
+            );
+
+            // Increment post count
+            await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
+
+            // Emit socket event for real-time update (handled in server.js)
+            req.app.get('io').emit('newPost', post);
+
+            res.status(201).json(post);
+        } catch (error) {
+            console.error('Create post error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
     }
-});
+);
 
 // @route   GET /api/posts
 // @desc    Get all posts (global feed)
@@ -119,25 +132,38 @@ router.get('/', optionalProtect, async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit + 10)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy');
+            .populate(
+                'author',
+                'username profile.displayName profile.avatar verificationBadge settings.privacy'
+            );
 
-        if (req.user && !req.user.following) req.user.following = [];
+        if (req.user && !req.user.following) {
+            req.user.following = [];
+        }
 
-        const visiblePosts = posts.filter(post => {
-            if (!post.author) return false;
+        const visiblePosts = posts.filter((post) => {
+            if (!post.author) {
+                return false;
+            }
 
             // 1. Account is NOT private -> Visible to everyone
-            if (!post.author.settings?.privacy?.isPrivate) return true;
+            if (!post.author.settings?.privacy?.isPrivate) {
+                return true;
+            }
 
             // 2. If User is NOT logged in -> Only public posts (already handled above)
             // Since we are here, author is private.
-            if (!req.user) return false;
+            if (!req.user) {
+                return false;
+            }
 
             // 3. User logged in:
             // Own post
-            if (post.author._id.toString() === req.user._id.toString()) return true;
+            if (post.author._id.toString() === req.user._id.toString()) {
+                return true;
+            }
             // Following
-            return req.user.following.some(id => id.toString() === post.author._id.toString());
+            return req.user.following.some((id) => id.toString() === post.author._id.toString());
         });
 
         const paginatedPosts = visiblePosts.slice(0, limit);
@@ -160,8 +186,10 @@ router.get('/', optionalProtect, async (req, res) => {
 // @access  Public (Optional Auth)
 router.get('/:id', optionalProtect, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy');
+        const post = await Post.findById(req.params.id).populate(
+            'author',
+            'username profile.displayName profile.avatar verificationBadge settings.privacy'
+        );
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -175,7 +203,9 @@ router.get('/:id', optionalProtect, async (req, res) => {
             }
 
             const isOwn = post.author._id.toString() === req.user._id.toString();
-            const isFollowing = req.user.following.some(id => id.toString() === post.author._id.toString());
+            const isFollowing = req.user.following.some(
+                (id) => id.toString() === post.author._id.toString()
+            );
 
             if (!isOwn && !isFollowing) {
                 return res.status(403).json({ message: 'This account is private' });
@@ -196,7 +226,9 @@ router.get('/user/:userId', optionalProtect, async (req, res) => {
     try {
         // Privacy Check First
         const targetUser = await User.findById(req.params.userId);
-        if (!targetUser) return res.status(404).json({ message: 'User not found' });
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
         if (targetUser.settings?.privacy?.isPrivate) {
             if (!req.user) {
@@ -205,8 +237,12 @@ router.get('/user/:userId', optionalProtect, async (req, res) => {
 
             const isOwn = req.params.userId === req.user._id.toString();
             // ensure following is array
-            if (!req.user.following) req.user.following = [];
-            const isFollowing = req.user.following.some(id => id.toString() === req.params.userId);
+            if (!req.user.following) {
+                req.user.following = [];
+            }
+            const isFollowing = req.user.following.some(
+                (id) => id.toString() === req.params.userId
+            );
 
             if (!isOwn && !isFollowing) {
                 return res.status(403).json({ message: 'This account is private' });
@@ -280,10 +316,12 @@ router.put('/:id/pin', protect, async (req, res) => {
         const Portal = (await import('../models/Portal.js')).default;
         const portal = await Portal.findById(post.portal);
 
-        if (!portal) return res.status(404).json({ message: 'Portal not found' });
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
 
         const isOwner = portal.owner.toString() === req.user._id.toString();
-        const isAdmin = portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
 
         if (!isOwner && !isAdmin) {
             return res.status(403).json({ message: 'Not authorized to pin posts in this portal' });
@@ -295,7 +333,10 @@ router.put('/:id/pin', protect, async (req, res) => {
         await post.save();
 
         // Populate author for frontend update
-        await post.populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy');
+        await post.populate(
+            'author',
+            'username profile.displayName profile.avatar verificationBadge settings.privacy'
+        );
 
         res.json(post);
     } catch (error) {

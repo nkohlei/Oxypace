@@ -16,10 +16,7 @@ async function verifyBots() {
     await mongoose.connect(mongoUri);
 
     for (const email of BOT_EMAILS) {
-        const result = await User.updateOne(
-            { email },
-            { $set: { isVerified: true } }
-        );
+        const result = await User.updateOne({ email }, { $set: { isVerified: true } });
         console.log(`Updated ${email}:`, result);
     }
 

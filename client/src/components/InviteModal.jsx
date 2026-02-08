@@ -8,7 +8,7 @@ const InviteModal = ({ portal, onClose }) => {
     // Mock Friends Data (replace with real data later)
     const friends = [
         { id: 1, username: 'eminipek00', avatar: null },
-        { id: 2, username: 'sametkaraca0', avatar: null }
+        { id: 2, username: 'sametkaraca0', avatar: null },
     ];
 
     const inviteLink = `gg/${portal?.name?.toLowerCase().replace(/\s+/g, '-')}-${portal?._id || '1090791189013336076'}`;
@@ -25,9 +25,16 @@ const InviteModal = ({ portal, onClose }) => {
                 <div className="invite-header">
                     <h3>Arkadaşlarını {portal?.name || 'Sunucu'} sunucusuna davet et</h3>
                     <div className="invite-subtitle">
-                        <span style={{ color: '#b9bbbe' }}>Alıcılar: <span style={{ color: '#5865F2' }}># 📢 motivasyon konumuna gelecek</span></span>
+                        <span style={{ color: '#b9bbbe' }}>
+                            Alıcılar:{' '}
+                            <span style={{ color: '#5865F2' }}>
+                                # 📢 motivasyon konumuna gelecek
+                            </span>
+                        </span>
                     </div>
-                    <button className="close-btn" onClick={onClose}>✕</button>
+                    <button className="close-btn" onClick={onClose}>
+                        ✕
+                    </button>
                 </div>
 
                 <div className="invite-search">
@@ -37,20 +44,37 @@ const InviteModal = ({ portal, onClose }) => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <svg
+                        className="search-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
                 </div>
 
                 <div className="invite-warning">
-                    <span role="img" aria-label="warning">⚠️</span>
+                    <span role="img" aria-label="warning">
+                        ⚠️
+                    </span>
                     Bu kanal özeldir. Sadece seçilen üyeler ve roller bu kanalı görüntüleyebilir.
                 </div>
 
                 <div className="invite-list custom-scrollbar">
-                    {friends.map(friend => (
+                    {friends.map((friend) => (
                         <div key={friend.id} className="invite-item">
                             <div className="friend-info">
                                 <div className="friend-avatar">
-                                    {friend.avatar ? <img src={getImageUrl(friend.avatar)} alt="" /> : friend.username[0].toUpperCase()}
+                                    {friend.avatar ? (
+                                        <img src={getImageUrl(friend.avatar)} alt="" />
+                                    ) : (
+                                        friend.username[0].toUpperCase()
+                                    )}
                                 </div>
                                 <span className="friend-name">{friend.username}</span>
                             </div>
@@ -63,7 +87,10 @@ const InviteModal = ({ portal, onClose }) => {
                     <h4>Veya bir arkadaşına sunucu daveti bağlantısı yolla</h4>
                     <div className="copy-link-box">
                         <input type="text" value={inviteLink} readOnly />
-                        <button onClick={handleCopy} className={`copy-btn ${copied ? 'copied' : ''}`}>
+                        <button
+                            onClick={handleCopy}
+                            className={`copy-btn ${copied ? 'copied' : ''}`}
+                        >
                             {copied ? 'Kopyalandı' : 'Kopyala'}
                         </button>
                     </div>

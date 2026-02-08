@@ -16,7 +16,7 @@ const CreatePortalModal = ({ onClose }) => {
         category: 'general',
         tags: '',
         avatar: '', // Text URL for now
-        banner: ''  // Text URL for now
+        banner: '', // Text URL for now
     });
 
     const [loading, setLoading] = useState(false);
@@ -31,14 +31,14 @@ const CreatePortalModal = ({ onClose }) => {
             // Convert comma separated tags to array if backend supports it
             // Assuming backend might need string for now or array, keeping as string in form
             // but let's send as array if we updated backend model.
-            // Current model likely just takes what we send if loose, 
+            // Current model likely just takes what we send if loose,
             // but let's stick to the structure.
             const response = await axios.post('/api/portals', formData);
 
             const newPortal = response.data;
             const updatedUser = {
                 ...user,
-                joinedPortals: [...(user.joinedPortals || []), newPortal]
+                joinedPortals: [...(user.joinedPortals || []), newPortal],
             };
             updateUser(updatedUser);
 
@@ -57,15 +57,17 @@ const CreatePortalModal = ({ onClose }) => {
         { id: 'art', name: 'Sanat & Tasarım' },
         { id: 'game', name: 'Oyun' },
         { id: 'science', name: 'Bilim' },
-        { id: 'music', name: 'Müzik' }
+        { id: 'music', name: 'Müzik' },
     ];
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content advanced-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-content advanced-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>Portal Oluştur</h2>
-                    <button className="close-btn" onClick={onClose}>&times;</button>
+                    <button className="close-btn" onClick={onClose}>
+                        &times;
+                    </button>
                 </div>
 
                 <div className="progress-bar">
@@ -79,7 +81,6 @@ const CreatePortalModal = ({ onClose }) => {
                 {error && <div className="error-message mb-4">{error}</div>}
 
                 <form onSubmit={handleSubmit} className="modal-body">
-
                     {/* STEP 1: Basic Info */}
                     {step === 1 && (
                         <div className="step-content fade-in">
@@ -90,7 +91,9 @@ const CreatePortalModal = ({ onClose }) => {
                                     type="text"
                                     required
                                     value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, name: e.target.value })
+                                    }
                                     placeholder="Örn: Yazılım Dünyası"
                                     maxLength={50}
                                     autoFocus
@@ -101,10 +104,14 @@ const CreatePortalModal = ({ onClose }) => {
                                 <label>Kategori</label>
                                 <select
                                     value={formData.category}
-                                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, category: e.target.value })
+                                    }
                                 >
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -113,7 +120,9 @@ const CreatePortalModal = ({ onClose }) => {
                                 <label>Açıklama</label>
                                 <textarea
                                     value={formData.description}
-                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, description: e.target.value })
+                                    }
                                     placeholder="Bu portal ne hakkında?"
                                     maxLength={500}
                                     rows={4}
@@ -131,7 +140,9 @@ const CreatePortalModal = ({ onClose }) => {
                                 <input
                                     type="text"
                                     value={formData.tags}
-                                    onChange={e => setFormData({ ...formData, tags: e.target.value })}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, tags: e.target.value })
+                                    }
                                     placeholder="örn: react, javascript, kodlama"
                                 />
                             </div>
@@ -141,7 +152,9 @@ const CreatePortalModal = ({ onClose }) => {
                                 <input
                                     type="text"
                                     value={formData.avatar}
-                                    onChange={e => setFormData({ ...formData, avatar: e.target.value })}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, avatar: e.target.value })
+                                    }
                                     placeholder="https://..."
                                 />
                             </div>
@@ -151,7 +164,9 @@ const CreatePortalModal = ({ onClose }) => {
                                 <input
                                     type="text"
                                     value={formData.banner}
-                                    onChange={e => setFormData({ ...formData, banner: e.target.value })}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, banner: e.target.value })
+                                    }
                                     placeholder="https://..."
                                 />
                             </div>
@@ -163,31 +178,43 @@ const CreatePortalModal = ({ onClose }) => {
                         <div className="step-content fade-in">
                             <h3 className="step-title">Gizlilik Ayarları</h3>
                             <div className="privacy-options">
-                                <label className={`privacy-card ${formData.privacy === 'public' ? 'selected' : ''}`}>
+                                <label
+                                    className={`privacy-card ${formData.privacy === 'public' ? 'selected' : ''}`}
+                                >
                                     <input
                                         type="radio"
                                         name="privacy"
                                         value="public"
                                         checked={formData.privacy === 'public'}
-                                        onChange={e => setFormData({ ...formData, privacy: e.target.value })}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, privacy: e.target.value })
+                                        }
                                     />
                                     <div className="privacy-info">
                                         <span className="p-title">🌍 Herkese Açık</span>
-                                        <span className="p-desc">Herkes bu portalı görebilir ve katılabilir.</span>
+                                        <span className="p-desc">
+                                            Herkes bu portalı görebilir ve katılabilir.
+                                        </span>
                                     </div>
                                 </label>
 
-                                <label className={`privacy-card ${formData.privacy === 'private' ? 'selected' : ''}`}>
+                                <label
+                                    className={`privacy-card ${formData.privacy === 'private' ? 'selected' : ''}`}
+                                >
                                     <input
                                         type="radio"
                                         name="privacy"
                                         value="private"
                                         checked={formData.privacy === 'private'}
-                                        onChange={e => setFormData({ ...formData, privacy: e.target.value })}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, privacy: e.target.value })
+                                        }
                                     />
                                     <div className="privacy-info">
                                         <span className="p-title">🔒 Gizli</span>
-                                        <span className="p-desc">Sadece davet edilenler görebilir ve katılabilir.</span>
+                                        <span className="p-desc">
+                                            Sadece davet edilenler görebilir ve katılabilir.
+                                        </span>
                                     </div>
                                 </label>
                             </div>
@@ -196,7 +223,11 @@ const CreatePortalModal = ({ onClose }) => {
 
                     <div className="modal-footer advanced-footer">
                         {step > 1 ? (
-                            <button type="button" className="btn-secondary" onClick={() => setStep(step - 1)}>
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => setStep(step - 1)}
+                            >
                                 Geri
                             </button>
                         ) : (
@@ -206,7 +237,11 @@ const CreatePortalModal = ({ onClose }) => {
                         )}
 
                         {step < 3 ? (
-                            <button type="button" className="btn-primary" onClick={() => setStep(step + 1)}>
+                            <button
+                                type="button"
+                                className="btn-primary"
+                                onClick={() => setStep(step + 1)}
+                            >
                                 İleri
                             </button>
                         ) : (

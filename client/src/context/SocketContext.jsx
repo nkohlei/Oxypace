@@ -65,7 +65,7 @@ export const SocketProvider = ({ children }) => {
     const value = {
         socket,
         connected,
-        onlineUsers
+        onlineUsers,
     };
 
     return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

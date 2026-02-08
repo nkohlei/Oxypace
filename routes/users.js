@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'path';
 import { protect, optionalProtect } from '../middleware/auth.js';
+
 import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
@@ -27,19 +27,33 @@ router.post('/follow/:id', protect, async (req, res) => {
         }
 
         // Initialize arrays if missing
-        if (!targetUser.followers) targetUser.followers = [];
-        if (!targetUser.followRequests) targetUser.followRequests = [];
-        if (!currentUser.following) currentUser.following = [];
+        if (!targetUser.followers) {
+            targetUser.followers = [];
+        }
+        if (!targetUser.followRequests) {
+            targetUser.followRequests = [];
+        }
+        if (!currentUser.following) {
+            currentUser.following = [];
+        }
 
-        const isFollowing = targetUser.followers.some(id => id.toString() === req.user._id.toString());
-        const hasRequested = targetUser.followRequests.some(id => id.toString() === req.user._id.toString());
+        const isFollowing = targetUser.followers.some(
+            (id) => id.toString() === req.user._id.toString()
+        );
+        const hasRequested = targetUser.followRequests.some(
+            (id) => id.toString() === req.user._id.toString()
+        );
 
         if (isFollowing) {
             // Unfollow
-            targetUser.followers = targetUser.followers.filter(id => id.toString() !== req.user._id.toString());
+            targetUser.followers = targetUser.followers.filter(
+                (id) => id.toString() !== req.user._id.toString()
+            );
             targetUser.followerCount = Math.max(0, targetUser.followerCount - 1);
 
-            currentUser.following = currentUser.following.filter(id => id.toString() !== req.params.id);
+            currentUser.following = currentUser.following.filter(
+                (id) => id.toString() !== req.params.id
+            );
             currentUser.followingCount = Math.max(0, currentUser.followingCount - 1);
 
             await targetUser.save();
@@ -50,9 +64,15 @@ router.post('/follow/:id', protect, async (req, res) => {
 
         if (hasRequested) {
             // Cancel Request
-            targetUser.followRequests = targetUser.followRequests.filter(id => id.toString() !== req.user._id.toString());
+            targetUser.followRequests = targetUser.followRequests.filter(
+                (id) => id.toString() !== req.user._id.toString()
+            );
             await targetUser.save();
-            return res.json({ message: 'Request cancelled', isFollowing: false, hasRequested: false });
+            return res.json({
+                message: 'Request cancelled',
+                isFollowing: false,
+                hasRequested: false,
+            });
         }
 
         // START FOLLOW (TANIŞMA) PROCESS
@@ -66,17 +86,23 @@ router.post('/follow/:id', protect, async (req, res) => {
         const notification = await Notification.create({
             recipient: targetUser._id,
             sender: currentUser._id,
-            type: 'follow_request'
+            type: 'follow_request',
         });
 
         const io = req.app.get('io');
         if (io) {
-            const populated = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
+            const populated = await notification.populate(
+                'sender',
+                'username profile.displayName profile.avatar verificationBadge'
+            );
             io.to(targetUser._id.toString()).emit('newNotification', populated);
         }
 
-        return res.json({ message: 'Tanışma isteği gönderildi', isFollowing: false, hasRequested: true });
-
+        return res.json({
+            message: 'Tanışma isteği gönderildi',
+            isFollowing: false,
+            hasRequested: true,
+        });
     } catch (error) {
         console.error('Follow error:', error);
         res.status(500).json({ message: 'Server error: ' + error.message });
@@ -92,14 +118,18 @@ router.post('/follow/accept/:id', protect, async (req, res) => {
         const currentUser = await User.findById(req.user._id);
         const requester = await User.findById(requesterId);
 
-        if (!requester) return res.status(404).json({ message: 'User not found' });
+        if (!requester) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-        if (!currentUser.followRequests.some(id => id.toString() === requesterId)) {
+        if (!currentUser.followRequests.some((id) => id.toString() === requesterId)) {
             return res.status(400).json({ message: 'No request found from this user' });
         }
 
         // Move from requests to followers (Requester follows User)
-        currentUser.followRequests = currentUser.followRequests.filter(id => id.toString() !== requesterId);
+        currentUser.followRequests = currentUser.followRequests.filter(
+            (id) => id.toString() !== requesterId
+        );
         currentUser.followers.push(requesterId);
         currentUser.followerCount += 1;
         // User follows Requester (Make it mutual Friend)
@@ -127,24 +157,26 @@ router.post('/follow/accept/:id', protect, async (req, res) => {
         const notification = await Notification.create({
             recipient: requester._id,
             sender: currentUser._id,
-            type: 'friend_connected'
+            type: 'friend_connected',
         });
 
         const io = req.app.get('io');
         if (io) {
             // Notify Requester
-            const populated = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
+            const populated = await notification.populate(
+                'sender',
+                'username profile.displayName profile.avatar verificationBadge'
+            );
             io.to(requesterId.toString()).emit('newNotification', populated);
 
             // Notify Receiver (Self) to update UI immediately
             io.to(currentUser._id.toString()).emit('friendRequestAccepted', {
                 senderId: requester._id,
-                notificationId: notification._id
+                notificationId: notification._id,
             });
         }
 
         res.json({ message: 'Tanışma isteği kabul edildi. Artık arkadaşsınız.' });
-
     } catch (error) {
         console.error('Accept follow error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -159,11 +191,12 @@ router.post('/follow/decline/:id', protect, async (req, res) => {
         const requesterId = req.params.id;
         const currentUser = await User.findById(req.user._id);
 
-        currentUser.followRequests = currentUser.followRequests.filter(id => id.toString() !== requesterId);
+        currentUser.followRequests = currentUser.followRequests.filter(
+            (id) => id.toString() !== requesterId
+        );
         await currentUser.save();
 
         res.json({ message: 'Request declined' });
-
     } catch (error) {
         console.error('Decline follow error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -190,13 +223,13 @@ router.get('/me', protect, async (req, res) => {
 
         // Fetch Outgoing Friend Requests (Users I want to meet)
         const outgoingUserRequests = await User.find({
-            followRequests: req.user._id
+            followRequests: req.user._id,
         }).select('username profile.displayName profile.avatar');
         userObj.outgoingUserRequests = outgoingUserRequests;
 
         // Fetch Outgoing Portal Requests (Portals I want to join)
         const outgoingPortalRequests = await Portal.find({
-            joinRequests: req.user._id
+            joinRequests: req.user._id,
         }).select('name avatar privacy');
         userObj.outgoingPortalRequests = outgoingPortalRequests;
 
@@ -226,9 +259,15 @@ router.put('/me', protect, async (req, res) => {
             user.username = username;
         }
 
-        if (displayName !== undefined) user.profile.displayName = displayName;
-        if (bio !== undefined) user.profile.bio = bio;
-        if (avatar !== undefined) user.profile.avatar = avatar;
+        if (displayName !== undefined) {
+            user.profile.displayName = displayName;
+        }
+        if (bio !== undefined) {
+            user.profile.bio = bio;
+        }
+        if (avatar !== undefined) {
+            user.profile.avatar = avatar;
+        }
 
         await user.save();
 
@@ -278,7 +317,9 @@ router.get('/search', protect, async (req, res) => {
 router.get('/:username', optionalProtect, async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
-            .select('username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers')
+            .select(
+                'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers'
+            )
             .populate('joinedPortals', 'name avatar');
 
         if (!user) {
@@ -302,7 +343,9 @@ router.get('/:username', optionalProtect, async (req, res) => {
             isOwner = req.user._id.toString() === user._id.toString();
 
             // Check following status
-            userObj.isFollowing = currentUser.following.some(id => id.toString() === user._id.toString());
+            userObj.isFollowing = currentUser.following.some(
+                (id) => id.toString() === user._id.toString()
+            );
 
             // Check if friend (Mutual follow)
             // Friend definition: I follow them AND they follow me.
@@ -312,11 +355,15 @@ router.get('/:username', optionalProtect, async (req, res) => {
             // Wait, simpler:
             // isFollowing = I follow them.
             // isFollowedBy = They follow me.
-            const isFollowedBy = user.following.some(id => id.toString() === req.user._id.toString());
+            const isFollowedBy = user.following.some(
+                (id) => id.toString() === req.user._id.toString()
+            );
             isFriend = userObj.isFollowing && isFollowedBy;
 
             userObj.isFriend = isFriend;
-            userObj.hasRequested = user.followRequests && user.followRequests.some(id => id.toString() === req.user._id.toString());
+            userObj.hasRequested =
+                user.followRequests &&
+                user.followRequests.some((id) => id.toString() === req.user._id.toString());
 
             if (!isOwner) {
                 // Calculate Mutual Friends (Mutual follows of both)
@@ -327,23 +374,29 @@ router.get('/:username', optionalProtect, async (req, res) => {
                 // For simplicity/performance now: Users that BOTH follow.
                 // Only if needed. User asked for "Common Friends".
                 // Let's find Intersection(currentUser.following, user.following).
-                const myFollowingIds = currentUser.following.map(id => id.toString());
-                const theirFollowingIds = user.following.map(id => id.toString());
-                const mutualIds = myFollowingIds.filter(id => theirFollowingIds.includes(id));
+                const myFollowingIds = currentUser.following.map((id) => id.toString());
+                const theirFollowingIds = user.following.map((id) => id.toString());
+                const mutualIds = myFollowingIds.filter((id) => theirFollowingIds.includes(id));
 
                 // We might want to populate these mutuals to show names/avatars
                 if (mutualIds.length > 0) {
-                    mutualFriends = await User.find({ _id: { $in: mutualIds } }).select('username profile.avatar').limit(5);
+                    mutualFriends = await User.find({ _id: { $in: mutualIds } })
+                        .select('username profile.avatar')
+                        .limit(5);
                 }
 
                 // Calculate Mutual Portals
-                const myPortalIds = currentUser.joinedPortals.map(id => id.toString());
-                const theirPortalIds = user.joinedPortals.map(p => p._id ? p._id.toString() : p.toString());
-                const mutualPortalIds = myPortalIds.filter(id => theirPortalIds.includes(id));
+                const myPortalIds = currentUser.joinedPortals.map((id) => id.toString());
+                const theirPortalIds = user.joinedPortals.map((p) =>
+                    p._id ? p._id.toString() : p.toString()
+                );
+                const mutualPortalIds = myPortalIds.filter((id) => theirPortalIds.includes(id));
 
                 if (mutualPortalIds.length > 0) {
                     // Filter from the already populated user.joinedPortals
-                    mutualPortals = user.joinedPortals.filter(p => mutualPortalIds.includes(p._id.toString()));
+                    mutualPortals = user.joinedPortals.filter((p) =>
+                        mutualPortalIds.includes(p._id.toString())
+                    );
                 }
             }
         } else {
@@ -365,9 +418,13 @@ router.get('/:username', optionalProtect, async (req, res) => {
         const portalVisibility = user.settings?.privacy?.portalVisibility || 'public';
 
         let showPortals = false;
-        if (isOwner) showPortals = true;
-        else if (portalVisibility === 'public') showPortals = true;
-        else if (portalVisibility === 'friends' && isFriend) showPortals = true;
+        if (isOwner) {
+            showPortals = true;
+        } else if (portalVisibility === 'public') {
+            showPortals = true;
+        } else if (portalVisibility === 'friends' && isFriend) {
+            showPortals = true;
+        }
 
         if (!showPortals) {
             userObj.portals = []; // Hide
@@ -378,8 +435,8 @@ router.get('/:username', optionalProtect, async (req, res) => {
             const allPortals = [...user.joinedPortals];
 
             // Add owned portals if not already present
-            ownedPortals.forEach(owned => {
-                if (!allPortals.some(p => p._id.toString() === owned._id.toString())) {
+            ownedPortals.forEach((owned) => {
+                if (!allPortals.some((p) => p._id.toString() === owned._id.toString())) {
                     allPortals.push(owned);
                 }
             });
@@ -411,38 +468,44 @@ router.get('/:username', optionalProtect, async (req, res) => {
 // @route   POST /api/users/me/avatar
 // @desc    Upload profile photo
 // @access  Private
-router.post('/me/avatar', protect, (req, res, next) => {
-    upload.single('avatar')(req, res, (err) => {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ message: `Upload error: ${err.message}` });
-        } else if (err) {
-            return res.status(400).json({ message: err.message });
-        }
-        next();
-    });
-}, async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No file uploaded' });
-        }
-
-        const user = await User.findById(req.user._id);
-
-        // Use backend proxy URL instead of R2 direct URL
-        const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-        const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
-        user.profile.avatar = publicUrl;
-        await user.save();
-
-        res.json({
-            message: 'Avatar uploaded successfully',
-            avatar: user.profile.avatar
+router.post(
+    '/me/avatar',
+    protect,
+    (req, res, next) => {
+        upload.single('avatar')(req, res, (err) => {
+            if (err instanceof multer.MulterError) {
+                return res.status(400).json({ message: `Upload error: ${err.message}` });
+            } else if (err) {
+                return res.status(400).json({ message: err.message });
+            }
+            next();
         });
-    } catch (error) {
-        console.error('Upload avatar error:', error);
-        res.status(500).json({ message: 'Server error' });
+    },
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ message: 'No file uploaded' });
+            }
+
+            const user = await User.findById(req.user._id);
+
+            // Use backend proxy URL instead of R2 direct URL
+            const backendUrl =
+                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
+            user.profile.avatar = publicUrl;
+            await user.save();
+
+            res.json({
+                message: 'Avatar uploaded successfully',
+                avatar: user.profile.avatar,
+            });
+        } catch (error) {
+            console.error('Upload avatar error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
     }
-});
+);
 
 // @route   POST /api/users/me/cover
 // @desc    Upload cover image
@@ -450,38 +513,44 @@ router.post('/me/avatar', protect, (req, res, next) => {
 // @route   POST /api/users/me/cover
 // @desc    Upload cover image
 // @access  Private
-router.post('/me/cover', protect, (req, res, next) => {
-    upload.single('cover')(req, res, (err) => {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ message: `Upload error: ${err.message}` });
-        } else if (err) {
-            return res.status(400).json({ message: err.message });
-        }
-        next();
-    });
-}, async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No file uploaded' });
-        }
-
-        const user = await User.findById(req.user._id);
-
-        // Use backend proxy URL instead of R2 direct URL
-        const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-        const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
-        user.profile.coverImage = publicUrl;
-        await user.save();
-
-        res.json({
-            message: 'Cover image uploaded successfully',
-            coverImage: user.profile.coverImage
+router.post(
+    '/me/cover',
+    protect,
+    (req, res, next) => {
+        upload.single('cover')(req, res, (err) => {
+            if (err instanceof multer.MulterError) {
+                return res.status(400).json({ message: `Upload error: ${err.message}` });
+            } else if (err) {
+                return res.status(400).json({ message: err.message });
+            }
+            next();
         });
-    } catch (error) {
-        console.error('Upload cover error:', error);
-        res.status(500).json({ message: 'Server error' });
+    },
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ message: 'No file uploaded' });
+            }
+
+            const user = await User.findById(req.user._id);
+
+            // Use backend proxy URL instead of R2 direct URL
+            const backendUrl =
+                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
+            user.profile.coverImage = publicUrl;
+            await user.save();
+
+            res.json({
+                message: 'Cover image uploaded successfully',
+                coverImage: user.profile.coverImage,
+            });
+        } catch (error) {
+            console.error('Upload cover error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
     }
-});
+);
 
 // @route   POST /api/users/me/save/:postId
 // @desc    Save/unsave a post
@@ -492,18 +561,32 @@ router.post('/me/save/:postId', protect, async (req, res) => {
         const postId = req.params.postId;
 
         // DEBUG: Log status for specific user debugging
-        console.log(`[SavePost] User: ${user.username}, SavedPosts Type: ${typeof user.savedPosts}, IsArray: ${Array.isArray(user.savedPosts)}`);
+        console.log(
+            `[SavePost] User: ${user.username}, SavedPosts Type: ${typeof user.savedPosts}, IsArray: ${Array.isArray(user.savedPosts)}`
+        );
 
         // Repair corrupt data: Force ALL arrays to be valid
-        if (!Array.isArray(user.savedPosts)) { console.log('Repairing savedPosts'); user.savedPosts = []; }
-        if (!Array.isArray(user.hiddenPosts)) { console.log('Repairing hiddenPosts'); user.hiddenPosts = []; }
-        if (!Array.isArray(user.following)) { console.log('Repairing following'); user.following = []; }
-        if (!Array.isArray(user.followers)) { console.log('Repairing followers'); user.followers = []; }
+        if (!Array.isArray(user.savedPosts)) {
+            console.log('Repairing savedPosts');
+            user.savedPosts = [];
+        }
+        if (!Array.isArray(user.hiddenPosts)) {
+            console.log('Repairing hiddenPosts');
+            user.hiddenPosts = [];
+        }
+        if (!Array.isArray(user.following)) {
+            console.log('Repairing following');
+            user.following = [];
+        }
+        if (!Array.isArray(user.followers)) {
+            console.log('Repairing followers');
+            user.followers = [];
+        }
 
         const isSaved = user.savedPosts.includes(postId);
 
         if (isSaved) {
-            user.savedPosts = user.savedPosts.filter(id => id.toString() !== postId);
+            user.savedPosts = user.savedPosts.filter((id) => id.toString() !== postId);
         } else {
             user.savedPosts.push(postId);
         }
@@ -512,13 +595,13 @@ router.post('/me/save/:postId', protect, async (req, res) => {
 
         res.json({
             saved: !isSaved,
-            message: isSaved ? 'Post unsaved' : 'Post saved'
+            message: isSaved ? 'Post unsaved' : 'Post saved',
         });
     } catch (error) {
         console.error('Save post error:', error);
 
         if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map(val => val.message);
+            const messages = Object.values(error.errors).map((val) => val.message);
             return res.status(400).json({ message: 'Validation Error: ' + messages.join(', ') });
         }
 
@@ -531,14 +614,13 @@ router.post('/me/save/:postId', protect, async (req, res) => {
 // @access  Private
 router.get('/me/saved', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id)
-            .populate({
-                path: 'savedPosts',
-                populate: {
-                    path: 'author',
-                    select: 'username profile.displayName profile.avatar'
-                }
-            });
+        const user = await User.findById(req.user._id).populate({
+            path: 'savedPosts',
+            populate: {
+                path: 'author',
+                select: 'username profile.displayName profile.avatar',
+            },
+        });
 
         res.json(user.savedPosts || []);
     } catch (error) {
@@ -555,11 +637,13 @@ router.post('/me/hide/:postId', protect, async (req, res) => {
         const user = await User.findById(req.user._id);
         const postId = req.params.postId;
 
-        if (!user.hiddenPosts) user.hiddenPosts = [];
+        if (!user.hiddenPosts) {
+            user.hiddenPosts = [];
+        }
         const isHidden = user.hiddenPosts.includes(postId);
 
         if (isHidden) {
-            user.hiddenPosts = user.hiddenPosts.filter(id => id.toString() !== postId);
+            user.hiddenPosts = user.hiddenPosts.filter((id) => id.toString() !== postId);
         } else {
             user.hiddenPosts.push(postId);
         }
@@ -568,7 +652,7 @@ router.post('/me/hide/:postId', protect, async (req, res) => {
 
         res.json({
             hidden: !isHidden,
-            message: isHidden ? 'Post unhidden' : 'Post hidden'
+            message: isHidden ? 'Post unhidden' : 'Post hidden',
         });
     } catch (error) {
         console.error('Hide post error:', error);
@@ -594,7 +678,10 @@ router.get('/me/hidden', protect, async (req, res) => {
 // @access  Private
 router.get('/:id/followers', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.params.id).populate('followers', 'username profile.displayName profile.avatar profile.bio');
+        const user = await User.findById(req.params.id).populate(
+            'followers',
+            'username profile.displayName profile.avatar profile.bio'
+        );
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -603,7 +690,9 @@ router.get('/:id/followers', protect, async (req, res) => {
         if (user.settings && user.settings.privacy && user.settings.privacy.isPrivate) {
             const isOwner = req.user._id.toString() === user._id.toString();
             // Check if follower (since followers are populated, check safely)
-            const isFollower = user.followers.some(follower => follower._id.toString() === req.user._id.toString());
+            const isFollower = user.followers.some(
+                (follower) => follower._id.toString() === req.user._id.toString()
+            );
 
             if (!isOwner && !isFollower) {
                 return res.status(403).json({ message: 'Bu hesap gizli.' });
@@ -622,7 +711,10 @@ router.get('/:id/followers', protect, async (req, res) => {
 // @access  Private
 router.get('/:id/following', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.params.id).populate('following', 'username profile.displayName profile.avatar profile.bio');
+        const user = await User.findById(req.params.id).populate(
+            'following',
+            'username profile.displayName profile.avatar profile.bio'
+        );
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -630,9 +722,9 @@ router.get('/:id/following', protect, async (req, res) => {
         // Privacy Check
         if (user.settings && user.settings.privacy && user.settings.privacy.isPrivate) {
             const isOwner = req.user._id.toString() === user._id.toString();
-            const isFollower = user.followers.includes(req.user._id); // Check raw followers ID for efficiency? 
-            // Wait, existing query populates 'following', NOT 'followers'. 
-            // So user.followers is likely just IDs (if not selected/populated)? 
+            const isFollower = user.followers.includes(req.user._id); // Check raw followers ID for efficiency?
+            // Wait, existing query populates 'following', NOT 'followers'.
+            // So user.followers is likely just IDs (if not selected/populated)?
             // Default select includes all fields? No, referencing other schemas.
             // If I verify followership, I should use the User document properly.
             // The `user` object here is fetched with just `findById`, so ALL fields are returned.
@@ -660,9 +752,15 @@ router.put('/settings', protect, async (req, res) => {
         const { notifications, privacy } = req.body;
         const user = await User.findById(req.user._id);
 
-        if (!user.settings) user.settings = {};
-        if (!user.settings.notifications) user.settings.notifications = {};
-        if (!user.settings.privacy) user.settings.privacy = {};
+        if (!user.settings) {
+            user.settings = {};
+        }
+        if (!user.settings.notifications) {
+            user.settings.notifications = {};
+        }
+        if (!user.settings.privacy) {
+            user.settings.privacy = {};
+        }
 
         if (notifications) {
             user.settings.notifications = { ...user.settings.notifications, ...notifications };
@@ -715,10 +813,10 @@ router.post('/request-verification', protect, async (req, res) => {
 
         // Define Categories and their Badges
         const categoryMap = {
-            'creator': 'blue',     // Sanatçı, Fenomen, Gazeteci
-            'business': 'gold',    // Şirket, Marka, STK
-            'government': 'platinum', // Devlet Yetkilisi, Temsilci
-            'partner': 'special'   // Platform Ortağı
+            creator: 'blue', // Sanatçı, Fenomen, Gazeteci
+            business: 'gold', // Şirket, Marka, STK
+            government: 'platinum', // Devlet Yetkilisi, Temsilci
+            partner: 'special', // Platform Ortağı
         };
 
         if (!category || !categoryMap[category]) {
@@ -740,7 +838,7 @@ router.post('/request-verification', protect, async (req, res) => {
             status: 'pending',
             badgeType,
             category,
-            requestedAt: new Date()
+            requestedAt: new Date(),
         };
 
         await user.save();
@@ -766,7 +864,7 @@ router.delete('/me', protect, async (req, res) => {
             { _id: { $in: user.following } },
             {
                 $pull: { followers: userId },
-                $inc: { followerCount: -1 }
+                $inc: { followerCount: -1 },
             }
         );
 
@@ -775,15 +873,12 @@ router.delete('/me', protect, async (req, res) => {
             { _id: { $in: user.followers } },
             {
                 $pull: { following: userId },
-                $inc: { followingCount: -1 }
+                $inc: { followingCount: -1 },
             }
         );
 
         // Remove pending requests
-        await User.updateMany(
-            { followRequests: userId },
-            { $pull: { followRequests: userId } }
-        );
+        await User.updateMany({ followRequests: userId }, { $pull: { followRequests: userId } });
 
         // 2. Content Cleanup
         // Delete all posts
@@ -798,7 +893,7 @@ router.delete('/me', protect, async (req, res) => {
             { likes: userId },
             {
                 $pull: { likes: userId },
-                $inc: { likeCount: -1 }
+                $inc: { likeCount: -1 },
             }
         );
 
@@ -807,11 +902,11 @@ router.delete('/me', protect, async (req, res) => {
             { likes: userId },
             {
                 $pull: { likes: userId },
-                $inc: { likeCount: -1 } // Assuming Comment has likeCount, if not standard array length check handles it often but inc is safer if count is stored
+                $inc: { likeCount: -1 }, // Assuming Comment has likeCount, if not standard array length check handles it often but inc is safer if count is stored
             }
         );
-        // Note: If Comment model doesn't have likeCount, this $inc might error or just do nothing if strict schema. 
-        // Checking Comment schema is safe but $inc on non-existent field usually initializes it. 
+        // Note: If Comment model doesn't have likeCount, this $inc might error or just do nothing if strict schema.
+        // Checking Comment schema is safe but $inc on non-existent field usually initializes it.
         // Ideally we just pull. Let's assume likeCount exists or just pull.
         // To be safe and since I haven't seen Comment schema details for likeCount, I will just $pull for comments if unsure, but Posts definitely have it.
         // Actually, let's just use $pull for Comments to avoid error if field missing.
@@ -819,7 +914,7 @@ router.delete('/me', protect, async (req, res) => {
         // 4. Notifications Cleanup
         // Delete notifications sent BY user or received BY user
         await Notification.deleteMany({
-            $or: [{ sender: userId }, { recipient: userId }]
+            $or: [{ sender: userId }, { recipient: userId }],
         });
 
         // 5. Finally Delete User

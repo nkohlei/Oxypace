@@ -14,9 +14,10 @@ const Home = () => {
             if (user.joinedPortals && user.joinedPortals.length > 0) {
                 // Redirect to the first joined portal
                 // Handle both populated object and ID string cases
-                const firstPortalId = typeof user.joinedPortals[0] === 'string'
-                    ? user.joinedPortals[0]
-                    : user.joinedPortals[0]._id;
+                const firstPortalId =
+                    typeof user.joinedPortals[0] === 'string'
+                        ? user.joinedPortals[0]
+                        : user.joinedPortals[0]._id;
 
                 navigate(`/portal/${firstPortalId}`);
             }
@@ -42,7 +43,8 @@ const Home = () => {
                     <div className="home-emoji">🌍</div>
                     <h1 className="home-title">Global Message'a Hoş Geldiniz</h1>
                     <p className="home-description">
-                        İlgi alanlarınıza uygun toplulukları keşfedin, sohbetlere katılın ve dünyayla bağlantı kurun. Oxypace ile sınırları kaldırın.
+                        İlgi alanlarınıza uygun toplulukları keşfedin, sohbetlere katılın ve
+                        dünyayla bağlantı kurun. Oxypace ile sınırları kaldırın.
                     </p>
 
                     <div className="action-buttons">

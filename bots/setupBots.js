@@ -18,9 +18,9 @@ const BOTS_TO_CREATE = [
         profile: {
             displayName: 'Tech News Bot',
             bio: 'Automated technology news aggregator.',
-            avatar: '' // You can add a default URL here
+            avatar: '', // You can add a default URL here
         },
-        verificationBadge: 'special' // Make them look official
+        verificationBadge: 'special', // Make them look official
     },
     {
         email: 'sportsbot@oxypace.com',
@@ -29,10 +29,10 @@ const BOTS_TO_CREATE = [
         profile: {
             displayName: 'World Sports',
             bio: 'Latest sports updates from around the globe.',
-            avatar: ''
+            avatar: '',
         },
-        verificationBadge: 'special'
-    }
+        verificationBadge: 'special',
+    },
 ];
 
 async function setupBots() {
@@ -65,7 +65,6 @@ async function setupBots() {
 
         console.log('--- Bot Setup Finished ---');
         process.exit(0);
-
     } catch (error) {
         console.error('Setup failed:', error);
         process.exit(1);

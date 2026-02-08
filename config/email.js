@@ -1,23 +1,23 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+    },
 });
 
 export const sendVerificationEmail = async (email, username, token) => {
-  const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
 
-  const mailOptions = {
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: '✨ Verify Your GlobalMessage Account',
-    html: `
+    const mailOptions = {
+        from: process.env.EMAIL_FROM,
+        to: email,
+        subject: '✨ Verify Your GlobalMessage Account',
+        html: `
       <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px;">
         <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
           <h1 style="color: #667eea; margin-bottom: 20px; font-size: 28px;">Welcome to GlobalMessage! 🎉</h1>
@@ -40,23 +40,23 @@ export const sendVerificationEmail = async (email, username, token) => {
         </div>
       </div>
     `,
-  };
+    };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Verification email sent to ${email}`);
-  } catch (error) {
-    console.error(`❌ Email sending failed: ${error.message}`);
-    throw new Error('Failed to send verification email');
-  }
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Verification email sent to ${email}`);
+    } catch (error) {
+        console.error(`❌ Email sending failed: ${error.message}`);
+        throw new Error('Failed to send verification email');
+    }
 };
 
 export const sendPasswordResetEmail = async (email, username, code) => {
-  const mailOptions = {
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: '🔒 Şifre Sıfırlama Kodu - Oxypace',
-    html: `
+    const mailOptions = {
+        from: process.env.EMAIL_FROM,
+        to: email,
+        subject: '🔒 Şifre Sıfırlama Kodu - Oxypace',
+        html: `
       <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fa; border-radius: 16px;">
         <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
           <h1 style="color: #333; margin-bottom: 20px; font-size: 24px;">Şifre Sıfırlama İsteği</h1>
@@ -81,15 +81,15 @@ export const sendPasswordResetEmail = async (email, username, code) => {
         </div>
       </div>
     `,
-  };
+    };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Password reset email sent to ${email}`);
-  } catch (error) {
-    console.error(`❌ Email sending failed: ${error.message}`);
-    throw new Error('Failed to send password reset email');
-  }
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Password reset email sent to ${email}`);
+    } catch (error) {
+        console.error(`❌ Email sending failed: ${error.message}`);
+        throw new Error('Failed to send password reset email');
+    }
 };
 
 export default transporter;

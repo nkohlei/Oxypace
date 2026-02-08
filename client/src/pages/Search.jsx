@@ -77,16 +77,18 @@ const Search = () => {
         try {
             const res = await axios.post(`/api/portals/${portalId}/join`);
             // Update local state to reflect change
-            setPortalResults(prev => prev.map(p => {
-                if (p._id === portalId) {
-                    if (res.data.status === 'requested') {
-                        return { ...p, isRequested: true };
-                    } else {
-                        return { ...p, isMember: true, memberCount: (p.memberCount || 0) + 1 };
+            setPortalResults((prev) =>
+                prev.map((p) => {
+                    if (p._id === portalId) {
+                        if (res.data.status === 'requested') {
+                            return { ...p, isRequested: true };
+                        } else {
+                            return { ...p, isMember: true, memberCount: (p.memberCount || 0) + 1 };
+                        }
                     }
-                }
-                return p;
-            }));
+                    return p;
+                })
+            );
         } catch (err) {
             console.error('Join failed:', err);
             alert(err.response?.data?.message || 'İşlem başarısız oldu.');
@@ -115,7 +117,12 @@ const Search = () => {
                     {/* Search Header */}
                     <div className="search-header">
                         <div className="search-input-wrapper">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                            >
                                 <circle cx="11" cy="11" r="8" />
                                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
                             </svg>
@@ -134,7 +141,12 @@ const Search = () => {
                                         fetchPortals();
                                     }}
                                 >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
                                         <line x1="18" y1="6" x2="6" y2="18" />
                                         <line x1="6" y1="6" x2="18" y2="18" />
                                     </svg>
@@ -173,9 +185,11 @@ const Search = () => {
                             {activeTab === 'portals' && (
                                 <div className="modern-portals-grid">
                                     {portalResults.length === 0 ? (
-                                        <div className="empty-search"><p>Portal bulunamadı.</p></div>
+                                        <div className="empty-search">
+                                            <p>Portal bulunamadı.</p>
+                                        </div>
                                     ) : (
-                                        portalResults.map(portal => (
+                                        portalResults.map((portal) => (
                                             <div
                                                 key={portal._id}
                                                 className="modern-portal-card"
@@ -185,18 +199,25 @@ const Search = () => {
                                                 <div
                                                     className="card-banner"
                                                     style={{
-                                                        background: portal.banner ? `url(${getImageUrl(portal.banner)}) center/cover` : getDefaultBanner(portal)
+                                                        background: portal.banner
+                                                            ? `url(${getImageUrl(portal.banner)}) center/cover`
+                                                            : getDefaultBanner(portal),
                                                     }}
-                                                >
-                                                </div>
+                                                ></div>
 
                                                 {/* Icon (overlapping) */}
                                                 <div className="card-icon-wrapper">
                                                     {portal.avatar ? (
-                                                        <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" />
+                                                        <img
+                                                            src={getImageUrl(portal.avatar)}
+                                                            alt={portal.name}
+                                                            className="card-icon-img"
+                                                        />
                                                     ) : (
                                                         <div className="card-icon-placeholder">
-                                                            {portal.name.substring(0, 2).toUpperCase()}
+                                                            {portal.name
+                                                                .substring(0, 2)
+                                                                .toUpperCase()}
                                                         </div>
                                                     )}
                                                 </div>
@@ -206,33 +227,52 @@ const Search = () => {
                                                     <h3 className="card-title">
                                                         {portal.name}
                                                         {portal.privacy === 'private' && (
-                                                            <span className="private-badge">🔒</span>
+                                                            <span className="private-badge">
+                                                                🔒
+                                                            </span>
                                                         )}
                                                     </h3>
                                                     <p className="card-desc">
-                                                        {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
+                                                        {portal.description ||
+                                                            'Bu topluluk hakkında henüz bir açıklama yok.'}
                                                     </p>
 
                                                     <div className="card-footer">
                                                         <div className="member-count">
                                                             <div className="status-dot"></div>
-                                                            <span>{portal.memberCount || 0} Üye</span>
+                                                            <span>
+                                                                {portal.memberCount || 0} Üye
+                                                            </span>
                                                         </div>
 
                                                         {portal.isMember ? (
-                                                            <button className="join-status-btn joined" onClick={(e) => e.stopPropagation()}>
+                                                            <button
+                                                                className="join-status-btn joined"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
                                                                 Üyesiniz
                                                             </button>
                                                         ) : portal.isRequested ? (
-                                                            <button className="join-status-btn requested" onClick={(e) => e.stopPropagation()}>
+                                                            <button
+                                                                className="join-status-btn requested"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
                                                                 İstek Gönderildi
                                                             </button>
                                                         ) : (
                                                             <button
                                                                 className={`join-action-btn ${portal.privacy === 'private' ? 'request' : 'join'}`}
-                                                                onClick={(e) => handleJoinPortal(e, portal._id, portal.privacy === 'private')}
+                                                                onClick={(e) =>
+                                                                    handleJoinPortal(
+                                                                        e,
+                                                                        portal._id,
+                                                                        portal.privacy === 'private'
+                                                                    )
+                                                                }
                                                             >
-                                                                {portal.privacy === 'private' ? 'İstek Gönder' : 'Katıl'}
+                                                                {portal.privacy === 'private'
+                                                                    ? 'İstek Gönder'
+                                                                    : 'Katıl'}
                                                             </button>
                                                         )}
                                                     </div>
@@ -258,14 +298,16 @@ const Search = () => {
                                                     border: 'none',
                                                     borderRadius: '4px',
                                                     color: 'white',
-                                                    cursor: 'pointer'
+                                                    cursor: 'pointer',
                                                 }}
                                             >
                                                 Giriş Yap
                                             </button>
                                         </div>
                                     ) : userResults.length === 0 ? (
-                                        <div className="empty-search"><p>Kullanıcı bulunamadı.</p></div>
+                                        <div className="empty-search">
+                                            <p>Kullanıcı bulunamadı.</p>
+                                        </div>
                                     ) : (
                                         userResults.map((user) => (
                                             <Link
@@ -281,7 +323,12 @@ const Search = () => {
                                                     />
                                                 ) : (
                                                     <div className="result-avatar-placeholder">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                        <svg
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="1.5"
+                                                        >
                                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                                             <circle cx="12" cy="7" r="4" />
                                                         </svg>
@@ -292,7 +339,9 @@ const Search = () => {
                                                         {user.profile?.displayName || user.username}
                                                         <Badge type={user.verificationBadge} />
                                                     </span>
-                                                    <span className="result-username">@{user.username}</span>
+                                                    <span className="result-username">
+                                                        @{user.username}
+                                                    </span>
                                                 </div>
                                             </Link>
                                         ))

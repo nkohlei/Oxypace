@@ -22,16 +22,32 @@ router.post('/:userId', protect, async (req, res) => {
         }
 
         // Repair corrupt data (for Current User)
-        if (!Array.isArray(currentUser.following)) currentUser.following = [];
-        if (!Array.isArray(currentUser.followers)) currentUser.followers = [];
-        if (!Array.isArray(currentUser.savedPosts)) currentUser.savedPosts = [];
-        if (!Array.isArray(currentUser.hiddenPosts)) currentUser.hiddenPosts = [];
+        if (!Array.isArray(currentUser.following)) {
+            currentUser.following = [];
+        }
+        if (!Array.isArray(currentUser.followers)) {
+            currentUser.followers = [];
+        }
+        if (!Array.isArray(currentUser.savedPosts)) {
+            currentUser.savedPosts = [];
+        }
+        if (!Array.isArray(currentUser.hiddenPosts)) {
+            currentUser.hiddenPosts = [];
+        }
 
         // Repair corrupt data (for Target User)
-        if (!Array.isArray(userToFollow.followers)) userToFollow.followers = [];
-        if (!Array.isArray(userToFollow.following)) userToFollow.following = [];
-        if (!Array.isArray(userToFollow.savedPosts)) userToFollow.savedPosts = [];
-        if (!Array.isArray(userToFollow.hiddenPosts)) userToFollow.hiddenPosts = [];
+        if (!Array.isArray(userToFollow.followers)) {
+            userToFollow.followers = [];
+        }
+        if (!Array.isArray(userToFollow.following)) {
+            userToFollow.following = [];
+        }
+        if (!Array.isArray(userToFollow.savedPosts)) {
+            userToFollow.savedPosts = [];
+        }
+        if (!Array.isArray(userToFollow.hiddenPosts)) {
+            userToFollow.hiddenPosts = [];
+        }
 
         const followingIndex = currentUser.following.indexOf(req.params.userId);
 
@@ -52,7 +68,7 @@ router.post('/:userId', protect, async (req, res) => {
             res.json({
                 message: 'User unfollowed',
                 following: false,
-                followerCount: userToFollow.followerCount
+                followerCount: userToFollow.followerCount,
             });
         } else {
             // Follow
@@ -70,23 +86,32 @@ router.post('/:userId', protect, async (req, res) => {
             const notification = await Notification.create({
                 recipient: userToFollow._id,
                 sender: req.user.id,
-                type: 'follow'
+                type: 'follow',
             });
 
             // Emit real-time notification
-            req.app.get('io').to(userToFollow._id.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar'));
+            req.app
+                .get('io')
+                .to(userToFollow._id.toString())
+                .emit(
+                    'newNotification',
+                    await notification.populate(
+                        'sender',
+                        'username profile.displayName profile.avatar'
+                    )
+                );
 
             res.json({
                 message: 'User followed',
                 following: true,
-                followerCount: userToFollow.followerCount
+                followerCount: userToFollow.followerCount,
             });
         }
     } catch (error) {
         console.error('Follow/unfollow error:', error);
 
         if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map(val => val.message);
+            const messages = Object.values(error.errors).map((val) => val.message);
             return res.status(400).json({ message: 'Validation Error: ' + messages.join(', ') });
         }
 
@@ -103,12 +128,11 @@ router.get('/:userId/followers', async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const user = await User.findById(req.params.userId)
-            .populate({
-                path: 'followers',
-                select: 'username profile.displayName profile.avatar followerCount followingCount',
-                options: { skip, limit }
-            });
+        const user = await User.findById(req.params.userId).populate({
+            path: 'followers',
+            select: 'username profile.displayName profile.avatar followerCount followingCount',
+            options: { skip, limit },
+        });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -118,7 +142,7 @@ router.get('/:userId/followers', async (req, res) => {
             followers: user.followers,
             currentPage: page,
             totalPages: Math.ceil(user.followerCount / limit),
-            totalFollowers: user.followerCount
+            totalFollowers: user.followerCount,
         });
     } catch (error) {
         console.error('Get followers error:', error);
@@ -135,12 +159,11 @@ router.get('/:userId/following', async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const user = await User.findById(req.params.userId)
-            .populate({
-                path: 'following',
-                select: 'username profile.displayName profile.avatar followerCount followingCount',
-                options: { skip, limit }
-            });
+        const user = await User.findById(req.params.userId).populate({
+            path: 'following',
+            select: 'username profile.displayName profile.avatar followerCount followingCount',
+            options: { skip, limit },
+        });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -150,7 +173,7 @@ router.get('/:userId/following', async (req, res) => {
             following: user.following,
             currentPage: page,
             totalPages: Math.ceil(user.followingCount / limit),
-            totalFollowing: user.followingCount
+            totalFollowing: user.followingCount,
         });
     } catch (error) {
         console.error('Get following error:', error);

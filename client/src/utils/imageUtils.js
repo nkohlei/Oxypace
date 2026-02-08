@@ -1,4 +1,3 @@
-
 /**
  * Constructs a full URL for an image path.
  * If the path is a local upload (starts with /uploads), it prepends the API root URL.
@@ -11,7 +10,7 @@ export const getImageUrl = (path) => {
     // Get Base URL (e.g., https://api.com/api)
     let baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-    // We need the ROOT URL, not the API URL. 
+    // We need the ROOT URL, not the API URL.
     // Usually API URL ends with '/api', so we strip it.
     if (baseUrl.endsWith('/api')) {
         baseUrl = baseUrl.slice(0, -4);

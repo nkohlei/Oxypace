@@ -15,14 +15,18 @@ const upload = multer({
             // Organize files: folder/filename-timestamp.ext
             let folder = 'uploads';
 
-            if (file.fieldname === 'avatar') folder = 'avatars';
-            else if (file.fieldname === 'banner' || file.fieldname === 'coverImage') folder = 'banners';
-            else if (file.fieldname === 'media') folder = `posts/${req.body.portalId || 'general'}`;
+            if (file.fieldname === 'avatar') {
+                folder = 'avatars';
+            } else if (file.fieldname === 'banner' || file.fieldname === 'coverImage') {
+                folder = 'banners';
+            } else if (file.fieldname === 'media') {
+                folder = `posts/${req.body.portalId || 'general'}`;
+            }
 
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
             const ext = path.extname(file.originalname);
             cb(null, `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`);
-        }
+        },
     }),
     limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
     fileFilter: (req, file, cb) => {
@@ -32,7 +36,7 @@ const upload = multer({
         } else {
             cb(new Error('Invalid file type. Only images and videos are allowed.'), false);
         }
-    }
+    },
 });
 
 export default upload;

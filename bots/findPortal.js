@@ -16,7 +16,7 @@ async function findPortal() {
     const portals = await Portal.find({ name: { $regex: 'Oxypace', $options: 'i' } });
 
     console.log('Found Portals:');
-    portals.forEach(p => {
+    portals.forEach((p) => {
         console.log(`Name: ${p.name}, ID: ${p._id}`);
     });
 

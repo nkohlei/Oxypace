@@ -25,35 +25,38 @@ A modern, real-time social media platform built with React, Node.js, Express, Mo
 ### Installation
 
 1. **Clone and navigate to the project**
-   ```bash
-   cd globalmessage2
-   ```
+
+    ```bash
+    cd globalmessage2
+    ```
 
 2. **Install backend dependencies**
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 3. **Install frontend dependencies**
-   ```bash
-   cd client
-   npm install
-   cd ..
-   ```
+
+    ```bash
+    cd client
+    npm install
+    cd ..
+    ```
 
 4. **Set up environment variables**
-   
-   Copy `.env.example` to `.env`:
-   ```bash
-   copy .env.example .env
-   ```
 
-   Edit `.env` and configure:
+    Copy `.env.example` to `.env`:
 
-   - **MongoDB**: Set `MONGODB_URI` (default: `mongodb://localhost:27017/globalmessage`)
-   - **JWT Secret**: Change `JWT_SECRET` to a random string
-   - **Email Service**: Configure Gmail or other SMTP service
-   - **Google OAuth**: Add your Google Client ID and Secret (see below)
+    ```bash
+    copy .env.example .env
+    ```
+
+    Edit `.env` and configure:
+    - **MongoDB**: Set `MONGODB_URI` (default: `mongodb://localhost:27017/globalmessage`)
+    - **JWT Secret**: Change `JWT_SECRET` to a random string
+    - **Email Service**: Configure Gmail or other SMTP service
+    - **Google OAuth**: Add your Google Client ID and Secret (see below)
 
 ### Email Configuration (Gmail)
 
@@ -61,10 +64,10 @@ A modern, real-time social media platform built with React, Node.js, Express, Mo
 2. Enable 2-Factor Authentication
 3. Generate an "App Password" for Gmail
 4. Use this app password in the `.env` file:
-   ```
-   EMAIL_USER=your-email@gmail.com
-   EMAIL_PASSWORD=your-16-character-app-password
-   ```
+    ```
+    EMAIL_USER=your-email@gmail.com
+    EMAIL_PASSWORD=your-16-character-app-password
+    ```
 
 ### Google OAuth Setup
 
@@ -74,17 +77,18 @@ A modern, real-time social media platform built with React, Node.js, Express, Mo
 4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
 5. Configure OAuth consent screen
 6. Create OAuth Client ID:
-   - Application type: Web application
-   - Authorized redirect URIs: `http://localhost:5000/api/auth/google/callback`
+    - Application type: Web application
+    - Authorized redirect URIs: `http://localhost:5000/api/auth/google/callback`
 7. Copy Client ID and Client Secret to `.env`:
-   ```
-   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   ```
+    ```
+    GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+    GOOGLE_CLIENT_SECRET=your-client-secret
+    ```
 
 ### Start MongoDB
 
 Make sure MongoDB is running:
+
 ```bash
 # If using local MongoDB
 mongod
@@ -95,20 +99,22 @@ Or use MongoDB Atlas (cloud) and update `MONGODB_URI` in `.env`
 ### Run the Application
 
 1. **Start the backend server** (from project root):
-   ```bash
-   npm run dev
-   ```
+
+    ```bash
+    npm run dev
+    ```
 
 2. **Start the frontend** (in a new terminal):
-   ```bash
-   cd client
-   npm run dev
-   ```
+
+    ```bash
+    cd client
+    npm run dev
+    ```
 
 3. **Open your browser** and navigate to:
-   ```
-   http://localhost:5173
-   ```
+    ```
+    http://localhost:5173
+    ```
 
 ## 📁 Project Structure
 
@@ -136,16 +142,16 @@ globalmessage2/
 ### Registration & Login
 
 1. **Email Registration**:
-   - Go to `/register`
-   - Enter email, username, and password
-   - Check your email for verification link
-   - Click the link to verify your account
-   - Login with your credentials
+    - Go to `/register`
+    - Enter email, username, and password
+    - Check your email for verification link
+    - Click the link to verify your account
+    - Login with your credentials
 
 2. **Google OAuth**:
-   - Click "Continue with Google" on login/register page
-   - Authorize the application
-   - You'll be automatically logged in
+    - Click "Continue with Google" on login/register page
+    - Authorize the application
+    - You'll be automatically logged in
 
 ### Creating Posts
 
@@ -172,6 +178,7 @@ globalmessage2/
 ## 🛠️ Tech Stack
 
 ### Backend
+
 - **Node.js** & **Express** - Server framework
 - **MongoDB** & **Mongoose** - Database
 - **Socket.IO** - Real-time communication
@@ -182,6 +189,7 @@ globalmessage2/
 - **bcryptjs** - Password hashing
 
 ### Frontend
+
 - **React** - UI library
 - **Vite** - Build tool
 - **React Router** - Routing
@@ -200,6 +208,7 @@ globalmessage2/
 ## 📝 API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/register` - Register new user
 - `GET /api/auth/verify-email` - Verify email
 - `POST /api/auth/login` - Login
@@ -207,17 +216,20 @@ globalmessage2/
 - `GET /api/auth/google/callback` - OAuth callback
 
 ### Users
+
 - `GET /api/users/me` - Get current user
 - `PUT /api/users/me` - Update profile
 - `GET /api/users/search` - Search users
 - `GET /api/users/:username` - Get user by username
 
 ### Posts
+
 - `POST /api/posts` - Create post
 - `GET /api/posts` - Get all posts
 - `DELETE /api/posts/:id` - Delete post
 
 ### Messages
+
 - `POST /api/messages` - Send message
 - `GET /api/messages/conversations` - Get conversations
 - `GET /api/messages/:userId` - Get messages with user
@@ -225,21 +237,25 @@ globalmessage2/
 ## 🔧 Troubleshooting
 
 ### MongoDB Connection Error
+
 - Make sure MongoDB is running
 - Check `MONGODB_URI` in `.env`
 - Try using MongoDB Atlas for cloud database
 
 ### Email Not Sending
+
 - Verify Gmail App Password is correct
-- Check EMAIL_* variables in `.env`
+- Check EMAIL\_\* variables in `.env`
 - The app will still work without email (verification won't function)
 
 ### Google OAuth Not Working
+
 - Verify redirect URI matches exactly
 - Check Client ID and Secret in `.env`
 - Make sure Google+ API is enabled
 
 ### Port Already in Use
+
 - Change `PORT` in `.env` (backend)
 - Change port in `client/vite.config.js` (frontend)
 

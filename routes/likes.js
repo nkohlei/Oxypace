@@ -28,7 +28,7 @@ router.post('/post/:postId', protect, async (req, res) => {
             res.json({
                 message: 'Post unliked',
                 liked: false,
-                likeCount: post.likeCount
+                likeCount: post.likeCount,
             });
         } else {
             // Like
@@ -43,7 +43,7 @@ router.post('/post/:postId', protect, async (req, res) => {
                     recipient: post.author,
                     sender: req.user.id,
                     type: 'like',
-                    post: post._id
+                    post: post._id,
                 });
 
                 if (!existingNotif) {
@@ -51,13 +51,16 @@ router.post('/post/:postId', protect, async (req, res) => {
                         recipient: post.author,
                         sender: req.user.id,
                         type: 'like',
-                        post: post._id
+                        post: post._id,
                     });
 
                     // Real-time socket part
                     const io = req.app.get('io');
                     if (io) {
-                        const populatedNotif = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
+                        const populatedNotif = await notification.populate(
+                            'sender',
+                            'username profile.displayName profile.avatar verificationBadge'
+                        );
                         io.to(post.author.toString()).emit('newNotification', populatedNotif);
                     }
                 }
@@ -66,7 +69,7 @@ router.post('/post/:postId', protect, async (req, res) => {
             res.json({
                 message: 'Post liked',
                 liked: true,
-                likeCount: post.likeCount
+                likeCount: post.likeCount,
             });
         }
     } catch (error) {
@@ -97,7 +100,7 @@ router.post('/comment/:commentId', protect, async (req, res) => {
             res.json({
                 message: 'Comment unliked',
                 liked: false,
-                likeCount: comment.likeCount
+                likeCount: comment.likeCount,
             });
         } else {
             // Like
@@ -111,7 +114,7 @@ router.post('/comment/:commentId', protect, async (req, res) => {
                     recipient: comment.author,
                     sender: req.user.id,
                     type: 'like',
-                    comment: comment._id
+                    comment: comment._id,
                 });
 
                 if (!existingNotif) {
@@ -120,12 +123,15 @@ router.post('/comment/:commentId', protect, async (req, res) => {
                         sender: req.user.id,
                         type: 'like',
                         post: comment.post, // Link to the post
-                        comment: comment._id
+                        comment: comment._id,
                     });
 
                     const io = req.app.get('io');
                     if (io) {
-                        const populatedNotif = await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge');
+                        const populatedNotif = await notification.populate(
+                            'sender',
+                            'username profile.displayName profile.avatar verificationBadge'
+                        );
                         io.to(comment.author.toString()).emit('newNotification', populatedNotif);
                     }
                 }
@@ -134,7 +140,7 @@ router.post('/comment/:commentId', protect, async (req, res) => {
             res.json({
                 message: 'Comment liked',
                 liked: true,
-                likeCount: comment.likeCount
+                likeCount: comment.likeCount,
             });
         }
     } catch (error) {
@@ -148,8 +154,10 @@ router.post('/comment/:commentId', protect, async (req, res) => {
 // @access  Public
 router.get('/post/:postId', async (req, res) => {
     try {
-        const post = await Post.findById(req.params.postId)
-            .populate('likes', 'username profile.displayName profile.avatar');
+        const post = await Post.findById(req.params.postId).populate(
+            'likes',
+            'username profile.displayName profile.avatar'
+        );
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -167,8 +175,10 @@ router.get('/post/:postId', async (req, res) => {
 // @access  Public
 router.get('/comment/:commentId', async (req, res) => {
     try {
-        const comment = await Comment.findById(req.params.commentId)
-            .populate('likes', 'username profile.displayName profile.avatar');
+        const comment = await Comment.findById(req.params.commentId).populate(
+            'likes',
+            'username profile.displayName profile.avatar'
+        );
 
         if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });

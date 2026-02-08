@@ -10,8 +10,10 @@ const run = async () => {
 
         // Find posts with media, newest first
         const posts = await Post.find({
-            media: { $exists: true, $ne: '' }
-        }).sort({ createdAt: -1 }).limit(3);
+            media: { $exists: true, $ne: '' },
+        })
+            .sort({ createdAt: -1 })
+            .limit(3);
 
         console.log('\n=== LATEST 3 POSTS WITH MEDIA ===\n');
 
@@ -25,7 +27,6 @@ const run = async () => {
             console.log('Media Type:', post.mediaType);
             console.log('---\n');
         }
-
     } catch (e) {
         console.error(e);
     } finally {

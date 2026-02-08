@@ -24,7 +24,7 @@ const AuthProcess = () => {
                 // Validate with Backend
                 const response = await axios.post('/api/auth/google/validate', {
                     token,
-                    intent
+                    intent,
                 });
 
                 const { action, user, token: authToken, preToken, message } = response.data;
@@ -42,7 +42,6 @@ const AuthProcess = () => {
 
                 // Clear intent
                 sessionStorage.removeItem('auth_intent');
-
             } catch (error) {
                 console.error('Auth Process Error:', error);
                 const msg = error.response?.data?.message || 'AuthFailed';
@@ -60,15 +59,17 @@ const AuthProcess = () => {
     }, [navigate, searchParams, login]);
 
     return (
-        <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh',
-            width: '100%',
-            background: '#09090b',
-            color: 'white'
-        }}>
+        <div
+            style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100vh',
+                width: '100%',
+                background: '#09090b',
+                color: 'white',
+            }}
+        >
             <div style={{ textAlign: 'center' }}>
                 <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
                 <h2>Google Hesabınız doğrulanıyor...</h2>

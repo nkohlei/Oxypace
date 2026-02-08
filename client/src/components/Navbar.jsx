@@ -48,7 +48,7 @@ const Navbar = () => {
         const handleNewNotification = (notification) => {
             // Don't count own actions if they somehow come through
             if (notification.sender._id !== user?._id) {
-                setUnreadCount(prev => prev + 1);
+                setUnreadCount((prev) => prev + 1);
             }
         };
 
@@ -97,7 +97,12 @@ const Navbar = () => {
                     <div className="nav-left">
                         {/* Mobile Sidebar Toggle - Visible only on mobile */}
                         <button className="mobile-menu-btn" onClick={toggleSidebar}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
                                 <line x1="3" y1="6" x2="21" y2="6"></line>
                                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -126,15 +131,30 @@ const Navbar = () => {
                                 borderRadius: '50%',
                                 cursor: 'pointer',
                                 color: 'var(--text-secondary)',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
                             }}
                         >
                             {isDark ? (
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ color: '#fbbf24' }}>
+                                <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    stroke="none"
+                                    style={{ color: '#fbbf24' }}
+                                >
                                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                                 </svg>
                             ) : (
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#f59e0b' }}>
+                                <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    style={{ color: '#f59e0b' }}
+                                >
                                     <circle cx="12" cy="12" r="5" />
                                     <line x1="12" y1="1" x2="12" y2="3" />
                                     <line x1="12" y1="21" x2="12" y2="23" />
@@ -156,15 +176,32 @@ const Navbar = () => {
                                     className="header-icon notification-btn"
                                     onClick={async () => {
                                         setUnreadCount(0);
-                                        try { await axios.put('/api/notifications/read'); } catch (e) { }
+                                        try {
+                                            await axios.put('/api/notifications/read');
+                                        } catch (e) {}
                                     }}
                                 >
                                     <div className="nav-icon-wrapper">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill={location.pathname === '/notifications' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill={
+                                                location.pathname === '/notifications'
+                                                    ? 'currentColor'
+                                                    : 'none'
+                                            }
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        >
                                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                                             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                                         </svg>
-                                        {unreadCount > 0 && <span className="nav-badge top-badge"></span>}
+                                        {unreadCount > 0 && (
+                                            <span className="nav-badge top-badge"></span>
+                                        )}
                                     </div>
                                 </Link>
 
@@ -175,7 +212,12 @@ const Navbar = () => {
                                         onClick={() => setShowMenu(!showMenu)}
                                         title="Menü"
                                     >
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                        >
                                             <circle cx="12" cy="12" r="1" />
                                             <circle cx="12" cy="5" r="1" />
                                             <circle cx="12" cy="19" r="1" />
@@ -185,43 +227,139 @@ const Navbar = () => {
                                     {showMenu && (
                                         <div className="header-dropdown">
                                             {/* Dropdown Header with User Info */}
-                                            <div className="dropdown-user-info" style={{
-                                                padding: '12px 16px',
-                                                borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                                marginBottom: '8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px'
-                                            }}>
+                                            <div
+                                                className="dropdown-user-info"
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                                    marginBottom: '8px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px',
+                                                }}
+                                            >
                                                 {user?.profile?.avatar ? (
-                                                    <img src={getImageUrl(user.profile.avatar)} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                    <img
+                                                        src={getImageUrl(user.profile.avatar)}
+                                                        alt="Avatar"
+                                                        style={{
+                                                            width: '40px',
+                                                            height: '40px',
+                                                            borderRadius: '50%',
+                                                            objectFit: 'cover',
+                                                        }}
+                                                    />
                                                 ) : (
-                                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>{user?.username?.[0]?.toUpperCase()}</span>
+                                                    <div
+                                                        style={{
+                                                            width: '40px',
+                                                            height: '40px',
+                                                            borderRadius: '50%',
+                                                            background: '#333',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                fontSize: '18px',
+                                                                fontWeight: 'bold',
+                                                                color: '#fff',
+                                                            }}
+                                                        >
+                                                            {user?.username?.[0]?.toUpperCase()}
+                                                        </span>
                                                     </div>
                                                 )}
-                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span style={{ fontWeight: '700', color: '#fff', fontSize: '0.95rem' }}>{user?.username}</span>
-                                                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Giriş Yapıldı</span>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                    }}
+                                                >
+                                                    <span
+                                                        style={{
+                                                            fontWeight: '700',
+                                                            color: '#fff',
+                                                            fontSize: '0.95rem',
+                                                        }}
+                                                    >
+                                                        {user?.username}
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '0.8rem',
+                                                            color: '#94a3b8',
+                                                        }}
+                                                    >
+                                                        Giriş Yapıldı
+                                                    </span>
                                                 </div>
                                             </div>
                                             {user?.isAdmin && (
-                                                <Link to="/admin" className="dropdown-item admin-link" onClick={() => setShowMenu(false)}>
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                                                <Link
+                                                    to="/admin"
+                                                    className="dropdown-item admin-link"
+                                                    onClick={() => setShowMenu(false)}
+                                                >
+                                                    <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="1.5"
+                                                    >
+                                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                                    </svg>
                                                     Yönetici Paneli
                                                 </Link>
                                             )}
-                                            <Link to="/saved" className="dropdown-item" onClick={() => setShowMenu(false)}>
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+                                            <Link
+                                                to="/saved"
+                                                className="dropdown-item"
+                                                onClick={() => setShowMenu(false)}
+                                            >
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="1.5"
+                                                >
+                                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                                </svg>
                                                 Kaydedilenler
                                             </Link>
-                                            <Link to="/settings" className="dropdown-item" onClick={() => setShowMenu(false)}>
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                                            <Link
+                                                to="/settings"
+                                                className="dropdown-item"
+                                                onClick={() => setShowMenu(false)}
+                                            >
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="1.5"
+                                                >
+                                                    <circle cx="12" cy="12" r="3" />
+                                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                                </svg>
                                                 Ayarlar
                                             </Link>
                                             <div className="dropdown-divider" />
-                                            <button className="dropdown-item logout" onClick={handleLogout}>
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+                                            <button
+                                                className="dropdown-item logout"
+                                                onClick={handleLogout}
+                                            >
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="1.5"
+                                                >
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                                    <polyline points="16 17 21 12 16 7" />
+                                                    <line x1="21" y1="12" x2="9" y2="12" />
+                                                </svg>
                                                 Çıkış Yap
                                             </button>
                                         </div>
@@ -239,10 +377,19 @@ const Navbar = () => {
                                 title="Profilim"
                             >
                                 {user?.profile?.avatar ? (
-                                    <img src={getImageUrl(user.profile.avatar)} alt="Profile" className="nav-profile-img" />
+                                    <img
+                                        src={getImageUrl(user.profile.avatar)}
+                                        alt="Profile"
+                                        className="nav-profile-img"
+                                    />
                                 ) : (
                                     <div className="nav-profile-placeholder">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                        >
                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                             <circle cx="12" cy="7" r="4"></circle>
                                         </svg>
@@ -250,14 +397,22 @@ const Navbar = () => {
                                 )}
                             </Link>
                         ) : (
-                            <div className="guest-nav-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginLeft: '8px' }}>
+                            <div
+                                className="guest-nav-actions"
+                                style={{
+                                    display: 'flex',
+                                    gap: '12px',
+                                    alignItems: 'center',
+                                    marginLeft: '8px',
+                                }}
+                            >
                                 <Link
                                     to="/login"
                                     style={{
                                         color: 'var(--text-primary)',
                                         textDecoration: 'none',
                                         fontWeight: '600',
-                                        fontSize: '0.95rem'
+                                        fontSize: '0.95rem',
                                     }}
                                 >
                                     Giriş Yap
@@ -272,7 +427,7 @@ const Navbar = () => {
                                         textDecoration: 'none',
                                         fontWeight: '600',
                                         fontSize: '0.95rem',
-                                        transition: 'opacity 0.2s'
+                                        transition: 'opacity 0.2s',
                                     }}
                                 >
                                     Kaydol
@@ -297,8 +452,16 @@ const Navbar = () => {
             {user && (
                 <nav className="bottom-nav" style={{ display: 'none' }}>
                     <div className="nav-container">
-                        <Link to="/inbox" className={`nav-item ${isActive('/inbox') ? 'active' : ''}`}>
-                            <svg viewBox="0 0 24 24" fill={isActive('/inbox') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
+                        <Link
+                            to="/inbox"
+                            className={`nav-item ${isActive('/inbox') ? 'active' : ''}`}
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill={isActive('/inbox') ? 'currentColor' : 'none'}
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                            >
                                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                             </svg>
                         </Link>
@@ -310,4 +473,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -24,7 +23,9 @@ if (fs.existsSync(envPath)) {
 const debugMessages = async () => {
     try {
         const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-        if (!MONGO_URI) throw new Error('MONGO_URI missing');
+        if (!MONGO_URI) {
+            throw new Error('MONGO_URI missing');
+        }
 
         await mongoose.connect(MONGO_URI);
         console.log('MongoDB Connected.');
@@ -53,16 +54,18 @@ const debugMessages = async () => {
 
         messages.forEach((msg, index) => {
             try {
-                if (!msg.sender) throw new Error(`Message ${msg._id}: Sender is NULL`);
-                if (!msg.recipient) throw new Error(`Message ${msg._id}: Recipient is NULL`);
+                if (!msg.sender) {
+                    throw new Error(`Message ${msg._id}: Sender is NULL`);
+                }
+                if (!msg.recipient) {
+                    throw new Error(`Message ${msg._id}: Recipient is NULL`);
+                }
 
-                const otherUser = msg.sender._id.toString() === user._id.toString()
-                    ? msg.recipient
-                    : msg.sender;
+                const otherUser =
+                    msg.sender._id.toString() === user._id.toString() ? msg.recipient : msg.sender;
 
                 // If we got here, populates worked.
                 // console.log(`Msg ${index}: With ${otherUser.username}`);
-
             } catch (err) {
                 console.error(`ERROR Processing Msg ${msg._id}:`, err.message);
                 errors++;

@@ -9,7 +9,7 @@ const run = async () => {
         await mongoose.connect(process.env.MONGODB_URI);
         // Find latest post where media is NOT null and NOT empty string
         const post = await Post.findOne({
-            media: { $exists: true, $ne: '' }
+            media: { $exists: true, $ne: '' },
         }).sort({ createdAt: -1 });
 
         console.log('\n--- LATEST MEDIA POST ---');

@@ -1,0 +1,12 @@
+# robots.txt for Oxypace
+
+User-agent: *
+Allow: /
+
+# Disallow admin and private pages
+Disallow: /admin
+Disallow: /settings
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://oxypace.vercel.app/sitemap.xml

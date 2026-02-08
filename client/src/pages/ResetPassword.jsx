@@ -8,7 +8,7 @@ const ResetPassword = () => {
         email: '',
         code: '',
         newPassword: '',
-        confirmPassword: ''
+        confirmPassword: '',
     });
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
@@ -40,7 +40,7 @@ const ResetPassword = () => {
             await axios.post('/api/auth/reset-password', {
                 email: formData.email,
                 code: formData.code,
-                newPassword: formData.newPassword
+                newPassword: formData.newPassword,
             });
             setMessage('Şifreniz başarıyla sıfırlandı! Giriş sayfasına yönlendiriliyorsunuz...');
             setTimeout(() => {
@@ -127,7 +127,9 @@ const ResetPassword = () => {
                 </form>
 
                 <div className="auth-footer">
-                    <Link to="/login" className="auth-link">Giriş Yap'a Dön</Link>
+                    <Link to="/login" className="auth-link">
+                        Giriş Yap'a Dön
+                    </Link>
                 </div>
             </div>
         </div>

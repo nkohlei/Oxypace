@@ -19,7 +19,7 @@ class MediaHandler {
             const response = await axios({
                 url,
                 method: 'GET',
-                responseType: 'stream'
+                responseType: 'stream',
             });
 
             // Get extension (default to jpg if not found)

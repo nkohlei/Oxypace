@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
     plugins: [react()],
@@ -14,8 +14,23 @@ export default defineConfig({
         },
     },
     build: {
-        outDir: 'dist', // Standard local build
+        outDir: 'dist',
         emptyOutDir: true,
         sourcemap: false,
+        // Performance optimizations (esbuild is default and faster)
+        minify: 'esbuild',
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    // Split vendor chunks for better caching
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    socket: ['socket.io-client'],
+                },
+            },
+        },
+        chunkSizeWarningLimit: 500,
     },
-})
+    esbuild: {
+        drop: ['console', 'debugger'], // Remove console.log in production
+    },
+});

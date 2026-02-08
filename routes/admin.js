@@ -11,8 +11,9 @@ const router = express.Router();
 // @access  Private/Admin
 router.get('/verification-requests', protect, admin, async (req, res) => {
     try {
-        const users = await User.find({ 'verificationRequest.status': 'pending' })
-            .select('username email profile verificationRequest');
+        const users = await User.find({ 'verificationRequest.status': 'pending' }).select(
+            'username email profile verificationRequest'
+        );
         res.json(users);
     } catch (error) {
         console.error('Fetch requests error:', error);
@@ -44,7 +45,7 @@ router.post('/verify-user/:id', protect, admin, async (req, res) => {
         await Notification.create({
             recipient: user._id,
             type: 'system', // We might need to add 'system' to Notification enum if not exists, or verify logic
-            content: `Tebrikler! Hesabınız doğrulandı ve ${badgeType.toUpperCase()} rozetiniz tanımlandı.`
+            content: `Tebrikler! Hesabınız doğrulandı ve ${badgeType.toUpperCase()} rozetiniz tanımlandı.`,
         });
 
         res.json({ message: 'User verified successfully', user });
@@ -74,7 +75,8 @@ router.post('/reject-verification/:id', protect, admin, async (req, res) => {
         await Notification.create({
             recipient: user._id,
             type: 'system',
-            content: 'Üzgünüz, onaylanmış hesap başvurunuz reddedildi. Şartları sağladığınızda tekrar başvurabilirsiniz.'
+            content:
+                'Üzgünüz, onaylanmış hesap başvurunuz reddedildi. Şartları sağladığınızda tekrar başvurabilirsiniz.',
         });
 
         res.json({ message: 'Request rejected', user });

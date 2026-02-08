@@ -73,7 +73,11 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     // Close menu when clicking outside
     React.useEffect(() => {
         const handleClickOutside = (event) => {
-            if (showEmojiMenu && !event.target.closest('.emoji-menu') && !event.target.closest('.react-btn')) {
+            if (
+                showEmojiMenu &&
+                !event.target.closest('.emoji-menu') &&
+                !event.target.closest('.react-btn')
+            ) {
                 setShowEmojiMenu(false);
             }
         };
@@ -81,8 +85,9 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showEmojiMenu]);
 
-    const displayPost = (typeof message.sharedPost === 'object') ? message.sharedPost : dynamicPost;
-    const displayPortal = (typeof message.sharedPortal === 'object') ? message.sharedPortal : dynamicPortal;
+    const displayPost = typeof message.sharedPost === 'object' ? message.sharedPost : dynamicPost;
+    const displayPortal =
+        typeof message.sharedPortal === 'object' ? message.sharedPortal : dynamicPortal;
 
     const toggleLightbox = (e) => {
         if (e) e.stopPropagation();
@@ -117,8 +122,6 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
             >
                 {/* Actions Bar (Right for other, Left for own - handled by CSS order) */}
                 <div className="message-actions">
-
-
                     {/* Delete Button (Trash Icon) */}
                     <button
                         className="action-btn delete-btn"
@@ -128,15 +131,20 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                             setConfirmDelete(true);
                         }}
                     >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                             <line x1="10" y1="11" x2="10" y2="17"></line>
                             <line x1="14" y1="11" x2="14" y2="17"></line>
                         </svg>
                     </button>
-
-
                 </div>
 
                 <div
@@ -144,46 +152,61 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                 >
                     {/* Full Screen Foggy Overlay for Delete Confirmation */}
                     {/* Full Screen Foggy Overlay for Delete Confirmation */}
-                    {confirmDelete && createPortal(
-                        <div className="delete-confirm-overlay">
-                            <div className="delete-confirm-modal">
-                                <p>Sil?</p>
-                                <div className="delete-confirm-actions">
-                                    <button
-                                        className="confirm-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDelete(message._id); // This calls handleDeleteMessage in Inbox.jsx
-                                            setConfirmDelete(false);
-                                        }}
-                                    >
-                                        Evet
-                                    </button>
-                                    <button
-                                        className="cancel-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setConfirmDelete(false);
-                                        }}
-                                    >
-                                        İptal
-                                    </button>
+                    {confirmDelete &&
+                        createPortal(
+                            <div className="delete-confirm-overlay">
+                                <div className="delete-confirm-modal">
+                                    <p>Sil?</p>
+                                    <div className="delete-confirm-actions">
+                                        <button
+                                            className="confirm-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDelete(message._id); // This calls handleDeleteMessage in Inbox.jsx
+                                                setConfirmDelete(false);
+                                            }}
+                                        >
+                                            Evet
+                                        </button>
+                                        <button
+                                            className="cancel-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setConfirmDelete(false);
+                                            }}
+                                        >
+                                            İptal
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>,
-                        document.body
-                    )}
+                            </div>,
+                            document.body
+                        )}
 
                     <div className="message-bubble-content">
                         {message.media && (
                             <div className="message-media" onClick={toggleLightbox}>
                                 <img
-                                    src={message.isOptimistic ? message.media : getImageUrl(message.media)}
+                                    src={
+                                        message.isOptimistic
+                                            ? message.media
+                                            : getImageUrl(message.media)
+                                    }
                                     alt="Attachment"
                                 />
                                 {!message.isOptimistic && (
-                                    <button className="msg-download-btn" onClick={(e) => handleDownload(e, getImageUrl(message.media))}>
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <button
+                                        className="msg-download-btn"
+                                        onClick={(e) =>
+                                            handleDownload(e, getImageUrl(message.media))
+                                        }
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                             <polyline points="7 10 12 15 17 10" />
                                             <line x1="12" y1="15" x2="12" y2="3" />
@@ -198,10 +221,13 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                 <div className="reply-bar-line"></div>
                                 <div className="reply-content-box">
                                     <p className="reply-sender">
-                                        {message.replyTo.sender?.profile?.displayName || message.replyTo.sender?.username || 'Kullanıcı'}
+                                        {message.replyTo.sender?.profile?.displayName ||
+                                            message.replyTo.sender?.username ||
+                                            'Kullanıcı'}
                                     </p>
                                     <p className="reply-text">
-                                        {message.replyTo.content || (message.replyTo.media ? '📷 Medya' : 'Mesaj')}
+                                        {message.replyTo.content ||
+                                            (message.replyTo.media ? '📷 Medya' : 'Mesaj')}
                                     </p>
                                 </div>
                             </div>
@@ -215,25 +241,53 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                         alt={displayPost.author?.username}
                                         className="shared-post-avatar"
                                     />
-                                    <span className="shared-post-username">@{displayPost.author?.username}</span>
+                                    <span className="shared-post-username">
+                                        @{displayPost.author?.username}
+                                    </span>
                                 </div>
-                                {displayPost.content && <p className="shared-post-content">{displayPost.content.substring(0, 100)}...</p>}
+                                {displayPost.content && (
+                                    <p className="shared-post-content">
+                                        {displayPost.content.substring(0, 100)}...
+                                    </p>
+                                )}
                                 {displayPost.media && (
                                     <div className="shared-post-media-preview">
-                                        <img src={getImageUrl(Array.isArray(displayPost.media) ? displayPost.media[0] : displayPost.media)} alt="Shared Post" />
+                                        <img
+                                            src={getImageUrl(
+                                                Array.isArray(displayPost.media)
+                                                    ? displayPost.media[0]
+                                                    : displayPost.media
+                                            )}
+                                            alt="Shared Post"
+                                        />
                                     </div>
                                 )}
                             </Link>
                         ) : message.sharedPost ? (
-                            <Link to={`/post/${message.sharedPost}`} className="shared-post-card fallback">
-                                <div className="shared-post-content" style={{ color: loadingError ? 'var(--error-color, #ff4d4d)' : 'inherit' }}>
-                                    {loadingError ? 'Gönderi yüklenemedi (Silinmiş olabilir)' : 'Gönderi yükleniyor...'}
+                            <Link
+                                to={`/post/${message.sharedPost}`}
+                                className="shared-post-card fallback"
+                            >
+                                <div
+                                    className="shared-post-content"
+                                    style={{
+                                        color: loadingError
+                                            ? 'var(--error-color, #ff4d4d)'
+                                            : 'inherit',
+                                    }}
+                                >
+                                    {loadingError
+                                        ? 'Gönderi yüklenemedi (Silinmiş olabilir)'
+                                        : 'Gönderi yükleniyor...'}
                                 </div>
                             </Link>
                         ) : null}
 
                         {displayPortal ? (
-                            <Link to={`/portal/${displayPortal._id}`} className="shared-portal-card">
+                            <Link
+                                to={`/portal/${displayPortal._id}`}
+                                className="shared-portal-card"
+                            >
                                 <div className="shared-portal-header">
                                     <div className="shared-portal-avatar-container">
                                         <img
@@ -245,25 +299,46 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                     </div>
                                     <div className="shared-portal-info">
                                         <h4>{displayPortal.name}</h4>
-                                        <p>{displayPortal.description?.substring(0, 80) || 'Dinamik bir topluluk portalı...'}</p>
+                                        <p>
+                                            {displayPortal.description?.substring(0, 80) ||
+                                                'Dinamik bir topluluk portalı...'}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="view-portal-footer">
                                     <span>Portalı Görüntüle</span>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                    >
                                         <path d="M5 12h14M12 5l7 7-7 7" />
                                     </svg>
                                 </div>
                             </Link>
                         ) : message.sharedPortal ? (
                             <div className="shared-portal-card fallback">
-                                <div className="shared-portal-content" style={{ color: portalLoadingError ? 'var(--error-color)' : 'inherit' }}>
-                                    {portalLoadingError ? 'Portal yüklenemedi' : 'Portal yükleniyor...'}
+                                <div
+                                    className="shared-portal-content"
+                                    style={{
+                                        color: portalLoadingError
+                                            ? 'var(--error-color)'
+                                            : 'inherit',
+                                    }}
+                                >
+                                    {portalLoadingError
+                                        ? 'Portal yüklenemedi'
+                                        : 'Portal yükleniyor...'}
                                 </div>
                             </div>
                         ) : null}
 
-                        {message.content && <div className="message-content">{linkifyText(message.content)}</div>}
+                        {message.content && (
+                            <div className="message-content">{linkifyText(message.content)}</div>
+                        )}
                         <div className="message-time">
                             {formatTime(message.createdAt)}
                             {message.isOptimistic && <span className="sending-indicator">...</span>}
@@ -273,7 +348,9 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                         {message.reactions && message.reactions.length > 0 && (
                             <div className="message-reactions">
                                 {message.reactions.map((reaction, index) => (
-                                    <span key={index} className="reaction-emoji">{reaction.emoji}</span>
+                                    <span key={index} className="reaction-emoji">
+                                        {reaction.emoji}
+                                    </span>
                                 ))}
                             </div>
                         )}

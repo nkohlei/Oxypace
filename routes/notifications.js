@@ -22,14 +22,17 @@ router.get('/', protect, async (req, res) => {
             .populate('comment', 'content');
 
         const total = await Notification.countDocuments({ recipient: req.user.id });
-        const unreadCount = await Notification.countDocuments({ recipient: req.user.id, read: false });
+        const unreadCount = await Notification.countDocuments({
+            recipient: req.user.id,
+            read: false,
+        });
 
         res.json({
             notifications,
             currentPage: page,
             totalPages: Math.ceil(total / limit),
             totalNotifications: total,
-            unreadCount
+            unreadCount,
         });
     } catch (error) {
         console.error('Get notifications error:', error);

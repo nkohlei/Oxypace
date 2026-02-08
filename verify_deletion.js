@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -26,11 +25,11 @@ const verify = async () => {
         const portals = await Portal.find({});
         console.log(`Total Portals: ${portals.length}`);
 
-        const testPortals = portals.filter(p => /test/i.test(p.name));
+        const testPortals = portals.filter((p) => /test/i.test(p.name));
 
         if (testPortals.length > 0) {
             console.log('Found "test" portals:');
-            testPortals.forEach(p => console.log(`- ${p.name} (ID: ${p._id})`));
+            testPortals.forEach((p) => console.log(`- ${p.name} (ID: ${p._id})`));
         } else {
             console.log('No portals matching "test" found.');
         }

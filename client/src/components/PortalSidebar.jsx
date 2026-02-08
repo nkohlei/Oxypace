@@ -42,7 +42,14 @@ const PortalSidebar = () => {
                     data-tooltip="Mesajlar"
                 >
                     <div className="portal-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="24"
+                            height="24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
                     </div>
@@ -51,29 +58,30 @@ const PortalSidebar = () => {
                 <div className="sidebar-separator"></div>
 
                 {/* User's Portals */}
-                {user?.joinedPortals && user.joinedPortals
-                    .filter(p => p && p._id && p.name) // Strict filter
-                    .map((portal) => (
-                        <div
-                            key={portal._id}
-                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
-                            onClick={() => handleNavigation(`/portal/${portal._id}`)}
-                        >
-                            <div className="portal-icon">
-                                {portal.avatar ? (
-                                    <img src={getImageUrl(portal.avatar)} alt={portal.name} />
-                                ) : (
-                                    <span>{portal.name.substring(0, 2).toUpperCase()}</span>
-                                )}
-                            </div>
+                {user?.joinedPortals &&
+                    user.joinedPortals
+                        .filter((p) => p && p._id && p.name) // Strict filter
+                        .map((portal) => (
+                            <div
+                                key={portal._id}
+                                className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
+                                onClick={() => handleNavigation(`/portal/${portal._id}`)}
+                            >
+                                <div className="portal-icon">
+                                    {portal.avatar ? (
+                                        <img src={getImageUrl(portal.avatar)} alt={portal.name} />
+                                    ) : (
+                                        <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                    )}
+                                </div>
 
-                            {/* Hover Tooltip (Simple Bubble Style) */}
-                            <div className="portal-tooltip">
-                                <span className="tooltip-text">{portal.name}</span>
-                                <div className="tooltip-arrow"></div>
+                                {/* Hover Tooltip (Simple Bubble Style) */}
+                                <div className="portal-tooltip">
+                                    <span className="tooltip-text">{portal.name}</span>
+                                    <div className="tooltip-arrow"></div>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
 
                 <style>{`
                 .portal-tooltip {
@@ -130,7 +138,14 @@ const PortalSidebar = () => {
                     data-tooltip="Keşfet"
                 >
                     <div className="portal-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="24"
+                            height="24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
@@ -147,7 +162,14 @@ const PortalSidebar = () => {
                     data-tooltip="Portal Oluştur"
                 >
                     <div className="portal-icon create-portal-btn">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="24"
+                            height="24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
@@ -164,7 +186,14 @@ const PortalSidebar = () => {
                     title="Yan Menüyü Aç/Kapat"
                 >
                     <div className="portal-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="24"
+                            height="24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
                             <polyline points="13 17 18 12 13 7"></polyline>
                             <polyline points="6 17 11 12 6 7"></polyline>
                         </svg>
@@ -173,9 +202,7 @@ const PortalSidebar = () => {
             </div>
 
             {/* Create Portal Modal */}
-            {showCreateModal && (
-                <CreatePortalModal onClose={() => setShowCreateModal(false)} />
-            )}
+            {showCreateModal && <CreatePortalModal onClose={() => setShowCreateModal(false)} />}
         </>
     );
 };

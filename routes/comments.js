@@ -47,14 +47,13 @@ router.get('/:commentId/replies', async (req, res) => {
             replies,
             currentPage: page,
             totalPages: Math.ceil(total / limit),
-            totalReplies: total
+            totalReplies: total,
         });
     } catch (error) {
         console.error('Get replies error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
-
 
 // Helper function to extract mentions from text
 const extractMentions = (text) => {
@@ -100,7 +99,8 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+            const backendUrl =
+                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
@@ -111,7 +111,7 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
             content: content || ' ', // Fallback to space to pass required validation if media exists
             media,
             mediaType,
-            mentions: []
+            mentions: [],
         });
 
         // Update post comment count
@@ -125,12 +125,24 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
                 sender: req.user.id,
                 type: 'comment',
                 post: post._id,
-                comment: comment._id
+                comment: comment._id,
             });
-            req.app.get('io').to(post.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge'));
+            req.app
+                .get('io')
+                .to(post.author.toString())
+                .emit(
+                    'newNotification',
+                    await notification.populate(
+                        'sender',
+                        'username profile.displayName profile.avatar verificationBadge'
+                    )
+                );
         }
 
-        await comment.populate('author', 'username profile.displayName profile.avatar verificationBadge');
+        await comment.populate(
+            'author',
+            'username profile.displayName profile.avatar verificationBadge'
+        );
         res.status(201).json(comment);
     } catch (error) {
         console.error('Create comment error:', error);
@@ -160,7 +172,8 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+            const backendUrl =
+                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
@@ -171,7 +184,7 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
             author: req.user.id,
             content: content || ' ', // Fallback to space
             media,
-            mediaType
+            mediaType,
         });
 
         parentComment.replyCount += 1;
@@ -183,12 +196,24 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
                 sender: req.user.id,
                 type: 'reply',
                 post: parentComment.post,
-                comment: reply._id
+                comment: reply._id,
             });
-            req.app.get('io').to(parentComment.author.toString()).emit('newNotification', await notification.populate('sender', 'username profile.displayName profile.avatar verificationBadge'));
+            req.app
+                .get('io')
+                .to(parentComment.author.toString())
+                .emit(
+                    'newNotification',
+                    await notification.populate(
+                        'sender',
+                        'username profile.displayName profile.avatar verificationBadge'
+                    )
+                );
         }
 
-        await reply.populate('author', 'username profile.displayName profile.avatar verificationBadge');
+        await reply.populate(
+            'author',
+            'username profile.displayName profile.avatar verificationBadge'
+        );
         res.status(201).json(reply);
     } catch (error) {
         console.error('Create reply error:', error);
@@ -207,7 +232,7 @@ router.get('/post/:postId', async (req, res) => {
 
         const comments = await Comment.find({
             post: req.params.postId,
-            parentComment: null // Only top-level comments
+            parentComment: null, // Only top-level comments
         })
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: -1 })
@@ -216,14 +241,14 @@ router.get('/post/:postId', async (req, res) => {
 
         const total = await Comment.countDocuments({
             post: req.params.postId,
-            parentComment: null
+            parentComment: null,
         });
 
         res.json({
             comments,
             currentPage: page,
             totalPages: Math.ceil(total / limit),
-            totalComments: total
+            totalComments: total,
         });
     } catch (error) {
         console.error('Get comments error:', error);
@@ -241,7 +266,7 @@ router.get('/comment/:commentId/replies', async (req, res) => {
         const skip = (page - 1) * limit;
 
         const replies = await Comment.find({
-            parentComment: req.params.commentId
+            parentComment: req.params.commentId,
         })
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: 1 }) // Oldest first for replies
@@ -249,14 +274,14 @@ router.get('/comment/:commentId/replies', async (req, res) => {
             .limit(limit);
 
         const total = await Comment.countDocuments({
-            parentComment: req.params.commentId
+            parentComment: req.params.commentId,
         });
 
         res.json({
             replies,
             currentPage: page,
             totalPages: Math.ceil(total / limit),
-            totalReplies: total
+            totalReplies: total,
         });
     } catch (error) {
         console.error('Get replies error:', error);
@@ -284,12 +309,12 @@ router.delete('/:commentId', protect, async (req, res) => {
         if (comment.parentComment) {
             // It's a reply, update parent reply count
             await Comment.findByIdAndUpdate(comment.parentComment, {
-                $inc: { replyCount: -1 }
+                $inc: { replyCount: -1 },
             });
         } else {
             // It's a top-level comment, update post comment count
             await Post.findByIdAndUpdate(comment.post, {
-                $inc: { commentCount: -1 }
+                $inc: { commentCount: -1 },
             });
         }
 
@@ -321,7 +346,7 @@ router.post('/:commentId/like', protect, async (req, res) => {
         const isLiked = comment.likes.includes(userId);
 
         if (isLiked) {
-            comment.likes = comment.likes.filter(id => id.toString() !== userId);
+            comment.likes = comment.likes.filter((id) => id.toString() !== userId);
             comment.likeCount -= 1;
         } else {
             comment.likes.push(userId);
@@ -332,7 +357,7 @@ router.post('/:commentId/like', protect, async (req, res) => {
 
         res.json({
             liked: !isLiked,
-            likeCount: comment.likeCount
+            likeCount: comment.likeCount,
         });
     } catch (error) {
         console.error('Like comment error:', error);
@@ -356,8 +381,8 @@ router.get('/user/:userId', protect, async (req, res) => {
                 select: 'content media author',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar verificationBadge'
-                }
+                    select: 'username profile.displayName profile.avatar verificationBadge',
+                },
             })
             .sort({ createdAt: -1 })
             .skip(skip)
@@ -369,7 +394,7 @@ router.get('/user/:userId', protect, async (req, res) => {
             comments,
             currentPage: page,
             totalPages: Math.ceil(total / limit),
-            totalComments: total
+            totalComments: total,
         });
     } catch (error) {
         console.error('Get user comments error:', error);
@@ -378,4 +403,3 @@ router.get('/user/:userId', protect, async (req, res) => {
 });
 
 export default router;
-

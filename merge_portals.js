@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -45,17 +44,17 @@ const mergePortals = async () => {
         // Regex for "deepace global" (matches "deepace global", "Deepace Global")
         const targetRegex = /deepace\s?global/i;
 
-        const source = portals.find(p => sourceRegex.test(p.name));
-        const target = portals.find(p => targetRegex.test(p.name));
+        const source = portals.find((p) => sourceRegex.test(p.name));
+        const target = portals.find((p) => targetRegex.test(p.name));
 
         if (!source) {
             console.error('❌ Source portal (test 1) not found.');
-            console.log('Available portals:', portals.map(p => p.name).join(', '));
+            console.log('Available portals:', portals.map((p) => p.name).join(', '));
             process.exit(1);
         }
         if (!target) {
             console.error('❌ Target portal (deepace global) not found.');
-            console.log('Available portals:', portals.map(p => p.name).join(', '));
+            console.log('Available portals:', portals.map((p) => p.name).join(', '));
             process.exit(1);
         }
 
@@ -68,9 +67,9 @@ const mergePortals = async () => {
         let channelsAdded = 0;
         if (source.channels && source.channels.length > 0) {
             for (const ch of source.channels) {
-                const alreadyExists = target.channels && target.channels.some(
-                    tc => tc.name.toLowerCase() === ch.name.toLowerCase()
-                );
+                const alreadyExists =
+                    target.channels &&
+                    target.channels.some((tc) => tc.name.toLowerCase() === ch.name.toLowerCase());
 
                 if (!alreadyExists) {
                     target.channels.push(ch); // Mongoose will handle subdoc creation
@@ -84,15 +83,15 @@ const mergePortals = async () => {
         const initialMembers = target.members ? target.members.length : 0;
         const sourceMembers = source.members || [];
         // Use Set to avoid duplicates
-        const memberSet = new Set(target.members.map(m => m.toString()));
-        sourceMembers.forEach(m => memberSet.add(m.toString()));
+        const memberSet = new Set(target.members.map((m) => m.toString()));
+        sourceMembers.forEach((m) => memberSet.add(m.toString()));
         target.members = Array.from(memberSet);
         console.log(`✅ Members Merged: ${initialMembers} -> ${target.members.length}`);
 
         // 5. Merge Admins
-        const adminSet = new Set(target.admins.map(a => a.toString()));
+        const adminSet = new Set(target.admins.map((a) => a.toString()));
         if (source.admins) {
-            source.admins.forEach(a => adminSet.add(a.toString()));
+            source.admins.forEach((a) => adminSet.add(a.toString()));
         }
         target.admins = Array.from(adminSet);
         console.log(`✅ Admins Merged.`);
@@ -119,12 +118,16 @@ const mergePortals = async () => {
             let changed = false;
             // Remove source ID
             const originalLength = user.joinedPortals.length;
-            user.joinedPortals = user.joinedPortals.filter(pid => pid.toString() !== source._id.toString());
+            user.joinedPortals = user.joinedPortals.filter(
+                (pid) => pid.toString() !== source._id.toString()
+            );
 
-            if (user.joinedPortals.length !== originalLength) changed = true;
+            if (user.joinedPortals.length !== originalLength) {
+                changed = true;
+            }
 
             // Add target ID if not present
-            if (!user.joinedPortals.some(pid => pid.toString() === target._id.toString())) {
+            if (!user.joinedPortals.some((pid) => pid.toString() === target._id.toString())) {
                 user.joinedPortals.push(target._id);
                 changed = true;
             }
@@ -140,7 +143,6 @@ const mergePortals = async () => {
         console.log('🎉 MIGRATION COMPLETED SUCCESSFULLY!');
         console.log('------------------------------------------------');
         process.exit(0);
-
     } catch (err) {
         console.error('Migration Failed:', err);
         process.exit(1);

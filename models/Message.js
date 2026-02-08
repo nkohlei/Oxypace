@@ -38,15 +38,17 @@ const messageSchema = new mongoose.Schema({
     replyTo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Message',
-        default: null
+        default: null,
     },
-    reactions: [{
-        user: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User'
+    reactions: [
+        {
+            user: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+            emoji: String,
         },
-        emoji: String
-    }]
+    ],
 });
 
 // Indexes for faster queries

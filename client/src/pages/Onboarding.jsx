@@ -10,7 +10,7 @@ const Onboarding = () => {
     const [formData, setFormData] = useState({
         username: '',
         displayName: '',
-        bio: ''
+        bio: '',
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -29,7 +29,7 @@ const Onboarding = () => {
             setFormData({
                 username: user.username || '',
                 displayName: user.profile?.displayName || user.username || '',
-                bio: ''
+                bio: '',
             });
         }
     }, [user, window.location.search]);
@@ -55,7 +55,7 @@ const Onboarding = () => {
                 // --- GOOGLE COMPLETION FLOW ---
                 const response = await axios.post('/api/auth/google/complete', {
                     preToken,
-                    username: formData.username
+                    username: formData.username,
                     // Backend extracts other fields from token
                 });
 
@@ -67,7 +67,7 @@ const Onboarding = () => {
                 const response = await axios.put('/api/users/me', {
                     username: formData.username,
                     displayName: formData.displayName,
-                    bio: formData.bio
+                    bio: formData.bio,
                 });
 
                 updateUser(response.data.user);
@@ -139,7 +139,7 @@ const Onboarding = () => {
                                 color: 'var(--text-primary)',
                                 padding: '12px',
                                 resize: 'none',
-                                width: '100%'
+                                width: '100%',
                             }}
                         />
                     </div>
@@ -147,7 +147,14 @@ const Onboarding = () => {
                     {error && <div className="error-message">{error}</div>}
 
                     <button type="submit" className="btn btn-primary" disabled={loading}>
-                        {loading ? <div className="spinner" style={{ width: '20px', height: '20px' }}></div> : 'Kaydet ve Başla'}
+                        {loading ? (
+                            <div
+                                className="spinner"
+                                style={{ width: '20px', height: '20px' }}
+                            ></div>
+                        ) : (
+                            'Kaydet ve Başla'
+                        )}
                     </button>
                 </form>
             </div>

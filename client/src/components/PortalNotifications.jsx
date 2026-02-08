@@ -30,7 +30,7 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
         try {
             await axios.post(`/api/portals/${portalId}/approve-member`, { userId });
             // Remove from requests and optionally add to recent members
-            setJoinRequests(prev => prev.filter(r => r._id !== userId));
+            setJoinRequests((prev) => prev.filter((r) => r._id !== userId));
             // Refresh to get updated list
             fetchNotifications();
             // Notify parent to update portal data (clears badge)
@@ -44,7 +44,7 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
     const handleReject = async (userId) => {
         try {
             await axios.post(`/api/portals/${portalId}/reject-member`, { userId });
-            setJoinRequests(prev => prev.filter(r => r._id !== userId));
+            setJoinRequests((prev) => prev.filter((r) => r._id !== userId));
             // Notify parent to update portal data (clears badge)
             if (onUpdate) onUpdate();
         } catch (error) {
@@ -92,7 +92,14 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                     className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
                     onClick={() => setActiveTab('requests')}
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="8.5" cy="7" r="4"></circle>
                         <line x1="20" y1="8" x2="20" y2="14"></line>
@@ -107,7 +114,14 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                     className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`}
                     onClick={() => setActiveTab('members')}
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -128,11 +142,14 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                                 <p>Şu anda onaylanmayı bekleyen üyelik isteği bulunmuyor.</p>
                             </div>
                         ) : (
-                            joinRequests.map(request => (
+                            joinRequests.map((request) => (
                                 <div key={request._id} className="notification-item">
                                     <div className="item-avatar">
                                         {request.profile?.avatar ? (
-                                            <img src={getImageUrl(request.profile.avatar)} alt={request.username} />
+                                            <img
+                                                src={getImageUrl(request.profile.avatar)}
+                                                alt={request.username}
+                                            />
                                         ) : (
                                             <div className="avatar-placeholder">
                                                 {request.username?.[0]?.toUpperCase() || '?'}
@@ -144,14 +161,23 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                                             {request.profile?.displayName || request.username}
                                         </div>
                                         <div className="item-username">@{request.username}</div>
-                                        <div className="item-time">{formatDate(request.createdAt)}</div>
+                                        <div className="item-time">
+                                            {formatDate(request.createdAt)}
+                                        </div>
                                     </div>
                                     <div className="item-actions">
                                         <button
                                             className="action-btn approve-btn"
                                             onClick={() => handleApprove(request._id)}
                                         >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <svg
+                                                width="16"
+                                                height="16"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
                                                 <polyline points="20 6 9 17 4 12"></polyline>
                                             </svg>
                                             Onayla
@@ -160,7 +186,14 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                                             className="action-btn reject-btn"
                                             onClick={() => handleReject(request._id)}
                                         >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <svg
+                                                width="16"
+                                                height="16"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
                                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                                             </svg>
@@ -182,11 +215,14 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                                 <p>Portal henüz yeni, ilk üyeleri bekliyor.</p>
                             </div>
                         ) : (
-                            recentMembers.map(member => (
+                            recentMembers.map((member) => (
                                 <div key={member._id} className="notification-item member-item">
                                     <div className="item-avatar">
                                         {member.profile?.avatar ? (
-                                            <img src={getImageUrl(member.profile.avatar)} alt={member.username} />
+                                            <img
+                                                src={getImageUrl(member.profile.avatar)}
+                                                alt={member.username}
+                                            />
                                         ) : (
                                             <div className="avatar-placeholder">
                                                 {member.username?.[0]?.toUpperCase() || '?'}
@@ -198,10 +234,17 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                                             {member.profile?.displayName || member.username}
                                         </div>
                                         <div className="item-username">@{member.username}</div>
-                                        <div className="item-time">Katıldı: {formatDate(member.joinedAt)}</div>
+                                        <div className="item-time">
+                                            Katıldı: {formatDate(member.joinedAt)}
+                                        </div>
                                     </div>
                                     <div className="member-badge">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                        >
                                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                             <polyline points="22 4 12 14.01 9 11.01"></polyline>
                                         </svg>

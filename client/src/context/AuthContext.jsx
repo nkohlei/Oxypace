@@ -35,8 +35,8 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await axios.get('/api/users/me', {
                 headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
+                    Authorization: `Bearer ${authToken}`,
+                },
             });
             setUser(response.data);
         } catch (error) {

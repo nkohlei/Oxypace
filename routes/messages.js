@@ -4,7 +4,6 @@ import Message from '../models/Message.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import multer from 'multer';
-import path from 'path';
 import upload from '../middleware/upload.js';
 
 const router = express.Router();
@@ -23,7 +22,7 @@ router.post('/:id/react', protect, async (req, res) => {
 
         // Check if user already reacted with this emoji
         const existingReactionIndex = message.reactions.findIndex(
-            r => r.user.toString() === req.user._id.toString() && r.emoji === emoji
+            (r) => r.user.toString() === req.user._id.toString() && r.emoji === emoji
         );
 
         if (existingReactionIndex > -1) {
@@ -32,7 +31,7 @@ router.post('/:id/react', protect, async (req, res) => {
         } else {
             // Remove any other reaction by this user first (optional, usually one reaction per user per message)
             const userReactionIndex = message.reactions.findIndex(
-                r => r.user.toString() === req.user._id.toString()
+                (r) => r.user.toString() === req.user._id.toString()
             );
             if (userReactionIndex > -1) {
                 message.reactions.splice(userReactionIndex, 1);
@@ -43,12 +42,19 @@ router.post('/:id/react', protect, async (req, res) => {
 
         await message.save();
 
-        const recipientId = message.sender.toString() === req.user._id.toString()
-            ? message.recipient.toString()
-            : message.sender.toString();
+        const recipientId =
+            message.sender.toString() === req.user._id.toString()
+                ? message.recipient.toString()
+                : message.sender.toString();
 
-        req.app.get('io').to(recipientId).emit('messageReaction', { messageId: message._id, reactions: message.reactions });
-        req.app.get('io').to(req.user._id.toString()).emit('messageReaction', { messageId: message._id, reactions: message.reactions });
+        req.app
+            .get('io')
+            .to(recipientId)
+            .emit('messageReaction', { messageId: message._id, reactions: message.reactions });
+        req.app
+            .get('io')
+            .to(req.user._id.toString())
+            .emit('messageReaction', { messageId: message._id, reactions: message.reactions });
 
         res.json(message.reactions);
     } catch (error) {
@@ -60,89 +66,104 @@ router.post('/:id/react', protect, async (req, res) => {
 // @route   POST /api/messages
 // @desc    Send a message
 // @access  Private
-router.post('/', protect, (req, res, next) => {
-    upload.single('media')(req, res, (err) => {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ message: `Upload error: ${err.message}` });
-        } else if (err) {
-            return res.status(400).json({ message: err.message });
-        }
-        next();
-    });
-}, async (req, res) => {
-    try {
-        const { recipientId, content, postId, portalId, replyToId } = req.body;
-        let media = undefined;
-        if (req.file) {
-            // Use backend proxy URL instead of R2 direct URL
-            const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-            media = `${backendUrl}/api/media/${req.file.key}`;
-        }
-
-        if (!recipientId || (!content && !media && !postId && !portalId)) {
-            return res.status(400).json({ message: 'Mesaj veya paylaşılan içerik boş olamaz.' });
-        }
-
-        const recipient = await User.findById(recipientId);
-        if (!recipient) {
-            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
-        }
-
-        const messageData = {
-            sender: req.user._id,
-            recipient: recipientId,
-            content: content || '',
-            media,
-            sharedPost: postId,
-            sharedPortal: portalId,
-            replyTo: replyToId
-        };
-
-        const message = await Message.create(messageData);
-
-        const populatedMessage = await Message.findById(message._id)
-            .populate('sender', 'username profile.displayName profile.avatar createdAt')
-            .populate('recipient', 'username profile.displayName profile.avatar createdAt')
-            .populate({
-                path: 'sharedPost',
-                populate: { path: 'author', select: 'username profile.displayName profile.avatar' }
-            })
-            .populate({
-                path: 'sharedPortal',
-                select: 'name avatar description'
-            })
-            .populate({
-                path: 'replyTo',
-                select: 'content media sender',
-                populate: { path: 'sender', select: 'username profile.displayName' }
-            });
-
-        req.app.get('io').to(recipientId).emit('newMessage', populatedMessage);
-        req.app.get('io').to(req.user._id.toString()).emit('messageSent', populatedMessage);
-
-        // Create Notification
-        try {
-            const notification = await Notification.create({
-                recipient: recipientId,
-                sender: req.user._id,
-                type: 'message'
-            });
-
-            const io = req.app.get('io');
-            if (io) {
-                const populatedNotif = await notification.populate('sender', 'username profile.displayName profile.avatar');
-                io.to(recipientId).emit('newNotification', populatedNotif);
+router.post(
+    '/',
+    protect,
+    (req, res, next) => {
+        upload.single('media')(req, res, (err) => {
+            if (err instanceof multer.MulterError) {
+                return res.status(400).json({ message: `Upload error: ${err.message}` });
+            } else if (err) {
+                return res.status(400).json({ message: err.message });
             }
-        } catch (notifErr) {
-            console.error('Message notification failed:', notifErr);
-        }
+            next();
+        });
+    },
+    async (req, res) => {
+        try {
+            const { recipientId, content, postId, portalId, replyToId } = req.body;
+            let media = undefined;
+            if (req.file) {
+                // Use backend proxy URL instead of R2 direct URL
+                const backendUrl =
+                    process.env.BACKEND_URL ||
+                    'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                media = `${backendUrl}/api/media/${req.file.key}`;
+            }
 
-        res.status(201).json(populatedMessage);
-    } catch (error) {
-        console.error('Send message error:', error);
-        res.status(500).json({ message: 'Server error' });
+            if (!recipientId || (!content && !media && !postId && !portalId)) {
+                return res
+                    .status(400)
+                    .json({ message: 'Mesaj veya paylaşılan içerik boş olamaz.' });
+            }
+
+            const recipient = await User.findById(recipientId);
+            if (!recipient) {
+                return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+            }
+
+            const messageData = {
+                sender: req.user._id,
+                recipient: recipientId,
+                content: content || '',
+                media,
+                sharedPost: postId,
+                sharedPortal: portalId,
+                replyTo: replyToId,
+            };
+
+            const message = await Message.create(messageData);
+
+            const populatedMessage = await Message.findById(message._id)
+                .populate('sender', 'username profile.displayName profile.avatar createdAt')
+                .populate('recipient', 'username profile.displayName profile.avatar createdAt')
+                .populate({
+                    path: 'sharedPost',
+                    populate: {
+                        path: 'author',
+                        select: 'username profile.displayName profile.avatar',
+                    },
+                })
+                .populate({
+                    path: 'sharedPortal',
+                    select: 'name avatar description',
+                })
+                .populate({
+                    path: 'replyTo',
+                    select: 'content media sender',
+                    populate: { path: 'sender', select: 'username profile.displayName' },
+                });
+
+            req.app.get('io').to(recipientId).emit('newMessage', populatedMessage);
+            req.app.get('io').to(req.user._id.toString()).emit('messageSent', populatedMessage);
+
+            // Create Notification
+            try {
+                const notification = await Notification.create({
+                    recipient: recipientId,
+                    sender: req.user._id,
+                    type: 'message',
+                });
+
+                const io = req.app.get('io');
+                if (io) {
+                    const populatedNotif = await notification.populate(
+                        'sender',
+                        'username profile.displayName profile.avatar'
+                    );
+                    io.to(recipientId).emit('newNotification', populatedNotif);
+                }
+            } catch (notifErr) {
+                console.error('Message notification failed:', notifErr);
+            }
+
+            res.status(201).json(populatedMessage);
+        } catch (error) {
+            console.error('Send message error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
     }
-});
+);
 // @desc    Get all conversations
 // @access  Private
 router.get('/conversations', protect, async (req, res) => {
@@ -160,17 +181,17 @@ router.get('/conversations', protect, async (req, res) => {
                 path: 'sharedPost',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar'
-                }
+                    select: 'username profile.displayName profile.avatar',
+                },
             })
             .populate({
                 path: 'sharedPortal',
-                select: 'name avatar description'
+                select: 'name avatar description',
             })
             .populate({
                 path: 'replyTo',
                 select: 'content media sender',
-                populate: { path: 'sender', select: 'username profile.displayName' }
+                populate: { path: 'sender', select: 'username profile.displayName' },
             });
 
         // Extract unique conversations
@@ -182,9 +203,8 @@ router.get('/conversations', protect, async (req, res) => {
                 return;
             }
 
-            const otherUser = msg.sender._id.toString() === userId.toString()
-                ? msg.recipient
-                : msg.sender;
+            const otherUser =
+                msg.sender._id.toString() === userId.toString() ? msg.recipient : msg.sender;
 
             const otherUserId = otherUser._id.toString();
 
@@ -232,17 +252,17 @@ router.get('/:userId', protect, async (req, res) => {
                 path: 'sharedPost',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar'
-                }
+                    select: 'username profile.displayName profile.avatar',
+                },
             })
             .populate({
                 path: 'sharedPortal',
-                select: 'name avatar description'
+                select: 'name avatar description',
             })
             .populate({
                 path: 'replyTo',
                 select: 'content media sender',
-                populate: { path: 'sender', select: 'username profile.displayName' }
+                populate: { path: 'sender', select: 'username profile.displayName' },
             });
 
         // Mark messages as read

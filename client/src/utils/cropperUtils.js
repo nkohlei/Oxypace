@@ -76,10 +76,10 @@ export async function cropImage(image, crop, zoom, position, outputSize) {
 
 /**
  * Görselin container'a sığması için gereken başlangıç zoom ve pozisyonu hesaplar
- * @param {number} imageWidth 
- * @param {number} imageHeight 
- * @param {number} containerWidth 
- * @param {number} containerHeight 
+ * @param {number} imageWidth
+ * @param {number} imageHeight
+ * @param {number} containerWidth
+ * @param {number} containerHeight
  * @returns {{zoom: number, x: number, y: number}}
  */
 export function calculateInitialFit(imageWidth, imageHeight, containerWidth, containerHeight) {
@@ -106,10 +106,10 @@ export function calculateInitialFit(imageWidth, imageHeight, containerWidth, con
 
 /**
  * Pozisyonu sınırlar içinde tutar (görsel kırpma alanını aşmasın)
- * @param {Object} position 
- * @param {Object} imageSize 
- * @param {number} zoom 
- * @param {Object} cropArea 
+ * @param {Object} position
+ * @param {Object} imageSize
+ * @param {number} zoom
+ * @param {Object} cropArea
  * @returns {Object}
  */
 export function clampPosition(position, imageSize, zoom, cropArea) {
@@ -125,6 +125,6 @@ export function clampPosition(position, imageSize, zoom, cropArea) {
 
     return {
         x: Math.min(Math.max(position.x, minX), maxX),
-        y: Math.min(Math.max(position.y, minY), maxY)
+        y: Math.min(Math.max(position.y, minY), maxY),
     };
 }

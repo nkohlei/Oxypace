@@ -22,7 +22,7 @@ router.get('/*', async (req, res) => {
 
         const command = new GetObjectCommand({
             Bucket: process.env.R2_BUCKET_NAME || 'oxypace',
-            Key: filePath
+            Key: filePath,
         });
 
         const response = await r2.send(command);
@@ -35,7 +35,6 @@ router.get('/*', async (req, res) => {
 
         // Pipe the stream to response
         response.Body.pipe(res);
-
     } catch (error) {
         console.error('Media proxy error:', error.message);
 

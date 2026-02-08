@@ -30,9 +30,13 @@ const FollowButton = ({ userId, initialIsFollowing, initialHasRequested, onFollo
         const token = localStorage.getItem('token');
 
         try {
-            const response = await axios.post(`/api/users/follow/${userId}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axios.post(
+                `/api/users/follow/${userId}`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
 
             setFollowing(response.data.isFollowing);
             setRequested(response.data.hasRequested);

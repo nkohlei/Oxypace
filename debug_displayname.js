@@ -37,7 +37,6 @@ const run = async () => {
             console.log('Post author:', JSON.stringify(post.author, null, 2));
             console.log('post.author.profile?.displayName:', post.author.profile?.displayName);
         }
-
     } catch (e) {
         console.error(e);
     } finally {

@@ -11,7 +11,7 @@ class BotAuth {
         try {
             const response = await axios.post(`${this.baseUrl}/auth/login`, {
                 email,
-                password
+                password,
             });
 
             this.token = response.data.token;
@@ -19,7 +19,10 @@ class BotAuth {
             console.log(`[BotAuth] Logged in as: ${this.user.username}`);
             return this.token;
         } catch (error) {
-            console.error('[BotAuth] Login failed:', error.response?.data?.message || error.message);
+            console.error(
+                '[BotAuth] Login failed:',
+                error.response?.data?.message || error.message
+            );
             throw error;
         }
     }
@@ -30,7 +33,7 @@ class BotAuth {
 
     getHeaders() {
         return {
-            Authorization: `Bearer ${this.token}`
+            Authorization: `Bearer ${this.token}`,
         };
     }
 }

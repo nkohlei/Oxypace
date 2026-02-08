@@ -12,7 +12,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const BOTS = [
     { email: 'techbot@oxypace.com', channelId: '69835873dff9f89766c44c26' }, // Fastest Technology NEWS
-    { email: 'sportsbot@oxypace.com', channelId: '69835858dff9f89766c44c20' }  // Fastest Sports NEWS
+    { email: 'sportsbot@oxypace.com', channelId: '69835858dff9f89766c44c20' }, // Fastest Sports NEWS
 ];
 
 async function migratePosts() {

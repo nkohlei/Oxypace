@@ -31,7 +31,9 @@ const debugPost = async () => {
             posts.forEach((p, i) => {
                 console.log(`\n[${i + 1}] Author: ${p.author ? p.author.username : 'Unknown'}`);
                 console.log(`    Time: ${p.createdAt}`);
-                console.log(`    Content: ${p.content ? p.content.substring(0, 50) : 'No Content'}`);
+                console.log(
+                    `    Content: ${p.content ? p.content.substring(0, 50) : 'No Content'}`
+                );
                 console.log(`    Media: ${p.media || 'None'}`);
 
                 if (p.media) {
@@ -45,7 +47,6 @@ const debugPost = async () => {
                 }
             });
         }
-
     } catch (error) {
         console.error('Error:', error);
     } finally {

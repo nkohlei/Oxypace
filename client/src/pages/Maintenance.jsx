@@ -8,7 +8,7 @@ const Maintenance = () => {
     const toggleAudio = () => {
         if (audioRef.current) {
             if (isMuted) {
-                audioRef.current.play().catch(e => console.log("Audio play failed", e));
+                audioRef.current.play().catch((e) => console.log('Audio play failed', e));
             } else {
                 audioRef.current.pause();
             }
@@ -26,7 +26,7 @@ const Maintenance = () => {
                     setIsMuted(false);
                 } catch (err) {
                     // Autoplay blocked
-                    console.log("Autoplay blocked, waiting for user interaction");
+                    console.log('Autoplay blocked, waiting for user interaction');
                     setIsMuted(true);
                 }
             }
@@ -67,14 +67,10 @@ const Maintenance = () => {
                     <p className="western-text">
                         "Daha sorunsuz ve daha mükemmel bir hizmet için."
                     </p>
-                    <p className="western-subtext">
-                        Hizmette zahmet olmaz, geri geleceğiz.
-                    </p>
+                    <p className="western-subtext">Hizmette zahmet olmaz, geri geleceğiz.</p>
                 </div>
 
-                <div className="poster-footer">
-                    REWARD: BETTER EXPERIENCE
-                </div>
+                <div className="poster-footer">REWARD: BETTER EXPERIENCE</div>
             </div>
         </div>
     );

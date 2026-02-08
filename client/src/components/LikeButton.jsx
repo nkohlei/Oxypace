@@ -14,13 +14,15 @@ const LikeButton = ({ type, id, initialLiked, initialCount }) => {
         const token = localStorage.getItem('token');
 
         try {
-            const endpoint = type === 'post'
-                ? `/api/likes/post/${id}`
-                : `/api/likes/comment/${id}`;
+            const endpoint = type === 'post' ? `/api/likes/post/${id}` : `/api/likes/comment/${id}`;
 
-            const response = await axios.post(endpoint, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axios.post(
+                endpoint,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
 
             setLiked(response.data.liked);
             setLikeCount(response.data.likeCount);
@@ -40,7 +42,7 @@ const LikeButton = ({ type, id, initialLiked, initialCount }) => {
             <svg
                 className="heart-icon"
                 viewBox="0 0 24 24"
-                fill={liked ? "currentColor" : "none"}
+                fill={liked ? 'currentColor' : 'none'}
                 stroke="currentColor"
                 strokeWidth="2"
             >

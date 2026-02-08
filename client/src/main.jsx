@@ -1,8 +1,8 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
-import axios from 'axios'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './index.css';
+import axios from 'axios';
 
 // Set default base URL for all axios requests
 if (import.meta.env.VITE_API_BASE_URL) {
@@ -17,10 +17,9 @@ if (import.meta.env.VITE_API_BASE_URL) {
     }
     axios.defaults.baseURL = baseUrl;
 } else if (!import.meta.env.DEV) {
-    console.warn("⚠️ VITE_API_BASE_URL not set! Defaulting to production backend.");
-    axios.defaults.baseURL = "https://globalmessage-backend.koyeb.app";
+    console.warn('⚠️ VITE_API_BASE_URL not set! Defaulting to production backend.');
+    axios.defaults.baseURL = 'https://globalmessage-backend.koyeb.app';
 }
-
 
 // Initialize Auth Header from localStorage immediately to prevent race conditions
 const token = localStorage.getItem('token');
@@ -28,12 +27,12 @@ if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 }
 
-import ErrorBoundary from './components/ErrorBoundary.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <ErrorBoundary>
             <App />
         </ErrorBoundary>
-    </React.StrictMode>,
-)
+    </React.StrictMode>
+);

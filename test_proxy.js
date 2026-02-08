@@ -1,8 +1,7 @@
-
-
 const testProxy = async () => {
     // Constructed URL based on the extracted key
-    const proxyUrl = 'https://oxypace.vercel.app/r2-media/posts/69485e416ce2eac8943a5de2/media-1770384355362-980777708.jpg';
+    const proxyUrl =
+        'https://oxypace.vercel.app/r2-media/posts/69485e416ce2eac8943a5de2/media-1770384355362-980777708.jpg';
 
     console.log('Testing connectivity to:', proxyUrl);
 
@@ -17,7 +16,6 @@ const testProxy = async () => {
         } else {
             console.log('❌ FAILED. Response was not 200 OK.');
         }
-
     } catch (error) {
         console.error('❌ Connection Error:', error.message);
     }
