@@ -32,6 +32,7 @@ router.get('/*', async (req, res) => {
         res.set('Content-Length', response.ContentLength);
         res.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
         res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin'); // Allow cross-origin embedding
 
         // Pipe the stream to response
         response.Body.pipe(res);

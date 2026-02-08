@@ -36,10 +36,10 @@ export const helmetConfig = helmet({
     hsts:
         process.env.NODE_ENV === 'production'
             ? {
-                  maxAge: 31536000, // 1 year
-                  includeSubDomains: true,
-                  preload: true,
-              }
+                maxAge: 31536000, // 1 year
+                includeSubDomains: true,
+                preload: true,
+            }
             : false,
     // Referrer-Policy
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
@@ -49,6 +49,8 @@ export const helmetConfig = helmet({
     ieNoOpen: true,
     // X-Permitted-Cross-Domain-Policies
     permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+    // Cross-Origin-Resource-Policy - Allow cross-origin resource loading for media
+    crossOriginResourcePolicy: false,
 });
 
 export default helmetConfig;
