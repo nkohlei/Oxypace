@@ -87,11 +87,12 @@
 
     .settings-content-area {
         flex: 1;
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: 16px;
-        padding: 32px;
+        /* Removed box styling for a cleaner, open look */
+        background: transparent;
+        border: none;
+        padding: 0;
         min-height: 500px;
+        animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     /* Reset mobile visibility for desktop */
@@ -105,30 +106,35 @@
     }
 
     .settings-menu-list {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: 16px;
-        padding: 12px;
-        overflow: hidden;
+        background: transparent;
+        border: none;
+        padding: 0;
+        overflow: visible;
     }
 
     .menu-item {
         background: transparent;
-        border: 1px solid transparent;
-        margin-bottom: 4px;
-        border-radius: 8px;
+        border: none;
+        margin-bottom: 8px;
+        border-radius: 12px;
+        color: var(--text-secondary);
+        padding: 14px 20px;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
 
     .menu-item:hover {
-        background: var(--bg-hover);
-        border-color: transparent;
-        transform: none;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-primary);
+        transform: translateX(4px);
     }
 
     .menu-item.active {
-        background: rgba(29, 155, 240, 0.1);
-        color: var(--primary-color);
+        background: var(--bg-card);
+        color: var(--text-primary);
         font-weight: 600;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-subtle);
     }
 
     .menu-item.active .menu-icon {
@@ -136,8 +142,9 @@
     }
 
     .menu-item.danger.active {
-        background: rgba(255, 77, 77, 0.1);
+        background: rgba(255, 77, 77, 0.05);
         color: var(--error-color, #ff4d4d);
+        border-color: rgba(255, 77, 77, 0.2);
     }
 
     .menu-arrow {
