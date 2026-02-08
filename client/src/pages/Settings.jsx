@@ -154,99 +154,186 @@ const Settings = () => {
     // to handle the 'back' button behavior (hidden on desktop).
 
     const renderSidebar = () => (
-        <div className={`settings-sidebar ${activeMenu !== 'main' ? 'hidden-on-mobile' : ''}`}>
-            <h2 className="settings-header">Ayarlar</h2>
-            <div className="settings-menu-list">
+        <div className={`channel-sidebar ${activeMenu !== 'main' ? 'hidden-on-mobile' : ''} settings-sidebar-global`}>
+            {/* Sidebar Header mimicking ChannelSidebar */}
+            <div className="channel-header" style={{ cursor: 'default' }}>
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(to bottom, #2b2d31, #1e1f22)',
+                    zIndex: 0
+                }}></div>
 
-                <div className={`menu-item ${activeMenu === 'account' ? 'active' : ''}`} onClick={() => setActiveMenu('account')}>
-                    <div className="menu-icon">👤</div>
-                    <div className="menu-text">Hesap</div>
-                    <div className="menu-arrow">›</div>
-                </div>
-
-                <div className={`menu-item ${activeMenu === 'notifications' ? 'active' : ''}`} onClick={() => setActiveMenu('notifications')}>
-                    <div className="menu-icon">🔔</div>
-                    <div className="menu-text">Bildirimler</div>
-                    <div className="menu-arrow">›</div>
-                </div>
-
-                <div className={`menu-item ${activeMenu === 'privacy' ? 'active' : ''}`} onClick={() => setActiveMenu('privacy')}>
-                    <div className="menu-icon">🔒</div>
-                    <div className="menu-text">Gizlilik</div>
-                    <div className="menu-arrow">›</div>
-                </div>
-
-                <div className={`menu-item danger ${activeMenu === 'danger' ? 'active' : ''}`} onClick={() => setActiveMenu('danger')}>
-                    <div className="menu-icon">⚠</div>
-                    <div className="menu-text">Tehlikeli Alan</div>
-                    <div className="menu-arrow">›</div>
+                <div style={{
+                    position: 'relative',
+                    zIndex: 2,
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center'
+                }}>
+                    <h2 style={{
+                        color: 'var(--text-primary)',
+                        fontSize: '20px',
+                        fontWeight: '700',
+                        margin: 0
+                    }}>Ayarlar</h2>
                 </div>
             </div>
-            <div className="settings-footer-info">
-                <p>OxySpace v2.4.0</p>
-                <p>&copy; 2026</p>
+
+            {/* Menu List */}
+            <div className="custom-scrollbar" style={{ flex: 1, padding: '16px 8px', overflowY: 'auto' }}>
+                <div style={{
+                    padding: '0 8px 8px 8px',
+                    color: '#949ba4',
+                    textTransform: 'uppercase',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    fontFamily: 'var(--font-primary)'
+                }}>
+                    Hesap & Gizlilik
+                </div>
+
+                <div
+                    className={`channel-item ${activeMenu === 'account' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('account')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'account' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'account' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span style={{ fontWeight: 500 }}>Hesabım</span>
+                </div>
+
+                <div
+                    className={`channel-item ${activeMenu === 'verification' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('verification')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'verification' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'verification' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span style={{ fontWeight: 500 }}>Doğrulama</span>
+                </div>
+
+                <div
+                    className={`channel-item ${activeMenu === 'privacy' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('privacy')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'privacy' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'privacy' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span style={{ fontWeight: 500 }}>Gizlilik</span>
+                </div>
+
+                <div style={{
+                    padding: '24px 8px 8px 8px',
+                    color: '#949ba4',
+                    textTransform: 'uppercase',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    fontFamily: 'var(--font-primary)'
+                }}>
+                    Uygulama
+                </div>
+
+                <div
+                    className={`channel-item ${activeMenu === 'notifications' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('notifications')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'notifications' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'notifications' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    <span style={{ fontWeight: 500 }}>Bildirimler</span>
+                </div>
+
+                <div style={{
+                    padding: '24px 8px 8px 8px',
+                    color: '#ff4d4d',
+                    textTransform: 'uppercase',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    fontFamily: 'var(--font-primary)'
+                }}>
+                    Tehlikeli Alan
+                </div>
+
+                <div
+                    className={`channel-item ${activeMenu === 'danger' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('danger')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'danger' ? 'white' : '#ff4d4d', backgroundColor: activeMenu === 'danger' ? 'rgba(255, 77, 77, 0.1)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#ff4d4d' }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <span style={{ fontWeight: 500, color: '#ff4d4d' }}>Hesap İşlemleri</span>
+                </div>
+
+                <div className="settings-footer-info" style={{ marginTop: 'auto', paddingTop: '24px' }}>
+                    <p>OxySpace v2.4.0</p>
+                    <p>&copy; 2026</p>
+                </div>
             </div>
         </div>
     );
 
-    const renderContent = () => {
-        // On mobile, if we are in 'main' menu, we might not want to render content at all?
-        // Or we render it but it's hidden via CSS.
-        // Actually, for mobile 'drill-down', when activeMenu is 'main', we show sidebar.
-        // When activeMenu is NOT 'main', we show content.
+    const renderHeader = (title, backTo = 'main') => (
+        <header className="channel-top-bar" style={{ marginBottom: '20px' }}>
+            <div className="channel-title-wrapper" style={{ flex: 1 }}>
+                <button
+                    className="back-btn mobile-only"
+                    onClick={() => setActiveMenu(backTo)}
+                    style={{ marginRight: '16px', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                        <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                </button>
+                <span className="hashtag" style={{ color: 'var(--primary-color)' }}>#</span>
+                <h3 className="channel-name" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+            </div>
+        </header>
+    );
 
+    const renderContent = () => {
         let content = null;
+        let title = "Ayarlar";
+
         switch (activeMenu) {
             case 'account':
+                title = "Hesabım";
                 content = renderAccountMenu();
                 break;
             case 'verification':
+                title = "Doğrulama";
                 content = renderVerificationMenu();
                 break;
             case 'privacy':
+                title = "Gizlilik";
                 content = renderPrivacyMenu();
                 break;
             case 'notifications':
+                title = "Bildirimler";
                 content = renderNotificationsMenu();
                 break;
             case 'danger':
+                title = "Tehlikeli Alan";
                 content = renderDangerMenu();
                 break;
             default:
                 content = (
                     <div className="placeholder-content">
                         <div className="placeholder-icon">⚙️</div>
-                        <h3>Ayarlar Paneli</h3>
-                        <p>Soldaki menüden düzenlemek istediğiniz ayarı seçin.</p>
+                        <h3>Ayarlar</h3>
+                        <p>Sol menüden bir seçenek belirleyerek ayarlarınızı yönetebilirsiniz.</p>
                     </div>
                 );
         }
 
         return (
-            <div className={`settings-content-area ${activeMenu === 'main' ? 'hidden-on-mobile' : ''}`}>
-                {content}
-            </div>
+            <main className={`discord-main-content ${activeMenu === 'main' ? 'hidden-on-mobile' : ''}`}>
+                {activeMenu !== 'main' && renderHeader(title)}
+                <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 24px 24px 24px' }}>
+                    {content}
+                </div>
+            </main>
         );
     };
-
-    // Helper to render headers with back button logic
-    const renderHeader = (title, backTo = 'main') => (
-        <div className="submenu-header">
-            <button className="back-btn mobile-only" onClick={() => setActiveMenu(backTo)}>
-                <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    width="24"
-                    height="24"
-                >
-                    <path d="M15 18l-6-6 6-6" />
-                </svg>
-            </button>
-            <h2>{title}</h2>
-        </div>
-    );
 
     const renderAccountMenu = () => (
         <div className="submenu-content">
@@ -544,113 +631,110 @@ const Settings = () => {
     );
 
     return (
-        <div className="app-wrapper">
+        <div className="app-wrapper full-height discord-layout">
             <Navbar />
-            <main className="app-content">
-                <div className="settings-container">
-                    <div className="settings-layout">
-                        {renderSidebar()}
-                        {renderContent()}
-                    </div>
 
-                    {/* Modals outside switch */}
-                    {showPasswordModal && (
-                        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
-                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                                <h2>Şifre Değiştir</h2>
-                                <form onSubmit={handlePasswordChange}>
-                                    <input
-                                        type="password"
-                                        placeholder="Mevcut Şifre"
-                                        value={passwordForm.currentPassword}
-                                        onChange={(e) =>
-                                            setPasswordForm({
-                                                ...passwordForm,
-                                                currentPassword: e.target.value,
-                                            })
-                                        }
-                                        required
-                                        className="modal-input"
-                                    />
-                                    <input
-                                        type="password"
-                                        placeholder="Yeni Şifre"
-                                        value={passwordForm.newPassword}
-                                        onChange={(e) =>
-                                            setPasswordForm({
-                                                ...passwordForm,
-                                                newPassword: e.target.value,
-                                            })
-                                        }
-                                        required
-                                        className="modal-input"
-                                        minLength={6}
-                                    />
-                                    <input
-                                        type="password"
-                                        placeholder="Yeni Şifre (Tekrar)"
-                                        value={passwordForm.confirmPassword}
-                                        onChange={(e) =>
-                                            setPasswordForm({
-                                                ...passwordForm,
-                                                confirmPassword: e.target.value,
-                                            })
-                                        }
-                                        required
-                                        className="modal-input"
-                                    />
-                                    {passwordError && <p className="error-msg">{passwordError}</p>}
-                                    {passwordSuccess && (
-                                        <p className="success-msg">{passwordSuccess}</p>
-                                    )}
-                                    <div className="modal-actions">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPasswordModal(false)}
-                                            className="cancel-btn"
-                                        >
-                                            İptal
-                                        </button>
-                                        <button type="submit" className="confirm-btn">
-                                            Güncelle
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
+            <div className="discord-split-view">
+                {renderSidebar()}
+                {renderContent()}
 
-                    {/* Delete Confirm Modal */}
-                    {showDeleteModal && (
-                        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
-                            <div
-                                className="modal-content danger"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <h2>Hesabı Sil?</h2>
-                                <p>
-                                    Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak
-                                    silinecektir.
-                                </p>
+                {/* Modals */}
+                {showPasswordModal && (
+                    <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <h2>Şifre Değiştir</h2>
+                            <form onSubmit={handlePasswordChange}>
+                                <input
+                                    type="password"
+                                    placeholder="Mevcut Şifre"
+                                    value={passwordForm.currentPassword}
+                                    onChange={(e) =>
+                                        setPasswordForm({
+                                            ...passwordForm,
+                                            currentPassword: e.target.value,
+                                        })
+                                    }
+                                    required
+                                    className="modal-input"
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="Yeni Şifre"
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) =>
+                                        setPasswordForm({
+                                            ...passwordForm,
+                                            newPassword: e.target.value,
+                                        })
+                                    }
+                                    required
+                                    className="modal-input"
+                                    minLength={6}
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="Yeni Şifre (Tekrar)"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) =>
+                                        setPasswordForm({
+                                            ...passwordForm,
+                                            confirmPassword: e.target.value,
+                                        })
+                                    }
+                                    required
+                                    className="modal-input"
+                                />
+                                {passwordError && <p className="error-msg">{passwordError}</p>}
+                                {passwordSuccess && (
+                                    <p className="success-msg">{passwordSuccess}</p>
+                                )}
                                 <div className="modal-actions">
                                     <button
-                                        onClick={() => setShowDeleteModal(false)}
+                                        type="button"
+                                        onClick={() => setShowPasswordModal(false)}
                                         className="cancel-btn"
                                     >
                                         İptal
                                     </button>
-                                    <button
-                                        onClick={handleDeleteAccount}
-                                        className="delete-confirm-btn"
-                                    >
-                                        Evet, Sil
+                                    <button type="submit" className="confirm-btn">
+                                        Güncelle
                                     </button>
                                 </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete Confirm Modal */}
+                {showDeleteModal && (
+                    <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+                        <div
+                            className="modal-content danger"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h2>Hesabı Sil?</h2>
+                            <p>
+                                Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak
+                                silinecektir.
+                            </p>
+                            <div className="modal-actions">
+                                <button
+                                    onClick={() => setShowDeleteModal(false)}
+                                    className="cancel-btn"
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    className="delete-confirm-btn"
+                                >
+                                    Evet, Sil
+                                </button>
                             </div>
                         </div>
-                    )}
-                </div>
-            </main>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
