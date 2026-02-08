@@ -213,7 +213,13 @@ const Settings = () => {
                 content = renderDangerMenu();
                 break;
             default:
-                content = <div className="placeholder-content">Ayarlar menüsünden bir seçenek belirleyin.</div>;
+                content = (
+                    <div className="placeholder-content">
+                        <div className="placeholder-icon">⚙️</div>
+                        <h3>Ayarlar Paneli</h3>
+                        <p>Soldaki menüden düzenlemek istediğiniz ayarı seçin.</p>
+                    </div>
+                );
         }
 
         return (
@@ -239,6 +245,301 @@ const Settings = () => {
                 </svg>
             </button>
             <h2>{title}</h2>
+        </div>
+    );
+
+    const renderAccountMenu = () => (
+        <div className="submenu-content">
+            {renderHeader('Hesap')}
+
+            <div className="setting-group">
+                <h3>Güvenlik</h3>
+                <button className="setting-action-btn" onClick={() => setShowPasswordModal(true)}>
+                    <span>Şifre Değiştir</span>
+                    <span className="arrow">›</span>
+                </button>
+            </div>
+
+            <div className="setting-group">
+                <h3>Doğrulama</h3>
+                <button
+                    className="setting-action-btn gold-accent"
+                    onClick={() => setActiveMenu('verification')}
+                >
+                    <span>Onaylanmış Hesap Başvurusu</span>
+                    <span className="arrow">›</span>
+                </button>
+            </div>
+        </div>
+    );
+
+    const renderVerificationMenu = () => (
+        <div className="submenu-content">
+            {renderHeader('Doğrulanmış Hesap', 'account')}
+
+            <div className="verification-container">
+                {user?.verificationRequest?.status === 'pending' ? (
+                    <div className="verification-status pending">
+                        <div className="status-icon-large">⏳</div>
+                        <div className="status-info">
+                            <h4>Başvurunuz İnceleniyor</h4>
+                            <p>Talebini aldık ve ekibimiz tarafından değerlendiriliyor.</p>
+
+                            <div className="badge-display-row">
+                                <span>Talep Edilen:</span>
+                                <strong>
+                                    {user.verificationRequest.category === 'creator' &&
+                                        'Mavi Tik (Tanınmış Kişi)'}
+                                    {user.verificationRequest.category === 'business' &&
+                                        'Altın Tik (İşletme)'}
+                                    {user.verificationRequest.category === 'government' &&
+                                        'Platin Tik (Devlet)'}
+                                    {user.verificationRequest.category === 'partner' &&
+                                        'Özel Tik (Partner)'}
+                                    {!user.verificationRequest.category && 'Doğrulama Rozeti'}
+                                </strong>
+                            </div>
+
+                            <div className="pending-progress-bar"></div>
+                            <p style={{ fontSize: '0.8rem', marginTop: '12px', opacity: 0.7 }}>
+                                Sonuçlandığında bildirim alacaksınız.
+                            </p>
+                        </div>
+                    </div>
+                ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' ? (
+                    <div className="verification-status approved">
+                        <div className="status-icon-large">✅</div>
+                        <div className="status-info">
+                            <h4>Hesabınız Doğrulandı</h4>
+                            <p>Tebrikler! Mavi tik rozetine sahipsiniz.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="verification-apply">
+                        <p className="verification-desc">
+                            Hesabınızın türünü en iyi anlatan kategoriyi seçerek başvurun.
+                            Belgeleriniz titizlikle incelenir.
+                        </p>
+
+                        <div className="custom-dropdown-container">
+                            <div
+                                className={`dropdown-trigger ${isDropdownOpen ? 'open' : ''} ${passwordForm.selectedCategory ? 'has-selection' : ''}`}
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            >
+                                {passwordForm.selectedCategory ? (
+                                    <div className="selected-preview">
+                                        <span className="cat-icon-small">
+                                            {passwordForm.selectedCategory === 'creator' && '⭐'}
+                                            {passwordForm.selectedCategory === 'business' && '🏢'}
+                                            {passwordForm.selectedCategory === 'government' && '🏛️'}
+                                            {passwordForm.selectedCategory === 'partner' && '🤝'}
+                                        </span>
+                                        <div className="selected-text-group">
+                                            <span className="selected-title">
+                                                {passwordForm.selectedCategory === 'creator' &&
+                                                    'Tanınmış Kişi / Üretici'}
+                                                {passwordForm.selectedCategory === 'business' &&
+                                                    'İşletme / Kurum'}
+                                                {passwordForm.selectedCategory === 'government' &&
+                                                    'Devlet Yetkilisi'}
+                                                {passwordForm.selectedCategory === 'partner' &&
+                                                    'Platform Ortağı'}
+                                            </span>
+                                            <span className="selected-badge-preview">
+                                                {passwordForm.selectedCategory === 'creator' &&
+                                                    'Mavi Tik'}
+                                                {passwordForm.selectedCategory === 'business' &&
+                                                    'Altın Tik'}
+                                                {passwordForm.selectedCategory === 'government' &&
+                                                    'Platin Tik'}
+                                                {passwordForm.selectedCategory === 'partner' &&
+                                                    'Özel Tik'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <span className="placeholder-text">Kategori Seçimi Yap</span>
+                                )}
+                                <svg
+                                    className="dropdown-arrow"
+                                    viewBox="0 0 24 24"
+                                    width="24"
+                                    height="24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+
+                            {isDropdownOpen && (
+                                <div className="dropdown-options">
+                                    <div
+                                        className="dropdown-option"
+                                        onClick={() => {
+                                            setPasswordForm((prev) => ({
+                                                ...prev,
+                                                selectedCategory: 'creator',
+                                            }));
+                                            setIsDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="cat-icon-box blue-glow">⭐</div>
+                                        <div className="option-info">
+                                            <h4>Tanınmış Kişi / Üretici</h4>
+                                            <p>Mavi Tik Alırsınız</p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="dropdown-option"
+                                        onClick={() => {
+                                            setPasswordForm((prev) => ({
+                                                ...prev,
+                                                selectedCategory: 'business',
+                                            }));
+                                            setIsDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="cat-icon-box gold-glow">🏢</div>
+                                        <div className="option-info">
+                                            <h4>İşletme / Kurum</h4>
+                                            <p>Altın Tik Alırsınız</p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="dropdown-option"
+                                        onClick={() => {
+                                            setPasswordForm((prev) => ({
+                                                ...prev,
+                                                selectedCategory: 'government',
+                                            }));
+                                            setIsDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="cat-icon-box platinum-glow">🏛️</div>
+                                        <div className="option-info">
+                                            <h4>Devlet Yetkilisi</h4>
+                                            <p>Platin Tik Alırsınız</p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="dropdown-option"
+                                        onClick={() => {
+                                            setPasswordForm((prev) => ({
+                                                ...prev,
+                                                selectedCategory: 'partner',
+                                            }));
+                                            setIsDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="cat-icon-box special-glow">🤝</div>
+                                        <div className="option-info">
+                                            <h4>Platform Ortağı</h4>
+                                            <p>Özel Tik Alırsınız</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            className="apply-btn"
+                            disabled={!passwordForm.selectedCategory}
+                            onClick={async () => {
+                                if (!passwordForm.selectedCategory) return;
+                                try {
+                                    await axios.post('/api/users/request-verification', {
+                                        category: passwordForm.selectedCategory,
+                                    });
+                                    window.location.reload();
+                                } catch (err) {
+                                    alert(err.response?.data?.message || 'Hata oluştu');
+                                }
+                            }}
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                width="20"
+                                height="20"
+                            >
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                            </svg>
+                            Başvuruyu Gönder
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderPrivacyMenu = () => (
+        <div className="submenu-content">
+            {renderHeader('Gizlilik')}
+            <div className="settings-section">
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <h3>Gizli Hesap</h3>
+                        <p>Hesabını sadece takipçilerin görebilsin</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={privacy.isPrivate}
+                            onChange={() => handleToggle('isPrivate', 'privacy')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderNotificationsMenu = () => (
+        <div className="submenu-content">
+            {renderHeader('Bildirimler')}
+            <div className="settings-section">
+                {Object.entries({
+                    email: 'E-posta Bildirimleri',
+                    push: 'Anlık Bildirimler',
+                    mentions: 'Bahsedilmeler',
+                    likes: 'Beğeniler',
+                }).map(([key, label]) => (
+                    <div className="setting-item" key={key}>
+                        <div className="setting-info">
+                            <h3>{label}</h3>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={notifications[key]}
+                                onChange={() => handleToggle(key)}
+                            />
+                            <span className="slider"></span>
+                        </label>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderDangerMenu = () => (
+        <div className="submenu-content">
+            {renderHeader('Tehlikeli Alan')}
+            <div className="settings-section danger-section">
+                <button className="logout-btn" onClick={handleLogout}>
+                    Çıkış Yap
+                </button>
+                <button className="delete-btn" onClick={() => setShowDeleteModal(true)}>
+                    Hesabı Sil
+                </button>
+            </div>
         </div>
     );
 

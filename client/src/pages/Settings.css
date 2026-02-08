@@ -37,6 +37,41 @@
     text-align: center;
 }
 
+/* Placeholder Content */
+.placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 400px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.placeholder-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+    animation: rotateSlow 20s linear infinite;
+}
+
+.placeholder-content h3 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+@keyframes rotateSlow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* Desktop Styles */
 @media (min-width: 768px) {
     .settings-layout {
