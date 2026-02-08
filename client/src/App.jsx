@@ -1,34 +1,37 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import VerifyEmail from './pages/VerifyEmail';
-import GoogleCallback from './pages/GoogleCallback';
-import AuthProcess from './pages/AuthProcess';
-import Onboarding from './pages/Onboarding';
-import Home from './pages/Home';
-import CreatePost from './pages/CreatePost';
-import Profile from './pages/Profile';
-import Search from './pages/Search';
-import Inbox from './pages/Inbox';
-import Settings from './pages/Settings';
-import Saved from './pages/Saved';
-import PostDetail from './pages/PostDetail';
-import CommentDetail from './pages/CommentDetail';
-import Notifications from './pages/Notifications';
-import AdminDashboard from './pages/AdminDashboard';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsOfService from './pages/TermsOfService';
-import Contact from './pages/Contact';
-import Portal from './pages/Portal';
+
+// Lazy load pages for better performance
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const GoogleCallback = lazy(() => import('./pages/GoogleCallback'));
+const AuthProcess = lazy(() => import('./pages/AuthProcess'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+const Home = lazy(() => import('./pages/Home'));
+const CreatePost = lazy(() => import('./pages/CreatePost'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Search = lazy(() => import('./pages/Search'));
+const Inbox = lazy(() => import('./pages/Inbox'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Saved = lazy(() => import('./pages/Saved'));
+const PostDetail = lazy(() => import('./pages/PostDetail'));
+const CommentDetail = lazy(() => import('./pages/CommentDetail'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Portal = lazy(() => import('./pages/Portal'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
+
 import PortalSidebar from './components/PortalSidebar';
-import Maintenance from './pages/Maintenance';
 import UserBar from './components/UserBar';
 import SplashScreen from './components/SplashScreen';
 import Footer from './components/Footer';
@@ -38,6 +41,27 @@ import './AppLayout.css';
 const MAINTENANCE_MODE = false;
 
 import { useUI, UIProvider } from './context/UIContext';
+
+// Loading fallback component
+const PageLoader = () => (
+    <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: 'var(--bg-primary, #0a0a0a)'
+    }}>
+        <div className="loading-spinner" style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid rgba(255,255,255,0.1)',
+            borderTop: '3px solid #6366f1',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+        }} />
+    </div>
+);
+
 
 // Separate layout component to use useUI hook
 const AppLayout = () => {
@@ -83,99 +107,103 @@ const AppLayout = () => {
 
             <div className="main-content-wrapper">
                 <div className="content-scroll-area">
-                    <Routes>
-                        {/* Public routes */}
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/reset-password" element={<ResetPassword />} />
-                        <Route path="/verify-email" element={<VerifyEmail />} />
-                        <Route path="/verify-email" element={<VerifyEmail />} />
-                        <Route path="/onboarding" element={<Onboarding />} />
-                        <Route path="/auth/process" element={<AuthProcess />} />
-                        <Route path="/auth/google/success" element={<GoogleCallback />} />
-                        <Route path="/privacy" element={<PrivacyPolicy />} />
-                        <Route path="/terms" element={<TermsOfService />} />
-                        <Route path="/contact" element={<Contact />} />
+                    <Suspense fallback={<PageLoader />}>
+                        <Routes>
+                            {/* Public routes */}
+                            <Route path="/login" element={<Login />} />
 
-                        {/* Private routes */}
-                        <Route path="/" element={<Home />} />
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
+                            <Route path="/verify-email" element={<VerifyEmail />} />
+                            <Route path="/verify-email" element={<VerifyEmail />} />
+                            <Route path="/onboarding" element={<Onboarding />} />
+                            <Route path="/auth/process" element={<AuthProcess />} />
+                            <Route path="/auth/google/success" element={<GoogleCallback />} />
+                            <Route path="/privacy" element={<PrivacyPolicy />} />
+                            <Route path="/terms" element={<TermsOfService />} />
+                            <Route path="/contact" element={<Contact />} />
 
-                        {/* Portal Route */}
-                        <Route path="/portal/:id" element={<Portal />} />
+                            {/* Private routes */}
+                            <Route path="/" element={<Home />} />
 
-                        <Route
-                            path="/create"
-                            element={
-                                <PrivateRoute>
-                                    <CreatePost />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route path="/search" element={<Search />} />
-                        <Route
-                            path="/profile"
-                            element={
-                                <PrivateRoute>
-                                    <Profile />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route path="/profile/:username" element={<Profile />} />
-                        <Route
-                            path="/inbox"
-                            element={
-                                <PrivateRoute>
-                                    <Inbox />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path="/settings"
-                            element={
-                                <PrivateRoute>
-                                    <Settings />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path="/notifications"
-                            element={
-                                <PrivateRoute>
-                                    <Notifications />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path="/admin"
-                            element={
-                                <PrivateRoute>
-                                    <AdminDashboard />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path="/saved"
-                            element={
-                                <PrivateRoute>
-                                    <Saved />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route path="/post/:postId" element={<PostDetail />} />
-                        <Route
-                            path="/comment/:commentId"
-                            element={
-                                <PrivateRoute>
-                                    <CommentDetail />
-                                </PrivateRoute>
-                            }
-                        />
+                            {/* Portal Route */}
+                            <Route path="/portal/:id" element={<Portal />} />
 
-                        {/* Catch all */}
-                        <Route path="*" element={<Navigate to="/" />} />
-                    </Routes>
+                            <Route
+                                path="/create"
+                                element={
+                                    <PrivateRoute>
+                                        <CreatePost />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route path="/search" element={<Search />} />
+                            <Route
+                                path="/profile"
+                                element={
+                                    <PrivateRoute>
+                                        <Profile />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route path="/profile/:username" element={<Profile />} />
+                            <Route
+                                path="/inbox"
+                                element={
+                                    <PrivateRoute>
+                                        <Inbox />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/settings"
+                                element={
+                                    <PrivateRoute>
+                                        <Settings />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/notifications"
+                                element={
+                                    <PrivateRoute>
+                                        <Notifications />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin"
+                                element={
+                                    <PrivateRoute>
+                                        <AdminDashboard />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/saved"
+                                element={
+                                    <PrivateRoute>
+                                        <Saved />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route path="/post/:postId" element={<PostDetail />} />
+                            <Route
+                                path="/comment/:commentId"
+                                element={
+                                    <PrivateRoute>
+                                        <CommentDetail />
+                                    </PrivateRoute>
+                                }
+                            />
+
+                            {/* Catch all */}
+                            <Route path="*" element={<Navigate to="/" />} />
+                        </Routes>
+                    </Suspense>
                 </div>
+
 
                 {/* Global Footer */}
                 <Footer />
