@@ -1,8 +1,127 @@
 .settings-container {
-    max-width: 500px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 16px;
-    padding-bottom: 40px;
+    padding: 20px;
+    min-height: calc(100vh - 80px);
+}
+
+/* Layout */
+.settings-layout {
+    display: flex;
+    gap: 32px;
+    position: relative;
+    align-items: flex-start;
+}
+
+.settings-sidebar {
+    width: 100%;
+}
+
+.settings-content-area {
+    width: 100%;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Mobile Visibility Utilities */
+.hidden-on-mobile {
+    display: none;
+}
+
+/* Footer Info in Sidebar */
+.settings-footer-info {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+/* Desktop Styles */
+@media (min-width: 768px) {
+    .settings-layout {
+        flex-direction: row;
+    }
+
+    .settings-sidebar {
+        width: 280px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 100px;
+    }
+
+    .settings-content-area {
+        flex: 1;
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 16px;
+        padding: 32px;
+        min-height: 500px;
+    }
+
+    /* Reset mobile visibility for desktop */
+    .hidden-on-mobile {
+        display: block !important;
+    }
+
+    /* Hide specific mobile-only elements on desktop if needed */
+    .mobile-only {
+        display: none !important;
+    }
+
+    .settings-menu-list {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 16px;
+        padding: 12px;
+        overflow: hidden;
+    }
+
+    .menu-item {
+        background: transparent;
+        border: 1px solid transparent;
+        margin-bottom: 4px;
+        border-radius: 8px;
+    }
+
+    .menu-item:hover {
+        background: var(--bg-hover);
+        border-color: transparent;
+        transform: none;
+    }
+
+    .menu-item.active {
+        background: rgba(29, 155, 240, 0.1);
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .menu-item.active .menu-icon {
+        color: var(--primary-color);
+    }
+
+    .menu-item.danger.active {
+        background: rgba(255, 77, 77, 0.1);
+        color: var(--error-color, #ff4d4d);
+    }
+
+    .menu-arrow {
+        display: none;
+    }
+
+    .submenu-header {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 24px;
+    }
+
+    .submenu-header h2 {
+        font-size: 1.8rem;
+    }
+
+    .submenu-content {
+        height: 100%;
+    }
 }
 
 .settings-title {
