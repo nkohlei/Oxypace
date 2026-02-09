@@ -24,6 +24,10 @@ import adminRoutes from './routes/admin.js';
 import portalRoutes from './routes/portals.js';
 import mediaRoutes from './routes/media.js';
 
+// Models for Sitemap
+import Portal from './models/Portal.js';
+import User from './models/User.js';
+
 // Security middleware imports
 import helmetConfig from './middleware/helmet-config.js';
 import { generalLimiter } from './middleware/rate-limit.js';
@@ -98,12 +102,17 @@ app.set('io', io);
 // Connect to MongoDB
 // Middleware (Database Connection)
 app.use(async (req, res, next) => {
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api') || req.path.includes('sitemap.xml')) {
         try {
             await connectDB();
         } catch (error) {
             console.error('DB Connection Error in Middleware:', error);
-            return res.status(500).json({ message: 'Database Connection Error' });
+            // Don't block sitemap on DB error if possible, but we need DB for sitemap
+            if (req.path.includes('sitemap.xml')) {
+                console.error('Sitemap DB connection failed');
+            } else {
+                return res.status(500).json({ message: 'Database Connection Error' });
+            }
         }
     }
     next();
@@ -137,7 +146,12 @@ import cookieParser from 'cookie-parser';
 app.use(helmetConfig); // Security headers
 app.use(cors(corsOptions));
 app.use(mongoSanitize()); // Prevent NoSQL injection
-app.use('/api', generalLimiter); // Rate limiting for API routes
+// Rate limiting only for /api routes, NOT sitemap
+app.use('/api', (req, res, next) => {
+    if (req.path.includes('sitemap.xml')) return next();
+    return generalLimiter(req, res, next);
+});
+
 app.use(express.json({ limit: '10mb' })); // Limit payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser()); // Add cookie-parser middleware
@@ -182,8 +196,51 @@ app.use('/api/follow', followRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/media', mediaRoutes);
-import sitemapRoutes from './routes/sitemap.js';
-app.use('/api', sitemapRoutes);
+
+// DIRECT SITEMAP ROUTE
+app.get(['/sitemap.xml', '/api/sitemap.xml'], async (req, res) => {
+    res.header('Content-Type', 'application/xml');
+    try {
+        const baseUrl = 'https://oxypace.vercel.app';
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>';
+        xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+
+        // Static Pages
+        const staticPages = [
+            { url: '/', priority: '1.0', freq: 'daily' },
+            { url: '/login', priority: '0.5', freq: 'monthly' },
+            { url: '/register', priority: '0.5', freq: 'monthly' },
+            { url: '/search', priority: '0.8', freq: 'weekly' }
+        ];
+
+        staticPages.forEach(p => {
+            xml += `<url><loc>${baseUrl}${p.url}</loc><changefreq>${p.freq}</changefreq><priority>${p.priority}</priority></url>`;
+        });
+
+        // Portals
+        try {
+            const portals = await Portal.find({ privacy: 'public' }, '_id updatedAt').limit(500).sort({ createdAt: -1 }).lean();
+            if (portals) portals.forEach(p => {
+                xml += `<url><loc>${baseUrl}/portal/${p._id}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`;
+            });
+        } catch (e) { console.error('Sitemap Portal Error', e); }
+
+        // Users
+        try {
+            const users = await User.find({}, 'username createdAt').limit(500).sort({ createdAt: -1 }).lean();
+            if (users) users.forEach(u => {
+                xml += `<url><loc>${baseUrl}/profile/${u.username}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+            });
+        } catch (e) { console.error('Sitemap User Error', e); }
+
+        xml += '</urlset>';
+        res.send(xml);
+    } catch (e) {
+        console.error('Sitemap Generation Error:', e);
+        res.status(500).send('<error>Sitemap failed</error>');
+    }
+});
+
 
 // Global Error Handler
 app.use((err, req, res, next) => {
@@ -199,7 +256,7 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         message: 'GlobalMessage API is running',
-        version: '2.3 - Feature Settings Active',
+        version: '2.6 - Sitemap Integrated',
         timestamp: new Date().toISOString(),
     });
 });
@@ -214,7 +271,7 @@ if (process.argv[1] === __filename) {
     httpServer.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📡 Socket.IO ready for real-time connections`);
-        console.log('✅ Backend updated: v2.5 - R2 Migration Complete');
+        console.log('✅ Backend updated: v2.6 - Sitemap Integrated');
 
         // Start Bot Loop (in background)
         startBotLoop();
