@@ -197,6 +197,11 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/media', mediaRoutes);
 
+import contactRoutes from './routes/contact.js';
+
+// ...
+app.use('/api/contact', contactRoutes);
+
 // DIRECT SITEMAP ROUTE
 app.get(['/sitemap.xml', '/api/sitemap.xml'], async (req, res) => {
     res.header('Content-Type', 'application/xml');

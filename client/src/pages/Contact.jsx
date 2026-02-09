@@ -1,30 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import '../AppLayout.css';
 
 const Contact = () => {
+    const { user, loading: authLoading } = useAuth();
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        subject: '',
+        subject: 'Genel',
         message: ''
     });
     const [status, setStatus] = useState('idle'); // idle, loading, success, error
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!user) {
+            setErrorMessage('Mesaj göndermek için giriş yapmalısınız.');
+            return;
+        }
+
         setStatus('loading');
-        // Simüle edilmiş gönderim
-        setTimeout(() => {
+        setErrorMessage('');
+
+        try {
+            await axios.post('/api/contact', formData);
             setStatus('success');
-            setFormData({ name: '', email: '', subject: '', message: '' });
-        }, 1500);
+            setFormData({ subject: 'Genel', message: '' });
+        } catch (err) {
+            console.error(err);
+            setStatus('error');
+            setErrorMessage(err.response?.data?.message || 'Bir hata oluştu, lütfen tekrar deneyin.');
+        }
     };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
+
+    // Giriş yapmamış kullanıcılar için gösterilecek uyarı componenti
+    const GuestsNotice = () => (
+        <div style={{
+            background: 'var(--bg-primary)',
+            padding: '40px',
+            borderRadius: '12px',
+            textAlign: 'center',
+            border: '2px dashed var(--border-color)',
+            marginTop: '20px'
+        }}>
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '15px' }}>Bize Ulaşmak İçin Giriş Yapın</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '25px' }}>
+                Güvenlik ve spam önleme politikalarımız gereği, sadece kayıtlı kullanıcılarımız destek formu üzerinden mesaj gönderebilir.
+            </p>
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+                <Link to="/login" className="btn btn-primary" style={{ padding: '10px 25px', textDecoration: 'none' }}>
+                    Giriş Yap
+                </Link>
+                <Link to="/register" className="btn btn-secondary" style={{ padding: '10px 25px', textDecoration: 'none', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+                    Kayıt Ol
+                </Link>
+            </div>
+        </div>
+    );
 
     return (
         <div className="app-wrapper">
@@ -51,26 +91,17 @@ const Contact = () => {
                 </div>
 
                 <div className="contact-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
-                    {/* İletişim Bilgileri */}
+                    {/* Sol taraf: Bilgiler (Herkes görebilir) */}
                     <div className="contact-info">
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '20px' }}>Bize Ulaşın</h2>
+                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '20px' }}>İletişim Kanalları</h2>
                         <p style={{ marginBottom: '20px' }}>
-                            Sorularınız, önerileriniz veya destek talepleriniz için aşağıdaki formu doldurabilir veya doğrudan e-posta gönderebilirsiniz.
+                            Aşağıdaki kanallar üzerinden bize (veya <code>nqohlei@gmail.com</code> adresine) her zaman ulaşabilirsiniz.
                         </p>
 
                         <div style={{ marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '1.1rem', color: '#FF5F1F', marginBottom: '5px' }}>E-posta</h3>
+                            <h3 style={{ fontSize: '1.1rem', color: '#FF5F1F', marginBottom: '5px' }}>Doğrudan E-posta</h3>
+                            <p>nqohlei@gmail.com</p>
                             <p>support@oxypace.com</p>
-                            <p>press@oxypace.com (Medya)</p>
-                        </div>
-
-                        <div style={{ marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '1.1rem', color: '#FF5F1F', marginBottom: '5px' }}>Sosyal Medya</h3>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <a href="#" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Twitter / X</a>
-                                <span style={{ color: 'var(--text-tertiary)' }}>•</span>
-                                <a href="#" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Instagram</a>
-                            </div>
                         </div>
 
                         <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #FF5F1F', marginTop: '30px' }}>
@@ -80,91 +111,100 @@ const Contact = () => {
                         </div>
                     </div>
 
-                    {/* İletişim Formu */}
+                    {/* Sağ taraf: Form (Sadece Üyeler) */}
                     <div className="contact-form-wrapper">
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {status === 'success' && (
-                                <div style={{ padding: '10px', background: 'rgba(76, 175, 80, 0.1)', color: '#4caf50', borderRadius: '4px', textAlign: 'center' }}>
-                                    Mesajınız başarıyla gönderildi!
+                        {authLoading ? (
+                            <div style={{ textAlign: 'center', padding: '20px' }}>Yükleniyor...</div>
+                        ) : !user ? (
+                            <GuestsNotice />
+                        ) : (
+                            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <h3 style={{ color: 'var(--text-primary)', marginBottom: '10px' }}>Hızlı Mesaj Gönder</h3>
+
+                                {status === 'success' && (
+                                    <div style={{ padding: '10px', background: 'rgba(76, 175, 80, 0.1)', color: '#4caf50', borderRadius: '4px', textAlign: 'center' }}>
+                                        Mesajınız başarıyla iletildi! En kısa sürede <strong>{user.email}</strong> adresine dönüş yapacağız.
+                                    </div>
+                                )}
+                                {status === 'error' && (
+                                    <div style={{ padding: '10px', background: 'rgba(255, 87, 34, 0.1)', color: '#ff5722', borderRadius: '4px', textAlign: 'center' }}>
+                                        {errorMessage}
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Kimden</label>
+                                    <input
+                                        type="text"
+                                        value={`${user.username} <${user.email}>`}
+                                        disabled
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            color: 'var(--text-secondary)',
+                                            cursor: 'not-allowed'
+                                        }}
+                                    />
+                                    <small style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>E-posta adresiniz hesabınızdan otomatik çekilir.</small>
                                 </div>
-                            )}
 
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Adınız</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    required
-                                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                />
-                            </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Konu</label>
+                                    <select
+                                        name="subject"
+                                        value={formData.subject}
+                                        onChange={handleChange}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                    >
+                                        <option value="Genel">Genel Soru</option>
+                                        <option value="Destek">Teknik Destek</option>
+                                        <option value="Geribildirim">Geri Bildirim / Öneri</option>
+                                        <option value="Sikayet">Şikayet Bildirimi</option>
+                                        <option value="Isbirligi">İş Birliği</option>
+                                    </select>
+                                </div>
 
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>E-posta Adresiniz</label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                />
-                            </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Mesajınız</label>
+                                    <textarea
+                                        name="message"
+                                        rows="5"
+                                        value={formData.message}
+                                        onChange={handleChange}
+                                        required
+                                        placeholder="Size nasıl yardımcı olabiliriz?"
+                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
+                                    ></textarea>
+                                </div>
 
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Konu</label>
-                                <select
-                                    name="subject"
-                                    value={formData.subject}
-                                    onChange={handleChange}
-                                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                <button
+                                    type="submit"
+                                    disabled={status === 'loading'}
+                                    style={{
+                                        padding: '12px',
+                                        background: status === 'loading' ? '#ccc' : '#FF5F1F',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: status === 'loading' ? 'not-allowed' : 'pointer',
+                                        fontWeight: 'bold',
+                                        fontSize: '1rem',
+                                        marginTop: '10px',
+                                        transition: 'background 0.2s'
+                                    }}
                                 >
-                                    <option value="Genel">Genel Soru</option>
-                                    <option value="Destek">Teknik Destek</option>
-                                    <option value="Geribildirim">Geri Bildirim / Öneri</option>
-                                    <option value="Sikayet">Şikayet Bildirimi</option>
-                                    <option value="Isbirligi">İş Birliği</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Mesajınız</label>
-                                <textarea
-                                    name="message"
-                                    rows="5"
-                                    value={formData.message}
-                                    onChange={handleChange}
-                                    required
-                                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
-                                ></textarea>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={status === 'loading'}
-                                style={{
-                                    padding: '12px',
-                                    background: status === 'loading' ? '#ccc' : '#FF5F1F',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: status === 'loading' ? 'not-allowed' : 'pointer',
-                                    fontWeight: 'bold',
-                                    fontSize: '1rem',
-                                    marginTop: '10px',
-                                    transition: 'background 0.2s'
-                                }}
-                            >
-                                {status === 'loading' ? 'Gönderiliyor...' : 'Mesaj Gönder'}
-                            </button>
-                        </form>
+                                    {status === 'loading' ? 'Gönderiliyor...' : 'Mesaj Gönder'}
+                                </button>
+                            </form>
+                        )}
                     </div>
                 </div>
             </main>
 
-            {/* Mobil Uyum İçin CSS Wrapper */}
+            {/* Mobil Responsive */}
             <style>{`
                 @media (max-width: 768px) {
                     .contact-container {
