@@ -27,7 +27,7 @@ const PrivacyPolicy = () => {
                 lineHeight: '1.7'
             }}>
                 <div className="legal-header" style={{ marginBottom: '40px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
-                    <h1 style={{ fontSize: '2.5rem', marginBottom: '10px', background: 'linear-gradient(45deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Gizlilik Politikası</h1>
+                    <h1 style={{ fontSize: '2.5rem', marginBottom: '10px', background: 'linear-gradient(45deg, #FF5F1F, #FF8C00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Gizlilik Politikası</h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Son Güncelleme: {effectiveDate}</p>
                 </div>
 
@@ -125,8 +125,8 @@ const PrivacyPolicy = () => {
                         <p>
                             Bu Gizlilik Politikası hakkında sorularınız, talepleriniz veya endişeleriniz varsa, bizimle istediğiniz zaman iletişime geçebilirsiniz:
                         </p>
-                        <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '8px', marginTop: '15px', borderLeft: '4px solid #6366f1' }}>
-                            <p><strong>E-posta:</strong> <a href="mailto:support@oxypace.com" style={{ color: '#6366f1', textDecoration: 'none' }}>support@oxypace.com</a></p>
+                        <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '8px', marginTop: '15px', borderLeft: '4px solid #FF5F1F' }}>
+                            <p><strong>E-posta:</strong> <a href="mailto:support@oxypace.com" style={{ color: '#FF5F1F', textDecoration: 'none' }}>support@oxypace.com</a></p>
                         </div>
                     </section>
 
