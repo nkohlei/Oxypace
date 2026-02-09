@@ -16,6 +16,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const navigate = useNavigate();
 
     const [liked, setLiked] = useState(post.likes?.includes(user?._id) || false);
+    const [saved, setSaved] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showAnyway, setShowAnyway] = useState(false);
 
