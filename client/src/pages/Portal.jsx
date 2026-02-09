@@ -11,7 +11,9 @@ import PortalSettingsModal from '../components/PortalSettingsModal';
 import PortalNotifications from '../components/PortalNotifications';
 import AdUnit from '../components/AdUnit';
 import Navbar from '../components/Navbar';
+import SEO from '../components/SEO';
 import './Portal.css';
+
 
 const Portal = () => {
     const { id } = useParams();
@@ -311,12 +313,27 @@ const Portal = () => {
 
     return (
         <div className="app-wrapper full-height discord-layout">
+            <SEO
+                title={portal.name}
+                description={portal.description || `${portal.name} topluluğuna katılın.`}
+                image={getImageUrl(portal.avatar)}
+                type="website"
+                schema={{
+                    "@context": "https://schema.org",
+                    "@type": "Community",
+                    "name": portal.name,
+                    "description": portal.description,
+                    "url": window.location.href,
+                    "memberCount": portal.members?.length || 0
+                }}
+            />
             {/* Global Navbar - Hide when editing settings */}
             {!editing && <Navbar />}
             {/* Guest Login Warning Toast */}
             {showLoginWarning && (
                 <div className="guest-warning-toast">Lütfen giriş yapın veya kaydolun!</div>
             )}
+
 
             <div className="discord-split-view">
                 {user && (
@@ -346,7 +363,7 @@ const Portal = () => {
                                 {currentChannel === 'general'
                                     ? 'genel'
                                     : portal?.channels?.find((c) => c._id === currentChannel)
-                                          ?.name || currentChannel}
+                                        ?.name || currentChannel}
                             </h3>
                         </div>
 
@@ -596,8 +613,8 @@ const Portal = () => {
                                                                 {mediaFile.type.startsWith('video')
                                                                     ? '🎥'
                                                                     : mediaFile.type.includes('gif')
-                                                                      ? '👾'
-                                                                      : '🖼️'}
+                                                                        ? '👾'
+                                                                        : '🖼️'}
                                                             </span>
                                                             <button
                                                                 onClick={() => setMediaFile(null)}
@@ -615,14 +632,13 @@ const Portal = () => {
 
                                                     <input
                                                         type="text"
-                                                        placeholder={`#${
-                                                            currentChannel === 'general'
-                                                                ? 'genel'
-                                                                : portal?.channels?.find(
-                                                                      (c) =>
-                                                                          c._id === currentChannel
-                                                                  )?.name || currentChannel
-                                                        } kanalına mesaj gönder`}
+                                                        placeholder={`#${currentChannel === 'general'
+                                                            ? 'genel'
+                                                            : portal?.channels?.find(
+                                                                (c) =>
+                                                                    c._id === currentChannel
+                                                            )?.name || currentChannel
+                                                            } kanalına mesaj gönder`}
                                                         value={messageText}
                                                         onChange={(e) =>
                                                             setMessageText(e.target.value)
@@ -694,8 +710,8 @@ const Portal = () => {
                                                     {currentChannel === 'general'
                                                         ? 'genel'
                                                         : portal?.channels?.find(
-                                                              (c) => c._id === currentChannel
-                                                          )?.name || currentChannel}{' '}
+                                                            (c) => c._id === currentChannel
+                                                        )?.name || currentChannel}{' '}
                                                     kanalına hoş geldin!
                                                 </h3>
                                                 <p>

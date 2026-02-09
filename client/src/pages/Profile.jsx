@@ -7,7 +7,9 @@ import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
 import ImageCropper from '../components/ImageCropper';
 import ProfileImageModal from '../components/ProfileImageModal'; // Import the new modal
+import SEO from '../components/SEO';
 import './Profile.css';
+
 
 const Profile = () => {
     const { username } = useParams();
@@ -334,8 +336,26 @@ const Profile = () => {
             className="app-wrapper full-height"
             style={{ backgroundColor: '#111214', color: '#dbdee1' }}
         >
+            {profileUser && (
+                <SEO
+                    title={`${profileUser.profile?.displayName || profileUser.username} (@${profileUser.username})`}
+                    description={profileUser.profile?.bio || `${profileUser.username} kullanıcısının profili.`}
+                    image={getImageUrl(profileUser.profile?.avatar)}
+                    type="profile"
+                    schema={{
+                        "@context": "https://schema.org",
+                        "@type": "Person",
+                        "name": profileUser.profile?.displayName || profileUser.username,
+                        "alternateName": profileUser.username,
+                        "description": profileUser.profile?.bio,
+                        "image": getImageUrl(profileUser.profile?.avatar),
+                        "url": window.location.href
+                    }}
+                />
+            )}
             <Navbar />
             <main className="app-content profile-page-content">
+
                 {/* Wide Profile Card */}
                 <div className="profile-card profile-card-horizontal">
                     {/* Banner section */}

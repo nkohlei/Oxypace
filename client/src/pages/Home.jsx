@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import AdUnit from '../components/AdUnit';
+import SEO from '../components/SEO';
 import './Home.css';
 
 const Home = () => {
@@ -37,6 +38,16 @@ const Home = () => {
 
     return (
         <div className="app-wrapper">
+            <SEO
+                title="Ana Sayfa"
+                description="Oxypace - İlgi alanlarınıza uygun toplulukları keşfedin, sohbetlere katılın ve dünyayla bağlantı kurun."
+                schema={{
+                    "@context": "https://schema.org",
+                    "@type": "WebSite",
+                    "name": "Oxypace",
+                    "url": window.location.origin
+                }}
+            />
             <Navbar />
             <main className="app-content">
                 <div className="welcome-container home-welcome-section">

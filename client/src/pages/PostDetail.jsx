@@ -10,6 +10,7 @@ import Badge from '../components/Badge';
 import Footer from '../components/Footer';
 import ShareModal from '../components/ShareModal';
 import AdUnit from '../components/AdUnit';
+import SEO from '../components/SEO';
 import './PostDetail.css';
 
 const PostDetail = () => {
@@ -148,6 +149,36 @@ const PostDetail = () => {
 
     return (
         <div className="app-wrapper">
+            {post && (
+                <SEO
+                    title={post.title || `${post.author?.username} adlı kullanıcının gönderisi`}
+                    description={post.content ? post.content.substring(0, 160) : "Oxypace Gönderisi"}
+                    image={post.media && post.media.length > 0 ? getImageUrl(post.media[0]) : undefined}
+                    type="article"
+                    schema={{
+                        "@context": "https://schema.org",
+                        "@type": "SocialMediaPosting",
+                        "headline": post.content ? post.content.substring(0, 100) : "Gönderi",
+                        "author": {
+                            "@type": "Person",
+                            "name": post.author?.username
+                        },
+                        "datePublished": post.createdAt,
+                        "interactionStatistic": [
+                            {
+                                "@type": "InteractionCounter",
+                                "interactionType": "https://schema.org/LikeAction",
+                                "userInteractionCount": likeCount
+                            },
+                            {
+                                "@type": "InteractionCounter",
+                                "interactionType": "https://schema.org/CommentAction",
+                                "userInteractionCount": post.commentCount || 0
+                            }
+                        ]
+                    }}
+                />
+            )}
             <Navbar />
             <main className="app-content">
                 <div className="post-detail-container">
@@ -222,8 +253,8 @@ const PostDetail = () => {
                                         {isTranslating
                                             ? 'Çevriliyor...'
                                             : isTranslated
-                                              ? 'Orijinalini gör'
-                                              : 'Çevirisini gör'}
+                                                ? 'Orijinalini gör'
+                                                : 'Çevirisini gör'}
                                     </button>
                                 )}
                             </div>
