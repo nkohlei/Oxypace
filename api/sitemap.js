@@ -1,6 +1,24 @@
-import mongoose from 'mongoose';
-import Portal from '../models/Portal.js';
-import User from '../models/User.js';
+import Post from '../models/Post.js';
+// ... (imports)
+
+// ... (inside handler)
+// Users
+try {
+    const users = await User.find({}, 'username createdAt').limit(500).sort({ createdAt: -1 }).lean();
+    if (users) users.forEach(u => {
+        xml += `<url><loc>${baseUrl}/profile/${u.username}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+    });
+} catch (e) { console.error('Sitemap User Error', e); }
+
+// Posts
+try {
+    const posts = await Post.find({}, '_id updatedAt').limit(1000).sort({ createdAt: -1 }).lean();
+    if (posts) posts.forEach(p => {
+        xml += `<url><loc>${baseUrl}/post/${p._id}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`;
+    });
+} catch (e) { console.error('Sitemap Post Error', e); }
+
+xml += '</urlset>';
 import dotenv from 'dotenv';
 import connectDB from '../config/db.js';
 
