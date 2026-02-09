@@ -182,6 +182,8 @@ app.use('/api/follow', followRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/media', mediaRoutes);
+import sitemapRoutes from './routes/sitemap.js';
+app.use('/api', sitemapRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
