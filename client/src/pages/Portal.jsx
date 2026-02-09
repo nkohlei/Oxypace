@@ -164,10 +164,14 @@ const Portal = () => {
                 description: res.data.description || '',
                 privacy: res.data.privacy || 'public',
             });
-            // Initial post fetch will trigger by useEffect depending on default channel
         } catch (err) {
-            setError('Portal yüklenemedi');
+            if (err.response && (err.response.status === 403 || err.response.status === 404)) {
+                setError('blocked'); // Treat blocked/not found same for blocked users as per request ("sonuç bulunamadı")
+            } else {
+                setError('Portal yüklenemedi');
+            }
             console.error(err);
+        } finally {
             setLoading(false);
         }
     };
@@ -291,6 +295,36 @@ const Portal = () => {
             portal &&
             portal.admins &&
             portal.admins.some((a) => isSameId(a._id || a, user._id)));
+
+    // Error State (Blocked/Not Found)
+    if (error === 'blocked') {
+        return (
+            <div className="app-wrapper full-height">
+                <Navbar />
+                <div
+                    style={{
+                        display: 'flex',
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                        color: 'var(--text-muted)',
+                    }}
+                >
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚫</div>
+                    <h2>Sonuç Bulunamadı</h2>
+                    <p>Aradığınız portala ulaşılamıyor.</p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="btn-save"
+                        style={{ marginTop: '20px', float: 'none' }}
+                    >
+                        Anasayfaya Dön
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // Loading State
     if (loading || authLoading || !portal) {

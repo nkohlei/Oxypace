@@ -143,6 +143,31 @@
 /* Forms & Inputs */
 .form-group {
     margin-bottom: 24px;
+    position: relative;
+}
+
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+}
+
+.member-card.full-width {
+    width: 100%;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.member-card.full-width:last-child {
+    border-bottom: none;
 }
 
 .form-label {

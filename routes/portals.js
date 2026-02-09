@@ -50,12 +50,17 @@ router.get('/', optionalProtect, async (req, res) => {
     try {
         const keyword = req.query.keyword
             ? {
-                  name: {
-                      $regex: req.query.keyword,
-                      $options: 'i',
-                  },
-              }
+                name: {
+                    $regex: req.query.keyword,
+                    $options: 'i',
+                },
+            }
             : {};
+
+        // Exclude portals where user is blocked
+        if (req.user) {
+            keyword.blockedUsers = { $ne: req.user._id };
+        }
 
         const portals = await Portal.find(keyword)
             .select('name description avatar banner privacy members joinRequests themeColor')

@@ -61,10 +61,42 @@ const PortalSettingsModal = ({
         try {
             const res = await axios.get(`/api/portals/${portal._id}/blocked`);
             setBlockedUsers(res.data);
+            setBlockedUsers(res.data);
         } catch (err) {
             console.error('Failed to fetch blocked users', err);
         }
     };
+
+    // --- Block Search State & Handlers ---
+    const [blockSearchQuery, setBlockSearchQuery] = useState('');
+    const [blockSearchResults, setBlockSearchResults] = useState([]);
+    const [isSearchingBlock, setIsSearchingBlock] = useState(false);
+
+    const handleBlockSearch = async (query) => {
+        setBlockSearchQuery(query);
+        if (!query.trim()) {
+            setBlockSearchResults([]);
+            return;
+        }
+
+        try {
+            setIsSearchingBlock(true);
+            const res = await axios.get(`/api/users/search?q=${query}`);
+            // Filter out already blocked users and the portal owner
+            const filtered = res.data.filter(
+                (u) =>
+                    !blockedUsers.some((b) => b._id === u._id) &&
+                    u._id !== portal.owner &&
+                    u._id !== portal.owner?._id
+            );
+            setBlockSearchResults(filtered);
+        } catch (err) {
+            console.error('Block search error', err);
+        } finally {
+            setIsSearchingBlock(false);
+        }
+    };
+
 
     // --- Overview Handlers ---
     const handleSaveOverview = async () => {
@@ -896,6 +928,63 @@ const PortalSettingsModal = ({
                     {activeTab === 'banned' && (
                         <div className="animate-fade-in">
                             <h2 className="settings-title">Engellenen Kullanıcılar</h2>
+
+                            {/* Block User Search */}
+                            <div className="form-group" style={{ marginBottom: '20px' }}>
+                                <input
+                                    className="form-input"
+                                    placeholder="Engellemek için kullanıcı ara..."
+                                    value={blockSearchQuery}
+                                    onChange={(e) => handleBlockSearch(e.target.value)}
+                                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                                />
+                                {blockSearchResults.length > 0 && (
+                                    <div className="search-results-dropdown">
+                                        {blockSearchResults.map((user) => (
+                                            <div key={user._id} className="member-card full-width">
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '10px',
+                                                        flex: 1,
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={getImageUrl(user.profile?.avatar)}
+                                                        alt=""
+                                                        className="member-avatar"
+                                                        onError={(e) =>
+                                                            (e.target.style.display = 'none')
+                                                        }
+                                                    />
+                                                    <div className="member-username">
+                                                        {user.username}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        handleBlock(user._id);
+                                                        setBlockSearchQuery('');
+                                                        setBlockSearchResults([]);
+                                                    }}
+                                                    className="btn-save danger-btn"
+                                                    style={{
+                                                        padding: '4px 12px',
+                                                        fontSize: '12px',
+                                                        background: '#ed4245',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                    }}
+                                                >
+                                                    Engelle
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="members-list">
                                 {blockedUsers.length > 0 ? (
                                     blockedUsers.map((user) => (
