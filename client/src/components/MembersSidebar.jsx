@@ -20,14 +20,14 @@ const MembersSidebar = ({ members = [] }) => {
         <div className="members-sidebar custom-scrollbar">
             {/* Online Category */}
             <div className="members-category">Çevrim içi — {online.length}</div>
-            {online.map((user) => {
+            {online.map((user, index) => {
                 // Safeguard against malformed data
                 if (!user) return null;
                 const username = user.username || 'Unknown';
                 const avatar = user.avatar || user.profile?.avatar;
 
                 return (
-                    <div key={user._id || user.id || Math.random()} className="member-item">
+                    <div key={user._id || user.id || index} className="member-item">
                         <div className="member-avatar-wrapper">
                             {avatar ? (
                                 <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
@@ -58,7 +58,7 @@ const MembersSidebar = ({ members = [] }) => {
 
             {/* Offline Category */}
             <div className="members-category">Çevrim dışı — {offline.length}</div>
-            {offline.map((user) => {
+            {offline.map((user, index) => {
                 if (!user) return null;
                 // Handle if user is just an ID (fallback if populate failed)
                 if (typeof user === 'string') return null;
@@ -67,7 +67,7 @@ const MembersSidebar = ({ members = [] }) => {
                 const avatar = user.avatar || user.profile?.avatar;
 
                 return (
-                    <div key={user._id || user.id || Math.random()} className="member-item offline">
+                    <div key={user._id || user.id || `offline-${index}`} className="member-item offline">
                         <div className="member-avatar-wrapper">
                             {avatar ? (
                                 <img src={getImageUrl(avatar)} alt="" className="member-avatar" />

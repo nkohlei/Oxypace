@@ -62,6 +62,7 @@ const Navbar = () => {
     // Reset count when visiting notifications page
     useEffect(() => {
         if (location.pathname === '/notifications') {
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             setUnreadCount(0);
             // Optionally call backend to mark all as read here or keep it manual in Notifications page
         }
@@ -178,7 +179,9 @@ const Navbar = () => {
                                         setUnreadCount(0);
                                         try {
                                             await axios.put('/api/notifications/read');
-                                        } catch (e) {}
+                                        } catch (error) {
+                                            // ignore error
+                                        }
                                     }}
                                 >
                                     <div className="nav-icon-wrapper">

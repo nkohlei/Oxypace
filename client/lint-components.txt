@@ -1,0 +1,153 @@
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\AdUnit.jsx[24m[0m
+[0m   [2m8:13[22m  [33mwarning[39m  Unexpected console statement  [2mno-console[22m[0m
+[0m  [2m12:9[22m   [31merror[39m    'process' is not defined      [2mno-undef[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\Badge.jsx[24m[0m
+[0m  [2m3:35[22m  [33mwarning[39m  'className' is assigned a value but never used. Allowed unused args must match /^_/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\ChannelSidebar.jsx[24m[0m
+[0m  [2m1:10[22m  [33mwarning[39m  'useRef' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\CommentSection.jsx[24m[0m
+[0m   [2m39:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'fetchComments'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m54:13[22m  [33mwarning[39m  Unexpected console statement                                                                                      [2mno-console[22m[0m
+[0m  [2m100:13[22m  [33mwarning[39m  Unexpected console statement                                                                                      [2mno-console[22m[0m
+[0m  [2m143:13[22m  [33mwarning[39m  Unexpected console statement                                                                                      [2mno-console[22m[0m
+[0m  [2m174:13[22m  [33mwarning[39m  Unexpected console statement                                                                                      [2mno-console[22m[0m
+[0m  [2m192:13[22m  [33mwarning[39m  Unexpected console statement                                                                                      [2mno-console[22m[0m
+[0m  [2m232:13[22m  [33mwarning[39m  Unexpected console statement                                                                                      [2mno-console[22m[0m
+[0m  [2m236:11[22m  [33mwarning[39m  'navigateToComment' is assigned a value but never used                                                            [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\ErrorBoundary.jsx[24m[0m
+[0m  [2m14:9[22m  [33mwarning[39m  Unexpected console statement  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\FollowButton.jsx[24m[0m
+[0m  [2m48:13[22m  [33mwarning[39m  Unexpected console statement  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\ImageCropper.jsx[24m[0m
+[0m  [2m101:17[22m  [33mwarning[39m  Unexpected console statement                                                                                                                                  [2mno-console[22m[0m
+[0m  [2m104:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'getCropArea'. Either include it or remove the dependency array                                                [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m121:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'getCropArea', 'imageObj', 'mode', 'position', and 'zoom'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m309:19[22m  [33mwarning[39m  'containerRect' is assigned a value but never used                                                                                                            [2mno-unused-vars[22m[0m
+[0m  [2m368:11[22m  [33mwarning[39m  'handleZoomChange' is assigned a value but never used                                                                                                         [2mno-unused-vars[22m[0m
+[0m  [2m417:13[22m  [33mwarning[39m  Unexpected console statement                                                                                                                                  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\InviteUserModal.jsx[24m[0m
+[0m  [2m23:17[22m  [33mwarning[39m  Unexpected console statement  [2mno-console[22m[0m
+[0m  [2m46:13[22m  [33mwarning[39m  Unexpected console statement  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\LikeButton.jsx[24m[0m
+[0m  [2m30:13[22m  [33mwarning[39m  Unexpected console statement  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\MembersSidebar.jsx[24m[0m
+[0m  [2m30:54[22m  [31merror[39m  Error: Cannot call impure function during render[0m
+[0m[0m
+[0m`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).[0m
+[0m[0m
+[0m  28 |[0m
+[0m  29 |                 return ([0m
+[0m> 30 |                     <div key={user._id || user.id || Math.random()} className="member-item">[0m
+[0m     |                                                      ^^^^^^^^^^^^^ Cannot call impure function[0m
+[0m  31 |                         <div className="member-avatar-wrapper">[0m
+[0m  32 |                             {avatar ? ([0m
+[0m  33 |                                 <img src={getImageUrl(avatar)} alt="" className="member-avatar" />          [2mreact-hooks/purity[22m[0m
+[0m  [2m70:54[22m  [31merror[39m  Error: Cannot call impure function during render[0m
+[0m[0m
+[0m`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).[0m
+[0m[0m
+[0m  68 |[0m
+[0m  69 |                 return ([0m
+[0m> 70 |                     <div key={user._id || user.id || Math.random()} className="member-item offline">[0m
+[0m     |                                                      ^^^^^^^^^^^^^ Cannot call impure function[0m
+[0m  71 |                         <div className="member-avatar-wrapper">[0m
+[0m  72 |                             {avatar ? ([0m
+[0m  73 |                                 <img src={getImageUrl(avatar)} alt="" className="member-avatar" />  [2mreact-hooks/purity[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\MessageBubble.jsx[24m[0m
+[0m    [2m9:52[22m  [33mwarning[39m  'onReply' is defined but never used. Allowed unused args must match /^_/u  [2mno-unused-vars[22m[0m
+[0m   [2m31:13[22m  [33mwarning[39m  Unexpected console statement                                               [2mno-console[22m[0m
+[0m   [2m52:21[22m  [33mwarning[39m  Unexpected console statement                                               [2mno-console[22m[0m
+[0m   [2m65:21[22m  [33mwarning[39m  Unexpected console statement                                               [2mno-console[22m[0m
+[0m  [2m109:11[22m  [33mwarning[39m  'handleReaction' is assigned a value but never used                        [2mno-unused-vars[22m[0m
+[0m  [2m114:11[22m  [33mwarning[39m  'emojis' is assigned a value but never used                                [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\Navbar.jsx[24m[0m
+[0m   [2m37:21[22m  [33mwarning[39m  Unexpected console statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 [2mno-console[22m[0m
+[0m   [2m65:13[22m  [31merror[39m    Error: Calling setState synchronously within an effect can trigger cascading renders[0m
+[0m[0m
+[0mEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:[0m
+[0m* Update external systems with the latest state from React.[0m
+[0m* Subscribe for updates from some external system, calling setState in a callback function when external state changes.[0m
+[0m[0m
+[0mCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).[0m
+[0m[0m
+[0m  63 |     useEffect(() => {[0m
+[0m  64 |         if (location.pathname === '/notifications') {[0m
+[0m> 65 |             setUnreadCount(0);[0m
+[0m     |             ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect[0m
+[0m  66 |             // Optionally call backend to mark all as read here or keep it manual in Notifications page[0m
+[0m  67 |         }[0m
+[0m  68 |     }, [location.pathname]);  [2mreact-hooks/set-state-in-effect[22m[0m
+[0m  [2m181:50[22m  [33mwarning[39m  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                [2mno-unused-vars[22m[0m
+[0m  [2m181:53[22m  [31merror[39m    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        [2mno-empty[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\NewMessageModal.jsx[24m[0m
+[0m  [2m10:12[22m  [33mwarning[39m  'friends' is assigned a value but never used     [2mno-unused-vars[22m[0m
+[0m  [2m10:21[22m  [33mwarning[39m  'setFriends' is assigned a value but never used  [2mno-unused-vars[22m[0m
+[0m  [2m33:17[22m  [33mwarning[39m  Unexpected console statement                     [2mno-console[22m[0m
+[0m  [2m52:17[22m  [33mwarning[39m  Unexpected console statement                     [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\PortalNotifications.jsx[24m[0m
+[0m  [2m14:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m23:13[22m  [33mwarning[39m  Unexpected console statement                                                                                           [2mno-console[22m[0m
+[0m  [2m39:13[22m  [33mwarning[39m  Unexpected console statement                                                                                           [2mno-console[22m[0m
+[0m  [2m51:13[22m  [33mwarning[39m  Unexpected console statement                                                                                           [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\PortalSettingsModal.jsx[24m[0m
+[0m   [2m58:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'fetchBlockedUsers', 'isAdmin', and 'isOwner'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m65:13[22m  [33mwarning[39m  Unexpected console statement                                                                                                                      [2mno-console[22m[0m
+[0m   [2m96:18[22m  [33mwarning[39m  'err' is defined but never used                                                                                                                   [2mno-unused-vars[22m[0m
+[0m  [2m149:18[22m  [33mwarning[39m  'err' is defined but never used                                                                                                                   [2mno-unused-vars[22m[0m
+[0m  [2m160:18[22m  [33mwarning[39m  'err' is defined but never used                                                                                                                   [2mno-unused-vars[22m[0m
+[0m  [2m180:18[22m  [33mwarning[39m  'err' is defined but never used                                                                                                                   [2mno-unused-vars[22m[0m
+[0m  [2m207:18[22m  [33mwarning[39m  'err' is defined but never used                                                                                                                   [2mno-unused-vars[22m[0m
+[0m  [2m235:18[22m  [33mwarning[39m  'err' is defined but never used                                                                                                                   [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\PortalSidebar.jsx[24m[0m
+[0m  [2m1:20[22m  [33mwarning[39m  'useEffect' is defined but never used  [2mno-unused-vars[22m[0m
+[0m  [2m2:36[22m  [33mwarning[39m  'Link' is defined but never used       [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\PostCard.jsx[24m[0m
+[0m    [2m2:10[22m  [33mwarning[39m  'shouldShowTranslation' is defined but never used                        [2mno-unused-vars[22m[0m
+[0m    [2m7:8[22m   [33mwarning[39m  'CommentSection' is defined but never used                               [2mno-unused-vars[22m[0m
+[0m   [2m18:12[22m  [33mwarning[39m  'liked' is assigned a value but never used                               [2mno-unused-vars[22m[0m
+[0m   [2m19:12[22m  [33mwarning[39m  'likeCount' is assigned a value but never used                           [2mno-unused-vars[22m[0m
+[0m   [2m21:20[22m  [33mwarning[39m  'setHidden' is assigned a value but never used                           [2mno-unused-vars[22m[0m
+[0m   [2m22:12[22m  [33mwarning[39m  'showComments' is assigned a value but never used                        [2mno-unused-vars[22m[0m
+[0m   [2m22:26[22m  [33mwarning[39m  'setShowComments' is assigned a value but never used                     [2mno-unused-vars[22m[0m
+[0m   [2m26:12[22m  [33mwarning[39m  'isExpanded' is assigned a value but never used                          [2mno-unused-vars[22m[0m
+[0m   [2m26:24[22m  [33mwarning[39m  'setIsExpanded' is assigned a value but never used                       [2mno-unused-vars[22m[0m
+[0m   [2m58:13[22m  [33mwarning[39m  Unexpected console statement                                             [2mno-console[22m[0m
+[0m   [2m98:11[22m  [33mwarning[39m  'handleAuthRequired' is assigned a value but never used                  [2mno-unused-vars[22m[0m
+[0m  [2m106:11[22m  [33mwarning[39m  'handleLike' is assigned a value but never used                          [2mno-unused-vars[22m[0m
+[0m  [2m116:13[22m  [33mwarning[39m  Unexpected console statement                                             [2mno-console[22m[0m
+[0m  [2m155:13[22m  [33mwarning[39m  Unexpected console statement                                             [2mno-console[22m[0m
+[0m  [2m161:11[22m  [33mwarning[39m  'handleDeleteClick' is assigned a value but never used                   [2mno-unused-vars[22m[0m
+[0m  [2m174:13[22m  [33mwarning[39m  Unexpected console statement                                             [2mno-console[22m[0m
+[0m  [2m184:11[22m  [33mwarning[39m  'handleDownload' is assigned a value but never used                      [2mno-unused-vars[22m[0m
+[0m  [2m199:13[22m  [33mwarning[39m  Unexpected console statement                                             [2mno-console[22m[0m
+[0m  [2m204:11[22m  [33mwarning[39m  'formatLikeCount' is assigned a value but never used                     [2mno-unused-vars[22m[0m
+[0m  [2m221:9[22m   [33mwarning[39m  Unexpected console statement                                             [2mno-console[22m[0m
+[0m  [2m227:37[22m  [33mwarning[39m  'event' is defined but never used. Allowed unused args must match /^_/u  [2mno-unused-vars[22m[0m
+[0m  [2m495:37[22m  [33mwarning[39m  Unexpected console statement                                             [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\hp\OneDrive\Masaüstü\PRJCTV\globalmessage2\client\src\components\ShareModal.jsx[24m[0m
+[0m   [2m33:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'fetchFollowers'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m44:13[22m  [33mwarning[39m  Unexpected console statement                                                                                       [2mno-console[22m[0m
+[0m   [2m59:13[22m  [33mwarning[39m  Unexpected console statement                                                                                       [2mno-console[22m[0m
+[0m   [2m87:13[22m  [33mwarning[39m  Unexpected console statement                                                                                       [2mno-console[22m[0m
+[0m  [2m139:17[22m  [33mwarning[39m  Unexpected console statement                                                                                       [2mno-console[22m[0m
+[0m[0m
+[0m[31m[1m✖ 80 problems (5 errors, 75 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[0m

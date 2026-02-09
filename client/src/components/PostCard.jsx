@@ -16,14 +16,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const navigate = useNavigate();
 
     const [liked, setLiked] = useState(post.likes?.includes(user?._id) || false);
-    const [likeCount, setLikeCount] = useState(post.likeCount || 0);
-    const [saved, setSaved] = useState(false);
-    const [hidden, setHidden] = useState(false);
-    const [showComments, setShowComments] = useState(false);
-    const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showAnyway, setShowAnyway] = useState(false);
-    const [isExpanded, setIsExpanded] = useState(false);
+
 
     // Translation State
     const [isTranslated, setIsTranslated] = useState(false);
@@ -95,27 +90,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         return postDate.toLocaleDateString('tr-TR');
     };
 
-    const handleAuthRequired = (action) => {
-        if (!user) {
-            navigate('/login');
-            return;
-        }
-        action();
-    };
 
-    const handleLike = async () => {
-        if (!user) {
-            navigate('/login');
-            return;
-        }
-        try {
-            const response = await axios.post(`/api/likes/post/${post._id}`);
-            setLiked(response.data.liked);
-            setLikeCount(response.data.likeCount);
-        } catch (error) {
-            console.error('Like error:', error);
-        }
-    };
+    // Like feature removed from UI but kept logic if needed later? No, removing unused code.
+    // If handleLike is not used in JSX, remove it.
 
     const handleSave = async () => {
         if (!user) {
@@ -158,10 +135,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         }
     };
 
-    const handleDeleteClick = () => {
-        setShowDeleteConfirm(true);
-        setShowMenu(false);
-    };
 
     const handleDelete = async () => {
         try {
@@ -181,31 +154,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         setShowShareModal(true);
     };
 
-    const handleDownload = async () => {
-        if (!post.media) return;
-        try {
-            const response = await fetch(getImageUrl(post.media));
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `oxypace-post-${post._id}.${post.mediaType === 'video' ? 'mp4' : 'png'}`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            setShowMenu(false);
-        } catch (error) {
-            console.error('Download failed:', error);
-            alert('İndirme başarısız.');
-        }
-    };
 
-    const formatLikeCount = (count) => {
-        if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-        if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-        return count.toLocaleString('tr-TR');
-    };
 
     const handleCardClick = (e) => {
         // Static message - no navigation
@@ -473,8 +422,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             {isTranslating
                                 ? 'Çevriliyor...'
                                 : isTranslated
-                                  ? 'Orijinalini gör'
-                                  : 'Çevirisini gör'}
+                                    ? 'Orijinalini gör'
+                                    : 'Çevirisini gör'}
                         </button>
                     )}
                 </div>

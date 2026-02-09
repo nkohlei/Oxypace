@@ -9,7 +9,7 @@ const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
         }
     }, []);
 
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.NODE_ENV === 'development') {
         return (
             <div
                 style={{
