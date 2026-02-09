@@ -2,11 +2,11 @@
     "rewrites": [
         {
             "source": "/sitemap.xml",
-            "destination": "/server.js"
+            "destination": "/api/index.js"
         },
         {
             "source": "/api/(.*)",
-            "destination": "/server.js"
+            "destination": "/api/index.js"
         },
         {
             "source": "/(.*)",
