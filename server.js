@@ -198,7 +198,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/media', mediaRoutes);
 
 // DIRECT SITEMAP ROUTE
-app.get(['/sitemap.xml', '/api/sitemap.xml'], async (req, res) => {
+app.get('/api/sitemap', async (req, res) => {
     res.header('Content-Type', 'application/xml');
     try {
         const baseUrl = 'https://oxypace.vercel.app';
