@@ -6,8 +6,8 @@ Allow: /
 # Disallow admin and private pages
 Disallow: /admin
 Disallow: /settings
-Allow: /api/sitemap
+Allow: /api/sitemap.xml
 Disallow: /api/
 
 # Sitemap
-Sitemap: https://oxypace.vercel.app/api/sitemap
+Sitemap: https://oxypace.vercel.app/sitemap.xml

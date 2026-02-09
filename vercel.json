@@ -1,0 +1,16 @@
+{
+    "rewrites": [
+        {
+            "source": "/sitemap.xml",
+            "destination": "/api/sitemap.xml"
+        },
+        {
+            "source": "/api/(.*)",
+            "destination": "/server.js"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/client/index.html"
+        }
+    ]
+}
