@@ -179,6 +179,10 @@ const Register = () => {
                     {error && <div className="error-message">{error}</div>}
                     {success && <div className="success-message">{success}</div>}
 
+                    <p style={{ fontSize: '0.8rem', color: '#666', textAlign: 'center', marginBottom: '15px' }}>
+                        Hesap oluşturarak <Link to="/terms" style={{ color: '#6366f1' }}>Kullanım Koşulları</Link>'nı ve <Link to="/privacy" style={{ color: '#6366f1' }}>Gizlilik Politikası</Link>'nı kabul etmiş olursunuz.
+                    </p>
+
                     <button type="submit" className="btn btn-primary" disabled={loading}>
                         {loading ? (
                             <div
