@@ -19,7 +19,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const [saved, setSaved] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [showAnyway, setShowAnyway] = useState(false);
 
 
     // Translation State
@@ -202,17 +201,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         }
     };
 
-    if (hidden && !showAnyway) {
-        return (
-            <div className="post-card foggy-hidden">
-                <div className="foggy-content">
-                    {/* Foggy Content */}
-                    <p>Gizlendi</p>
-                    <button onClick={() => setShowAnyway(true)}>Göster</button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <article
