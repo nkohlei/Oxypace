@@ -252,8 +252,10 @@
     flex-direction: column;
     background-color: var(--bg-dark);
     height: 100%;
+    /* Force full viewport height */
     overflow: hidden;
-    /* Trap scroll here */
+    position: relative;
+    /* Context for absolute input */
 }
 
 /* Chat Header */
@@ -264,9 +266,10 @@
     align-items: center;
     border-bottom: 1px solid var(--border-subtle);
     background-color: var(--bg-dark);
-    /* Ensure explicit bg */
     gap: 16px;
     z-index: 10;
+    flex-shrink: 0;
+    /* Prevent shrinking */
 }
 
 .back-btn {
@@ -320,20 +323,20 @@
     color: var(--text-primary);
 }
 
-
 /* Messages Container */
 .messages-container {
     flex: 1;
     overflow-y: auto;
     /* Scroll ONLY here */
-    padding: 20px 20px;
+    padding: 20px 20px 100px 20px;
+    /* Extra bottom padding for fixed input */
     display: flex;
     flex-direction: column;
     gap: 8px;
     scroll-behavior: smooth;
     background-color: var(--bg-dark);
-    min-height: 0;
-    /* Flexbox nested scroll fix */
+    height: 100%;
+    /* Fill available space */
 }
 
 /* Force messages to show */
@@ -345,14 +348,19 @@
 /* Input Area */
 /* --- Modern Message Input Area (Portal Style) --- */
 .message-form {
-    padding: 0 16px 24px 16px;
+    position: absolute;
+    /* Fix to bottom relative to chat-view */
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 20px 20px 20px;
+    /* Adjust padding */
     background-color: var(--bg-dark);
-    flex-shrink: 0;
+    /* Opaque background */
     z-index: 20;
-    display: block;
-    /* Block to contain the wrapper relative */
-    min-height: auto;
-    border-top: none;
+    border-top: 1px solid var(--border-subtle);
+    /* Optional separator */
+    width: 100%;
 }
 
 .message-input-wrapper {
