@@ -803,20 +803,21 @@
 }
 
 /* Scroll To Top Button - Glassmorphism & Aurora */
-/* Scroll To Top Button - Wide Pill Redesign */
+/* Scroll To Top Button - Phase 5: Wide Thin Strip at Top */
 .scroll-to-top-btn {
     position: absolute;
-    bottom: 40px;
-    /* Start behind input area */
+    top: 0;
+    /* Hidden at top */
     left: 50%;
     transform: translateX(-50%);
     /* Centered */
-    width: 140px;
-    /* Wide pill */
-    height: 40px;
-    border-radius: 30px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    /* Aurora Gradient: Yellow -> Orange -> Red */
+    width: 300px;
+    /* Very wide */
+    height: 24px;
+    /* Very thin */
+    border-radius: 0 0 12px 12px;
+    /* Rounded only at bottom */
+    border: none;
     background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF4500 100%);
     background-size: 200% 200%;
     animation: auroraAnimation 5s ease infinite;
@@ -828,16 +829,15 @@
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(255, 69, 0, 0.3);
-    z-index: 15;
-    /* Just below input area z-index (20) */
+    z-index: 90;
     opacity: 0;
     pointer-events: none;
-    /* Prevent clicks when hidden */
     font-weight: 700;
-    font-size: 14px;
-    letter-spacing: 0.5px;
+    font-size: 11px;
+    /* Small text */
+    letter-spacing: 1px;
+    text-transform: uppercase;
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    /* Bouncy spring effect */
 }
 
 @keyframes auroraAnimation {
@@ -856,23 +856,18 @@
 
 .scroll-to-top-btn.visible {
     opacity: 1;
-    bottom: 85px;
-    /* Slide up to visible position */
-    z-index: 95;
-    /* Bring above everything */
+    top: 0;
+    /* Visible position */
     pointer-events: auto;
-    transform: translateX(-50%);
-    /* Maintain center */
 }
 
 .scroll-to-top-btn:hover {
     background: linear-gradient(135deg, #FF4500 0%, #FFA500 50%, #FFD700 100%);
-    transform: translateX(-50%) translateY(-2px);
-    /* Maintain center + hover effect */
+    height: 32px;
+    /* Expand slightly */
     box-shadow: 0 8px 25px rgba(255, 69, 0, 0.5);
-    border-color: rgba(255, 255, 255, 0.6);
 }
-}
+
 
 .close-notifications-btn {
     position: absolute;
