@@ -806,8 +806,8 @@
 /* Scroll To Top Button - Glassmorphism & Aurora */
 .scroll-to-top-btn {
     position: absolute;
-    bottom: 80px;
-    /* Adjusted down */
+    bottom: 65px;
+    /* Moved further down */
     right: 48px;
     /* Moved left */
     width: 52px;
