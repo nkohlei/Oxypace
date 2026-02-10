@@ -803,19 +803,19 @@
 }
 
 /* Scroll To Top Button - Glassmorphism & Aurora */
+/* Scroll To Top Button - Glassmorphism & Aurora */
 .scroll-to-top-btn {
     position: absolute;
-    bottom: 90px;
-    /* Raised slightly to clear input */
-    right: 24px;
-    /* Closer to edge */
+    bottom: 80px;
+    /* Adjusted down */
+    right: 48px;
+    /* Moved left */
     width: 52px;
-    /* Larger size */
     height: 52px;
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    /* Aurora Gradient */
-    background: linear-gradient(135deg, #12c2e9 0%, #c471ed 50%, #f64f59 100%);
+    /* Aurora Gradient: Yellow -> Orange -> Red */
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF4500 100%);
     background-size: 200% 200%;
     animation: auroraAnimation 5s ease infinite;
     backdrop-filter: blur(8px);
@@ -825,7 +825,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 25px rgba(255, 69, 0, 0.4);
     z-index: 95;
     opacity: 0;
     visibility: hidden;
@@ -854,11 +854,10 @@
 }
 
 .scroll-to-top-btn:hover {
-    background: rgba(255, 69, 0, 0.8);
-    /* Primary color on hover */
-    border-color: var(--primary-cyan);
+    background: linear-gradient(135deg, #FF4500 0%, #FFA500 50%, #FFD700 100%);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 69, 0, 0.4);
+    box-shadow: 0 12px 30px rgba(255, 69, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 .close-notifications-btn {
