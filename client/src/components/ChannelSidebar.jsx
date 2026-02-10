@@ -467,7 +467,7 @@ const ChannelSidebar = ({
             }
             .channel-item.active {
                 background-color: var(--bg-hover) !important;
-                color: var(--primary-color) !important;
+                color: var(--text-primary) !important;
             }
             .channel-item.active svg {
                 color: var(--primary-color);
