@@ -802,6 +802,47 @@
     animation: slideUp 0.3s ease;
 }
 
+/* Scroll To Top Button - Glassmorphism */
+.scroll-to-top-btn {
+    position: absolute;
+    bottom: 80px;
+    /* Above input area */
+    right: 32px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(20, 20, 20, 0.6);
+    /* Semi-transparent dark */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 95;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-to-top-btn.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.scroll-to-top-btn:hover {
+    background: rgba(255, 69, 0, 0.8);
+    /* Primary color on hover */
+    border-color: var(--primary-cyan);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 69, 0, 0.4);
+}
+
 .close-notifications-btn {
     position: absolute;
     top: 20px;

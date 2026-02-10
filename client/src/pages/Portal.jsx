@@ -41,6 +41,27 @@ const Portal = () => {
     const gifInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
 
+    // Scroll To Top Logic
+    const [showScrollTop, setShowScrollTop] = useState(false);
+    const feedRef = useRef(null);
+
+    const handleScroll = (e) => {
+        if (e.target.scrollTop > 300) {
+            setShowScrollTop(true);
+        } else {
+            setShowScrollTop(false);
+        }
+    };
+
+    const scrollToTop = () => {
+        if (feedRef.current) {
+            feedRef.current.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    };
+
     const handleChannelSelect = (channelId) => {
         setCurrentChannel(channelId);
         if (window.innerWidth <= 768) {
@@ -734,7 +755,11 @@ const Portal = () => {
                                         )
                                     ) : null}
 
-                                    <div className="portal-feed-container discord-feed">
+                                    <div
+                                        className="portal-feed-container discord-feed"
+                                        onScroll={handleScroll}
+                                        ref={feedRef}
+                                    >
                                         {/* Feed Header / Welcome */}
                                         {posts.length === 0 && !loading && (
                                             <div className="empty-portal">
@@ -767,6 +792,26 @@ const Portal = () => {
                                             />
                                         ))}
                                     </div>
+
+                                    {/* Scroll To Top Button */}
+                                    <button
+                                        className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
+                                        onClick={scrollToTop}
+                                        title="Başa Dön"
+                                    >
+                                        <svg
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        >
+                                            <path d="M18 15l-6-6-6 6" />
+                                        </svg>
+                                    </button>
                                 </>
                             )}
                         </div>
@@ -822,8 +867,8 @@ const Portal = () => {
                         </div>
                     )}
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 
