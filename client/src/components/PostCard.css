@@ -291,76 +291,76 @@
     color: var(--primary-cyan);
 }
 
-/* Floating Menu Popup */
+/* Floating Menu Popup - Modern Redesign */
 .post-floating-menu {
     position: absolute;
     right: 0;
-    top: calc(100% + 4px);
-    min-width: 120px;
+    top: calc(100% + 8px);
+    min-width: 180px;
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-    padding: 4px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    padding: 6px;
     z-index: 100;
-    animation: menuFadeIn 0.12s ease-out;
+    animation: menuFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 @keyframes menuFadeIn {
     from {
         opacity: 0;
-        transform: translateY(-4px);
+        transform: translateY(-8px) scale(0.95);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
-/* Expanded Context Menu */
-.post-dropdown-menu.expanded-menu {
-    width: 240px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    padding: 6px 8px;
-    border-radius: 4px;
-    right: 0;
-    top: 100%;
-}
-
-.menu-group {
-    display: flex;
-    flex-direction: column;
-}
-
 .menu-item {
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 13px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--text-secondary);
+    background: transparent;
+    /* Force transparent background */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: all 0.1s;
+    transition: all 0.2s ease;
     gap: 12px;
+    border: none;
+    cursor: pointer;
+    text-align: left;
 }
 
 .menu-item:hover {
-    background-color: var(--primary-cyan);
-    color: #000;
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    transform: translateX(2px);
 }
 
 .menu-divider {
     height: 1px;
     background-color: var(--border-subtle);
-    margin: 4px 0;
+    margin: 4px 8px;
+    opacity: 0.5;
 }
 
 .menu-icon-right {
     width: 16px;
     height: 16px;
-    opacity: 0.7;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
 }
 
 .menu-item:hover .menu-icon-right {
@@ -372,8 +372,8 @@
 }
 
 .menu-item.delete-item:hover {
-    background-color: var(--primary-red);
-    color: white;
+    background-color: rgba(255, 0, 0, 0.1);
+    color: var(--primary-red);
 }
 
 /* Foggy Hidden */
