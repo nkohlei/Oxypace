@@ -802,31 +802,49 @@
     animation: slideUp 0.3s ease;
 }
 
-/* Scroll To Top Button - Glassmorphism */
+/* Scroll To Top Button - Glassmorphism & Aurora */
 .scroll-to-top-btn {
     position: absolute;
-    bottom: 80px;
-    /* Above input area */
-    right: 32px;
-    width: 44px;
-    height: 44px;
+    bottom: 90px;
+    /* Raised slightly to clear input */
+    right: 24px;
+    /* Closer to edge */
+    width: 52px;
+    /* Larger size */
+    height: 52px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(20, 20, 20, 0.6);
-    /* Semi-transparent dark */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    /* Aurora Gradient */
+    background: linear-gradient(135deg, #12c2e9 0%, #c471ed 50%, #f64f59 100%);
+    background-size: 200% 200%;
+    animation: auroraAnimation 5s ease infinite;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    color: var(--text-primary);
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     z-index: 95;
     opacity: 0;
     visibility: hidden;
     transform: translateY(10px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes auroraAnimation {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 .scroll-to-top-btn.visible {
