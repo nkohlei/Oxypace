@@ -19,7 +19,7 @@
 }
 
 .request-card {
-    background: var(--bg-darker);
+    background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
     padding: 20px;
@@ -57,7 +57,7 @@
 }
 
 .request-details {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-secondary);
     padding: 15px;
     border-radius: 8px;
 }
@@ -140,16 +140,17 @@
     display: flex;
     gap: 15px;
     margin-bottom: 25px;
-    background: #1e1e1e;
+    background: var(--bg-card);
     padding: 5px;
     border-radius: 12px;
     width: fit-content;
+    border: 1px solid var(--border-subtle);
 }
 
 .admin-tab {
     background: transparent;
     border: none;
-    color: #888;
+    color: var(--text-secondary);
     padding: 10px 20px;
     font-size: 15px;
     font-weight: 600;
@@ -162,8 +163,8 @@
 }
 
 .admin-tab:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    background: var(--bg-hover);
 }
 
 .admin-tab.active {
@@ -189,10 +190,10 @@
 .users-search input {
     width: 100%;
     padding: 12px 15px;
-    background: #151515;
-    border: 1px solid #333;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
-    color: white;
+    color: var(--text-primary);
     font-size: 15px;
 }
 
@@ -211,10 +212,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #191919;
+    background: var(--bg-card);
     padding: 15px;
     border-radius: 12px;
-    border: 1px solid #333;
+    border: 1px solid var(--border-subtle);
 }
 
 .user-item-left {
@@ -233,18 +234,18 @@
 .user-item-info h4 {
     margin: 0;
     font-size: 16px;
-    color: white;
+    color: var(--text-primary);
 }
 
 .user-item-info span {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 14px;
 }
 
 .badge-select {
-    background: #252525;
-    color: white;
-    border: 1px solid #444;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
     padding: 8px 12px;
     border-radius: 8px;
     cursor: pointer;
@@ -253,8 +254,8 @@
 }
 
 .badge-select option {
-    background: #222;
-    color: white;
+    background: var(--bg-card);
+    color: var(--text-primary);
 }
 
 /* Colorize Select Border based on Badge */
