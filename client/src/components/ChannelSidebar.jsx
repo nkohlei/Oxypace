@@ -60,8 +60,8 @@ const ChannelSidebar = ({
                         backgroundImage: portal.coverImage
                             ? `url(${getImageUrl(portal.coverImage)})`
                             : portal.banner
-                              ? `url(${getImageUrl(portal.banner)})`
-                              : 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
+                                ? `url(${getImageUrl(portal.banner)})`
+                                : 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                     }}
@@ -202,12 +202,12 @@ const ChannelSidebar = ({
                             transition: 'all 0.2s',
                         }}
                         onMouseEnter={(e) =>
-                            (e.currentTarget.style.background =
-                                'linear-gradient(90deg, #5a3c62 0%, #46304a 100%)')
+                        (e.currentTarget.style.background =
+                            'linear-gradient(90deg, #5a3c62 0%, #46304a 100%)')
                         }
                         onMouseLeave={(e) =>
-                            (e.currentTarget.style.background =
-                                'linear-gradient(90deg, #48304c 0%, #38253a 100%)')
+                        (e.currentTarget.style.background =
+                            'linear-gradient(90deg, #48304c 0%, #38253a 100%)')
                         }
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -266,7 +266,7 @@ const ChannelSidebar = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        color: '#949ba4',
+                        color: 'var(--text-tertiary)',
                         textTransform: 'uppercase',
                         fontSize: '12px',
                         fontWeight: 'bold',
@@ -322,7 +322,7 @@ const ChannelSidebar = ({
                             {/* Icon */}
                             <div
                                 style={{
-                                    color: isActive ? 'white' : '#72767d',
+                                    color: isActive ? 'white' : 'var(--text-secondary)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     minWidth: '20px',
@@ -369,6 +369,7 @@ const ChannelSidebar = ({
                                     whiteSpace: 'nowrap',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
+                                    color: isActive ? 'white' : 'var(--text-primary)',
                                 }}
                             >
                                 {channel.name}
