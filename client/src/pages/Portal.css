@@ -806,17 +806,13 @@
 /* Scroll To Top Button - Phase 5: Wide Thin Strip at Top */
 .scroll-to-top-btn {
     position: absolute;
-    top: 0;
-    /* Hidden at top */
+    top: 20px;
+    /* Start hidden under input */
     left: 50%;
     transform: translateX(-50%);
-    /* Centered */
     width: 300px;
-    /* Very wide */
     height: 24px;
-    /* Very thin */
     border-radius: 0 0 12px 12px;
-    /* Rounded only at bottom */
     border: none;
     background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF4500 100%);
     background-size: 200% 200%;
@@ -829,12 +825,11 @@
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(255, 69, 0, 0.3);
-    z-index: 90;
+    z-index: 10;
     opacity: 0;
     pointer-events: none;
     font-weight: 700;
     font-size: 11px;
-    /* Small text */
     letter-spacing: 1px;
     text-transform: uppercase;
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -856,8 +851,8 @@
 
 .scroll-to-top-btn.visible {
     opacity: 1;
-    top: 0;
-    /* Visible position */
+    top: 64px;
+    /* Move down to be visible below input */
     pointer-events: auto;
 }
 
