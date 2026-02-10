@@ -74,14 +74,14 @@ const MembersSidebar = ({ members = [] }) => {
                             ) : (
                                 <div
                                     className="member-avatar-placeholder"
-                                    style={{ backgroundColor: '#1e1f22' }}
+                                    style={{ backgroundColor: 'var(--bg-secondary)' }}
                                 >
                                     {username[0]?.toUpperCase() || '?'}
                                 </div>
                             )}
                         </div>
                         <div className="member-info">
-                            <span className="member-name" style={{ color: '#23a559' }}>
+                            <span className="member-name">
                                 {user.profile?.displayName || username}
                             </span>
                         </div>
@@ -92,7 +92,7 @@ const MembersSidebar = ({ members = [] }) => {
             <style>{`
                 .members-sidebar {
                     width: 240px;
-                    background-color: #2b2d31;
+                    background-color: var(--bg-secondary);
                     height: 100%;
                     overflow-y: auto;
                     flex-shrink: 0;
@@ -101,7 +101,7 @@ const MembersSidebar = ({ members = [] }) => {
                 .members-category {
                     font-size: 12px;
                     font-weight: 700;
-                    color: #949ba4;
+                    color: var(--text-tertiary);
                     text-transform: uppercase;
                     margin: 24px 0 8px 0;
                 }
@@ -115,9 +115,11 @@ const MembersSidebar = ({ members = [] }) => {
                     border-radius: 4px;
                     cursor: pointer;
                     margin-bottom: 2px;
+                    color: var(--text-secondary);
                 }
                 .member-item:hover {
-                    background-color: #35373c;
+                    background-color: var(--bg-hover);
+                    color: var(--text-primary);
                 }
                 .member-item.offline {
                     opacity: 0.7;
@@ -137,7 +139,7 @@ const MembersSidebar = ({ members = [] }) => {
                     object-fit: cover;
                 }
                 .member-avatar-placeholder {
-                    background-color: #5865F2;
+                    background-color: var(--primary-color);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -152,7 +154,7 @@ const MembersSidebar = ({ members = [] }) => {
                     width: 14px;
                     height: 14px;
                     border-radius: 50%;
-                    border: 3px solid #2b2d31;
+                    border: 3px solid var(--bg-secondary);
                 }
                 .status-indicator.online { background-color: #23a559; }
 
@@ -163,11 +165,15 @@ const MembersSidebar = ({ members = [] }) => {
                 .member-name {
                     font-size: 14px;
                     font-weight: 500;
-                    color: #dbdee1;
+                    color: inherit;
+                }
+                .active-role {
+                    color: #2ecc71 !important; /* Keep role color specific */
                 }
                 .member-custom-status {
                     font-size: 12px;
                     margin-top: 2px;
+                    color: var(--text-tertiary);
                 }
             `}</style>
         </div>

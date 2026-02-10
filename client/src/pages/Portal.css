@@ -200,8 +200,8 @@
 }
 
 .message-input-wrapper {
-    background-color: rgba(30, 31, 34, 0.5);
-    /* Semi-transparent dark */
+    background-color: var(--bg-input);
+    /* Theme aware background */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 16px;
@@ -211,8 +211,8 @@
     height: 56px;
     box-shadow: var(--shadow-sm);
     /* Subtle shadow for depth */
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    /* Subtle transparent border */
+    border: 1px solid var(--border-subtle);
+    /* Theme aware border */
     position: relative;
     transition: all 0.2s ease;
 }

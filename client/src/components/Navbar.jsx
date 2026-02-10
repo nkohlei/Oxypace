@@ -234,7 +234,7 @@ const Navbar = () => {
                                                 className="dropdown-user-info"
                                                 style={{
                                                     padding: '12px 16px',
-                                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                                    borderBottom: '1px solid var(--border-subtle)',
                                                     marginBottom: '8px',
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -258,7 +258,7 @@ const Navbar = () => {
                                                             width: '40px',
                                                             height: '40px',
                                                             borderRadius: '50%',
-                                                            background: '#333',
+                                                            background: 'var(--bg-secondary)',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
@@ -268,7 +268,7 @@ const Navbar = () => {
                                                             style={{
                                                                 fontSize: '18px',
                                                                 fontWeight: 'bold',
-                                                                color: '#fff',
+                                                                color: 'var(--text-primary)',
                                                             }}
                                                         >
                                                             {user?.username?.[0]?.toUpperCase()}
@@ -284,7 +284,7 @@ const Navbar = () => {
                                                     <span
                                                         style={{
                                                             fontWeight: '700',
-                                                            color: '#fff',
+                                                            color: 'var(--text-primary)',
                                                             fontSize: '0.95rem',
                                                         }}
                                                     >
@@ -293,7 +293,7 @@ const Navbar = () => {
                                                     <span
                                                         style={{
                                                             fontSize: '0.8rem',
-                                                            color: '#94a3b8',
+                                                            color: 'var(--text-secondary)',
                                                         }}
                                                     >
                                                         Giriş Yapıldı
