@@ -21,26 +21,27 @@ router.post('/', protect, async (req, res) => {
             return res.status(400).json({ message: 'Portal name already exists' });
         }
 
-        name,
+        const portal = await Portal.create({
+            name,
             description,
             privacy,
             avatar,
             allowedUsers: allowedUsers || [],
-                owner: req.user._id,
-                    admins: [req.user._id],
-                        members: [req.user._id],
-                            channels: [{ name: 'genel', type: 'text' }],
+            owner: req.user._id,
+            admins: [req.user._id],
+            members: [req.user._id],
+            channels: [{ name: 'genel', type: 'text' }],
         });
 
-// Add to user's joined portals
-await User.findByIdAndUpdate(req.user._id, {
-    $addToSet: { joinedPortals: portal._id },
-});
+        // Add to user's joined portals
+        await User.findByIdAndUpdate(req.user._id, {
+            $addToSet: { joinedPortals: portal._id },
+        });
 
-res.status(201).json(portal);
+        res.status(201).json(portal);
     } catch (error) {
-    res.status(500).json({ message: error.message });
-}
+        res.status(500).json({ message: error.message });
+    }
 });
 
 // @desc    Get all portals (Search & Popular)
@@ -96,7 +97,8 @@ router.get('/:id', optionalProtect, async (req, res) => {
         const portal = await Portal.findById(req.params.id)
             .populate('owner', 'username profile.displayName profile.avatar')
             .populate('admins', 'username profile.displayName profile.avatar')
-            .populate('members', 'username profile.displayName profile.avatar');
+            .populate('members', 'username profile.displayName profile.avatar')
+            .populate('allowedUsers', 'username profile.displayName profile.avatar');
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal not found' });
@@ -332,6 +334,7 @@ router.put('/:id', protect, async (req, res) => {
 
         // Repopulate owner for frontend consistency
         await portal.populate('owner', 'username profile.displayName profile.avatar');
+        await portal.populate('allowedUsers', 'username profile.displayName profile.avatar');
 
         res.json(portal);
     } catch (error) {
