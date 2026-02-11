@@ -597,120 +597,160 @@ const PortalSettingsModal = ({
                             <h2 className="settings-title">Erişim Yönetimi</h2>
 
                             <div className="form-group">
-                                <label className="form-label">Erişim Yetkisi</label>
-                                <div className="privacy-options">
-                                    <label className={`radio-option ${accessData.privacy === 'public' ? 'selected' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="privacy"
-                                            value="public"
-                                            checked={accessData.privacy === 'public'}
-                                            onChange={(e) => setAccessData({ ...accessData, privacy: e.target.value })}
-                                            disabled={!isOwner}
-                                        />
-                                        <div className="radio-content">
-                                            <span className="option-title">Herkes</span>
-                                            <span className="option-desc">Portal tüm ziyaretçilere açıktır.</span>
+                                <label className="form-label" style={{ marginBottom: '12px' }}>Portal Gizliliği</label>
+                                <div className="privacy-grid">
+                                    {/* Public Option */}
+                                    <div
+                                        className={`privacy-card ${accessData.privacy === 'public' ? 'selected' : ''}`}
+                                        onClick={() => isOwner && setAccessData({ ...accessData, privacy: 'public' })}
+                                    >
+                                        <div className="check-circle">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
                                         </div>
-                                    </label>
+                                        <svg className="privacy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                        </svg>
+                                        <div className="privacy-info">
+                                            <div className="privacy-title">Herkese Açık</div>
+                                            <div className="privacy-desc">Portal tüm ziyaretçilere görünür ve herkes katılabilir.</div>
+                                        </div>
+                                    </div>
 
-                                    <label className={`radio-option ${accessData.privacy === 'restricted' ? 'selected' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="privacy"
-                                            value="restricted"
-                                            checked={accessData.privacy === 'restricted'}
-                                            onChange={(e) => setAccessData({ ...accessData, privacy: e.target.value })}
-                                            disabled={!isOwner}
-                                        />
-                                        <div className="radio-content">
-                                            <span className="option-title">Belirli Kullanıcılar</span>
-                                            <span className="option-desc">Sadece üyeler ve izin verilen kullanıcılar erişebilir.</span>
+                                    {/* Restricted Option */}
+                                    <div
+                                        className={`privacy-card ${accessData.privacy === 'restricted' ? 'selected' : ''}`}
+                                        onClick={() => isOwner && setAccessData({ ...accessData, privacy: 'restricted' })}
+                                    >
+                                        <div className="check-circle">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
                                         </div>
-                                    </label>
+                                        <svg className="privacy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                        <div className="privacy-info">
+                                            <div className="privacy-title">Belirli Kişiler</div>
+                                            <div className="privacy-desc">Sadece üyeler ve izin verilen kullanıcılar erişebilir.</div>
+                                        </div>
+                                    </div>
 
-                                    <label className={`radio-option ${accessData.privacy === 'private' ? 'selected' : ''} ${portal.members.length > portal.admins.length ? 'disabled' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="privacy"
-                                            value="private"
-                                            checked={accessData.privacy === 'private'}
-                                            onChange={(e) => setAccessData({ ...accessData, privacy: e.target.value })}
-                                            disabled={!isOwner || portal.members.length > portal.admins.length}
-                                        />
-                                        <div className="radio-content">
-                                            <span className="option-title">Hiç Kimse</span>
-                                            <span className="option-desc">
-                                                Sadece yöneticiler erişebilir.
-                                                {portal.members.length > portal.admins.length && <span style={{ color: '#ed4245', display: 'block', fontSize: '12px', marginTop: '4px' }}>(Üyeler varken seçilemez)</span>}
-                                            </span>
+                                    {/* Private Option */}
+                                    <div
+                                        className={`privacy-card ${accessData.privacy === 'private' ? 'selected' : ''} ${portal.members.length > portal.admins.length ? 'disabled' : ''}`}
+                                        onClick={() => {
+                                            if (isOwner && portal.members.length <= portal.admins.length) {
+                                                setAccessData({ ...accessData, privacy: 'private' });
+                                            }
+                                        }}
+                                    >
+                                        <div className="check-circle">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
                                         </div>
-                                    </label>
+                                        <svg className="privacy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                        <div className="privacy-info">
+                                            <div className="privacy-title">Gizli (Yöneticiler)</div>
+                                            <div className="privacy-desc">
+                                                Sadece portal yöneticileri erişebilir.
+                                                {portal.members.length > portal.admins.length && (
+                                                    <span style={{ color: '#ed4245', display: 'block', marginTop: '4px', fontSize: '0.75rem' }}>
+                                                        • İçeride üye varken seçilemez
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             {accessData.privacy === 'restricted' && (
-                                <div className="form-group" style={{ marginTop: '24px' }}>
-                                    <label className="form-label">İzinli Kullanıcı Ekle</label>
-                                    <input
-                                        className="form-input"
-                                        placeholder="Kullanıcı ara..."
-                                        value={allowedUserSearch}
-                                        onChange={(e) => handleAllowedSearch(e.target.value)}
-                                        disabled={!isOwner}
-                                    />
-                                    {allowedUserResults.length > 0 && (
-                                        <div className="search-results-dropdown">
-                                            {allowedUserResults.map(user => (
-                                                <div key={user._id} className="member-card full-width" onClick={() => handleAddAllowedUser(user)} style={{ cursor: 'pointer' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        <img src={getImageUrl(user.profile?.avatar)} className="member-avatar" alt="" />
-                                                        <span>{user.username}</span>
+                                <div className="allowed-users-section">
+                                    <div className="section-header">
+                                        <div className="section-title">İzinli Kullanıcılar ({accessData.allowedUsers.length + portal.members.length})</div>
+                                    </div>
+
+                                    <div className="search-container">
+                                        <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg>
+                                        <input
+                                            className="search-input-modern"
+                                            placeholder="Kullanıcı adı ile ara ve ekle..."
+                                            value={allowedUserSearch}
+                                            onChange={(e) => handleAllowedSearch(e.target.value)}
+                                            disabled={!isOwner}
+                                        />
+
+                                        {allowedUserResults.length > 0 && (
+                                            <div className="search-results-dropdown" style={{ top: '45px' }}>
+                                                {allowedUserResults.map(user => (
+                                                    <div key={user._id} className="user-row" onClick={() => handleAddAllowedUser(user)} style={{ cursor: 'pointer', padding: '10px 12px' }}>
+                                                        <img src={getImageUrl(user.profile?.avatar)} className="user-avatar-small" alt="" />
+                                                        <span className="user-name">{user.username}</span>
+                                                        <div style={{ marginLeft: 'auto', color: '#2ecc71', fontSize: '0.8rem', fontWeight: '600' }}>EKLE</div>
                                                     </div>
-                                                    <div style={{ color: '#2ecc71', fontSize: '12px' }}>Ekle</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
 
-                                    <div className="members-list" style={{ marginTop: '16px' }}>
-                                        <div className="form-label" style={{ fontSize: '12px', marginBottom: '8px' }}>ERİŞİM İZNİ OLANLAR ({accessData.allowedUsers.length + portal.members.length})</div>
-
+                                    <div className="allowed-list">
                                         {/* Existing Members */}
                                         {portal.members.map(member => (
-                                            <div key={member._id} className="member-card">
-                                                <img src={getImageUrl(member.profile?.avatar)} className="member-avatar" alt="" />
-                                                <div className="member-details">
-                                                    <div className="member-username">{member.username}</div>
-                                                    <div style={{ fontSize: '11px', color: '#2ecc71' }}>Üye</div>
+                                            <div key={member._id} className="user-row">
+                                                <img src={getImageUrl(member.profile?.avatar)} className="user-avatar-small" alt="" />
+                                                <div className="user-info">
+                                                    <span className="user-name">{member.username}</span>
+                                                    <span className="user-role-badge role-member">Üye</span>
                                                 </div>
                                             </div>
                                         ))}
 
                                         {/* Allowed Users */}
                                         {accessData.allowedUsers.map(user => (
-                                            <div key={user._id || user} className="member-card">
-                                                <img src={getImageUrl(user.profile?.avatar)} className="member-avatar" alt="" />
-                                                <div className="member-details">
-                                                    <div className="member-username">{user.username}</div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>İzinli</div>
+                                            <div key={user._id || user} className="user-row">
+                                                <img src={getImageUrl(user.profile?.avatar)} className="user-avatar-small" alt="" />
+                                                <div className="user-info">
+                                                    <span className="user-name">{user.username}</span>
+                                                    <span className="user-role-badge role-allowed">İzinli</span>
                                                 </div>
                                                 {isOwner && (
                                                     <button
+                                                        className="remove-btn"
                                                         onClick={() => handleRemoveAllowedUser(user._id || user)}
-                                                        style={{ background: 'transparent', border: 'none', color: '#ed4245', cursor: 'pointer' }}
+                                                        title="İzni Kaldır"
                                                     >
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                        </svg>
                                                     </button>
                                                 )}
                                             </div>
                                         ))}
+
+                                        {portal.members.length === 0 && accessData.allowedUsers.length === 0 && (
+                                            <div className="empty-state-text">Henüz kimseye özel erişim verilmedi.</div>
+                                        )}
                                     </div>
                                 </div>
                             )}
 
                             {isOwner && (
-                                <div className="modal-actions" style={{ marginTop: '20px' }}>
+                                <div className="modal-actions" style={{ marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
                                     <button
                                         className="btn-save"
                                         onClick={handleSaveAccess}
