@@ -58,9 +58,16 @@ router.get('/', optionalProtect, async (req, res) => {
             }
             : {};
 
-        // Exclude portals where user is blocked
+        // Exclude portals where user is blocked and filter by privacy
         if (req.user) {
             keyword.blockedUsers = { $ne: req.user._id };
+            keyword.$or = [
+                { privacy: 'public' },
+                { members: req.user._id },
+                { allowedUsers: req.user._id }
+            ];
+        } else {
+            keyword.privacy = 'public';
         }
 
         const portals = await Portal.find(keyword)
