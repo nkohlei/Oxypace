@@ -596,80 +596,81 @@ const PortalSettingsModal = ({
                         <div className="animate-fade-in">
                             <h2 className="settings-title">Erişim Yönetimi</h2>
 
+
                             <div className="form-group">
                                 <label className="form-label" style={{ marginBottom: '12px' }}>Portal Gizliliği</label>
-                                <div className="privacy-grid">
+                                <div className="privacy-options-container">
                                     {/* Public Option */}
                                     <div
-                                        className={`privacy-card ${accessData.privacy === 'public' ? 'selected' : ''}`}
+                                        className={`privacy-option-row ${accessData.privacy === 'public' ? 'selected' : ''}`}
                                         onClick={() => isOwner && setAccessData({ ...accessData, privacy: 'public' })}
                                     >
-                                        <div className="check-circle">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                        <div className="privacy-row-icon-wrapper">
+                                            <svg className="privacy-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                                             </svg>
                                         </div>
-                                        <svg className="privacy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <line x1="2" y1="12" x2="22" y2="12"></line>
-                                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                                        </svg>
-                                        <div className="privacy-info">
-                                            <div className="privacy-title">Herkese Açık</div>
-                                            <div className="privacy-desc">Portal tüm ziyaretçilere görünür ve herkes katılabilir.</div>
+                                        <div className="privacy-row-content">
+                                            <div className="privacy-row-title">Herkese Açık</div>
+                                            <div className="privacy-row-desc">Portal tüm ziyaretçilere görünür ve herkes katılabilir.</div>
+                                        </div>
+                                        <div className="privacy-row-check">
+                                            <div className="privacy-row-check-inner"></div>
                                         </div>
                                     </div>
 
                                     {/* Restricted Option */}
                                     <div
-                                        className={`privacy-card ${accessData.privacy === 'restricted' ? 'selected' : ''}`}
+                                        className={`privacy-option-row ${accessData.privacy === 'restricted' ? 'selected' : ''}`}
                                         onClick={() => isOwner && setAccessData({ ...accessData, privacy: 'restricted' })}
                                     >
-                                        <div className="check-circle">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                        <div className="privacy-row-icon-wrapper">
+                                            <svg className="privacy-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                             </svg>
                                         </div>
-                                        <svg className="privacy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="9" cy="7" r="4"></circle>
-                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                        </svg>
-                                        <div className="privacy-info">
-                                            <div className="privacy-title">Belirli Kişiler</div>
-                                            <div className="privacy-desc">Sadece üyeler ve izin verilen kullanıcılar erişebilir.</div>
+                                        <div className="privacy-row-content">
+                                            <div className="privacy-row-title">Belirli Kişiler</div>
+                                            <div className="privacy-row-desc">Sadece üyeler ve izin verilen kullanıcılar erişebilir.</div>
+                                        </div>
+                                        <div className="privacy-row-check">
+                                            <div className="privacy-row-check-inner"></div>
                                         </div>
                                     </div>
 
                                     {/* Private Option */}
                                     <div
-                                        className={`privacy-card ${accessData.privacy === 'private' ? 'selected' : ''} ${portal.members.length > portal.admins.length ? 'disabled' : ''}`}
+                                        className={`privacy-option-row ${accessData.privacy === 'private' ? 'selected' : ''} ${portal.members.length > portal.admins.length ? 'disabled' : ''}`}
                                         onClick={() => {
                                             if (isOwner && portal.members.length <= portal.admins.length) {
                                                 setAccessData({ ...accessData, privacy: 'private' });
                                             }
                                         }}
                                     >
-                                        <div className="check-circle">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                        <div className="privacy-row-icon-wrapper">
+                                            <svg className="privacy-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                                             </svg>
                                         </div>
-                                        <svg className="privacy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                        </svg>
-                                        <div className="privacy-info">
-                                            <div className="privacy-title">Gizli (Yöneticiler)</div>
-                                            <div className="privacy-desc">
-                                                Sadece portal yöneticileri erişebilir.
+                                        <div className="privacy-row-content">
+                                            <div className="privacy-row-title">Gizli (Yöneticiler)</div>
+                                            <div className="privacy-row-desc">
+                                                Sadece yöneticiler erişebilir.
                                                 {portal.members.length > portal.admins.length && (
-                                                    <span style={{ color: '#ed4245', display: 'block', marginTop: '4px', fontSize: '0.75rem' }}>
-                                                        • İçeride üye varken seçilemez
+                                                    <span style={{ color: '#ed4245', display: 'block', marginTop: '2px', fontSize: '0.8rem' }}>
+                                                        (İçeride üye varken seçilemez)
                                                     </span>
                                                 )}
                                             </div>
+                                        </div>
+                                        <div className="privacy-row-check">
+                                            <div className="privacy-row-check-inner"></div>
                                         </div>
                                     </div>
                                 </div>

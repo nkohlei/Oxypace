@@ -174,6 +174,113 @@
     display: block;
     font-size: 0.8rem;
     font-weight: 700;
+
+    /* Access Management UI Refinement - Compact */
+    .privacy-options-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+
+    .privacy-option-row {
+        display: flex;
+        align-items: flex-start;
+        /* Align top for better multiline handling */
+        padding: 12px 16px;
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+
+    .privacy-option-row:hover:not(.disabled) {
+        background-color: var(--bg-hover);
+        border-color: var(--border-hover);
+    }
+
+    .privacy-option-row.selected {
+        background-color: rgba(88, 101, 242, 0.08);
+        /* Faint blurple background */
+        border-color: #5865f2;
+    }
+
+    .privacy-option-row.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: var(--bg-tertiary);
+    }
+
+    .privacy-row-icon-wrapper {
+        width: 40px;
+        display: flex;
+        justify-content: flex-start;
+        padding-top: 2px;
+    }
+
+    .privacy-row-icon {
+        width: 24px;
+        height: 24px;
+        color: var(--text-secondary);
+    }
+
+    .privacy-option-row.selected .privacy-row-icon {
+        color: #5865f2;
+    }
+
+    .privacy-row-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .privacy-row-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .privacy-row-desc {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.3;
+    }
+
+    .privacy-row-check {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--text-muted);
+        border-radius: 50%;
+        margin-left: 12px;
+        margin-top: 2px;
+        /* Align with title */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+
+    .privacy-option-row.selected .privacy-row-check {
+        border-color: #5865f2;
+    }
+
+    .privacy-row-check-inner {
+        width: 10px;
+        height: 10px;
+        background-color: #5865f2;
+        border-radius: 50%;
+        transform: scale(0);
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .privacy-option-row.selected .privacy-row-check-inner {
+        transform: scale(1);
+    }
+
     color: var(--text-secondary);
     text-transform: uppercase;
     margin-bottom: 8px;
