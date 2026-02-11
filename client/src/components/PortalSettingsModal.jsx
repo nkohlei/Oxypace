@@ -722,7 +722,6 @@ const PortalSettingsModal = ({
                             )}
                         </div>
                     )}
-                    )}
 
                     {activeTab === 'channels' && (
                         <div className="animate-fade-in">
