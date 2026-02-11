@@ -483,386 +483,406 @@ const Portal = () => {
                                     <div className="spinner"></div>
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>İçerik yükleniyor...</span>
                                 </div>
-                                alt=""
-                            className="privacy-avatar"
-                            />
-                            <h2>{portal.name}</h2>
-                            <p className="privacy-desc">
-                                {portal.description || 'Bu portal gizlidir.'}
-                            </p>
-                            <p className="privacy-hint">
-                                İçeriği görmek ve mesajlaşmak için üye olmalısın.
-                            </p>
-
-                            {portal.isRequested ? (
-                                <button className="privacy-join-btn requested" disabled>
-                                    İstek Gönderildi
-                                </button>
                             ) : (
-                                <button
-                                    className="privacy-join-btn"
-                        {/* Message Input Area */}
-                        {user ? (
-                            isMember ? (
-                                <div className="channel-input-area">
-                                    {/* Plus Menu Popover */}
-                                    {showPlusMenu && (
+                                <>
+                                    {error === 'private' ? (
+                                        <div className="portal-privacy-screen">
+                                            <div className="privacy-card">
+                                                <div className="privacy-icon">🔒</div>
+                                                <img
+                                                    src={getImageUrl(portal.avatar)}
+                                                    alt=""
+                                                    className="privacy-avatar"
+                                                />
+                                                <h2>{portal.name}</h2>
+                                                <p className="privacy-desc">
+                                                    {portal.description || 'Bu portal gizlidir.'}
+                                                </p>
+                                                <p className="privacy-hint">
+                                                    İçeriği görmek ve mesajlaşmak için üye olmalısın.
+                                                </p>
+
+                                                {portal.isRequested ? (
+                                                    <button className="privacy-join-btn requested" disabled>
+                                                        İstek Gönderildi
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="privacy-join-btn"
+                                                        onClick={handleJoin}
+                                                    >
+                                                        {portal.privacy === 'private'
+                                                            ? 'Üyelik İsteği Gönder'
+                                                            : 'Portala Katıl'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
                                         <>
-                                            <div
-                                                style={{
-                                                    position: 'fixed',
-                                                    inset: 0,
-                                                    zIndex: 90,
-                                                }}
-                                                onClick={() => setShowPlusMenu(false)}
-                                            />
-                                            <div className="plus-menu">
-                                                <div
-                                                    className="plus-menu-item"
-                                                    onClick={() => {
-                                                        fileInputRef.current.click();
-                                                        setShowPlusMenu(false);
-                                                    }}
-                                                >
-                                                    <div className="plus-menu-icon">
-                                                        <svg
-                                                            width="20"
-                                                            height="20"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <rect
-                                                                x="3"
-                                                                y="3"
-                                                                width="18"
-                                                                height="18"
-                                                                rx="2"
-                                                                ry="2"
-                                                            ></rect>
-                                                            <circle
-                                                                cx="8.5"
-                                                                cy="8.5"
-                                                                r="1.5"
-                                                            ></circle>
-                                                            <polyline points="21 15 16 10 5 21"></polyline>
-                                                        </svg>
+                                            {/* Message Input Area */}
+                                            {user ? (
+                                                isMember ? (
+                                                    <div className="channel-input-area">
+                                                        {/* Plus Menu Popover */}
+                                                        {showPlusMenu && (
+                                                            <>
+                                                                <div
+                                                                    style={{
+                                                                        position: 'fixed',
+                                                                        inset: 0,
+                                                                        zIndex: 90,
+                                                                    }}
+                                                                    onClick={() => setShowPlusMenu(false)}
+                                                                />
+                                                                <div className="plus-menu">
+                                                                    <div
+                                                                        className="plus-menu-item"
+                                                                        onClick={() => {
+                                                                            fileInputRef.current.click();
+                                                                            setShowPlusMenu(false);
+                                                                        }}
+                                                                    >
+                                                                        <div className="plus-menu-icon">
+                                                                            <svg
+                                                                                width="20"
+                                                                                height="20"
+                                                                                viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                strokeWidth="2"
+                                                                            >
+                                                                                <rect
+                                                                                    x="3"
+                                                                                    y="3"
+                                                                                    width="18"
+                                                                                    height="18"
+                                                                                    rx="2"
+                                                                                    ry="2"
+                                                                                ></rect>
+                                                                                <circle
+                                                                                    cx="8.5"
+                                                                                    cy="8.5"
+                                                                                    r="1.5"
+                                                                                ></circle>
+                                                                                <polyline points="21 15 16 10 5 21"></polyline>
+                                                                            </svg>
+                                                                        </div>
+                                                                        Görsel Yükle
+                                                                    </div>
+                                                                    <div
+                                                                        className="plus-menu-item"
+                                                                        onClick={() => {
+                                                                            videoInputRef.current.click();
+                                                                            setShowPlusMenu(false);
+                                                                        }}
+                                                                    >
+                                                                        <div className="plus-menu-icon">
+                                                                            <svg
+                                                                                width="20"
+                                                                                height="20"
+                                                                                viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                strokeWidth="2"
+                                                                            >
+                                                                                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                                                                <rect
+                                                                                    x="1"
+                                                                                    y="5"
+                                                                                    width="15"
+                                                                                    height="14"
+                                                                                    rx="2"
+                                                                                    ry="2"
+                                                                                ></rect>
+                                                                            </svg>
+                                                                        </div>
+                                                                        Video Yükle
+                                                                    </div>
+                                                                    <div
+                                                                        className="plus-menu-item"
+                                                                        onClick={() => {
+                                                                            gifInputRef.current.click();
+                                                                            setShowPlusMenu(false);
+                                                                        }}
+                                                                    >
+                                                                        <div
+                                                                            className="plus-menu-icon"
+                                                                            style={{
+                                                                                fontWeight: 800,
+                                                                                fontSize: '10px',
+                                                                            }}
+                                                                        >
+                                                                            GIF
+                                                                        </div>
+                                                                        GIF Yükle
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            onChange={handleFileSelect}
+                                                            style={{ display: 'none' }}
+                                                            accept="image/png, image/jpeg, image/jpg"
+                                                        />
+                                                        <input
+                                                            type="file"
+                                                            ref={videoInputRef}
+                                                            onChange={handleFileSelect}
+                                                            style={{ display: 'none' }}
+                                                            accept="video/mp4, video/webm, video/quicktime"
+                                                        />
+                                                        <input
+                                                            type="file"
+                                                            ref={gifInputRef}
+                                                            onChange={handleFileSelect}
+                                                            style={{ display: 'none' }}
+                                                            accept="image/gif"
+                                                        />
+
+                                                        <div className="message-input-wrapper">
+                                                            <button
+                                                                className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
+                                                                onClick={() =>
+                                                                    setShowPlusMenu(!showPlusMenu)
+                                                                }
+                                                                style={{
+                                                                    backgroundColor: '#383a40',
+                                                                    borderRadius: '50%',
+                                                                    width: '32px',
+                                                                    height: '32px',
+                                                                    marginRight: '12px',
+                                                                    color: showPlusMenu
+                                                                        ? 'var(--primary-color)'
+                                                                        : '#b9bbbe',
+                                                                }}
+                                                            >
+                                                                <svg
+                                                                    width="18"
+                                                                    height="18"
+                                                                    viewBox="0 0 24 24"
+                                                                    fill="currentColor"
+                                                                >
+                                                                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
+                                                                </svg>
+                                                            </button>
+
+                                                            {mediaFile && (
+                                                                <div
+                                                                    className="input-media-preview"
+                                                                    style={{
+                                                                        marginRight: '10px',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        backgroundColor: 'rgba(0,0,0,0.2)',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '4px',
+                                                                    }}
+                                                                >
+                                                                    <span
+                                                                        style={{
+                                                                            fontSize: '12px',
+                                                                            color: 'var(--text-primary)',
+                                                                            marginRight: '6px',
+                                                                        }}
+                                                                    >
+                                                                        {mediaFile.type.startsWith('video')
+                                                                            ? '🎥'
+                                                                            : mediaFile.type.includes('gif')
+                                                                                ? '👾'
+                                                                                : '🖼️'}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() => setMediaFile(null)}
+                                                                        style={{
+                                                                            background: 'none',
+                                                                            border: 'none',
+                                                                            color: 'var(--text-muted)',
+                                                                            cursor: 'pointer',
+                                                                        }}
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                            <input
+                                                                type="text"
+                                                                placeholder={`#${currentChannel === 'general'
+                                                                    ? 'genel'
+                                                                    : portal?.channels?.find(
+                                                                        (c) =>
+                                                                            c._id === currentChannel
+                                                                    )?.name || currentChannel
+                                                                    } kanalına mesaj gönder`}
+                                                                value={messageText}
+                                                                onChange={(e) =>
+                                                                    setMessageText(e.target.value)
+                                                                }
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                                                        e.preventDefault();
+                                                                        handleSendMessage();
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <div className="input-right-actions">
+                                                                <button
+                                                                    className="input-action-btn send-btn"
+                                                                    onClick={handleSendMessage}
+                                                                    disabled={
+                                                                        !messageText.trim() && !mediaFile
+                                                                    }
+                                                                    title="Gönder"
+                                                                    style={{
+                                                                        color:
+                                                                            messageText.trim() || mediaFile
+                                                                                ? 'var(--primary-color)'
+                                                                                : 'var(--text-tertiary)',
+                                                                    }}
+                                                                >
+                                                                    <svg
+                                                                        width="24"
+                                                                        height="24"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        strokeWidth="2"
+                                                                    >
+                                                                        <line
+                                                                            x1="22"
+                                                                            y1="2"
+                                                                            x2="11"
+                                                                            y2="13"
+                                                                        ></line>
+                                                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    Görsel Yükle
-                                                </div>
-                                                <div
-                                                    className="plus-menu-item"
-                                                    onClick={() => {
-                                                        videoInputRef.current.click();
-                                                        setShowPlusMenu(false);
-                                                    }}
-                                                >
-                                                    <div className="plus-menu-icon">
-                                                        <svg
-                                                            width="20"
-                                                            height="20"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                                                            <rect
-                                                                x="1"
-                                                                y="5"
-                                                                width="15"
-                                                                height="14"
-                                                                rx="2"
-                                                                ry="2"
-                                                            ></rect>
-                                                        </svg>
-                                                    </div>
-                                                    Video Yükle
-                                                </div>
-                                                <div
-                                                    className="plus-menu-item"
-                                                    onClick={() => {
-                                                        gifInputRef.current.click();
-                                                        setShowPlusMenu(false);
-                                                    }}
-                                                >
+                                                ) : (
                                                     <div
-                                                        className="plus-menu-icon"
                                                         style={{
-                                                            fontWeight: 800,
-                                                            fontSize: '10px',
+                                                            padding: '20px',
+                                                            textAlign: 'center',
+                                                            color: '#b9bbbe',
+                                                            backgroundColor: 'var(--bg-card)',
+                                                            borderTop: '1px solid var(--border-subtle)',
                                                         }}
                                                     >
-                                                        GIF
+                                                        Bu kanala mesaj göndermek için üye olmalısın.
                                                     </div>
-                                                    GIF Yükle
-                                                </div>
+                                                )
+                                            ) : null}
+
+                                            <div
+                                                className="portal-feed-container discord-feed"
+                                                onScroll={handleScroll}
+                                                ref={feedRef}
+                                            >
+                                                {/* Feed Header / Welcome */}
+                                                {posts.length === 0 && !loading && (
+                                                    <div className="empty-portal">
+                                                        <div className="empty-portal-icon">👋</div>
+                                                        <h3>
+                                                            #
+                                                            {currentChannel === 'general'
+                                                                ? 'genel'
+                                                                : portal?.channels?.find(
+                                                                    (c) => c._id === currentChannel
+                                                                )?.name || currentChannel}{' '}
+                                                            kanalına hoş geldin!
+                                                        </h3>
+                                                        <p>
+                                                            {currentChannel === 'general'
+                                                                ? `Burası ${portal.name} sunucusunun başlangıcı.`
+                                                                : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Posts List */}
+                                                {posts.map((post) => (
+                                                    <PostCard
+                                                        key={post._id}
+                                                        post={post}
+                                                        onDelete={handleDeletePost}
+                                                        onPin={handlePin}
+                                                        isAdmin={isAdmin}
+                                                    />
+                                                ))}
                                             </div>
+
+                                            {/* Scroll To Top Button - Wide Pill */}
+                                            <button
+                                                className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
+                                                onClick={scrollToTop}
+                                            >
+                                                Başa Dön
+                                            </button>
                                         </>
                                     )}
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileSelect}
-                                        style={{ display: 'none' }}
-                                        accept="image/png, image/jpeg, image/jpg"
-                                    />
-                                    <input
-                                        type="file"
-                                        ref={videoInputRef}
-                                        onChange={handleFileSelect}
-                                        style={{ display: 'none' }}
-                                        accept="video/mp4, video/webm, video/quicktime"
-                                    />
-                                    <input
-                                        type="file"
-                                        ref={gifInputRef}
-                                        onChange={handleFileSelect}
-                                        style={{ display: 'none' }}
-                                        accept="image/gif"
-                                    />
-
-                                    <div className="message-input-wrapper">
-                                        <button
-                                            className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                            onClick={() =>
-                                                setShowPlusMenu(!showPlusMenu)
-                                            }
-                                            style={{
-                                                backgroundColor: '#383a40',
-                                                borderRadius: '50%',
-                                                width: '32px',
-                                                height: '32px',
-                                                marginRight: '12px',
-                                                color: showPlusMenu
-                                                    ? 'var(--primary-color)'
-                                                    : '#b9bbbe',
-                                            }}
-                                        >
-                                            <svg
-                                                width="18"
-                                                height="18"
-                                                viewBox="0 0 24 24"
-                                                fill="currentColor"
-                                            >
-                                                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
-                                            </svg>
-                                        </button>
-
-                                        {mediaFile && (
-                                            <div
-                                                className="input-media-preview"
-                                                style={{
-                                                    marginRight: '10px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    backgroundColor: 'rgba(0,0,0,0.2)',
-                                                    padding: '4px 8px',
-                                                    borderRadius: '4px',
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        fontSize: '12px',
-                                                        color: 'var(--text-primary)',
-                                                        marginRight: '6px',
-                                                    }}
-                                                >
-                                                    {mediaFile.type.startsWith('video')
-                                                        ? '🎥'
-                                                        : mediaFile.type.includes('gif')
-                                                            ? '👾'
-                                                            : '🖼️'}
-                                                </span>
-                                                <button
-                                                    onClick={() => setMediaFile(null)}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        color: 'var(--text-muted)',
-                                                        cursor: 'pointer',
-                                                    }}
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        <input
-                                            type="text"
-                                            placeholder={`#${currentChannel === 'general'
-                                                ? 'genel'
-                                                : portal?.channels?.find(
-                                                    (c) =>
-                                                        c._id === currentChannel
-                                                )?.name || currentChannel
-                                                } kanalına mesaj gönder`}
-                                            value={messageText}
-                                            onChange={(e) =>
-                                                setMessageText(e.target.value)
-                                            }
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    handleSendMessage();
-                                                }
-                                            }}
-                                        />
-                                        <div className="input-right-actions">
-                                            <button
-                                                className="input-action-btn send-btn"
-                                                onClick={handleSendMessage}
-                                                disabled={
-                                                    !messageText.trim() && !mediaFile
-                                                }
-                                                title="Gönder"
-                                                style={{
-                                                    color:
-                                                        messageText.trim() || mediaFile
-                                                            ? 'var(--primary-color)'
-                                                            : 'var(--text-tertiary)',
-                                                }}
-                                            >
-                                                <svg
-                                                    width="24"
-                                                    height="24"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                >
-                                                    <line
-                                                        x1="22"
-                                                        y1="2"
-                                                        x2="11"
-                                                        y2="13"
-                                                    ></line>
-                                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div
-                                    style={{
-                                        padding: '20px',
-                                        textAlign: 'center',
-                                        color: '#b9bbbe',
-                                        backgroundColor: 'var(--bg-card)',
-                                        borderTop: '1px solid var(--border-subtle)',
-                                    }}
-                                >
-                                    Bu kanala mesaj göndermek için üye olmalısın.
-                                </div>
-                            )
-                        ) : null}
-
-                        <div
-                            className="portal-feed-container discord-feed"
-                            onScroll={handleScroll}
-                            ref={feedRef}
-                        >
-                            {/* Feed Header / Welcome */}
-                            {posts.length === 0 && !loading && (
-                                <div className="empty-portal">
-                                    <div className="empty-portal-icon">👋</div>
-                                    <h3>
-                                        #
-                                        {currentChannel === 'general'
-                                            ? 'genel'
-                                            : portal?.channels?.find(
-                                                (c) => c._id === currentChannel
-                                            )?.name || currentChannel}{' '}
-                                        kanalına hoş geldin!
-                                    </h3>
-                                    <p>
-                                        {currentChannel === 'general'
-                                            ? `Burası ${portal.name} sunucusunun başlangıcı.`
-                                            : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
-                                    </p>
                                 </div>
                             )}
-
-                            {/* Posts List */}
-                            {posts.map((post) => (
-                                <PostCard
-                                    key={post._id}
-                                    post={post}
-                                    onDelete={handleDeletePost}
-                                    onPin={handlePin}
-                                    isAdmin={isAdmin}
-                                />
-                            ))}
                         </div>
 
-                        {/* Scroll To Top Button - Wide Pill */}
-                            <button
-                                className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
-                                onClick={scrollToTop}
+                        {/* Members Sidebar (Right Column) */}
+                        {showMembers && <MembersSidebar members={portal.members} />}
+
+                        {/* New Settings Modal Integration */}
+                        {
+                            editing && settingsTab !== 'notifications' && (
+                                <PortalSettingsModal
+                                    portal={portal}
+                                    currentUser={user}
+                                    initialTab={settingsTab}
+                                    onClose={() => setEditing(false)}
+                                    onUpdate={(updatedPortal) => {
+                                        setPortal(updatedPortal);
+                                    }}
+                                />
+                            )
+                        }
+
+                        {/* Portal Notifications Section */}
+                        {editing && settingsTab === 'notifications' && (
+                            <div
+                                className="portal-notifications-modal"
+                                onClick={() => setEditing(false)}
                             >
-                                Başa Dön
-                            </button>
-                        </>
-                )}
+                                <div
+                                    className="notifications-modal-content"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <button
+                                        className="close-notifications-btn"
+                                        onClick={() => setEditing(false)}
+                                    >
+                                        <svg
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                    <PortalNotifications
+                                        portalId={portal._id}
+                                        onUpdate={fetchPortalData}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
-
-                    {/* Members Sidebar (Right Column) */}
-                    {showMembers && <MembersSidebar members={portal.members} />}
-            </div>
-
-            {/* New Settings Modal Integration */}
-            {
-                editing && settingsTab !== 'notifications' && (
-                    <PortalSettingsModal
-                        portal={portal}
-                        currentUser={user}
-                        initialTab={settingsTab}
-                        onClose={() => setEditing(false)}
-                        onUpdate={(updatedPortal) => {
-                            setPortal(updatedPortal);
-                        }}
-                    />
-                )
-            }
-
-            {/* Portal Notifications Section */}
-            {editing && settingsTab === 'notifications' && (
-                <div
-                    className="portal-notifications-modal"
-                    onClick={() => setEditing(false)}
-                >
-                    <div
-                        className="notifications-modal-content"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button
-                            className="close-notifications-btn"
-                            onClick={() => setEditing(false)}
-                        >
-                            <svg
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                        <PortalNotifications
-                            portalId={portal._id}
-                            onUpdate={fetchPortalData}
-                        />
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-    );
+                    );
 };
 
-export default Portal;
+                    export default Portal;
+                    ```
