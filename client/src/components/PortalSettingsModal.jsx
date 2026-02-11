@@ -11,7 +11,7 @@ const PortalSettingsModal = ({
     currentUser,
     initialTab = 'overview',
 }) => {
-    const [activeTab, setActiveTab] = useState(initialTab); // overview, channels, members
+    const [activeTab, setActiveTab] = useState(initialTab); // overview, channels, members, banned, access
     const [loading, setLoading] = useState(false);
 
     // Overview State
@@ -71,6 +71,78 @@ const PortalSettingsModal = ({
     const [blockSearchQuery, setBlockSearchQuery] = useState('');
     const [blockSearchResults, setBlockSearchResults] = useState([]);
     const [isSearchingBlock, setIsSearchingBlock] = useState(false);
+
+    // --- Access Management State ---
+    const [accessData, setAccessData] = useState({
+        privacy: portal.privacy,
+        allowedUsers: portal.allowedUsers || []
+    });
+    const [allowedUserSearch, setAllowedUserSearch] = useState('');
+    const [allowedUserResults, setAllowedUserResults] = useState([]);
+
+    // Sync with portal updates
+    useEffect(() => {
+        setAccessData({
+            privacy: portal.privacy,
+            allowedUsers: portal.allowedUsers || []
+        });
+    }, [portal]);
+
+    const handleAllowedSearch = async (query) => {
+        setAllowedUserSearch(query);
+        if (!query.trim()) {
+            setAllowedUserResults([]);
+            return;
+        }
+        try {
+            const res = await axios.get(`/api/users/search?q=${query}`);
+            // Filter out already allowed, members, blocked, and self
+            const filtered = res.data.filter(u =>
+                !accessData.allowedUsers.some(au => (au._id || au) === u._id) &&
+                !portal.members.some(m => (m._id || m) === u._id) &&
+                !blockedUsers.some(b => (b._id || b) === u._id) &&
+                u._id !== portal.owner?._id
+            );
+            setAllowedUserResults(filtered);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleAddAllowedUser = (user) => {
+        setAccessData(prev => ({
+            ...prev,
+            allowedUsers: [...prev.allowedUsers, user]
+        }));
+        setAllowedUserSearch('');
+        setAllowedUserResults([]);
+    };
+
+    const handleRemoveAllowedUser = (userId) => {
+        setAccessData(prev => ({
+            ...prev,
+            allowedUsers: prev.allowedUsers.filter(u => (u._id || u) !== userId)
+        }));
+    };
+
+    const handleSaveAccess = async () => {
+        if (!isOwner) return;
+        setLoading(true);
+        try {
+            // Send only IDs for allowedUsers
+            const payload = {
+                privacy: accessData.privacy,
+                allowedUsers: accessData.allowedUsers.map(u => u._id || u)
+            };
+            const res = await axios.put(`/api/portals/${portal._id}`, payload);
+            onUpdate(res.data);
+            alert('Erişim ayarları kaydedildi');
+        } catch (err) {
+            alert('Hata: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleBlockSearch = async (query) => {
         setBlockSearchQuery(query);
@@ -316,6 +388,18 @@ const PortalSettingsModal = ({
                         Yönetim
                     </div>
                     <div
+                        className={`settings-tab ${activeTab === 'access' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('access')}
+                        title="Erişim"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ minWidth: '20px' }}>
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span className="tab-label">Erişim</span>
+                    </div>
+                    <div
+                    <div
                         className={`settings-tab ${activeTab === 'channels' ? 'active' : ''}`}
                         onClick={() => setActiveTab('channels')}
                         title="Kanallar"
@@ -482,390 +566,212 @@ const PortalSettingsModal = ({
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Gizlilik</label>
-                                <select
-                                    className="form-input"
-                                    value={formData.privacy}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, privacy: e.target.value })
-                                    }
-                                    disabled={!isOwner}
-                                >
-                                    <option value="public">Herkese Açık</option>
-                                    <option value="private">Gizli (Sadece Davet)</option>
-                                </select>
-                            </div>
-
-                            {isOwner && (
-                                <button
-                                    className="btn-save"
-                                    onClick={handleSaveOverview}
-                                    disabled={loading}
-                                >
-                                    {loading ? '...' : 'Değişiklikleri Kaydet'}
-                                </button>
-                            )}
-
-                            <input
-                                type="file"
-                                ref={bannerRef}
-                                onChange={(e) => handleFileSelect(e, 'banner')}
-                                hidden
-                                accept="image/*"
-                            />
-                            <input
-                                type="file"
-                                ref={avatarRef}
-                                onChange={(e) => handleFileSelect(e, 'avatar')}
-                                hidden
-                                accept="image/*"
-                            />
                         </div>
+
+                            {/* Privacy moved to Access tab, but keeping it here read-only or removed? 
+                                User asked to Add "Erişim Yönetimi". 
+                                I will remove it from Overview to avoid confusion. 
+                            */}
+
+                    {isOwner && (
+                        <button
+                            className="btn-save"
+                            onClick={handleSaveOverview}
+                            disabled={loading}
+                        >
+                            {loading ? '...' : 'Değişiklikleri Kaydet'}
+                        </button>
                     )}
 
-                    {activeTab === 'channels' && (
-                        <div className="animate-fade-in">
-                            <h2 className="settings-title">Kanallar</h2>
+                    <input
+                        type="file"
+                        ref={bannerRef}
+                        onChange={(e) => handleFileSelect(e, 'banner')}
+                        hidden
+                        accept="image/*"
+                    />
+                    <input
+                        type="file"
+                        ref={avatarRef}
+                        onChange={(e) => handleFileSelect(e, 'avatar')}
+                        hidden
+                        accept="image/*"
+                    />
+                </div>
+                    )}
 
-                            {isAdmin && (
-                                <div className="add-channel-bar">
-                                    <input
-                                        className="form-input"
-                                        placeholder="Yeni kanal adı (örn: oyun, müzik)"
-                                        value={newChannelName}
-                                        onChange={(e) => setNewChannelName(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
-                                    />
-                                    <button
-                                        className="btn-save"
-                                        style={{ background: '#5865f2' }}
-                                        onClick={handleAddChannel}
-                                    >
-                                        Oluştur
-                                    </button>
-                                </div>
-                            )}
+                {activeTab === 'channels' && (
+                    <div className="animate-fade-in">
+                        <h2 className="settings-title">Kanallar</h2>
 
-                            <div className="channel-list">
-                                {portal.channels &&
-                                    portal.channels.map((ch) => (
-                                        <div key={ch._id} className="channel-row">
-                                            {editingChannel && editingChannel.id === ch._id ? (
-                                                <div
+                        {isAdmin && (
+                            <div className="add-channel-bar">
+                                <input
+                                    className="form-input"
+                                    placeholder="Yeni kanal adı (örn: oyun, müzik)"
+                                    value={newChannelName}
+                                    onChange={(e) => setNewChannelName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
+                                />
+                                <button
+                                    className="btn-save"
+                                    style={{ background: '#5865f2' }}
+                                    onClick={handleAddChannel}
+                                >
+                                    Oluştur
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="channel-list">
+                            {portal.channels &&
+                                portal.channels.map((ch) => (
+                                    <div key={ch._id} className="channel-row">
+                                        {editingChannel && editingChannel.id === ch._id ? (
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    flex: 1,
+                                                }}
+                                            >
+                                                <input
+                                                    className="form-input"
+                                                    value={editingChannel.name}
+                                                    onChange={(e) =>
+                                                        setEditingChannel({
+                                                            ...editingChannel,
+                                                            name: e.target.value,
+                                                        })
+                                                    }
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        height: '32px',
+                                                    }}
+                                                />
+                                                <label
                                                     style={{
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: '8px',
-                                                        flex: 1,
+                                                        gap: '4px',
+                                                        fontSize: '12px',
+                                                        color: '#b9bbbe',
+                                                        cursor: 'pointer',
                                                     }}
                                                 >
                                                     <input
-                                                        className="form-input"
-                                                        value={editingChannel.name}
+                                                        type="checkbox"
+                                                        checked={editingChannel.isPrivate}
                                                         onChange={(e) =>
                                                             setEditingChannel({
                                                                 ...editingChannel,
-                                                                name: e.target.value,
+                                                                isPrivate: e.target.checked,
                                                             })
                                                         }
-                                                        style={{
-                                                            padding: '4px 8px',
-                                                            height: '32px',
-                                                        }}
                                                     />
-                                                    <label
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                            fontSize: '12px',
-                                                            color: '#b9bbbe',
-                                                            cursor: 'pointer',
-                                                        }}
+                                                    Gizli
+                                                </label>
+                                                <button
+                                                    onClick={handleUpdateChannel}
+                                                    style={{
+                                                        color: '#2ecc71',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    <svg
+                                                        width="18"
+                                                        height="18"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
                                                     >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={editingChannel.isPrivate}
-                                                            onChange={(e) =>
+                                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingChannel(null)}
+                                                    style={{
+                                                        color: '#ed4245',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    <svg
+                                                        width="18"
+                                                        height="18"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                    >
+                                                        <line
+                                                            x1="18"
+                                                            y1="6"
+                                                            x2="6"
+                                                            y2="18"
+                                                        ></line>
+                                                        <line
+                                                            x1="6"
+                                                            y1="6"
+                                                            x2="18"
+                                                            y2="18"
+                                                        ></line>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div
+                                                    className="channel-name"
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                    }}
+                                                >
+                                                    <span style={{ color: '#72767d' }}>#</span>
+                                                    {ch.name}
+                                                    {ch.isPrivate && (
+                                                        <svg
+                                                            width="14"
+                                                            height="14"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            style={{ color: '#faa61a' }}
+                                                            title="Gizli Kanal"
+                                                        >
+                                                            <rect
+                                                                x="3"
+                                                                y="11"
+                                                                width="18"
+                                                                height="11"
+                                                                rx="2"
+                                                                ry="2"
+                                                            ></rect>
+                                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                {isAdmin && (
+                                                    <div className="channel-actions">
+                                                        <button
+                                                            onClick={() =>
                                                                 setEditingChannel({
-                                                                    ...editingChannel,
-                                                                    isPrivate: e.target.checked,
+                                                                    id: ch._id,
+                                                                    name: ch.name,
+                                                                    isPrivate:
+                                                                        ch.isPrivate || false,
                                                                 })
                                                             }
-                                                        />
-                                                        Gizli
-                                                    </label>
-                                                    <button
-                                                        onClick={handleUpdateChannel}
-                                                        style={{
-                                                            color: '#2ecc71',
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        <svg
-                                                            width="18"
-                                                            height="18"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setEditingChannel(null)}
-                                                        style={{
-                                                            color: '#ed4245',
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        <svg
-                                                            width="18"
-                                                            height="18"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <line
-                                                                x1="18"
-                                                                y1="6"
-                                                                x2="6"
-                                                                y2="18"
-                                                            ></line>
-                                                            <line
-                                                                x1="6"
-                                                                y1="6"
-                                                                x2="18"
-                                                                y2="18"
-                                                            ></line>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div
-                                                        className="channel-name"
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '6px',
-                                                        }}
-                                                    >
-                                                        <span style={{ color: '#72767d' }}>#</span>
-                                                        {ch.name}
-                                                        {ch.isPrivate && (
-                                                            <svg
-                                                                width="14"
-                                                                height="14"
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth="2"
-                                                                style={{ color: '#faa61a' }}
-                                                                title="Gizli Kanal"
-                                                            >
-                                                                <rect
-                                                                    x="3"
-                                                                    y="11"
-                                                                    width="18"
-                                                                    height="11"
-                                                                    rx="2"
-                                                                    ry="2"
-                                                                ></rect>
-                                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                    {isAdmin && (
-                                                        <div className="channel-actions">
-                                                            <button
-                                                                onClick={() =>
-                                                                    setEditingChannel({
-                                                                        id: ch._id,
-                                                                        name: ch.name,
-                                                                        isPrivate:
-                                                                            ch.isPrivate || false,
-                                                                    })
-                                                                }
-                                                                title="Düzenle"
-                                                                style={{ marginRight: '4px' }}
-                                                            >
-                                                                <svg
-                                                                    width="18"
-                                                                    height="18"
-                                                                    viewBox="0 0 24 24"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    strokeWidth="2"
-                                                                >
-                                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                                </svg>
-                                                            </button>
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleDeleteChannel(ch._id)
-                                                                }
-                                                                title="Kanalı Sil"
-                                                            >
-                                                                <svg
-                                                                    width="18"
-                                                                    height="18"
-                                                                    viewBox="0 0 24 24"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    strokeWidth="2"
-                                                                >
-                                                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    ))}
-                                {(!portal.channels || portal.channels.length === 0) && (
-                                    <div
-                                        style={{
-                                            padding: '20px',
-                                            textAlign: 'center',
-                                            color: '#72767d',
-                                        }}
-                                    >
-                                        Hiç kanal yok.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'members' && (
-                        <div className="animate-fade-in">
-                            <h2 className="settings-title">
-                                Üyeler ({portal.members?.length || 0})
-                            </h2>
-
-                            <div className="form-group">
-                                <input
-                                    className="form-input"
-                                    placeholder="Üye ara..."
-                                    value={memberSearch}
-                                    onChange={(e) => setMemberSearch(e.target.value)}
-                                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
-                                />
-                            </div>
-
-                            <div className="members-list">
-                                {filteredMembers.map((member) => {
-                                    const memberId = member._id || member;
-                                    const isAdminMember = portal.admins.some(
-                                        (a) => String(a._id || a) === String(memberId)
-                                    );
-                                    const isOwnerMember = String(ownerId) === String(memberId);
-
-                                    return (
-                                        <div key={memberId} className="member-card">
-                                            <img
-                                                src={getImageUrl(member.profile?.avatar)}
-                                                alt=""
-                                                className="member-avatar"
-                                                onError={(e) => (e.target.style.display = 'none')}
-                                            />
-                                            <div className="member-details">
-                                                <div className="member-username">
-                                                    {member.username || 'Kullanıcı'}
-                                                    {isOwnerMember && (
-                                                        <span className="role-badge owner">
-                                                            👑 As Yönetici
-                                                        </span>
-                                                    )}
-                                                    {isAdminMember && !isOwnerMember && (
-                                                        <span className="role-badge admin">
-                                                            🛡️ Er Yönetici
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Action Menu */}
-                                            {isAdmin &&
-                                                !isOwnerMember &&
-                                                // Hide actions if I am Admin but target is also Admin (unless I am Owner)
-                                                (isOwner || !isAdminMember) && (
-                                                    <div
-                                                        className="channel-actions"
-                                                        style={{ display: 'flex', gap: '8px' }}
-                                                    >
-                                                        {isOwner &&
-                                                            (!isAdminMember ? (
-                                                                <button
-                                                                    onClick={() =>
-                                                                        handleRole(
-                                                                            memberId,
-                                                                            'promote'
-                                                                        )
-                                                                    }
-                                                                    title="Er Yönetici Yap"
-                                                                    style={{ color: '#5865f2' }}
-                                                                >
-                                                                    <svg
-                                                                        width="18"
-                                                                        height="18"
-                                                                        viewBox="0 0 24 24"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        strokeWidth="2"
-                                                                    >
-                                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                                                                    </svg>
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() =>
-                                                                        handleRole(
-                                                                            memberId,
-                                                                            'demote'
-                                                                        )
-                                                                    }
-                                                                    title="Yöneticiliği Al"
-                                                                    style={{ color: '#faa61a' }}
-                                                                >
-                                                                    <svg
-                                                                        width="18"
-                                                                        height="18"
-                                                                        viewBox="0 0 24 24"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        strokeWidth="2"
-                                                                    >
-                                                                        <circle
-                                                                            cx="12"
-                                                                            cy="12"
-                                                                            r="10"
-                                                                        ></circle>
-                                                                        <line
-                                                                            x1="8"
-                                                                            y1="12"
-                                                                            x2="16"
-                                                                            y2="12"
-                                                                        ></line>
-                                                                    </svg>
-                                                                </button>
-                                                            ))}
-
-                                                        <button
-                                                            onClick={() => handleKick(memberId)}
-                                                            title="Portaldan At"
-                                                            style={{ color: '#ed4245' }}
+                                                            title="Düzenle"
+                                                            style={{ marginRight: '4px' }}
                                                         >
                                                             <svg
                                                                 width="18"
@@ -875,25 +781,15 @@ const PortalSettingsModal = ({
                                                                 stroke="currentColor"
                                                                 strokeWidth="2"
                                                             >
-                                                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                                                <circle
-                                                                    cx="8.5"
-                                                                    cy="7"
-                                                                    r="4"
-                                                                ></circle>
-                                                                <line
-                                                                    x1="23"
-                                                                    y1="11"
-                                                                    x2="17"
-                                                                    y2="11"
-                                                                ></line>
+                                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                                             </svg>
                                                         </button>
-
                                                         <button
-                                                            onClick={() => handleBlock(memberId)}
-                                                            title="Engelle"
-                                                            style={{ color: '#ed4245' }}
+                                                            onClick={() =>
+                                                                handleDeleteChannel(ch._id)
+                                                            }
+                                                            title="Kanalı Sil"
                                                         >
                                                             <svg
                                                                 width="18"
@@ -903,146 +799,328 @@ const PortalSettingsModal = ({
                                                                 stroke="currentColor"
                                                                 strokeWidth="2"
                                                             >
-                                                                <circle
-                                                                    cx="12"
-                                                                    cy="12"
-                                                                    r="10"
-                                                                ></circle>
-                                                                <line
-                                                                    x1="4.93"
-                                                                    y1="4.93"
-                                                                    x2="19.07"
-                                                                    y2="19.07"
-                                                                ></line>
+                                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                                                             </svg>
                                                         </button>
                                                     </div>
                                                 )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'banned' && (
-                        <div className="animate-fade-in">
-                            <h2 className="settings-title">Engellenen Kullanıcılar</h2>
-
-                            {/* Block User Search */}
-                            <div className="form-group" style={{ marginBottom: '20px' }}>
-                                <input
-                                    className="form-input"
-                                    placeholder="Engellemek için kullanıcı ara..."
-                                    value={blockSearchQuery}
-                                    onChange={(e) => handleBlockSearch(e.target.value)}
-                                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
-                                />
-                                {blockSearchResults.length > 0 && (
-                                    <div className="search-results-dropdown">
-                                        {blockSearchResults.map((user) => (
-                                            <div key={user._id} className="member-card full-width">
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '10px',
-                                                        flex: 1,
-                                                    }}
-                                                >
-                                                    <img
-                                                        src={getImageUrl(user.profile?.avatar)}
-                                                        alt=""
-                                                        className="member-avatar"
-                                                        onError={(e) =>
-                                                            (e.target.style.display = 'none')
-                                                        }
-                                                    />
-                                                    <div className="member-username">
-                                                        {user.username}
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={() => {
-                                                        handleBlock(user._id);
-                                                        setBlockSearchQuery('');
-                                                        setBlockSearchResults([]);
-                                                    }}
-                                                    className="btn-save danger-btn"
-                                                    style={{
-                                                        padding: '4px 12px',
-                                                        fontSize: '12px',
-                                                        background: '#ed4245',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                    }}
-                                                >
-                                                    Engelle
-                                                </button>
-                                            </div>
-                                        ))}
+                                            </>
+                                        )}
                                     </div>
-                                )}
-                            </div>
+                                ))}
+                            {(!portal.channels || portal.channels.length === 0) && (
+                                <div
+                                    style={{
+                                        padding: '20px',
+                                        textAlign: 'center',
+                                        color: '#72767d',
+                                    }}
+                                >
+                                    Hiç kanal yok.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
-                            <div className="members-list">
-                                {blockedUsers.length > 0 ? (
-                                    blockedUsers.map((user) => (
-                                        <div key={user._id} className="member-card">
-                                            <img
-                                                src={getImageUrl(user.profile?.avatar)}
-                                                alt=""
-                                                className="member-avatar"
-                                                onError={(e) => (e.target.style.display = 'none')}
-                                            />
-                                            <div className="member-details">
+                {activeTab === 'members' && (
+                    <div className="animate-fade-in">
+                        <h2 className="settings-title">
+                            Üyeler ({portal.members?.length || 0})
+                        </h2>
+
+                        <div className="form-group">
+                            <input
+                                className="form-input"
+                                placeholder="Üye ara..."
+                                value={memberSearch}
+                                onChange={(e) => setMemberSearch(e.target.value)}
+                                style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                            />
+                        </div>
+
+                        <div className="members-list">
+                            {filteredMembers.map((member) => {
+                                const memberId = member._id || member;
+                                const isAdminMember = portal.admins.some(
+                                    (a) => String(a._id || a) === String(memberId)
+                                );
+                                const isOwnerMember = String(ownerId) === String(memberId);
+
+                                return (
+                                    <div key={memberId} className="member-card">
+                                        <img
+                                            src={getImageUrl(member.profile?.avatar)}
+                                            alt=""
+                                            className="member-avatar"
+                                            onError={(e) => (e.target.style.display = 'none')}
+                                        />
+                                        <div className="member-details">
+                                            <div className="member-username">
+                                                {member.username || 'Kullanıcı'}
+                                                {isOwnerMember && (
+                                                    <span className="role-badge owner">
+                                                        👑 As Yönetici
+                                                    </span>
+                                                )}
+                                                {isAdminMember && !isOwnerMember && (
+                                                    <span className="role-badge admin">
+                                                        🛡️ Er Yönetici
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Action Menu */}
+                                        {isAdmin &&
+                                            !isOwnerMember &&
+                                            // Hide actions if I am Admin but target is also Admin (unless I am Owner)
+                                            (isOwner || !isAdminMember) && (
+                                                <div
+                                                    className="channel-actions"
+                                                    style={{ display: 'flex', gap: '8px' }}
+                                                >
+                                                    {isOwner &&
+                                                        (!isAdminMember ? (
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleRole(
+                                                                        memberId,
+                                                                        'promote'
+                                                                    )
+                                                                }
+                                                                title="Er Yönetici Yap"
+                                                                style={{ color: '#5865f2' }}
+                                                            >
+                                                                <svg
+                                                                    width="18"
+                                                                    height="18"
+                                                                    viewBox="0 0 24 24"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="2"
+                                                                >
+                                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                                                </svg>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleRole(
+                                                                        memberId,
+                                                                        'demote'
+                                                                    )
+                                                                }
+                                                                title="Yöneticiliği Al"
+                                                                style={{ color: '#faa61a' }}
+                                                            >
+                                                                <svg
+                                                                    width="18"
+                                                                    height="18"
+                                                                    viewBox="0 0 24 24"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="2"
+                                                                >
+                                                                    <circle
+                                                                        cx="12"
+                                                                        cy="12"
+                                                                        r="10"
+                                                                    ></circle>
+                                                                    <line
+                                                                        x1="8"
+                                                                        y1="12"
+                                                                        x2="16"
+                                                                        y2="12"
+                                                                    ></line>
+                                                                </svg>
+                                                            </button>
+                                                        ))}
+
+                                                    <button
+                                                        onClick={() => handleKick(memberId)}
+                                                        title="Portaldan At"
+                                                        style={{ color: '#ed4245' }}
+                                                    >
+                                                        <svg
+                                                            width="18"
+                                                            height="18"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                        >
+                                                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                            <circle
+                                                                cx="8.5"
+                                                                cy="7"
+                                                                r="4"
+                                                            ></circle>
+                                                            <line
+                                                                x1="23"
+                                                                y1="11"
+                                                                x2="17"
+                                                                y2="11"
+                                                            ></line>
+                                                        </svg>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleBlock(memberId)}
+                                                        title="Engelle"
+                                                        style={{ color: '#ed4245' }}
+                                                    >
+                                                        <svg
+                                                            width="18"
+                                                            height="18"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                        >
+                                                            <circle
+                                                                cx="12"
+                                                                cy="12"
+                                                                r="10"
+                                                            ></circle>
+                                                            <line
+                                                                x1="4.93"
+                                                                y1="4.93"
+                                                                x2="19.07"
+                                                                y2="19.07"
+                                                            ></line>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'banned' && (
+                    <div className="animate-fade-in">
+                        <h2 className="settings-title">Engellenen Kullanıcılar</h2>
+
+                        {/* Block User Search */}
+                        <div className="form-group" style={{ marginBottom: '20px' }}>
+                            <input
+                                className="form-input"
+                                placeholder="Engellemek için kullanıcı ara..."
+                                value={blockSearchQuery}
+                                onChange={(e) => handleBlockSearch(e.target.value)}
+                                style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                            />
+                            {blockSearchResults.length > 0 && (
+                                <div className="search-results-dropdown">
+                                    {blockSearchResults.map((user) => (
+                                        <div key={user._id} className="member-card full-width">
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '10px',
+                                                    flex: 1,
+                                                }}
+                                            >
+                                                <img
+                                                    src={getImageUrl(user.profile?.avatar)}
+                                                    alt=""
+                                                    className="member-avatar"
+                                                    onError={(e) =>
+                                                        (e.target.style.display = 'none')
+                                                    }
+                                                />
                                                 <div className="member-username">
                                                     {user.username}
                                                 </div>
                                             </div>
-                                            <div className="channel-actions">
-                                                <button
-                                                    onClick={() => handleUnblock(user._id)}
-                                                    title="Engeli Kaldır"
-                                                    className="btn-save"
-                                                    style={{
-                                                        padding: '4px 12px',
-                                                        fontSize: '12px',
-                                                    }}
-                                                >
-                                                    Kaldır
-                                                </button>
+                                            <button
+                                                onClick={() => {
+                                                    handleBlock(user._id);
+                                                    setBlockSearchQuery('');
+                                                    setBlockSearchResults([]);
+                                                }}
+                                                className="btn-save danger-btn"
+                                                style={{
+                                                    padding: '4px 12px',
+                                                    fontSize: '12px',
+                                                    background: '#ed4245',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                }}
+                                            >
+                                                Engelle
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="members-list">
+                            {blockedUsers.length > 0 ? (
+                                blockedUsers.map((user) => (
+                                    <div key={user._id} className="member-card">
+                                        <img
+                                            src={getImageUrl(user.profile?.avatar)}
+                                            alt=""
+                                            className="member-avatar"
+                                            onError={(e) => (e.target.style.display = 'none')}
+                                        />
+                                        <div className="member-details">
+                                            <div className="member-username">
+                                                {user.username}
                                             </div>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div
-                                        style={{
-                                            color: '#72767d',
-                                            padding: '20px',
-                                            textAlign: 'center',
-                                        }}
-                                    >
-                                        Engellenen kullanıcı yok.
+                                        <div className="channel-actions">
+                                            <button
+                                                onClick={() => handleUnblock(user._id)}
+                                                title="Engeli Kaldır"
+                                                className="btn-save"
+                                                style={{
+                                                    padding: '4px 12px',
+                                                    fontSize: '12px',
+                                                }}
+                                            >
+                                                Kaldır
+                                            </button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+                                ))
+                            ) : (
+                                <div
+                                    style={{
+                                        color: '#72767d',
+                                        padding: '20px',
+                                        textAlign: 'center',
+                                    }}
+                                >
+                                    Engellenen kullanıcı yok.
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
-
-            {/* Image Cropper Modal */}
-            {cropperImage && (
-                <ImageCropper
-                    image={cropperImage}
-                    mode={cropperMode}
-                    onComplete={handleCropComplete}
-                    onCancel={handleCropCancel}
-                    title={cropperMode === 'avatar' ? 'Portal Logosu' : 'Portal Bannerı'}
-                />
-            )}
         </div>
+
+            {/* Image Cropper Modal */ }
+    {
+        cropperImage && (
+            <ImageCropper
+                image={cropperImage}
+                mode={cropperMode}
+                onComplete={handleCropComplete}
+                onCancel={handleCropCancel}
+                title={cropperMode === 'avatar' ? 'Portal Logosu' : 'Portal Bannerı'}
+            />
+        )
+    }
+        </div >
     );
 };
 
