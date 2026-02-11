@@ -483,18 +483,8 @@ const Portal = () => {
                                     <div className="spinner"></div>
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>İçerik yükleniyor...</span>
                                 </div>
-                                        </div>
-                    </div>
-                </>
-                            )}
-                {error === 'private' ? (
-                    <div className="portal-privacy-screen">
-                        <div className="privacy-card">
-                            <div className="privacy-icon">🔒</div>
-                            <img
-                                src={getImageUrl(portal.avatar)}
                                 alt=""
-                                className="privacy-avatar"
+                            className="privacy-avatar"
                             />
                             <h2>{portal.name}</h2>
                             <p className="privacy-desc">
@@ -511,17 +501,6 @@ const Portal = () => {
                             ) : (
                                 <button
                                     className="privacy-join-btn"
-                                    onClick={handleJoin}
-                                >
-                                    {portal.privacy === 'private'
-                                        ? 'Üyelik İsteği Gönder'
-                                        : 'Portala Katıl'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                ) : (
-                    <>
                         {/* Message Input Area */}
                         {user ? (
                             isMember ? (
@@ -819,73 +798,70 @@ const Portal = () => {
                         </div>
 
                         {/* Scroll To Top Button - Wide Pill */}
-                        <button
-                            className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
-                            onClick={scrollToTop}
-                        >
-                            Başa Dön
-                        </button>
-                    </>
+                            <button
+                                className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
+                                onClick={scrollToTop}
+                            >
+                                Başa Dön
+                            </button>
+                        </>
                 )}
+                    </div>
+
+                    {/* Members Sidebar (Right Column) */}
+                    {showMembers && <MembersSidebar members={portal.members} />}
             </div>
 
-            {/* Members Sidebar (Right Column) */}
-            {showMembers && <MembersSidebar members={portal.members} />}
-        </div>
-
-                        {/* New Settings Modal Integration */ }
-    {
-        editing && settingsTab !== 'notifications' && (
-            <PortalSettingsModal
-                portal={portal}
-                currentUser={user}
-                initialTab={settingsTab}
-                onClose={() => setEditing(false)}
-                onUpdate={(updatedPortal) => {
-                    setPortal(updatedPortal);
-                }}
-            />
-        )
-    }
-
-    {/* Portal Notifications Section */ }
-    {
-        editing && settingsTab === 'notifications' && (
-            <div
-                className="portal-notifications-modal"
-                onClick={() => setEditing(false)}
-            >
-                <div
-                    className="notifications-modal-content"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <button
-                        className="close-notifications-btn"
-                        onClick={() => setEditing(false)}
-                    >
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                    <PortalNotifications
-                        portalId={portal._id}
-                        onUpdate={() => fetchPortalData()}
+            {/* New Settings Modal Integration */}
+            {
+                editing && settingsTab !== 'notifications' && (
+                    <PortalSettingsModal
+                        portal={portal}
+                        currentUser={user}
+                        initialTab={settingsTab}
+                        onClose={() => setEditing(false)}
+                        onUpdate={(updatedPortal) => {
+                            setPortal(updatedPortal);
+                        }}
                     />
+                )
+            }
+
+            {/* Portal Notifications Section */}
+            {editing && settingsTab === 'notifications' && (
+                <div
+                    className="portal-notifications-modal"
+                    onClick={() => setEditing(false)}
+                >
+                    <div
+                        className="notifications-modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="close-notifications-btn"
+                            onClick={() => setEditing(false)}
+                        >
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                        <PortalNotifications
+                            portalId={portal._id}
+                            onUpdate={fetchPortalData}
+                        />
+                    </div>
                 </div>
-            </div>
-        )
-    }
-                </main >
-            </div >
-        </div >
+            )}
+        </div>
+    );
     );
 };
 
