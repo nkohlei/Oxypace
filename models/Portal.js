@@ -40,9 +40,15 @@ const portalSchema = new mongoose.Schema(
         ],
         privacy: {
             type: String,
-            enum: ['public', 'private'],
+            enum: ['public', 'private', 'restricted'],
             default: 'public',
         },
+        allowedUsers: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
         avatar: {
             type: String, // URL to uploaded image
             default: '',

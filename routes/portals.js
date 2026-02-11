@@ -14,33 +14,33 @@ const router = express.Router();
 // @access  Private
 router.post('/', protect, async (req, res) => {
     try {
-        const { name, description, privacy, avatar } = req.body;
+        const { name, description, privacy, avatar, allowedUsers } = req.body;
 
         const portalExists = await Portal.findOne({ name });
         if (portalExists) {
             return res.status(400).json({ message: 'Portal name already exists' });
         }
 
-        const portal = await Portal.create({
-            name,
+        name,
             description,
             privacy,
             avatar,
-            owner: req.user._id,
-            admins: [req.user._id],
-            members: [req.user._id],
-            channels: [{ name: 'genel', type: 'text' }],
+            allowedUsers: allowedUsers || [],
+                owner: req.user._id,
+                    admins: [req.user._id],
+                        members: [req.user._id],
+                            channels: [{ name: 'genel', type: 'text' }],
         });
 
-        // Add to user's joined portals
-        await User.findByIdAndUpdate(req.user._id, {
-            $addToSet: { joinedPortals: portal._id },
-        });
+// Add to user's joined portals
+await User.findByIdAndUpdate(req.user._id, {
+    $addToSet: { joinedPortals: portal._id },
+});
 
-        res.status(201).json(portal);
+res.status(201).json(portal);
     } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(500).json({ message: error.message });
+}
 });
 
 // @desc    Get all portals (Search & Popular)
@@ -227,6 +227,19 @@ router.post('/:id/join', protect, async (req, res) => {
             return res.status(400).json({ message: 'Zaten üyesiniz' });
         }
 
+        // Restricted Mode Check
+        if (portal.privacy === 'restricted') {
+            const isAllowed = portal.allowedUsers?.some(
+                (u) => u.toString() === req.user._id.toString()
+            );
+            if (!isAllowed) {
+                return res
+                    .status(403)
+                    .json({ message: 'Bu portala erişim izniniz yok (Kısıtlı Erişim).' });
+            }
+            // If allowed, fall through to join immediately (like public)
+        }
+
         if (portal.blockedUsers?.includes(req.user._id)) {
             return res.status(403).json({ message: 'Bu portaldan engellendiniz.' });
         }
@@ -297,7 +310,7 @@ router.post('/:id/leave', protect, async (req, res) => {
 // @access  Private (Owner only)
 router.put('/:id', protect, async (req, res) => {
     try {
-        const { name, description, privacy } = req.body;
+        const { name, description, privacy, allowedUsers } = req.body;
         const portal = await Portal.findById(req.params.id);
 
         if (!portal) {
@@ -311,6 +324,9 @@ router.put('/:id', protect, async (req, res) => {
         portal.name = name || portal.name;
         portal.description = description || portal.description;
         portal.privacy = privacy || portal.privacy;
+        if (allowedUsers) {
+            portal.allowedUsers = allowedUsers;
+        }
 
         await portal.save();
 
