@@ -825,64 +825,64 @@ const Portal = () => {
                                             </button>
                                         </>
                                     )}
-                                </div>
+                                </>
                             )}
                         </div>
 
                         {/* Members Sidebar (Right Column) */}
                         {showMembers && <MembersSidebar members={portal.members} />}
-
-                        {/* New Settings Modal Integration */}
-                        {
-                            editing && settingsTab !== 'notifications' && (
-                                <PortalSettingsModal
-                                    portal={portal}
-                                    currentUser={user}
-                                    initialTab={settingsTab}
-                                    onClose={() => setEditing(false)}
-                                    onUpdate={(updatedPortal) => {
-                                        setPortal(updatedPortal);
-                                    }}
-                                />
-                            )
-                        }
-
-                        {/* Portal Notifications Section */}
-                        {editing && settingsTab === 'notifications' && (
-                            <div
-                                className="portal-notifications-modal"
-                                onClick={() => setEditing(false)}
-                            >
-                                <div
-                                    className="notifications-modal-content"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <button
-                                        className="close-notifications-btn"
-                                        onClick={() => setEditing(false)}
-                                    >
-                                        <svg
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                        >
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                        </svg>
-                                    </button>
-                                    <PortalNotifications
-                                        portalId={portal._id}
-                                        onUpdate={fetchPortalData}
-                                    />
-                                </div>
-                            </div>
-                        )}
                     </div>
-                    );
+
+                    {/* New Settings Modal Integration */}
+                    {editing && settingsTab !== 'notifications' && (
+                        <PortalSettingsModal
+                            portal={portal}
+                            currentUser={user}
+                            initialTab={settingsTab}
+                            onClose={() => setEditing(false)}
+                            onUpdate={(updatedPortal) => {
+                                setPortal(updatedPortal);
+                            }}
+                        />
+                    )}
+
+                    {/* Portal Notifications Section */}
+                    {editing && settingsTab === 'notifications' && (
+                        <div
+                            className="portal-notifications-modal"
+                            onClick={() => setEditing(false)}
+                        >
+                            <div
+                                className="notifications-modal-content"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    className="close-notifications-btn"
+                                    onClick={() => setEditing(false)}
+                                >
+                                    <svg
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                                <PortalNotifications
+                                    portalId={portal._id}
+                                    onUpdate={fetchPortalData}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </main>
+            </div>
+        </div>
+    );
 };
 
-                    export default Portal;
-                    ```
+export default Portal;
