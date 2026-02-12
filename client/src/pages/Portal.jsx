@@ -156,24 +156,30 @@ const Portal = () => {
 
     useEffect(() => {
         if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
-            // Check if currentChannel is valid (exists in portal channels)
-            const isValidChannel = currentChannel && portal.channels.some(c => String(c._id) === String(currentChannel));
-
-            if (!isValidChannel) {
-                // Try to find 'genel' or 'general' first, else take the first one
+            // Check if we need to set a default channel (only if currentChannel is null)
+            if (!currentChannel) {
                 const defaultChannel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
                 if (defaultChannel) {
                     setCurrentChannel(defaultChannel._id);
                 }
+            } else {
+                // Validate existing currentChannel
+                const isValid = portal.channels.some(c => String(c._id) === String(currentChannel));
+                if (!isValid) {
+                    const defaultChannel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
+                    if (defaultChannel) {
+                        setCurrentChannel(defaultChannel._id);
+                    }
+                }
             }
         }
-    }, [id, authLoading, portal, currentChannel]); // Depend on portal content
+    }, [portal, authLoading]); // Removed currentChannel from dependency to prevent loop
 
     useEffect(() => {
-        if (id && !authLoading) {
+        if (id && currentChannel) {
             fetchChannelPosts();
         }
-    }, [id, currentChannel, authLoading]);
+    }, [id, currentChannel]);
 
     useEffect(() => {
         if (portal && user) {
