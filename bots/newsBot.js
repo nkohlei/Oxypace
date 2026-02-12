@@ -29,10 +29,14 @@ export default async function startBotLoop() {
     console.log('🤖 Starting Game News Bot Service...');
 
     // Wait for DB connection if not ready
-    if (mongoose.connection.readyState === 0) {
+    // Wait for DB connection if not ready
+    if (mongoose.connection.readyState !== 1) {
         console.log('⏳ Waiting for DB connection...');
-        // In a real scenario, we might wait or retry, but server.js connects before calling this.
-        // We'll proceed assuming connection is happening/happened.
+        await new Promise(resolve => {
+            if (mongoose.connection.readyState === 1) return resolve();
+            mongoose.connection.once('connected', resolve);
+        });
+        console.log('✅ DB Connected, proceeding with bot startup...');
     }
 
     try {

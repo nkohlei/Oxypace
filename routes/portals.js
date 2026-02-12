@@ -224,8 +224,6 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
             .limit(limit);
 
         res.json(posts);
-
-        res.json(posts);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
