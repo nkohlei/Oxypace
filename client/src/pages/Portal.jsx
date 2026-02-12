@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import PostCard from '../components/PostCard';
@@ -222,24 +222,54 @@ const Portal = () => {
         }
     };
 
-    const fetchChannelPosts = async () => {
-        setContentLoading(true); // Start content loading
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const observer = useRef();
+
+    const lastPostElementRef = useCallback(node => {
+        if (loadingMore) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore) {
+                fetchChannelPosts(true);
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [loadingMore, hasMore]);
+
+    const fetchChannelPosts = async (isLoadMore = false) => {
+        if (!isLoadMore) {
+            setContentLoading(true);
+            setPosts([]); // Clear posts on channel switch
+            setHasMore(true);
+        } else {
+            setLoadingMore(true);
+        }
+
         try {
             const token = localStorage.getItem('token');
             const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-            const res = await axios.get(
-                `/api/portals/${id}/posts?channel=${currentChannel}`,
-                config
-            );
-            const sortedPosts = res.data.sort((a, b) => {
-                if (a.isPinned === b.isPinned) {
-                    return new Date(b.createdAt) - new Date(a.createdAt);
-                }
-                return a.isPinned ? -1 : 1;
-            });
-            setPosts(sortedPosts);
-            setError(''); // Clear any privacy error
+            let url = `/api/portals/${id}/posts?channel=${currentChannel}&limit=10`;
+            if (isLoadMore && posts.length > 0) {
+                const lastPost = posts[posts.length - 1];
+                url += `&before=${lastPost.createdAt}`;
+            }
+
+            const res = await axios.get(url, config);
+            const newPosts = res.data;
+
+            if (newPosts.length < 10) {
+                setHasMore(false);
+            }
+
+            if (isLoadMore) {
+                setPosts(prev => [...prev, ...newPosts]);
+            } else {
+                setPosts(newPosts);
+            }
+
+            setError('');
         } catch (err) {
             console.error('Fetch posts failed', err);
             if (err.response?.status === 403) {
@@ -248,8 +278,9 @@ const Portal = () => {
                 setError('Gönderiler yüklenemedi');
             }
         } finally {
-            setContentLoading(false); // Stop content loading
-            setLoading(false); // Ensure main loading is also off
+            if (!isLoadMore) setContentLoading(false);
+            setLoadingMore(false);
+            setLoading(false);
         }
     };
 
@@ -825,6 +856,11 @@ const Portal = () => {
                                                         isAdmin={isAdmin}
                                                     />
                                                 ))}
+
+                                                {/* Infinite Scroll Sentinel */}
+                                                <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {loadingMore && <div className="spinner-small"></div>}
+                                                </div>
                                             </div>
 
                                             {/* Scroll To Top Button - Wide Pill */}

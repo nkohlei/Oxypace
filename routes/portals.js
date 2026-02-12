@@ -197,7 +197,6 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
             }
         }
 
-        // Define query based on channel
         const query = { portal: portalId };
 
         if (channel === 'general') {
@@ -205,15 +204,26 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
                 { channel: 'general' },
                 { channel: 'genel' },
                 { channel: { $exists: false } },
-                { channel: null },
+                { channel: null }
             ];
         } else {
             query.channel = channel;
         }
 
+        // Pagination
+        const limit = parseInt(req.query.limit) || 10;
+        const before = req.query.before;
+
+        if (before) {
+            query.createdAt = { $lt: new Date(before) };
+        }
+
         const posts = await Post.find(query)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .limit(limit);
+
+        res.json(posts);
 
         res.json(posts);
     } catch (error) {
