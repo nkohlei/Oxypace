@@ -240,6 +240,18 @@ const Portal = () => {
     // AbortController ref to cancel pending requests
     const abortControllerRef = useRef(null);
 
+    // State management for infinite scroll to avoid stale closures
+    const postsRef = useRef(posts);
+    const channelRef = useRef(currentChannel);
+
+    useEffect(() => {
+        postsRef.current = posts;
+    }, [posts]);
+
+    useEffect(() => {
+        channelRef.current = currentChannel;
+    }, [currentChannel]);
+
     const fetchChannelPosts = async (isLoadMore = false) => {
         if (!isLoadMore) {
             // Cancel previous request if any
@@ -263,9 +275,17 @@ const Portal = () => {
                 ...(token && { headers: { Authorization: `Bearer ${token}` } })
             };
 
-            let url = `/api/portals/${id}/posts?channel=${currentChannel}&limit=10`;
-            if (isLoadMore && posts.length > 0) {
-                const lastPost = posts[posts.length - 1];
+            // Use refs to get current values inside async function/callbacks
+            const currentChannelId = isLoadMore ? channelRef.current : currentChannel;
+
+            // If checking "load more" but channel has changed in mean time, abort
+            // (Though we reset on channel change, this is extra safety)
+            if (isLoadMore && currentChannelId !== currentChannel) return;
+
+            let url = `/api/portals/${id}/posts?channel=${currentChannelId}&limit=10`;
+
+            if (isLoadMore && postsRef.current.length > 0) {
+                const lastPost = postsRef.current[postsRef.current.length - 1];
                 url += `&before=${lastPost.createdAt}`;
             }
 
