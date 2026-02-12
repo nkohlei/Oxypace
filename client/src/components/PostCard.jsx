@@ -428,9 +428,27 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 className="post-video-player"
                             />
                         ) : post.mediaType === 'youtube' ? (
-                            <div className="youtube-embed-container" style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                            <div className="youtube-embed-container" style={{
+                                position: 'relative',
+                                width: '100%',
+                                paddingTop: '56.25%', /* Changed from paddingBottom to paddingTop for better aspect ratio support */
+                                height: 0,
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                                backgroundColor: '#000'
+                            }}>
                                 <iframe
-                                    src={`https://www.youtube.com/embed/${post.media.split('v=')[1]}?autoplay=0&rel=0`}
+                                    src={(function () {
+                                        try {
+                                            const url = post.media;
+                                            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                                            const match = url.match(regExp);
+                                            const videoId = (match && match[2].length === 11) ? match[2] : null;
+                                            return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0` : '';
+                                        } catch (e) {
+                                            return '';
+                                        }
+                                    })()}
                                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
