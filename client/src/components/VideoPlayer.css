@@ -2,10 +2,12 @@
     position: relative;
     width: fit-content;
     max-width: 100%;
-    min-width: 200px;
+    min-width: 320px;
+    /* Ensure controls fit */
     height: auto;
     border-radius: 16px;
-    background: transparent;
+    background: #000;
+    /* Black bars for narrow videos */
     margin: 0;
     margin-right: auto;
     display: block;
