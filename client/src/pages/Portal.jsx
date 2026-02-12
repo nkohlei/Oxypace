@@ -184,7 +184,7 @@ const Portal = () => {
     useEffect(() => {
         // Guard: Don't fetch if we are navigating (portal data mismatches URL id)
         // or if channel is not set yet.
-        if (id && currentChannel && portal && portal._id === id) {
+        if (id && currentChannel && portal && isSameId(portal._id, id)) {
             fetchChannelPosts();
         }
     }, [id, currentChannel, portal]);
