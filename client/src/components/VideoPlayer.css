@@ -1,42 +1,44 @@
 .video-player-wrapper {
     position: relative;
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
     height: auto;
-    /* Frameless: No border-radius by default, or keep if preferred. Keeping for sleekness */
     border-radius: 16px;
     background: transparent;
     margin: 0 auto;
+    /* Center horizontally in the feed */
     display: block;
-    /* Adapts to container */
     overflow: hidden;
-    /* Ensure content stays within border-radius */
     z-index: 1;
     line-height: 0;
-    /* Remove vertical spacing issues */
+    /* Remove vertical gap */
 }
 
-/* Ambient light removed */
-
+/* Ensure no minimum height causes black bars */
 .video-container {
     position: relative;
     width: 100%;
     height: auto;
-    /* No fixed height, no background */
+    line-height: 0;
+    display: block;
 }
 
 .main-video {
-    width: 100%;
+    width: auto;
+    /* Allow width to be determined by height if constrained */
     height: auto;
+    max-width: 100%;
     max-height: 80vh;
-    /* Prevent overly tall vertical videos */
+    /* Prevent vertical videos from filling improved screen */
     object-fit: contain;
+    /* Ensure video is contained within its box */
     display: block;
-    cursor: pointer;
-    background: #000;
-    /* Fallback */
+    margin: 0 auto;
+    background: transparent;
+    /* Remove black background fallback */
 }
 
-/* Controls Overlay - Frameless adaptation */
+/* Controls Overlay - Matches video width because wrapper is fit-content */
 .video-controls-overlay {
     position: absolute;
     bottom: 0;
@@ -51,9 +53,7 @@
     gap: 10px;
     z-index: 10;
     box-sizing: border-box;
-    /* Ensure padding is included in width */
     line-height: normal;
-    /* Reset line-height for controls */
 }
 
 .video-player-wrapper:hover .video-controls-overlay,
@@ -65,13 +65,13 @@
 .progress-container {
     width: 100%;
     height: 4px;
-    /* Thinner for modern look */
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.3);
     border-radius: 2px;
     cursor: pointer;
     position: relative;
     transition: height 0.1s;
     margin-bottom: 4px;
+    /* Space between progress and buttons */
 }
 
 .progress-container:hover {
@@ -108,7 +108,7 @@
     top: 0;
     left: 0;
     height: 100%;
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 2px;
     z-index: -1;
     width: 0%;
@@ -128,7 +128,7 @@
 .controls-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .control-btn {
@@ -145,7 +145,7 @@
 }
 
 .control-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .control-btn:active {
@@ -158,13 +158,14 @@
     font-variant-numeric: tabular-nums;
     opacity: 0.9;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
 }
 
 /* Volume Slider */
 .volume-container {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     group: volume;
 }
 
@@ -178,7 +179,7 @@
 
 .volume-container:hover .volume-slider-wrapper,
 .volume-slider-wrapper:active {
-    width: 80px;
+    width: 60px;
 }
 
 .volume-slider {
@@ -208,30 +209,33 @@
     min-width: 32px;
     text-align: center;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    color: #fff;
 }
 
 .speed-menu {
     position: absolute;
-    bottom: 150%;
+    bottom: 140%;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(20, 20, 20, 0.95);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
     border-radius: 8px;
     padding: 4px;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    min-width: 60px;
+    min-width: 50px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     animation: fadeIn 0.15s ease;
+    z-index: 20;
 }
 
 .speed-item {
-    padding: 6px 12px;
+    padding: 6px 10px;
     border-radius: 4px;
     transition: background 0.2s;
     color: #eee;
+    font-size: 12px;
 }
 
 .speed-item:hover {
@@ -240,6 +244,7 @@
 
 .speed-item.active {
     color: var(--primary-color, #00a8fc);
+    font-weight: 700;
 }
 
 /* Center Play Button (Big) */
@@ -257,7 +262,8 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 30%;
+    width: 35%;
+    /* Wider zones for easier tapping */
     z-index: 8;
     display: flex;
     align-items: center;
@@ -276,8 +282,8 @@
 .tap-icon {
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -326,15 +332,19 @@
 /* Mobile Adjustments */
 @media (max-width: 768px) {
     .video-controls-overlay {
-        padding: 12px 10px 10px;
+        padding: 12px 12px 12px;
     }
 
     .volume-container {
         display: none;
     }
 
-    /* Increase tap targets on mobile */
     .control-btn {
         padding: 8px;
+        /* Larger touch targets */
+    }
+
+    .time-display {
+        font-size: 12px;
     }
 }
