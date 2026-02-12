@@ -16,15 +16,11 @@ const ChannelSidebar = ({
 
     if (!portal) return null;
 
-    // Combine default 'general' with dynamic channels
-    const channels = [
-        { id: 'general', name: 'genel', type: 'text' },
-        ...(portal?.channels?.map((ch) => ({
-            id: ch._id || ch.name,
-            name: ch.name,
-            type: ch.type || 'text',
-        })) || []),
-    ];
+    const channels = portal?.channels?.map((ch) => ({
+        id: ch._id,
+        name: ch.name,
+        type: ch.type || 'text',
+    })) || [];
 
     const isSelected = (id) => currentChannel === id;
 

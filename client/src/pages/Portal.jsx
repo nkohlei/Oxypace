@@ -29,7 +29,7 @@ const Portal = () => {
     const [isMember, setIsMember] = useState(false);
 
     // Channel State
-    const [currentChannel, setCurrentChannel] = useState('general');
+    const [currentChannel, setCurrentChannel] = useState(null);
     const [messageText, setMessageText] = useState('');
 
     // UI Toggles
@@ -155,11 +155,15 @@ const Portal = () => {
     const bannerInputRef = useRef(null);
 
     useEffect(() => {
-        if (!authLoading) {
-            setCurrentChannel('general'); // Reset channel on portal change
-            fetchPortalData();
+        if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
+            // Default to first channel if not set or if current is invalid
+            if (!currentChannel || !portal.channels.find(c => c._id === currentChannel)) {
+                // Try to find 'genel' or 'general' first, else take the first one
+                const defaultChannel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
+                setCurrentChannel(defaultChannel._id);
+            }
         }
-    }, [id, authLoading, user?._id]); // Refresh when user changes (re-login)
+    }, [id, authLoading, portal]); // Depend on portal content
 
     useEffect(() => {
         if (id && !authLoading) {
@@ -422,10 +426,7 @@ const Portal = () => {
                                 #
                             </span>
                             <h3 className="channel-name" style={{ color: 'var(--primary-color)' }}>
-                                {currentChannel === 'general'
-                                    ? 'genel'
-                                    : portal?.channels?.find((c) => c._id === currentChannel)
-                                        ?.name || currentChannel}
+                                {portal?.channels?.find((c) => c._id === currentChannel)?.name || '...'}
                             </h3>
                         </div>
 
@@ -710,12 +711,10 @@ const Portal = () => {
 
                                                             <input
                                                                 type="text"
-                                                                placeholder={`#${currentChannel === 'general'
-                                                                    ? 'genel'
-                                                                    : portal?.channels?.find(
-                                                                        (c) =>
-                                                                            c._id === currentChannel
-                                                                    )?.name || currentChannel
+                                                                placeholder={`#${portal?.channels?.find(
+                                                                    (c) =>
+                                                                        c._id === currentChannel
+                                                                )?.name || '...'
                                                                     } kanalına mesaj gönder`}
                                                                 value={messageText}
                                                                 onChange={(e) =>
@@ -789,15 +788,13 @@ const Portal = () => {
                                                         <div className="empty-portal-icon">👋</div>
                                                         <h3>
                                                             #
-                                                            {currentChannel === 'general'
-                                                                ? 'genel'
-                                                                : portal?.channels?.find(
-                                                                    (c) => c._id === currentChannel
-                                                                )?.name || currentChannel}{' '}
+                                                            {portal?.channels?.find(
+                                                                (c) => c._id === currentChannel
+                                                            )?.name || '...'}{' '}
                                                             kanalına hoş geldin!
                                                         </h3>
                                                         <p>
-                                                            {currentChannel === 'general'
+                                                            {portal?.channels?.find((c) => c._id === currentChannel)?.name === 'genel'
                                                                 ? `Burası ${portal.name} sunucusunun başlangıcı.`
                                                                 : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
                                                         </p>

@@ -15,6 +15,8 @@ const RSS_FEEDS = [
 ];
 const BOT_USERNAME = 'GamesNews';
 const TARGET_PORTAL_NAME = 'OXYᴳᴬᴹᴱ';
+const TARGET_PORTAL_ID = '698cf346bb064b2d0bc7881b'; // OXYᴳᴬᴹᴱ
+const TARGET_CHANNEL_ID = '698d1824db5ccf0a4f06c9a1'; // genel
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 
 // State
