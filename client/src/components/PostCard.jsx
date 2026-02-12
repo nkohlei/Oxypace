@@ -431,6 +431,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             <div className="youtube-embed-container" style={{
                                 position: 'relative',
                                 width: '100%',
+                                maxWidth: '600px', // Constrain width to prevent excessive height
                                 paddingTop: '56.25%', /* Changed from paddingBottom to paddingTop for better aspect ratio support */
                                 height: 0,
                                 borderRadius: '12px',
