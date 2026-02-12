@@ -3,7 +3,7 @@
  * Returns an array of React elements (strings and <a> tags).
  */
 export const linkifyText = (text) => {
-    if (!text) return null;
+    if (!text || typeof text !== 'string') return text;
 
     // Regex to match URLs
     const urlRegex = /(https?:\/\/[^\s]+)/gi;
