@@ -233,6 +233,19 @@ router.get('/me', protect, async (req, res) => {
         }).select('name avatar privacy');
         userObj.outgoingPortalRequests = outgoingPortalRequests;
 
+        // Fetch portals owned by the user
+        const ownedPortals = await Portal.find({ owner: req.user._id }).select('name avatar');
+
+        // Merge joined and owned portals to create unified 'portals' list
+        const allPortals = [...(user.joinedPortals || [])];
+        ownedPortals.forEach((owned) => {
+            if (!allPortals.some((p) => p._id.toString() === owned._id.toString())) {
+                allPortals.push(owned);
+            }
+        });
+
+        userObj.portals = allPortals;
+
         res.json(userObj);
     } catch (error) {
         console.error('Get profile error:', error);
