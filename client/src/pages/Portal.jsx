@@ -798,15 +798,13 @@ const Portal = () => {
                                                             kanalına hoş geldin!
                                                         </h3>
                                                         <p>
-                                                            {portal?.channels?.find((c) => String(c._id) === String(currentChannel))?.name === 'genel'
-                                                                ? `Burası ${portal.name} sunucusunun başlangıcı.`
-                                                                : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
+                                                            Bu kanalda henüz mesaj yok. İlk mesajı sen at!
                                                         </p>
                                                     </div>
                                                 )}
 
                                                 {/* Posts List */}
-                                                {posts.map((post) => (
+                                                {Array.isArray(posts) && posts.map((post) => (
                                                     <PostCard
                                                         key={post._id}
                                                         post={post}
