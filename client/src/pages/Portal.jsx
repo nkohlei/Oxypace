@@ -237,10 +237,20 @@ const Portal = () => {
         if (node) observer.current.observe(node);
     }, [loadingMore, hasMore]);
 
+    // AbortController ref to cancel pending requests
+    const abortControllerRef = useRef(null);
+
     const fetchChannelPosts = async (isLoadMore = false) => {
         if (!isLoadMore) {
+            // Cancel previous request if any
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+            // Create new controller
+            abortControllerRef.current = new AbortController();
+
             setContentLoading(true);
-            setPosts([]); // Clear posts on channel switch
+            setPosts([]); // Clear posts immediately
             setHasMore(true);
         } else {
             setLoadingMore(true);
@@ -248,7 +258,10 @@ const Portal = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+            const config = {
+                signal: abortControllerRef.current?.signal, // Attach signal
+                ...(token && { headers: { Authorization: `Bearer ${token}` } })
+            };
 
             let url = `/api/portals/${id}/posts?channel=${currentChannel}&limit=10`;
             if (isLoadMore && posts.length > 0) {
@@ -271,6 +284,10 @@ const Portal = () => {
 
             setError('');
         } catch (err) {
+            if (axios.isCancel(err)) {
+                console.log('Request canceled', err.message);
+                return;
+            }
             console.error('Fetch posts failed', err);
             if (err.response?.status === 403) {
                 setError('private');
@@ -283,6 +300,14 @@ const Portal = () => {
             setLoading(false);
         }
     };
+
+    // Reset state when ID changes
+    useEffect(() => {
+        setPosts([]);
+        setHasMore(true);
+        setCurrentChannel(null); // Reset channel to avoid using old portal's channel
+        setError('');
+    }, [id]);
 
     const handleDeletePost = (postId) => {
         setPosts((prevPosts) => prevPosts.filter((p) => p._id !== postId));
