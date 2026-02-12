@@ -39,7 +39,7 @@ const VideoPlayer = ({ src, poster, className }) => {
     // --- Auto-Hide Controls Logic ---
     const handleMouseMove = useCallback(() => {
         setShowControls(true);
-        setShowSpeedMenu(false); // Can be annoying if it closes while trying to click, but safer for auto-hide
+        // setShowSpeedMenu(false); // FIXED: Don't close menu on mouse move!
 
         if (controlsTimeoutRef.current) {
             clearTimeout(controlsTimeoutRef.current);
@@ -48,7 +48,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         if (isPlaying) {
             controlsTimeoutRef.current = setTimeout(() => {
                 setShowControls(false);
-                setShowSpeedMenu(false);
+                setShowSpeedMenu(false); // Close menu when controls hide
             }, 3000);
         }
     }, [isPlaying]);
