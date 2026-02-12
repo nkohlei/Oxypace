@@ -222,24 +222,42 @@ const Portal = () => {
         }
     };
 
-    const fetchChannelPosts = async () => {
-        setContentLoading(true); // Start content loading
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+
+    const fetchChannelPosts = async (isLoadMore = false) => {
+        if (!isLoadMore) {
+            setContentLoading(true);
+            setPosts([]); // Clear posts on channel switch
+            setHasMore(true);
+        } else {
+            setLoadingMore(true);
+        }
+
         try {
             const token = localStorage.getItem('token');
             const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-            const res = await axios.get(
-                `/api/portals/${id}/posts?channel=${currentChannel}`,
-                config
-            );
-            const sortedPosts = res.data.sort((a, b) => {
-                if (a.isPinned === b.isPinned) {
-                    return new Date(b.createdAt) - new Date(a.createdAt);
-                }
-                return a.isPinned ? -1 : 1;
-            });
-            setPosts(sortedPosts);
-            setError(''); // Clear any privacy error
+            let url = `/api/portals/${id}/posts?channel=${currentChannel}&limit=20`;
+            if (isLoadMore && posts.length > 0) {
+                const lastPost = posts[posts.length - 1];
+                url += `&before=${lastPost.createdAt}`;
+            }
+
+            const res = await axios.get(url, config);
+            const newPosts = res.data;
+
+            if (newPosts.length < 20) {
+                setHasMore(false);
+            }
+
+            if (isLoadMore) {
+                setPosts(prev => [...prev, ...newPosts]);
+            } else {
+                setPosts(newPosts);
+            }
+
+            setError('');
         } catch (err) {
             console.error('Fetch posts failed', err);
             if (err.response?.status === 403) {
@@ -248,8 +266,9 @@ const Portal = () => {
                 setError('Gönderiler yüklenemedi');
             }
         } finally {
-            setContentLoading(false); // Stop content loading
-            setLoading(false); // Ensure main loading is also off
+            if (!isLoadMore) setContentLoading(false);
+            setLoadingMore(false);
+            setLoading(false);
         }
     };
 
@@ -825,6 +844,28 @@ const Portal = () => {
                                                         isAdmin={isAdmin}
                                                     />
                                                 ))}
+
+                                                {/* Load More Button */}
+                                                {hasMore && posts.length > 0 && (
+                                                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                                                        <button
+                                                            onClick={() => fetchChannelPosts(true)}
+                                                            disabled={loadingMore}
+                                                            style={{
+                                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                                color: 'var(--text-secondary)',
+                                                                padding: '8px 16px',
+                                                                borderRadius: '4px',
+                                                                cursor: loadingMore ? 'wait' : 'pointer',
+                                                                fontSize: '14px'
+                                                            }}
+                                                        >
+                                                            {loadingMore ? 'Yükleniyor...' : 'Daha Fazla Göster'}
+                                                        </button>
+                                                    </div>
+                                                )}
+
                                             </div>
 
                                             {/* Scroll To Top Button - Wide Pill */}
