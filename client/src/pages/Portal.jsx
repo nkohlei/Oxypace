@@ -157,7 +157,7 @@ const Portal = () => {
     useEffect(() => {
         if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
             // Check if currentChannel is valid (exists in portal channels)
-            const isValidChannel = currentChannel && portal.channels.some(c => c._id === currentChannel);
+            const isValidChannel = currentChannel && portal.channels.some(c => String(c._id) === String(currentChannel));
 
             if (!isValidChannel) {
                 // Try to find 'genel' or 'general' first, else take the first one
@@ -793,12 +793,12 @@ const Portal = () => {
                                                         <h3>
                                                             #
                                                             {portal?.channels?.find(
-                                                                (c) => c._id === currentChannel
+                                                                (c) => String(c._id) === String(currentChannel)
                                                             )?.name || '...'}{' '}
                                                             kanalına hoş geldin!
                                                         </h3>
                                                         <p>
-                                                            {portal?.channels?.find((c) => c._id === currentChannel)?.name === 'genel'
+                                                            {portal?.channels?.find((c) => String(c._id) === String(currentChannel))?.name === 'genel'
                                                                 ? `Burası ${portal.name} sunucusunun başlangıcı.`
                                                                 : 'Bu kanalda henüz mesaj yok. İlk mesajı sen at!'}
                                                         </p>
