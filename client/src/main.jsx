@@ -18,7 +18,7 @@ if (import.meta.env.VITE_API_BASE_URL) {
     axios.defaults.baseURL = baseUrl;
 } else if (!import.meta.env.DEV) {
     console.warn('⚠️ VITE_API_BASE_URL not set! Defaulting to production backend.');
-    axios.defaults.baseURL = 'https://globalmessage-backend.koyeb.app';
+    axios.defaults.baseURL = 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
 }
 
 // Initialize Auth Header from localStorage immediately to prevent race conditions
