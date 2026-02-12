@@ -12,6 +12,8 @@ import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import { configurePassport } from './config/passport.js';
 import { initializeSocket } from './sockets/index.js';
+import cron from 'node-cron';
+import axios from 'axios';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import postRoutes from './routes/posts.js';
@@ -280,6 +282,19 @@ if (process.argv[1] === __filename) {
 
         // Start Bot Loop (in background)
         startBotLoop();
+
+        // Keep-Alive Cron Job
+        cron.schedule('*/10 * * * *', async () => {
+            try {
+                const port = process.env.PORT || 5000;
+                // Ping local health endpoint
+                await axios.get(`http://127.0.0.1:${port}/api/health`);
+                console.log('🔄 Self-ping successful to prevent sleep');
+            } catch (error) {
+                console.error('⚠️ Self-ping failed:', error.message);
+            }
+        });
+
     });
 }
 
