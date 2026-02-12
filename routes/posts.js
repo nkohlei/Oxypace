@@ -42,11 +42,11 @@ router.post(
     async (req, res) => {
         try {
             console.log('📤 Handler started. Body keys:', Object.keys(req.body));
-            const { content, portalId } = req.body;
+            const { content, portalId, media, mediaType } = req.body;
 
-            // If no file and no content, reject
-            if (!content && !req.file) {
-                console.log('📤 Rejected: No content and no file');
+            // If no file and no content and no external media, reject
+            if (!content && !req.file && !media) {
+                console.log('📤 Rejected: No content, no file, and no external media');
                 return res.status(400).json({ message: 'Post must have content or media' });
             }
 
@@ -54,6 +54,12 @@ router.post(
                 author: req.user._id,
                 content: content || '',
             };
+
+            // Handle external media (like YouTube)
+            if (media && mediaType) {
+                postData.media = media;
+                postData.mediaType = mediaType;
+            }
 
             if (portalId) {
                 const Portal = (await import('../models/Portal.js')).default;

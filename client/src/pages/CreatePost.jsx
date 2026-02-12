@@ -9,11 +9,35 @@ const CreatePost = () => {
     const [externalUrl, setExternalUrl] = useState('');
     const [mediaFile, setMediaFile] = useState(null);
     const [mediaPreview, setMediaPreview] = useState(null);
+    const [youtubeUrl, setYoutubeUrl] = useState('');
+    const [showYoutubeInput, setShowYoutubeInput] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const location = useLocation(); // Add hook
     const portalId = location.state?.portalId; // Get portalId if exists
+
+    // Helper to extract YouTube ID
+    const getYoutubeId = (url) => {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const handleYoutubeChange = (e) => {
+        const url = e.target.value;
+        setYoutubeUrl(url);
+
+        const videoId = getYoutubeId(url);
+        if (videoId) {
+            // Valid YouTube URL found
+            setMediaPreview(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+            setMediaFile(null); // Clear other media
+        } else if (!url) {
+            setMediaPreview(null);
+        }
+    };
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -24,19 +48,22 @@ const CreatePost = () => {
             }
             setMediaFile(file);
             setMediaPreview(URL.createObjectURL(file));
+            setYoutubeUrl(''); // Clear YouTube
+            setShowYoutubeInput(false);
         }
     };
 
     const removeMedia = () => {
         setMediaFile(null);
         setMediaPreview(null);
+        setYoutubeUrl('');
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (!content && !mediaFile) {
+        if (!content && !mediaFile && !youtubeUrl) {
             setError('Lütfen bir içerik veya medya ekleyin');
             return;
         }
@@ -52,7 +79,18 @@ const CreatePost = () => {
             formData.append('content', finalContent);
             if (mediaFile) {
                 formData.append('media', mediaFile);
+            } else if (youtubeUrl) {
+                const videoId = getYoutubeId(youtubeUrl);
+                if (videoId) {
+                    formData.append('media', `https://www.youtube.com/watch?v=${videoId}`);
+                    formData.append('mediaType', 'youtube');
+                } else {
+                    setError('Geçersiz YouTube bağlantısı');
+                    setLoading(false);
+                    return;
+                }
             }
+
             if (portalId) {
                 formData.append('portalId', portalId);
             }
@@ -177,7 +215,31 @@ const CreatePost = () => {
                                 </svg>
                                 <span>GIF</span>
                             </label>
+                            <button
+                                type="button"
+                                className="media-btn"
+                                onClick={() => setShowYoutubeInput(!showYoutubeInput)}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
+                                    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+                                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" />
+                                </svg>
+                                <span>YouTube</span>
+                            </button>
                         </div>
+
+                        {showYoutubeInput && (
+                            <div className="youtube-input-container">
+                                <input
+                                    type="text"
+                                    placeholder="YouTube video bağlantısını yapıştırın..."
+                                    value={youtubeUrl}
+                                    onChange={handleYoutubeChange}
+                                    className="url-input"
+                                    autoFocus
+                                />
+                            </div>
+                        )}
                     </form>
                 </div>
             </main>
