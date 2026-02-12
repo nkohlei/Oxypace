@@ -14,8 +14,11 @@ const VideoPlayer = ({ src, poster, className }) => {
     const [isMuted, setIsMuted] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [showControls, setShowControls] = useState(false);
     const [buffered, setBuffered] = useState(0);
+
+    // Controls Visibility State
+    const [showControls, setShowControls] = useState(true);
+    const controlsTimeoutRef = useRef(null);
 
     // Lazy Load State
     const [isLoaded, setIsLoaded] = useState(false);
@@ -32,6 +35,39 @@ const VideoPlayer = ({ src, poster, className }) => {
         const sec = Math.floor(seconds % 60);
         return `${min}:${sec < 10 ? '0' + sec : sec}`;
     };
+
+    // --- Auto-Hide Controls Logic ---
+    const handleMouseMove = useCallback(() => {
+        setShowControls(true);
+        setShowSpeedMenu(false); // Can be annoying if it closes while trying to click, but safer for auto-hide
+
+        if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current);
+        }
+
+        if (isPlaying) {
+            controlsTimeoutRef.current = setTimeout(() => {
+                setShowControls(false);
+                setShowSpeedMenu(false);
+            }, 3000);
+        }
+    }, [isPlaying]);
+
+    useEffect(() => {
+        if (!isPlaying) {
+            setShowControls(true);
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        } else {
+            // If playing, start timer immediately if mouse isn't moving
+            controlsTimeoutRef.current = setTimeout(() => {
+                setShowControls(false);
+            }, 3000);
+        }
+        return () => {
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        };
+    }, [isPlaying]);
+
 
     // --- Intersection Observer (Lazy Load) ---
     useEffect(() => {
@@ -119,10 +155,13 @@ const VideoPlayer = ({ src, poster, className }) => {
             }
             setTimeout(() => setTapAnimation(null), 500);
         } else {
-            // Single Tap - toggle play/pause? Or just ignore/controls?
+            // Single Tap - toggle play/pause
             togglePlay();
         }
         lastTapRef.current = now;
+
+        // Ensure controls show on tap
+        handleMouseMove();
     };
 
     const handleVolumeChange = (e) => {
@@ -133,6 +172,7 @@ const VideoPlayer = ({ src, poster, className }) => {
             videoRef.current.volume = val;
             setIsMuted(val === 0);
         }
+        handleMouseMove();
     };
 
     const toggleMute = (e) => {
@@ -146,16 +186,19 @@ const VideoPlayer = ({ src, poster, className }) => {
             videoRef.current.volume = 0;
             setIsMuted(true);
         }
+        handleMouseMove();
     };
 
     const handleSpeedChange = (speed) => {
         setPlaybackSpeed(speed);
         if (videoRef.current) videoRef.current.playbackRate = speed;
         setShowSpeedMenu(false);
+        handleMouseMove();
     };
 
     const toggleFullscreen = (e) => {
         e.stopPropagation();
+        handleMouseMove();
         if (!containerRef.current) return;
 
         if (!document.fullscreenElement) {
@@ -197,8 +240,9 @@ const VideoPlayer = ({ src, poster, className }) => {
         <div
             className={`video-player-wrapper ${className || ''}`}
             ref={containerRef}
-            onMouseEnter={() => setShowControls(true)}
-            onMouseLeave={() => !isPlaying && setShowControls(false)}
+            onMouseEnter={handleMouseMove}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => isPlaying && setShowControls(false)}
             onClick={() => setShowSpeedMenu(false)}
         >
             <div className="video-container" onClick={togglePlay}>
@@ -245,7 +289,7 @@ const VideoPlayer = ({ src, poster, className }) => {
             )}
 
             {/* Controls Overlay */}
-            <div className={`video-controls-overlay ${(!isPlaying || showControls) ? 'visible' : ''}`} onClick={e => e.stopPropagation()}>
+            <div className={`video-controls-overlay ${showControls ? 'visible' : ''}`} onClick={e => e.stopPropagation()}>
                 {/* Progress Bar */}
                 <div className="progress-container" onClick={handleSeek}>
                     <div className="buffered-fill" style={{ width: `${buffered}%` }}></div>
