@@ -156,14 +156,18 @@ const Portal = () => {
 
     useEffect(() => {
         if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
-            // Default to first channel if not set or if current is invalid
-            if (!currentChannel || !portal.channels.find(c => c._id === currentChannel)) {
+            // Check if currentChannel is valid (exists in portal channels)
+            const isValidChannel = currentChannel && portal.channels.some(c => c._id === currentChannel);
+
+            if (!isValidChannel) {
                 // Try to find 'genel' or 'general' first, else take the first one
                 const defaultChannel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
-                setCurrentChannel(defaultChannel._id);
+                if (defaultChannel) {
+                    setCurrentChannel(defaultChannel._id);
+                }
             }
         }
-    }, [id, authLoading, portal]); // Depend on portal content
+    }, [id, authLoading, portal, currentChannel]); // Depend on portal content
 
     useEffect(() => {
         if (id && !authLoading) {
