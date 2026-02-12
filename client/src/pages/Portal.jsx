@@ -278,10 +278,6 @@ const Portal = () => {
             // Use refs to get current values inside async function/callbacks
             const currentChannelId = isLoadMore ? channelRef.current : currentChannel;
 
-            // If checking "load more" but channel has changed in mean time, abort
-            // (Though we reset on channel change, this is extra safety)
-            if (isLoadMore && currentChannelId !== currentChannel) return;
-
             let url = `/api/portals/${id}/posts?channel=${currentChannelId}&limit=10`;
 
             if (isLoadMore && postsRef.current.length > 0) {
