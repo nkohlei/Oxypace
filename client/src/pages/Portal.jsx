@@ -809,70 +809,47 @@ const Portal = () => {
                                                         />
 
                                                         {showYoutubeInput && (
-                                                            <div className="portal-youtube-input" style={{
-                                                                position: 'absolute',
-                                                                bottom: '100%',
-                                                                left: 0,
-                                                                right: 0,
-                                                                backgroundColor: 'var(--bg-secondary)',
-                                                                padding: '12px',
-                                                                borderTopLeftRadius: '12px',
-                                                                borderTopRightRadius: '12px',
-                                                                display: 'flex',
-                                                                gap: '10px',
-                                                                zIndex: 100, // Increased z-index
-                                                                boxShadow: '0 -4px 12px rgba(0,0,0,0.2)', // Add shadow for better separation
-                                                                border: '1px solid var(--border-subtle)', // Add border
-                                                                marginBottom: '-1px' // Connect visually
-                                                            }}>
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="YouTube video bağlantısını buraya yapıştırın..."
-                                                                    value={youtubeUrl}
-                                                                    onChange={handleYoutubeChange}
-                                                                    style={{
-                                                                        flex: 1,
-                                                                        padding: '10px 14px',
-                                                                        borderRadius: '8px',
-                                                                        border: '1px solid var(--border-subtle)',
-                                                                        backgroundColor: 'var(--bg-primary)',
-                                                                        color: 'var(--text-primary)',
-                                                                        fontSize: '14px'
-                                                                    }}
-                                                                    autoFocus
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            handleAddYoutube();
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <button onClick={handleAddYoutube} style={{
-                                                                    padding: '8px 20px',
-                                                                    borderRadius: '8px',
-                                                                    border: 'none',
-                                                                    backgroundColor: 'var(--primary-color)',
-                                                                    color: 'white',
-                                                                    cursor: 'pointer',
-                                                                    fontWeight: '600',
-                                                                    fontSize: '14px'
-                                                                }}>Ekle</button>
-                                                                <button onClick={() => setShowYoutubeInput(false)} style={{
-                                                                    padding: '8px',
-                                                                    borderRadius: '8px',
-                                                                    border: 'none',
-                                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                                    color: 'var(--text-muted)',
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center'
-                                                                }}>
-                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                                    </svg>
-                                                                </button>
+                                                            <div className="edit-modal-overlay" style={{ zIndex: 9999 }}>
+                                                                <div className="edit-modal-modern" style={{ maxWidth: '400px', height: 'auto', maxHeight: 'none' }}>
+                                                                    <div className="edit-modal-header-modern">
+                                                                        <div className="header-left">
+                                                                            <h3 className="header-title-modern">YouTube Videosu Ekle</h3>
+                                                                        </div>
+                                                                        <button onClick={() => setShowYoutubeInput(false)} className="close-btn-modern">
+                                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                                            </svg>
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="edit-modal-content-modern" style={{ padding: '20px' }}>
+                                                                        <div className="floating-label-group">
+                                                                            <label className="floating-label">Video Bağlantısı</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                className="floating-input"
+                                                                                placeholder="https://www.youtube.com/watch?v=..."
+                                                                                value={youtubeUrl}
+                                                                                onChange={handleYoutubeChange}
+                                                                                autoFocus
+                                                                                onKeyDown={(e) => {
+                                                                                    if (e.key === 'Enter') {
+                                                                                        e.preventDefault();
+                                                                                        handleAddYoutube();
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                                                            <button onClick={() => setShowYoutubeInput(false)} className="join-btn outline" style={{ padding: '8px 16px' }}>
+                                                                                İptal
+                                                                            </button>
+                                                                            <button onClick={handleAddYoutube} className="join-btn primary" style={{ padding: '8px 20px' }}>
+                                                                                Ekle
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         )}
 
@@ -907,216 +884,234 @@ const Portal = () => {
                                                                 <div
                                                                     className="input-media-preview"
                                                                     style={{
-                                                                        marginRight: '10px',
+                                                                        marginRight: '12px',
                                                                         display: 'flex',
                                                                         alignItems: 'center',
-                                                                        backgroundColor: 'rgba(0,0,0,0.2)',
-                                                                        padding: '4px 8px',
-                                                                        borderRadius: '4px',
+                                                                        backgroundColor: 'var(--bg-secondary)',
+                                                                        borderRadius: '8px',
+                                                                        padding: '4px',
+                                                                        gap: '8px',
+                                                                        border: '1px solid var(--border-subtle)'
                                                                     }}
                                                                 >
-                                                                    <span
-                                                                        style={{
-                                                                            fontSize: '12px',
-                                                                            color: 'var(--text-primary)',
-                                                                            marginRight: '6px',
-                                                                        }}
-                                                                    >
-                                                                        {mediaFile.type === 'youtube'
-                                                                            ? '📺'
-                                                                            : mediaFile.type.startsWith('video')
+                                                                    {mediaFile.type === 'youtube' && mediaFile.preview ? (
+                                                                        <img
+                                                                            src={mediaFile.preview}
+                                                                            alt="Video Preview"
+                                                                            style={{
+                                                                                width: '40px',
+                                                                                height: '30px',
+                                                                                objectFit: 'cover',
+                                                                                borderRadius: '4px'
+                                                                            }}
+                                                                        />
+                                                                    ) : (
+                                                                        <span
+                                                                            style={{
+                                                                                fontSize: '20px',
+                                                                                lineHeight: 1,
+                                                                                padding: '4px'
+                                                                            }}
+                                                                        >
+                                                                            {mediaFile.type.startsWith('video')
                                                                                 ? '🎥'
                                                                                 : mediaFile.type.includes('gif')
                                                                                     ? '👾'
                                                                                     : '🖼️'}
-                                                                    </span>
+                                                                        </span>
+                                                                    )}
+
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '100px' }}>
+                                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                            {mediaFile.name || 'Medya'}
+                                                                        </span>
+                                                                    </div>
+
                                                                     <button
                                                                         onClick={() => setMediaFile(null)}
                                                                         style={{
-                                                                            background: 'none',
+                                                                            background: 'transparent',
                                                                             border: 'none',
                                                                             color: 'var(--text-muted)',
                                                                             cursor: 'pointer',
-                                                                        }}
-                                                                    >
                                                                         ×
-                                                                    </button>
+                                                                </button>
                                                                 </div>
                                                             )}
 
-                                                            <input
-                                                                type="text"
-                                                                placeholder={`#${portal?.channels?.find(
-                                                                    (c) =>
-                                                                        c._id === currentChannel
-                                                                )?.name || '...'
-                                                                    } kanalına mesaj gönder`}
-                                                                value={messageText}
-                                                                onChange={(e) =>
-                                                                    setMessageText(e.target.value)
+                                                        <input
+                                                            type="text"
+                                                            placeholder={`#${portal?.channels?.find(
+                                                                (c) =>
+                                                                    c._id === currentChannel
+                                                            )?.name || '...'
+                                                                } kanalına mesaj gönder`}
+                                                            value={messageText}
+                                                            onChange={(e) =>
+                                                                setMessageText(e.target.value)
+                                                            }
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    handleSendMessage();
                                                                 }
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                                                        e.preventDefault();
-                                                                        handleSendMessage();
-                                                                    }
+                                                            }}
+                                                        />
+                                                        <div className="input-right-actions">
+                                                            <button
+                                                                className="input-action-btn send-btn"
+                                                                onClick={handleSendMessage}
+                                                                disabled={
+                                                                    !messageText.trim() && !mediaFile
+                                                                }
+                                                                title="Gönder"
+                                                                style={{
+                                                                    color:
+                                                                        messageText.trim() || mediaFile
+                                                                            ? 'var(--primary-color)'
+                                                                            : 'var(--text-tertiary)',
                                                                 }}
-                                                            />
-                                                            <div className="input-right-actions">
-                                                                <button
-                                                                    className="input-action-btn send-btn"
-                                                                    onClick={handleSendMessage}
-                                                                    disabled={
-                                                                        !messageText.trim() && !mediaFile
-                                                                    }
-                                                                    title="Gönder"
-                                                                    style={{
-                                                                        color:
-                                                                            messageText.trim() || mediaFile
-                                                                                ? 'var(--primary-color)'
-                                                                                : 'var(--text-tertiary)',
-                                                                    }}
+                                                            >
+                                                                <svg
+                                                                    width="24"
+                                                                    height="24"
+                                                                    viewBox="0 0 24 24"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="2"
                                                                 >
-                                                                    <svg
-                                                                        width="24"
-                                                                        height="24"
-                                                                        viewBox="0 0 24 24"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        strokeWidth="2"
-                                                                    >
-                                                                        <line
-                                                                            x1="22"
-                                                                            y1="2"
-                                                                            x2="11"
-                                                                            y2="13"
-                                                                        ></line>
-                                                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
+                                                                    <line
+                                                                        x1="22"
+                                                                        y1="2"
+                                                                        x2="11"
+                                                                        y2="13"
+                                                                    ></line>
+                                                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                                                </svg>
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <div
-                                                        style={{
-                                                            padding: '20px',
-                                                            textAlign: 'center',
-                                                            color: '#b9bbbe',
-                                                            backgroundColor: 'var(--bg-card)',
-                                                            borderTop: '1px solid var(--border-subtle)',
-                                                        }}
-                                                    >
-                                                        Bu kanala mesaj göndermek için üye olmalısın.
                                                     </div>
-                                                )
+                                    ) : (
+                                    <div
+                                        style={{
+                                            padding: '20px',
+                                            textAlign: 'center',
+                                            color: '#b9bbbe',
+                                            backgroundColor: 'var(--bg-card)',
+                                            borderTop: '1px solid var(--border-subtle)',
+                                        }}
+                                    >
+                                        Bu kanala mesaj göndermek için üye olmalısın.
+                                    </div>
+                                    )
                                             ) : null}
 
-                                            <div
-                                                className="portal-feed-container discord-feed"
-                                                onScroll={handleScroll}
-                                                ref={feedRef}
-                                            >
-                                                {/* Feed Header / Welcome */}
-                                                {posts.length === 0 && !loading && (
-                                                    <div className="empty-portal">
-                                                        <div className="empty-portal-icon">👋</div>
-                                                        <h3>
-                                                            #
-                                                            {portal?.channels?.find(
-                                                                (c) => String(c._id) === String(currentChannel)
-                                                            )?.name || '...'}{' '}
-                                                            kanalına hoş geldin!
-                                                        </h3>
-                                                        <p>
-                                                            Bu kanalda henüz mesaj yok. İlk mesajı sen at!
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                {/* Posts List */}
-                                                {Array.isArray(posts) && posts.map((post) => (
-                                                    <PostCard
-                                                        key={post._id}
-                                                        post={post}
-                                                        onDelete={handleDeletePost}
-                                                        onPin={handlePin}
-                                                        isAdmin={isAdmin}
-                                                    />
-                                                ))}
-
-                                                {/* Infinite Scroll Sentinel */}
-                                                <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    {loadingMore && <div className="spinner-small"></div>}
-                                                </div>
+                                    <div
+                                        className="portal-feed-container discord-feed"
+                                        onScroll={handleScroll}
+                                        ref={feedRef}
+                                    >
+                                        {/* Feed Header / Welcome */}
+                                        {posts.length === 0 && !loading && (
+                                            <div className="empty-portal">
+                                                <div className="empty-portal-icon">👋</div>
+                                                <h3>
+                                                    #
+                                                    {portal?.channels?.find(
+                                                        (c) => String(c._id) === String(currentChannel)
+                                                    )?.name || '...'}{' '}
+                                                    kanalına hoş geldin!
+                                                </h3>
+                                                <p>
+                                                    Bu kanalda henüz mesaj yok. İlk mesajı sen at!
+                                                </p>
                                             </div>
+                                        )}
 
-                                            {/* Scroll To Top Button - Wide Pill */}
-                                            <button
-                                                className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
-                                                onClick={scrollToTop}
-                                            >
-                                                Başa Dön
-                                            </button>
-                                        </>
-                                    )}
+                                        {/* Posts List */}
+                                        {Array.isArray(posts) && posts.map((post) => (
+                                            <PostCard
+                                                key={post._id}
+                                                post={post}
+                                                onDelete={handleDeletePost}
+                                                onPin={handlePin}
+                                                isAdmin={isAdmin}
+                                            />
+                                        ))}
+
+                                        {/* Infinite Scroll Sentinel */}
+                                        <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {loadingMore && <div className="spinner-small"></div>}
+                                        </div>
+                                    </div>
+
+                                    {/* Scroll To Top Button - Wide Pill */}
+                                    <button
+                                        className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
+                                        onClick={scrollToTop}
+                                    >
+                                        Başa Dön
+                                    </button>
                                 </>
                             )}
-                        </div>
-
-                        {/* Members Sidebar (Right Column) */}
-                        {showMembers && <MembersSidebar members={portal.members} />}
+                        </>
+                            )}
                     </div>
 
-                    {/* New Settings Modal Integration */}
-                    {editing && settingsTab !== 'notifications' && (
-                        <PortalSettingsModal
-                            portal={portal}
-                            currentUser={user}
-                            initialTab={settingsTab}
-                            onClose={() => setEditing(false)}
-                            onUpdate={(updatedPortal) => {
-                                setPortal(updatedPortal);
-                            }}
-                        />
-                    )}
+                    {/* Members Sidebar (Right Column) */}
+                    {showMembers && <MembersSidebar members={portal.members} />}
+            </div>
 
-                    {/* Portal Notifications Section */}
-                    {editing && settingsTab === 'notifications' && (
-                        <div
-                            className="portal-notifications-modal"
+            {/* New Settings Modal Integration */}
+            {editing && settingsTab !== 'notifications' && (
+                <PortalSettingsModal
+                    portal={portal}
+                    currentUser={user}
+                    initialTab={settingsTab}
+                    onClose={() => setEditing(false)}
+                    onUpdate={(updatedPortal) => {
+                        setPortal(updatedPortal);
+                    }}
+                />
+            )}
+
+            {/* Portal Notifications Section */}
+            {editing && settingsTab === 'notifications' && (
+                <div
+                    className="portal-notifications-modal"
+                    onClick={() => setEditing(false)}
+                >
+                    <div
+                        className="notifications-modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="close-notifications-btn"
                             onClick={() => setEditing(false)}
                         >
-                            <div
-                                className="notifications-modal-content"
-                                onClick={(e) => e.stopPropagation()}
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
                             >
-                                <button
-                                    className="close-notifications-btn"
-                                    onClick={() => setEditing(false)}
-                                >
-                                    <svg
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                                <PortalNotifications
-                                    portalId={portal._id}
-                                    onUpdate={fetchPortalData}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </main>
-            </div>
-        </div>
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                        <PortalNotifications
+                            portalId={portal._id}
+                            onUpdate={fetchPortalData}
+                        />
+                    </div>
+                </div>
+            )}
+        </main>
+            </div >
+        </div >
     );
 };
 
