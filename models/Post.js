@@ -63,7 +63,6 @@ const postSchema = new mongoose.Schema(
 
 // Indexes for performance
 postSchema.index({ author: 1, createdAt: -1 });
-postSchema.index({ portal: 1, channel: 1, createdAt: -1 }); // Optimized feed query
 postSchema.index({ likes: 1 });
 postSchema.index({ mentions: 1 });
 

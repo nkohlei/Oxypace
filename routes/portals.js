@@ -197,6 +197,7 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
             }
         }
 
+        // Define query based on channel
         const query = { portal: portalId };
 
         if (channel === 'general') {
@@ -210,20 +211,9 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
             query.channel = channel;
         }
 
-        // Pagination
-        const limit = parseInt(req.query.limit) || 20;
-        const before = req.query.before;
-
-        if (before) {
-            query.createdAt = { $lt: new Date(before) };
-        }
-
         const posts = await Post.find(query)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
-            .sort({ createdAt: -1 })
-            .limit(limit);
-
-        res.json(posts);
+            .sort({ createdAt: -1 });
 
         res.json(posts);
     } catch (error) {
