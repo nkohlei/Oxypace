@@ -155,6 +155,12 @@ const Portal = () => {
     const bannerInputRef = useRef(null);
 
     useEffect(() => {
+        if (id && !authLoading) {
+            fetchPortalData();
+        }
+    }, [id, authLoading]);
+
+    useEffect(() => {
         if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
             // Check if we need to set a default channel (only if currentChannel is null)
             if (!currentChannel) {
@@ -173,7 +179,7 @@ const Portal = () => {
                 }
             }
         }
-    }, [portal, authLoading]); // Removed currentChannel from dependency to prevent loop
+    }, [portal, authLoading]);
 
     useEffect(() => {
         if (id && currentChannel) {
