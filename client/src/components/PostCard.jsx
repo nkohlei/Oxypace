@@ -431,12 +431,13 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             <div className="youtube-embed-container" style={{
                                 position: 'relative',
                                 width: '100%',
-                                maxWidth: '600px', // Constrain width to prevent excessive height
-                                paddingTop: '56.25%', /* Changed from paddingBottom to paddingTop for better aspect ratio support */
-                                height: 0,
+                                maxWidth: '622px', // 350px * 16/9 approx
+                                maxHeight: '350px',
+                                aspectRatio: '16/9',
                                 borderRadius: '12px',
                                 overflow: 'hidden',
-                                backgroundColor: '#000'
+                                backgroundColor: '#000',
+                                zIndex: 1
                             }}>
                                 <iframe
                                     src={(function () {
@@ -450,7 +451,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                             return '';
                                         }
                                     })()}
-                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                                    style={{ width: '100%', height: '100%' }}
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
