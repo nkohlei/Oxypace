@@ -225,6 +225,16 @@ const Portal = () => {
     // AbortController ref to cancel pending requests
     const abortControllerRef = useRef(null);
 
+
+
+    // State management for infinite scroll to avoid stale closures
+    // Update refs synchronously during render to ensure they are always fresh
+    const postsRef = useRef(posts);
+    postsRef.current = posts;
+
+    const channelRef = useRef(currentChannel);
+    channelRef.current = currentChannel;
+
     const fetchChannelPosts = useCallback(async (isLoadMore = false) => {
         if (!isLoadMore) {
             // Cancel previous request if any
@@ -248,10 +258,17 @@ const Portal = () => {
                 ...(token && { headers: { Authorization: `Bearer ${token}` } })
             };
 
-            let url = `/api/portals/${id}/posts?channel=${currentChannel}&limit=10`;
+            // Use refs to get current values inside async function/callbacks
+            const currentChannelId = isLoadMore ? channelRef.current : (currentChannel || channelRef.current);
 
-            if (isLoadMore && posts.length > 0) {
-                const lastPost = posts[posts.length - 1];
+            // Safety check: if we are loading more but channel changed, abort silently
+            if (isLoadMore && currentChannelId !== channelRef.current) return;
+
+            let url = `/api/portals/${id}/posts?channel=${currentChannelId}&limit=10`;
+
+            const currentPosts = postsRef.current;
+            if (isLoadMore && currentPosts.length > 0) {
+                const lastPost = currentPosts[currentPosts.length - 1];
                 url += `&before=${lastPost.createdAt}`;
             }
 
@@ -263,7 +280,12 @@ const Portal = () => {
             }
 
             if (isLoadMore) {
-                setPosts(prev => [...prev, ...newPosts]);
+                setPosts(prev => {
+                    // Deduplication Logic
+                    const existingIds = new Set(prev.map(p => p._id));
+                    const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p._id));
+                    return [...prev, ...uniqueNewPosts];
+                });
             } else {
                 setPosts(newPosts);
             }
@@ -285,7 +307,7 @@ const Portal = () => {
             setLoadingMore(false);
             setLoading(false);
         }
-    }, [id, currentChannel, posts]);
+    }, [id]); // Only depend on ID, use refs for others to prevent loops
 
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
