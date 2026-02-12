@@ -815,25 +815,29 @@ const Portal = () => {
                                                                 left: 0,
                                                                 right: 0,
                                                                 backgroundColor: 'var(--bg-secondary)',
-                                                                padding: '10px',
-                                                                borderTopLeftRadius: '8px',
-                                                                borderTopRightRadius: '8px',
+                                                                padding: '12px',
+                                                                borderTopLeftRadius: '12px',
+                                                                borderTopRightRadius: '12px',
                                                                 display: 'flex',
-                                                                gap: '8px',
-                                                                zIndex: 10
+                                                                gap: '10px',
+                                                                zIndex: 100, // Increased z-index
+                                                                boxShadow: '0 -4px 12px rgba(0,0,0,0.2)', // Add shadow for better separation
+                                                                border: '1px solid var(--border-subtle)', // Add border
+                                                                marginBottom: '-1px' // Connect visually
                                                             }}>
                                                                 <input
                                                                     type="text"
-                                                                    placeholder="YouTube URL..."
+                                                                    placeholder="YouTube video bağlantısını buraya yapıştırın..."
                                                                     value={youtubeUrl}
                                                                     onChange={handleYoutubeChange}
                                                                     style={{
                                                                         flex: 1,
-                                                                        padding: '8px',
-                                                                        borderRadius: '4px',
-                                                                        border: '1px solid var(--border-color)',
+                                                                        padding: '10px 14px',
+                                                                        borderRadius: '8px',
+                                                                        border: '1px solid var(--border-subtle)',
                                                                         backgroundColor: 'var(--bg-primary)',
-                                                                        color: 'var(--text-primary)'
+                                                                        color: 'var(--text-primary)',
+                                                                        fontSize: '14px'
                                                                     }}
                                                                     autoFocus
                                                                     onKeyDown={(e) => {
@@ -844,21 +848,31 @@ const Portal = () => {
                                                                     }}
                                                                 />
                                                                 <button onClick={handleAddYoutube} style={{
-                                                                    padding: '8px 16px',
-                                                                    borderRadius: '4px',
+                                                                    padding: '8px 20px',
+                                                                    borderRadius: '8px',
                                                                     border: 'none',
                                                                     backgroundColor: 'var(--primary-color)',
                                                                     color: 'white',
-                                                                    cursor: 'pointer'
+                                                                    cursor: 'pointer',
+                                                                    fontWeight: '600',
+                                                                    fontSize: '14px'
                                                                 }}>Ekle</button>
                                                                 <button onClick={() => setShowYoutubeInput(false)} style={{
                                                                     padding: '8px',
-                                                                    borderRadius: '4px',
+                                                                    borderRadius: '8px',
                                                                     border: 'none',
-                                                                    backgroundColor: 'transparent',
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                                                     color: 'var(--text-muted)',
-                                                                    cursor: 'pointer'
-                                                                }}>✕</button>
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center'
+                                                                }}>
+                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                                    </svg>
+                                                                </button>
                                                             </div>
                                                         )}
 
