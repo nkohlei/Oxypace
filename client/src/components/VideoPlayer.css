@@ -2,16 +2,16 @@
     position: relative;
     width: fit-content;
     max-width: 100%;
+    min-width: 200px;
     height: auto;
     border-radius: 16px;
     background: transparent;
-    margin: 0 auto;
-    /* Center horizontally in the feed */
+    margin: 0;
+    margin-right: auto;
     display: block;
     overflow: hidden;
     z-index: 1;
     line-height: 0;
-    /* Remove vertical gap */
 }
 
 /* Ensure no minimum height causes black bars */
@@ -25,20 +25,46 @@
 
 .main-video {
     width: auto;
-    /* Allow width to be determined by height if constrained */
     height: auto;
+    /* Maintain aspect ratio */
     max-width: 100%;
     max-height: 80vh;
-    /* Prevent vertical videos from filling improved screen */
+    /* Prevent overly tall vertical videos */
     object-fit: contain;
-    /* Ensure video is contained within its box */
     display: block;
     margin: 0 auto;
     background: transparent;
-    /* Remove black background fallback */
 }
 
-/* Controls Overlay - Matches video width because wrapper is fit-content */
+/* Fullscreen Styles */
+.video-player-wrapper:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 0;
+    margin: 0;
+}
+
+.video-player-wrapper:fullscreen .video-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.video-player-wrapper:fullscreen .main-video {
+    max-height: 100vh;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Controls Overlay */
 .video-controls-overlay {
     position: absolute;
     bottom: 0;
@@ -71,7 +97,6 @@
     position: relative;
     transition: height 0.1s;
     margin-bottom: 4px;
-    /* Space between progress and buttons */
 }
 
 .progress-container:hover {
@@ -263,7 +288,6 @@
     top: 0;
     bottom: 0;
     width: 35%;
-    /* Wider zones for easier tapping */
     z-index: 8;
     display: flex;
     align-items: center;
