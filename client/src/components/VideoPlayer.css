@@ -1,0 +1,335 @@
+.video-player-wrapper {
+    position: relative;
+    width: 100%;
+    max-height: 500px;
+    border-radius: 16px;
+    background: #000;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: visible;
+    /* Allow ambient light to bleed out if needed, but usually we contain it */
+    z-index: 1;
+}
+
+/* Ambient Light Effect */
+.ambient-light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    filter: blur(40px);
+    opacity: 0.6;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+}
+
+.main-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    cursor: pointer;
+}
+
+/* Controls Overlay */
+.video-controls-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px 16px 16px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+}
+
+.video-player-wrapper:hover .video-controls-overlay,
+.video-controls-overlay.visible {
+    opacity: 1;
+}
+
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    transition: height 0.1s;
+}
+
+.progress-container:hover {
+    height: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary-color, #00a8fc);
+    border-radius: 3px;
+    position: relative;
+    width: 0%;
+}
+
+.progress-thumb {
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%) scale(0);
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.1s;
+}
+
+.progress-container:hover .progress-thumb {
+    transform: translateY(-50%) scale(1);
+}
+
+.buffered-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    z-index: -1;
+    width: 0%;
+    pointer-events: none;
+}
+
+/* Controls Row */
+.controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+}
+
+.controls-left,
+.controls-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.control-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.control-btn:active {
+    transform: scale(0.9);
+}
+
+.time-display {
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.9;
+}
+
+/* Volume Slider */
+.volume-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    group: volume;
+}
+
+.volume-slider-wrapper {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+}
+
+.volume-container:hover .volume-slider-wrapper,
+.volume-slider-wrapper:active {
+    width: 80px;
+}
+
+.volume-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Speed Selector */
+.speed-selector {
+    position: relative;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 32px;
+    text-align: center;
+}
+
+.speed-menu {
+    position: absolute;
+    bottom: 150%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 20, 20, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 60px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: fadeIn 0.15s ease;
+}
+
+.speed-item {
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.speed-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.speed-item.active {
+    color: var(--primary-color, #00a8fc);
+}
+
+/* Center Play Button (Big) */
+.center-play-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    pointer-events: none;
+    /* Let clicks pass through to video for toggle */
+}
+
+/* Double Tap Zones */
+.double-tap-zone {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    /* Capture clicks */
+}
+
+.zone-left {
+    left: 0;
+}
+
+.zone-right {
+    right: 0;
+}
+
+.tap-icon {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s;
+}
+
+.double-tap-zone.active .tap-icon {
+    opacity: 1;
+    transform: scale(1);
+    animation: pulse 0.4s ease;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .video-controls-overlay {
+        padding: 12px 10px 10px;
+    }
+
+    .volume-container {
+        display: none;
+        /* Save space on mobile */
+    }
+}
