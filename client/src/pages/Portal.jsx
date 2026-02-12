@@ -306,6 +306,7 @@ const Portal = () => {
         setPosts([]);
         setHasMore(true);
         setCurrentChannel(null); // Reset channel to avoid using old portal's channel
+        setPortal(null); // Clear portal data to prevent showing old content
         setError('');
     }, [id]);
 
