@@ -261,7 +261,9 @@ const Portal = () => {
             };
 
             // Use refs to get current values inside async function/callbacks
-            const currentChannelId = isLoadMore ? channelRef.current : (currentChannel || channelRef.current);
+            // We MUST use channelRef.current because currentChannel might be stale 
+            // (fetchChannelPosts depends only on [id], so it captures the initial currentChannel of the route)
+            const currentChannelId = channelRef.current;
 
             // Safety check: if we are loading more but channel changed, abort silently
             if (isLoadMore && currentChannelId !== channelRef.current) return;
