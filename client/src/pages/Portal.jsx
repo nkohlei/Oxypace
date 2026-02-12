@@ -37,10 +37,42 @@ const Portal = () => {
     const [showLoginWarning, setShowLoginWarning] = useState(false); // Guest warning state
 
     const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const [youtubeUrl, setYoutubeUrl] = useState('');
+    const [showYoutubeInput, setShowYoutubeInput] = useState(false);
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
+
+    // Helper to extract YouTube ID
+    const getYoutubeId = (url) => {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const handleYoutubeChange = (e) => {
+        const url = e.target.value;
+        setYoutubeUrl(url);
+    };
+
+    const handleAddYoutube = () => {
+        const videoId = getYoutubeId(youtubeUrl);
+        if (!videoId) {
+            alert("Geçersiz YouTube URL'si");
+            return;
+        }
+        // We'll treat it as attached media but string
+        setMediaFile({
+            name: 'YouTube Video',
+            type: 'youtube', // Custom type
+            preview: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            url: youtubeUrl
+        });
+        setShowYoutubeInput(false);
+        setYoutubeUrl('');
+    };
 
     // Scroll To Top Logic
     const [showScrollTop, setShowScrollTop] = useState(false);
@@ -88,13 +120,16 @@ const Portal = () => {
         // Store current data for rollback if needed
         const currentData = { content: messageText, media: mediaFile };
 
+        // Check if it's a YouTube "file"
+        const isYoutube = mediaFile && mediaFile.type === 'youtube';
+
         // 1. Optimistic Update
         const tempId = `temp-${Date.now()}`;
         const optimisticPost = {
             _id: tempId,
             content: messageText,
-            media: mediaFile ? URL.createObjectURL(mediaFile) : null,
-            mediaType: mediaFile ? (mediaFile.type.startsWith('video') ? 'video' : 'image') : null,
+            media: isYoutube ? mediaFile.url : (mediaFile ? URL.createObjectURL(mediaFile) : null),
+            mediaType: isYoutube ? 'youtube' : (mediaFile ? (mediaFile.type.startsWith('video') ? 'video' : 'image') : null),
             author: user,
             createdAt: new Date().toISOString(),
             likes: [],
@@ -116,16 +151,34 @@ const Portal = () => {
             if (currentData.content) formData.append('content', currentData.content);
             formData.append('portalId', id);
             formData.append('channel', currentChannel);
-            formData.append('type', 'text');
-            if (currentData.media) formData.append('media', currentData.media);
+
+            if (isYoutube) {
+                // For YouTube, we send URL string and type manually
+                formData.append('media', currentData.media.url);
+                formData.append('mediaType', 'youtube');
+                // We don't send 'file' because it's not a real file
+            } else if (currentData.media) {
+                formData.append('media', currentData.media);
+                formData.append('type', 'text'); // Default type logic might need override or let backend handle
+                // Backend logic: if file present, it infers type.
+            }
+
+            // Note: The backend logic I saw earlier uses `req.file` to detect file. 
+            // If `media` is sent as string, it uses that.
 
             const token = localStorage.getItem('token');
             const config = {
                 headers: {
+                    // Content-Type for FormData is automatic, but we might need JSON if no file?
+                    // actually axios handles it.
                     'Content-Type': 'multipart/form-data',
                     ...(token && { Authorization: `Bearer ${token}` }),
                 },
             };
+
+            // If sending JSON (YouTube only), we might want to switch to JSON? 
+            // The backend accepts FormData fields. 
+            // `media` and `mediaType` fields in FormData should work.
 
             const res = await axios.post('/api/posts', formData, config);
 
@@ -718,6 +771,21 @@ const Portal = () => {
                                                                         </div>
                                                                         GIF Yükle
                                                                     </div>
+                                                                    <div
+                                                                        className="plus-menu-item"
+                                                                        onClick={() => {
+                                                                            setShowYoutubeInput(!showYoutubeInput);
+                                                                            setShowPlusMenu(false);
+                                                                        }}
+                                                                    >
+                                                                        <div className="plus-menu-icon">
+                                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                                                                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+                                                                                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" />
+                                                                            </svg>
+                                                                        </div>
+                                                                        YouTube
+                                                                    </div>
                                                                 </div>
                                                             </>
                                                         )}
@@ -736,12 +804,63 @@ const Portal = () => {
                                                             accept="video/mp4, video/webm, video/quicktime"
                                                         />
                                                         <input
-                                                            type="file"
-                                                            ref={gifInputRef}
-                                                            onChange={handleFileSelect}
                                                             style={{ display: 'none' }}
                                                             accept="image/gif"
                                                         />
+
+                                                        {showYoutubeInput && (
+                                                            <div className="portal-youtube-input" style={{
+                                                                position: 'absolute',
+                                                                bottom: '100%',
+                                                                left: 0,
+                                                                right: 0,
+                                                                backgroundColor: 'var(--bg-secondary)',
+                                                                padding: '10px',
+                                                                borderTopLeftRadius: '8px',
+                                                                borderTopRightRadius: '8px',
+                                                                display: 'flex',
+                                                                gap: '8px',
+                                                                zIndex: 10
+                                                            }}>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="YouTube URL..."
+                                                                    value={youtubeUrl}
+                                                                    onChange={handleYoutubeChange}
+                                                                    style={{
+                                                                        flex: 1,
+                                                                        padding: '8px',
+                                                                        borderRadius: '4px',
+                                                                        border: '1px solid var(--border-color)',
+                                                                        backgroundColor: 'var(--bg-primary)',
+                                                                        color: 'var(--text-primary)'
+                                                                    }}
+                                                                    autoFocus
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            handleAddYoutube();
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <button onClick={handleAddYoutube} style={{
+                                                                    padding: '8px 16px',
+                                                                    borderRadius: '4px',
+                                                                    border: 'none',
+                                                                    backgroundColor: 'var(--primary-color)',
+                                                                    color: 'white',
+                                                                    cursor: 'pointer'
+                                                                }}>Ekle</button>
+                                                                <button onClick={() => setShowYoutubeInput(false)} style={{
+                                                                    padding: '8px',
+                                                                    borderRadius: '4px',
+                                                                    border: 'none',
+                                                                    backgroundColor: 'transparent',
+                                                                    color: 'var(--text-muted)',
+                                                                    cursor: 'pointer'
+                                                                }}>✕</button>
+                                                            </div>
+                                                        )}
 
                                                         <div className="message-input-wrapper">
                                                             <button
@@ -789,11 +908,13 @@ const Portal = () => {
                                                                             marginRight: '6px',
                                                                         }}
                                                                     >
-                                                                        {mediaFile.type.startsWith('video')
-                                                                            ? '🎥'
-                                                                            : mediaFile.type.includes('gif')
-                                                                                ? '👾'
-                                                                                : '🖼️'}
+                                                                        {mediaFile.type === 'youtube'
+                                                                            ? '📺'
+                                                                            : mediaFile.type.startsWith('video')
+                                                                                ? '🎥'
+                                                                                : mediaFile.type.includes('gif')
+                                                                                    ? '👾'
+                                                                                    : '🖼️'}
                                                                     </span>
                                                                     <button
                                                                         onClick={() => setMediaFile(null)}
