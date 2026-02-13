@@ -59,8 +59,10 @@ router.get('/', optionalProtect, async (req, res) => {
             : {};
 
         // Exclude portals where user is blocked and filter by privacy
+        // Also exclude closed portals from search
         if (req.user) {
             keyword.blockedUsers = { $ne: req.user._id };
+            keyword.status = { $ne: 'closed' }; // Hide closed portals
             keyword.$or = [
                 { privacy: 'public' },
                 { members: req.user._id },
@@ -68,10 +70,11 @@ router.get('/', optionalProtect, async (req, res) => {
             ];
         } else {
             keyword.privacy = 'public';
+            keyword.status = { $ne: 'closed' }; // Hide closed portals
         }
 
         const portals = await Portal.find(keyword)
-            .select('name description avatar banner privacy members joinRequests themeColor badges isVerified')
+            .select('name description avatar banner privacy members joinRequests themeColor badges isVerified status statusReason')
             .limit(20);
 
         const userId = req.user?._id?.toString();

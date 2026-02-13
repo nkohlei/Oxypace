@@ -76,6 +76,10 @@ const portalSchema = new mongoose.Schema(
             enum: ['active', 'suspended', 'closed'],
             default: 'active',
         },
+        statusReason: {
+            type: String, // Reason for suspension/closure
+            default: '',
+        },
         warnings: [
             {
                 message: String,

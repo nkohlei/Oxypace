@@ -124,11 +124,22 @@ const AdminDashboard = () => {
     };
 
     const handlePortalStatus = async (portalId, newStatus) => {
-        if (!window.confirm(`Bu portalın durumunu "${newStatus}" olarak değiştirmek istediğinize emin misiniz?`)) return;
+        const actionText = newStatus === 'suspended' ? 'askıya almak' : newStatus === 'closed' ? 'kapatmak' : 'aktifleştirmek';
+        const reason = window.prompt(`Bu portalı "${actionText}" için bir sebep belirtin (İsteğe bağlı):`);
+
+        if (reason === null) return; // User cancelled
+
         try {
-            await axios.put(`/api/admin/portals/${portalId}`, { status: newStatus });
+            await axios.put(`/api/admin/portals/${portalId}`, {
+                status: newStatus,
+                statusReason: reason
+            });
             setPortals(portals.map(p =>
-                p._id === portalId ? { ...p, status: newStatus } : p
+                p._id === portalId ? {
+                    ...p,
+                    status: newStatus,
+                    statusReason: reason
+                } : p
             ));
         } catch (err) {
             alert('Durum güncellenemedi.');

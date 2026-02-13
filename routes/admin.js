@@ -183,6 +183,7 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
         }
 
         if (status) portal.status = status;
+        if (req.body.statusReason !== undefined) portal.statusReason = req.body.statusReason;
         if (badges) portal.badges = badges; // Expect array of strings
         if (typeof isVerified === 'boolean') portal.isVerified = isVerified;
 
