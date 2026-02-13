@@ -71,7 +71,7 @@ router.get('/', optionalProtect, async (req, res) => {
         }
 
         const portals = await Portal.find(keyword)
-            .select('name description avatar banner privacy members joinRequests themeColor')
+            .select('name description avatar banner privacy members joinRequests themeColor badges isVerified')
             .limit(20);
 
         const userId = req.user?._id?.toString();

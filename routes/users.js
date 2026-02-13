@@ -333,7 +333,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
             .select(
                 'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers'
             )
-            .populate('joinedPortals', 'name avatar');
+            .populate('joinedPortals', 'name avatar badges isVerified');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });

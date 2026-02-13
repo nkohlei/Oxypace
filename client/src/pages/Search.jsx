@@ -226,6 +226,7 @@ const Search = () => {
                                                 <div className="card-body">
                                                     <h3 className="card-title">
                                                         {portal.name}
+                                                        <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
                                                         {portal.privacy === 'private' && (
                                                             <span className="private-badge">
                                                                 🔒

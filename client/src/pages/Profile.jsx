@@ -597,7 +597,10 @@ const Profile = () => {
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <span className="p-name">{p.name}</span>
+                                                            <span className="p-name">
+                                                                {p.name}
+                                                                <Badge type={p.isVerified ? 'verified' : p.badges?.[0]} size={14} />
+                                                            </span>
                                                         </div>
                                                     ))
                                                 ) : (

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import InviteUserModal from './InviteUserModal';
+import Badge from './Badge';
 
 import { getImageUrl } from '../utils/imageUtils';
 
@@ -127,6 +128,7 @@ const ChannelSidebar = ({
                                 }}
                             >
                                 {portal.name}
+                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={16} />
                             </h2>
                             <svg
                                 width="20"

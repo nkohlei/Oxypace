@@ -13,7 +13,10 @@ const Badge = ({ type, size = 20, className = '' }) => {
         gold: { color: '#ffd700', fill: 'currentColor' },
         platinum: { color: '#e5e4e2', fill: 'currentColor' }, // Platinum color
         special: { color: '#d600ad', fill: 'currentColor' }, // Purple/Pink for partner
-        staff: { color: '#00ba7c', fill: 'currentColor' }, // Using Green for Staff or keep previous logic? Previous was red/pink in component? No, previous Badge.jsx had "staff: { color: '#e0245e' }". But user might want standard. I'll stick to 'staff' being distinct. Let's make it Green or Black. I'll check user preference later, but for now specific color.
+        staff: { color: '#248046', fill: 'currentColor' },
+        official: { color: '#808080', fill: 'currentColor' }, // Gray/Silver
+        verified: { color: '#1d9bf0', fill: 'currentColor' }, // Same as blue
+        partner: { color: '#5865F2', fill: 'currentColor' }, // Discord Blurple-ish or Pink? Let's go with a distinct color.
         none: { display: 'none' },
     };
 
