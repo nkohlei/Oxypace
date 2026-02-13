@@ -187,6 +187,7 @@ const Portal = () => {
         } catch (err) {
             console.error('Send message failed', err);
             alert(`Mesaj gönderilemedi: ${err.response?.data?.message || err.message}`);
+            // console.error(err);
 
             // 3. Failure: Remove optimistic post and restore input (optional)
             setPosts((currentPosts) => currentPosts.filter((p) => p._id !== tempId));
@@ -934,182 +935,184 @@ const Portal = () => {
                                                                             border: 'none',
                                                                             color: 'var(--text-muted)',
                                                                             cursor: 'pointer',
+                                                                        }}
+                                                                    >
                                                                         ×
-                                                                </button>
+                                                                    </button>
                                                                 </div>
                                                             )}
 
-                                                        <input
-                                                            type="text"
-                                                            placeholder={`#${portal?.channels?.find(
-                                                                (c) =>
-                                                                    c._id === currentChannel
-                                                            )?.name || '...'
-                                                                } kanalına mesaj gönder`}
-                                                            value={messageText}
-                                                            onChange={(e) =>
-                                                                setMessageText(e.target.value)
-                                                            }
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    handleSendMessage();
+                                                            <input
+                                                                type="text"
+                                                                placeholder={`#${portal?.channels?.find(
+                                                                    (c) =>
+                                                                        c._id === currentChannel
+                                                                )?.name || '...'
+                                                                    } kanalına mesaj gönder`}
+                                                                value={messageText}
+                                                                onChange={(e) =>
+                                                                    setMessageText(e.target.value)
                                                                 }
-                                                            }}
-                                                        />
-                                                        <div className="input-right-actions">
-                                                            <button
-                                                                className="input-action-btn send-btn"
-                                                                onClick={handleSendMessage}
-                                                                disabled={
-                                                                    !messageText.trim() && !mediaFile
-                                                                }
-                                                                title="Gönder"
-                                                                style={{
-                                                                    color:
-                                                                        messageText.trim() || mediaFile
-                                                                            ? 'var(--primary-color)'
-                                                                            : 'var(--text-tertiary)',
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                                                        e.preventDefault();
+                                                                        handleSendMessage();
+                                                                    }
                                                                 }}
-                                                            >
-                                                                <svg
-                                                                    width="24"
-                                                                    height="24"
-                                                                    viewBox="0 0 24 24"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    strokeWidth="2"
+                                                            />
+                                                            <div className="input-right-actions">
+                                                                <button
+                                                                    className="input-action-btn send-btn"
+                                                                    onClick={handleSendMessage}
+                                                                    disabled={
+                                                                        !messageText.trim() && !mediaFile
+                                                                    }
+                                                                    title="Gönder"
+                                                                    style={{
+                                                                        color:
+                                                                            messageText.trim() || mediaFile
+                                                                                ? 'var(--primary-color)'
+                                                                                : 'var(--text-tertiary)',
+                                                                    }}
                                                                 >
-                                                                    <line
-                                                                        x1="22"
-                                                                        y1="2"
-                                                                        x2="11"
-                                                                        y2="13"
-                                                                    ></line>
-                                                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                                                </svg>
-                                                            </button>
+                                                                    <svg
+                                                                        width="24"
+                                                                        height="24"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        strokeWidth="2"
+                                                                    >
+                                                                        <line
+                                                                            x1="22"
+                                                                            y1="2"
+                                                                            x2="11"
+                                                                            y2="13"
+                                                                        ></line>
+                                                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                ) : (
+                                                    <div
+                                                        style={{
+                                                            padding: '20px',
+                                                            textAlign: 'center',
+                                                            color: '#b9bbbe',
+                                                            backgroundColor: 'var(--bg-card)',
+                                                            borderTop: '1px solid var(--border-subtle)',
+                                                        }}
+                                                    >
+                                                        Bu kanala mesaj göndermek için üye olmalısın.
                                                     </div>
-                                    ) : (
-                                    <div
-                                        style={{
-                                            padding: '20px',
-                                            textAlign: 'center',
-                                            color: '#b9bbbe',
-                                            backgroundColor: 'var(--bg-card)',
-                                            borderTop: '1px solid var(--border-subtle)',
-                                        }}
-                                    >
-                                        Bu kanala mesaj göndermek için üye olmalısın.
-                                    </div>
-                                    )
+                                                )
                                             ) : null}
 
-                                    <div
-                                        className="portal-feed-container discord-feed"
-                                        onScroll={handleScroll}
-                                        ref={feedRef}
-                                    >
-                                        {/* Feed Header / Welcome */}
-                                        {posts.length === 0 && !loading && (
-                                            <div className="empty-portal">
-                                                <div className="empty-portal-icon">👋</div>
-                                                <h3>
-                                                    #
-                                                    {portal?.channels?.find(
-                                                        (c) => String(c._id) === String(currentChannel)
-                                                    )?.name || '...'}{' '}
-                                                    kanalına hoş geldin!
-                                                </h3>
-                                                <p>
-                                                    Bu kanalda henüz mesaj yok. İlk mesajı sen at!
-                                                </p>
+                                            <div
+                                                className="portal-feed-container discord-feed"
+                                                onScroll={handleScroll}
+                                                ref={feedRef}
+                                            >
+                                                {/* Feed Header / Welcome */}
+                                                {posts.length === 0 && !loading && (
+                                                    <div className="empty-portal">
+                                                        <div className="empty-portal-icon">👋</div>
+                                                        <h3>
+                                                            #
+                                                            {portal?.channels?.find(
+                                                                (c) => String(c._id) === String(currentChannel)
+                                                            )?.name || '...'}{' '}
+                                                            kanalına hoş geldin!
+                                                        </h3>
+                                                        <p>
+                                                            Bu kanalda henüz mesaj yok. İlk mesajı sen at!
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Posts List */}
+                                                {Array.isArray(posts) && posts.map((post) => (
+                                                    <PostCard
+                                                        key={post._id}
+                                                        post={post}
+                                                        onDelete={handleDeletePost}
+                                                        onPin={handlePin}
+                                                        isAdmin={isAdmin}
+                                                    />
+                                                ))}
+
+                                                {/* Infinite Scroll Sentinel */}
+                                                <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {loadingMore && <div className="spinner-small"></div>}
+                                                </div>
                                             </div>
-                                        )}
 
-                                        {/* Posts List */}
-                                        {Array.isArray(posts) && posts.map((post) => (
-                                            <PostCard
-                                                key={post._id}
-                                                post={post}
-                                                onDelete={handleDeletePost}
-                                                onPin={handlePin}
-                                                isAdmin={isAdmin}
-                                            />
-                                        ))}
-
-                                        {/* Infinite Scroll Sentinel */}
-                                        <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {loadingMore && <div className="spinner-small"></div>}
-                                        </div>
-                                    </div>
-
-                                    {/* Scroll To Top Button - Wide Pill */}
-                                    <button
-                                        className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
-                                        onClick={scrollToTop}
-                                    >
-                                        Başa Dön
-                                    </button>
+                                            {/* Scroll To Top Button - Wide Pill */}
+                                            <button
+                                                className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
+                                                onClick={scrollToTop}
+                                            >
+                                                Başa Dön
+                                            </button>
+                                        </>
+                                    )}
                                 </>
                             )}
-                        </>
-                            )}
+                        </div>
+
+                        {/* Members Sidebar (Right Column) */}
+                        {showMembers && <MembersSidebar members={portal.members} />}
                     </div>
 
-                    {/* Members Sidebar (Right Column) */}
-                    {showMembers && <MembersSidebar members={portal.members} />}
-            </div>
+                    {/* New Settings Modal Integration */}
+                    {editing && settingsTab !== 'notifications' && (
+                        <PortalSettingsModal
+                            portal={portal}
+                            currentUser={user}
+                            initialTab={settingsTab}
+                            onClose={() => setEditing(false)}
+                            onUpdate={(updatedPortal) => {
+                                setPortal(updatedPortal);
+                            }}
+                        />
+                    )}
 
-            {/* New Settings Modal Integration */}
-            {editing && settingsTab !== 'notifications' && (
-                <PortalSettingsModal
-                    portal={portal}
-                    currentUser={user}
-                    initialTab={settingsTab}
-                    onClose={() => setEditing(false)}
-                    onUpdate={(updatedPortal) => {
-                        setPortal(updatedPortal);
-                    }}
-                />
-            )}
-
-            {/* Portal Notifications Section */}
-            {editing && settingsTab === 'notifications' && (
-                <div
-                    className="portal-notifications-modal"
-                    onClick={() => setEditing(false)}
-                >
-                    <div
-                        className="notifications-modal-content"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button
-                            className="close-notifications-btn"
+                    {/* Portal Notifications Section */}
+                    {editing && settingsTab === 'notifications' && (
+                        <div
+                            className="portal-notifications-modal"
                             onClick={() => setEditing(false)}
                         >
-                            <svg
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
+                            <div
+                                className="notifications-modal-content"
+                                onClick={(e) => e.stopPropagation()}
                             >
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                        <PortalNotifications
-                            portalId={portal._id}
-                            onUpdate={fetchPortalData}
-                        />
-                    </div>
-                </div>
-            )}
-        </main>
+                                <button
+                                    className="close-notifications-btn"
+                                    onClick={() => setEditing(false)}
+                                >
+                                    <svg
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                                <PortalNotifications
+                                    portalId={portal._id}
+                                    onUpdate={fetchPortalData}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </main>
             </div >
         </div >
     );
