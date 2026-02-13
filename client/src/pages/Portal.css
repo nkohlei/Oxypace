@@ -1140,3 +1140,25 @@
     background-color: var(--bg-card);
     border-radius: 4px;
 }
+
+/* Specific spinner for infinite scroll */
+.spinner-small {
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-left-color: var(--primary-cyan);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
