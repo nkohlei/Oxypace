@@ -3,6 +3,12 @@ import axios from 'axios';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
+    const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals'
+    const [requests, setRequests] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [portals, setPortals] = useState([]);
     const [searchTermPortal, setSearchTermPortal] = useState('');
 
