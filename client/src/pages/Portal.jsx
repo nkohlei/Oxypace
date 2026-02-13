@@ -530,81 +530,7 @@ const Portal = () => {
         );
     }
 
-    return (<>
-        {/* Suspended/Closed Splash Screen for Visitors (non-owner/admin) */}
-        {
-            (portal.status === 'suspended' || portal.status === 'closed') && !isOwner && !isAdmin && (
-                <div className="portal-status-screen">
-                    <div className="status-card">
-                        <div className="status-icon">
-                            {portal.status === 'suspended' ? '⛔' : '❌'}
-                        </div>
-                        <h2>
-                            {portal.status === 'suspended' ? 'Portal Askıya Alındı' : 'Portal Kapatıldı'}
-                        </h2>
-                        <p className="status-desc">
-                            {portal.status === 'suspended'
-                                ? 'Bu topluluk, topluluk kurallarını ihlal ettiği gerekçesiyle geçici olarak askıya alınmıştır.'
-                                : 'Bu topluluk kalıcı olarak kapatılmıştır.'}
-                        </p>
-                        {portal.statusReason && (
-                            <div className="status-reason-box">
-                                <strong>Sebep:</strong> {portal.statusReason}
-                            </div>
-                        )}
-                        <button onClick={() => navigate('/')} className="btn-home">
-                            Anasayfaya Dön
-                        </button>
-                    </div>
-                </div>
-            )
-        }
-
-        {/* Status Banner for Owner/Admin */}
-        {
-            (portal.status === 'suspended' || portal.status === 'closed') && (isOwner || isAdmin) && (
-                <div style={{
-                    backgroundColor: '#ef4444',
-                    color: 'white',
-                    padding: '12px',
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                }}>
-                    BU PORTAL {portal.status === 'suspended' ? 'ASKIYA ALINDI' : 'KAPATILDI'}
-                    <div style={{ fontSize: '0.9em', fontWeight: 'normal' }}>
-                        (Sadece yönetici olarak bu sayfayı görüyorsunuz)
-                    </div>
-                    {portal.statusReason && (
-                        <div style={{ fontSize: '0.9em', marginTop: '5px', fontStyle: 'italic' }}>
-                            Sebep: {portal.statusReason}
-                        </div>
-                    )}
-                </div>
-            )
-        }
-
-        {/* Warnings Display for Owner */}
-        {
-            isOwner && portal.warnings && portal.warnings.length > 0 && (
-                <div style={{
-                    backgroundColor: '#f59e0b',
-                    color: 'black',
-                    padding: '10px',
-                    margin: '10px',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem'
-                }}>
-                    <strong>⚠️ Yönetici Uyarıları:</strong>
-                    <ul style={{ margin: '5px 0 0 20px', padding: 0 }}>
-                        {portal.warnings.map((w, i) => (
-                            <li key={i}>{w.message} <span style={{ opacity: 0.7, fontSize: '0.8em' }}>({new Date(w.date).toLocaleDateString()})</span></li>
-                        ))}
-                    </ul>
-                </div>
-            )
-        }
-
-        {/* Main Layout */}
+    return (
         <div className="portal-page">
             <div className="discord-layout">
                 <div className="discord-split-view">
@@ -1123,11 +1049,11 @@ const Portal = () => {
                                 </div>
                             )
                         }
-                    </main >
-                </div >
-            </div >
-        </div >
-    </>);
+                    </main>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default Portal;
