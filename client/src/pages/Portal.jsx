@@ -1063,7 +1063,7 @@ const Portal = () => {
                         </div>
 
                         {/* Members Sidebar (Right Column) */}
-                        {showMembers && <MembersSidebar members={portal.members} />}
+                        {showMembers && <MembersSidebar members={portal.members} onClose={() => setShowMembers(false)} />}
                     </div>
 
                     {/* New Settings Modal Integration */}
