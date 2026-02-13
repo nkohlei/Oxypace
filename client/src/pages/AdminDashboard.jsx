@@ -2,56 +2,137 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './AdminDashboard.css';
 
-// Simple Modal Component for Reason Entry
+// Modern Modal Component for Reason Entry + Duration Picker
 const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
     const [reason, setReason] = useState('');
+    const [durationType, setDurationType] = useState('preset'); // 'preset' or 'custom'
+    const [selectedPreset, setSelectedPreset] = useState(null); // hours
+    const [customDate, setCustomDate] = useState('');
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(reason);
-        setReason('');
+    const presets = [
+        { label: '1 Saat', hours: 1 },
+        { label: '6 Saat', hours: 6 },
+        { label: '12 Saat', hours: 12 },
+        { label: '1 Gün', hours: 24 },
+        { label: '3 Gün', hours: 72 },
+        { label: '7 Gün', hours: 168 },
+        { label: '30 Gün', hours: 720 },
+    ];
+
+    const calculateSuspendedUntil = () => {
+        if (actionType !== 'suspend') return null;
+        if (durationType === 'preset' && selectedPreset) {
+            return new Date(Date.now() + selectedPreset * 60 * 60 * 1000).toISOString();
+        }
+        if (durationType === 'custom' && customDate) {
+            return new Date(customDate).toISOString();
+        }
+        return null;
     };
 
-    const actionLabel = actionType === 'suspend' ? 'Askıya Alma' : actionType === 'close' ? 'Kapatma' : 'İşlem';
-    const actionVerb = actionType === 'suspend' ? 'askıya alınacak' : actionType === 'close' ? 'kapatılacak' : 'işlem görecek';
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (actionType === 'suspend' && !calculateSuspendedUntil()) {
+            alert('Lütfen askıya alma süresi belirleyin.');
+            return;
+        }
+        onSubmit(reason, calculateSuspendedUntil());
+        setReason('');
+        setSelectedPreset(null);
+        setCustomDate('');
+    };
+
+    let title = 'İşlem Sebebi';
+    let description = 'Bu işlem için bir sebep belirtin.';
+    let actionBtnText = 'ONAYLA';
+
+    if (actionType === 'suspend') {
+        title = 'Askıya Alma Sebebi';
+        description = 'Bu portal askıya alınacak. Lütfen bir sebep ve süre belirleyin. Bu bilgiler portal sayfasında görüntülenecektir.';
+        actionBtnText = 'ASKIYA ALMAYI ONAYLA';
+    } else if (actionType === 'close') {
+        title = 'Kapatma Sebebi';
+        description = 'Bu portal kapatılacak. Lütfen bir sebep belirtin. Bu sebep portal sayfasında görüntülenecektir.';
+        actionBtnText = 'KAPATMAYI ONAYLA';
+    }
+
+    // Min date for custom picker (now)
+    const minDate = new Date().toISOString().slice(0, 16);
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: '500px' }}>
-                <div className="modal-header">
-                    <h2>{actionLabel} Sebebi</h2>
-                    <button className="close-btn" onClick={onClose}>&times;</button>
+        <div className="modal-overlay-modern">
+            <div className="modal-content-modern">
+                <div className="modal-header-modern">
+                    <h2>{title}</h2>
+                    <button className="close-btn-modern" onClick={onClose}>&times;</button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="modal-body">
-                        <p style={{ marginBottom: '15px' }}>
-                            Bu portal {actionVerb}. Lütfen aşağıya bir sebep belirtin.
-                            Bu sebep portal sayfasında görüntülenecektir.
-                        </p>
+                    <div className="modal-body-modern">
+                        <p className="modal-description-modern">{description}</p>
                         <textarea
-                            className="reason-input"
+                            className="reason-input-modern"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             placeholder="Örn: Topluluk kuralları ihlali..."
                             rows="4"
-                            style={{
-                                width: '100%',
-                                padding: '10px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--border-color)',
-                                backgroundColor: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)',
-                                resize: 'vertical'
-                            }}
                             required
                         />
+
+                        {/* Duration Picker — Only for Suspend */}
+                        {actionType === 'suspend' && (
+                            <div className="duration-picker-section">
+                                <h4 className="duration-title">⏱ Askıya Alma Süresi</h4>
+                                <div className="duration-type-toggle">
+                                    <button
+                                        type="button"
+                                        className={`duration-type-btn ${durationType === 'preset' ? 'active' : ''}`}
+                                        onClick={() => setDurationType('preset')}
+                                    >
+                                        Hazır Süre
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`duration-type-btn ${durationType === 'custom' ? 'active' : ''}`}
+                                        onClick={() => setDurationType('custom')}
+                                    >
+                                        Özel Tarih
+                                    </button>
+                                </div>
+
+                                {durationType === 'preset' ? (
+                                    <div className="preset-grid">
+                                        {presets.map((p) => (
+                                            <button
+                                                key={p.hours}
+                                                type="button"
+                                                className={`preset-btn ${selectedPreset === p.hours ? 'active' : ''}`}
+                                                onClick={() => setSelectedPreset(p.hours)}
+                                            >
+                                                {p.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="datetime-local"
+                                        className="custom-date-input"
+                                        value={customDate}
+                                        onChange={(e) => setCustomDate(e.target.value)}
+                                        min={minDate}
+                                        required={durationType === 'custom'}
+                                    />
+                                )}
+                            </div>
+                        )}
                     </div>
-                    <div className="modal-footer">
-                        <button type="button" className="btn-secondary" onClick={onClose}>İptal</button>
-                        <button type="submit" className="btn-primary" style={{ backgroundColor: '#ef4444' }}>
-                            {actionLabel} Onayla
+                    <div className="modal-footer-modern">
+                        <button type="button" className="btn-modern-ghost" onClick={onClose}>
+                            İptal
+                        </button>
+                        <button type="submit" className="btn-modern-primary">
+                            {actionBtnText}
                         </button>
                     </div>
                 </form>
@@ -201,17 +282,19 @@ const AdminDashboard = () => {
         }
     };
 
-    const executePortalStatusChange = async (portalId, newStatus, reason) => {
+    const executePortalStatusChange = async (portalId, newStatus, reason, suspendedUntil = null) => {
         try {
             await axios.put(`/api/admin/portals/${portalId}`, {
                 status: newStatus,
-                statusReason: reason
+                statusReason: reason,
+                suspendedUntil: suspendedUntil
             });
             setPortals(portals.map(p =>
                 p._id === portalId ? {
                     ...p,
                     status: newStatus,
-                    statusReason: reason
+                    statusReason: reason,
+                    suspendedUntil: suspendedUntil
                 } : p
             ));
             setModalOpen(false);
@@ -220,9 +303,9 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleModalSubmit = (reason) => {
+    const handleModalSubmit = (reason, suspendedUntil) => {
         const newStatus = modalAction === 'suspend' ? 'suspended' : 'closed';
-        executePortalStatusChange(selectedPortalId, newStatus, reason);
+        executePortalStatusChange(selectedPortalId, newStatus, reason, suspendedUntil);
     };
 
     const handlePortalWarning = async (portalId) => {

@@ -26,6 +26,8 @@ const Portal = () => {
     const [loading, setLoading] = useState(true);
     const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
     const [error, setError] = useState('');
+    const [suspensionInfo, setSuspensionInfo] = useState(null);
+    const [countdown, setCountdown] = useState(null); // { days, hours, minutes, seconds }
     const [isMember, setIsMember] = useState(false);
 
     // Channel State
@@ -267,8 +269,22 @@ const Portal = () => {
                 privacy: res.data.privacy || 'public',
             });
         } catch (err) {
-            if (err.response && (err.response.status === 403 || err.response.status === 404)) {
-                setError('blocked'); // Treat blocked/not found same for blocked users as per request ("sonuç bulunamadı")
+            if (err.response && err.response.status === 403) {
+                const data = err.response.data;
+                if (data.portalStatus === 'suspended' || data.portalStatus === 'closed') {
+                    setSuspensionInfo({
+                        portalStatus: data.portalStatus,
+                        statusReason: data.statusReason,
+                        suspendedUntil: data.suspendedUntil,
+                        portalName: data.portalName,
+                        portalAvatar: data.portalAvatar
+                    });
+                    setError('suspended');
+                } else {
+                    setError('blocked');
+                }
+            } else if (err.response && err.response.status === 404) {
+                setError('blocked');
             } else {
                 setError('Portal yüklenemedi');
             }
@@ -481,6 +497,116 @@ const Portal = () => {
             portal &&
             portal.admins &&
             portal.admins.some((a) => isSameId(a._id || a, user._id)));
+
+    // Countdown Timer for Suspension
+    useEffect(() => {
+        if (!suspensionInfo?.suspendedUntil) {
+            setCountdown(null);
+            return;
+        }
+        const updateCountdown = () => {
+            const now = new Date();
+            const end = new Date(suspensionInfo.suspendedUntil);
+            const diff = end - now;
+            if (diff <= 0) {
+                setCountdown(null);
+                // Auto-refresh when suspension expires
+                window.location.reload();
+                return;
+            }
+            setCountdown({
+                days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((diff / (1000 * 60)) % 60),
+                seconds: Math.floor((diff / 1000) % 60)
+            });
+        };
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+        return () => clearInterval(interval);
+    }, [suspensionInfo]);
+
+    // Error State — Suspended/Closed Portal
+    if (error === 'suspended' && suspensionInfo) {
+        const isSuspended = suspensionInfo.portalStatus === 'suspended';
+        const unlockDate = suspensionInfo.suspendedUntil
+            ? new Date(suspensionInfo.suspendedUntil).toLocaleString('tr-TR', {
+                day: 'numeric', month: 'long', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            })
+            : null;
+
+        return (
+            <div className="app-wrapper full-height">
+                <Navbar />
+                <div className="suspension-screen">
+                    <div className="suspension-card">
+                        <div className="suspension-icon">
+                            {isSuspended ? '⏸️' : '🔒'}
+                        </div>
+                        <h1 className="suspension-title">
+                            {suspensionInfo.portalName || 'Portal'}
+                        </h1>
+                        <h2 className="suspension-subtitle">
+                            {isSuspended
+                                ? 'Bu portal geçici olarak askıya alındı'
+                                : 'Bu portal kapatılmıştır'}
+                        </h2>
+
+                        {suspensionInfo.statusReason && (
+                            <div className="suspension-reason">
+                                <div className="suspension-reason-label">Sebep</div>
+                                <p>{suspensionInfo.statusReason}</p>
+                            </div>
+                        )}
+
+                        {isSuspended && unlockDate && (
+                            <div className="suspension-unlock">
+                                <div className="suspension-unlock-label">🔓 Erişim Açılma Tarihi</div>
+                                <div className="suspension-unlock-date">{unlockDate}</div>
+
+                                {countdown && (
+                                    <div className="suspension-countdown">
+                                        <div className="countdown-item">
+                                            <span className="countdown-value">{String(countdown.days).padStart(2, '0')}</span>
+                                            <span className="countdown-label">Gün</span>
+                                        </div>
+                                        <div className="countdown-separator">:</div>
+                                        <div className="countdown-item">
+                                            <span className="countdown-value">{String(countdown.hours).padStart(2, '0')}</span>
+                                            <span className="countdown-label">Saat</span>
+                                        </div>
+                                        <div className="countdown-separator">:</div>
+                                        <div className="countdown-item">
+                                            <span className="countdown-value">{String(countdown.minutes).padStart(2, '0')}</span>
+                                            <span className="countdown-label">Dakika</span>
+                                        </div>
+                                        <div className="countdown-separator">:</div>
+                                        <div className="countdown-item">
+                                            <span className="countdown-value">{String(countdown.seconds).padStart(2, '0')}</span>
+                                            <span className="countdown-label">Saniye</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="suspension-policy">
+                            <span>📋</span>
+                            <p>Askıya alma nedenleri, platformun <strong>Politika ve Koşullar</strong>'ı kapsamında değerlendirilmektedir. Detaylı bilgi için kurallarımızı inceleyebilirsiniz.</p>
+                        </div>
+
+                        <button
+                            onClick={() => navigate('/')}
+                            className="suspension-home-btn"
+                        >
+                            Anasayfaya Dön
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // Error State (Blocked/Not Found)
     if (error === 'blocked') {

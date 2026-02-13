@@ -278,3 +278,243 @@
     border-color: #d600ad;
     color: #d600ad;
 }
+
+/* =============================================
+   MODERN REASON MODAL
+   ============================================= */
+.modal-overlay-modern {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeInModal 0.25s ease;
+}
+
+.modal-content-modern {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 520px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header-modern h2 {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.close-btn-modern {
+    background: transparent;
+    border: none;
+    color: #666;
+    font-size: 26px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.close-btn-modern:hover {
+    color: #fff;
+}
+
+.modal-body-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.modal-description-modern {
+    color: #999;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.reason-input-modern {
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 14px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.reason-input-modern:focus {
+    border-color: #FF6B35;
+}
+
+/* Duration Picker */
+.duration-picker-section {
+    background: #0a0a0a;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.duration-title {
+    color: #ddd;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+}
+
+.duration-type-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.duration-type-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: transparent;
+    color: #888;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.duration-type-btn.active {
+    background: linear-gradient(135deg, #FF4500, #FF6B35);
+    color: #fff;
+    border-color: transparent;
+}
+
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.preset-btn {
+    padding: 10px 6px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #1a1a1a;
+    color: #ccc;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.preset-btn:hover {
+    border-color: #FF6B35;
+    color: #FF6B35;
+}
+
+.preset-btn.active {
+    background: linear-gradient(135deg, #FF4500, #FF6B35);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 0 12px rgba(255, 69, 0, 0.3);
+}
+
+.custom-date-input {
+    width: 100%;
+    padding: 12px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+}
+
+.custom-date-input:focus {
+    border-color: #FF6B35;
+}
+
+/* Footer */
+.modal-footer-modern {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-modern-ghost {
+    background: transparent;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-modern-ghost:hover {
+    background: #222;
+}
+
+.btn-modern-primary {
+    background: linear-gradient(135deg, #FF4500, #FFA500);
+    border: none;
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+.btn-modern-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(255, 69, 0, 0.4);
+}
+
+@keyframes fadeInModal {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUpModal {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

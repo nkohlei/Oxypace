@@ -121,18 +121,26 @@ router.get('/:id', optionalProtect, async (req, res) => {
             return res.status(403).json({ message: 'Bu portala erişiminiz engellendi.' });
         }
 
-        // Status Check (Suspended/Closed)
-        if (portal.status && portal.status !== 'active') {
-            const isOwner = userId && portal.owner._id.toString() === userId;
-            const isAdmin = req.user?.isAdmin; // Assuming isAdmin exists on user, otherwise check DB
+        // Auto-reactivation: if suspension has expired, reactivate portal
+        if (portal.status === 'suspended' && portal.suspendedUntil && new Date() >= portal.suspendedUntil) {
+            portal.status = 'active';
+            portal.statusReason = '';
+            portal.suspendedUntil = null;
+            await portal.save();
+        }
 
-            if (!isOwner && !isAdmin) {
-                return res.status(403).json({
-                    message: portal.status === 'suspended'
-                        ? 'Bu portal geçici olarak askıya alınmıştır.'
-                        : 'Bu portal kapatılmıştır.'
-                });
-            }
+        // Status Check — Block ALL users (including admins/owners) for suspended portals
+        if (portal.status && portal.status !== 'active') {
+            return res.status(403).json({
+                message: portal.status === 'suspended'
+                    ? 'Bu portal geçici olarak askıya alınmıştır.'
+                    : 'Bu portal kapatılmıştır.',
+                portalStatus: portal.status,
+                statusReason: portal.statusReason || '',
+                suspendedUntil: portal.suspendedUntil || null,
+                portalName: portal.name,
+                portalAvatar: portal.avatar || ''
+            });
         }
 
         const portalObj = portal.toObject();
@@ -177,15 +185,16 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
             return res.status(403).json({ message: 'Bu portala erişiminiz engellendi.' });
         }
 
+        // Auto-reactivation for expired suspensions
+        if (portal.status === 'suspended' && portal.suspendedUntil && new Date() >= portal.suspendedUntil) {
+            portal.status = 'active';
+            portal.statusReason = '';
+            portal.suspendedUntil = null;
+            await portal.save();
+        }
+
         // Status Check (Freeze Content)
         if (portal.status && portal.status !== 'active') {
-            // Even owner cannot fetch posts if suspended/closed (Content Frozen)
-            // Or maybe allow owner to see but not post? 
-            // Let's block posts fetching to simulate "Shutdown".
-            // Actually, owner might want to see content to appeal? 
-            // Let's allow owner to see, but not post (POST route logic need update too).
-            // User request was "How it works", usually suspended means NO interaction.
-            // Let's block everyone for simplicity and strictness.
             return res.status(403).json({ message: 'Portal aktif değil.' });
         }
 

@@ -80,6 +80,10 @@ const portalSchema = new mongoose.Schema(
             type: String, // Reason for suspension/closure
             default: '',
         },
+        suspendedUntil: {
+            type: Date, // When suspension expires (auto-reactivation)
+            default: null,
+        },
         warnings: [
             {
                 message: String,

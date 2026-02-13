@@ -1162,3 +1162,217 @@
         transform: rotate(360deg);
     }
 }
+
+/* =============================================
+   PORTAL SUSPENSION SCREEN
+   ============================================= */
+.suspension-screen {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%);
+}
+
+.suspension-card {
+    background: #161616;
+    border: 1px solid #2a2a2a;
+    border-radius: 20px;
+    padding: 48px 40px;
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: suspensionFadeIn 0.5s ease;
+}
+
+.suspension-icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+}
+
+.suspension-title {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.suspension-subtitle {
+    color: #ef4444;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 24px;
+}
+
+.suspension-reason {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-left: 3px solid #ef4444;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.suspension-reason-label {
+    color: #888;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.suspension-reason p {
+    color: #ddd;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.suspension-unlock {
+    background: #0f1a0f;
+    border: 1px solid #1a3a1a;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.suspension-unlock-label {
+    color: #4ade80;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.suspension-unlock-date {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.suspension-countdown {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    align-items: center;
+}
+
+.countdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 54px;
+}
+
+.countdown-value {
+    background: linear-gradient(135deg, #FF4500, #FF6B35);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 32px;
+    font-weight: 800;
+    font-family: 'Courier New', monospace;
+    line-height: 1;
+}
+
+.countdown-label {
+    color: #666;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.countdown-separator {
+    color: #FF6B35;
+    font-size: 28px;
+    font-weight: 800;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 16px;
+}
+
+.suspension-policy {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #222;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 24px;
+    text-align: left;
+}
+
+.suspension-policy span {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.suspension-policy p {
+    color: #777;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.suspension-policy strong {
+    color: #FF6B35;
+}
+
+.suspension-home-btn {
+    background: linear-gradient(135deg, #FF4500, #FFA500);
+    border: none;
+    color: #fff;
+    padding: 12px 32px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.suspension-home-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 69, 0, 0.4);
+}
+
+@keyframes suspensionFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 480px) {
+    .suspension-card {
+        padding: 32px 20px;
+    }
+
+    .suspension-icon {
+        font-size: 42px;
+    }
+
+    .countdown-value {
+        font-size: 24px;
+    }
+
+    .countdown-item {
+        min-width: 40px;
+    }
+
+    .countdown-separator {
+        font-size: 20px;
+    }
+}
