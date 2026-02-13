@@ -22,6 +22,67 @@ const AdminDashboard = () => {
         }
     }, [activeTab]);
 
+    const fetchRequests = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/verification-requests');
+            setRequests(data);
+        } catch (err) {
+            setError('Veriler yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchUsers = async (query = '') => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get(`/api/admin/users?q=${query}`);
+            setUsers(data);
+        } catch (err) {
+            setError('Kullanıcılar yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApprove = async (id) => {
+        if (!window.confirm('Bu kullanıcıyı onaylamak istiyor musunuz?')) return;
+        try {
+            await axios.post(`/api/admin/verify-user/${id}`);
+            setRequests(requests.filter((req) => req._id !== id));
+            alert('Kullanıcı doğrulandı!');
+        } catch (err) {
+            alert('İşlem başarısız.');
+        }
+    };
+
+    const handleReject = async (id) => {
+        if (!window.confirm('Bu başvuruyu reddetmek istiyor musunuz?')) return;
+        try {
+            await axios.post(`/api/admin/reject-verification/${id}`);
+            setRequests(requests.filter((req) => req._id !== id));
+            alert('Başvuru reddedildi.');
+        } catch (err) {
+            alert('İşlem başarısız.');
+        }
+    };
+
+    const handleBadgeChange = async (userId, newBadge) => {
+        try {
+            await axios.put(`/api/admin/users/${userId}/badge`, { badge: newBadge });
+            setUsers(
+                users.map((user) =>
+                    user._id === userId
+                        ? { ...user, verificationBadge: newBadge, isVerified: newBadge !== 'none' }
+                        : user
+                )
+            );
+        } catch (err) {
+            alert('Rozet güncellenemedi.');
+        }
+    };
+
     // Search effect for portals
     useEffect(() => {
         if (activeTab === 'portals') {
