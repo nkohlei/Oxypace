@@ -1,7 +1,7 @@
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 
-const MembersSidebar = ({ members = [] }) => {
+const MembersSidebar = ({ members = [], onClose }) => {
     const { onlineUsers } = useSocket();
 
     // Filter members based on socket status
@@ -18,6 +18,19 @@ const MembersSidebar = ({ members = [] }) => {
 
     return (
         <div className="members-sidebar custom-scrollbar">
+            {/* Header with Close Button */}
+            <div className="members-header-top">
+                <h3>ÜYELER</h3>
+                {onClose && (
+                    <button onClick={onClose} className="close-members-btn" aria-label="Kapat">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                )}
+            </div>
+
             {/* Online Category */}
             <div className="members-category">Çevrim içi — {online.length}</div>
             {online.map((user, index) => {
@@ -96,8 +109,43 @@ const MembersSidebar = ({ members = [] }) => {
                     height: 100%;
                     overflow-y: auto;
                     flex-shrink: 0;
-                    padding: 24px 8px 8px 16px;
+                    padding: 0 8px 8px 16px; /* Adjusted padding top */
                 }
+                
+                .members-header-top {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 16px 0 8px 0;
+                    margin-bottom: 8px;
+                }
+
+                .members-header-top h3 {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: var(--text-tertiary);
+                    text-transform: uppercase;
+                    margin: 0;
+                }
+
+                .close-members-btn {
+                    background: transparent;
+                    border: none;
+                    color: var(--text-muted);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 4px;
+                    border-radius: 4px;
+                    transition: all 0.2s;
+                }
+
+                .close-members-btn:hover {
+                    color: var(--text-primary);
+                    background-color: var(--bg-hover);
+                }
+
                 .members-category {
                     font-size: 12px;
                     font-weight: 700;
