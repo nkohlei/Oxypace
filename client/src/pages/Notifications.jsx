@@ -171,8 +171,8 @@ const Notifications = () => {
                                             notif.type === 'message'
                                                 ? `/inbox?user=${notif.sender.username}`
                                                 : notif.post
-                                                  ? `/post/${notif.post._id}`
-                                                  : `/profile/${notif.sender.username}`
+                                                    ? `/post/${notif.post._id}`
+                                                    : `/profile/${notif.sender.username}`
                                         }
                                         key={notif._id}
                                         className={`notification-item ${!notif.read ? 'unread' : ''}`}
@@ -198,6 +198,7 @@ const Notifications = () => {
                                                 {notif.type === 'follow_request' && '👤'}
                                                 {notif.type === 'message' && '✉️'}
                                                 {notif.type === 'portal_invite' && '🏰'}
+                                                {notif.type === 'system' && '📢'}
                                             </div>
                                         </div>
 
@@ -221,6 +222,9 @@ const Notifications = () => {
                                                     ' sana bir mesaj gönderdi.'}
                                                 {notif.type === 'portal_invite' &&
                                                     ' seni bir portala davet etti.'}
+                                                {notif.type === 'system' && (
+                                                    <span>{notif.content}</span>
+                                                )}
                                             </p>
                                             {(notif.type === 'comment' || notif.type === 'reply') &&
                                                 notif.comment && (

@@ -617,6 +617,41 @@ const Portal = () => {
                     </header>
                     {/* ... */}
 
+                    {/* Status Banner for Owner/Admin */}
+                    {(portal.status === 'suspended' || portal.status === 'closed') && (
+                        <div style={{
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            padding: '12px',
+                            textAlign: 'center',
+                            fontWeight: 'bold',
+                        }}>
+                            BU PORTAL {portal.status === 'suspended' ? 'ASKIYA ALINDI' : 'KAPATILDI'}
+                            <div style={{ fontSize: '0.9em', fontWeight: 'normal' }}>
+                                (Sadece yönetici olarak bu sayfayı görüyorsunuz)
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Warnings Display for Owner */}
+                    {isOwner && portal.warnings && portal.warnings.length > 0 && (
+                        <div style={{
+                            backgroundColor: '#f59e0b',
+                            color: 'black',
+                            padding: '10px',
+                            margin: '10px',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem'
+                        }}>
+                            <strong>⚠️ Yönetici Uyarıları:</strong>
+                            <ul style={{ margin: '5px 0 0 20px', padding: 0 }}>
+                                {portal.warnings.map((w, i) => (
+                                    <li key={i}>{w.message} <span style={{ opacity: 0.7, fontSize: '0.8em' }}>({new Date(w.date).toLocaleDateString()})</span></li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                         {/* Channel Content (Feed) */}
                         <div
