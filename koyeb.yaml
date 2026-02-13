@@ -8,6 +8,7 @@ run:
   command: node server.js
 env:
   NODE_ENV: production
+regions:
   - fra
 ports:
   - port: 5000
