@@ -8,5 +8,14 @@ run:
   command: node server.js
 env:
   NODE_ENV: production
-regions:
   - fra
+ports:
+  - port: 5000
+    path: /
+    protocol: http
+health-checks:
+  - port: 5000
+    path: /api/health
+    interval: 60
+    timeout: 5
+    restart-limit: 3
