@@ -2,6 +2,64 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './AdminDashboard.css';
 
+// Simple Modal Component for Reason Entry
+const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
+    const [reason, setReason] = useState('');
+
+    if (!isOpen) return null;
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit(reason);
+        setReason('');
+    };
+
+    const actionLabel = actionType === 'suspend' ? 'Askıya Alma' : actionType === 'close' ? 'Kapatma' : 'İşlem';
+    const actionVerb = actionType === 'suspend' ? 'askıya alınacak' : actionType === 'close' ? 'kapatılacak' : 'işlem görecek';
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '500px' }}>
+                <div className="modal-header">
+                    <h2>{actionLabel} Sebebi</h2>
+                    <button className="close-btn" onClick={onClose}>&times;</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="modal-body">
+                        <p style={{ marginBottom: '15px' }}>
+                            Bu portal {actionVerb}. Lütfen aşağıya bir sebep belirtin.
+                            Bu sebep portal sayfasında görüntülenecektir.
+                        </p>
+                        <textarea
+                            className="reason-input"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Örn: Topluluk kuralları ihlali..."
+                            rows="4"
+                            style={{
+                                width: '100%',
+                                padding: '10px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)',
+                                resize: 'vertical'
+                            }}
+                            required
+                        />
+                    </div>
+                    <div className="modal-footer">
+                        <button type="button" className="btn-secondary" onClick={onClose}>İptal</button>
+                        <button type="submit" className="btn-primary" style={{ backgroundColor: '#ef4444' }}>
+                            {actionLabel} Onayla
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals'
     const [requests, setRequests] = useState([]);
@@ -11,6 +69,11 @@ const AdminDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [portals, setPortals] = useState([]);
     const [searchTermPortal, setSearchTermPortal] = useState('');
+
+    // Modal State
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedPortalId, setSelectedPortalId] = useState(null);
+    const [modalAction, setModalAction] = useState(''); // 'suspend' or 'close'
 
     useEffect(() => {
         if (activeTab === 'requests') {
@@ -123,12 +186,22 @@ const AdminDashboard = () => {
         }
     };
 
-    const handlePortalStatus = async (portalId, newStatus) => {
-        const actionText = newStatus === 'suspended' ? 'askıya almak' : newStatus === 'closed' ? 'kapatmak' : 'aktifleştirmek';
-        const reason = window.prompt(`Bu portalı "${actionText}" için bir sebep belirtin (İsteğe bağlı):`);
+    // Open Modal for Status Change
+    const initiatePortalStatusChange = (portalId, action) => {
+        if (action === 'activate') {
+            // Direct activation, no reason needed usually, or simple confirm
+            if (window.confirm('Bu portalı tekrar aktifleştirmek istediğinize emin misiniz?')) {
+                executePortalStatusChange(portalId, 'active', '');
+            }
+        } else {
+            // Suspend or Close - Open Modal
+            setSelectedPortalId(portalId);
+            setModalAction(action);
+            setModalOpen(true);
+        }
+    };
 
-        if (reason === null) return; // User cancelled
-
+    const executePortalStatusChange = async (portalId, newStatus, reason) => {
         try {
             await axios.put(`/api/admin/portals/${portalId}`, {
                 status: newStatus,
@@ -141,9 +214,15 @@ const AdminDashboard = () => {
                     statusReason: reason
                 } : p
             ));
+            setModalOpen(false);
         } catch (err) {
             alert('Durum güncellenemedi.');
         }
+    };
+
+    const handleModalSubmit = (reason) => {
+        const newStatus = modalAction === 'suspend' ? 'suspended' : 'closed';
+        executePortalStatusChange(selectedPortalId, newStatus, reason);
     };
 
     const handlePortalWarning = async (portalId) => {
@@ -346,9 +425,9 @@ const AdminDashboard = () => {
                                             className="action-select"
                                             onChange={(e) => {
                                                 if (e.target.value === 'warning') handlePortalWarning(portal._id);
-                                                else if (e.target.value === 'suspend') handlePortalStatus(portal._id, 'suspended');
-                                                else if (e.target.value === 'close') handlePortalStatus(portal._id, 'closed');
-                                                else if (e.target.value === 'activate') handlePortalStatus(portal._id, 'active');
+                                                else if (e.target.value === 'suspend') initiatePortalStatusChange(portal._id, 'suspend');
+                                                else if (e.target.value === 'close') initiatePortalStatusChange(portal._id, 'close');
+                                                else if (e.target.value === 'activate') initiatePortalStatusChange(portal._id, 'activate');
                                                 e.target.value = ''; // Reset selection
                                             }}
                                             style={{
@@ -373,6 +452,14 @@ const AdminDashboard = () => {
                     </div>
                 )}
             </div>
+
+            {/* Reason Modal */}
+            <ReasonModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSubmit={handleModalSubmit}
+                actionType={modalAction}
+            />
         </div>
     );
 };
