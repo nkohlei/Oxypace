@@ -143,3 +143,90 @@ router.put('/users/:id/badge', protect, admin, async (req, res) => {
 });
 
 export default router;
+
+// @route   GET /api/admin/portals
+// @desc    Get all portals (with search)
+// @access  Private/Admin
+router.get('/portals', protect, admin, async (req, res) => {
+    try {
+        const { q } = req.query;
+        let query = {};
+
+        if (q) {
+            query = { name: { $regex: q, $options: 'i' } };
+        }
+
+        const portals = await import('../models/Portal.js').then(m => m.default.find(query)
+            .select('name description owner avatar banner themeColor isVerified badges status warnings createdAt members')
+            .populate('owner', 'username profile.displayName')
+            .sort({ createdAt: -1 })
+            .limit(50));
+
+        res.json(portals);
+    } catch (error) {
+        console.error('Fetch portals error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/admin/portals/:id
+// @desc    Update portal status/badges
+// @access  Private/Admin
+router.put('/portals/:id', protect, admin, async (req, res) => {
+    try {
+        const { status, badges, isVerified } = req.body;
+        const Portal = await import('../models/Portal.js').then(m => m.default);
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+
+        if (status) portal.status = status;
+        if (badges) portal.badges = badges; // Expect array of strings
+        if (typeof isVerified === 'boolean') portal.isVerified = isVerified;
+
+        await portal.save();
+
+        res.json({ message: 'Portal updated', portal });
+    } catch (error) {
+        console.error('Update portal error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/portals/:id/warning
+// @desc    Add warning to portal
+// @access  Private/Admin
+router.post('/portals/:id/warning', protect, admin, async (req, res) => {
+    try {
+        const { message } = req.body;
+        const Portal = await import('../models/Portal.js').then(m => m.default);
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+
+        portal.warnings.push({
+            message,
+            issuedBy: req.user._id,
+            date: new Date()
+        });
+
+        await portal.save();
+
+        // Notify Portal Owner
+        await Notification.create({
+            recipient: portal.owner,
+            type: 'system',
+            content: `Portalınız "${portal.name}" için bir yönetici uyarısı aldınız: ${message}`,
+            link: `/portal/${portal._id}`
+        });
+
+        res.json({ message: 'Warning sent', portal });
+    } catch (error) {
+        console.error('Send portal warning error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});

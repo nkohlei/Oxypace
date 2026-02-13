@@ -61,6 +61,28 @@ const portalSchema = new mongoose.Schema(
             type: String,
             default: '#3b82f6', // Default blue
         },
+        // Admin Management Fields
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
+        badges: [
+            {
+                type: String, // e.g., 'official', 'verified', 'partner', 'gold', 'blue'
+            }
+        ],
+        status: {
+            type: String,
+            enum: ['active', 'suspended', 'closed'],
+            default: 'active',
+        },
+        warnings: [
+            {
+                message: String,
+                date: { type: Date, default: Date.now },
+                issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+            }
+        ],
         channels: [
             {
                 name: {
