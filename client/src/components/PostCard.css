@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Google Fonts loaded via index.html preload — no @import needed */
 
 /* Post Card - Discord Clone Layout */
 .post-card.twitter-layout {
@@ -13,6 +13,8 @@
     border-bottom: 1px solid var(--border-subtle);
     cursor: default;
     transition: background-color 0.1s ease;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 120px;
 }
 
 .post-card.twitter-layout:hover {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import PostCard from '../components/PostCard';
@@ -7,8 +7,8 @@ import MembersSidebar from '../components/MembersSidebar';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { useUI } from '../context/UIContext';
-import PortalSettingsModal from '../components/PortalSettingsModal';
-import PortalNotifications from '../components/PortalNotifications';
+const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal'));
+const PortalNotifications = lazy(() => import('../components/PortalNotifications'));
 import AdUnit from '../components/AdUnit';
 import Navbar from '../components/Navbar';
 import SEO from '../components/SEO';
@@ -1194,15 +1194,17 @@ const Portal = () => {
 
                     {/* New Settings Modal Integration */}
                     {editing && settingsTab !== 'notifications' && (
-                        <PortalSettingsModal
-                            portal={portal}
-                            currentUser={user}
-                            initialTab={settingsTab}
-                            onClose={() => setEditing(false)}
-                            onUpdate={(updatedPortal) => {
-                                setPortal(updatedPortal);
-                            }}
-                        />
+                        <Suspense fallback={null}>
+                            <PortalSettingsModal
+                                portal={portal}
+                                currentUser={user}
+                                initialTab={settingsTab}
+                                onClose={() => setEditing(false)}
+                                onUpdate={(updatedPortal) => {
+                                    setPortal(updatedPortal);
+                                }}
+                            />
+                        </Suspense>
                     )}
 
                     {/* Portal Notifications Section */}
@@ -1231,10 +1233,12 @@ const Portal = () => {
                                         <line x1="6" y1="6" x2="18" y2="18"></line>
                                     </svg>
                                 </button>
-                                <PortalNotifications
-                                    portalId={portal._id}
-                                    onUpdate={fetchPortalData}
-                                />
+                                <Suspense fallback={null}>
+                                    <PortalNotifications
+                                        portalId={portal._id}
+                                        onUpdate={fetchPortalData}
+                                    />
+                                </Suspense>
                             </div>
                         </div>
                     )}

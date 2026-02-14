@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { shouldShowTranslation } from '../utils/languageUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -10,6 +10,66 @@ import Badge from './Badge';
 import { linkifyText } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import './PostCard.css';
+
+// Lightweight YouTube facade — loads iframe only on click
+const YouTubeFacade = ({ media }) => {
+    const [showIframe, setShowIframe] = useState(false);
+
+    const getVideoId = (url) => {
+        try {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        } catch { return null; }
+    };
+
+    const videoId = getVideoId(media);
+    if (!videoId) return null;
+
+    return (
+        <div className="youtube-embed-container" style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '622px',
+            aspectRatio: '16/9',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            backgroundColor: '#000',
+            cursor: showIframe ? 'default' : 'pointer',
+            zIndex: 1
+        }}>
+            {showIframe ? (
+                <iframe
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
+                    style={{ width: '100%', height: '100%', border: 'none' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title="YouTube Video"
+                />
+            ) : (
+                <div onClick={() => setShowIframe(true)} style={{ width: '100%', height: '100%', position: 'relative' }}>
+                    <img
+                        src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                        alt="YouTube Video"
+                        loading="lazy"
+                        decoding="async"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'rgba(0,0,0,0.3)'
+                    }}>
+                        <svg viewBox="0 0 68 48" width="68" height="48">
+                            <path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="red" />
+                            <path d="M45 24L27 14v20" fill="white" />
+                        </svg>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const { user, updateUser } = useAuth(); // Destructure updateUser
@@ -221,6 +281,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             src={getImageUrl(post.author.profile.avatar)}
                             alt={post.author.username}
                             className="author-avatar"
+                            loading="lazy"
+                            decoding="async"
+                            width="40"
+                            height="40"
                         />
                     ) : (
                         <div className="author-placeholder">
@@ -431,43 +495,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 className="post-video-player"
                             />
                         ) : post.mediaType === 'youtube' ? (
-                            <div className="youtube-embed-container" style={{
-                                position: 'relative',
-                                width: '100%',
-                                maxWidth: '622px', // 350px * 16/9 approx
-                                maxHeight: '350px',
-                                aspectRatio: '16/9',
-                                borderRadius: '12px',
-                                overflow: 'hidden',
-                                backgroundColor: '#000',
-                                zIndex: 1
-                            }}>
-                                <iframe
-                                    src={(function () {
-                                        try {
-                                            const url = post.media;
-                                            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-                                            const match = url.match(regExp);
-                                            const videoId = (match && match[2].length === 11) ? match[2] : null;
-                                            return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0` : '';
-                                        } catch (e) {
-                                            return '';
-                                        }
-                                    })()}
-                                    style={{ width: '100%', height: '100%' }}
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    title="YouTube Video"
-                                ></iframe>
-                            </div>
+                            <YouTubeFacade media={post.media} />
                         ) : (
                             <img
                                 src={getImageUrl(post.media)}
                                 alt="Post media"
                                 loading="lazy"
+                                decoding="async"
                                 onError={(e) => {
-                                    console.error('Image load failed:', getImageUrl(post.media));
                                     e.target.style.display = 'none';
                                 }}
                             />
