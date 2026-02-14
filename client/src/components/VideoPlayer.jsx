@@ -68,6 +68,19 @@ const VideoPlayer = ({ src, poster, className }) => {
         };
     }, [isPlaying]);
 
+    // --- Cleanup on unmount: stop downloads, release network resources ---
+    useEffect(() => {
+        const video = videoRef.current;
+        return () => {
+            if (video) {
+                video.pause();
+                video.removeAttribute('src');
+                video.load(); // Abort any in-progress network download
+            }
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        };
+    }, []);
+
 
     // --- Intersection Observer (Lazy Load) ---
     useEffect(() => {
