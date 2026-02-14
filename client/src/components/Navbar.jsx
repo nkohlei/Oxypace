@@ -97,13 +97,8 @@ const Navbar = () => {
                 <div className="nav-container">
                     <div className="nav-left">
                         {/* Mobile Sidebar Toggle - Visible only on mobile */}
-                        <button className="mobile-menu-btn" onClick={toggleSidebar}>
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
+                        <button className="mobile-menu-btn" onClick={toggleSidebar} aria-label="Menüyü aç">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
                                 <line x1="3" y1="6" x2="21" y2="6"></line>
                                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -121,6 +116,7 @@ const Navbar = () => {
                         <button
                             className="theme-toggle-btn-modern icon-only"
                             onClick={toggleTheme}
+                            aria-label={isDark ? 'Açık temaya geç' : 'Koyu temaya geç'}
                             title={isDark ? 'Açık Tema' : 'Koyu Tema'}
                             style={{
                                 display: 'flex',
@@ -175,6 +171,7 @@ const Navbar = () => {
                                 <Link
                                     to="/notifications"
                                     className="header-icon notification-btn"
+                                    aria-label="Bildirimler"
                                     onClick={async () => {
                                         setUnreadCount(0);
                                         try {
@@ -213,6 +210,9 @@ const Navbar = () => {
                                     <button
                                         className="header-icon menu-trigger"
                                         onClick={() => setShowMenu(!showMenu)}
+                                        aria-label="Kullanıcı menüsü"
+                                        aria-expanded={showMenu}
+                                        aria-haspopup="true"
                                         title="Menü"
                                     >
                                         <svg
@@ -439,38 +439,19 @@ const Navbar = () => {
                         )}
                     </div>
                 </div>
-            </header>
+            </header >
 
             {/* Mobile Floating Create Button (Always Visible on Mobile) */}
-            <Link to="/create" className="mobile-fab-create">
+            < Link to="/create" className="mobile-fab-create" >
                 <div className="fab-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </div>
-            </Link>
+            </Link >
 
-            {/* Bottom Navigation (Hidden per request, keeping code if needed later) */}
-            {user && (
-                <nav className="bottom-nav" style={{ display: 'none' }}>
-                    <div className="nav-container">
-                        <Link
-                            to="/inbox"
-                            className={`nav-item ${isActive('/inbox') ? 'active' : ''}`}
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill={isActive('/inbox') ? 'currentColor' : 'none'}
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                            >
-                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                            </svg>
-                        </Link>
-                    </div>
-                </nav>
-            )}
+
         </>
     );
 };

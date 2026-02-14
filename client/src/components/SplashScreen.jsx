@@ -7,12 +7,12 @@ const SplashScreen = ({ onFinish }) => {
         // Start fading out after 3 seconds
         const timer = setTimeout(() => {
             setFading(true);
-        }, 3000);
+        }, 1500);
 
         // Notify parent to unmount after animation (4s total)
         const cleanup = setTimeout(() => {
             if (onFinish) onFinish();
-        }, 4000);
+        }, 2500);
 
         return () => {
             clearTimeout(timer);
@@ -21,9 +21,9 @@ const SplashScreen = ({ onFinish }) => {
     }, [onFinish]);
 
     return (
-        <div className={`splash-screen ${fading ? 'fade-out' : ''}`}>
+        <div className={`splash-screen ${fading ? 'fade-out' : ''}`} role="status" aria-label="Yükleniyor">
             <div className="splash-content">
-                <img src="/logo.png" alt="Oxypace" className="splash-logo" />
+                <img src="/logo.png" alt="Oxypace logo yükleniyor" className="splash-logo" />
             </div>
 
             <style>{`

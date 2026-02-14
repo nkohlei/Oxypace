@@ -74,6 +74,7 @@ const AppLayout = () => {
             <div
                 className={`mobile-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
                 onClick={closeSidebar}
+                aria-hidden="true"
             />
 
             {/* Sidebar Toggle Arrow - Visible on Desktop - Only if user is logged in */}
@@ -81,6 +82,10 @@ const AppLayout = () => {
                 <div
                     className={`sidebar-toggle-arrow ${isSidebarOpen ? 'open' : ''}`}
                     onClick={toggleSidebar}
+                    role="button"
+                    tabIndex="0"
+                    aria-label={isSidebarOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSidebar(); } }}
                     title={isSidebarOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
                 >
                     <svg
@@ -115,7 +120,6 @@ const AppLayout = () => {
                             <Route path="/register" element={<Register />} />
                             <Route path="/forgot-password" element={<ForgotPassword />} />
                             <Route path="/reset-password" element={<ResetPassword />} />
-                            <Route path="/verify-email" element={<VerifyEmail />} />
                             <Route path="/verify-email" element={<VerifyEmail />} />
                             <Route path="/onboarding" element={<Onboarding />} />
                             <Route path="/auth/process" element={<AuthProcess />} />

@@ -268,6 +268,7 @@ const VideoPlayer = ({ src, poster, className }) => {
             <div
                 className={`double-tap-zone zone-left ${tapAnimation === 'left' ? 'active' : ''}`}
                 onClick={(e) => handleZoneClick('left', e)}
+                aria-hidden="true"
             >
                 <div className="tap-icon"><Icons.Rewind10 width="32" height="32" /></div>
             </div>
@@ -275,6 +276,7 @@ const VideoPlayer = ({ src, poster, className }) => {
             <div
                 className={`double-tap-zone zone-right ${tapAnimation === 'right' ? 'active' : ''}`}
                 onClick={(e) => handleZoneClick('right', e)}
+                aria-hidden="true"
             >
                 <div className="tap-icon"><Icons.Forward10 width="32" height="32" /></div>
             </div>
@@ -300,12 +302,12 @@ const VideoPlayer = ({ src, poster, className }) => {
 
                 <div className="controls-row">
                     <div className="controls-left">
-                        <button className="control-btn" onClick={togglePlay}>
+                        <button className="control-btn" onClick={togglePlay} aria-label={isPlaying ? 'Duraklat' : 'Oynat'}>
                             {isPlaying ? <Icons.Pause width="24" height="24" /> : <Icons.Play width="24" height="24" />}
                         </button>
 
                         <div className="volume-container">
-                            <button className="control-btn" onClick={toggleMute}>
+                            <button className="control-btn" onClick={toggleMute} aria-label={isMuted || volume === 0 ? 'Sesi aç' : 'Sessiz'}>
                                 {isMuted || volume === 0 ? <Icons.VolumeMute width="20" height="20" /> : <Icons.VolumeUp width="20" height="20" />}
                             </button>
                             <div className="volume-slider-wrapper">
@@ -315,6 +317,7 @@ const VideoPlayer = ({ src, poster, className }) => {
                                     value={isMuted ? 0 : volume}
                                     onChange={handleVolumeChange}
                                     className="volume-slider"
+                                    aria-label="Ses seviyesi"
                                 />
                             </div>
                         </div>
@@ -325,7 +328,7 @@ const VideoPlayer = ({ src, poster, className }) => {
                     </div>
 
                     <div className="controls-right">
-                        <div className="speed-selector" onClick={(e) => { e.stopPropagation(); setShowSpeedMenu(!showSpeedMenu); }}>
+                        <div className="speed-selector" role="button" tabIndex="0" aria-label={`Oynatma hızı: ${playbackSpeed}x`} onClick={(e) => { e.stopPropagation(); setShowSpeedMenu(!showSpeedMenu); }}>
                             {playbackSpeed}x
                             {showSpeedMenu && (
                                 <div className="speed-menu">
@@ -342,7 +345,7 @@ const VideoPlayer = ({ src, poster, className }) => {
                             )}
                         </div>
 
-                        <button className="control-btn" onClick={toggleFullscreen}>
+                        <button className="control-btn" onClick={toggleFullscreen} aria-label={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran'}>
                             {isFullscreen ? <Icons.ExitFullscreen width="20" height="20" /> : <Icons.Fullscreen width="20" height="20" />}
                         </button>
                     </div>

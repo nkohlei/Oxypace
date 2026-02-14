@@ -272,6 +272,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         {/* Three-dot menu button (horizontal) */}
                         <button
                             className="post-action-btn"
+                            aria-label="Gönderi seçenekleri"
+                            aria-haspopup="true"
+                            aria-expanded={showMenu}
                             title="Daha Fazla"
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -477,7 +480,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
             {/* Delete Modal */}
             {showDeleteConfirm && (
-                <div className="delete-confirm-overlay" onClick={(e) => e.stopPropagation()}>
+                <div className="delete-confirm-overlay" onClick={(e) => e.stopPropagation()}
+                    role="dialog" aria-label="Gönderi silme onayı" aria-modal="true">
                     <div className="delete-confirm-modal">
                         <h3>Gönderin Silinecek!</h3>
                         <p>Emin misin?</p>

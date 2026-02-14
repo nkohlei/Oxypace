@@ -9,9 +9,9 @@ export const helmetConfig = helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://pagead2.googlesyndication.com', 'https://www.googletagservices.com', 'https://adservice.google.com'],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-            imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:', 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
             connectSrc: [
                 "'self'",
@@ -51,6 +51,8 @@ export const helmetConfig = helmet({
     permittedCrossDomainPolicies: { permittedPolicies: 'none' },
     // Cross-Origin-Resource-Policy - Allow cross-origin resource loading for media
     crossOriginResourcePolicy: false,
+    // Cross-Origin-Opener-Policy
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
 });
 
 export default helmetConfig;
