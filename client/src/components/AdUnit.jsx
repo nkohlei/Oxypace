@@ -1,13 +1,32 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
+    const adRef = useRef(null);
+
     useEffect(() => {
-        try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (e) {
-            console.error('AdSense error:', e);
-        }
-    }, []);
+        const pushAd = () => {
+            try {
+                if (adRef.current && adRef.current.offsetWidth > 0) {
+                    (window.adsbygoogle = window.adsbygoogle || []).push({});
+                } else {
+                    // If width is 0, it might be hidden or not rendered layout yet.
+                    // We can try a small timeout or just skip. 
+                    // Common fix is to ensure the parent has width.
+                    // For now, let's try a small delay if it's 0, or just not push if hidden.
+                    console.warn('Ad unit width is 0, skipping push for slot:', slot);
+                }
+            } catch (e) {
+                console.error('AdSense error:', e);
+            }
+        };
+
+        // Small delay to ensure layout is painted
+        const timer = setTimeout(() => {
+            pushAd();
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, [slot]);
 
     if (import.meta.env.NODE_ENV === 'development') {
         return (
@@ -30,8 +49,9 @@ const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
     }
 
     return (
-        <div style={{ margin: '20px 0', textAlign: 'center', ...style }}>
+        <div style={{ margin: '20px 0', textAlign: 'center', minHeight: '90px', ...style }}>
             <ins
+                ref={adRef}
                 className="adsbygoogle"
                 style={{ display: 'block' }}
                 data-ad-client="ca-pub-4028999820111107"
@@ -42,5 +62,6 @@ const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
         </div>
     );
 };
+
 
 export default AdUnit;

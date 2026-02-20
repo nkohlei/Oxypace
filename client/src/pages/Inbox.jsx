@@ -198,9 +198,16 @@ const Inbox = () => {
 
             const response = await axios.post('/api/messages', formData);
 
-            setMessages((prev) =>
-                prev.map((msg) => (msg._id === optimisticMessage._id ? response.data : msg))
-            );
+            setMessages((prev) => {
+                const alreadyExists = prev.some((m) => m._id === response.data._id);
+                if (alreadyExists) {
+                    // Socket already added the real message, just remove the optimistic one
+                    return prev.filter((msg) => msg._id !== optimisticMessage._id);
+                } else {
+                    // Replace optimistic message with the real one
+                    return prev.map((msg) => (msg._id === optimisticMessage._id ? response.data : msg));
+                }
+            });
         } catch (err) {
             console.error('Failed to send message:', err);
             setMessages((prev) => prev.filter((msg) => msg._id !== optimisticMessage._id));
