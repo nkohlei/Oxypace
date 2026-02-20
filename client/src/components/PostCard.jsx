@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { shouldShowTranslation } from '../utils/languageUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -577,7 +578,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
             </div>
 
             {/* Delete Modal */}
-            {showDeleteConfirm && (
+            {showDeleteConfirm && createPortal(
                 <div className="delete-confirm-overlay" onClick={(e) => e.stopPropagation()}
                     role="dialog" aria-label="Gönderi silme onayı" aria-modal="true">
                     <div className="delete-confirm-modal">
@@ -595,7 +596,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {showShareModal && (
