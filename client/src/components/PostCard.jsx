@@ -80,6 +80,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const [saved, setSaved] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const MAX_LENGTH = 150;
 
 
     // Translation State
@@ -465,9 +467,42 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                 <div className="post-content-text">
                     <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {isTranslated && translatedText
-                            ? translatedText
-                            : linkifyText(post.content)}
+                        {(() => {
+                            const contentStr = isTranslated && translatedText ? translatedText : post.content;
+                            if (!contentStr) return null;
+
+                            if (contentStr.length <= MAX_LENGTH || isExpanded) {
+                                return linkifyText(contentStr);
+                            }
+
+                            let truncated = contentStr.substring(0, MAX_LENGTH);
+                            const lastSpace = truncated.lastIndexOf(' ');
+                            if (lastSpace > MAX_LENGTH - 20) {
+                                truncated = truncated.substring(0, lastSpace);
+                            }
+
+                            return (
+                                <>
+                                    {linkifyText(truncated + '...')}
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+                                        className="read-more-btn"
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            marginLeft: '4px',
+                                            fontWeight: 600,
+                                            fontSize: '0.95em'
+                                        }}
+                                    >
+                                        devamı
+                                    </button>
+                                </>
+                            );
+                        })()}
                     </p>
                     {post.content && (
                         <button

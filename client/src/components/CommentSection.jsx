@@ -15,6 +15,13 @@ const CommentSection = ({ postId }) => {
     const [replyingTo, setReplyingTo] = useState(null); // { id: commentId, username: string }
     const [expandedComments, setExpandedComments] = useState({}); // { commentId: [replies] }
     const [loadingReplies, setLoadingReplies] = useState({}); // { commentId: boolean }
+    const [expandedTexts, setExpandedTexts] = useState({}); // { commentId: boolean }
+    const MAX_COMMENT_LENGTH = 150;
+
+    const toggleTextExpand = (commentId, e) => {
+        e.stopPropagation();
+        setExpandedTexts((prev) => ({ ...prev, [commentId]: true }));
+    };
 
     // New States
     const [selectedFile, setSelectedFile] = useState(null);
@@ -413,7 +420,40 @@ const CommentSection = ({ postId }) => {
                     </div>
 
                     <div className="comment-text">
-                        <p>{comment.content}</p>
+                        <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {(() => {
+                                if (!comment.content) return null;
+                                const isTextExpanded = expandedTexts[comment._id];
+                                if (comment.content.length <= MAX_COMMENT_LENGTH || isTextExpanded) {
+                                    return comment.content;
+                                }
+                                let truncated = comment.content.substring(0, MAX_COMMENT_LENGTH);
+                                const lastSpace = truncated.lastIndexOf(' ');
+                                if (lastSpace > MAX_COMMENT_LENGTH - 20) {
+                                    truncated = truncated.substring(0, lastSpace);
+                                }
+                                return (
+                                    <>
+                                        {truncated + '...'}
+                                        <button
+                                            onClick={(e) => toggleTextExpand(comment._id, e)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                marginLeft: '4px',
+                                                fontWeight: 600,
+                                                fontSize: '0.9em'
+                                            }}
+                                        >
+                                            devamı
+                                        </button>
+                                    </>
+                                );
+                            })()}
+                        </p>
                     </div>
 
                     {comment.media && (
