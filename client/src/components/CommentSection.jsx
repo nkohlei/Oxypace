@@ -424,8 +424,34 @@ const CommentSection = ({ postId }) => {
                             {(() => {
                                 if (!comment.content) return null;
                                 const isTextExpanded = expandedTexts[comment._id];
-                                if (comment.content.length <= MAX_COMMENT_LENGTH || isTextExpanded) {
+                                if (comment.content.length <= MAX_COMMENT_LENGTH) {
                                     return comment.content;
+                                }
+
+                                if (isTextExpanded) {
+                                    return (
+                                        <>
+                                            {comment.content}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExpandedTexts((prev) => ({ ...prev, [comment._id]: false }));
+                                                }}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--primary-cyan)',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    marginLeft: '4px',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.9em'
+                                                }}
+                                            >
+                                                daha az gör
+                                            </button>
+                                        </>
+                                    );
                                 }
                                 let truncated = comment.content.substring(0, MAX_COMMENT_LENGTH);
                                 const lastSpace = truncated.lastIndexOf(' ');
@@ -440,7 +466,7 @@ const CommentSection = ({ postId }) => {
                                             style={{
                                                 background: 'none',
                                                 border: 'none',
-                                                color: 'var(--text-secondary)',
+                                                color: 'var(--primary-cyan)',
                                                 cursor: 'pointer',
                                                 padding: 0,
                                                 marginLeft: '4px',
@@ -448,7 +474,7 @@ const CommentSection = ({ postId }) => {
                                                 fontSize: '0.9em'
                                             }}
                                         >
-                                            devamı
+                                            devamını gör
                                         </button>
                                     </>
                                 );

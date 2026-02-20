@@ -471,8 +471,32 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             const contentStr = isTranslated && translatedText ? translatedText : post.content;
                             if (!contentStr) return null;
 
-                            if (contentStr.length <= MAX_LENGTH || isExpanded) {
+                            if (contentStr.length <= MAX_LENGTH) {
                                 return linkifyText(contentStr);
+                            }
+
+                            if (isExpanded) {
+                                return (
+                                    <>
+                                        {linkifyText(contentStr)}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+                                            className="read-more-btn"
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--primary-cyan)',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                marginLeft: '4px',
+                                                fontWeight: 600,
+                                                fontSize: '0.95em'
+                                            }}
+                                        >
+                                            daha az gör
+                                        </button>
+                                    </>
+                                );
                             }
 
                             let truncated = contentStr.substring(0, MAX_LENGTH);
@@ -490,7 +514,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                         style={{
                                             background: 'none',
                                             border: 'none',
-                                            color: 'var(--text-secondary)',
+                                            color: 'var(--primary-cyan)',
                                             cursor: 'pointer',
                                             padding: 0,
                                             marginLeft: '4px',
@@ -498,7 +522,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                             fontSize: '0.95em'
                                         }}
                                     >
-                                        devamı
+                                        devamını gör
                                     </button>
                                 </>
                             );
