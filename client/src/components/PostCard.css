@@ -304,7 +304,7 @@
     border-radius: 12px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
     padding: 6px;
-    z-index: 100;
+    z-index: 9999;
     animation: menuFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
