@@ -270,7 +270,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
             className={`post-card twitter-layout ${post.isOptimistic ? 'optimistic' : ''}`}
             onClick={handleCardClick}
             onMouseLeave={handleMouseLeave}
-            style={{ zIndex: showMenu ? 100 : 1 }}
+            style={{
+                zIndex: showMenu ? 100 : 1,
+                contentVisibility: showMenu ? 'visible' : 'auto'
+            }}
         >
             {/* Left Column: Avatar */}
             <div className="post-left">
