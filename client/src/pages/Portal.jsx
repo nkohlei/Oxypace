@@ -931,6 +931,9 @@ const Portal = () => {
                                                             accept="video/mp4, video/webm, video/quicktime"
                                                         />
                                                         <input
+                                                            type="file"
+                                                            ref={gifInputRef}
+                                                            onChange={handleFileSelect}
                                                             style={{ display: 'none' }}
                                                             accept="image/gif"
                                                         />

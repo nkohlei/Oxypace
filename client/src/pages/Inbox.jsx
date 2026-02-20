@@ -29,6 +29,7 @@ const Inbox = () => {
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
+    const gifInputRef = useRef(null);
 
     useEffect(() => {
         fetchConversations();
@@ -479,6 +480,8 @@ const Inbox = () => {
                                                 fileInputRef.current.value = '';
                                             if (videoInputRef.current)
                                                 videoInputRef.current.value = '';
+                                            if (gifInputRef.current)
+                                                gifInputRef.current.value = '';
                                         }}
                                         style={{
                                             marginLeft: '10px',
@@ -621,7 +624,7 @@ const Inbox = () => {
                                                 <div
                                                     className="plus-menu-item"
                                                     onClick={() => {
-                                                        alert('GIF yükleme yakında!');
+                                                        gifInputRef.current.click();
                                                         setShowPlusMenu(false);
                                                     }}
                                                 >
@@ -652,6 +655,13 @@ const Inbox = () => {
                                         ref={videoInputRef}
                                         style={{ display: 'none' }}
                                         accept="video/mp4, video/webm, video/quicktime"
+                                        onChange={handleFileSelect}
+                                    />
+                                    <input
+                                        type="file"
+                                        ref={gifInputRef}
+                                        style={{ display: 'none' }}
+                                        accept="image/gif"
                                         onChange={handleFileSelect}
                                     />
 
