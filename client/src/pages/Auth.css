@@ -25,6 +25,7 @@
 }
 
 .auth-logo .logo-text {
+    font-family: 'Boldonse', sans-serif;
     font-size: 2rem;
     font-weight: 300;
     letter-spacing: 8px;
