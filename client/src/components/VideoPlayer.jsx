@@ -262,6 +262,7 @@ const VideoPlayer = ({ src, poster, className }) => {
                 <video
                     ref={videoRef}
                     src={isVisible || isLoaded ? src : undefined}
+                    loop
                     poster={poster}
                     className="main-video"
                     preload="none"

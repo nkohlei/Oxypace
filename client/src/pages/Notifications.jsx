@@ -271,7 +271,7 @@ const Notifications = () => {
                                         {notif.post && notif.post.media && (
                                             <div className="notif-post-preview">
                                                 {notif.post.mediaType === 'video' ? (
-                                                    <video src={getImageUrl(notif.post.media)} />
+                                                    <video src={getImageUrl(notif.post.media)} loop muted autoPlay playsInline />
                                                 ) : (
                                                     <img
                                                         src={getImageUrl(notif.post.media)}

@@ -423,6 +423,7 @@ const CommentSection = ({ postId }) => {
                                     src={getImageUrl(comment.media)}
                                     className="comment-media-img"
                                     controls
+                                    loop
                                 />
                             ) : (
                                 <img
