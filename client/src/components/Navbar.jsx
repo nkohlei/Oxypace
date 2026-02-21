@@ -107,7 +107,7 @@ const Navbar = () => {
 
                         <Link to="/" className="brand-logo">
                             <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
-                            <span className="logo-text">oxypace</span>
+                            <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
                         </Link>
                     </div>
 

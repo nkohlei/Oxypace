@@ -66,9 +66,8 @@
 }
 
 .logo-text {
-    font-family: 'Boldonse', sans-serif;
-    font-weight: 400;
-    letter-spacing: 2px;
+    height: 1.25rem;
+    object-fit: contain;
 }
 
 .logo-image {

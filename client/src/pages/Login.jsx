@@ -81,7 +81,7 @@ const Login = () => {
         <div className="auth-container">
             <div className="auth-card fade-in">
                 <div className="auth-logo">
-                    <span className="logo-text">oxypace</span>
+                    <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
                 </div>
 
                 <div className="auth-header">

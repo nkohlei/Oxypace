@@ -25,12 +25,9 @@
 }
 
 .auth-logo .logo-text {
-    font-family: 'Boldonse', sans-serif;
-    font-size: 2rem;
-    font-weight: 400;
-    letter-spacing: 8px;
-    color: var(--primary-cyan);
-    text-shadow: 0 0 30px var(--primary-glow);
+    height: 2.5rem;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px var(--primary-glow));
 }
 
 .auth-header {
