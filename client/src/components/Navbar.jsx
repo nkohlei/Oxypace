@@ -400,38 +400,16 @@ const Navbar = () => {
                                 )}
                             </Link>
                         ) : (
-                            <div
-                                className="guest-nav-actions"
-                                style={{
-                                    display: 'flex',
-                                    gap: '12px',
-                                    alignItems: 'center',
-                                    marginLeft: '8px',
-                                }}
-                            >
+                            <div className="guest-nav-actions">
                                 <Link
                                     to="/login"
-                                    style={{
-                                        color: 'var(--text-primary)',
-                                        textDecoration: 'none',
-                                        fontWeight: '600',
-                                        fontSize: '0.95rem',
-                                    }}
+                                    className="guest-login-btn"
                                 >
                                     Giriş Yap
                                 </Link>
                                 <Link
                                     to="/register"
-                                    style={{
-                                        backgroundColor: 'var(--primary-color)',
-                                        color: '#fff',
-                                        padding: '8px 20px',
-                                        borderRadius: '20px',
-                                        textDecoration: 'none',
-                                        fontWeight: '600',
-                                        fontSize: '0.95rem',
-                                        transition: 'opacity 0.2s',
-                                    }}
+                                    className="guest-register-btn"
                                 >
                                     Kaydol
                                 </Link>

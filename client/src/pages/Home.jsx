@@ -58,8 +58,8 @@ const Home = () => {
             <main className="app-content">
                 <div className="welcome-container home-welcome-section">
                     <div className="home-emoji">🌍</div>
-                    <h1 className="home-title">Oxypace: Yeni Nesil Global Sosyal Medya</h1>
-                    <p className="home-description">
+                    <h1 className="home-title animate-entrance">Oxypace: Yeni Nesil Global Sosyal Medya</h1>
+                    <p className="home-description animate-entrance delay-1">
                         Oxypace ile ilgi alanlarınıza uygun <strong>portalları</strong> keşfedin,
                         topluluklara katılın ve dünyayla bağlantı kurun.
                         <strong>Global message</strong> özelliği sayesinde sınırları kaldırın ve özgürce iletişim kurun.
@@ -72,7 +72,7 @@ const Home = () => {
                         <p>Her ilgi alanı için özel portallar. Oyun, teknoloji, sanat veya müzik; aradığınız her şey Oxypace portallarında.</p>
                     </div>
 
-                    <div className="action-buttons">
+                    <div className="action-buttons animate-entrance delay-2">
                         <button
                             className="btn-primary home-cta-btn"
                             onClick={() => navigate('/search')}
