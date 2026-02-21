@@ -8,7 +8,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
 import Badge from './Badge';
-import { linkifyText } from '../utils/linkify';
+import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import './PostCard.css';
 
@@ -504,31 +504,29 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 );
                             }
 
-                            let truncated = contentStr.substring(0, MAX_LENGTH);
-                            const lastSpace = truncated.lastIndexOf(' ');
-                            if (lastSpace > MAX_LENGTH - 20) {
-                                truncated = truncated.substring(0, lastSpace);
-                            }
+                            const { elements, isTruncated } = truncateAndLinkifyText(contentStr, MAX_LENGTH);
 
                             return (
                                 <>
-                                    {linkifyText(truncated + '...')}
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-                                        className="read-more-btn"
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            color: 'var(--primary-cyan)',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            marginLeft: '4px',
-                                            fontWeight: 600,
-                                            fontSize: '0.95em'
-                                        }}
-                                    >
-                                        devamını gör
-                                    </button>
+                                    {elements}
+                                    {isTruncated && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+                                            className="read-more-btn"
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--primary-cyan)',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                marginLeft: '4px',
+                                                fontWeight: 600,
+                                                fontSize: '0.95em'
+                                            }}
+                                        >
+                                            devamını gör
+                                        </button>
+                                    )}
                                 </>
                             );
                         })()}
