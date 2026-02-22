@@ -24,10 +24,7 @@
   height: 100vh;
   z-index: 0;
   overflow: hidden;
-  background: #050505;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #020202; /* Minimal black */
 }
 
 .advanced-home .marquee-bg-layer {
@@ -110,12 +107,12 @@
 .advanced-home .hero-intro-section {
   position: relative;
   z-index: 10;
+  height: 100vh; /* Take full screen */
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding-top: 180px;
-  padding-bottom: 80px;
+  justify-content: flex-end; /* Text at bottom half */
+  padding-bottom: 20vh; /* Space from real bottom */
   text-align: center;
 }
 
@@ -224,11 +221,11 @@
   position: relative;
   z-index: 10;
   background: transparent;
-  padding: 20px 20px 100px;
+  padding: 100px 20px;
   display: flex;
   flex-direction: column;
-  gap: 80px;
-  max-width: 1000px;
+  gap: 150px; /* More breathing room */
+  max-width: 1100px;
   margin: 0 auto;
 }
 

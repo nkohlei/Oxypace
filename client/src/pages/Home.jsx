@@ -107,9 +107,9 @@ const Home = () => {
     const descOpacity = Math.max(1 - (scrollY / (windowHeight * 0.4)), 0);
     const descTranslateY = scrollY * -0.5;
 
-    // The marquee should have at least 10 items to loop nicely. 
-    // We clone the arr multiple times
-    const marqueeItems = [...publicPortals, ...publicPortals, ...publicPortals, ...publicPortals];
+    // The background should have scattered items
+    // We clone the arr and give them random positions
+    const scatteredItems = [...publicPortals, ...publicPortals];
 
     return (
         <div className="app-wrapper advanced-home">
@@ -133,27 +133,27 @@ const Home = () => {
 
             <main className="advanced-home-content">
 
-                {/* FIXED MARQUEE BACKGROUND */}
+                {/* SCATTERED BACKGROUND */}
                 <div className="marquee-fixed-bg">
-                    <div className="marquee-bg-layer" style={{ opacity: 0.15 }}>
-                        {marqueeItems.length > 0 && (
-                            <>
-                                <div className="marquee-track track-1">
-                                    {marqueeItems.map((p, i) => (
-                                        <div key={`t1-${i}`} className="marquee-card">
-                                            {p.avatar ? <img src={getImageUrl(p.avatar)} alt="" /> : <div className="p-placeholder">{p.name?.charAt(0)}</div>}
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="marquee-track track-2">
-                                    {marqueeItems.slice().reverse().map((p, i) => (
-                                        <div key={`t2-${i}`} className="marquee-card">
-                                            {p.avatar ? <img src={getImageUrl(p.avatar)} alt="" /> : <div className="p-placeholder">{p.name?.charAt(0)}</div>}
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
+                    <div className="marquee-bg-layer scattered-icons">
+                        {scatteredItems.map((p, i) => (
+                            <div 
+                                key={`icon-${i}`} 
+                                className="marquee-card scattered"
+                                style={{
+                                    left: `${(i * 137) % 90 + 5}%`,
+                                    top: `${(i * 223) % 90 + 5}%`,
+                                    animationDelay: `${-(i * 1.5)}s`,
+                                    opacity: 0.15 + ((i % 5) * 0.05) // Varying visibility
+                                }}
+                            >
+                                {p.avatar ? (
+                                    <img src={getImageUrl(p.avatar)} alt="" />
+                                ) : (
+                                    <div className="p-placeholder">{p.name?.charAt(0)}</div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                     <div className="fixed-bg-overlay"></div>
                 </div>
