@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -68,6 +68,7 @@ const PageLoader = () => (
 const AppLayout = () => {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useUI();
     const { user } = useAuth();
+    const location = useLocation();
 
     return (
         <div className={`app-container ${!user ? 'guest-mode' : ''}`}>
@@ -209,9 +210,10 @@ const AppLayout = () => {
                     </Suspense>
                 </div>
 
-
-                {/* Global Footer */}
-                <Footer />
+                {/* Global Footer (Hidden on Discord Layouts) */}
+                {!['/portal', '/inbox', '/settings', '/create', '/profile'].some(route => location.pathname.startsWith(route)) && (
+                    <Footer />
+                )}
             </div>
         </div>
     );
