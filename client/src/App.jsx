@@ -77,6 +77,23 @@ const AppLayout = () => {
         if (user) {
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
+
+            // CRITICAL: Reset browser scroll that accumulated during guest-mode loading phase.
+            // Without this, the scroll position from the guest page persists and
+            // shifts the entire fixed layout (sidebars, navbar) upward.
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
+            // Also reset the content scroll area
+            const scrollArea = document.querySelector('.content-scroll-area');
+            if (scrollArea) scrollArea.scrollTop = 0;
+
+            // Force a layout reflow to flush the stale guest-mode dimensions
+            const appContainer = document.querySelector('.app-container');
+            if (appContainer) {
+                void appContainer.offsetHeight; // Force reflow
+            }
         } else {
             document.documentElement.classList.remove('discord-layout-active');
             document.body.classList.remove('discord-layout-active');
