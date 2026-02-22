@@ -34,7 +34,7 @@ const Login = () => {
         try {
             const response = await axios.post('/api/auth/login', formData);
             login(response.data.token, response.data.user);
-            navigate('/');
+            window.location.href = '/'; // Full reload for clean layout
         } catch (err) {
             setError(err.response?.data?.message || 'Giriş başarısız');
         } finally {

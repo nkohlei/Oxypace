@@ -31,7 +31,7 @@ const AuthProcess = () => {
 
                 if (action === 'login') {
                     login(authToken, user);
-                    navigate('/'); // Success!
+                    window.location.href = '/'; // Full reload for clean layout
                 } else if (action === 'onboarding') {
                     // Redirect to onboarding with the pre-token
                     navigate(`/onboarding?preToken=${preToken}`);

@@ -28,7 +28,7 @@ const GoogleCallback = () => {
             if (isNewUser) {
                 navigate('/onboarding');
             } else {
-                navigate('/');
+                window.location.href = '/'; // Full reload for clean layout
             }
         } else {
             console.warn('⚠️ No token found, redirecting to login');

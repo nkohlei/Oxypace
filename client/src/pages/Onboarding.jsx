@@ -61,7 +61,7 @@ const Onboarding = () => {
 
                 // Login the user with the new token
                 login(response.data.token, response.data.user);
-                navigate('/');
+                window.location.href = '/'; // Full reload for clean layout
             } else {
                 // --- EXISTING USER PROFILE UPDATE ---
                 const response = await axios.put('/api/users/me', {
@@ -71,7 +71,7 @@ const Onboarding = () => {
                 });
 
                 updateUser(response.data.user);
-                navigate('/');
+                window.location.href = '/'; // Full reload for clean layout
             }
         } catch (err) {
             console.error(err);
