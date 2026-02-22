@@ -67,14 +67,16 @@ const PageLoader = () => (
 // Separate layout component to use useUI hook
 const AppLayout = () => {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useUI();
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const location = useLocation();
 
-    // Enforce strict viewport bounds when user is logged in.
-    // This prevents the body/html from growing beyond 100vh
-    // which causes sidebars and navbars to scroll with the page.
+    // Use token (not user) to determine layout mode.
+    // Token is available synchronously from localStorage, while user requires an API call.
+    // This prevents the brief guest-mode flash during auth loading.
+    const isLoggedIn = !!token;
+
     useLayoutEffect(() => {
-        if (user) {
+        if (isLoggedIn) {
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
 
@@ -102,10 +104,10 @@ const AppLayout = () => {
             document.documentElement.classList.remove('discord-layout-active');
             document.body.classList.remove('discord-layout-active');
         };
-    }, [user, location.pathname]);
+    }, [isLoggedIn, location.pathname]);
 
     return (
-        <div className={`app-container ${!user ? 'guest-mode' : ''}`}>
+        <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''}`}>
             {/* Mobile Overlay */}
             <div
                 className={`mobile-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
