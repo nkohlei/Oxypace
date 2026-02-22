@@ -223,8 +223,8 @@
 /* Plus Menu Popover */
 .plus-menu {
     position: absolute;
-    top: 75px;
-    bottom: auto;
+    bottom: calc(100% + 8px);
+    top: auto;
     left: 16px;
     width: 220px;
     background-color: var(--bg-card);
