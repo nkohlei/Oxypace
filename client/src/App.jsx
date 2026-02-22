@@ -64,9 +64,6 @@ const PageLoader = () => (
 );
 
 
-// Routes that use the full-screen Discord-style layout — no footer here
-const DISCORD_LAYOUT_ROUTES = ['/portal', '/inbox', '/settings'];
-
 // Separate layout component to use useUI hook
 const AppLayout = () => {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useUI();
@@ -78,17 +75,23 @@ const AppLayout = () => {
     // This prevents the brief guest-mode flash during auth loading.
     const isLoggedIn = !!token;
 
-    // Hide footer on full-screen Discord-layout pages
-    const isDiscordRoute = DISCORD_LAYOUT_ROUTES.some(route => location.pathname.startsWith(route));
-
     useLayoutEffect(() => {
+        const root = document.getElementById('root');
         if (isLoggedIn) {
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
 
-            // CRITICAL: Reset browser scroll that accumulated during guest-mode loading phase.
-            // Without this, the scroll position from the guest page persists and
-            // shifts the entire fixed layout (sidebars, navbar) upward.
+            // CRITICAL: Force-reset #root to 100vh to flush the stale guest-mode height.
+            // When transitioning from guest mode (which can grow to 2000+ px), 
+            // the #root flex container retains its expanded height even after overflow:hidden is applied.
+            // Setting inline styles forces an immediate reflow to 100vh.
+            if (root) {
+                root.style.height = '100vh';
+                root.style.maxHeight = '100vh';
+                root.style.overflow = 'hidden';
+            }
+
+            // Reset browser scroll accumulated during guest-mode
             window.scrollTo(0, 0);
             document.documentElement.scrollTop = 0;
             document.body.scrollTop = 0;
@@ -105,6 +108,13 @@ const AppLayout = () => {
         } else {
             document.documentElement.classList.remove('discord-layout-active');
             document.body.classList.remove('discord-layout-active');
+
+            // Clear forced inline styles so guest pages can scroll freely
+            if (root) {
+                root.style.height = '';
+                root.style.maxHeight = '';
+                root.style.overflow = '';
+            }
         }
         return () => {
             document.documentElement.classList.remove('discord-layout-active');
@@ -253,8 +263,8 @@ const AppLayout = () => {
                     </div>
                 </div>
             </div>
-            {/* Hide footer on Discord-layout pages (Portal, Inbox, Settings) */}
-            {(!isLoggedIn || !isDiscordRoute) && <Footer />}
+            {/* Footer - always visible on all pages */}
+            <Footer />
         </div>
     );
 };
