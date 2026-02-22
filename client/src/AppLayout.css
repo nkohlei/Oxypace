@@ -1,6 +1,10 @@
 /* Main App Layout - Full Screen Discord Style */
 .app-container {
     display: flex;
+    flex-direction: column;
+    /* Allows footer to sit below the main horizontal flex area */
+    flex: 1;
+    /* Take up available space */
     margin: 0;
     width: 100vw;
     height: 100vh;

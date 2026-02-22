@@ -801,9 +801,56 @@ const Portal = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Message Input Area */}
-                                            {user ? (
-                                                isMember ? (
+                                            {/* Message Area */}
+                                            {user && isMember ? (
+                                                <>
+                                                    <div
+                                                        className="portal-feed-container discord-feed"
+                                                        onScroll={handleScroll}
+                                                        ref={feedRef}
+                                                    >
+                                                        {/* Feed Header / Welcome */}
+                                                        {posts.length === 0 && !loading && (
+                                                            <div className="empty-portal">
+                                                                <div className="empty-portal-icon">👋</div>
+                                                                <h3>
+                                                                    #
+                                                                    {portal?.channels?.find(
+                                                                        (c) => String(c._id) === String(currentChannel)
+                                                                    )?.name || '...'}{' '}
+                                                                    kanalına hoş geldin!
+                                                                </h3>
+                                                                <p>
+                                                                    Bu kanalda henüz mesaj yok. İlk mesajı sen at!
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Posts List */}
+                                                        {Array.isArray(posts) && posts.map((post) => (
+                                                            <PostCard
+                                                                key={post._id}
+                                                                post={post}
+                                                                onDelete={handleDeletePost}
+                                                                onPin={handlePin}
+                                                                isAdmin={isAdmin}
+                                                            />
+                                                        ))}
+
+                                                        {/* Infinite Scroll Sentinel */}
+                                                        <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            {loadingMore && <div className="spinner-small"></div>}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Scroll To Top Button - Wide Pill */}
+                                                    <button
+                                                        className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
+                                                        onClick={scrollToTop}
+                                                    >
+                                                        Başa Dön
+                                                    </button>
+
                                                     <div className="channel-input-area">
                                                         {/* Plus Menu Popover */}
                                                         {showPlusMenu && (
@@ -1124,130 +1171,83 @@ const Portal = () => {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <div
-                                                        style={{
-                                                            padding: '20px',
-                                                            textAlign: 'center',
-                                                            color: '#b9bbbe',
-                                                            backgroundColor: 'var(--bg-card)',
-                                                            borderTop: '1px solid var(--border-subtle)',
-                                                        }}
-                                                    >
-                                                        Bu kanala mesaj göndermek için üye olmalısın.
-                                                    </div>
-                                                )
-                                            ) : null}
-
-                                            <div
-                                                className="portal-feed-container discord-feed"
-                                                onScroll={handleScroll}
-                                                ref={feedRef}
-                                            >
-                                                {/* Feed Header / Welcome */}
-                                                {posts.length === 0 && !loading && (
-                                                    <div className="empty-portal">
-                                                        <div className="empty-portal-icon">👋</div>
-                                                        <h3>
-                                                            #
-                                                            {portal?.channels?.find(
-                                                                (c) => String(c._id) === String(currentChannel)
-                                                            )?.name || '...'}{' '}
-                                                            kanalına hoş geldin!
-                                                        </h3>
-                                                        <p>
-                                                            Bu kanalda henüz mesaj yok. İlk mesajı sen at!
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                {/* Posts List */}
-                                                {Array.isArray(posts) && posts.map((post) => (
-                                                    <PostCard
-                                                        key={post._id}
-                                                        post={post}
-                                                        onDelete={handleDeletePost}
-                                                        onPin={handlePin}
-                                                        isAdmin={isAdmin}
-                                                    />
-                                                ))}
-
-                                                {/* Infinite Scroll Sentinel */}
-                                                <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    {loadingMore && <div className="spinner-small"></div>}
+                                                </>
+                                            ) : user ? (
+                                                <div
+                                                    style={{
+                                                        padding: '20px',
+                                                        textAlign: 'center',
+                                                        color: '#b9bbbe',
+                                                        backgroundColor: 'var(--bg-card)',
+                                                        borderTop: '1px solid var(--border-subtle)',
+                                                    }}
+                                                >
+                                                    Bu kanala mesaj göndermek için üye olmalısın.
                                                 </div>
-                                            </div>
-
-                                            {/* Scroll To Top Button - Wide Pill */}
-                                            <button
-                                                className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
-                                                onClick={scrollToTop}
-                                            >
-                                                Başa Dön
-                                            </button>
+                                            ) : null}
                                         </>
                                     )}
                                 </>
                             )}
                         </div>
-
-                        {/* Members Sidebar (Right Column) */}
-                        {showMembers && <MembersSidebar members={portal.members} onClose={() => setShowMembers(false)} />}
                     </div>
 
-                    {/* New Settings Modal Integration */}
-                    {editing && settingsTab !== 'notifications' && (
-                        <Suspense fallback={null}>
-                            <PortalSettingsModal
-                                portal={portal}
-                                currentUser={user}
-                                initialTab={settingsTab}
-                                onClose={() => setEditing(false)}
-                                onUpdate={(updatedPortal) => {
-                                    setPortal(updatedPortal);
-                                }}
-                            />
-                        </Suspense>
-                    )}
+                    {/* Members Sidebar (Right Column) */}
+                    {showMembers && <MembersSidebar members={portal.members} onClose={() => setShowMembers(false)} />}
+                </main>
+            </div>
 
-                    {/* Portal Notifications Section */}
-                    {editing && settingsTab === 'notifications' && (
-                        <div
-                            className="portal-notifications-modal"
+            {/* New Settings Modal Integration */}
+            {editing && settingsTab !== 'notifications' && (
+                <Suspense fallback={null}>
+                    <PortalSettingsModal
+                        portal={portal}
+                        currentUser={user}
+                        initialTab={settingsTab}
+                        onClose={() => setEditing(false)}
+                        onUpdate={(updatedPortal) => {
+                            setPortal(updatedPortal);
+                        }}
+                    />
+                </Suspense>
+            )}
+
+            {/* Portal Notifications Section */}
+            {editing && settingsTab === 'notifications' && (
+                <div
+                    className="portal-notifications-modal"
+                    onClick={() => setEditing(false)}
+                >
+                    <div
+                        className="notifications-modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="close-notifications-btn"
                             onClick={() => setEditing(false)}
                         >
-                            <div
-                                className="notifications-modal-content"
-                                onClick={(e) => e.stopPropagation()}
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
                             >
-                                <button
-                                    className="close-notifications-btn"
-                                    onClick={() => setEditing(false)}
-                                >
-                                    <svg
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                                <Suspense fallback={null}>
-                                    <PortalNotifications
-                                        portalId={portal._id}
-                                        onUpdate={fetchPortalData}
-                                    />
-                                </Suspense>
-                            </div>
-                        </div>
-                    )}
-                </main>
-            </div >
-        </div >
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                        <Suspense fallback={null}>
+                            <PortalNotifications
+                                portalId={portal._id}
+                                onUpdate={fetchPortalData}
+                            />
+                        </Suspense>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

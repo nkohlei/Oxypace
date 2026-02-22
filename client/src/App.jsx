@@ -108,146 +108,147 @@ const AppLayout = () => {
 
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''}`}>
-            {/* Mobile Overlay */}
-            <div
-                className={`mobile-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
-                onClick={closeSidebar}
-                aria-hidden="true"
-            />
-
-            {/* Sidebar Toggle Arrow - Visible on Desktop - Only if user is logged in */}
-            {user && (
+            <div className="horizontal-layout-container" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                {/* Mobile Overlay */}
                 <div
-                    className={`sidebar-toggle-arrow ${isSidebarOpen ? 'open' : ''}`}
-                    onClick={toggleSidebar}
-                    role="button"
-                    tabIndex="0"
-                    aria-label={isSidebarOpen ? 'Menüyü kapat' : 'Menüyü aç'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSidebar(); } }}
-                    title={isSidebarOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                    className={`mobile-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
+                    onClick={closeSidebar}
+                    aria-hidden="true"
+                />
+
+                {/* Sidebar Toggle Arrow - Visible on Desktop - Only if user is logged in */}
+                {user && (
+                    <div
+                        className={`sidebar-toggle-arrow ${isSidebarOpen ? 'open' : ''}`}
+                        onClick={toggleSidebar}
+                        role="button"
+                        tabIndex="0"
+                        aria-label={isSidebarOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSidebar(); } }}
+                        title={isSidebarOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
                     >
-                        {/* Arrow direction flips via CSS rotation */}
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="24"
+                            height="24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            {/* Arrow direction flips via CSS rotation */}
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </div>
+                )}
+
+                {user && (
+                    <div className={`portal-sidebar-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+                        <PortalSidebar />
+                    </div>
+                )}
+
+                {/* Global User Bar Removed - Moved to Sidebars */}
+
+                <div className="main-content-wrapper">
+                    <div className="content-scroll-area">
+                        <Suspense fallback={<PageLoader />}>
+                            <Routes>
+                                {/* Public routes */}
+                                <Route path="/login" element={<Login />} />
+
+                                <Route path="/register" element={<Register />} />
+                                <Route path="/forgot-password" element={<ForgotPassword />} />
+                                <Route path="/reset-password" element={<ResetPassword />} />
+                                <Route path="/verify-email" element={<VerifyEmail />} />
+                                <Route path="/onboarding" element={<Onboarding />} />
+                                <Route path="/auth/process" element={<AuthProcess />} />
+                                <Route path="/auth/google/success" element={<GoogleCallback />} />
+                                <Route path="/privacy" element={<PrivacyPolicy />} />
+                                <Route path="/terms" element={<TermsOfService />} />
+                                <Route path="/contact" element={<Contact />} />
+
+                                {/* Private routes */}
+                                <Route path="/" element={<Home />} />
+
+                                {/* Portal Route */}
+                                <Route path="/portal/:id" element={<Portal />} />
+
+                                <Route
+                                    path="/create"
+                                    element={
+                                        <PrivateRoute>
+                                            <CreatePost />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route path="/search" element={<Search />} />
+                                <Route
+                                    path="/profile"
+                                    element={
+                                        <PrivateRoute>
+                                            <Profile />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route path="/profile/:username" element={<Profile />} />
+                                <Route
+                                    path="/inbox"
+                                    element={
+                                        <PrivateRoute>
+                                            <Inbox />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/settings"
+                                    element={
+                                        <PrivateRoute>
+                                            <Settings />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/notifications"
+                                    element={
+                                        <PrivateRoute>
+                                            <Notifications />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/admin"
+                                    element={
+                                        <PrivateRoute>
+                                            <AdminDashboard />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/saved"
+                                    element={
+                                        <PrivateRoute>
+                                            <Saved />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route path="/post/:postId" element={<PostDetail />} />
+                                <Route
+                                    path="/comment/:commentId"
+                                    element={
+                                        <PrivateRoute>
+                                            <CommentDetail />
+                                        </PrivateRoute>
+                                    }
+                                />
+
+                                <Route path="*" element={<Navigate to="/" />} />
+                            </Routes>
+                        </Suspense>
+                    </div>
                 </div>
-            )}
-
-            {user && (
-                <div className={`portal-sidebar-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-                    <PortalSidebar />
-                </div>
-            )}
-
-            {/* Global User Bar Removed - Moved to Sidebars */}
-
-            <div className="main-content-wrapper">
-                <div className="content-scroll-area">
-                    <Suspense fallback={<PageLoader />}>
-                        <Routes>
-                            {/* Public routes */}
-                            <Route path="/login" element={<Login />} />
-
-                            <Route path="/register" element={<Register />} />
-                            <Route path="/forgot-password" element={<ForgotPassword />} />
-                            <Route path="/reset-password" element={<ResetPassword />} />
-                            <Route path="/verify-email" element={<VerifyEmail />} />
-                            <Route path="/onboarding" element={<Onboarding />} />
-                            <Route path="/auth/process" element={<AuthProcess />} />
-                            <Route path="/auth/google/success" element={<GoogleCallback />} />
-                            <Route path="/privacy" element={<PrivacyPolicy />} />
-                            <Route path="/terms" element={<TermsOfService />} />
-                            <Route path="/contact" element={<Contact />} />
-
-                            {/* Private routes */}
-                            <Route path="/" element={<Home />} />
-
-                            {/* Portal Route */}
-                            <Route path="/portal/:id" element={<Portal />} />
-
-                            <Route
-                                path="/create"
-                                element={
-                                    <PrivateRoute>
-                                        <CreatePost />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route path="/search" element={<Search />} />
-                            <Route
-                                path="/profile"
-                                element={
-                                    <PrivateRoute>
-                                        <Profile />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route path="/profile/:username" element={<Profile />} />
-                            <Route
-                                path="/inbox"
-                                element={
-                                    <PrivateRoute>
-                                        <Inbox />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/settings"
-                                element={
-                                    <PrivateRoute>
-                                        <Settings />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/notifications"
-                                element={
-                                    <PrivateRoute>
-                                        <Notifications />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/admin"
-                                element={
-                                    <PrivateRoute>
-                                        <AdminDashboard />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/saved"
-                                element={
-                                    <PrivateRoute>
-                                        <Saved />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route path="/post/:postId" element={<PostDetail />} />
-                            <Route
-                                path="/comment/:commentId"
-                                element={
-                                    <PrivateRoute>
-                                        <CommentDetail />
-                                    </PrivateRoute>
-                                }
-                            />
-
-                            {/* Catch all */}
-                            <Route path="*" element={<Navigate to="/" />} />
-                        </Routes>
-                    </Suspense>
-                </div>
-                {/* Global fixed bottom bar */}
-                <Footer />
             </div>
+            {/* Global fixed bottom bar - Now spans full width, below sidebars */}
+            <Footer />
         </div>
     );
 };
