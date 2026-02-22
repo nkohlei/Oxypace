@@ -64,6 +64,9 @@ const PageLoader = () => (
 );
 
 
+// Routes that use the full-screen Discord-style layout — no footer here
+const DISCORD_LAYOUT_ROUTES = ['/portal', '/inbox', '/settings'];
+
 // Separate layout component to use useUI hook
 const AppLayout = () => {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useUI();
@@ -74,6 +77,9 @@ const AppLayout = () => {
     // Token is available synchronously from localStorage, while user requires an API call.
     // This prevents the brief guest-mode flash during auth loading.
     const isLoggedIn = !!token;
+
+    // Hide footer on full-screen Discord-layout pages
+    const isDiscordRoute = DISCORD_LAYOUT_ROUTES.some(route => location.pathname.startsWith(route));
 
     useLayoutEffect(() => {
         if (isLoggedIn) {
@@ -247,8 +253,8 @@ const AppLayout = () => {
                     </div>
                 </div>
             </div>
-            {/* Global fixed bottom bar - Now spans full width, below sidebars */}
-            <Footer />
+            {/* Hide footer on Discord-layout pages (Portal, Inbox, Settings) */}
+            {(!isLoggedIn || !isDiscordRoute) && <Footer />}
         </div>
     );
 };
