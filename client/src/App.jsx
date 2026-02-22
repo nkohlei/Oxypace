@@ -244,10 +244,8 @@ const AppLayout = () => {
                     </Suspense>
                 </div>
 
-                {/* Global Footer - Only for guests (logged-out users) */}
-                {!user && (
-                    <Footer />
-                )}
+                {/* Global Footer */}
+                <Footer />
             </div>
         </div>
     );
