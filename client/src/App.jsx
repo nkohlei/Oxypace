@@ -242,8 +242,10 @@ const AppLayout = () => {
                             <Route path="*" element={<Navigate to="/" />} />
                         </Routes>
                     </Suspense>
-                    {/* Global Footer - inside scroll area so it doesn't steal height from discord layout */}
-                    <Footer />
+                    {/* Footer only on public/non-discord pages */}
+                    {!['/portal', '/inbox', '/settings', '/create', '/profile', '/notifications', '/admin', '/saved'].some(r => location.pathname.startsWith(r)) && (
+                        <Footer />
+                    )}
                 </div>
             </div>
         </div>
