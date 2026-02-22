@@ -803,66 +803,56 @@
     animation: slideUp 0.3s ease;
 }
 
-/* Scroll To Top Button - Glassmorphism & Aurora */
-/* Scroll To Top Button - Phase 5: Wide Thin Strip at Top */
+/* Scroll To Top — ince uzun şerit, gönderi kutusunun hemen altında */
 .scroll-to-top-btn {
-    /* Floating pill — positioned inside the feed, near the top */
     position: absolute;
-    top: 16px;
+    top: 60px;
     left: 50%;
-    transform: translateX(-50%) translateY(-60px);
-    width: auto;
-    min-width: 140px;
-    height: 36px;
-    border-radius: 18px;
+    transform: translateX(-50%) scaleY(0);
+    transform-origin: top center;
+    width: 60%;
+    max-width: 500px;
+    height: 22px;
+    border-radius: 0 0 14px 14px;
     border: none;
-    background: linear-gradient(90deg, #FF8C00, #FFA500, #FFD700);
+    background: linear-gradient(90deg, #FF8C00 0%, #FFA500 30%, #FFD700 60%, #FFA500 80%, #FF8C00 100%);
     background-size: 200% 100%;
-    animation: auroraShift 3s ease infinite;
+    animation: shimmerBar 2.5s linear infinite;
     color: #1a1a1a;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(255, 140, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 18px rgba(255, 150, 0, 0.5);
     z-index: 30;
     opacity: 0;
     pointer-events: none;
     font-weight: 800;
-    font-size: 11px;
-    letter-spacing: 1.5px;
+    font-size: 10px;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    padding: 0 18px;
-    transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
-    white-space: nowrap;
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
 }
 
-@keyframes auroraShift {
+@keyframes shimmerBar {
     0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
+        background-position: 100% 0;
     }
 
     100% {
-        background-position: 0% 50%;
+        background-position: -100% 0;
     }
 }
 
 .scroll-to-top-btn.visible {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
-    /* Slide in from above */
+    transform: translateX(-50%) scaleY(1);
     pointer-events: auto;
 }
 
 .scroll-to-top-btn:hover {
-    background: linear-gradient(90deg, #FFD700, #FFA500, #FF8C00);
-    box-shadow: 0 6px 28px rgba(255, 140, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.4);
-    transform: translateX(-50%) translateY(0) scale(1.05);
+    box-shadow: 0 6px 28px rgba(255, 150, 0, 0.75);
+    filter: brightness(1.1);
 }
 
 
