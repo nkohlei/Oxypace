@@ -99,6 +99,7 @@ const Portal = () => {
 
     const handleChannelSelect = (channelId) => {
         setCurrentChannel(channelId);
+        setShowScrollTop(false); // Reset scroll button when changing channels
         if (window.innerWidth <= 768) {
             closeSidebar();
         }
@@ -258,6 +259,7 @@ const Portal = () => {
         // Only show full page spinner on initial portal load, not channel switches
         if (!portal || portal._id !== id) {
             setLoading(true);
+            setShowScrollTop(false); // Reset scroll button when changing portals
         }
 
         try {
