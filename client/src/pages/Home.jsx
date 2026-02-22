@@ -162,14 +162,13 @@ const Home = () => {
                                 transform: `translateY(${descTranslateY}px)`
                             }}
                         >
-                            <div className="home-emoji bounce">🌍</div>
-                            <h2>Yeni Nesil Global Sosyal Medya</h2>
-                            <p>Sıradan platformları unutun. Topluluğunuzu bulun, sınırları kaldırın.</p>
+                            <h2>Sınırsız Dijital İletişim ve Topluluk Deneyimi</h2>
+                            <p>Sıradan platformları unutun. Topluluğunuzu bulun, kendi dünyanızı tasarlayın.</p>
                             <button
                                 className="hero-cta-btn pulse-glow"
-                                onClick={() => navigate('/search')}
+                                onClick={() => navigate('/register')}
                             >
-                                Şimdi Başla
+                                Bize Katıl
                             </button>
                         </div>
                     </section>
@@ -265,6 +264,37 @@ const Home = () => {
                     <div className="home-footer-ad">
                         <AdUnit slot="1234567890" />
                     </div>
+
+                    {/* PROFESSIONAL FOOTER */}
+                    <footer className="home-advanced-footer">
+                        <div className="footer-content">
+                            <div className="footer-brand">
+                                <img src="/oxypace-text-logo.png" alt="OXYPACE" className="footer-logo" />
+                                <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
+                            </div>
+                            <div className="footer-links-grid">
+                                <div className="footer-col">
+                                    <h4>Platform</h4>
+                                    <span onClick={() => navigate('/search')}>Portalları Keşfet</span>
+                                    <span onClick={() => navigate('/login')}>Giriş Yap</span>
+                                    <span onClick={() => navigate('/register')}>Kayıt Ol</span>
+                                </div>
+                                <div className="footer-col">
+                                    <h4>Yasal</h4>
+                                    <span onClick={() => navigate('/privacy')}>Gizlilik Politikası</span>
+                                    <span onClick={() => navigate('/terms')}>Kullanım Koşulları</span>
+                                </div>
+                                <div className="footer-col">
+                                    <h4>İletişim</h4>
+                                    <span onClick={() => navigate('/contact')}>Bize Ulaşın</span>
+                                    <a href="mailto:nqohlei@gmail.com">Destek</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="footer-bottom">
+                            <p>&copy; {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
+                        </div>
+                    </footer>
                 </div>
             </main>
         </div>
