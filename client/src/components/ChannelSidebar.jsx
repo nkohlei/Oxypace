@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import InviteUserModal from './InviteUserModal';
 import Badge from './Badge';
+import UserBar from './UserBar';
 
 import { getImageUrl } from '../utils/imageUtils';
 
@@ -408,7 +409,8 @@ const ChannelSidebar = ({
                 })}
             </div>
 
-            {/* User Control Bar Removed */}
+            {/* User Control Bar - Bottom of Sidebar */}
+            <UserBar />
 
             <style>{`
             .channel-sidebar {
