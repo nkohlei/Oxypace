@@ -43,13 +43,30 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Track scroll position for animations
+    // Track scroll position for animations (now using .content-scroll-area)
     useEffect(() => {
-        const handleScroll = () => {
-            setScrollY(window.scrollY);
+        const scrollArea = document.querySelector('.content-scroll-area');
+
+        const handleScroll = (e) => {
+            if (e && e.target) {
+                setScrollY(e.target.scrollTop);
+            }
         };
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
+
+        if (scrollArea) {
+            scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+        } else {
+            // Fallback for edge cases where component mounts before AppLayout wrapper
+            window.addEventListener('scroll', () => setScrollY(window.scrollY), { passive: true });
+        }
+
+        return () => {
+            if (scrollArea) {
+                scrollArea.removeEventListener('scroll', handleScroll);
+            } else {
+                window.removeEventListener('scroll', () => setScrollY(window.scrollY));
+            }
+        };
     }, []);
 
     if (loading) {
