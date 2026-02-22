@@ -147,7 +147,7 @@
     color: var(--text-primary);
 }
 
-/* Message Input Area - Relative flow */
+/* Message Input Area - At the TOP of the feed (order:-1 places it first in flex column) */
 .channel-input-area {
     padding: 12px 24px 4px 24px;
     margin: 0;
@@ -158,8 +158,9 @@
     flex-shrink: 0;
     z-index: 20;
     position: relative;
-    /* Changed from absolute to relative */
-    /* Removed top/left/right absolute positioning */
+    order: -1;
+    /* Force to top of the flex column */
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .channel-input-area>* {
@@ -223,9 +224,9 @@
 /* Plus Menu Popover */
 .plus-menu {
     position: absolute;
-    bottom: calc(100% + 8px);
-    top: auto;
-    left: 16px;
+    top: 100%;
+    bottom: auto;
+    left: 0;
     width: 220px;
     background-color: var(--bg-card);
     /* Replaced #2b2d31 */
