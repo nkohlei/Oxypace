@@ -244,11 +244,9 @@ const AppLayout = () => {
                             <Route path="*" element={<Navigate to="/" />} />
                         </Routes>
                     </Suspense>
-                    {/* Footer only on public/non-discord pages */}
-                    {!['/portal', '/inbox', '/settings', '/create', '/profile', '/notifications', '/admin', '/saved'].some(r => location.pathname.startsWith(r)) && (
-                        <Footer />
-                    )}
                 </div>
+                {/* Global fixed bottom bar */}
+                <Footer />
             </div>
         </div>
     );
