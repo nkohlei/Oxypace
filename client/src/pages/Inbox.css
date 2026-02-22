@@ -1,6 +1,6 @@
-/* Inbox Main Layout - Matching Portal Structure */
 .inbox-wrapper {
     height: 100%;
+    max-height: 100%;
     min-height: 0;
     /* Crucial for nested flex scrolling */
     overflow: hidden;

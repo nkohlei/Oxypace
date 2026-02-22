@@ -438,7 +438,7 @@ const ChannelSidebar = ({
                     top: 0;
                     left: 42px;
                     z-index: 2000;
-                    height: 100vh;
+                    height: 100dvh;
                     transform: translateX(-100%);
                     box-shadow: 2px 0 10px rgba(0,0,0,0.5);
                 }

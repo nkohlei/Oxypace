@@ -1,15 +1,13 @@
 .discord-layout {
     display: flex;
     flex-direction: column;
-    /* Stack Navbar and Content */
-    /* Stack Navbar and Content */
     width: 100%;
     flex: 1;
     min-height: 0;
-    /* Fill parent (main-content-wrapper) */
+    height: 100%;
+    max-height: 100%;
     overflow: hidden;
     position: relative;
-    /* Respect parent layout */
 }
 
 /* Container for Sidebar + Chat */
