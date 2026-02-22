@@ -35,6 +35,7 @@ import PortalSidebar from './components/PortalSidebar';
 import UserBar from './components/UserBar';
 import SplashScreen from './components/SplashScreen';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 import './AppLayout.css';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
@@ -228,6 +229,7 @@ function App() {
         <ThemeProvider>
             {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
             <Router>
+                <ScrollToTop />
                 <AuthProvider>
                     <SocketProvider>
                         <UIProvider>
