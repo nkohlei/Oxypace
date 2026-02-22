@@ -102,42 +102,41 @@
 .advanced-home .hero-intro-section {
   position: relative;
   z-index: 10;
-  height: 100vh;
-  /* Take full screen */
+  height: 120vh;
+  /* Extra height to push text away */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  /* Text at bottom half */
-  padding-bottom: 20vh;
-  /* Space from real bottom */
+  padding-bottom: 25vh;
   text-align: center;
 }
 
 .advanced-home .hero-massive-logo {
   position: fixed;
-  /* Keep fixed so scroll calculations in Home.jsx work correctly */
   top: 50%;
   left: 50%;
   width: 90vw;
   max-width: 1100px;
   object-fit: contain;
-  z-index: 1;
+  z-index: 5;
+  /* Above background, below nav maybe? Navbar is 100 usually */
   pointer-events: none;
-  filter: drop-shadow(0 0 60px rgba(255, 255, 255, 0.08));
+  filter: drop-shadow(0 0 80px rgba(255, 255, 255, 0.12));
   will-change: transform, opacity;
-  transition: transform 0.1s linear, opacity 0.1s linear;
+  transition: transform 0.1s ease-out, opacity 0.2s ease-out;
 }
 
 /* Intro Text */
 
 .advanced-home .hero-intro-text {
   text-align: center;
-  z-index: 4;
+  z-index: 15;
   width: 100%;
   max-width: 800px;
   padding: 0 20px;
   position: relative;
+  will-change: transform, opacity;
 }
 
 .advanced-home .hero-intro-text h2 {

@@ -43,29 +43,19 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Track scroll position for animations (now using .content-scroll-area)
+    // Track scroll position for animations
     useEffect(() => {
-        const scrollArea = document.querySelector('.content-scroll-area');
-
-        const handleScroll = (e) => {
-            if (e && e.target) {
-                setScrollY(e.target.scrollTop);
-            }
+        const handleScroll = () => {
+            setScrollY(window.scrollY);
         };
 
-        if (scrollArea) {
-            scrollArea.addEventListener('scroll', handleScroll, { passive: true });
-        } else {
-            // Fallback for edge cases where component mounts before AppLayout wrapper
-            window.addEventListener('scroll', () => setScrollY(window.scrollY), { passive: true });
-        }
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        // Initial check
+        handleScroll();
 
         return () => {
-            if (scrollArea) {
-                scrollArea.removeEventListener('scroll', handleScroll);
-            } else {
-                window.removeEventListener('scroll', () => setScrollY(window.scrollY));
-            }
+            window.removeEventListener('scroll', handleScroll);
         };
     }, []);
 
@@ -103,9 +93,14 @@ const Home = () => {
     // Opacity: 1.0 -> 0.3 (Modern transparent look)
     const logoOpacity = 1 - (progress * 0.7);
 
-    // Intro text fades out and moves up
-    const descOpacity = Math.max(1 - (scrollY / (windowHeight * 0.4)), 0);
-    const descTranslateY = scrollY * -0.5;
+    // Intro text fades IN as we scroll (inverse of previous logic)
+    // Starts at 0, reaches 1.0 when scrolled past half screen
+    const descOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.2)) / (windowHeight * 0.4), 0), 1);
+    const descTranslateY = (1 - descOpacity) * 50; // Move up as it fades in
+
+    // Feature sections fade in much later
+    const contentOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.6)) / (windowHeight * 0.4), 0), 1);
+    const contentTranslateY = (1 - contentOpacity) * 30;
 
     // The background should have scattered items
     // We clone the arr and give them random positions
@@ -137,8 +132,8 @@ const Home = () => {
                 <div className="marquee-fixed-bg">
                     <div className="marquee-bg-layer scattered-icons">
                         {scatteredItems.map((p, i) => (
-                            <div 
-                                key={`icon-${i}`} 
+                            <div
+                                key={`icon-${i}`}
                                 className="marquee-card scattered"
                                 style={{
                                     left: `${(i * 137) % 90 + 5}%`,
@@ -174,7 +169,13 @@ const Home = () => {
 
                     {/* HERO INTRO SECTION */}
                     <section className="hero-intro-section">
-                        <div className="hero-intro-text">
+                        <div
+                            className="hero-intro-text"
+                            style={{
+                                opacity: descOpacity,
+                                transform: `translateY(${descTranslateY}px)`
+                            }}
+                        >
                             <h2>Sınırsız Dijital İletişim ve Topluluk Deneyimi</h2>
                             <p>Sıradan platformları unutun. Topluluğunuzu bulun, kendi dünyanızı tasarlayın.</p>
                             <button
@@ -187,7 +188,13 @@ const Home = () => {
                     </section>
 
                     {/* CONTENT SECTIONS */}
-                    <div className="content-sections-wrapper">
+                    <div
+                        className="content-sections-wrapper"
+                        style={{
+                            opacity: contentOpacity,
+                            transform: `translateY(${contentTranslateY}px)`
+                        }}
+                    >
 
                         {/* Feature 01 */}
                         <section className="info-section">
