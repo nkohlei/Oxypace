@@ -4,10 +4,27 @@
     margin: 0;
     width: 100vw;
     height: 100vh;
+    max-height: 100vh;
     overflow: hidden;
     background-color: var(--bg-primary);
     position: relative;
     /* Ensure stacking context */
+}
+
+/* Guest mode: allow the Home page to scroll naturally */
+.app-container.guest-mode {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+}
+
+.app-container.guest-mode .main-content-wrapper {
+    height: auto;
+    overflow: visible;
+}
+
+.app-container.guest-mode .content-scroll-area {
+    overflow: visible;
 }
 
 /* Sidebar Wrapper - Fixed Left Rail */

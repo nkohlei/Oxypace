@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -69,6 +69,23 @@ const AppLayout = () => {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useUI();
     const { user } = useAuth();
     const location = useLocation();
+
+    // Enforce strict viewport bounds when user is logged in.
+    // This prevents the body/html from growing beyond 100vh
+    // which causes sidebars and navbars to scroll with the page.
+    useLayoutEffect(() => {
+        if (user) {
+            document.documentElement.classList.add('discord-layout-active');
+            document.body.classList.add('discord-layout-active');
+        } else {
+            document.documentElement.classList.remove('discord-layout-active');
+            document.body.classList.remove('discord-layout-active');
+        }
+        return () => {
+            document.documentElement.classList.remove('discord-layout-active');
+            document.body.classList.remove('discord-layout-active');
+        };
+    }, [user, location.pathname]);
 
     return (
         <div className={`app-container ${!user ? 'guest-mode' : ''}`}>
@@ -210,8 +227,8 @@ const AppLayout = () => {
                     </Suspense>
                 </div>
 
-                {/* Global Footer (Hidden on Discord Layouts) */}
-                {!['/portal', '/inbox', '/settings', '/create', '/profile'].some(route => location.pathname.startsWith(route)) && (
+                {/* Global Footer - Only for guests (logged-out users) */}
+                {!user && (
                     <Footer />
                 )}
             </div>

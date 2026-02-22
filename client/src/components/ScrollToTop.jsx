@@ -13,17 +13,6 @@ const ScrollToTop = () => {
         if (scrollArea) {
             scrollArea.scrollTo(0, 0);
         }
-
-        // Apply strict body clamping only for Discord UI routes to prevent global layout shifting
-        const discordRoutes = ['/portal', '/inbox', '/settings', '/create', '/profile'];
-        const isDiscordRoute = discordRoutes.some(route => pathname.startsWith(route));
-
-        if (isDiscordRoute) {
-            document.body.classList.add('discord-layout-active');
-        } else {
-            document.body.classList.remove('discord-layout-active');
-        }
-
     }, [pathname]);
 
     return null;
