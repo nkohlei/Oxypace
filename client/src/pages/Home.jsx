@@ -156,15 +156,11 @@ const Home = () => {
                     <div className="fixed-bg-overlay"></div>
                 </div>
 
-                {/* FIXED LOGO WATERMARK */}
+                {/* FIXED LOGO WATERMARK - Behind content, static */}
                 <img
                     src="/oxypace-text-logo.png"
                     alt="OXYPACE"
                     className="hero-massive-logo"
-                    style={{
-                        transform: `translate(calc(-50% + ${logoTranslateX}px), -50%) rotate(${logoRotate}deg) scale(${logoScale})`,
-                        opacity: logoOpacity
-                    }}
                 />
 
                 {/* SCROLLABLE CONTENT */}
@@ -172,17 +168,11 @@ const Home = () => {
 
                     {/* HERO INTRO SECTION */}
                     <section className="hero-intro-section">
-                        <div
-                            className="hero-intro-text"
-                            style={{
-                                opacity: descOpacity,
-                                transform: `translateY(${descTranslateY}px)`
-                            }}
-                        >
+                        <div className="hero-intro-text">
                             <h2>Sınırsız Dijital İletişim ve Topluluk Deneyimi</h2>
                             <p>Sıradan platformları unutun. Topluluğunuzu bulun, kendi dünyanızı tasarlayın.</p>
                             <button
-                                className="hero-cta-btn pulse-glow"
+                                className="hero-cta-btn"
                                 onClick={() => navigate('/register')}
                             >
                                 Bize Katıl
@@ -193,9 +183,10 @@ const Home = () => {
                     {/* CONTENT SECTIONS */}
                     <div className="content-sections-wrapper">
 
+                        {/* Feature 01 */}
                         <section className="info-section">
-                            <div className="info-text fade-in-up">
-                                <h3><span className="accent">01.</span> Topluluğunu İnşa Et</h3>
+                            <div className="info-text">
+                                <h3><span className="accent">01.</span><br />Topluluğunu İnşa Et</h3>
                                 <p>
                                     Oxypace, ilgi alanlarına odaklanan modern <strong>portallardan</strong> oluşur.
                                     Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün.
@@ -205,15 +196,15 @@ const Home = () => {
                                     Portallara Göz At <span className="arrow">→</span>
                                 </button>
                             </div>
-                            <div className="info-visual floating">
+                            <div className="info-visual">
                                 <div className="mockup-window">
                                     <div className="mockup-header">
                                         <span className="dot red"></span>
                                         <span className="dot yellow"></span>
                                         <span className="dot green"></span>
                                     </div>
-                                    <div className="mockup-body portals-mockup">
-                                        <div className="skeleton-line" style={{ width: '40%' }}></div>
+                                    <div className="mockup-body mockup-01">
+                                        <div className="skeleton-line sm"></div>
                                         <div className="skeleton-box"></div>
                                         <div className="skeleton-box"></div>
                                     </div>
@@ -221,23 +212,10 @@ const Home = () => {
                             </div>
                         </section>
 
-                        <section className="info-section reverse">
-                            <div className="info-visual floating delay-alt">
-                                <div className="mockup-window">
-                                    <div className="mockup-header">
-                                        <span className="dot red"></span>
-                                        <span className="dot yellow"></span>
-                                        <span className="dot green"></span>
-                                    </div>
-                                    <div className="mockup-body chat-mockup">
-                                        <div className="chat-bubble left"></div>
-                                        <div className="chat-bubble right"></div>
-                                        <div className="chat-bubble left short"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="info-text fade-in-up">
-                                <h3><span className="accent">02.</span> Sınırları Kaldıran Küresel İletişim</h3>
+                        {/* Feature 02 */}
+                        <section className="info-section">
+                            <div className="info-text">
+                                <h3><span className="accent">02.</span><br />Sınırları Kaldıran Küresel İletişim</h3>
                                 <p>
                                     <strong>Global message</strong> özelliği sayesinde farklı portallardaki arkadaşlarınızla
                                     tek bir arayüzden gerçek zamanlı sohbet edin.
@@ -247,30 +225,46 @@ const Home = () => {
                                     Aramıza Katıl <span className="arrow">→</span>
                                 </button>
                             </div>
-                        </section>
-
-                        <section className="info-section">
-                            <div className="info-text fade-in-up">
-                                <h3><span className="accent">03.</span> Sizi Yansıtan Özelleştirilebilir Yapı</h3>
-                                <p>
-                                    Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler...
-                                    Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.
-                                </p>
-                                <button className="section-cta-btn pulse-glow primary" onClick={() => navigate('/register')}>
-                                    Hemen Şimdi Başla
-                                </button>
-                            </div>
-                            <div className="info-visual floating">
+                            <div className="info-visual">
                                 <div className="mockup-window">
                                     <div className="mockup-header">
                                         <span className="dot red"></span>
                                         <span className="dot yellow"></span>
                                         <span className="dot green"></span>
                                     </div>
-                                    <div className="mockup-body profile-mockup">
-                                        <div className="profile-banner"></div>
-                                        <div className="profile-avatar"></div>
-                                        <div className="skeleton-line center"></div>
+                                    <div className="mockup-body mockup-02">
+                                        <div className="skeleton-chat-left"></div>
+                                        <div className="skeleton-chat-right accent"></div>
+                                        <div className="skeleton-chat-left sm"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Feature 03 */}
+                        <section className="info-section">
+                            <div className="info-text">
+                                <h3><span className="accent">03.</span><br />Sizi Yansıtan Özelleştirilebilir Yapı</h3>
+                                <p>
+                                    Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler...
+                                    Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.
+                                </p>
+                                <button className="section-cta-btn primary" onClick={() => navigate('/register')}>
+                                    Hemen Şimdi Başla
+                                </button>
+                            </div>
+                            <div className="info-visual">
+                                <div className="mockup-window">
+                                    <div className="mockup-header">
+                                        <span className="dot red"></span>
+                                        <span className="dot yellow"></span>
+                                        <span className="dot green"></span>
+                                    </div>
+                                    <div className="mockup-body mockup-03">
+                                        <div className="skeleton-box large">
+                                            <div className="profile-circle"></div>
+                                        </div>
+                                        <div className="skeleton-line center w-50 mt-default"></div>
                                     </div>
                                 </div>
                             </div>
