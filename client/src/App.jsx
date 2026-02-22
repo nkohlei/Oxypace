@@ -242,10 +242,9 @@ const AppLayout = () => {
                             <Route path="*" element={<Navigate to="/" />} />
                         </Routes>
                     </Suspense>
+                    {/* Global Footer - inside scroll area so it doesn't steal height from discord layout */}
+                    <Footer />
                 </div>
-
-                {/* Global Footer */}
-                <Footer />
             </div>
         </div>
     );
