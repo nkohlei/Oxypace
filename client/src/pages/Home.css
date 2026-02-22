@@ -1,11 +1,12 @@
-/* Advanced Home CSS - Redesign */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
 
 .advanced-home {
-  background: #050505;
+  background: #030303;
   color: #fff;
   min-height: 100vh;
   overflow-x: hidden;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Outfit', sans-serif;
+  /* Modern Font */
 }
 
 .advanced-home-content {
@@ -31,17 +32,19 @@
 
 .advanced-home .marquee-bg-layer {
   position: absolute;
-  width: 120vw;
-  height: 120vh;
+  width: 140vw;
+  /* Wider for movement */
+  height: 140vh;
   display: flex;
   flex-wrap: wrap;
   align-content: center;
   justify-content: center;
-  gap: 30px;
-  opacity: 0.04;
-  /* Extremely subtle */
+  gap: 40px;
+  opacity: 0.12;
+  /* Increased visibility as requested */
   pointer-events: none;
   padding: 20px;
+  transition: opacity 0.8s ease;
 }
 
 .advanced-home .marquee-track {
@@ -54,16 +57,25 @@
 }
 
 .advanced-home .marquee-card {
-  width: 10vh;
-  height: 10vh;
-  max-width: 100px;
-  max-height: 100px;
-  border-radius: 16px;
-  background: rgba(40, 40, 40, 0.4);
+  width: 12vh;
+  height: 12vh;
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 24px;
+  background: rgba(60, 60, 60, 0.3);
   overflow: hidden;
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  opacity: 0.5;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0.7;
+  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.advanced-home .marquee-card:hover {
+  transform: scale(1.1) rotate(5deg);
+  opacity: 1;
+  border-color: #FF4500;
+  box-shadow: 0 0 30px rgba(255, 69, 0, 0.3);
 }
 
 .advanced-home .marquee-card img {
@@ -108,18 +120,18 @@
 }
 
 .advanced-home .hero-massive-logo {
-  position: absolute;
+  position: fixed;
+  /* Keep fixed so scroll calculations in Home.jsx work correctly */
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
   width: 90vw;
-  max-width: 1000px;
+  max-width: 1100px;
   object-fit: contain;
   z-index: 1;
   pointer-events: none;
-  filter: drop-shadow(0 0 40px rgba(255, 255, 255, 0.05));
-  opacity: 0.2;
-  /* Watermark effect */
+  filter: drop-shadow(0 0 60px rgba(255, 255, 255, 0.08));
+  will-change: transform, opacity;
+  transition: transform 0.1s linear, opacity 0.1s linear;
 }
 
 /* Intro Text */
@@ -223,15 +235,21 @@
 .advanced-home .info-section {
   display: flex;
   align-items: stretch;
-  /* Match heights */
   justify-content: space-between;
   gap: 40px;
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 24px;
+  background: rgba(15, 15, 15, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
   padding: 0;
-  /* Remove padding to let flex handle layout */
   overflow: hidden;
+  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.6s, border-color 0.4s;
+}
+
+.advanced-home .info-section:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 69, 0, 0.3);
 }
 
 .advanced-home .info-text {

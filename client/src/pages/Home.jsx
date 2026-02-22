@@ -88,22 +88,24 @@ const Home = () => {
     const maxScroll = windowHeight;
     const progress = Math.min(scrollY / maxScroll, 1);
 
-    // Logo transforms
-    const logoScale = 1 - (progress * 0.5); // 1.0 -> 0.5
-    const logoRotate = progress * -90; // 0 -> -90 degrees
+    // Logo transforms: Rotate 90deg, Scale from 1.0 to 0.4
+    const logoScale = 1 - (progress * 0.6); // 1.0 -> 0.4
+    const logoRotate = progress * 90; // 0 -> 90 degrees
 
     // Translate X: move to the left edge.
     // -50% is center. We add px to move it left.
-    // For left edge, we need to move it by -(windowWidth / 2) + some margin.
-    const maxTranslateX = -(windowWidth / 2) + 80;
+    const maxTranslateX = -(windowWidth / 2) + 120; // Move to the left with some padding
     const logoTranslateX = progress * maxTranslateX;
 
-    // Opacity: 1.0 -> 0.15 (Watermark effect)
-    const logoOpacity = 1 - (progress * 0.85);
+    // Move slightly up as it settles
+    const logoTranslateY = progress * -40;
 
-    // Intro text (Yeni Nesil...) fades out faster so it doesn't overlap
+    // Opacity: 1.0 -> 0.3 (Modern transparent look)
+    const logoOpacity = 1 - (progress * 0.7);
+
+    // Intro text fades out and moves up
     const descOpacity = Math.max(1 - (scrollY / (windowHeight * 0.4)), 0);
-    const descTranslateY = scrollY * 0.5;
+    const descTranslateY = scrollY * -0.5;
 
     // The marquee should have at least 10 items to loop nicely. 
     // We clone the arr multiple times
@@ -156,11 +158,15 @@ const Home = () => {
                     <div className="fixed-bg-overlay"></div>
                 </div>
 
-                {/* FIXED LOGO WATERMARK - Behind content, static */}
+                {/* DYNAMIC LOGO WATERMARK */}
                 <img
                     src="/oxypace-text-logo.png"
                     alt="OXYPACE"
                     className="hero-massive-logo"
+                    style={{
+                        transform: `translate(calc(-50% + ${logoTranslateX}px), calc(-50% + ${logoTranslateY}px)) rotate(${logoRotate}deg) scale(${logoScale})`,
+                        opacity: logoOpacity
+                    }}
                 />
 
                 {/* SCROLLABLE CONTENT */}
