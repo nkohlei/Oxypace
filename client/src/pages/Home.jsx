@@ -260,7 +260,7 @@ const Home = () => {
                         <AdUnit slot="1234567890" />
                     </div>
 
-                    {/* PROFESSIONAL FOOTER */}
+                    {/* PROFESSIONAL FOOTER (Links only, no bottom bar) */}
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
@@ -286,27 +286,24 @@ const Home = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="footer-bottom">
-                            <p>&copy; {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
-                        </div>
-
-                        {/* PORTAL MARQUEE SYSTEM (3.2) */}
-                        <section className="portal-marquee-section">
-                            <h3 className="marquee-title">Topluluk Dünyasını Keşfet</h3>
-                            <div className="portal-marquee-track">
-                                {[...publicPortals, ...publicPortals].map((p, i) => (
-                                    <div key={`portal-track-${i}`} className="portal-track-card">
-                                        {p.avatar ? (
-                                            <img src={getImageUrl(p.avatar)} alt={p.name} />
-                                        ) : (
-                                            <div className="p-icon-placeholder">{p.name?.charAt(0)}</div>
-                                        )}
-                                        <span className="p-track-name">{p.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
                     </footer>
+
+                    {/* PORTAL MARQUEE SYSTEM (3.2) - THE FINAL ENDING */}
+                    <section className="portal-marquee-section">
+                        <h3 className="marquee-title">Topluluk Dünyasını Keşfet</h3>
+                        <div className="portal-marquee-track">
+                            {[...publicPortals, ...publicPortals].map((p, i) => (
+                                <div key={`portal-track-${i}`} className="portal-track-card">
+                                    {p.avatar ? (
+                                        <img src={getImageUrl(p.avatar)} alt={p.name} />
+                                    ) : (
+                                        <div className="p-icon-placeholder">{p.name?.charAt(0)}</div>
+                                    )}
+                                    <span className="p-track-name">{p.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
                 </div>
             </main>
         </div>
