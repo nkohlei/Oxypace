@@ -79,8 +79,7 @@ const Home = () => {
     // progress 0.0 -> 1.0 (over 80vh)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
-    // Logos stay together as a pair - NO dynamic X translation
-    const hatTranslateX = 0;
+    // Logos stay centered - NO dynamic X translation
     const textTranslateX = 0;
 
     // Both scale down and retreat
@@ -132,19 +131,8 @@ const Home = () => {
                     <div className="fixed-bg-overlay-3"></div>
                 </div>
 
-                {/* SPLIT LOGO SYSTEM - SIDE-BY-SIDE (3.6) */}
+                {/* HERO LOGO - SINGLE TEXT LOGO (3.7) */}
                 <div className="split-logo-container">
-                    <div
-                        className="logo-wrapper hat-wrapper"
-                        style={{
-                            transform: `translateX(${hatTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
-                            opacity: logoOpacity,
-                            zIndex: logoZIndex,
-                            filter: `blur(${logoBlur}px)`
-                        }}
-                    >
-                        <img src="/logo.png" alt="Icon" className="hero-logo-icon" />
-                    </div>
                     <div
                         className="logo-wrapper text-wrapper"
                         style={{
