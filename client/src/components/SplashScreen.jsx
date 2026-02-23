@@ -45,8 +45,8 @@ const SplashScreen = ({ onFinish }) => {
                     left: 0;
                     width: 100vw;
                     height: 100vh;
-                    /* Deep Navy to Turquoise/Cyan Gradient */
-                    background: linear-gradient(135deg, #000080 0%, #0c1840 40%, #153c5e 70%, #40E0D0 100%);
+                    /* Deep Navy to Turquoise/Cyan Gradient - Darkened */
+                    background: linear-gradient(135deg, #02040f 0%, #050b1a 40%, #0a1f33 70%, #178a80 100%);
                     z-index: 99999;
                     display: flex;
                     align-items: center;
@@ -123,10 +123,10 @@ const SplashScreen = ({ onFinish }) => {
                 }
 
                 .logo-gradient {
-                    background: linear-gradient(90deg, #ff007a, #7928ca, #40E0D0, #00E5FF);
+                    background: linear-gradient(90deg, #1A2980, #26D0CE, #1A2980);
                     background-size: 200% 100%;
                     clip-path: inset(0 100% 0 0);
-                    animation: fillWipe 3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+                    animation: fillWipe 1.8s cubic-bezier(0.86, 0, 0.07, 1) infinite;
                 }
 
                 @keyframes fillWipe {
