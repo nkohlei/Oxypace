@@ -132,7 +132,7 @@
     right: 0;
     transform: translate(30%, -30%);
     /* Moves it to overlap the border */
-    background: #ff4500;
+    background: var(--primary-cyan);
     color: white;
     border: 3px solid #111214;
     padding: 6px;
@@ -307,7 +307,7 @@
     left: 0;
     width: 60%;
     height: 3px;
-    background: #ff4500;
+    background: var(--primary-cyan);
     border-radius: 10px;
 }
 

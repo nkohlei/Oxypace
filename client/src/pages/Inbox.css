@@ -388,7 +388,7 @@
 
 .message-input-wrapper:focus-within {
     border-color: var(--primary-cyan);
-    box-shadow: 0 -2px 15px rgba(255, 69, 0, 0.15);
+    box-shadow: 0 -2px 15px rgba(0, 229, 255, 0.15);
 }
 
 /* Plus/Upload Button inside input */
