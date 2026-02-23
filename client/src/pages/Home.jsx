@@ -139,10 +139,14 @@ const Home = () => {
                             transform: `translateX(${textTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
                             opacity: logoOpacity,
                             zIndex: logoZIndex,
-                            filter: `blur(${logoBlur}px)`
+                            filter: `blur(${logoBlur}px)`,
+                            flexDirection: 'column'
                         }}
                     >
                         <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
+                        <div className="hero-subtitle-typing-container">
+                            <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
+                        </div>
                     </div>
                 </div>
 

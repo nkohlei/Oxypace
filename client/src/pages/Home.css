@@ -159,6 +159,61 @@
   max-width: 650px;
 }
 
+/* TYPEWRITER SUBTITLE (3.8) */
+.advanced-home .hero-subtitle-typing-container {
+  margin-top: 15px;
+  width: max-content;
+  /* This allows width:100% inside to match exact text length */
+  max-width: 90vw;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.advanced-home .hero-subtitle-typing {
+  overflow: hidden;
+  border-right: 0.12em solid #FF5F1F;
+  white-space: nowrap;
+  margin: 0;
+  letter-spacing: 0.05em;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  width: 0;
+  /* Starting point */
+  animation:
+    typing-effect 3s steps(33, end) 0.5s forwards,
+    blink-caret-effect 0.8s step-end infinite;
+}
+
+@keyframes typing-effect {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink-caret-effect {
+
+  from,
+  to {
+    border-color: transparent
+  }
+
+  50% {
+    border-color: #FF5F1F;
+  }
+}
+
+@media (max-width: 768px) {
+  .advanced-home .hero-subtitle-typing {
+    font-size: 1.1rem;
+  }
+}
+
+
 /* GRADIENT SOFT GLOW EFFECT (No edges) */
 @keyframes softPulseGlow {
   0% {
