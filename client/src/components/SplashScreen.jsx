@@ -23,7 +23,7 @@ const SplashScreen = ({ onFinish }) => {
     return (
         <div className={`splash-screen ${fading ? 'fade-out' : ''}`} role="status" aria-label="Yükleniyor">
 
-            {/* CSS Noise Overlay */}
+            {/* Optimized CSS Noise Overlay (Using pure CSS gradient for texture) */}
             <div className="noise-overlay"></div>
 
             {/* Volumetric Light Beam */}
@@ -51,8 +51,9 @@ const SplashScreen = ({ onFinish }) => {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    transition: opacity 1s ease-in-out, visibility 1s ease-in-out;
+                    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
                     overflow: hidden;
+                    will-change: opacity, visibility;
                 }
 
                 .splash-screen.fade-out {
@@ -61,30 +62,30 @@ const SplashScreen = ({ onFinish }) => {
                     pointer-events: none;
                 }
 
-                /* Noise Grain Texture */
+                /* Noise Grain Texture (Simplified for Performance) */
                 .noise-overlay {
                     position: absolute;
                     inset: 0;
-                    opacity: 0.12;
-                    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+                    opacity: 0.15;
+                    background-image: repeating-radial-gradient(circle at 17% 32%, rgb(255,255,255, 0.05) 0vw, rgb(0,0,0, 0.05) 1vw);
                     pointer-events: none;
                     z-index: 1;
-                    mix-blend-mode: overlay;
                 }
 
-                /* Volumetric Lighting */
+                /* Volumetric Lighting (Simplified blur) */
                 .light-beam {
                     position: absolute;
                     bottom: -30%;
                     right: -20%;
-                    width: 80vw;
-                    height: 80vw;
-                    background: radial-gradient(ellipse at center, rgba(64, 224, 208, 0.3) 0%, transparent 60%);
-                    filter: blur(50px);
+                    width: 70vw;
+                    height: 70vw;
+                    border-radius: 50%;
+                    background: radial-gradient(circle, rgba(64, 224, 208, 0.25) 0%, transparent 70%);
                     z-index: 2;
-                    transform: rotate(-35deg) scaleY(1.5);
+                    transform: rotate(-35deg) scaleY(1.3);
                     pointer-events: none;
                     animation: pulseBeam 4s ease-in-out infinite alternate;
+                    will-change: transform, opacity;
                 }
 
                 @keyframes pulseBeam {
@@ -95,7 +96,7 @@ const SplashScreen = ({ onFinish }) => {
                 .splash-content {
                     position: relative;
                     z-index: 10;
-                    filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.6));
+                    /* Removed heavy drop-shadow filter, replaced with simple structural shadow on pseudo element */
                 }
 
                 .splash-logo-container {
@@ -127,6 +128,7 @@ const SplashScreen = ({ onFinish }) => {
                     background-size: 200% 100%;
                     clip-path: inset(0 100% 0 0);
                     animation: fillWipe 1.8s cubic-bezier(0.86, 0, 0.07, 1) infinite;
+                    will-change: clip-path, background-position;
                 }
 
                 @keyframes fillWipe {
