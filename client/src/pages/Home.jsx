@@ -74,33 +74,24 @@ const Home = () => {
     const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
     const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
 
-    // Transition happens over the first 100vh of scrolling
-    const maxScroll = windowHeight;
-    const progress = Math.min(scrollY / maxScroll, 1);
+    // --- LOGO SPLIT & SCALE LOGIC ---
+    // progress 0.0 -> 1.0 (over 100vh)
+    const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
-    // Logo transforms: Rotate 90deg, Scale from 1.0 to 0.4
-    const logoScale = 1 - (progress * 0.6); // 1.0 -> 0.4
-    const logoRotate = progress * 90; // 0 -> 90 degrees
+    // Hat (logo.png) moves left
+    const hatTranslateX = splitProgress * -(windowWidth * 0.25);
+    // Text (oxypace-text-logo.png) moves right
+    const textTranslateX = splitProgress * (windowWidth * 0.25);
 
-    // Translate X: move to the left edge.
-    // -50% is center. We add px to move it left.
-    const maxTranslateX = -(windowWidth / 2) + 120; // Move to the left with some padding
-    const logoTranslateX = progress * maxTranslateX;
-
-    // Move slightly up as it settles
-    const logoTranslateY = progress * -40;
-
-    // Opacity: 1.0 -> 0.3 (Modern transparent look)
-    const logoOpacity = 1 - (progress * 0.7);
-
-    // Intro text fades IN as we scroll (inverse of previous logic)
-    // Starts at 0, reaches 1.0 when scrolled past half screen
-    const descOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.2)) / (windowHeight * 0.4), 0), 1);
-    const descTranslateY = (1 - descOpacity) * 50; // Move up as it fades in
+    // Both scale down and retreat
+    const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
+    const logoZIndex = splitProgress > 0.8 ? 1 : 50;
+    const logoOpacity = 1 - (splitProgress * 0.7); // Fade to background
+    const logoTranslateY = splitProgress * -50; // Move up slightly
 
     // Feature sections fade in much later
-    const contentOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.6)) / (windowHeight * 0.4), 0), 1);
-    const contentTranslateY = (1 - contentOpacity) * 30;
+    const contentOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.5)) / (windowHeight * 0.4), 0), 1);
+    const contentTranslateY = (1 - contentOpacity) * 50;
 
     // The background should have scattered items
     // We clone the arr and give them random positions
@@ -128,64 +119,45 @@ const Home = () => {
 
             <main className="advanced-home-content">
 
-                {/* SCATTERED BACKGROUND */}
-                <div className="marquee-fixed-bg">
-                    <div className="marquee-bg-layer scattered-icons">
-                        {scatteredItems.map((p, i) => (
-                            <div
-                                key={`icon-${i}`}
-                                className="marquee-card scattered"
-                                style={{
-                                    left: `${(i * 137) % 90 + 5}%`,
-                                    top: `${(i * 223) % 90 + 5}%`,
-                                    animationDelay: `${-(i * 1.5)}s`,
-                                    opacity: 0.15 + ((i % 5) * 0.05) // Varying visibility
-                                }}
-                            >
-                                {p.avatar ? (
-                                    <img src={getImageUrl(p.avatar)} alt="" />
-                                ) : (
-                                    <div className="p-placeholder">{p.name?.charAt(0)}</div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="fixed-bg-overlay"></div>
+                {/* ATMOSPHERIC BACKGROUND */}
+                <div className="atmospheric-bg">
+                    <div className="gradient-sphere sphere-1"></div>
+                    <div className="gradient-sphere sphere-2"></div>
+                    <div className="gradient-sphere sphere-3"></div>
+                    <div className="fixed-bg-overlay-3"></div>
                 </div>
 
-                {/* DYNAMIC LOGO WATERMARK */}
-                <img
-                    src="/oxypace-text-logo.png"
-                    alt="OXYPACE"
-                    className="hero-massive-logo"
-                    style={{
-                        transform: `translate(calc(-50% + ${logoTranslateX}px), calc(-50% + ${logoTranslateY}px)) rotate(${logoRotate}deg) scale(${logoScale})`,
-                        opacity: logoOpacity
-                    }}
-                />
+                {/* SPLIT LOGO SYSTEM */}
+                <div className="split-logo-container">
+                    <div
+                        className="logo-wrapper hat-wrapper"
+                        style={{
+                            transform: `translate(calc(-50% + ${hatTranslateX}px), calc(-50% + ${logoTranslateY}px)) scale(${logoScale})`,
+                            opacity: logoOpacity,
+                            zIndex: logoZIndex
+                        }}
+                    >
+                        <img src="/logo.png" alt="Icon" className="hero-logo-icon gradient-glow" />
+                        <div className="shimmer-effect"></div>
+                    </div>
+                    <div
+                        className="logo-wrapper text-wrapper"
+                        style={{
+                            transform: `translate(calc(-50% + ${textTranslateX}px), calc(-50% + ${logoTranslateY}px)) scale(${logoScale})`,
+                            opacity: logoOpacity,
+                            zIndex: logoZIndex
+                        }}
+                    >
+                        <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text gradient-glow" />
+                        <div className="shimmer-effect"></div>
+                    </div>
+                </div>
 
                 {/* SCROLLABLE CONTENT */}
                 <div className="content-scroll-layer">
 
-                    {/* HERO INTRO SECTION */}
-                    <section className="hero-intro-section">
-                        <div
-                            className="hero-intro-text"
-                            style={{
-                                opacity: descOpacity,
-                                transform: `translateY(${descTranslateY}px)`
-                            }}
-                        >
-                            <h2>Sınırsız Dijital İletişim ve Topluluk Deneyimi</h2>
-                            <p>Sıradan platformları unutun. Topluluğunuzu bulun, kendi dünyanızı tasarlayın.</p>
-                            <button
-                                className="hero-cta-btn"
-                                onClick={() => navigate('/register')}
-                            >
-                                Bize Katıl
-                            </button>
-                        </div>
-                    </section>
+                    {/* HERO EMPTY SPACER */}
+                    <section className="hero-empty-section"></section>
 
                     {/* CONTENT SECTIONS */}
                     <div
