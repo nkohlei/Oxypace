@@ -74,13 +74,13 @@ const Home = () => {
     const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
     const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
 
-    // --- LOGO SPLIT & SCALE LOGIC ---
+    // --- LOGO SPLIT & SCALE LOGIC 3.2 ---
     // progress 0.0 -> 1.0 (over 100vh)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
-    // Tighter split distance (side-by-side)
-    const hatTranslateX = splitProgress * -(windowWidth * 0.12);
-    const textTranslateX = splitProgress * (windowWidth * 0.12);
+    // Ultra-tight side-by-side split
+    const hatTranslateX = splitProgress * -(windowWidth * 0.04);
+    const textTranslateX = splitProgress * (windowWidth * 0.04);
 
     // Both scale down and retreat
     const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
@@ -128,7 +128,7 @@ const Home = () => {
                     <div className="fixed-bg-overlay-3"></div>
                 </div>
 
-                {/* SPLIT LOGO SYSTEM */}
+                {/* SPLIT LOGO SYSTEM - REFINED 3.2 */}
                 <div className="split-logo-container">
                     <div
                         className="logo-wrapper hat-wrapper"
@@ -138,8 +138,7 @@ const Home = () => {
                             zIndex: logoZIndex
                         }}
                     >
-                        <img src="/logo.png" alt="Icon" className="hero-logo-icon gradient-glow" />
-                        <div className="shimmer-effect"></div>
+                        <img src="/logo.png" alt="Icon" className="hero-logo-icon" />
                     </div>
                     <div
                         className="logo-wrapper text-wrapper"
@@ -149,8 +148,7 @@ const Home = () => {
                             zIndex: logoZIndex
                         }}
                     >
-                        <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text gradient-glow" />
-                        <div className="shimmer-effect"></div>
+                        <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
                     </div>
                 </div>
 
@@ -291,6 +289,23 @@ const Home = () => {
                         <div className="footer-bottom">
                             <p>&copy; {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
                         </div>
+
+                        {/* PORTAL MARQUEE SYSTEM (3.2) */}
+                        <section className="portal-marquee-section">
+                            <h3 className="marquee-title">Topluluk Dünyasını Keşfet</h3>
+                            <div className="portal-marquee-track">
+                                {[...publicPortals, ...publicPortals].map((p, i) => (
+                                    <div key={`portal-track-${i}`} className="portal-track-card">
+                                        {p.avatar ? (
+                                            <img src={getImageUrl(p.avatar)} alt={p.name} />
+                                        ) : (
+                                            <div className="p-icon-placeholder">{p.name?.charAt(0)}</div>
+                                        )}
+                                        <span className="p-track-name">{p.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
                     </footer>
                 </div>
             </main>

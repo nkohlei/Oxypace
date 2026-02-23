@@ -35,32 +35,55 @@
   will-change: transform, opacity;
 }
 
+@keyframes moveScattered {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(15vw, -10vh) scale(1.1) rotate(90deg);
+  }
+
+  50% {
+    transform: translate(-10vw, 15vh) scale(0.9) rotate(180deg);
+  }
+
+  75% {
+    transform: translate(10vw, 5vh) scale(1.05) rotate(270deg);
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1) rotate(360deg);
+  }
+}
+
 .advanced-home .sphere-1 {
-  width: 80vw;
-  height: 80vh;
-  top: -20%;
-  left: -10%;
+  width: 70vw;
+  height: 70vh;
+  top: -10%;
+  left: -20%;
   background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
-  animation: moveAtmospheric 18s ease-in-out infinite alternate;
+  animation: moveScattered 25s linear infinite;
+  opacity: 0.3;
 }
 
 .advanced-home .sphere-2 {
   width: 90vw;
   height: 90vh;
-  bottom: -30%;
-  right: -20%;
-  background: radial-gradient(circle, #FF5F1F 0%, transparent 80%);
-  animation: moveAtmospheric 22s ease-in-out infinite alternate-reverse;
-  opacity: 0.35;
+  bottom: -20%;
+  right: -10%;
+  background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
+  animation: moveScattered 35s linear infinite reverse;
+  opacity: 0.2;
 }
 
 .advanced-home .sphere-3 {
-  width: 70vw;
-  height: 70vh;
-  top: 40%;
+  width: 60vw;
+  height: 60vh;
+  top: 30%;
   right: 10%;
   background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
-  animation: moveAtmospheric 15s ease-in-out infinite alternate;
+  animation: moveScattered 20s linear infinite;
   opacity: 0.25;
 }
 
@@ -70,32 +93,18 @@
   top: 10%;
   left: 40%;
   background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
-  animation: moveAtmospheric 20s ease-in-out infinite alternate-reverse;
-  opacity: 0.2;
+  animation: moveScattered 30s linear infinite reverse;
+  opacity: 0.15;
 }
 
 .advanced-home .sphere-5 {
   width: 100vw;
   height: 100vh;
-  bottom: 10%;
-  left: -30%;
-  background: radial-gradient(circle, #FF5F1F 0%, transparent 75%);
-  animation: moveAtmospheric 30s ease-in-out infinite alternate;
-  opacity: 0.15;
-}
-
-@keyframes moveAtmospheric {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-
-  50% {
-    transform: translate(10vw, 5vh) scale(1.1);
-  }
-
-  100% {
-    transform: translate(-5vw, -5vh) scale(0.95);
-  }
+  bottom: 0%;
+  left: -10%;
+  background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
+  animation: moveScattered 40s linear infinite;
+  opacity: 0.1;
 }
 
 .advanced-home .fixed-bg-overlay-3 {
@@ -129,14 +138,40 @@
   overflow: visible;
 }
 
+
+.advanced-home .hero-logo-icon,
+.advanced-home .hero-logo-text {
+  filter: brightness(0.7) contrast(1.1);
+  /* Reduced brightness as requested */
+  opacity: 0.9;
+}
+
+@keyframes glowPulseSubtle {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(255, 95, 31, 0.2)) brightness(0.7);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 25px rgba(255, 95, 31, 0.4)) brightness(0.85);
+  }
+
+  100% {
+    filter: drop-shadow(0 0 10px rgba(255, 95, 31, 0.2)) brightness(0.7);
+  }
+}
+
+.advanced-home .logo-wrapper img {
+  animation: glowPulseSubtle 6s ease-in-out infinite alternate;
+}
+
 .advanced-home .hero-logo-icon {
   width: 25vw;
-  max-width: 320px;
+  max-width: 300px;
 }
 
 .advanced-home .hero-logo-text {
   width: 45vw;
-  max-width: 600px;
+  max-width: 550px;
 }
 
 /* GRADIENT SOFT GLOW EFFECT (No edges) */
@@ -620,6 +655,90 @@
 }
 
 .advanced-home .footer-col span,
+/* PORTAL MARQUEE SYSTEM 3.2 */
+.advanced-home .portal-marquee-section {
+  width: 100%;
+  padding: 80px 0;
+  overflow: hidden;
+  background: linear-gradient(to top, rgba(10, 10, 10, 0.8), transparent);
+  margin-top: -100px;
+  pointer-events: none;
+  /* Make non-clickable */
+}
+
+.advanced-home .marquee-title {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 40px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.advanced-home .portal-marquee-track {
+  display: flex;
+  gap: 30px;
+  width: max-content;
+  animation: scrollMarquee 40s linear infinite;
+}
+
+@keyframes scrollMarquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.advanced-home .portal-track-card {
+  width: 250px;
+  background: rgba(20, 20, 20, 0.8);
+  border: 1px solid rgba(255, 95, 31, 0.15);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+.advanced-home .portal-track-card img {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.advanced-home .p-icon-placeholder {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.advanced-home .p-track-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* HIDE GLOBAL FOOTER BAR FOR THIS VIEW */
+.advanced-home+footer,
+.advanced-home footer.main-footer {
+  display: none !important;
+}
+
+/* Ensure the page-specific footer also looks like a clean end */
+.advanced-home .home-footer {
+  padding-bottom: 40px;
+}
+
 .advanced-home .footer-col a {
   color: var(--text-secondary);
   text-decoration: none;
