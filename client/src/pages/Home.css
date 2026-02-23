@@ -124,12 +124,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 20px;
+  /* Base side-by-side gap ensured by flex */
 }
 
 .advanced-home .logo-wrapper {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -141,27 +141,9 @@
 
 .advanced-home .hero-logo-icon,
 .advanced-home .hero-logo-text {
-  filter: brightness(0.7) contrast(1.1);
-  /* Reduced brightness as requested */
-  opacity: 0.9;
-}
-
-@keyframes glowPulseSubtle {
-  0% {
-    filter: drop-shadow(0 0 10px rgba(255, 95, 31, 0.2)) brightness(0.7);
-  }
-
-  50% {
-    filter: drop-shadow(0 0 25px rgba(255, 95, 31, 0.4)) brightness(0.85);
-  }
-
-  100% {
-    filter: drop-shadow(0 0 10px rgba(255, 95, 31, 0.2)) brightness(0.7);
-  }
-}
-
-.advanced-home .logo-wrapper img {
-  animation: glowPulseSubtle 6s ease-in-out infinite alternate;
+  filter: brightness(0.9) contrast(1.1);
+  opacity: 1;
+  user-select: none;
 }
 
 .advanced-home .hero-logo-icon {
@@ -654,7 +636,153 @@
   margin-bottom: 8px;
 }
 
-.advanced-home .footer-col span,
+/* PORTAL DISCOVERY SECTION 3.3 */
+.advanced-home .portal-discovery-section {
+  padding: 100px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+.advanced-home .discovery-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.advanced-home .discovery-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 16px;
+  background: linear-gradient(to right, #fff, #FF5F1F);
+  -webkit-background-clip: text;
+  background-clip: text;
+  /* Fixed Lint ID: 997f61a6-813b-45ef-8c74-d49640d0ed19 */
+  -webkit-text-fill-color: transparent;
+}
+
+.advanced-home .discovery-subtitle {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.advanced-home .modern-portals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 30px;
+  margin-bottom: 60px;
+}
+
+/* Discovery Card Enhancement (3.3) */
+.advanced-home .modern-portal-card.static {
+  background: rgba(15, 15, 15, 0.95);
+  border: 1px solid rgba(255, 95, 31, 0.1);
+  border-radius: 24px;
+  overflow: hidden;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.advanced-home .modern-portal-card.static:hover {
+  transform: translateY(-8px);
+  border-color: rgba(255, 95, 31, 0.4);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 95, 31, 0.1);
+}
+
+.advanced-home .card-banner {
+  height: 160px;
+  position: relative;
+}
+
+.advanced-home .card-icon-wrapper {
+  margin-top: -45px;
+  margin-left: 24px;
+  width: 90px;
+  height: 90px;
+  border-radius: 24px;
+  padding: 6px;
+  background: #0a0a0a;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+.advanced-home .card-icon-img,
+.advanced-home .card-icon-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  object-fit: cover;
+}
+
+.advanced-home .card-icon-placeholder {
+  background: #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.8rem;
+  color: #FF5F1F;
+}
+
+.advanced-home .card-body {
+  padding: 20px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.advanced-home .card-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.advanced-home .card-desc {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.advanced-home .card-footer {
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 16px;
+}
+
+.advanced-home .discovery-cta {
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .advanced-home .discovery-title {
+    font-size: 1.8rem;
+  }
+
+  .advanced-home .modern-portals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Ensure the page-specific footer also looks like a clean end */
+.advanced-home .home-footer {
+  padding-bottom: 40px;
+}
+
+/* CLEAN UP REMOVED MARQUEE STYLES */
+.advanced-home .portal-marquee-section {
+  display: none;
+}
+
 /* PORTAL MARQUEE SYSTEM 3.2 */
 .advanced-home .portal-marquee-section {
   width: 100%;

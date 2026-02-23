@@ -74,13 +74,16 @@ const Home = () => {
     const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
     const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
 
-    // --- LOGO SPLIT & SCALE LOGIC 3.2 ---
+    // --- LOGO ALIGNMENT LOGIC 3.3 ---
     // progress 0.0 -> 1.0 (over 100vh)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
-    // Ultra-tight side-by-side split (almost zero gap)
-    const hatTranslateX = splitProgress * -(windowWidth * 0.012);
-    const textTranslateX = splitProgress * (windowWidth * 0.012);
+    // Initial side-by-side gap to avoid overlap
+    const baseGap = windowWidth < 768 ? 40 : 80;
+
+    // Hat icon stays left, Text stays right - no overlap ever
+    const hatTranslateX = -(baseGap) + (splitProgress * -(windowWidth * 0.08));
+    const textTranslateX = (baseGap) + (splitProgress * (windowWidth * 0.08));
 
     // Both scale down and retreat
     const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
@@ -128,12 +131,12 @@ const Home = () => {
                     <div className="fixed-bg-overlay-3"></div>
                 </div>
 
-                {/* SPLIT LOGO SYSTEM - REFINED 3.2 */}
+                {/* SPLIT LOGO SYSTEM - SIDE-BY-SIDE (3.3) */}
                 <div className="split-logo-container">
                     <div
                         className="logo-wrapper hat-wrapper"
                         style={{
-                            transform: `translate(calc(-50% + ${hatTranslateX}px), calc(-50% + ${logoTranslateY}px)) scale(${logoScale})`,
+                            transform: `translateX(${hatTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
                             opacity: logoOpacity,
                             zIndex: logoZIndex
                         }}
@@ -143,7 +146,7 @@ const Home = () => {
                     <div
                         className="logo-wrapper text-wrapper"
                         style={{
-                            transform: `translate(calc(-50% + ${textTranslateX}px), calc(-50% + ${logoTranslateY}px)) scale(${logoScale})`,
+                            transform: `translateX(${textTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
                             opacity: logoOpacity,
                             zIndex: logoZIndex
                         }}
@@ -254,6 +257,58 @@ const Home = () => {
                             </div>
                         </section>
 
+                        {/* PORTAL DISCOVERY SECTION (3.3) */}
+                        <section className="portal-discovery-section">
+                            <div className="discovery-header">
+                                <h2 className="discovery-title">Popüler Toplulukları Keşfet</h2>
+                                <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun portallara katılın.</p>
+                            </div>
+                            <div className="modern-portals-grid">
+                                {publicPortals.slice(0, 6).map((portal) => (
+                                    <div
+                                        key={portal._id}
+                                        className="modern-portal-card static"
+                                    >
+                                        <div
+                                            className="card-banner"
+                                            style={{
+                                                background: portal.banner
+                                                    ? `url(${getImageUrl(portal.banner)}) center/cover`
+                                                    : 'linear-gradient(45deg, #1a1a1a, #333)'
+                                            }}
+                                        ></div>
+                                        <div className="card-icon-wrapper">
+                                            {portal.avatar ? (
+                                                <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" />
+                                            ) : (
+                                                <div className="card-icon-placeholder">{portal.name?.substring(0, 2).toUpperCase()}</div>
+                                            )}
+                                        </div>
+                                        <div className="card-body">
+                                            <h3 className="card-title">
+                                                {portal.name}
+                                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
+                                            </h3>
+                                            <p className="card-desc">
+                                                {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
+                                            </p>
+                                            <div className="card-footer">
+                                                <div className="member-count">
+                                                    <div className="status-dot"></div>
+                                                    <span>{portal.memberCount || 0} Üye</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="discovery-cta">
+                                <button className="section-cta-btn" onClick={() => navigate('/search')}>
+                                    Tümünü Keşfet <span className="arrow">→</span>
+                                </button>
+                            </div>
+                        </section>
+
                     </div>
 
                     <div className="home-footer-ad">
@@ -287,23 +342,6 @@ const Home = () => {
                             </div>
                         </div>
                     </footer>
-
-                    {/* PORTAL MARQUEE SYSTEM (3.2) - THE FINAL ENDING */}
-                    <section className="portal-marquee-section">
-                        <h3 className="marquee-title">Topluluk Dünyasını Keşfet</h3>
-                        <div className="portal-marquee-track">
-                            {[...publicPortals, ...publicPortals].map((p, i) => (
-                                <div key={`portal-track-${i}`} className="portal-track-card">
-                                    {p.avatar ? (
-                                        <img src={getImageUrl(p.avatar)} alt={p.name} />
-                                    ) : (
-                                        <div className="p-icon-placeholder">{p.name?.charAt(0)}</div>
-                                    )}
-                                    <span className="p-track-name">{p.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
                 </div>
             </main>
         </div>
