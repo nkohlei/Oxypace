@@ -78,10 +78,9 @@ const Home = () => {
     // progress 0.0 -> 1.0 (over 100vh)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
-    // Hat (logo.png) moves left
-    const hatTranslateX = splitProgress * -(windowWidth * 0.25);
-    // Text (oxypace-text-logo.png) moves right
-    const textTranslateX = splitProgress * (windowWidth * 0.25);
+    // Tighter split distance (side-by-side)
+    const hatTranslateX = splitProgress * -(windowWidth * 0.12);
+    const textTranslateX = splitProgress * (windowWidth * 0.12);
 
     // Both scale down and retreat
     const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
@@ -124,6 +123,8 @@ const Home = () => {
                     <div className="gradient-sphere sphere-1"></div>
                     <div className="gradient-sphere sphere-2"></div>
                     <div className="gradient-sphere sphere-3"></div>
+                    <div className="gradient-sphere sphere-4"></div>
+                    <div className="gradient-sphere sphere-5"></div>
                     <div className="fixed-bg-overlay-3"></div>
                 </div>
 

@@ -36,31 +36,52 @@
 }
 
 .advanced-home .sphere-1 {
-  width: 70vw;
-  height: 70vh;
-  top: -10%;
-  left: -20%;
-  background: radial-gradient(circle, #FF4500 0%, transparent 70%);
-  animation-delay: 0s;
+  width: 80vw;
+  height: 80vh;
+  top: -20%;
+  left: -10%;
+  background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
+  animation: moveAtmospheric 18s ease-in-out infinite alternate;
 }
 
 .advanced-home .sphere-2 {
-  width: 80vw;
-  height: 80vh;
-  bottom: -20%;
-  right: -10%;
-  background: radial-gradient(circle, #FFA500 0%, transparent 70%);
-  animation-delay: -5s;
+  width: 90vw;
+  height: 90vh;
+  bottom: -30%;
+  right: -20%;
+  background: radial-gradient(circle, #FF5F1F 0%, transparent 80%);
+  animation: moveAtmospheric 22s ease-in-out infinite alternate-reverse;
+  opacity: 0.35;
 }
 
 .advanced-home .sphere-3 {
-  width: 60vw;
-  height: 60vh;
-  top: 30%;
-  right: 15%;
-  background: radial-gradient(circle, #FFD700 0%, transparent 70%);
+  width: 70vw;
+  height: 70vh;
+  top: 40%;
+  right: 10%;
+  background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
+  animation: moveAtmospheric 15s ease-in-out infinite alternate;
   opacity: 0.25;
-  animation-delay: -10s;
+}
+
+.advanced-home .sphere-4 {
+  width: 50vw;
+  height: 50vh;
+  top: 10%;
+  left: 40%;
+  background: radial-gradient(circle, #FF5F1F 0%, transparent 70%);
+  animation: moveAtmospheric 20s ease-in-out infinite alternate-reverse;
+  opacity: 0.2;
+}
+
+.advanced-home .sphere-5 {
+  width: 100vw;
+  height: 100vh;
+  bottom: 10%;
+  left: -30%;
+  background: radial-gradient(circle, #FF5F1F 0%, transparent 75%);
+  animation: moveAtmospheric 30s ease-in-out infinite alternate;
+  opacity: 0.15;
 }
 
 @keyframes moveAtmospheric {
@@ -118,28 +139,24 @@
   max-width: 600px;
 }
 
-/* GRADIENT SHIMMER / GLOW EFFECT */
-@keyframes shimmerSweep {
+/* GRADIENT SOFT GLOW EFFECT (No edges) */
+@keyframes softPulseGlow {
   0% {
-    transform: translateX(-150%) skewX(-20deg);
-    opacity: 0;
-  }
-
-  20% {
-    opacity: 0.5;
+    transform: scale(0.95);
+    opacity: 0.4;
+    filter: blur(10px);
   }
 
   50% {
-    opacity: 0.8;
-  }
-
-  80% {
-    opacity: 0.5;
+    transform: scale(1.1);
+    opacity: 0.9;
+    filter: blur(0px);
   }
 
   100% {
-    transform: translateX(150%) skewX(-20deg);
-    opacity: 0;
+    transform: scale(0.95);
+    opacity: 0.4;
+    filter: blur(10px);
   }
 }
 
@@ -149,28 +166,26 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.4) 50%,
-      transparent 100%);
+  background: radial-gradient(circle at center,
+      rgba(255, 255, 255, 0.5) 0%,
+      transparent 80%);
   z-index: 2;
-  animation: shimmerSweep 3s infinite;
+  animation: softPulseGlow 4s ease-in-out infinite;
   pointer-events: none;
-  mask-image: linear-gradient(black, black);
-  /* Placeholder, ideally should be the logo mask */
+  mix-blend-mode: overlay;
 }
 
 @keyframes glowPulse {
   0% {
-    filter: drop-shadow(0 0 15px rgba(255, 69, 0, 0.3));
+    filter: drop-shadow(0 0 20px rgba(255, 95, 31, 0.4));
   }
 
   50% {
-    filter: drop-shadow(0 0 35px rgba(255, 215, 0, 0.6));
+    filter: drop-shadow(0 0 50px rgba(255, 95, 31, 0.8));
   }
 
   100% {
-    filter: drop-shadow(0 0 15px rgba(255, 69, 0, 0.3));
+    filter: drop-shadow(0 0 20px rgba(255, 95, 31, 0.4));
   }
 }
 
@@ -319,13 +334,27 @@
   align-items: stretch;
   justify-content: space-between;
   gap: 40px;
-  background: rgba(15, 15, 15, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 10, 0.9);
+  /* High opacity as requested */
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 95, 31, 0.15);
+  /* Matched phosphor theme */
   border-radius: 32px;
   padding: 0;
   overflow: hidden;
   transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.6s, border-color 0.4s;
+}
+
+.advanced-home .info-card {
+  flex: 1;
+  min-width: 300px;
+  background: rgba(15, 15, 15, 0.95);
+  /* More opaque */
+  border-radius: 32px;
+  padding: 40px;
+  border: 1px solid rgba(255, 95, 31, 0.15);
+  /* Matched phosphor theme */
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
 }
 
 .advanced-home .info-section:hover {
