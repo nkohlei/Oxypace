@@ -78,9 +78,9 @@ const Home = () => {
     // progress 0.0 -> 1.0 (over 100vh)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
-    // Ultra-tight side-by-side split
-    const hatTranslateX = splitProgress * -(windowWidth * 0.04);
-    const textTranslateX = splitProgress * (windowWidth * 0.04);
+    // Ultra-tight side-by-side split (almost zero gap)
+    const hatTranslateX = splitProgress * -(windowWidth * 0.012);
+    const textTranslateX = splitProgress * (windowWidth * 0.012);
 
     // Both scale down and retreat
     const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5

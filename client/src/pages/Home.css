@@ -726,20 +726,6 @@
 .advanced-home .p-track-name {
   font-weight: 600;
   color: #fff;
-}
-
-/* HIDE GLOBAL FOOTER BAR FOR THIS VIEW */
-.advanced-home+footer,
-.advanced-home footer.main-footer {
-  display: none !important;
-}
-
-/* Ensure the page-specific footer also looks like a clean end */
-.advanced-home .home-footer {
-  padding-bottom: 40px;
-}
-
-.advanced-home .footer-col a {
   color: var(--text-secondary);
   text-decoration: none;
   cursor: pointer;

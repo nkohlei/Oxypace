@@ -263,8 +263,8 @@ const AppLayout = () => {
                     </div>
                 </div>
             </div>
-            {/* Footer - always visible on all pages */}
-            <Footer />
+            {/* Footer - always visible EXCEPT on guest homepage */}
+            {!(location.pathname === '/' && !isLoggedIn) && <Footer />}
         </div>
     );
 };
