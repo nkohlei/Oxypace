@@ -436,7 +436,7 @@
     background: var(--gradient-neon);
     color: #fff;
     border-color: transparent;
-    box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+    box-shadow: 0 0 12px rgba(38, 208, 206, 0.3);
 }
 
 .custom-date-input {
@@ -494,7 +494,7 @@
 
 .btn-modern-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(0, 229, 255, 0.4);
+    box-shadow: 0 5px 20px rgba(38, 208, 206, 0.4);
 }
 
 @keyframes fadeInModal {

@@ -1,32 +1,25 @@
 /* Oxypace Theme - Fire & Stark Contrast */
 :root {
-  /* DARK THEME (Default) - Pure Black & Vibrant Fire */
-  --bg-dark: #000000;
-  /* Pure Black */
-  --bg-darker: #080808;
-  /* Almost Black for sidebars */
-  --bg-card: #0a0a0a;
-  /* Card background */
-  --bg-hover: rgba(0, 229, 255, 0.15);
-  /* Teal tint on hover */
-  --bg-input: #121212;
+  /* Deep Azure & Midnight Theme */
+  --bg-dark: #060913;
+  --bg-darker: #030408;
+  --bg-card: #0a0f20;
+  --bg-hover: rgba(38, 208, 206, 0.15);
+  --bg-input: #080c18;
 
-  /* Petrol Blue Accents */
-  --primary-cyan: #00E5FF;
-  /* Bright Teal */
-  --primary-cyan-light: #00D2FF;
-  /* Soft Teal */
-  --primary-cyan-dark: #005C97;
-  /* Petrol Blue */
+  /* Deep Blue & Cyan Modern Effects */
+  --primary-cyan: #26D0CE;
+  --primary-cyan-light: #5CE1E6;
+  --primary-cyan-dark: #1A2980;
 
-  --primary-glow: rgba(0, 229, 255, 0.5);
-  --primary-glow-soft: rgba(0, 229, 255, 0.25);
+  --primary-glow: rgba(38, 208, 206, 0.5);
+  --primary-glow-soft: rgba(38, 208, 206, 0.25);
 
   --primary-green: #32CD32;
   --primary-red: #FF0000;
 
   /* Gradients */
-  --gradient-neon: linear-gradient(135deg, #00F2FE 0%, #4FACFE 100%);
+  --gradient-neon: linear-gradient(135deg, #1A2980 0%, #26D0CE 100%);
 
   /* Text Colors - High Contrast */
   --text-primary: #FFFFFF;
@@ -35,13 +28,13 @@
   --text-muted: #666666;
 
   /* Borders */
-  --border-subtle: #222222;
-  --border-neon: #00E5FF;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-neon: #26D0CE;
 
   /* Shadows */
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.9);
-  --shadow-popover: 0 8px 30px rgba(20, 20, 20, 0.95);
-  --shadow-glow: 0 0 15px rgba(0, 229, 255, 0.6);
+  --shadow-card: 0 15px 35px rgba(0, 0, 0, 0.6);
+  --shadow-popover: 0 20px 40px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 25px rgba(38, 208, 206, 0.4);
 
   /* Layout */
   --nav-top-height: 50px;
@@ -119,10 +112,10 @@ body.discord-layout-active #root {
 
 /* Reusable Classes */
 .card {
-  background: var(--bg-card);
+  background: linear-gradient(145deg, var(--bg-card) 0%, var(--bg-darker) 100%);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Buttons */
@@ -137,19 +130,20 @@ button,
 
 .btn-primary {
   background: var(--gradient-neon);
-  color: #000;
-  /* Always black text on gradient */
+  color: #fff;
   padding: 10px 24px;
   border-radius: 8px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 10px rgba(0, 229, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(38, 208, 206, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(0, 229, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(38, 208, 206, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #101c66 0%, #2deae8 100%);
 }
 
 /* Inputs */

@@ -435,7 +435,7 @@
 .advanced-home .info-section:hover {
   transform: translateY(-12px);
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
-  border-color: rgba(0, 229, 255, 0.3);
+  border-color: rgba(38, 208, 206, 0.3);
 }
 
 .advanced-home .info-text {

@@ -220,7 +220,7 @@
 
 .message-input-wrapper:focus-within {
     border-color: var(--primary-cyan);
-    box-shadow: 0 -2px 15px rgba(0, 229, 255, 0.15);
+    box-shadow: 0 -2px 15px rgba(38, 208, 206, 0.15);
 }
 
 /* Plus Menu Popover */
@@ -815,7 +815,7 @@
     height: 22px;
     border-radius: 0 0 14px 14px;
     border: none;
-    background: linear-gradient(90deg, #00E5FF 0%, #00D2FF 30%, #00FFFF 60%, #00D2FF 80%, #00E5FF 100%);
+    background: linear-gradient(90deg, #26D0CE 0%, #5CE1E6 30%, #45f3ff 60%, #5CE1E6 80%, #26D0CE 100%);
     background-size: 200% 100%;
     animation: shimmerBar 2.5s linear infinite;
     color: #1a1a1a;
@@ -1332,7 +1332,7 @@
 
 .suspension-home-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(38, 208, 206, 0.4);
 }
 
 @keyframes suspensionFadeIn {

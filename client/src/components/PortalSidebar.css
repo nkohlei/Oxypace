@@ -91,7 +91,7 @@
     border-color: var(--primary-cyan);
     transform: scale(1.05);
     background-color: var(--bg-hover);
-    box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+    box-shadow: 0 0 8px rgba(38, 208, 206, 0.4);
 }
 
 /* Active State - RGB Glow Mood */
