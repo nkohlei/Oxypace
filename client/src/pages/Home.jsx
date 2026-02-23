@@ -6,6 +6,7 @@ import AdUnit from '../components/AdUnit';
 import SEO from '../components/SEO';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
+import Badge from '../components/Badge';
 import './Home.css';
 
 const Home = () => {
@@ -78,12 +79,10 @@ const Home = () => {
     // progress 0.0 -> 1.0 (over 100vh)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
-    // Initial side-by-side gap to avoid overlap
-    const baseGap = windowWidth < 768 ? 40 : 80;
-
-    // Hat icon stays left, Text stays right - no overlap ever
-    const hatTranslateX = -(baseGap) + (splitProgress * -(windowWidth * 0.08));
-    const textTranslateX = (baseGap) + (splitProgress * (windowWidth * 0.08));
+    // Initial side-by-side gap is handled by flex gap in CSS.
+    // Progress adds extra space.
+    const hatTranslateX = splitProgress * -(windowWidth * 0.12);
+    const textTranslateX = splitProgress * (windowWidth * 0.12);
 
     // Both scale down and retreat
     const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
@@ -256,60 +255,59 @@ const Home = () => {
                                 </div>
                             </div>
                         </section>
+                    </div>
 
-                        {/* PORTAL DISCOVERY SECTION (3.3) */}
-                        <section className="portal-discovery-section">
-                            <div className="discovery-header">
-                                <h2 className="discovery-title">Popüler Toplulukları Keşfet</h2>
-                                <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun portallara katılın.</p>
-                            </div>
-                            <div className="modern-portals-grid">
-                                {publicPortals.slice(0, 6).map((portal) => (
+                    {/* PORTAL DISCOVERY SECTION (3.3) - MOVED ABOVE FOOTER */}
+                    <section className="portal-discovery-section">
+                        <div className="discovery-header">
+                            <h2 className="discovery-title">Popüler Toplulukları Keşfet</h2>
+                            <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun portallara katılın.</p>
+                        </div>
+                        <div className="modern-portals-grid">
+                            {publicPortals.slice(0, 6).map((portal) => (
+                                <div
+                                    key={portal._id}
+                                    className="modern-portal-card static"
+                                >
                                     <div
-                                        key={portal._id}
-                                        className="modern-portal-card static"
-                                    >
-                                        <div
-                                            className="card-banner"
-                                            style={{
-                                                background: portal.banner
-                                                    ? `url(${getImageUrl(portal.banner)}) center/cover`
-                                                    : 'linear-gradient(45deg, #1a1a1a, #333)'
-                                            }}
-                                        ></div>
-                                        <div className="card-icon-wrapper">
-                                            {portal.avatar ? (
-                                                <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" />
-                                            ) : (
-                                                <div className="card-icon-placeholder">{portal.name?.substring(0, 2).toUpperCase()}</div>
-                                            )}
-                                        </div>
-                                        <div className="card-body">
-                                            <h3 className="card-title">
-                                                {portal.name}
-                                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
-                                            </h3>
-                                            <p className="card-desc">
-                                                {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
-                                            </p>
-                                            <div className="card-footer">
-                                                <div className="member-count">
-                                                    <div className="status-dot"></div>
-                                                    <span>{portal.memberCount || 0} Üye</span>
-                                                </div>
+                                        className="card-banner"
+                                        style={{
+                                            background: portal.banner
+                                                ? `url(${getImageUrl(portal.banner)}) center/cover`
+                                                : 'linear-gradient(45deg, #1a1a1a, #333)'
+                                        }}
+                                    ></div>
+                                    <div className="card-icon-wrapper">
+                                        {portal.avatar ? (
+                                            <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" />
+                                        ) : (
+                                            <div className="card-icon-placeholder">{portal.name?.substring(0, 2).toUpperCase()}</div>
+                                        )}
+                                    </div>
+                                    <div className="card-body">
+                                        <h3 className="card-title">
+                                            {portal.name}
+                                            <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
+                                        </h3>
+                                        <p className="card-desc">
+                                            {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
+                                        </p>
+                                        <div className="card-footer">
+                                            <div className="member-count">
+                                                <div className="status-dot"></div>
+                                                <span>{portal.memberCount || 0} Üye</span>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                            <div className="discovery-cta">
-                                <button className="section-cta-btn" onClick={() => navigate('/search')}>
-                                    Tümünü Keşfet <span className="arrow">→</span>
-                                </button>
-                            </div>
-                        </section>
-
-                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="discovery-cta">
+                            <button className="section-cta-btn" onClick={() => navigate('/search')}>
+                                Tümünü Keşfet <span className="arrow">→</span>
+                            </button>
+                        </div>
+                    </section>
 
                     <div className="home-footer-ad">
                         <AdUnit slot="1234567890" />

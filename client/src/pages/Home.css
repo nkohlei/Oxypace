@@ -121,15 +121,17 @@
   inset: 0;
   pointer-events: none;
   z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  /* Base side-by-side gap ensured by flex */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 40px !important;
+  /* Guaranteed side-by-side gap */
 }
 
 .advanced-home .logo-wrapper {
-  position: relative;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,6 +146,7 @@
   filter: brightness(0.9) contrast(1.1);
   opacity: 1;
   user-select: none;
+  max-width: 100%;
 }
 
 .advanced-home .hero-logo-icon {
