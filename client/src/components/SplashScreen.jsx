@@ -31,10 +31,15 @@ const SplashScreen = ({ onFinish }) => {
 
             <div className="splash-content">
                 <div className="splash-logo-container">
-                    {/* Base Solid White Mask */}
-                    <div className="logo-layer logo-white"></div>
-                    {/* Vibrant Animated Gradient Mask */}
-                    <div className="logo-layer logo-gradient"></div>
+                    {/* Dark, partially transparent frosted logo mask */}
+                    <div className="logo-layer logo-frosted"></div>
+                </div>
+                {/* 4-Dot Horizontal Loader */}
+                <div className="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
             </div>
 
@@ -45,8 +50,8 @@ const SplashScreen = ({ onFinish }) => {
                     left: 0;
                     width: 100vw;
                     height: 100vh;
-                    /* Deep Navy to Turquoise/Cyan Gradient - Darkened */
-                    background: linear-gradient(135deg, #02040f 0%, #050b1a 40%, #0a1f33 70%, #178a80 100%);
+                    /* Very dark gradient structure */
+                    background: linear-gradient(180deg, #010206 0%, #030612 50%, #050a1c 100%);
                     z-index: 99999;
                     display: flex;
                     align-items: center;
@@ -96,13 +101,16 @@ const SplashScreen = ({ onFinish }) => {
                 .splash-content {
                     position: relative;
                     z-index: 10;
-                    /* Removed heavy drop-shadow filter, replaced with simple structural shadow on pseudo element */
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 20px;
                 }
 
                 .splash-logo-container {
                     position: relative;
-                    width: 320px;
-                    height: 100px;
+                    width: 200px; /* Reduced Size */
+                    height: 60px; /* Reduced Size */
                 }
 
                 .logo-layer {
@@ -118,39 +126,50 @@ const SplashScreen = ({ onFinish }) => {
                     mask-position: center;
                 }
 
-                .logo-white {
-                    background-color: #ffffff;
-                    opacity: 0.85;
+                .logo-frosted {
+                    background-color: rgba(255, 255, 255, 0.15); /* Transparent, icy look */
+                    backdrop-filter: blur(10px); /* Frosted glass effect */
+                    -webkit-backdrop-filter: blur(10px);
                 }
 
-                .logo-gradient {
-                    background: linear-gradient(90deg, #1A2980, #26D0CE, #1A2980);
-                    background-size: 200% 100%;
-                    clip-path: inset(0 100% 0 0);
-                    animation: fillWipe 1.8s cubic-bezier(0.86, 0, 0.07, 1) infinite;
-                    will-change: clip-path, background-position;
+                /* 4-Dot Loader Styling */
+                .loading-dots {
+                    display: flex;
+                    gap: 8px;
+                    justify-content: center;
+                    align-items: center;
                 }
 
-                @keyframes fillWipe {
-                    0%, 10% {
-                        clip-path: inset(0 100% 0 0);
-                        background-position: 100% 0;
+                .loading-dots span {
+                    display: block;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background-color: rgba(255, 255, 255, 0.4);
+                    animation: bounceDots 1.2s infinite ease-in-out both;
+                }
+
+                .loading-dots span:nth-child(1) { animation-delay: -0.45s; }
+                .loading-dots span:nth-child(2) { animation-delay: -0.30s; }
+                .loading-dots span:nth-child(3) { animation-delay: -0.15s; }
+                .loading-dots span:nth-child(4) { animation-delay: 0s; }
+
+                @keyframes bounceDots {
+                    0%, 80%, 100% {
+                        transform: scale(0);
+                        background-color: rgba(255, 255, 255, 0.4);
                     }
-                    40%, 60% {
-                        clip-path: inset(0 0% 0 0);
-                        background-position: 0% 0;
-                    }
-                    90%, 100% {
-                        clip-path: inset(0 0 0 100%);
-                        background-position: 100% 0;
+                    40% {
+                        transform: scale(1);
+                        background-color: #26D0CE; /* Brand cyan highlight */
                     }
                 }
 
                 /* Mobile Adjustment */
                 @media (max-width: 768px) {
                     .splash-logo-container {
-                        width: 220px;
-                        height: 70px;
+                        width: 150px;
+                        height: 45px;
                     }
                 }
             `}</style>
