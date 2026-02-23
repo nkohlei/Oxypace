@@ -31,8 +31,8 @@ const SplashScreen = ({ onFinish }) => {
 
             <div className="splash-content">
                 <div className="splash-logo-container">
-                    {/* Dark, partially transparent frosted logo mask */}
-                    <div className="logo-layer logo-frosted"></div>
+                    {/* Solid static white logo mask */}
+                    <div className="logo-layer logo-white"></div>
                 </div>
                 {/* 4-Dot Horizontal Loader */}
                 <div className="loading-dots">
@@ -50,8 +50,8 @@ const SplashScreen = ({ onFinish }) => {
                     left: 0;
                     width: 100vw;
                     height: 100vh;
-                    /* Very dark gradient structure */
-                    background: linear-gradient(180deg, #010206 0%, #030612 50%, #050a1c 100%);
+                    /* Classic dark background gradient */
+                    background: linear-gradient(135deg, #050b1a 0%, #0a1f33 100%);
                     z-index: 99999;
                     display: flex;
                     align-items: center;
@@ -67,12 +67,12 @@ const SplashScreen = ({ onFinish }) => {
                     pointer-events: none;
                 }
 
-                /* Noise Grain Texture (Simplified for Performance) */
+                /* Dense pixelated grain texture */
                 .noise-overlay {
                     position: absolute;
                     inset: 0;
-                    opacity: 0.15;
-                    background-image: repeating-radial-gradient(circle at 17% 32%, rgb(255,255,255, 0.05) 0vw, rgb(0,0,0, 0.05) 1vw);
+                    opacity: 0.08;
+                    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
                     pointer-events: none;
                     z-index: 1;
                 }
@@ -126,10 +126,9 @@ const SplashScreen = ({ onFinish }) => {
                     mask-position: center;
                 }
 
-                .logo-frosted {
-                    background-color: rgba(255, 255, 255, 0.15); /* Transparent, icy look */
-                    backdrop-filter: blur(10px); /* Frosted glass effect */
-                    -webkit-backdrop-filter: blur(10px);
+                .logo-white {
+                    background-color: #ffffff;
+                    opacity: 1;
                 }
 
                 /* 4-Dot Loader Styling */
