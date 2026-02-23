@@ -75,8 +75,8 @@ const Home = () => {
     const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
     const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
 
-    // --- LOGO ALIGNMENT LOGIC 3.4 (Unified) ---
-    // progress 0.0 -> 1.0 (over 100vh)
+    // --- LOGO ALIGNMENT LOGIC 3.6 (Definitive Fog) ---
+    // progress 0.0 -> 1.0 (over 80vh)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
 
     // Logos stay together as a pair - NO dynamic X translation
@@ -85,9 +85,12 @@ const Home = () => {
 
     // Both scale down and retreat
     const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
-    const logoZIndex = splitProgress > 0.8 ? 1 : 50;
+    // Always keep logos BEHIND cards. Cards are z-index 20.
+    const logoZIndex = 4;
     const logoOpacity = 1 - (splitProgress * 0.7); // Fade to background
     const logoTranslateY = splitProgress * -50; // Move up slightly
+    // DIRECT BLUR on logos as they pass behind cards (3.6 definitive fix)
+    const logoBlur = splitProgress > 0.3 ? Math.min((splitProgress - 0.3) * 35, 20) : 0;
 
     // Feature sections fade in much later
     const contentOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.5)) / (windowHeight * 0.4), 0), 1);
@@ -129,14 +132,15 @@ const Home = () => {
                     <div className="fixed-bg-overlay-3"></div>
                 </div>
 
-                {/* SPLIT LOGO SYSTEM - SIDE-BY-SIDE (3.3) */}
+                {/* SPLIT LOGO SYSTEM - SIDE-BY-SIDE (3.6) */}
                 <div className="split-logo-container">
                     <div
                         className="logo-wrapper hat-wrapper"
                         style={{
                             transform: `translateX(${hatTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
                             opacity: logoOpacity,
-                            zIndex: logoZIndex
+                            zIndex: logoZIndex,
+                            filter: `blur(${logoBlur}px)`
                         }}
                     >
                         <img src="/logo.png" alt="Icon" className="hero-logo-icon" />
@@ -146,7 +150,8 @@ const Home = () => {
                         style={{
                             transform: `translateX(${textTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
                             opacity: logoOpacity,
-                            zIndex: logoZIndex
+                            zIndex: logoZIndex,
+                            filter: `blur(${logoBlur}px)`
                         }}
                     >
                         <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
