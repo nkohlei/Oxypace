@@ -277,16 +277,7 @@ export default function EarthSimulation() {
                     />
                 </div>
 
-                {/* Left controls panel Toggle Button (Mobile Only) */}
-                <button
-                    className={`map-mobile-controls-toggle glass-panel borderless ${showMobileControls ? 'active' : ''}`}
-                    onClick={() => setShowMobileControls(!showMobileControls)}
-                    title="Kontrolleri Göster/Gizle"
-                >
-                    <span className="material-symbols-outlined">
-                        {showMobileControls ? 'close' : 'tune'}
-                    </span>
-                </button>
+
 
                 {/* Left controls panel */}
                 <div className={`map-left-panel ${showMobileControls ? 'mobile-visible' : 'mobile-hidden'}`}>
@@ -357,6 +348,17 @@ export default function EarthSimulation() {
                             )}
                         </div>
                     )}
+
+                    {/* Left controls panel Toggle Button (Mobile Only) - Attached as a Tab */}
+                    <button
+                        className={`map-mobile-controls-toggle glass-panel borderless ${showMobileControls ? 'active' : ''}`}
+                        onClick={() => setShowMobileControls(!showMobileControls)}
+                        title="Kontrolleri Göster/Gizle"
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+                            {showMobileControls ? 'keyboard_double_arrow_left' : 'keyboard_double_arrow_right'}
+                        </span>
+                    </button>
                 </div>
 
                 {/* Portal detail card — slides in from right on portal click */}
@@ -620,21 +622,22 @@ export default function EarthSimulation() {
                 .map-mobile-controls-toggle {
                     display: none;
                     position: absolute;
-                    left: 16px;
-                    top: 80px; /* Below the navbar */
-                    z-index: 20;
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 14px;
+                    left: 100%;
+                    top: 16px; 
+                    margin-left: 0px;
+                    z-index: -1;
+                    width: 38px;
+                    height: 48px;
+                    border-radius: 0 14px 14px 0 !important;
                     align-items: center;
                     justify-content: center;
                     color: white;
                     cursor: pointer;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-                    transition: background 0.2s, color 0.2s, transform 0.2s;
+                    box-shadow: 4px 4px 16px rgba(0,0,0,0.3);
+                    pointer-events: auto;
                 }
                 .map-mobile-controls-toggle:active {
-                    transform: scale(0.95);
+                    background: rgba(255,255,255,0.1) !important;
                 }
                 .map-left-panel {
                     position: absolute;
@@ -646,7 +649,7 @@ export default function EarthSimulation() {
                     align-items: flex-start;
                     gap: 8px;
                     pointer-events: none;
-                    transition: transform 0.3s ease, opacity 0.3s ease;
+                    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 .map-controls-bar {
                     pointer-events: auto;
@@ -1012,13 +1015,10 @@ export default function EarthSimulation() {
                     }
                     
                     .map-left-panel.mobile-hidden {
-                        transform: translateY(-50%) translateX(-150%);
-                        opacity: 0;
-                        pointer-events: none;
+                        transform: translateY(-50%) translateX(calc(-100% - 16px));
                     }
                     .map-left-panel.mobile-visible {
                         transform: translateY(-50%) translateX(0);
-                        opacity: 1;
                     }
 
                     .map-portal-card-drawer {
