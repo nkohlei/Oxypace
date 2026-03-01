@@ -1032,3 +1032,103 @@
     width: 100%;
   }
 }
+
+/* =========================================
+   FLOATING SCROLL TO TOP BUTTON (3.8)
+   ========================================= */
+.floating-scroll-top {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  background-color: var(--bg-card, rgba(20, 20, 20, 0.8));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(20px) scale(0.9);
+  pointer-events: none;
+  /* Ignore clicks when hidden */
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.floating-scroll-top.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+.floating-scroll-top:hover {
+  background-color: var(--bg-card-hover, #222);
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.floating-scroll-top:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.progress-ring {
+  transform: rotate(-90deg);
+  /* Start circle from top */
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 50px;
+  height: 50px;
+  pointer-events: none;
+}
+
+.progress-ring-track {
+  stroke: rgba(255, 255, 255, 0.05);
+}
+
+.progress-ring-fill {
+  stroke: var(--primary-color, #1d9bf0);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.1s linear;
+  /* Smooth fill */
+}
+
+/* Update color on hover for visual feedback */
+.floating-scroll-top:hover .progress-ring-fill {
+  stroke: #fff;
+}
+
+.scroll-icon {
+  position: absolute;
+  color: var(--text-secondary, #808080);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.floating-scroll-top:hover .scroll-icon {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .floating-scroll-top {
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+  }
+
+  .progress-ring {
+    top: 0px;
+    left: 0px;
+  }
+}

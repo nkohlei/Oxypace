@@ -7,6 +7,7 @@ import SEO from '../components/SEO';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
+import FloatingScrollTop from '../components/FloatingScrollTop';
 import './Home.css';
 
 const Home = () => {
@@ -342,6 +343,8 @@ const Home = () => {
                     </footer>
                 </div>
             </main>
+
+            <FloatingScrollTop />
         </div>
     );
 };
