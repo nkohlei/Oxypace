@@ -30,6 +30,7 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Portal = lazy(() => import('./pages/Portal'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
+const EarthSimulation = lazy(() => import('./pages/MapDirectory/EarthSimulation'));
 
 import PortalSidebar from './components/PortalSidebar';
 import UserBar from './components/UserBar';
@@ -188,6 +189,14 @@ const AppLayout = () => {
 
                                 {/* Portal Route */}
                                 <Route path="/portal/:id" element={<Portal />} />
+                                <Route
+                                    path="/map"
+                                    element={
+                                        <PrivateRoute>
+                                            <EarthSimulation />
+                                        </PrivateRoute>
+                                    }
+                                />
 
                                 <Route
                                     path="/create"

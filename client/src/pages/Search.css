@@ -27,6 +27,41 @@
 /* Header & Input */
 .search-header {
     margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Haritada Ara Button */
+.map-search-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 12px;
+    color: #818cf8;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.map-search-btn:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.28) 0%, rgba(139, 92, 246, 0.28) 100%);
+    border-color: rgba(99, 102, 241, 0.6);
+    color: #c4b5fd;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+}
+
+.map-search-btn svg {
+    flex-shrink: 0;
 }
 
 .search-input-wrapper {
