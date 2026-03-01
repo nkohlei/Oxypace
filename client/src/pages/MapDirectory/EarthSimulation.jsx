@@ -17,6 +17,10 @@ export default function EarthSimulation() {
     const [activePortalSearch, setActivePortalSearch] = useState('');
     const [portals, setPortals] = useState([]);
     const [portalsLoading, setPortalsLoading] = useState(true);
+    const [portalDetail, setPortalDetail] = useState(null); // full portal from /api/portals/:id
+    const [cardLoading, setCardLoading] = useState(false);
+    const [isMember, setIsMember] = useState(false);
+    const [joining, setJoining] = useState(false);
 
     // Fetch real portals with map location from API
     useEffect(() => {
@@ -58,11 +62,36 @@ export default function EarthSimulation() {
         setActivePanel(prev => prev === panel ? null : panel);
     };
 
-    const handlePortalClick = useCallback((portal) => {
-        setSelectedPortal(portal);
+    const handlePortalClick = useCallback(async (portal) => {
         setSidebarOpen(true);
+        setSelectedPortal(portal);
+        setPortalDetail(null);
+        setCardLoading(true);
         earthCanvasRef.current?.flyTo(portal.lat, portal.lng, 0.05);
+        try {
+            const res = await axios.get(`/api/portals/${portal._id}`);
+            setPortalDetail(res.data);
+            setIsMember(res.data.isMember || false);
+        } catch (err) {
+            console.error('Failed to load portal detail', err);
+        } finally {
+            setCardLoading(false);
+        }
     }, []);
+
+    const handleJoinPortal = async () => {
+        if (!portalDetail) return;
+        setJoining(true);
+        try {
+            const res = await axios.post(`/api/portals/${portalDetail._id}/join`);
+            if (res.data.status === 'joined') setIsMember(true);
+            else if (res.data.status === 'requested') setIsMember('requested');
+        } catch (err) {
+            console.error('Join failed', err);
+        } finally {
+            setJoining(false);
+        }
+    };
 
     // Search handler — supports "lat, lng" format and city names
     const searchRef = useRef('');
@@ -341,80 +370,141 @@ export default function EarthSimulation() {
                 {/* Portal detail card — slides in from right on portal click */}
                 {selectedPortal && sidebarOpen && (
                     <aside className="map-portal-card glass-panel">
-                        {/* Card header */}
-                        <div className="map-portal-card-header">
-                            <div>
-                                <h2 className="map-portal-card-title">{selectedPortal.name}</h2>
-                                <p className="map-portal-card-loc">
-                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>location_on</span>
-                                    {selectedPortal.location}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setSidebarOpen(false)}
-                                className="map-portal-card-close"
-                                title="Kapat"
-                            >
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
-                        </div>
+                        {/* Close button */}
+                        <button
+                            onClick={() => setSidebarOpen(false)}
+                            className="map-portal-card-close"
+                            title="Kapat"
+                        >
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
 
-                        {/* Portal image */}
-                        <div className="map-portal-card-img-wrap">
-                            <img
-                                src={selectedPortal.image}
-                                alt={selectedPortal.name}
-                                className="map-portal-card-img"
-                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                            />
-                            <div className="map-portal-card-img-fallback" style={{ display: 'none' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'rgba(99,102,241,0.5)' }}>public</span>
+                        {cardLoading ? (
+                            /* Loading skeleton */
+                            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ height: '120px', background: 'rgba(255,255,255,0.06)', borderRadius: '10px', animation: 'pulse 1.5s infinite' }} />
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', flexShrink: 0, animation: 'pulse 1.5s infinite' }} />
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <div style={{ height: '14px', background: 'rgba(255,255,255,0.08)', borderRadius: '6px', width: '60%', animation: 'pulse 1.5s infinite' }} />
+                                        <div style={{ height: '11px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', width: '40%', animation: 'pulse 1.5s infinite' }} />
+                                    </div>
+                                </div>
+                                <div style={{ height: '60px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', animation: 'pulse 1.5s infinite' }} />
                             </div>
-                            <div className="map-portal-card-img-gradient" />
-                            <div className="map-portal-card-status">
-                                <span className="map-portal-status-dot" />
-                                Online
-                            </div>
-                        </div>
+                        ) : portalDetail ? (
+                            <>
+                                {/* Banner */}
+                                <div className="map-portal-card-banner">
+                                    {portalDetail.banner ? (
+                                        <img src={portalDetail.banner} alt="" className="map-portal-banner-img" />
+                                    ) : (
+                                        <div className="map-portal-banner-fallback" />
+                                    )}
+                                    <div className="map-portal-banner-gradient" />
+                                </div>
 
-                        {/* Stats row */}
-                        <div className="map-portal-card-stats">
-                            <div className="map-portal-stat">
-                                <span className="map-portal-stat-label">Uptime</span>
-                                <span className="map-portal-stat-value" style={{ color: '#4ade80' }}>{selectedPortal.stats.uptime}</span>
-                            </div>
-                            <div className="map-portal-stat">
-                                <span className="map-portal-stat-label">Latency</span>
-                                <span className="map-portal-stat-value" style={{ color: '#60a5fa' }}>{selectedPortal.stats.latency}</span>
-                            </div>
-                            <div className="map-portal-stat">
-                                <span className="map-portal-stat-label">Kullanıcı</span>
-                                <span className="map-portal-stat-value">{selectedPortal.stats.users}</span>
-                            </div>
-                        </div>
+                                {/* Avatar + Name row */}
+                                <div className="map-portal-card-identity">
+                                    <div className="map-portal-card-avatar-wrap">
+                                        {portalDetail.avatar ? (
+                                            <img src={portalDetail.avatar} alt={portalDetail.name} className="map-portal-card-avatar" />
+                                        ) : (
+                                            <div className="map-portal-card-avatar-letter">{portalDetail.name[0]}</div>
+                                        )}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <h2 className="map-portal-card-title">{portalDetail.name}</h2>
+                                        <p className="map-portal-card-loc">
+                                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>location_on</span>
+                                            {selectedPortal.label || portalDetail.name}
+                                        </p>
+                                    </div>
+                                </div>
 
-                        {/* Bio */}
-                        <div className="map-portal-card-bio">
-                            <h3 className="map-portal-bio-label">Portal Biyografisi</h3>
-                            <p className="map-portal-bio-text">"{selectedPortal.bio}"</p>
-                        </div>
+                                {/* Stats row */}
+                                <div className="map-portal-card-stats">
+                                    <div className="map-portal-stat">
+                                        <span className="map-portal-stat-label">Üyeler</span>
+                                        <span className="map-portal-stat-value" style={{ color: '#4ade80' }}>
+                                            {portalDetail.members?.length ?? selectedPortal.memberCount ?? 0}
+                                        </span>
+                                    </div>
+                                    <div className="map-portal-stat">
+                                        <span className="map-portal-stat-label">Gizlilik</span>
+                                        <span className="map-portal-stat-value" style={{ color: '#60a5fa', textTransform: 'capitalize' }}>
+                                            {portalDetail.privacy === 'public' ? 'Herkese Açık' : portalDetail.privacy === 'private' ? 'Gizli' : 'Kısıtlı'}
+                                        </span>
+                                    </div>
+                                    <div className="map-portal-stat">
+                                        <span className="map-portal-stat-label">Kuruluş</span>
+                                        <span className="map-portal-stat-value" style={{ fontSize: '10px' }}>
+                                            {portalDetail.createdAt ? new Date(portalDetail.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '—'}
+                                        </span>
+                                    </div>
+                                </div>
 
-                        {/* Actions */}
-                        <div className="map-portal-card-actions">
-                            <Link
-                                to={`/portal/${selectedPortal.id}`}
-                                className="map-portal-btn-primary"
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>open_in_new</span>
-                                Portala Git
-                            </Link>
-                            <button className="map-portal-btn-secondary">
-                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>hub</span>
-                                Bağlan
-                            </button>
-                        </div>
+                                {/* Description */}
+                                {portalDetail.description && (
+                                    <div className="map-portal-card-bio">
+                                        <p className="map-portal-bio-text">{portalDetail.description}</p>
+                                    </div>
+                                )}
+
+                                {/* Owner info */}
+                                {portalDetail.owner && (
+                                    <div className="map-portal-owner-row">
+                                        {portalDetail.owner.profile?.avatar ? (
+                                            <img src={portalDetail.owner.profile.avatar} alt="" className="map-portal-owner-avatar" />
+                                        ) : (
+                                            <div className="map-portal-owner-avatar map-portal-owner-letter">
+                                                {(portalDetail.owner.profile?.displayName || portalDetail.owner.username || '?')[0].toUpperCase()}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <span className="map-portal-owner-label">Kurucu</span>
+                                            <span className="map-portal-owner-name">{portalDetail.owner.profile?.displayName || portalDetail.owner.username}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Actions */}
+                                <div className="map-portal-card-actions">
+                                    <Link to={`/portal/${portalDetail._id}`} className="map-portal-btn-primary">
+                                        Git
+                                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_forward</span>
+                                    </Link>
+
+                                    {isMember === true ? (
+                                        <div className="map-portal-member-badge">
+                                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>check_circle</span>
+                                            Üyesiniz
+                                        </div>
+                                    ) : isMember === 'requested' ? (
+                                        <div className="map-portal-member-badge" style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)' }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>schedule</span>
+                                            İstek Gönderildi
+                                        </div>
+                                    ) : (
+                                        <button
+                                            className="map-portal-btn-secondary"
+                                            onClick={handleJoinPortal}
+                                            disabled={joining}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>add</span>
+                                            {joining ? 'Katılınıyor...' : 'Üye Ol'}
+                                        </button>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <div style={{ padding: '24px', textAlign: 'center', color: 'rgba(148,163,184,0.7)', fontSize: '13px' }}>
+                                Portal bilgileri yüklenemedi.
+                            </div>
+                        )}
                     </aside>
                 )}
+
             </main>
 
             <style>{`
@@ -626,7 +716,10 @@ export default function EarthSimulation() {
                     margin: 0;
                 }
                 .map-portal-card-close {
-                    background: rgba(255,255,255,0.07);
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: rgba(0,0,0,0.5);
                     border: none;
                     border-radius: 8px;
                     width: 28px;
@@ -635,65 +728,144 @@ export default function EarthSimulation() {
                     align-items: center;
                     justify-content: center;
                     cursor: pointer;
-                    color: rgba(148,163,184,0.8);
-                    transition: background 0.2s, color 0.2s;
+                    color: rgba(255,255,255,0.8);
+                    transition: background 0.2s;
+                    z-index: 10;
                     flex-shrink: 0;
                 }
-                .map-portal-card-close:hover { background: rgba(255,255,255,0.12); color: white; }
+                .map-portal-card-close:hover { background: rgba(0,0,0,0.75); color: white; }
                 .map-portal-card-close .material-symbols-outlined { font-size: 16px; }
-                .map-portal-card-img-wrap {
+
+                /* Banner */
+                .map-portal-card-banner {
                     position: relative;
-                    height: 140px;
+                    height: 110px;
                     overflow: hidden;
-                    background: rgba(10,10,20,0.8);
+                    flex-shrink: 0;
                 }
-                .map-portal-card-img {
+                .map-portal-banner-img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
-                    transition: transform 0.6s ease;
                 }
-                .map-portal-card:hover .map-portal-card-img { transform: scale(1.04); }
-                .map-portal-card-img-fallback {
+                .map-portal-banner-fallback {
                     width: 100%;
                     height: 100%;
+                    background: linear-gradient(135deg, #1a1f3c 0%, #0d1117 100%);
+                }
+                .map-portal-banner-gradient {
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(to top, rgba(13,17,28,0.9) 0%, rgba(13,17,28,0.2) 60%, transparent 100%);
+                }
+
+                /* Identity row */
+                .map-portal-card-identity {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 0 14px 12px;
+                    margin-top: -24px;
+                    position: relative;
+                    z-index: 2;
+                }
+                .map-portal-card-avatar-wrap {
+                    flex-shrink: 0;
+                }
+                .map-portal-card-avatar {
+                    width: 52px;
+                    height: 52px;
+                    border-radius: 50%;
+                    border: 3px solid rgba(13,17,28,1);
+                    object-fit: cover;
+                }
+                .map-portal-card-avatar-letter {
+                    width: 52px;
+                    height: 52px;
+                    border-radius: 50%;
+                    border: 3px solid rgba(13,17,28,1);
+                    background: linear-gradient(135deg, #6366f1, #818cf8);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    background: rgba(99,102,241,0.06);
+                    font-size: 22px;
+                    font-weight: 800;
+                    color: white;
                 }
-                .map-portal-card-img-gradient {
-                    position: absolute;
-                    inset: 0;
-                    background: linear-gradient(to top, rgba(13,17,28,0.7) 0%, transparent 60%);
+                .map-portal-card-title {
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: white;
+                    margin: 0 0 3px;
+                    letter-spacing: -0.3px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
-                .map-portal-card-status {
-                    position: absolute;
-                    top: 10px;
-                    right: 10px;
+                .map-portal-card-loc {
+                    display: flex;
+                    align-items: center;
+                    gap: 3px;
+                    font-size: 11px;
+                    color: rgba(148,163,184,0.8);
+                    margin: 0;
+                }
+
+                /* Owner row */
+                .map-portal-owner-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 10px 14px;
+                    border-top: 1px solid rgba(255,255,255,0.06);
+                }
+                .map-portal-owner-avatar {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    flex-shrink: 0;
+                }
+                .map-portal-owner-letter {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: linear-gradient(135deg, #6366f1, #818cf8);
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: white;
+                }
+                .map-portal-owner-label {
+                    display: block;
+                    font-size: 9px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    color: rgba(148,163,184,0.5);
+                    font-weight: 700;
+                }
+                .map-portal-owner-name {
+                    display: block;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: rgba(203,213,225,0.9);
+                }
+
+                /* Member badge */
+                .map-portal-member-badge {
                     display: flex;
                     align-items: center;
                     gap: 5px;
-                    padding: 4px 9px;
-                    background: rgba(22,163,74,0.18);
-                    border: 1px solid rgba(34,197,94,0.35);
-                    border-radius: 99px;
-                    font-size: 10px;
-                    font-weight: 700;
-                    color: #4ade80;
-                    text-transform: uppercase;
-                    letter-spacing: 0.07em;
-                    backdrop-filter: blur(8px);
+                    padding: 8px 12px;
+                    background: rgba(46,204,113,0.08);
+                    border: 1px solid rgba(46,204,113,0.25);
+                    border-radius: 10px;
+                    color: #2ecc71;
+                    font-size: 12px;
+                    font-weight: 600;
                 }
-                .map-portal-status-dot {
-                    width: 6px;
-                    height: 6px;
-                    border-radius: 50%;
-                    background: #4ade80;
-                    box-shadow: 0 0 6px rgba(74,222,128,0.8);
-                    animation: statusPulse 2s ease-in-out infinite;
-                }
-                @keyframes statusPulse {
+
+                /* Skeleton pulse */
+                @keyframes pulse {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.5; }
                 }
