@@ -240,3 +240,40 @@ img {
   height: auto;
   display: block;
 }
+
+/* User Request: Global Border Removal & Fully Rounded Buttons (excluding layout bars) */
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-ghost,
+input,
+textarea,
+select,
+.card {
+  border: none !important;
+}
+
+/* Keep layout bar borders */
+.navbar,
+.app-footer,
+.sidebar,
+.user-bar,
+.map-controls-bar {
+  border: none;
+  /* Reset first */
+}
+
+.app-footer {
+  border-top: 1px solid var(--border-color) !important;
+}
+
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-ghost {
+  border-radius: 9999px !important;
+}

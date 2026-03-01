@@ -38,11 +38,16 @@
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     .app-footer {
-        padding: 24px 16px;
+        padding: 24px 16px 32px 16px;
+        /* Added 32px bottom padding for safe area */
         flex-direction: column-reverse;
         /* Stack: Links on Top, Copyright on Bottom */
         text-align: center;
         gap: 20px;
+        position: relative;
+        z-index: 100;
+        background-color: var(--bg-primary);
+        /* Ensure it is opaque */
     }
 
     .footer-links {

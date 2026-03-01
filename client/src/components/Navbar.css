@@ -378,6 +378,11 @@
         /* Smaller logo text */
     }
 
+    /* Hide Oxypace text on mobile */
+    .logo-text {
+        display: none !important;
+    }
+
     /* Ensure buttons are visible */
     /* Ensure buttons are visible */
     .theme-toggle-btn-modern,
