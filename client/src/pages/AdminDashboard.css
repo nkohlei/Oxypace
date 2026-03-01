@@ -532,3 +532,92 @@
 .messages-grid {
     animation: fadeIn 0.4s ease forwards;
 }
+
+/* =============================================
+   403 FORBIDDEN PAGE 
+   ============================================= */
+.forbidden-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-primary, #0a0a0a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.forbidden-content {
+    background: var(--bg-card, #111);
+    border: 1px solid var(--border-subtle, #333);
+    border-radius: 20px;
+    padding: 50px 40px;
+    text-align: center;
+    max-width: 480px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.forbidden-icon {
+    color: #f91880;
+    /* Oxypace warning/reject color */
+    margin-bottom: 20px;
+    background: rgba(249, 24, 128, 0.1);
+    padding: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 30px rgba(249, 24, 128, 0.2);
+}
+
+.forbidden-title {
+    font-size: 4rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0;
+    line-height: 1;
+    background: linear-gradient(135deg, #f91880, #ff6b35);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.forbidden-subtitle {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 15px 0 10px;
+}
+
+.forbidden-text {
+    color: var(--text-secondary, #999);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.forbidden-back-btn {
+    background: var(--primary-color, #1d9bf0);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.forbidden-back-btn:hover {
+    background: #1a8cd8;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(29, 155, 240, 0.4);
+}

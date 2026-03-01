@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import './AdminDashboard.css';
@@ -144,7 +145,34 @@ const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
 
 const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
+    const navigate = useNavigate();
     const isOxypace = currentUser && currentUser.username === 'oxypace';
+    const isAdmin = currentUser && (currentUser.isAdmin || currentUser.username === 'oxypace');
+
+    // Forbidden UI for non-admins
+    if (!isAdmin) {
+        return (
+            <div className="forbidden-container fade-in">
+                <div className="forbidden-content">
+                    <div className="forbidden-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                            <path d="M12 8v4" />
+                            <path d="M12 16h.01" />
+                        </svg>
+                    </div>
+                    <h1 className="forbidden-title">403</h1>
+                    <h2 className="forbidden-subtitle">Yetkisiz Erişim</h2>
+                    <p className="forbidden-text">
+                        Bu sayfayı görüntülemek için sistem yöneticisi yetkisine sahip olmalısınız. Yanlış bir bağlantıya tıklamış olabilirsiniz.
+                    </p>
+                    <button className="forbidden-back-btn" onClick={() => navigate(-1)}>
+                        Geri Dön
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals', 'messages'
     const [requests, setRequests] = useState([]);
