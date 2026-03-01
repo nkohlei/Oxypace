@@ -957,5 +957,104 @@ router.post('/:id/reject-member', protect, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+// @desc    Change portal status (Active / Closed / Suspended)
+// @route   PUT /api/portals/:id/status
+// @access  Private (Owner only)
+router.put('/:id/status', protect, async (req, res) => {
+    try {
+        const { status } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        if (portal.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Sadece kurucu bu işlemi yapabilir' });
+        }
+
+        if (!['active', 'suspended', 'closed'].includes(status)) {
+            return res.status(400).json({ message: 'Geçersiz durum değeri' });
+        }
+
+        portal.status = status;
+        const updatedPortal = await portal.save();
+
+        res.json(updatedPortal);
+    } catch (error) {
+        console.error('Portal status update error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Transfer Portal Ownership
+// @route   PUT /api/portals/:id/transfer
+// @access  Private (Owner only)
+router.put('/:id/transfer', protect, async (req, res) => {
+    try {
+        const { newOwnerId } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        if (portal.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Sadece kurucu bu işlemi yapabilir' });
+        }
+
+        // Verify new owner is a member
+        if (!portal.members.some((m) => m.toString() === newOwnerId.toString())) {
+            return res.status(400).json({ message: 'Yeni kurucu portal üyesi olmalıdır' });
+        }
+
+        // Make new owner an admin if they aren't already
+        if (!portal.admins.some((a) => a.toString() === newOwnerId.toString())) {
+            portal.admins.push(newOwnerId);
+        }
+
+        portal.owner = newOwnerId;
+        const updatedPortal = await portal.save();
+
+        res.json(updatedPortal);
+    } catch (error) {
+        console.error('Portal ownership transfer error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Delete Portal Permanently
+// @route   DELETE /api/portals/:id
+// @access  Private (Owner only)
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        if (portal.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Sadece kurucu bu işlemi yapabilir' });
+        }
+
+        // 1. Remove portal reference from all users' joinedPortals array
+        await User.updateMany(
+            { joinedPortals: portal._id },
+            { $pull: { joinedPortals: portal._id } }
+        );
+
+        // 2. Delete all posts associated with this portal
+        await Post.deleteMany({ portal: portal._id });
+
+        // 3. Delete the portal document
+        await portal.deleteOne();
+
+        res.json({ message: 'Portal kalıcı olarak silindi' });
+    } catch (error) {
+        console.error('Portal delete error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
 
 export default router;

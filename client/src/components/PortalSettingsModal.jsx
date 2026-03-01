@@ -64,6 +64,12 @@ const PortalSettingsModal = ({
     const [locationSaveStatus, setLocationSaveStatus] = useState(null); // 'success' | 'error' | null
     const [manualMode, setManualMode] = useState(false);
 
+    // --- Advanced / Admin State ---
+    const [portalStatus, setPortalStatus] = useState(portal.status || 'active');
+    const [newOwnerId, setNewOwnerId] = useState('');
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [actionProcessing, setActionProcessing] = useState(false);
+
     // Sync location data when portal prop changes
     useEffect(() => {
         setLocationData({
@@ -139,6 +145,66 @@ const PortalSettingsModal = ({
             onUpdate(res.data);
         } catch (err) {
             console.error('Clear location failed', err);
+        }
+    };
+
+    // --- Advanced Actions ---
+    const handleToggleStatus = async () => {
+        if (!isOwner) return;
+        const newStatus = portalStatus === 'active' ? 'closed' : 'active';
+
+        if (newStatus === 'closed') {
+            if (!window.confirm('Bu portalı arşive almak istediğinize emin misiniz? Portal aramalarda görünmeyecek ama üyeler erişebilecektir.')) return;
+        }
+
+        setActionProcessing(true);
+        try {
+            const res = await axios.put(`/api/portals/${portal._id}/status`, { status: newStatus });
+            setPortalStatus(res.data.status);
+            onUpdate(res.data);
+            alert(`Portal durumu güncellendi: ${newStatus === 'active' ? 'Aktif' : 'Arşivlenmiş'}`);
+        } catch (err) {
+            alert('Durum güncellenemedi: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setActionProcessing(false);
+        }
+    };
+
+    const handleTransferOwnership = async () => {
+        if (!isOwner || !newOwnerId) return;
+        if (!window.confirm('Kurucu yetkisini devretmek üzeresiniz. Bu işlem çok tehlikelidir ve geri alınamaz. Devam etmek istiyor musunuz?')) return;
+
+        setActionProcessing(true);
+        try {
+            const res = await axios.put(`/api/portals/${portal._id}/transfer`, { newOwnerId });
+            onUpdate(res.data);
+            alert('Sahiplik başarıyla devredildi.');
+            onClose(); // Close modal immediately as they are no longer owner
+            window.location.reload(); // Hard refresh to wipe owner state
+        } catch (err) {
+            alert('Sahiplik devredilemedi: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setActionProcessing(false);
+        }
+    };
+
+    const handleDeletePortal = async () => {
+        if (!isOwner) return;
+        if (deleteConfirmText !== portal.name) {
+            alert('Lütfen portal adını tam olarak yazın.');
+            return;
+        }
+        if (!window.confirm('Bu portal KESİNLİKLE silinecek, içindeki tüm mesajlar yok olacak. SON KEZ ONAYLIYOR MUSUNUZ?')) return;
+
+        setActionProcessing(true);
+        try {
+            await axios.delete(`/api/portals/${portal._id}`);
+            alert('Portal başarıyla silindi.');
+            window.location.href = '/inbox'; // Navigate completely away
+        } catch (err) {
+            alert('Portal silinemedi: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setActionProcessing(false);
         }
     };
 
@@ -572,6 +638,30 @@ const PortalSettingsModal = ({
                         </svg>
                         <span className="tab-label">Konum</span>
                     </div>
+
+                    {isOwner && (
+                        <div
+                            className={`settings-tab ${activeTab === 'advanced' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('advanced')}
+                            title="Gelişmiş"
+                            style={{ marginTop: 'auto', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}
+                        >
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#ef4444"
+                                strokeWidth="2"
+                                style={{ minWidth: '20px' }}
+                            >
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span className="tab-label" style={{ color: '#ef4444' }}>Gelişmiş</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Content */}
@@ -1563,7 +1653,7 @@ const PortalSettingsModal = ({
                                 </div>
                             )}
 
-                            {/* Save Status */}
+                            {/* Save Status (Location) */}
                             {locationSaveStatus === 'success' && (
                                 <div style={{ background: 'rgba(46,204,113,0.12)', border: '1px solid rgba(46,204,113,0.4)', borderRadius: '10px', padding: '12px 16px', color: '#2ecc71', marginBottom: '16px', fontWeight: '600' }}>
                                     ✅ Konum başarıyla kaydedildi!
@@ -1595,6 +1685,128 @@ const PortalSettingsModal = ({
                                     )}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Advanced Tab Content */}
+                    {activeTab === 'advanced' && isOwner && (
+                        <div className="settings-section fade-in">
+                            <h3 className="section-title" style={{ color: '#ef4444', borderBottomColor: 'rgba(239, 68, 68, 0.2)' }}>
+                                Gelişmiş Portal Yönetimi
+                            </h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+                                Bu sayfadaki işlemler portalı ciddi şekilde etkiler. Sadece portal sahibi (kurucu) bu işlemleri yapabilir.
+                            </p>
+
+                            {/* Status Area */}
+                            <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid var(--border-subtle)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Portal Durumu: <span style={{ color: portalStatus === 'active' ? '#2ecc71' : '#f1c40f' }}>{portalStatus === 'active' ? 'Aktif' : 'Arşivde (Kapalı)'}</span></h4>
+                                </div>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                                    Portalı arşive aldığınızda genel arama sonuçlarında çıkmaz ve yeni üye eklenemez. Sadece mevcut üyeler eski mesajları okumak için ulaşabilir.
+                                </p>
+                                <button
+                                    onClick={handleToggleStatus}
+                                    disabled={actionProcessing}
+                                    style={{
+                                        background: portalStatus === 'active' ? 'rgba(241,196,15,0.15)' : 'rgba(46,204,113,0.15)',
+                                        color: portalStatus === 'active' ? '#f1c40f' : '#2ecc71',
+                                        border: `1px solid ${portalStatus === 'active' ? 'rgba(241,196,15,0.3)' : 'rgba(46,204,113,0.3)'}`,
+                                        padding: '8px 16px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    {portalStatus === 'active' ? '📦 Portalı Arşive Al' : '✨ Portalı Tekrar Aktifleştir'}
+                                </button>
+                            </div>
+
+                            {/* Transfer Ownership */}
+                            <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid var(--border-subtle)' }}>
+                                <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Sahiplik Devri</h4>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                                    Portalın kuruculuğunu başka bir üyeye devredebilirsiniz. Devrettiğiniz an tüm kurucu haklarınızı kaybedersiniz ancak admin olarak kalmaya devam edersiniz.
+                                </p>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <select
+                                        className="form-input"
+                                        style={{ height: '40px' }}
+                                        value={newOwnerId}
+                                        onChange={(e) => setNewOwnerId(e.target.value)}
+                                        disabled={actionProcessing}
+                                    >
+                                        <option value="">Devredilecek Üyeyi Seçin...</option>
+                                        {portal.members
+                                            .filter(m => String(m._id || m) !== String(currentUserId))
+                                            .map(member => (
+                                                <option key={member._id} value={member._id}>
+                                                    {member.username}
+                                                    {portal.admins.some(a => String(a._id || a) === String(member._id)) ? ' (Admin)' : ''}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
+                                    <button
+                                        onClick={handleTransferOwnership}
+                                        disabled={actionProcessing || !newOwnerId}
+                                        style={{
+                                            background: '#ef4444',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '0 20px',
+                                            borderRadius: '6px',
+                                            cursor: !newOwnerId ? 'not-allowed' : 'pointer',
+                                            fontWeight: '600',
+                                            opacity: !newOwnerId ? 0.5 : 1,
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                    >
+                                        Devret
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Danger Zone */}
+                            <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                <h4 style={{ margin: '0 0 8px 0', color: '#ef4444' }}>TEHLİKELİ BÖLGE</h4>
+                                <p style={{ fontSize: '0.85rem', color: 'rgba(239, 68, 68, 0.8)', marginBottom: '16px', fontWeight: '500' }}>
+                                    Bu işlem geri alınamaz! Portal kalıcı olarak silinir, içindeki tüm mesajlar, kanallar ve dosyalar tamamen yok olur.
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        Eğer eminseniz onaylamak için portal adını tam olarak yazın:
+                                        <b style={{ color: 'var(--text-primary)', marginLeft: '4px' }}>{portal.name}</b>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Portal adını yazın..."
+                                        value={deleteConfirmText}
+                                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                        style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                                    />
+                                    <button
+                                        onClick={handleDeletePortal}
+                                        disabled={actionProcessing || deleteConfirmText !== portal.name}
+                                        style={{
+                                            background: '#dc2626',
+                                            color: '#ffffff',
+                                            border: 'none',
+                                            padding: '12px',
+                                            borderRadius: '8px',
+                                            cursor: deleteConfirmText !== portal.name ? 'not-allowed' : 'pointer',
+                                            fontWeight: '700',
+                                            marginTop: '8px',
+                                            opacity: deleteConfirmText !== portal.name ? 0.5 : 1,
+                                            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.2)'
+                                        }}
+                                    >
+                                        🗑️ PORTALI GERİ DÖNÜLMEZ ŞEKİLDE SİL
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
