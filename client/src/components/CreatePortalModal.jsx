@@ -24,6 +24,13 @@ const CreatePortalModal = ({ onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Prevent submitting to API if we are not on the last step (e.g., when user presses Enter)
+        if (step < 3) {
+            setStep(step + 1);
+            return;
+        }
+
         setLoading(true);
         setError('');
 
