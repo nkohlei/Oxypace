@@ -2,6 +2,7 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import { protect } from '../middleware/auth.js';
 import User from '../models/User.js';
+import ContactMessage from '../models/ContactMessage.js';
 
 const router = express.Router();
 
@@ -38,6 +39,13 @@ router.post('/', protect, async (req, res) => {
             `,
             replyTo: user.email // Yanıtla denilince kullanıcıya gitsin
         };
+
+        // Save exactly as sent by the user to the database
+        await ContactMessage.create({
+            user: user._id,
+            subject,
+            message
+        });
 
         // Eğer SMTP ayarları yoksa (Development/Test) sadece loglayalım
         if (!process.env.SMTP_PASS) {

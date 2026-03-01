@@ -518,3 +518,17 @@
         opacity: 1;
     }
 }
+
+/* Incoming Messages Specific Styles */
+.message-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.messages-grid {
+    animation: fadeIn 0.4s ease forwards;
+}

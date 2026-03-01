@@ -3,6 +3,7 @@ import { protect } from '../middleware/auth.js';
 import { admin } from '../middleware/admin.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import ContactMessage from '../models/ContactMessage.js';
 
 const router = express.Router();
 
@@ -138,6 +139,52 @@ router.put('/users/:id/badge', protect, admin, async (req, res) => {
         res.json({ message: 'Badge updated', user });
     } catch (error) {
         console.error('Update badge error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   GET /api/admin/contact-messages
+// @desc    Get all contact messages (Only for oxypace)
+// @access  Private/Admin
+router.get('/contact-messages', protect, admin, async (req, res) => {
+    try {
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu alana sadece baş yönetici erişebilir.' });
+        }
+
+        const messages = await ContactMessage.find()
+            .populate('user', 'username profile.displayName profile.avatar')
+            .sort({ createdAt: -1 });
+
+        res.json(messages);
+    } catch (error) {
+        console.error('Fetch contact messages error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/admin/contact-messages/:id/status
+// @desc    Update contact message status
+// @access  Private/Admin
+router.put('/contact-messages/:id/status', protect, admin, async (req, res) => {
+    try {
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu alana sadece baş yönetici erişebilir.' });
+        }
+
+        const { status } = req.body;
+        const message = await ContactMessage.findById(req.params.id);
+
+        if (!message) {
+            return res.status(404).json({ message: 'Mesaj bulunamadı' });
+        }
+
+        message.status = status;
+        await message.save();
+
+        res.json(message);
+    } catch (error) {
+        console.error('Update contact message status error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

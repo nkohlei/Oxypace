@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import './AdminDashboard.css';
 
 // Modern Modal Component for Reason Entry + Duration Picker
@@ -142,7 +143,10 @@ const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
 };
 
 const AdminDashboard = () => {
-    const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals'
+    const { user: currentUser } = useAuth();
+    const isOxypace = currentUser && currentUser.username === 'oxypace';
+
+    const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals', 'messages'
     const [requests, setRequests] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -150,6 +154,10 @@ const AdminDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [portals, setPortals] = useState([]);
     const [searchTermPortal, setSearchTermPortal] = useState('');
+
+    // Messages State (Oxypace Only)
+    const [contactMessages, setContactMessages] = useState([]);
+    const [messageFilter, setMessageFilter] = useState('Tümü'); // Tümü, Genel, Destek, vb.
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -163,8 +171,33 @@ const AdminDashboard = () => {
             fetchUsers();
         } else if (activeTab === 'portals') {
             fetchPortals();
+        } else if (activeTab === 'messages' && isOxypace) {
+            fetchContactMessages();
         }
-    }, [activeTab]);
+    }, [activeTab, isOxypace]);
+
+    const fetchContactMessages = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/contact-messages');
+            setContactMessages(data);
+        } catch (err) {
+            setError('Mesajlar yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleMessageStatus = async (id, status) => {
+        try {
+            await axios.put(`/api/admin/contact-messages/${id}/status`, { status });
+            setContactMessages(contactMessages.map(msg =>
+                msg._id === id ? { ...msg, status } : msg
+            ));
+        } catch (err) {
+            alert('Mesaj durumu güncellenemedi.');
+        }
+    };
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -344,6 +377,18 @@ const AdminDashboard = () => {
                 >
                     Tüm Portallar
                 </button>
+                {isOxypace && (
+                    <button
+                        className={`admin-tab ${activeTab === 'messages' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('messages')}
+                    >
+                        Gelen İletiler
+                        {/* Say out loud how many are unread */}
+                        {contactMessages.filter(m => m.status === 'unread').length > 0 &&
+                            <span className="tab-badge">{contactMessages.filter(m => m.status === 'unread').length}</span>
+                        }
+                    </button>
+                )}
             </div>
 
             <div className="admin-content">
@@ -534,6 +579,139 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 )}
+
+                {activeTab === 'messages' && isOxypace && (() => {
+                    const getMessageBadgeStyle = (subject) => {
+                        switch (subject) {
+                            case 'Destek': return { bg: 'rgba(52, 152, 219, 0.15)', text: '#3498db' };
+                            case 'Sikayet': return { bg: 'rgba(231, 76, 60, 0.15)', text: '#e74c3c' };
+                            case 'Geribildirim': return { bg: 'rgba(46, 204, 113, 0.15)', text: '#2ecc71' };
+                            case 'Isbirligi': return { bg: 'rgba(155, 89, 182, 0.15)', text: '#9b59b6' };
+                            default: return { bg: 'rgba(149, 165, 166, 0.15)', text: '#95a5a6' }; // Genel
+                        }
+                    };
+
+                    const filters = ['Tümü', 'Genel', 'Destek', 'Geribildirim', 'Sikayet', 'Isbirligi'];
+                    const filteredMessages = messageFilter === 'Tümü'
+                        ? contactMessages
+                        : contactMessages.filter(m => m.subject === messageFilter);
+
+                    return (
+                        <div className="messages-section fade-in">
+                            <div className="message-filters" style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                                {filters.map(filter => (
+                                    <button
+                                        key={filter}
+                                        onClick={() => setMessageFilter(filter)}
+                                        style={{
+                                            padding: '8px 16px',
+                                            borderRadius: '20px',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            background: messageFilter === filter ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.05)',
+                                            color: messageFilter === filter ? '#fff' : 'var(--text-muted)',
+                                            transition: '0.2s ease',
+                                        }}
+                                    >
+                                        {filter}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {loading && <div className="admin-loading">Yükleniyor...</div>}
+
+                            {!loading && filteredMessages.length === 0 && (
+                                <p className="no-data">Bu kategoride mesaj bulunamadı.</p>
+                            )}
+
+                            <div className="messages-grid" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {filteredMessages.map((msg) => {
+                                    const badgeStyle = getMessageBadgeStyle(msg.subject);
+                                    return (
+                                        <div key={msg._id} className="message-card" style={{
+                                            background: msg.status === 'unread' ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-secondary)',
+                                            border: `1px solid ${msg.status === 'unread' ? 'var(--primary-color)' : 'var(--border-subtle)'}`,
+                                            borderRadius: '12px',
+                                            padding: '20px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '15px',
+                                            boxShadow: msg.status === 'unread' ? '0 4px 12px rgba(255, 95, 31, 0.1)' : 'none'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                                    <img
+                                                        src={msg.user?.profile?.avatar || 'https://via.placeholder.com/50'}
+                                                        alt={msg.user?.username}
+                                                        style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                                                    />
+                                                    <div>
+                                                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                                            {msg.user?.profile?.displayName || msg.user?.username}
+                                                            <span style={{ fontWeight: 'normal', color: 'var(--text-muted)', marginLeft: '6px' }}>@{msg.user?.username}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                                            {new Date(msg.createdAt).toLocaleString()}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <span style={{
+                                                        background: badgeStyle.bg,
+                                                        color: badgeStyle.text,
+                                                        padding: '4px 10px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {msg.subject.toUpperCase()}
+                                                    </span>
+                                                    {msg.status === 'unread' && (
+                                                        <span style={{ background: '#e74c3c', color: 'white', padding: '3px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                                                            YENİ
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div style={{
+                                                color: 'var(--text-secondary)',
+                                                fontSize: '0.9rem',
+                                                lineHeight: '1.6',
+                                                background: 'rgba(0,0,0,0.2)',
+                                                padding: '15px',
+                                                borderRadius: '8px',
+                                                whiteSpace: 'pre-wrap'
+                                            }}>
+                                                {msg.message}
+                                            </div>
+
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                                {msg.status !== 'read' && (
+                                                    <button
+                                                        onClick={() => handleMessageStatus(msg._id, 'read')}
+                                                        style={{ background: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71', border: '1px solid #2ecc71', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+                                                    >
+                                                        Okundu İşaretle
+                                                    </button>
+                                                )}
+                                                {msg.status !== 'archived' && (
+                                                    <button
+                                                        onClick={() => handleMessageStatus(msg._id, 'archived')}
+                                                        style={{ background: 'rgba(149, 165, 166, 0.1)', color: '#95a5a6', border: '1px solid #95a5a6', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+                                                    >
+                                                        Arşivle
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Reason Modal */}
