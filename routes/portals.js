@@ -367,9 +367,40 @@ router.post('/:id/leave', protect, async (req, res) => {
 // @desc    Update portal settings
 // @route   PUT /api/portals/:id
 // @access  Private (Owner only)
+// @desc    Get portals with location (for 3D map)
+// @route   GET /api/portals/map
+// @access  Public
+router.get('/map', async (req, res) => {
+    try {
+        const portals = await Portal.find({
+            showOnMap: true,
+            'location.lat': { $ne: null },
+            'location.lng': { $ne: null },
+            status: 'active',
+            privacy: { $in: ['public', 'restricted'] }
+        }).select('name description avatar banner location showOnMap members');
+
+        const result = portals.map(p => ({
+            _id: p._id,
+            name: p.name,
+            description: p.description || '',
+            avatar: p.avatar || '',
+            banner: p.banner || '',
+            lat: p.location.lat,
+            lng: p.location.lng,
+            label: p.location.label || p.name,
+            memberCount: p.members?.length || 0,
+        }));
+
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 router.put('/:id', protect, async (req, res) => {
     try {
-        const { name, description, privacy, allowedUsers } = req.body;
+        const { name, description, privacy, allowedUsers, location, showOnMap } = req.body;
         const portal = await Portal.findById(req.params.id);
 
         if (!portal) {
@@ -385,6 +416,12 @@ router.put('/:id', protect, async (req, res) => {
         portal.privacy = privacy || portal.privacy;
         if (allowedUsers) {
             portal.allowedUsers = allowedUsers;
+        }
+        if (location !== undefined) {
+            portal.location = location;
+        }
+        if (showOnMap !== undefined) {
+            portal.showOnMap = showOnMap;
         }
 
         await portal.save();

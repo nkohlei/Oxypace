@@ -51,6 +51,97 @@ const PortalSettingsModal = ({
     // Channel Editing State
     const [editingChannel, setEditingChannel] = useState(null); // { id, name, isPrivate }
 
+    // --- Location State ---
+    const [locationData, setLocationData] = useState({
+        lat: portal.location?.lat ?? null,
+        lng: portal.location?.lng ?? null,
+        label: portal.location?.label || '',
+    });
+    const [showOnMap, setShowOnMap] = useState(portal.showOnMap || false);
+    const [locationSearch, setLocationSearch] = useState('');
+    const [locationResults, setLocationResults] = useState([]);
+    const [locationSearching, setLocationSearching] = useState(false);
+    const [locationSaveStatus, setLocationSaveStatus] = useState(null); // 'success' | 'error' | null
+    const [manualMode, setManualMode] = useState(false);
+
+    // Sync location data when portal prop changes
+    useEffect(() => {
+        setLocationData({
+            lat: portal.location?.lat ?? null,
+            lng: portal.location?.lng ?? null,
+            label: portal.location?.label || '',
+        });
+        setShowOnMap(portal.showOnMap || false);
+    }, [portal._id]);
+
+    const handleLocationSearch = async (query) => {
+        setLocationSearch(query);
+        if (!query.trim() || query.length < 2) {
+            setLocationResults([]);
+            return;
+        }
+        try {
+            setLocationSearching(true);
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
+                { headers: { 'Accept-Language': 'tr,en' } }
+            );
+            const data = await res.json();
+            setLocationResults(data);
+        } catch (err) {
+            console.error('Location search failed', err);
+        } finally {
+            setLocationSearching(false);
+        }
+    };
+
+    const handleSelectLocation = (result) => {
+        setLocationData({
+            lat: parseFloat(result.lat),
+            lng: parseFloat(result.lon),
+            label: result.display_name.split(',').slice(0, 2).join(', '),
+        });
+        setLocationSearch('');
+        setLocationResults([]);
+    };
+
+    const handleSaveLocation = async () => {
+        if (!isOwner) return;
+        setLoading(true);
+        setLocationSaveStatus(null);
+        try {
+            const payload = {
+                location: locationData.lat !== null ? locationData : { lat: null, lng: null, label: '' },
+                showOnMap,
+            };
+            const res = await axios.put(`/api/portals/${portal._id}`, payload);
+            onUpdate(res.data);
+            setLocationSaveStatus('success');
+            setTimeout(() => setLocationSaveStatus(null), 3000);
+        } catch (err) {
+            setLocationSaveStatus('error');
+            setTimeout(() => setLocationSaveStatus(null), 3000);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleClearLocation = async () => {
+        if (!isOwner) return;
+        if (!window.confirm('Konum bilgisi silinecek. Emin misiniz?')) return;
+        setLocationData({ lat: null, lng: null, label: '' });
+        setShowOnMap(false);
+        try {
+            const res = await axios.put(`/api/portals/${portal._id}`, {
+                location: { lat: null, lng: null, label: '' },
+                showOnMap: false,
+            });
+            onUpdate(res.data);
+        } catch (err) {
+            console.error('Clear location failed', err);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'banned' && (isAdmin || isOwner)) {
             fetchBlockedUsers();
@@ -460,6 +551,26 @@ const PortalSettingsModal = ({
                             <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
                         </svg>
                         <span className="tab-label">Engellenenler</span>
+                    </div>
+
+                    <div
+                        className={`settings-tab ${activeTab === 'location' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('location')}
+                        title="Konum"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            style={{ minWidth: '20px' }}
+                        >
+                            <circle cx="12" cy="10" r="3"></circle>
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
+                        </svg>
+                        <span className="tab-label">Konum</span>
                     </div>
                 </div>
 
@@ -1267,6 +1378,223 @@ const PortalSettingsModal = ({
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'location' && isAdmin && (
+                        <div className="animate-fade-in">
+                            <h2 className="settings-title">🌍 Dünya Haritası Konumu</h2>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px', lineHeight: '1.6' }}>
+                                Portalınızın dünya haritasında görünmesini sağlamak için bir konum seçin. Seçilen konumda portalınızın kapak fotoğrafı gösterilecek.
+                            </p>
+
+                            {/* Current Location Preview */}
+                            {locationData.lat !== null && locationData.lat !== undefined && (
+                                <div style={{
+                                    background: 'linear-gradient(135deg, rgba(19,91,236,0.12), rgba(99,179,237,0.08))',
+                                    border: '1px solid rgba(19,91,236,0.3)',
+                                    borderRadius: '12px',
+                                    padding: '16px',
+                                    marginBottom: '24px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '14px',
+                                }}>
+                                    {portal.avatar ? (
+                                        <img src={portal.avatar} alt="" style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid rgba(19,91,236,0.5)', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', color: 'white' }}>
+                                            {portal.name[0]}
+                                        </div>
+                                    )}
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>{portal.name}</div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{locationData.label || 'Konum seçildi'}</div>
+                                        <div style={{ color: '#135bec', fontSize: '0.78rem', marginTop: '2px', fontFamily: 'monospace' }}>
+                                            {locationData.lat?.toFixed(4)}°, {locationData.lng?.toFixed(4)}°
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                        <span style={{ background: showOnMap ? 'rgba(46,204,113,0.15)' : 'rgba(114,118,125,0.15)', color: showOnMap ? '#2ecc71' : '#72767d', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700', border: `1px solid ${showOnMap ? 'rgba(46,204,113,0.4)' : 'rgba(114,118,125,0.3)'}` }}>
+                                            {showOnMap ? '🌍 Haritada' : 'Gizli'}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Geocoding Search */}
+                            {isOwner && (
+                                <div className="form-group">
+                                    <label className="form-label">Konum Ara</label>
+                                    <div className="search-container" style={{ position: 'relative' }}>
+                                        <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg>
+                                        <input
+                                            className="search-input-modern"
+                                            placeholder="Şehir, ülke veya adres ara... (örn: İstanbul, Türkiye)"
+                                            value={locationSearch}
+                                            onChange={(e) => handleLocationSearch(e.target.value)}
+                                        />
+                                        {locationSearching && (
+                                            <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Aranıyor...</div>
+                                        )}
+                                        {locationResults.length > 0 && (
+                                            <div className="search-results-dropdown" style={{ top: '50px', zIndex: 10 }}>
+                                                {locationResults.map((result, i) => (
+                                                    <div
+                                                        key={i}
+                                                        onClick={() => handleSelectLocation(result)}
+                                                        style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '2px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+                                                        className="user-row"
+                                                    >
+                                                        <span style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '0.88rem' }}>
+                                                            {result.display_name.split(',').slice(0, 2).join(', ')}
+                                                        </span>
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                                            {parseFloat(result.lat).toFixed(4)}°N, {parseFloat(result.lon).toFixed(4)}°E
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Manual Coordinate Entry */}
+                            {isOwner && (
+                                <div style={{ marginBottom: '20px' }}>
+                                    <button
+                                        onClick={() => setManualMode(!manualMode)}
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', padding: '0', textDecoration: 'underline' }}
+                                    >
+                                        {manualMode ? '▲ Manuel girişi kapat' : '▼ Manuel koordinat gir'}
+                                    </button>
+                                    {manualMode && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Enlem (Lat)</label>
+                                                <input
+                                                    className="form-input"
+                                                    type="number"
+                                                    step="any"
+                                                    placeholder="Örn: 41.0082"
+                                                    value={locationData.lat ?? ''}
+                                                    onChange={(e) => setLocationData(prev => ({ ...prev, lat: parseFloat(e.target.value) || null }))}
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Boylam (Lng)</label>
+                                                <input
+                                                    className="form-input"
+                                                    type="number"
+                                                    step="any"
+                                                    placeholder="Örn: 28.9784"
+                                                    value={locationData.lng ?? ''}
+                                                    onChange={(e) => setLocationData(prev => ({ ...prev, lng: parseFloat(e.target.value) || null }))}
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Konum Etiketi</label>
+                                                <input
+                                                    className="form-input"
+                                                    placeholder="Örn: İstanbul, Türkiye"
+                                                    value={locationData.label}
+                                                    onChange={(e) => setLocationData(prev => ({ ...prev, label: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Show on Map Toggle */}
+                            {isOwner && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderRadius: '10px',
+                                    padding: '14px 18px',
+                                    marginBottom: '24px',
+                                }}>
+                                    <div>
+                                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '2px' }}>Dünya Haritasında Göster</div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Portalınız 3D dünya haritasında görünür olacak</div>
+                                    </div>
+                                    <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', cursor: 'pointer', flexShrink: 0 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={showOnMap}
+                                            onChange={(e) => setShowOnMap(e.target.checked)}
+                                            style={{ opacity: 0, width: 0, height: 0 }}
+                                            disabled={locationData.lat === null}
+                                        />
+                                        <span style={{
+                                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                                            background: showOnMap && locationData.lat !== null ? 'var(--primary-color)' : 'var(--border-color)',
+                                            borderRadius: '26px',
+                                            transition: '0.3s',
+                                            cursor: locationData.lat === null ? 'not-allowed' : 'pointer',
+                                        }}>
+                                            <span style={{
+                                                position: 'absolute',
+                                                content: '',
+                                                height: '20px', width: '20px',
+                                                left: showOnMap && locationData.lat !== null ? '23px' : '3px',
+                                                bottom: '3px',
+                                                background: 'white',
+                                                borderRadius: '50%',
+                                                transition: '0.3s',
+                                                display: 'block',
+                                            }} />
+                                        </span>
+                                    </label>
+                                </div>
+                            )}
+
+                            {!isOwner && (
+                                <div style={{ background: 'rgba(250,166,26,0.1)', border: '1px solid rgba(250,166,26,0.3)', borderRadius: '10px', padding: '14px', color: '#faa61a', fontSize: '0.88rem', marginBottom: '20px' }}>
+                                    ⚠️ Konum ayarları yalnızca portal sahibi tarafından değiştirilebilir.
+                                </div>
+                            )}
+
+                            {/* Save Status */}
+                            {locationSaveStatus === 'success' && (
+                                <div style={{ background: 'rgba(46,204,113,0.12)', border: '1px solid rgba(46,204,113,0.4)', borderRadius: '10px', padding: '12px 16px', color: '#2ecc71', marginBottom: '16px', fontWeight: '600' }}>
+                                    ✅ Konum başarıyla kaydedildi!
+                                </div>
+                            )}
+                            {locationSaveStatus === 'error' && (
+                                <div style={{ background: 'rgba(237,66,69,0.12)', border: '1px solid rgba(237,66,69,0.4)', borderRadius: '10px', padding: '12px 16px', color: '#ed4245', marginBottom: '16px', fontWeight: '600' }}>
+                                    ❌ Kaydetme hatası. Lütfen tekrar deneyin.
+                                </div>
+                            )}
+
+                            {isOwner && (
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                    <button
+                                        className="btn-save"
+                                        onClick={handleSaveLocation}
+                                        disabled={loading || locationData.lat === null}
+                                    >
+                                        {loading ? 'Kaydediliyor...' : '💾 Konumu Kaydet'}
+                                    </button>
+                                    {(portal.location?.lat !== null && portal.location?.lat !== undefined) && (
+                                        <button
+                                            onClick={handleClearLocation}
+                                            disabled={loading}
+                                            style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid rgba(237,66,69,0.4)', background: 'rgba(237,66,69,0.1)', color: '#ed4245', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem' }}
+                                        >
+                                            🗑️ Konumu Kaldır
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

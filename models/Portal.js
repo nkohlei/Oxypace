@@ -114,6 +114,15 @@ const portalSchema = new mongoose.Schema(
                 ref: 'User',
             },
         ],
+        location: {
+            lat: { type: Number, default: null },
+            lng: { type: Number, default: null },
+            label: { type: String, default: '' },
+        },
+        showOnMap: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

@@ -1,25 +1,9 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import EarthCanvas from './EarthCanvas';
 import Navbar from '../../components/Navbar';
 import SEO from '../../components/SEO';
-
-const PORTALS = [
-    {
-        id: 'london',
-        name: 'London Portal',
-        location: 'United Kingdom',
-        lat: 51.5074,
-        lng: -0.1278,
-        image: '/portals/london.png',
-        bio: 'The London Portal serves as the primary gateway for Western Europe, connecting Oxypace users to the heart of the British capital. It facilitates high-speed data transmission and provides a central hub for regional operations.',
-        stats: {
-            uptime: '99.99%',
-            latency: '12ms',
-            users: '2.4M'
-        }
-    }
-];
+import axios from 'axios';
 
 export default function EarthSimulation() {
     const earthCanvasRef = useRef(null);
@@ -31,6 +15,25 @@ export default function EarthSimulation() {
     const [portalSearchQuery, setPortalSearchQuery] = useState('');
     const [showPortalResults, setShowPortalResults] = useState(false);
     const [activePortalSearch, setActivePortalSearch] = useState('');
+    const [portals, setPortals] = useState([]);
+    const [portalsLoading, setPortalsLoading] = useState(true);
+
+    // Fetch real portals with map location from API
+    useEffect(() => {
+        const fetchMapPortals = async () => {
+            try {
+                setPortalsLoading(true);
+                const res = await axios.get('/api/portals/map');
+                setPortals(res.data);
+            } catch (err) {
+                console.error('Failed to fetch map portals', err);
+                setPortals([]);
+            } finally {
+                setPortalsLoading(false);
+            }
+        };
+        fetchMapPortals();
+    }, []);
 
     const handleZoomIn = () => earthCanvasRef.current?.zoomIn();
     const handleZoomOut = () => earthCanvasRef.current?.zoomOut();

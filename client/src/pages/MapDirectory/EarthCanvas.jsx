@@ -359,10 +359,13 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                     }
 
                     el.innerHTML = `
-                        <div class="${circleClass}">
-                            <img src="/portals/logo.png" alt="${d.name}" />
+                        <div class="${circleClass}" data-name="${d.name[0].toUpperCase()}">
+                            ${d.avatar
+                            ? `<img src="${d.avatar}" alt="${d.name}" onerror="this.style.display='none';this.parentNode.classList.add('no-avatar');" />`
+                            : `<span class="portal-letter">${d.name[0].toUpperCase()}</span>`
+                        }
                         </div>
-                        <div class="portal-hover-label">${d.name} Portal</div>
+                        <div class="portal-hover-label">${d.name}</div>
                     `;
                     el.style.position = 'relative';
                     el.style.cursor = 'pointer';
@@ -419,8 +422,32 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                 .portal-circle img {
                     width: 90%;
                     height: 90%;
-                    object-fit: contain;
+                    object-fit: cover;
                     border-radius: 50%;
+                }
+
+                .portal-letter {
+                    color: white;
+                    font-size: 18px;
+                    font-weight: 800;
+                    font-family: 'Inter', sans-serif;
+                    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+                }
+
+                .no-avatar {
+                    background: linear-gradient(135deg, #135bec, #7928ca);
+                }
+
+                .no-avatar::after {
+                    content: attr(data-name);
+                    color: white;
+                    font-size: 18px;
+                    font-weight: 800;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    height: 100%;
                 }
 
                 @keyframes iridescentGlow {
