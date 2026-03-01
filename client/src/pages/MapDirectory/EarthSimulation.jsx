@@ -9,6 +9,7 @@ export default function EarthSimulation() {
     const earthCanvasRef = useRef(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activePanel, setActivePanel] = useState(null); // 'search' | 'speed' | null
+    const [showMobileControls, setShowMobileControls] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPortal, setSelectedPortal] = useState(null);
     const [portalSearchQuery, setPortalSearchQuery] = useState('');
@@ -276,8 +277,19 @@ export default function EarthSimulation() {
                     />
                 </div>
 
+                {/* Left controls panel Toggle Button (Mobile Only) */}
+                <button
+                    className={`map-mobile-controls-toggle glass-panel borderless ${showMobileControls ? 'active' : ''}`}
+                    onClick={() => setShowMobileControls(!showMobileControls)}
+                    title="Kontrolleri Göster/Gizle"
+                >
+                    <span className="material-symbols-outlined">
+                        {showMobileControls ? 'close' : 'tune'}
+                    </span>
+                </button>
+
                 {/* Left controls panel */}
-                <div className="map-left-panel">
+                <div className={`map-left-panel ${showMobileControls ? 'mobile-visible' : 'mobile-hidden'}`}>
                     <div className="map-controls-bar glass-panel borderless">
                         <Link to="/search" className="map-ctrl-btn" title="Arama Sayfasına Dön" style={{ color: '#fb923c' }}>
                             <span className="material-symbols-outlined">arrow_back</span>
@@ -605,6 +617,25 @@ export default function EarthSimulation() {
                 }
 
                 /* ── Left Controls Panel ── */
+                .map-mobile-controls-toggle {
+                    display: none;
+                    position: absolute;
+                    left: 16px;
+                    top: 80px; /* Below the navbar */
+                    z-index: 20;
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 14px;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    cursor: pointer;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+                    transition: background 0.2s, color 0.2s, transform 0.2s;
+                }
+                .map-mobile-controls-toggle:active {
+                    transform: scale(0.95);
+                }
                 .map-left-panel {
                     position: absolute;
                     left: 16px;
@@ -615,6 +646,7 @@ export default function EarthSimulation() {
                     align-items: flex-start;
                     gap: 8px;
                     pointer-events: none;
+                    transition: transform 0.3s ease, opacity 0.3s ease;
                 }
                 .map-controls-bar {
                     pointer-events: auto;
@@ -971,6 +1003,40 @@ export default function EarthSimulation() {
                     cursor: pointer;
                     border: 2px solid white;
                     box-shadow: 0 0 6px rgba(99,102,241,0.6);
+                }
+
+                /* ── Responsive Overrides ── */
+                @media (max-width: 768px) {
+                    .map-mobile-controls-toggle {
+                        display: flex; /* Sadece mobilde göster */
+                    }
+                    
+                    .map-left-panel.mobile-hidden {
+                        transform: translateY(-50%) translateX(-150%);
+                        opacity: 0;
+                        pointer-events: none;
+                    }
+                    .map-left-panel.mobile-visible {
+                        transform: translateY(-50%) translateX(0);
+                        opacity: 1;
+                    }
+
+                    .map-portal-card-drawer {
+                        width: 100%;
+                        max-width: none;
+                        top: auto;
+                        bottom: 0;
+                        left: 0;
+                        transform: translateY(100%);
+                        border-radius: 20px 20px 0 0;
+                        border-left: none;
+                        border-bottom: none;
+                        border-right: none;
+                        border-top: 1px solid rgba(255,255,255,0.1);
+                    }
+                    .map-portal-card-drawer.open {
+                        transform: translateY(0);
+                    }
                 }
             `}</style>
         </div>

@@ -153,31 +153,48 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
         }
     }, [animateZoom]);
 
-    // TOUCH PINCH-TO-ZOOM GESTURES (Mobile Controls)
+    // TOUCH PINCH-TO-ZOOM & DOUBLE TAP (Mobile Controls)
     const touchStartDist = useRef(null);
     const touchStartAltitude = useRef(null);
+    const lastTapTime = useRef(0);
 
     const handleTouchStart = useCallback((e) => {
-        if (e.touches.length === 2 && globeRef.current) {
-            e.preventDefault();
-            globeRef.current.controls().autoRotate = false;
+        if (!globeRef.current) return;
+
+        globeRef.current.controls().autoRotate = false;
+
+        if (e.touches.length === 2) {
+            // Prevent native orbit controls from panning/shifting the globe wildly
+            globeRef.current.controls().enabled = false;
             zoomAnchor.current = null; // Disable anchor on pinch for simpler zooming
 
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             touchStartDist.current = Math.hypot(dx, dy);
             touchStartAltitude.current = targetAltitude.current;
+        } else if (e.touches.length === 1) {
+            // Verify double tap
+            const now = Date.now();
+            if (now - lastTapTime.current < 300) {
+                // Double tap detected -> Zoom In
+                targetAltitude.current = Math.max(0.002, targetAltitude.current * 0.5);
+                if (!isAnimating.current) {
+                    isAnimating.current = true;
+                    requestAnimationFrame(animateZoom);
+                }
+            }
+            lastTapTime.current = now;
         }
-    }, []);
+    }, [animateZoom]);
 
     const handleTouchMove = useCallback((e) => {
         if (e.touches.length === 2 && globeRef.current && touchStartDist.current !== null) {
-            e.preventDefault();
+            e.preventDefault(); // Stop page scrolling
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             const dist = Math.hypot(dx, dy);
 
-            // zoom ratio
+            // zoom ratio (if dist > startDist, ratio < 1 -> altitude decreases -> zoom in)
             const ratio = touchStartDist.current / dist;
             targetAltitude.current = Math.max(0.002, Math.min(4, touchStartAltitude.current * ratio));
 
@@ -189,8 +206,10 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
     }, [animateZoom]);
 
     const handleTouchEnd = useCallback((e) => {
-        if (e.touches.length < 2) {
+        if (e.touches.length < 2 && globeRef.current) {
             touchStartDist.current = null;
+            // Restore native single-finger rotation
+            globeRef.current.controls().enabled = true;
         }
     }, []);
 
