@@ -91,6 +91,16 @@
     object-fit: contain;
 }
 
+/* Center slot — used by map page to inject portal search into the Navbar */
+.nav-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    min-width: 0;
+}
+
 .nav-right {
     display: flex;
     align-items: center;

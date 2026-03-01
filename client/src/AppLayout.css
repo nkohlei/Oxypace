@@ -149,3 +149,9 @@
         display: none !important;
     }
 }
+
+/* Map page: sidebar is hidden, so main content takes full width on all screen sizes */
+.map-page-active .main-content-wrapper {
+    margin-left: 0 !important;
+    width: 100% !important;
+}

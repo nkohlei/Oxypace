@@ -144,74 +144,93 @@ export default function EarthSimulation() {
         earthCanvasRef.current?.setRotationSpeed(speed);
     };
 
-    return (
-        <div className="app-wrapper map-simulation-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0d', overflow: 'hidden' }}>
-            <SEO title="Portal Haritası | Oxypace" description="Tüm Oxypace portallarını interaktif 3D dünya üzerinde keşfedin." />
-
-            <Navbar />
-
-            <main className="flex-1 relative flex overflow-hidden">
-                {/* Floating Search Overlay (Specialized for Portals) */}
-                <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2">
-                    <div className="relative group flex items-center">
-                        <span
-                            onClick={triggerPortalSearch}
-                            className="absolute left-3 text-slate-400 hover:text-white material-symbols-outlined text-[18px] cursor-pointer z-10 transition-colors"
-                        >
-                            search
-                        </span>
-                        <input
-                            value={portalSearchQuery}
-                            onChange={(e) => {
-                                setPortalSearchQuery(e.target.value);
-                                setShowPortalResults(true);
-                                if (e.target.value === '') setActivePortalSearch('');
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    triggerPortalSearch();
-                                }
-                            }}
-                            onFocus={() => setShowPortalResults(true)}
-                            onBlur={() => setTimeout(() => setShowPortalResults(false), 200)}
-                            className="w-72 md:w-96 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all shadow-2xl"
-                            placeholder="Portal İsmi veya Konum Ara..."
-                            type="text"
-                        />
-                        {portalSearchQuery.length > 0 && (
-                            <span
-                                onClick={clearPortalSearch}
-                                className="absolute right-3 text-slate-400 hover:text-white material-symbols-outlined text-[16px] cursor-pointer z-10 transition-colors"
-                            >
-                                close
-                            </span>
-                        )}
-                        {showPortalResults && portalSearchQuery.length > 0 && (
-                            <div className="absolute top-full left-0 mt-2 w-full bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                                {PORTALS.filter(p => p.name.toLowerCase().includes(portalSearchQuery.toLowerCase()) || p.location.toLowerCase().includes(portalSearchQuery.toLowerCase())).length > 0 ? (
-                                    PORTALS.filter(p => p.name.toLowerCase().includes(portalSearchQuery.toLowerCase()) || p.location.toLowerCase().includes(portalSearchQuery.toLowerCase())).map(p => (
-                                        <div
-                                            key={p.id}
-                                            onClick={() => {
-                                                setPortalSearchQuery('');
-                                                setShowPortalResults(false);
-                                                handlePortalClick(p);
-                                            }}
-                                            className="px-4 py-3 hover:bg-white/5 cursor-pointer flex flex-col transition-colors border-b border-white/5 last:border-0"
-                                        >
-                                            <span className="text-white text-sm font-medium">{p.name}</span>
-                                            <span className="text-slate-400 text-xs">{p.location}</span>
+    // Portal search box — injected into the Navbar center slot
+    const portalSearchBox = (
+        <div className="map-navbar-search">
+            <div className="map-navbar-search-inner">
+                <span
+                    onClick={triggerPortalSearch}
+                    className="material-symbols-outlined map-search-icon"
+                    title="Ara"
+                >
+                    travel_explore
+                </span>
+                <input
+                    value={portalSearchQuery}
+                    onChange={(e) => {
+                        setPortalSearchQuery(e.target.value);
+                        setShowPortalResults(true);
+                        if (e.target.value === '') setActivePortalSearch('');
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            triggerPortalSearch();
+                        }
+                    }}
+                    onFocus={() => setShowPortalResults(true)}
+                    onBlur={() => setTimeout(() => setShowPortalResults(false), 200)}
+                    className="map-navbar-search-input"
+                    placeholder="Portal veya konum ara..."
+                    type="text"
+                />
+                {portalSearchQuery.length > 0 && (
+                    <span
+                        onClick={clearPortalSearch}
+                        className="material-symbols-outlined map-search-clear"
+                        title="Temizle"
+                    >
+                        close
+                    </span>
+                )}
+                {/* Dropdown results */}
+                {showPortalResults && portalSearchQuery.length > 0 && (
+                    <div className="map-navbar-search-dropdown">
+                        {PORTALS.filter(p =>
+                            p.name.toLowerCase().includes(portalSearchQuery.toLowerCase()) ||
+                            p.location.toLowerCase().includes(portalSearchQuery.toLowerCase())
+                        ).length > 0 ? (
+                            PORTALS
+                                .filter(p =>
+                                    p.name.toLowerCase().includes(portalSearchQuery.toLowerCase()) ||
+                                    p.location.toLowerCase().includes(portalSearchQuery.toLowerCase())
+                                )
+                                .map(p => (
+                                    <div
+                                        key={p.id}
+                                        onMouseDown={() => {
+                                            setPortalSearchQuery('');
+                                            setShowPortalResults(false);
+                                            handlePortalClick(p);
+                                        }}
+                                        className="map-navbar-search-result"
+                                    >
+                                        <span className="material-symbols-outlined map-result-icon">location_on</span>
+                                        <div>
+                                            <span className="map-result-name">{p.name}</span>
+                                            <span className="map-result-loc">{p.location}</span>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="px-4 py-4 text-slate-500 text-sm text-center">Portal bulunamadı</div>
-                                )}
-                            </div>
+                                    </div>
+                                ))
+                        ) : (
+                            <div className="map-navbar-no-results">Portal bulunamadı</div>
                         )}
                     </div>
-                </div>
-                <div className="absolute inset-0 z-0 bg-background-dark">
+                )}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="map-simulation-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0d', overflow: 'hidden' }}>
+            <SEO title="Portal Haritası | Oxypace" description="Tüm Oxypace portallarını interaktif 3D dünya üzerinde keşfedin." />
+
+            {/* Unified Navbar with portal search in center */}
+            <Navbar centerContent={portalSearchBox} />
+
+            <main style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
+                {/* Globe canvas — full area */}
+                <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
                     <EarthCanvas
                         ref={earthCanvasRef}
                         portals={PORTALS}
@@ -221,66 +240,81 @@ export default function EarthSimulation() {
                     />
                 </div>
 
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-start gap-2 pointer-events-none">
-                    <div className="pointer-events-auto glass-panel rounded-xl p-2 flex flex-col gap-1 w-11 items-center shadow-xl border border-white/10">
+                {/* Left controls panel */}
+                <div className="map-left-panel">
+                    <div className="map-controls-bar glass-panel">
                         <button
                             onClick={() => togglePanel('search')}
-                            className={`size-8 flex items-center justify-center rounded-lg transition-colors ${activePanel === 'search' ? 'bg-primary text-white' : 'hover:bg-white/10 text-slate-300 hover:text-white'}`}
-                            title="Search"
+                            className={`map-ctrl-btn ${activePanel === 'search' ? 'active' : ''}`}
+                            title="Koordinat / Şehir Ara"
                         >
-                            <span className="material-symbols-outlined text-[18px]">search</span>
+                            <span className="material-symbols-outlined">my_location</span>
                         </button>
 
-                        <div className="w-full h-px bg-white/10 my-0.5"></div>
+                        <div className="map-ctrl-separator" />
 
-                        <button onClick={handleZoomIn} className="size-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="Zoom In">
-                            <span className="material-symbols-outlined text-[18px]">add</span>
+                        <button onClick={handleZoomIn} className="map-ctrl-btn" title="Yakınlaştır">
+                            <span className="material-symbols-outlined">add</span>
                         </button>
-                        <button onClick={handleZoomOut} className="size-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="Zoom Out">
-                            <span className="material-symbols-outlined text-[18px]">remove</span>
+                        <button onClick={handleZoomOut} className="map-ctrl-btn" title="Uzaklaştır">
+                            <span className="material-symbols-outlined">remove</span>
                         </button>
 
-                        <div className="w-full h-px bg-white/10 my-0.5"></div>
+                        <div className="map-ctrl-separator" />
 
-                        <button onClick={handleReset} className="size-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="Reset View">
-                            <span className="material-symbols-outlined text-[18px]">my_location</span>
+                        <button onClick={handleReset} className="map-ctrl-btn" title="Görünümü Sıfırla">
+                            <span className="material-symbols-outlined">explore</span>
                         </button>
 
                         <button
                             onClick={() => togglePanel('speed')}
-                            className={`size-8 flex items-center justify-center rounded-lg transition-colors ${activePanel === 'speed' ? 'bg-primary text-white' : 'hover:bg-white/10 text-slate-300 hover:text-white'}`}
-                            title="Rotation Speed"
+                            className={`map-ctrl-btn ${activePanel === 'speed' ? 'active' : ''}`}
+                            title="Dönüş Hızı"
                         >
-                            <span className="material-symbols-outlined text-[18px]">speed</span>
+                            <span className="material-symbols-outlined">speed</span>
                         </button>
                     </div>
 
+                    {/* Expanded panel next to the controls */}
                     {activePanel && (
-                        <div className="pointer-events-auto glass-panel rounded-xl shadow-xl border border-white/10 overflow-hidden animate-fadeIn" style={{ animation: 'fadeSlideIn 0.2s ease-out' }}>
+                        <div className="map-expanded-panel glass-panel">
                             {activePanel === 'search' && (
-                                <form onSubmit={handleSearch} className="p-3 w-64">
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                                            <span className="material-symbols-outlined text-[18px]">search</span>
-                                        </span>
+                                <form onSubmit={handleSearch} style={{ padding: '12px', width: '220px' }}>
+                                    <p style={{ fontSize: '10px', color: 'rgba(148,163,184,0.8)', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        Koordinat / Şehir Ara
+                                    </p>
+                                    <div style={{ position: 'relative' }}>
+                                        <span className="material-symbols-outlined" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '16px', color: 'rgba(148,163,184,0.7)' }}>search</span>
                                         <input
                                             autoFocus
                                             value={searchQuery}
                                             onChange={handleSearchInput}
-                                            className="w-full bg-black/30 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
-                                            placeholder="City or lat, lng"
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(0,0,0,0.3)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                padding: '8px 10px 8px 30px',
+                                                fontSize: '13px',
+                                                color: 'white',
+                                                outline: 'none',
+                                                boxSizing: 'border-box',
+                                            }}
+                                            placeholder="London, 41.01,28.98..."
                                             type="text"
                                         />
                                     </div>
-                                    <p className="text-[10px] text-slate-500 mt-1.5 px-1">Try: London, Istanbul, Tokyo</p>
+                                    <p style={{ fontSize: '10px', color: 'rgba(148,163,184,0.5)', marginTop: '6px' }}>
+                                        Enter'a bas veya 🔍'e tıkla
+                                    </p>
                                 </form>
                             )}
 
                             {activePanel === 'speed' && (
-                                <div className="p-3 w-56">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-medium text-slate-400">Rotation Speed</span>
-                                        <span className="text-xs font-mono text-primary">{rotationSpeed.toFixed(1)}x</span>
+                                <div style={{ padding: '12px', width: '200px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(148,163,184,0.9)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dönüş Hızı</span>
+                                        <span style={{ fontSize: '12px', fontFamily: 'monospace', color: '#818cf8', fontWeight: 700 }}>{rotationSpeed.toFixed(1)}x</span>
                                     </div>
                                     <input
                                         type="range"
@@ -289,11 +323,11 @@ export default function EarthSimulation() {
                                         step="0.1"
                                         value={rotationSpeed}
                                         onChange={handleSpeedChange}
-                                        className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary"
+                                        style={{ width: '100%', height: '6px', borderRadius: '9999px', appearance: 'none', background: 'rgba(255,255,255,0.1)', cursor: 'pointer', accentColor: '#6366f1' }}
                                     />
-                                    <div className="flex justify-between mt-1">
-                                        <span className="text-[10px] text-slate-500">Stop</span>
-                                        <span className="text-[10px] text-slate-500">Fast</span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                                        <span style={{ fontSize: '10px', color: 'rgba(148,163,184,0.5)' }}>Dur</span>
+                                        <span style={{ fontSize: '10px', color: 'rgba(148,163,184,0.5)' }}>Hızlı</span>
                                     </div>
                                 </div>
                             )}
@@ -301,63 +335,79 @@ export default function EarthSimulation() {
                     )}
                 </div>
 
-                {/* Minimal Floating Sidebar */}
+                {/* Portal detail card — slides in from right on portal click */}
                 {selectedPortal && sidebarOpen && (
-                    <aside
-                        className="absolute top-24 right-6 w-80 glass-panel border border-white/20 z-50 rounded-2xl overflow-hidden shadow-2xl animate-fadeSlideLeft"
-                        style={{
-                            animation: 'fadeSlideLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
-                    >
-                        <div className="p-5 flex flex-col gap-4">
-                            <div className="flex items-start justify-between">
-                                <div className="flex flex-col gap-0.5">
-                                    <h1 className="text-xl font-bold text-white tracking-tight">{selectedPortal.name}</h1>
-                                    <p className="text-slate-400 text-[11px] flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-xs">location_on</span>
-                                        {selectedPortal.location}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setSidebarOpen(false)}
-                                    className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[18px]">close</span>
-                                </button>
-                            </div>
-
-                            <div className="aspect-[16/10] w-full rounded-xl overflow-hidden border border-white/10 shadow-lg relative group">
-                                <img src={selectedPortal.image} alt={selectedPortal.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-green-500/20 border border-green-500/30 text-green-400 text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm">
-                                    Online
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col gap-2">
-                                <h3 className="text-[10px] font-semibold text-white uppercase tracking-wider opacity-60">Portal Biography</h3>
-                                <p className="text-[12px] text-slate-300 leading-relaxed font-light italic">
-                                    "{selectedPortal.bio}"
+                    <aside className="map-portal-card glass-panel">
+                        {/* Card header */}
+                        <div className="map-portal-card-header">
+                            <div>
+                                <h2 className="map-portal-card-title">{selectedPortal.name}</h2>
+                                <p className="map-portal-card-loc">
+                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>location_on</span>
+                                    {selectedPortal.location}
                                 </p>
                             </div>
+                            <button
+                                onClick={() => setSidebarOpen(false)}
+                                className="map-portal-card-close"
+                                title="Kapat"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
 
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="bg-white/5 border border-white/10 rounded-lg p-2 text-center">
-                                    <div className="text-[8px] text-slate-500 uppercase mb-0.5">Uptime</div>
-                                    <div className="text-[11px] font-bold text-white">{selectedPortal.stats.uptime}</div>
-                                </div>
-                                <div className="bg-white/5 border border-white/10 rounded-lg p-2 text-center">
-                                    <div className="text-[8px] text-slate-500 uppercase mb-0.5">Latency</div>
-                                    <div className="text-[11px] font-bold text-blue-400">{selectedPortal.stats.latency}</div>
-                                </div>
-                                <div className="bg-white/5 border border-white/10 rounded-lg p-2 text-center">
-                                    <div className="text-[8px] text-slate-500 uppercase mb-0.5">Users</div>
-                                    <div className="text-[11px] font-bold text-white">{selectedPortal.stats.users}</div>
-                                </div>
+                        {/* Portal image */}
+                        <div className="map-portal-card-img-wrap">
+                            <img
+                                src={selectedPortal.image}
+                                alt={selectedPortal.name}
+                                className="map-portal-card-img"
+                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                            />
+                            <div className="map-portal-card-img-fallback" style={{ display: 'none' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'rgba(99,102,241,0.5)' }}>public</span>
                             </div>
+                            <div className="map-portal-card-img-gradient" />
+                            <div className="map-portal-card-status">
+                                <span className="map-portal-status-dot" />
+                                Online
+                            </div>
+                        </div>
 
-                            <button className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white font-medium text-[11px] transition-all shadow-lg shadow-primary/20">
-                                Connect Portal
+                        {/* Stats row */}
+                        <div className="map-portal-card-stats">
+                            <div className="map-portal-stat">
+                                <span className="map-portal-stat-label">Uptime</span>
+                                <span className="map-portal-stat-value" style={{ color: '#4ade80' }}>{selectedPortal.stats.uptime}</span>
+                            </div>
+                            <div className="map-portal-stat">
+                                <span className="map-portal-stat-label">Latency</span>
+                                <span className="map-portal-stat-value" style={{ color: '#60a5fa' }}>{selectedPortal.stats.latency}</span>
+                            </div>
+                            <div className="map-portal-stat">
+                                <span className="map-portal-stat-label">Kullanıcı</span>
+                                <span className="map-portal-stat-value">{selectedPortal.stats.users}</span>
+                            </div>
+                        </div>
+
+                        {/* Bio */}
+                        <div className="map-portal-card-bio">
+                            <h3 className="map-portal-bio-label">Portal Biyografisi</h3>
+                            <p className="map-portal-bio-text">"{selectedPortal.bio}"</p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="map-portal-card-actions">
+                            <Link
+                                to={`/portal/${selectedPortal.id}`}
+                                className="map-portal-btn-primary"
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>open_in_new</span>
+                                Portala Git
+                            </Link>
+                            <button className="map-portal-btn-secondary">
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>hub</span>
+                                Bağlan
                             </button>
                         </div>
                     </aside>
@@ -365,29 +415,393 @@ export default function EarthSimulation() {
             </main>
 
             <style>{`
-                @keyframes fadeSlideIn {
+                /* ── Map Page Scoped Styles ─────────────────────────────── */
+
+                /* Navbar portal search bar */
+                .map-navbar-search {
+                    width: 100%;
+                    max-width: 420px;
+                    position: relative;
+                }
+                .map-navbar-search-inner {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                }
+                .map-search-icon {
+                    position: absolute;
+                    left: 10px;
+                    font-size: 18px;
+                    color: rgba(148,163,184,0.7);
+                    cursor: pointer;
+                    transition: color 0.2s;
+                    z-index: 1;
+                    user-select: none;
+                }
+                .map-search-icon:hover { color: white; }
+                .map-navbar-search-input {
+                    width: 100%;
+                    background: rgba(255,255,255,0.06);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 10px;
+                    padding: 7px 36px 7px 36px;
+                    font-size: 13px;
+                    color: white;
+                    outline: none;
+                    transition: border-color 0.2s, background 0.2s;
+                }
+                .map-navbar-search-input::placeholder { color: rgba(148,163,184,0.6); }
+                .map-navbar-search-input:focus {
+                    border-color: rgba(99,102,241,0.5);
+                    background: rgba(255,255,255,0.09);
+                }
+                .map-search-clear {
+                    position: absolute;
+                    right: 10px;
+                    font-size: 16px;
+                    color: rgba(148,163,184,0.6);
+                    cursor: pointer;
+                    transition: color 0.2s;
+                    user-select: none;
+                }
+                .map-search-clear:hover { color: white; }
+                .map-navbar-search-dropdown {
+                    position: absolute;
+                    top: calc(100% + 8px);
+                    left: 0;
+                    right: 0;
+                    background: rgba(13,17,28,0.97);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 12px;
+                    overflow: hidden;
+                    z-index: 2000;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                    animation: mapDropdown 0.18s ease-out;
+                }
+                @keyframes mapDropdown {
+                    from { opacity: 0; transform: translateY(-6px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .map-navbar-search-result {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 10px 14px;
+                    cursor: pointer;
+                    transition: background 0.15s;
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                }
+                .map-navbar-search-result:last-child { border-bottom: none; }
+                .map-navbar-search-result:hover { background: rgba(255,255,255,0.07); }
+                .map-result-icon {
+                    font-size: 18px;
+                    color: #6366f1;
+                    flex-shrink: 0;
+                }
+                .map-result-name {
+                    display: block;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: white;
+                }
+                .map-result-loc {
+                    display: block;
+                    font-size: 11px;
+                    color: rgba(148,163,184,0.7);
+                }
+                .map-navbar-no-results {
+                    padding: 14px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: rgba(148,163,184,0.6);
+                }
+
+                /* ── Left Controls Panel ── */
+                .map-left-panel {
+                    position: absolute;
+                    left: 16px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    z-index: 10;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 8px;
+                    pointer-events: none;
+                }
+                .map-controls-bar {
+                    pointer-events: auto;
+                    border-radius: 14px;
+                    padding: 8px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                    width: 44px;
+                    align-items: center;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+                }
+                .map-ctrl-btn {
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 8px;
+                    background: transparent;
+                    border: none;
+                    color: rgba(148,163,184,0.8);
+                    cursor: pointer;
+                    transition: background 0.2s, color 0.2s;
+                }
+                .map-ctrl-btn:hover {
+                    background: rgba(255,255,255,0.1);
+                    color: white;
+                }
+                .map-ctrl-btn.active {
+                    background: rgba(99,102,241,0.3);
+                    color: #818cf8;
+                }
+                .map-ctrl-btn .material-symbols-outlined { font-size: 18px; }
+                .map-ctrl-separator {
+                    width: 100%;
+                    height: 1px;
+                    background: rgba(255,255,255,0.08);
+                    margin: 2px 0;
+                }
+                .map-expanded-panel {
+                    pointer-events: auto;
+                    border-radius: 14px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+                    overflow: hidden;
+                    animation: mapPanelIn 0.2s ease-out;
+                }
+                @keyframes mapPanelIn {
                     from { opacity: 0; transform: translateX(-8px); }
                     to { opacity: 1; transform: translateX(0); }
                 }
-                @keyframes fadeSlideLeft {
-                    from { opacity: 0; transform: translateX(20px); }
-                    to { opacity: 1; transform: translateX(0); }
+
+                /* ── Portal Detail Card ── */
+                .map-portal-card {
+                    position: absolute;
+                    top: 16px;
+                    right: 16px;
+                    width: 300px;
+                    border-radius: 20px;
+                    overflow: hidden;
+                    z-index: 50;
+                    border: 1px solid rgba(255,255,255,0.15);
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0;
+                    animation: cardSlideIn 0.35s cubic-bezier(0.4,0,0.2,1);
                 }
+                @keyframes cardSlideIn {
+                    from { opacity: 0; transform: translateX(24px) scale(0.97); }
+                    to { opacity: 1; transform: translateX(0) scale(1); }
+                }
+                .map-portal-card-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    padding: 16px 16px 12px;
+                    border-bottom: 1px solid rgba(255,255,255,0.07);
+                }
+                .map-portal-card-title {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: white;
+                    margin: 0 0 3px;
+                    letter-spacing: -0.3px;
+                }
+                .map-portal-card-loc {
+                    display: flex;
+                    align-items: center;
+                    gap: 3px;
+                    font-size: 11px;
+                    color: rgba(148,163,184,0.8);
+                    margin: 0;
+                }
+                .map-portal-card-close {
+                    background: rgba(255,255,255,0.07);
+                    border: none;
+                    border-radius: 8px;
+                    width: 28px;
+                    height: 28px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    color: rgba(148,163,184,0.8);
+                    transition: background 0.2s, color 0.2s;
+                    flex-shrink: 0;
+                }
+                .map-portal-card-close:hover { background: rgba(255,255,255,0.12); color: white; }
+                .map-portal-card-close .material-symbols-outlined { font-size: 16px; }
+                .map-portal-card-img-wrap {
+                    position: relative;
+                    height: 140px;
+                    overflow: hidden;
+                    background: rgba(10,10,20,0.8);
+                }
+                .map-portal-card-img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    transition: transform 0.6s ease;
+                }
+                .map-portal-card:hover .map-portal-card-img { transform: scale(1.04); }
+                .map-portal-card-img-fallback {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(99,102,241,0.06);
+                }
+                .map-portal-card-img-gradient {
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(to top, rgba(13,17,28,0.7) 0%, transparent 60%);
+                }
+                .map-portal-card-status {
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                    padding: 4px 9px;
+                    background: rgba(22,163,74,0.18);
+                    border: 1px solid rgba(34,197,94,0.35);
+                    border-radius: 99px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    color: #4ade80;
+                    text-transform: uppercase;
+                    letter-spacing: 0.07em;
+                    backdrop-filter: blur(8px);
+                }
+                .map-portal-status-dot {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: #4ade80;
+                    box-shadow: 0 0 6px rgba(74,222,128,0.8);
+                    animation: statusPulse 2s ease-in-out infinite;
+                }
+                @keyframes statusPulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                }
+                .map-portal-card-stats {
+                    display: grid;
+                    grid-template-columns: repeat(3,1fr);
+                    gap: 1px;
+                    border-bottom: 1px solid rgba(255,255,255,0.07);
+                    background: rgba(255,255,255,0.04);
+                }
+                .map-portal-stat {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 10px 6px;
+                    background: rgba(13,17,28,0.7);
+                    gap: 2px;
+                }
+                .map-portal-stat-label {
+                    font-size: 9px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    color: rgba(148,163,184,0.6);
+                }
+                .map-portal-stat-value {
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: white;
+                    font-family: monospace;
+                }
+                .map-portal-card-bio {
+                    padding: 12px 16px;
+                    border-bottom: 1px solid rgba(255,255,255,0.07);
+                }
+                .map-portal-bio-label {
+                    font-size: 9px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
+                    color: rgba(148,163,184,0.55);
+                    margin: 0 0 6px;
+                }
+                .map-portal-bio-text {
+                    font-size: 11.5px;
+                    color: rgba(203,213,225,0.85);
+                    line-height: 1.6;
+                    margin: 0;
+                    font-style: italic;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 4;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                }
+                .map-portal-card-actions {
+                    display: flex;
+                    gap: 8px;
+                    padding: 12px 16px;
+                }
+                .map-portal-btn-primary {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    padding: 9px 12px;
+                    background: linear-gradient(135deg, #6366f1, #818cf8);
+                    color: white;
+                    font-size: 12px;
+                    font-weight: 600;
+                    border-radius: 10px;
+                    text-decoration: none;
+                    transition: opacity 0.2s, transform 0.2s;
+                    box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+                }
+                .map-portal-btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+                .map-portal-btn-secondary {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    padding: 9px 12px;
+                    background: rgba(255,255,255,0.07);
+                    border: 1px solid rgba(255,255,255,0.12);
+                    color: rgba(203,213,225,0.9);
+                    font-size: 12px;
+                    font-weight: 600;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                }
+                .map-portal-btn-secondary:hover { background: rgba(255,255,255,0.12); }
+
+                /* ── Glass panel shared ── */
                 .glass-panel {
-                    background: rgba(13, 17, 28, 0.7);
+                    background: rgba(13,17,28,0.75);
                     backdrop-filter: blur(20px);
                     -webkit-backdrop-filter: blur(20px);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255,255,255,0.1);
                 }
+
+                /* Slider thumb */
                 input[type="range"]::-webkit-slider-thumb {
                     -webkit-appearance: none;
                     width: 14px;
                     height: 14px;
                     border-radius: 50%;
-                    background: #135bec;
+                    background: #6366f1;
                     cursor: pointer;
                     border: 2px solid white;
-                    box-shadow: 0 0 6px rgba(19,91,236,0.5);
+                    box-shadow: 0 0 6px rgba(99,102,241,0.6);
                 }
             `}</style>
         </div>

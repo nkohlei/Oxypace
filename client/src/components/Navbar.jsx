@@ -8,7 +8,7 @@ import { useSocket } from '../context/SocketContext';
 import { useUI } from '../context/UIContext';
 import './Navbar.css';
 
-const Navbar = () => {
+const Navbar = ({ centerContent = null }) => {
     const { user, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
@@ -110,6 +110,13 @@ const Navbar = () => {
                             <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
                         </Link>
                     </div>
+
+                    {/* Optional center slot — used by map page for portal search */}
+                    {centerContent && (
+                        <div className="nav-center">
+                            {centerContent}
+                        </div>
+                    )}
 
                     <div className="nav-right">
                         {/* Theme Toggle Button - Icon Only */}
