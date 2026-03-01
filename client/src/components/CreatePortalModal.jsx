@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,7 @@ const CreatePortalModal = ({ onClose }) => {
     const navigate = useNavigate();
 
     const [step, setStep] = useState(1); // 1: Basic, 2: Details, 3: Settings
+    const [canSubmit, setCanSubmit] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -21,6 +22,16 @@ const CreatePortalModal = ({ onClose }) => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Prevent ghost clicks on mobile (where clicking 'Next' triggers 'Submit' instantly)
+
+    useEffect(() => {
+        if (step === 3) {
+            setCanSubmit(false);
+            const timer = setTimeout(() => setCanSubmit(true), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [step]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -247,12 +258,15 @@ const CreatePortalModal = ({ onClose }) => {
                             <button
                                 type="button"
                                 className="btn-primary"
-                                onClick={() => setStep(step + 1)}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setStep(step + 1);
+                                }}
                             >
                                 İleri
                             </button>
                         ) : (
-                            <button type="submit" className="btn-submit" disabled={loading}>
+                            <button type="submit" className="btn-submit" disabled={loading || !canSubmit}>
                                 {loading ? 'Oluşturuluyor...' : 'Tamamla & Oluştur'}
                             </button>
                         )}
