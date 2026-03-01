@@ -153,13 +153,62 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
         }
     }, [animateZoom]);
 
+    // TOUCH PINCH-TO-ZOOM GESTURES (Mobile Controls)
+    const touchStartDist = useRef(null);
+    const touchStartAltitude = useRef(null);
+
+    const handleTouchStart = useCallback((e) => {
+        if (e.touches.length === 2 && globeRef.current) {
+            e.preventDefault();
+            globeRef.current.controls().autoRotate = false;
+            zoomAnchor.current = null; // Disable anchor on pinch for simpler zooming
+
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            touchStartDist.current = Math.hypot(dx, dy);
+            touchStartAltitude.current = targetAltitude.current;
+        }
+    }, []);
+
+    const handleTouchMove = useCallback((e) => {
+        if (e.touches.length === 2 && globeRef.current && touchStartDist.current !== null) {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+
+            // zoom ratio
+            const ratio = touchStartDist.current / dist;
+            targetAltitude.current = Math.max(0.002, Math.min(4, touchStartAltitude.current * ratio));
+
+            if (!isAnimating.current) {
+                isAnimating.current = true;
+                requestAnimationFrame(animateZoom);
+            }
+        }
+    }, [animateZoom]);
+
+    const handleTouchEnd = useCallback((e) => {
+        if (e.touches.length < 2) {
+            touchStartDist.current = null;
+        }
+    }, []);
+
     useEffect(() => {
         const container = containerRef.current;
         if (container) {
             container.addEventListener('wheel', handleWheel, { passive: false });
-            return () => container.removeEventListener('wheel', handleWheel);
+            container.addEventListener('touchstart', handleTouchStart, { passive: false });
+            container.addEventListener('touchmove', handleTouchMove, { passive: false });
+            container.addEventListener('touchend', handleTouchEnd);
+            return () => {
+                container.removeEventListener('wheel', handleWheel);
+                container.removeEventListener('touchstart', handleTouchStart);
+                container.removeEventListener('touchmove', handleTouchMove);
+                container.removeEventListener('touchend', handleTouchEnd);
+            };
         }
-    }, [handleWheel]);
+    }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
     const tileUrl = (x, y, z) => `https://mt1.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}&scale=2`;
 
