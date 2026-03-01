@@ -189,18 +189,18 @@ export default function EarthSimulation() {
                 {/* Dropdown results */}
                 {showPortalResults && portalSearchQuery.length > 0 && (
                     <div className="map-navbar-search-dropdown">
-                        {PORTALS.filter(p =>
+                        {portals.filter(p =>
                             p.name.toLowerCase().includes(portalSearchQuery.toLowerCase()) ||
-                            p.location.toLowerCase().includes(portalSearchQuery.toLowerCase())
+                            (p.label || '').toLowerCase().includes(portalSearchQuery.toLowerCase())
                         ).length > 0 ? (
-                            PORTALS
+                            portals
                                 .filter(p =>
                                     p.name.toLowerCase().includes(portalSearchQuery.toLowerCase()) ||
-                                    p.location.toLowerCase().includes(portalSearchQuery.toLowerCase())
+                                    (p.label || '').toLowerCase().includes(portalSearchQuery.toLowerCase())
                                 )
                                 .map(p => (
                                     <div
-                                        key={p.id}
+                                        key={p._id}
                                         onMouseDown={() => {
                                             setPortalSearchQuery('');
                                             setShowPortalResults(false);
@@ -211,7 +211,7 @@ export default function EarthSimulation() {
                                         <span className="material-symbols-outlined map-result-icon">location_on</span>
                                         <div>
                                             <span className="map-result-name">{p.name}</span>
-                                            <span className="map-result-loc">{p.location}</span>
+                                            <span className="map-result-loc">{p.label || ''}</span>
                                         </div>
                                     </div>
                                 ))
@@ -236,7 +236,7 @@ export default function EarthSimulation() {
                 <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
                     <EarthCanvas
                         ref={earthCanvasRef}
-                        portals={PORTALS}
+                        portals={portals}
                         onPortalClick={handlePortalClick}
                         activePortalSearch={activePortalSearch}
                         onGlobeClick={() => setSidebarOpen(false)}
