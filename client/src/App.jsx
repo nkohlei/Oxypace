@@ -5,32 +5,56 @@ import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
 
+// Advanced lazy loading wrapper to forcefully reload the page (once) 
+// if a chunk fails to load due to a new Vercel deployment.
+const lazyWithRetry = (componentImport) =>
+    lazy(async () => {
+        const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+            window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+        );
+        try {
+            const component = await componentImport();
+            // Once successful, reset the flag
+            window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+            return component;
+        } catch (error) {
+            if (!pageHasAlreadyBeenForceRefreshed) {
+                console.warn('Chunk load error detected. Forcing page reload to fetch new chunks from server...', error);
+                window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+                window.location.reload();
+                // Return a promise that never resolves while the page is reloading
+                return new Promise(() => { });
+            }
+            throw error;
+        }
+    });
+
 // Lazy load pages for better performance
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
-const GoogleCallback = lazy(() => import('./pages/GoogleCallback'));
-const AuthProcess = lazy(() => import('./pages/AuthProcess'));
-const Onboarding = lazy(() => import('./pages/Onboarding'));
-const Home = lazy(() => import('./pages/Home'));
-const CreatePost = lazy(() => import('./pages/CreatePost'));
-const Profile = lazy(() => import('./pages/Profile'));
-const Search = lazy(() => import('./pages/Search'));
-const Inbox = lazy(() => import('./pages/Inbox'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Saved = lazy(() => import('./pages/Saved'));
-const PostDetail = lazy(() => import('./pages/PostDetail'));
-const CommentDetail = lazy(() => import('./pages/CommentDetail'));
-const Notifications = lazy(() => import('./pages/Notifications'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const TermsOfService = lazy(() => import('./pages/TermsOfService'));
-const Contact = lazy(() => import('./pages/Contact'));
-const Portal = lazy(() => import('./pages/Portal'));
-const Maintenance = lazy(() => import('./pages/Maintenance'));
-const EarthSimulation = lazy(() => import('./pages/MapDirectory/EarthSimulation'));
+const Login = lazyWithRetry(() => import('./pages/Login'));
+const Register = lazyWithRetry(() => import('./pages/Register'));
+const ForgotPassword = lazyWithRetry(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazyWithRetry(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazyWithRetry(() => import('./pages/VerifyEmail'));
+const GoogleCallback = lazyWithRetry(() => import('./pages/GoogleCallback'));
+const AuthProcess = lazyWithRetry(() => import('./pages/AuthProcess'));
+const Onboarding = lazyWithRetry(() => import('./pages/Onboarding'));
+const Home = lazyWithRetry(() => import('./pages/Home'));
+const CreatePost = lazyWithRetry(() => import('./pages/CreatePost'));
+const Profile = lazyWithRetry(() => import('./pages/Profile'));
+const Search = lazyWithRetry(() => import('./pages/Search'));
+const Inbox = lazyWithRetry(() => import('./pages/Inbox'));
+const Settings = lazyWithRetry(() => import('./pages/Settings'));
+const Saved = lazyWithRetry(() => import('./pages/Saved'));
+const PostDetail = lazyWithRetry(() => import('./pages/PostDetail'));
+const CommentDetail = lazyWithRetry(() => import('./pages/CommentDetail'));
+const Notifications = lazyWithRetry(() => import('./pages/Notifications'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/AdminDashboard'));
+const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazyWithRetry(() => import('./pages/TermsOfService'));
+const Contact = lazyWithRetry(() => import('./pages/Contact'));
+const Portal = lazyWithRetry(() => import('./pages/Portal'));
+const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
+const EarthSimulation = lazyWithRetry(() => import('./pages/MapDirectory/EarthSimulation'));
 
 import PortalSidebar from './components/PortalSidebar';
 import UserBar from './components/UserBar';
