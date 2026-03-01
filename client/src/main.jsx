@@ -28,8 +28,13 @@ if (token) {
 }
 
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-
 import { HelmetProvider } from 'react-helmet-async';
+
+// Global error handler for Vite dynamic import chunk errors
+window.addEventListener('vite:preloadError', (event) => {
+    console.warn('Vite preload error (chunk mismatch) detected. Reloading page...', event);
+    window.location.reload();
+});
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

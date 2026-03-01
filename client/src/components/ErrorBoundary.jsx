@@ -3,19 +3,37 @@ import React from 'react';
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { hasError: false, error: null, errorInfo: null };
+        this.state = { hasError: false, error: null, errorInfo: null, isReloading: false };
     }
 
     static getDerivedStateFromError(error) {
+        // Automatically trigger a reload if it's a chunk loading error from Vite
+        if (error && error.message && error.message.includes('Failed to fetch dynamically imported module')) {
+            return { hasError: true, isReloading: true, error };
+        }
         return { hasError: true, error };
     }
 
     componentDidCatch(error, errorInfo) {
         console.error('Uncaught error:', error, errorInfo);
+
+        if (error && error.message && error.message.includes('Failed to fetch dynamically imported module')) {
+            window.location.reload();
+            return;
+        }
+
         this.setState({ error, errorInfo });
     }
 
     render() {
+        if (this.state.isReloading) {
+            return (
+                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', background: '#0a0a0a' }}>
+                    Yenileniyor...
+                </div>
+            );
+        }
+
         if (this.state.hasError) {
             return (
                 <div
