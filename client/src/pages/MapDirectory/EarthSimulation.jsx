@@ -10,7 +10,6 @@ export default function EarthSimulation() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activePanel, setActivePanel] = useState(null); // 'search' | 'speed' | null
     const [searchQuery, setSearchQuery] = useState('');
-    const [rotationSpeed, setRotationSpeed] = useState(0.3);
     const [selectedPortal, setSelectedPortal] = useState(null);
     const [portalSearchQuery, setPortalSearchQuery] = useState('');
     const [showPortalResults, setShowPortalResults] = useState(false);
@@ -181,12 +180,6 @@ export default function EarthSimulation() {
         }
     };
 
-    const handleSpeedChange = (e) => {
-        const speed = parseFloat(e.target.value);
-        setRotationSpeed(speed);
-        earthCanvasRef.current?.setRotationSpeed(speed);
-    };
-
     // Portal search box — injected into the Navbar center slot
     const portalSearchBox = (
         <div className="map-navbar-search">
@@ -269,7 +262,7 @@ export default function EarthSimulation() {
             <SEO title="Portal Haritası | Oxypace" description="Tüm Oxypace portallarını interaktif 3D dünya üzerinde keşfedin." />
 
             {/* Unified Navbar with portal search in center */}
-            <Navbar centerContent={portalSearchBox} />
+            <Navbar centerContent={portalSearchBox} hideThemeToggle={true} mapMode={true} />
 
             <main style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
                 {/* Globe canvas — full area */}
@@ -285,7 +278,13 @@ export default function EarthSimulation() {
 
                 {/* Left controls panel */}
                 <div className="map-left-panel">
-                    <div className="map-controls-bar glass-panel">
+                    <div className="map-controls-bar glass-panel borderless">
+                        <Link to="/search" className="map-ctrl-btn" title="Arama Sayfasına Dön" style={{ color: '#fb923c' }}>
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </Link>
+
+                        <div className="map-ctrl-separator" />
+
                         <button
                             onClick={() => togglePanel('search')}
                             className={`map-ctrl-btn ${activePanel === 'search' ? 'active' : ''}`}
@@ -308,14 +307,6 @@ export default function EarthSimulation() {
                         <button onClick={handleReset} className="map-ctrl-btn" title="Görünümü Sıfırla">
                             <span className="material-symbols-outlined">explore</span>
                         </button>
-
-                        <button
-                            onClick={() => togglePanel('speed')}
-                            className={`map-ctrl-btn ${activePanel === 'speed' ? 'active' : ''}`}
-                            title="Dönüş Hızı"
-                        >
-                            <span className="material-symbols-outlined">speed</span>
-                        </button>
                     </div>
 
                     {/* Expanded panel next to the controls */}
@@ -334,8 +325,8 @@ export default function EarthSimulation() {
                                             onChange={handleSearchInput}
                                             style={{
                                                 width: '100%',
-                                                background: 'rgba(0,0,0,0.3)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                background: 'rgba(255,255,255,0.06)',
+                                                border: 'none',
                                                 borderRadius: '8px',
                                                 padding: '8px 10px 8px 30px',
                                                 fontSize: '13px',
@@ -351,28 +342,6 @@ export default function EarthSimulation() {
                                         Enter'a bas veya 🔍'e tıkla
                                     </p>
                                 </form>
-                            )}
-
-                            {activePanel === 'speed' && (
-                                <div style={{ padding: '12px', width: '200px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(148,163,184,0.9)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dönüş Hızı</span>
-                                        <span style={{ fontSize: '12px', fontFamily: 'monospace', color: '#818cf8', fontWeight: 700 }}>{rotationSpeed.toFixed(1)}x</span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="3"
-                                        step="0.1"
-                                        value={rotationSpeed}
-                                        onChange={handleSpeedChange}
-                                        style={{ width: '100%', height: '6px', borderRadius: '9999px', appearance: 'none', background: 'rgba(255,255,255,0.1)', cursor: 'pointer', accentColor: '#6366f1' }}
-                                    />
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                                        <span style={{ fontSize: '10px', color: 'rgba(148,163,184,0.5)' }}>Dur</span>
-                                        <span style={{ fontSize: '10px', color: 'rgba(148,163,184,0.5)' }}>Hızlı</span>
-                                    </div>
-                                </div>
                             )}
                         </div>
                     )}
@@ -521,6 +490,21 @@ export default function EarthSimulation() {
             <style>{`
                 /* ── Map Page Scoped Styles ─────────────────────────────── */
 
+                /* Map Mode Navbar Overrides */
+                .navbar-map-mode {
+                    background: rgba(13, 17, 28, 0.45) !important;
+                    backdrop-filter: blur(16px) !important;
+                    border-bottom: none !important;
+                    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+                }
+
+                .borderless {
+                    border: none !important;
+                    box-shadow: none !important;
+                    background: rgba(13, 17, 28, 0.45) !important;
+                    backdrop-filter: blur(16px) !important;
+                }
+
                 /* Navbar portal search bar */
                 .map-navbar-search {
                     width: 100%;
@@ -546,18 +530,17 @@ export default function EarthSimulation() {
                 .map-navbar-search-input {
                     width: 100%;
                     background: rgba(255,255,255,0.06);
-                    border: 1px solid rgba(255,255,255,0.1);
+                    border: none;
                     border-radius: 10px;
                     padding: 7px 36px 7px 36px;
                     font-size: 13px;
                     color: white;
                     outline: none;
-                    transition: border-color 0.2s, background 0.2s;
+                    transition: background 0.2s;
                 }
                 .map-navbar-search-input::placeholder { color: rgba(148,163,184,0.6); }
                 .map-navbar-search-input:focus {
-                    border-color: rgba(99,102,241,0.5);
-                    background: rgba(255,255,255,0.09);
+                    background: rgba(255,255,255,0.12);
                 }
                 .map-search-clear {
                     position: absolute;

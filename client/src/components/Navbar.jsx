@@ -8,7 +8,7 @@ import { useSocket } from '../context/SocketContext';
 import { useUI } from '../context/UIContext';
 import './Navbar.css';
 
-const Navbar = ({ centerContent = null }) => {
+const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const { user, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
@@ -93,7 +93,7 @@ const Navbar = ({ centerContent = null }) => {
     return (
         <>
             {/* Top Header */}
-            <header className="navbar">
+            <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
                         {/* Mobile Sidebar Toggle - Visible only on mobile */}
@@ -119,8 +119,8 @@ const Navbar = ({ centerContent = null }) => {
                     )}
 
                     <div className="nav-right">
-                        {/* Theme Toggle Button - Icon Only */}
-                        <button
+                        {/* Theme Toggle Button - hidden on map page */}
+                        {!hideThemeToggle && <button
                             className="theme-toggle-btn-modern icon-only"
                             onClick={toggleTheme}
                             aria-label={isDark ? 'Açık temaya geç' : 'Koyu temaya geç'}
@@ -170,8 +170,7 @@ const Navbar = ({ centerContent = null }) => {
                                     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                                 </svg>
                             )}
-                        </button>
-
+                        </button>}
                         {user ? (
                             <>
                                 {/* Notification Button */}
