@@ -99,6 +99,37 @@ router.get('/', optionalProtect, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+// @desc    Get portals with location (for 3D map)
+// @route   GET /api/portals/map
+// @access  Public
+router.get('/map', async (req, res) => {
+    try {
+        const portals = await Portal.find({
+            showOnMap: true,
+            'location.lat': { $ne: null },
+            'location.lng': { $ne: null },
+            status: 'active',
+            privacy: { $in: ['public', 'restricted'] }
+        }).select('name description avatar banner location showOnMap members');
+
+        const result = portals.map(p => ({
+            _id: p._id,
+            name: p.name,
+            description: p.description || '',
+            avatar: p.avatar || '',
+            banner: p.banner || '',
+            lat: p.location.lat,
+            lng: p.location.lng,
+            label: p.location.label || p.name,
+            memberCount: p.members?.length || 0,
+        }));
+
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // @desc    Get portal by ID
 // @route   GET /api/portals/:id
 // @access  Public
@@ -359,40 +390,6 @@ router.post('/:id/leave', protect, async (req, res) => {
         });
 
         res.json({ message: 'Left portal successfully' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// @desc    Update portal settings
-// @route   PUT /api/portals/:id
-// @access  Private (Owner only)
-// @desc    Get portals with location (for 3D map)
-// @route   GET /api/portals/map
-// @access  Public
-router.get('/map', async (req, res) => {
-    try {
-        const portals = await Portal.find({
-            showOnMap: true,
-            'location.lat': { $ne: null },
-            'location.lng': { $ne: null },
-            status: 'active',
-            privacy: { $in: ['public', 'restricted'] }
-        }).select('name description avatar banner location showOnMap members');
-
-        const result = portals.map(p => ({
-            _id: p._id,
-            name: p.name,
-            description: p.description || '',
-            avatar: p.avatar || '',
-            banner: p.banner || '',
-            lat: p.location.lat,
-            lng: p.location.lng,
-            label: p.location.label || p.name,
-            memberCount: p.members?.length || 0,
-        }));
-
-        res.json(result);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
