@@ -349,7 +349,7 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
 
                     if (activePortalSearch && activePortalSearch.length > 0) {
                         const q = activePortalSearch.toLowerCase();
-                        const isMatch = d.name.toLowerCase().includes(q) || d.location.toLowerCase().includes(q);
+                        const isMatch = d.name.toLowerCase().includes(q) || (d.label || '').toLowerCase().includes(q);
 
                         if (isMatch) {
                             circleClass = 'portal-circle portal-circle-match';
