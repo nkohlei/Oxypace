@@ -101,16 +101,40 @@ router.get('/', optionalProtect, async (req, res) => {
 });
 // @desc    Get portals with location (for 3D map)
 // @route   GET /api/portals/map
-// @access  Public
-router.get('/map', async (req, res) => {
+// @access  Semi-public (members see private portals, blocked users are excluded)
+router.get('/map', optionalProtect, async (req, res) => {
     try {
-        const portals = await Portal.find({
+        const userId = req.user?._id;
+
+        // Base filter: must have location set and showOnMap enabled
+        const baseFilter = {
             showOnMap: true,
-            'location.lat': { $ne: null },
-            'location.lng': { $ne: null },
+            'location.lat': { $exists: true, $ne: null },
+            'location.lng': { $exists: true, $ne: null },
             status: 'active',
-            privacy: { $in: ['public', 'restricted'] }
-        }).select('name description avatar banner location showOnMap members');
+        };
+
+        let privacyFilter;
+        if (userId) {
+            // Logged-in: public + restricted for all, private only if member
+            privacyFilter = {
+                $or: [
+                    { privacy: 'public' },
+                    { privacy: 'restricted' },
+                    { privacy: 'private', members: userId }
+                ],
+                // Exclude portals where user is blocked
+                blockedUsers: { $ne: userId }
+            };
+        } else {
+            // Anonymous: only public and restricted
+            privacyFilter = {
+                privacy: { $in: ['public', 'restricted'] }
+            };
+        }
+
+        const portals = await Portal.find({ ...baseFilter, ...privacyFilter })
+            .select('name description avatar banner location showOnMap members');
 
         const result = portals.map(p => ({
             _id: p._id,
@@ -129,6 +153,7 @@ router.get('/map', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // @desc    Get portal by ID
 // @route   GET /api/portals/:id

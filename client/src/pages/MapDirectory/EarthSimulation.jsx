@@ -48,6 +48,17 @@ export default function EarthSimulation() {
         setShowPortalResults(false);
         setActivePortalSearch(query);
         if (query.length > 0) {
+            // Fly the globe to face the first matching portal
+            const firstMatch = portals.find(p =>
+                p.name.toLowerCase().includes(query.toLowerCase()) ||
+                (p.label || '').toLowerCase().includes(query.toLowerCase())
+            );
+            if (firstMatch) {
+                earthCanvasRef.current?.flyTo(firstMatch.lat, firstMatch.lng, 1.2);
+            } else {
+                handleReset();
+            }
+        } else {
             handleReset();
         }
     };
@@ -110,7 +121,7 @@ export default function EarthSimulation() {
         if (coordMatch) {
             const lat = parseFloat(coordMatch[1]);
             const lng = parseFloat(coordMatch[2]);
-            earthCanvasRef.current.flyTo(lat, lng, 0.05);
+            earthCanvasRef.current.flyTo(lat, lng, 1.2);
             return;
         }
 
@@ -161,7 +172,7 @@ export default function EarthSimulation() {
             if (data && data.length > 0) {
                 const lat = parseFloat(data[0].lat);
                 const lng = parseFloat(data[0].lon);
-                earthCanvasRef.current.flyTo(lat, lng, 0.05);
+                earthCanvasRef.current.flyTo(lat, lng, 1.2);
             } else {
                 console.warn("Location not found.");
             }
