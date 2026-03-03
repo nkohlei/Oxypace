@@ -65,11 +65,12 @@ router.get('/', optionalProtect, async (req, res) => {
             keyword.status = { $ne: 'closed' }; // Hide closed portals
             keyword.$or = [
                 { privacy: 'public' },
-                { members: req.user._id },
-                { allowedUsers: req.user._id }
+                { privacy: 'private' },
+                { privacy: 'restricted', members: req.user._id },
+                { privacy: 'restricted', allowedUsers: req.user._id }
             ];
         } else {
-            keyword.privacy = 'public';
+            keyword.privacy = { $in: ['public', 'private'] };
             keyword.status = { $ne: 'closed' }; // Hide closed portals
         }
 
@@ -116,20 +117,21 @@ router.get('/map', optionalProtect, async (req, res) => {
 
         let privacyFilter;
         if (userId) {
-            // Logged-in: public + restricted for all, private only if member
+            // Logged-in: public + private for all, restricted only if member/allowedUser
             privacyFilter = {
                 $or: [
                     { privacy: 'public' },
-                    { privacy: 'restricted' },
-                    { privacy: 'private', members: userId }
+                    { privacy: 'private' },
+                    { privacy: 'restricted', members: userId },
+                    { privacy: 'restricted', allowedUsers: userId }
                 ],
                 // Exclude portals where user is blocked
                 blockedUsers: { $ne: userId }
             };
         } else {
-            // Anonymous: only public and restricted
+            // Anonymous: only public and private (content is locked, but portal is visible)
             privacyFilter = {
-                privacy: { $in: ['public', 'restricted'] }
+                privacy: { $in: ['public', 'private'] }
             };
         }
 

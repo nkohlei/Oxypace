@@ -846,9 +846,9 @@ const PortalSettingsModal = ({
 
                                     {/* Private Option */}
                                     <div
-                                        className={`privacy-option-row ${accessData.privacy === 'private' ? 'selected' : ''} ${portal.members.length > portal.admins.length ? 'disabled' : ''}`}
+                                        className={`privacy-option-row ${accessData.privacy === 'private' ? 'selected' : ''}`}
                                         onClick={() => {
-                                            if (isOwner && portal.members.length <= portal.admins.length) {
+                                            if (isOwner) {
                                                 setAccessData({ ...accessData, privacy: 'private' });
                                             }
                                         }}
@@ -860,14 +860,9 @@ const PortalSettingsModal = ({
                                             </svg>
                                         </div>
                                         <div className="privacy-row-content">
-                                            <div className="privacy-row-title">Gizli (Yöneticiler)</div>
+                                            <div className="privacy-row-title">Gizli</div>
                                             <div className="privacy-row-desc">
-                                                Sadece yöneticiler erişebilir.
-                                                {portal.members.length > portal.admins.length && (
-                                                    <span style={{ color: '#ed4245', display: 'block', marginTop: '2px', fontSize: '0.8rem' }}>
-                                                        (İçeride üye varken seçilemez)
-                                                    </span>
-                                                )}
+                                                Portal görünür ancak içerikler gizlidir. Üye olmak için başvuru gereklidir.
                                             </div>
                                         </div>
                                         <div className="privacy-row-check">
