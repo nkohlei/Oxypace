@@ -541,7 +541,19 @@ const AdminDashboard = () => {
 
     return (
         <div className="admin-dashboard">
-            <h1 className="admin-title">Yönetici Paneli</h1>
+            <h1 className="admin-title">
+                <button
+                    className="admin-home-btn"
+                    onClick={() => navigate('/')}
+                    title="Anasayfa"
+                >
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                </button>
+                Yönetici Paneli
+            </h1>
 
             <div className="admin-tabs">
                 <button
@@ -681,9 +693,27 @@ const AdminDashboard = () => {
                                             }
                                         >
                                             <option value="none">Rozet Yok</option>
-                                            {contextBadges.filter(b => b.category === 'user' || b.category === 'both').map(b => (
-                                                <option key={b.slug} value={b.slug}>{b.name}</option>
-                                            ))}
+                                            {(() => {
+                                                const userBadges = contextBadges.filter(b => b.category === 'user' || b.category === 'both');
+                                                const slugs = new Set(userBadges.map(b => b.slug));
+                                                // Add legacy badge fallbacks
+                                                const LEGACY = [
+                                                    { slug: 'blue', name: 'Mavi Onay' },
+                                                    { slug: 'gold', name: 'Altın Onay' },
+                                                    { slug: 'platinum', name: 'Platin Onay' },
+                                                    { slug: 'special', name: 'Özel Rozet' },
+                                                    { slug: 'staff', name: 'Platform Yöneticisi' },
+                                                    { slug: 'partner', name: 'Partner' },
+                                                    { slug: 'official', name: 'Resmi Hesap' },
+                                                ];
+                                                const merged = [...userBadges];
+                                                LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
+                                                // Also ensure user's current badge is in the list
+                                                if (user.verificationBadge && user.verificationBadge !== 'none' && !slugs.has(user.verificationBadge) && !LEGACY.find(l => l.slug === user.verificationBadge)) {
+                                                    merged.push({ slug: user.verificationBadge, name: user.verificationBadge });
+                                                }
+                                                return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
+                                            })()}
                                         </select>
                                     </div>
                                 </div>
@@ -733,9 +763,24 @@ const AdminDashboard = () => {
                                             onChange={(e) => handlePortalBadge(portal._id, e.target.value)}
                                         >
                                             <option value="none">Rozet Yok</option>
-                                            {contextBadges.filter(b => b.category === 'portal' || b.category === 'both').map(b => (
-                                                <option key={b.slug} value={b.slug}>{b.name}</option>
-                                            ))}
+                                            {(() => {
+                                                const portalBadges = contextBadges.filter(b => b.category === 'portal' || b.category === 'both');
+                                                const slugs = new Set(portalBadges.map(b => b.slug));
+                                                const LEGACY = [
+                                                    { slug: 'blue', name: 'Mavi Onay' },
+                                                    { slug: 'gold', name: 'Altın Onay' },
+                                                    { slug: 'verified', name: 'Onaylı Portal' },
+                                                    { slug: 'partner', name: 'Partner' },
+                                                    { slug: 'official', name: 'Resmi Hesap' },
+                                                ];
+                                                const merged = [...portalBadges];
+                                                LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
+                                                const currentBadge = portal.badges?.[0];
+                                                if (currentBadge && currentBadge !== 'none' && !slugs.has(currentBadge) && !LEGACY.find(l => l.slug === currentBadge)) {
+                                                    merged.push({ slug: currentBadge, name: currentBadge });
+                                                }
+                                                return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
+                                            })()}
                                         </select>
 
                                         {/* Action Dropdown */}

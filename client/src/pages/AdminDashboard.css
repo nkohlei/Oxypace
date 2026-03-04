@@ -10,6 +10,31 @@
     margin-bottom: 30px;
     border-bottom: 1px solid var(--border-subtle);
     padding-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.admin-home-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #333;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.admin-home-btn:hover {
+    background: rgba(29, 155, 240, 0.12);
+    border-color: #1d9bf0;
+    color: #1d9bf0;
+    transform: scale(1.05);
 }
 
 .requests-grid {
@@ -303,16 +328,20 @@
     border-radius: 16px;
     width: 90%;
     max-width: 520px;
-    padding: 28px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     animation: slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    overflow: hidden;
 }
 
 .modal-header-modern {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    padding: 24px 28px 0;
+    flex-shrink: 0;
 }
 
 .modal-header-modern h2 {
@@ -341,6 +370,14 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    padding: 20px 28px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-footer-modern {
+    padding: 16px 28px 24px;
+    flex-shrink: 0;
 }
 
 .modal-description-modern {
@@ -855,4 +892,52 @@
     color: #666;
     margin: 0 0 6px 0;
     line-height: 1.4;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        padding: 14px;
+    }
+
+    .admin-title {
+        font-size: 1.5rem;
+        gap: 10px;
+    }
+
+    .admin-home-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .modal-content-modern {
+        width: 96%;
+        max-height: 90vh;
+        border-radius: 12px;
+    }
+
+    .modal-header-modern {
+        padding: 18px 18px 0;
+    }
+
+    .modal-body-modern {
+        padding: 14px 18px;
+    }
+
+    .modal-footer-modern {
+        padding: 12px 18px 18px;
+    }
+
+    .badge-icon-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .badge-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }

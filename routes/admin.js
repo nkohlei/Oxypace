@@ -117,25 +117,32 @@ router.get('/users', protect, admin, async (req, res) => {
 router.put('/users/:id/badge', protect, admin, async (req, res) => {
     try {
         const { badge } = req.body;
-        const user = await User.findById(req.params.id);
 
+        // Validate badge input
+        if (badge === undefined || badge === null || typeof badge !== 'string') {
+            return res.status(400).json({ message: 'Geçersiz rozet değeri.' });
+        }
+
+        const sanitizedBadge = badge.trim().toLowerCase();
+        if (sanitizedBadge.length > 50) {
+            return res.status(400).json({ message: 'Rozet slug çok uzun.' });
+        }
+
+        const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.verificationBadge = badge;
-        // user.isVerified = badge !== 'none'; // REMOVED to prevent locking out users (isVerified = email verified)
+        user.verificationBadge = sanitizedBadge;
 
-        // If removing badge, maybe reset request status? Optional.
-        // If giving badge manually, maybe approve pending request if exists?
-        if (badge !== 'none' && user.verificationRequest?.status === 'pending') {
+        // If giving badge manually, approve pending request if exists
+        if (sanitizedBadge !== 'none' && user.verificationRequest?.status === 'pending') {
             user.verificationRequest.status = 'approved';
-            user.verificationRequest.badgeType = badge;
+            user.verificationRequest.badgeType = sanitizedBadge;
             user.verificationRequest.processedAt = new Date();
         }
 
         await user.save();
-
         res.json({ message: 'Badge updated', user });
     } catch (error) {
         console.error('Update badge error:', error);
@@ -189,8 +196,6 @@ router.put('/contact-messages/:id/status', protect, admin, async (req, res) => {
     }
 });
 
-export default router;
-
 // @route   GET /api/admin/portals
 // @desc    Get all portals (with search)
 // @access  Private/Admin
@@ -229,19 +234,35 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Portal not found' });
         }
 
-        if (status) portal.status = status;
-        if (req.body.statusReason !== undefined) portal.statusReason = req.body.statusReason;
+        // Validate status value
+        const ALLOWED_STATUSES = ['active', 'suspended', 'closed'];
+        if (status) {
+            if (!ALLOWED_STATUSES.includes(status)) {
+                return res.status(400).json({ message: 'Geçersiz durum değeri.' });
+            }
+            portal.status = status;
+        }
+
+        if (req.body.statusReason !== undefined) portal.statusReason = String(req.body.statusReason).slice(0, 500);
         if (req.body.suspendedUntil !== undefined) portal.suspendedUntil = req.body.suspendedUntil;
+
         // Clear suspendedUntil when activating
         if (status === 'active') {
             portal.suspendedUntil = null;
             portal.statusReason = '';
         }
-        if (badges) portal.badges = badges; // Expect array of strings
+
+        // Validate badges array
+        if (badges) {
+            if (!Array.isArray(badges) || badges.some(b => typeof b !== 'string')) {
+                return res.status(400).json({ message: 'Rozetler dizi formatında olmalı.' });
+            }
+            portal.badges = badges.map(b => b.trim().toLowerCase().slice(0, 50));
+        }
+
         if (typeof isVerified === 'boolean') portal.isVerified = isVerified;
 
         await portal.save();
-
         res.json({ message: 'Portal updated', portal });
     } catch (error) {
         console.error('Update portal error:', error);
@@ -284,3 +305,5 @@ router.post('/portals/:id/warning', protect, admin, async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+export default router;

@@ -101,8 +101,10 @@ const AppLayout = () => {
     // This prevents the brief guest-mode flash during auth loading.
     const isLoggedIn = !!token;
 
-    // Map page gets a clean full-screen layout — no sidebar, no footer
+    // Map and admin pages get a clean full-screen layout — no sidebar, no footer
     const isMapPage = location.pathname === '/map';
+    const isAdminPage = location.pathname === '/admin';
+    const isCleanLayout = isMapPage || isAdminPage;
 
     useLayoutEffect(() => {
         const root = document.getElementById('root');
@@ -152,7 +154,7 @@ const AppLayout = () => {
     }, [isLoggedIn, location.pathname]);
 
     return (
-        <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isMapPage ? 'map-page-active' : ''}`}>
+        <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
             <div className="horizontal-layout-container" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {/* Mobile Overlay */}
                 <div
@@ -161,8 +163,8 @@ const AppLayout = () => {
                     aria-hidden="true"
                 />
 
-                {/* Sidebar Toggle Arrow - Hidden on map page */}
-                {user && !isMapPage && (
+                {/* Sidebar Toggle Arrow - Hidden on clean layout pages */}
+                {user && !isCleanLayout && (
                     <div
                         className={`sidebar-toggle-arrow ${isSidebarOpen ? 'open' : ''}`}
                         onClick={toggleSidebar}
@@ -186,8 +188,8 @@ const AppLayout = () => {
                     </div>
                 )}
 
-                {/* Portal Sidebar — hidden on map page so it doesn't cover zoom controls */}
-                {user && !isMapPage && (
+                {/* Portal Sidebar — hidden on clean layout pages */}
+                {user && !isCleanLayout && (
                     <div className={`portal-sidebar-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
                         <PortalSidebar />
                     </div>
@@ -301,8 +303,8 @@ const AppLayout = () => {
                     </div>
                 </div>
             </div>
-            {/* Footer - always visible EXCEPT on guest homepage and map page */}
-            {!(location.pathname === '/' && !isLoggedIn) && !isMapPage && <Footer />}
+            {/* Footer - always visible EXCEPT on guest homepage and clean layout pages */}
+            {!(location.pathname === '/' && !isLoggedIn) && !isCleanLayout && <Footer />}
         </div>
     );
 };
