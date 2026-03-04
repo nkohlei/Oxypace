@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
+import { Home, Pencil, Trash2 } from 'lucide-react';
 import Badge from '../components/Badge';
 import './AdminDashboard.css';
 
@@ -504,6 +505,12 @@ const AdminDashboard = () => {
         { value: 'music', label: 'Müzik' },
         { value: 'award', label: 'Ödül' },
         { value: 'gem', label: 'Mücevher' },
+        { value: 'verified', label: 'Doğrulanmış' },
+        { value: 'eye', label: 'Göz' },
+        { value: 'swords', label: 'Kılıç' },
+        { value: 'hexagon', label: 'Altıgen' },
+        { value: 'triangle', label: 'Üçgen' },
+        { value: 'atom', label: 'Atom' },
     ];
     const STYLE_TYPES = [
         { value: 'solid', label: 'Düz Renk', desc: 'Tekli renk dolgu' },
@@ -547,10 +554,7 @@ const AdminDashboard = () => {
                     onClick={() => navigate('/')}
                     title="Anasayfa"
                 >
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                        <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
+                    <Home size={20} />
                 </button>
                 Yönetici Paneli
             </h1>

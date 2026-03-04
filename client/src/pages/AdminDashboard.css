@@ -1,8 +1,6 @@
 .admin-dashboard {
-    padding: 20px;
+    padding: 24px 28px;
     color: var(--text-primary);
-    max-width: 1200px;
-    margin: 0 auto;
 }
 
 .admin-title {
@@ -790,7 +788,7 @@
 
 .badge-icon-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
 }
 
