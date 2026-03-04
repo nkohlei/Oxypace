@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { BadgeProvider } from './context/BadgeContext';
 import PrivateRoute from './components/PrivateRoute';
 
 // Advanced lazy loading wrapper to forcefully reload the page (once) 
@@ -320,11 +321,13 @@ function App() {
             <Router>
                 <ScrollToTop />
                 <AuthProvider>
-                    <SocketProvider>
-                        <UIProvider>
-                            <AppLayout />
-                        </UIProvider>
-                    </SocketProvider>
+                    <BadgeProvider>
+                        <SocketProvider>
+                            <UIProvider>
+                                <AppLayout />
+                            </UIProvider>
+                        </SocketProvider>
+                    </BadgeProvider>
                 </AuthProvider>
             </Router>
         </ThemeProvider>

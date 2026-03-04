@@ -1,0 +1,94 @@
+/* ===================================================
+   BADGE ANIMATIONS & EFFECTS
+   =================================================== */
+
+/* Base badge container */
+.verification-badge {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: sub;
+    position: relative;
+}
+
+/* ---- Animations ---- */
+
+/* Pulse — gentle scale throb */
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+.badge-anim-pulse {
+    animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* Glow — glowing shadow */
+@keyframes badge-glow {
+    0%, 100% { filter: drop-shadow(0 0 2px var(--badge-glow-color, rgba(255, 215, 0, 0.4))); }
+    50% { filter: drop-shadow(0 0 8px var(--badge-glow-color, rgba(255, 215, 0, 0.6))) drop-shadow(0 0 16px var(--badge-glow-color, rgba(255, 215, 0, 0.3))); }
+}
+.badge-anim-glow {
+    animation: badge-glow 2.5s ease-in-out infinite;
+}
+
+/* Spin — full rotation */
+@keyframes badge-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.badge-anim-spin {
+    animation: badge-spin 3s linear infinite;
+}
+
+/* Shimmer — light sweep effect */
+@keyframes badge-shimmer {
+    0% { filter: brightness(1) hue-rotate(0deg); }
+    25% { filter: brightness(1.3) hue-rotate(15deg); }
+    50% { filter: brightness(1) hue-rotate(0deg); }
+    75% { filter: brightness(1.3) hue-rotate(-15deg); }
+    100% { filter: brightness(1) hue-rotate(0deg); }
+}
+.badge-anim-shimmer {
+    animation: badge-shimmer 3s ease-in-out infinite;
+}
+
+/* Bounce — playful bounce */
+@keyframes badge-bounce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-3px); }
+    50% { transform: translateY(0); }
+    70% { transform: translateY(-1.5px); }
+}
+.badge-anim-bounce {
+    animation: badge-bounce 2s ease-in-out infinite;
+}
+
+/* Iridescent — rainbow hue cycle on gradient */
+@keyframes badge-iridescent {
+    0% { filter: hue-rotate(0deg) brightness(1); }
+    25% { filter: hue-rotate(60deg) brightness(1.1); }
+    50% { filter: hue-rotate(120deg) brightness(1); }
+    75% { filter: hue-rotate(180deg) brightness(1.1); }
+    100% { filter: hue-rotate(360deg) brightness(1); }
+}
+.badge-style-iridescent {
+    animation: badge-iridescent 4s linear infinite;
+}
+
+/* Combined: iridescent + other animation */
+.badge-style-iridescent.badge-anim-shimmer {
+    animation: badge-iridescent 4s linear infinite, badge-shimmer 3s ease-in-out infinite;
+}
+
+.badge-style-iridescent.badge-anim-pulse {
+    animation: badge-iridescent 4s linear infinite, badge-pulse 2s ease-in-out infinite;
+}
+
+.badge-style-iridescent.badge-anim-glow {
+    animation: badge-iridescent 4s linear infinite, badge-glow 2.5s ease-in-out infinite;
+}
+
+/* Transition on hover */
+.verification-badge:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}

@@ -39,7 +39,6 @@ const userSchema = new mongoose.Schema(
         },
         verificationBadge: {
             type: String,
-            enum: ['blue', 'gold', 'platinum', 'special', 'staff', 'none'],
             default: 'none',
         },
         verificationRequest: {
