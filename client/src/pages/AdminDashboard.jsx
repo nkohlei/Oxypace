@@ -489,12 +489,27 @@ const AdminDashboard = () => {
         }
     };
 
-    const ICONS = ['checkmark', 'star', 'shield', 'lightning', 'diamond', 'crown', 'fire', 'heart'];
+    const ICONS = [
+        { value: 'checkmark', label: 'Onay' },
+        { value: 'star', label: 'Yıldız' },
+        { value: 'shield', label: 'Kalkan' },
+        { value: 'lightning', label: 'Şimşek' },
+        { value: 'diamond', label: 'Elmas' },
+        { value: 'crown', label: 'Taç' },
+        { value: 'fire', label: 'Ateş' },
+        { value: 'heart', label: 'Kalp' },
+        { value: 'rocket', label: 'Roket' },
+        { value: 'globe', label: 'Dünya' },
+        { value: 'sparkle', label: 'Parıltı' },
+        { value: 'music', label: 'Müzik' },
+        { value: 'award', label: 'Ödül' },
+        { value: 'gem', label: 'Mücevher' },
+    ];
     const STYLE_TYPES = [
-        { value: 'solid', label: 'Düz Renk' },
-        { value: 'gradient', label: 'Gradient' },
-        { value: 'iridescent', label: 'İridesans' },
-        { value: 'animated', label: 'Animasyonlu' },
+        { value: 'solid', label: 'Düz Renk', desc: 'Tekli renk dolgu' },
+        { value: 'gradient', label: 'Gradient', desc: 'İki renkli geçişli' },
+        { value: 'iridescent', label: 'İridesans', desc: 'Gökkuşağı hue döngüsü' },
+        { value: 'animated', label: 'Animasyonlu', desc: 'Hareket efektli' },
     ];
     const ANIM_TYPES = [
         { value: 'none', label: 'Yok' },
@@ -504,6 +519,25 @@ const AdminDashboard = () => {
         { value: 'shimmer', label: 'Işıltı' },
         { value: 'bounce', label: 'Zıplama' },
     ];
+
+    // Auto-generate slug from name (Turkish chars → ASCII)
+    const generateSlug = (name) => {
+        return name
+            .toLowerCase()
+            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ü/g, 'u')
+            .replace(/ş/g, 's').replace(/ç/g, 'c').replace(/ğ/g, 'g')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+    };
+
+    const handleNameChange = (name) => {
+        const newForm = { ...badgeForm, name };
+        // Auto-generate slug only for new badges (not editing defaults)
+        if (!editingBadge || !editingBadge.isDefault) {
+            newForm.slug = generateSlug(name);
+        }
+        setBadgeForm(newForm);
+    };
 
     return (
         <div className="admin-dashboard">
@@ -949,55 +983,56 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Name & Slug */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div>
-                                    <label className="badge-label">Rozet Adı</label>
-                                    <input
-                                        className="reason-input-modern"
-                                        style={{ padding: '10px' }}
-                                        value={badgeForm.name}
-                                        onChange={(e) => setBadgeForm({ ...badgeForm, name: e.target.value })}
-                                        placeholder="Altın Onay"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="badge-label">Slug (benzersiz)</label>
-                                    <input
-                                        className="reason-input-modern"
-                                        style={{ padding: '10px' }}
-                                        value={badgeForm.slug}
-                                        onChange={(e) => setBadgeForm({ ...badgeForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                                        placeholder="gold"
-                                        disabled={editingBadge?.isDefault}
-                                    />
-                                </div>
+                            {/* Rozet Adı */}
+                            <div>
+                                <label className="badge-label">Rozet Adı</label>
+                                <input
+                                    className="reason-input-modern"
+                                    style={{ padding: '10px' }}
+                                    value={badgeForm.name}
+                                    onChange={(e) => handleNameChange(e.target.value)}
+                                    placeholder="Örn: Altın Onay, VIP Üye"
+                                />
                             </div>
 
-                            {/* Icon Picker */}
+                            {/* Slug — auto-generated, collapsible */}
                             <div>
-                                <label className="badge-label">İkon</label>
+                                <label className="badge-label">Rozet Kodu (Slug)</label>
+                                <p className="badge-help-text">Sistem tarafından kullanılan benzersiz tanımlayıcı. İsim girdiğinizde otomatik oluşturulur.</p>
+                                <input
+                                    className="reason-input-modern"
+                                    style={{ padding: '10px', fontFamily: 'monospace', fontSize: '13px', color: '#888' }}
+                                    value={badgeForm.slug}
+                                    onChange={(e) => setBadgeForm({ ...badgeForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                                    placeholder="otomatik-olusturulur"
+                                    disabled={editingBadge?.isDefault}
+                                />
+                            </div>
+
+                            {/* İkon Seçici */}
+                            <div>
+                                <label className="badge-label">İkon Şekli</label>
                                 <div className="badge-icon-grid">
                                     {ICONS.map(ic => (
                                         <button
-                                            key={ic}
+                                            key={ic.value}
                                             type="button"
-                                            className={`badge-icon-btn ${badgeForm.icon === ic ? 'active' : ''}`}
-                                            onClick={() => setBadgeForm({ ...badgeForm, icon: ic })}
-                                            title={ic}
+                                            className={`badge-icon-btn ${badgeForm.icon === ic.value ? 'active' : ''}`}
+                                            onClick={() => setBadgeForm({ ...badgeForm, icon: ic.value })}
                                         >
-                                            <Badge type={`_icon_${ic}`} size={24} />
-                                            <span>{ic}</span>
+                                            <Badge type={`_icon_${ic.value}`} size={22} />
+                                            <span>{ic.label}</span>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Category */}
+                            {/* Kategori */}
                             <div>
-                                <label className="badge-label">Kategori</label>
+                                <label className="badge-label">Kullanım Alanı</label>
+                                <p className="badge-help-text">Bu rozet kimlere atanabilir?</p>
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    {[{ v: 'user', l: 'Kullanıcı' }, { v: 'portal', l: 'Portal' }, { v: 'both', l: 'Her İkisi' }].map(c => (
+                                    {[{ v: 'user', l: '👤 Kullanıcı' }, { v: 'portal', l: '🌐 Portal' }, { v: 'both', l: '✨ Her İkisi' }].map(c => (
                                         <button
                                             key={c.v}
                                             type="button"
@@ -1010,9 +1045,10 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Style Type */}
+                            {/* Stil */}
                             <div>
-                                <label className="badge-label">Stil</label>
+                                <label className="badge-label">Görünüm Stili</label>
+                                <p className="badge-help-text">Rozetin renk efekt tipi</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                     {STYLE_TYPES.map(s => (
                                         <button
@@ -1020,6 +1056,7 @@ const AdminDashboard = () => {
                                             type="button"
                                             className={`preset-btn ${badgeForm.style.type === s.value ? 'active' : ''}`}
                                             onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, type: s.value } })}
+                                            title={s.desc}
                                         >
                                             {s.label}
                                         </button>
@@ -1027,51 +1064,55 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Colors */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                                <div>
-                                    <label className="badge-label">Ana Renk</label>
-                                    <div className="badge-color-wrap">
-                                        <input
-                                            type="color"
-                                            value={badgeForm.style.primaryColor}
-                                            onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, primaryColor: e.target.value } })}
-                                            className="badge-color-input"
-                                        />
-                                        <span>{badgeForm.style.primaryColor}</span>
-                                    </div>
-                                </div>
-                                {(badgeForm.style.type === 'gradient' || badgeForm.style.type === 'iridescent') && (
+                            {/* Renkler */}
+                            <div>
+                                <label className="badge-label">Renkler</label>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                                     <div>
-                                        <label className="badge-label">İkinci Renk</label>
+                                        <p className="badge-help-text" style={{ marginBottom: '4px' }}>Ana Renk</p>
                                         <div className="badge-color-wrap">
                                             <input
                                                 type="color"
-                                                value={badgeForm.style.secondaryColor || '#ff8c00'}
-                                                onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, secondaryColor: e.target.value } })}
+                                                value={badgeForm.style.primaryColor}
+                                                onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, primaryColor: e.target.value } })}
                                                 className="badge-color-input"
                                             />
-                                            <span>{badgeForm.style.secondaryColor || '#ff8c00'}</span>
+                                            <span>{badgeForm.style.primaryColor}</span>
                                         </div>
                                     </div>
-                                )}
-                                <div>
-                                    <label className="badge-label">Parıltı Rengi</label>
-                                    <div className="badge-color-wrap">
-                                        <input
-                                            type="color"
-                                            value={badgeForm.style.glowColor || badgeForm.style.primaryColor}
-                                            onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, glowColor: e.target.value } })}
-                                            className="badge-color-input"
-                                        />
-                                        <span>{badgeForm.style.glowColor || 'auto'}</span>
+                                    {(badgeForm.style.type === 'gradient' || badgeForm.style.type === 'iridescent') && (
+                                        <div>
+                                            <p className="badge-help-text" style={{ marginBottom: '4px' }}>İkinci Renk</p>
+                                            <div className="badge-color-wrap">
+                                                <input
+                                                    type="color"
+                                                    value={badgeForm.style.secondaryColor || '#ff8c00'}
+                                                    onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, secondaryColor: e.target.value } })}
+                                                    className="badge-color-input"
+                                                />
+                                                <span>{badgeForm.style.secondaryColor || '#ff8c00'}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="badge-help-text" style={{ marginBottom: '4px' }}>Parıltı Rengi</p>
+                                        <div className="badge-color-wrap">
+                                            <input
+                                                type="color"
+                                                value={badgeForm.style.glowColor || badgeForm.style.primaryColor}
+                                                onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, glowColor: e.target.value } })}
+                                                className="badge-color-input"
+                                            />
+                                            <span>{badgeForm.style.glowColor || 'otomatik'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Animation */}
+                            {/* Animasyon */}
                             <div>
-                                <label className="badge-label">Animasyon</label>
+                                <label className="badge-label">Animasyon Efekti</label>
+                                <p className="badge-help-text">Rozetin hareket efekti — profilde ve paylaşımlarda görünür</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                     {ANIM_TYPES.map(a => (
                                         <button

@@ -16,7 +16,7 @@ const badgeSchema = new mongoose.Schema(
         },
         icon: {
             type: String,
-            enum: ['checkmark', 'star', 'shield', 'lightning', 'diamond', 'crown', 'fire', 'heart'],
+            enum: ['checkmark', 'star', 'shield', 'lightning', 'diamond', 'crown', 'fire', 'heart', 'rocket', 'globe', 'sparkle', 'music', 'award', 'gem'],
             default: 'checkmark',
         },
         category: {
