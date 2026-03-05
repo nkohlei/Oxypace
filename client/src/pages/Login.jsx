@@ -80,10 +80,7 @@ const Login = () => {
     return (
         <div className="auth-container">
             <div className="auth-card fade-in">
-                <div className="auth-logo-vertical">
-                    <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
-                </div>
-                <div className="auth-logo-horizontal">
+                <div className="auth-logo">
                     <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
                 </div>
 

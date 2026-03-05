@@ -303,8 +303,8 @@ const AppLayout = () => {
                     </div>
                 </div>
             </div>
-            {/* Footer - always visible EXCEPT on guest homepage and clean layout pages */}
-            {!(location.pathname === '/' && !isLoggedIn) && !isCleanLayout && <Footer />}
+            {/* Footer - hidden on auth pages, guest homepage, and clean layout pages */}
+            {!(['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/onboarding'].includes(location.pathname)) && !(location.pathname === '/' && !isLoggedIn) && !isCleanLayout && <Footer />}
         </div>
     );
 };
