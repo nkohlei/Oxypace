@@ -2,11 +2,24 @@
 
 User-agent: *
 Allow: /
+Allow: /search
+Allow: /portal/
+Allow: /profile/
+Allow: /login
+Allow: /register
 
 # Disallow admin and private pages
 Disallow: /admin
 Disallow: /settings
-Allow: /api/sitemap.xml
+Disallow: /saved
+Disallow: /notifications
+Disallow: /inbox
+Disallow: /create
+
+# Allow sitemap
+Allow: /sitemap.xml
+
+# Disallow API except sitemap
 Disallow: /api/
 
 # Sitemap

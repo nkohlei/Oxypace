@@ -1,20 +1,29 @@
 {
     "short_name": "Oxypace",
-    "name": "Oxypace: Global Message",
+    "name": "Oxypace - Sosyal Medya Platformu",
+    "description": "Yeni nesil global mesajlaşma ve topluluk platformu. Kendi portalınızı oluşturun, dünyayla bağlantı kurun.",
     "icons": [
         {
             "src": "logo192.png",
             "type": "image/png",
-            "sizes": "192x192"
+            "sizes": "192x192",
+            "purpose": "any maskable"
         },
         {
             "src": "logo512.png",
             "type": "image/png",
-            "sizes": "512x512"
+            "sizes": "512x512",
+            "purpose": "any maskable"
         }
     ],
-    "start_url": ".",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "theme_color": "#000000",
-    "background_color": "#000000"
+    "theme_color": "#060913",
+    "background_color": "#060913",
+    "categories": [
+        "social",
+        "communication"
+    ],
+    "lang": "tr"
 }

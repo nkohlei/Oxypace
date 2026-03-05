@@ -15,6 +15,7 @@ const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 export default async function handler(req, res) {
     if (sitemapCache && (Date.now() - lastCacheTime < CACHE_DURATION)) {
         res.setHeader('Content-Type', 'application/xml');
+        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
         return res.send(sitemapCache);
     }
 
@@ -22,6 +23,8 @@ export default async function handler(req, res) {
         await connectDB();
 
         const baseUrl = 'https://oxypace.vercel.app';
+        const now = new Date().toISOString();
+
         let xml = '<?xml version="1.0" encoding="UTF-8"?>';
         xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
 
@@ -30,34 +33,49 @@ export default async function handler(req, res) {
             { url: '/', priority: '1.0', freq: 'daily' },
             { url: '/login', priority: '0.5', freq: 'monthly' },
             { url: '/register', priority: '0.5', freq: 'monthly' },
-            { url: '/search', priority: '0.8', freq: 'weekly' }
+            { url: '/search', priority: '0.8', freq: 'daily' }
         ];
 
         staticPages.forEach(p => {
-            xml += `<url><loc>${baseUrl}${p.url}</loc><changefreq>${p.freq}</changefreq><priority>${p.priority}</priority></url>`;
+            xml += `<url><loc>${baseUrl}${p.url}</loc><lastmod>${now}</lastmod><changefreq>${p.freq}</changefreq><priority>${p.priority}</priority></url>`;
         });
 
-        // Portals
+        // Portals (public only)
         try {
-            const portals = await Portal.find({ privacy: 'public' }, '_id updatedAt').limit(500).sort({ createdAt: -1 }).lean();
+            const portals = await Portal.find(
+                { privacy: 'public' },
+                '_id name updatedAt createdAt'
+            ).limit(1000).sort({ updatedAt: -1 }).lean();
+
             if (portals) portals.forEach(p => {
-                xml += `<url><loc>${baseUrl}/portal/${p._id}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`;
+                const lastmod = (p.updatedAt || p.createdAt || new Date()).toISOString();
+                xml += `<url><loc>${baseUrl}/portal/${p._id}</loc><lastmod>${lastmod}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`;
             });
         } catch (e) { console.error('Sitemap Portal Error', e); }
 
         // Users
         try {
-            const users = await User.find({}, 'username createdAt').limit(500).sort({ createdAt: -1 }).lean();
+            const users = await User.find(
+                {},
+                'username createdAt updatedAt'
+            ).limit(1000).sort({ createdAt: -1 }).lean();
+
             if (users) users.forEach(u => {
-                xml += `<url><loc>${baseUrl}/profile/${u.username}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+                const lastmod = (u.updatedAt || u.createdAt || new Date()).toISOString();
+                xml += `<url><loc>${baseUrl}/profile/${u.username}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
             });
         } catch (e) { console.error('Sitemap User Error', e); }
 
-        // Posts (New)
+        // Posts
         try {
-            const posts = await Post.find({}, '_id updatedAt').limit(1000).sort({ createdAt: -1 }).lean();
+            const posts = await Post.find(
+                {},
+                '_id updatedAt createdAt'
+            ).limit(2000).sort({ createdAt: -1 }).lean();
+
             if (posts) posts.forEach(p => {
-                xml += `<url><loc>${baseUrl}/post/${p._id}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`;
+                const lastmod = (p.updatedAt || p.createdAt || new Date()).toISOString();
+                xml += `<url><loc>${baseUrl}/post/${p._id}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`;
             });
         } catch (e) { console.error('Sitemap Post Error', e); }
 
@@ -67,6 +85,7 @@ export default async function handler(req, res) {
         lastCacheTime = Date.now();
 
         res.setHeader('Content-Type', 'application/xml');
+        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
         res.send(xml);
 
     } catch (e) {
