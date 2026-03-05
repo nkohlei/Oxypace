@@ -34,25 +34,22 @@
 }
 
 /* ===================== Back Button ===================== */
-.auth-back-btn-wrapper {
-    position: relative;
-    z-index: 3;
-    width: 100%;
-    max-width: 390px;
-    margin-bottom: 10px;
-}
-
 .auth-back-btn {
+    position: absolute;
+    top: -42px;
+    left: 0;
     display: inline-flex;
     align-items: center;
     gap: 5px;
     font-size: 0.8rem;
     font-weight: 500;
-    color: rgba(200, 215, 240, 0.55);
+    color: rgba(200, 215, 240, 0.6);
     text-decoration: none;
-    padding: 5px 2px;
+    padding: 6px 4px;
     border-radius: 8px;
     transition: color 0.2s;
+    white-space: nowrap;
+    z-index: 10;
 }
 
 .auth-back-btn svg {
@@ -62,7 +59,7 @@
 }
 
 .auth-back-btn:hover {
-    color: rgba(230, 240, 255, 0.9);
+    color: rgba(230, 240, 255, 0.95);
 }
 
 /* ===================== Auth Card — Neumorph Frosted ===================== */

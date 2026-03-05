@@ -92,16 +92,13 @@ const Login = () => {
             </video>
             <div className="auth-bg-overlay" />
 
-            <div className="auth-back-btn-wrapper">
+            <div className="auth-card fade-in">
                 <Link to="/" className="auth-back-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="15 18 9 12 15 6" />
                     </svg>
                     Geri Dön
                 </Link>
-            </div>
-
-            <div className="auth-card fade-in">
 
                 <div className="auth-header">
                     <h1>Tekrar Hoşgeldin</h1>
