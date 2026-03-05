@@ -118,7 +118,7 @@ const Home = () => {
                 }}
             />
 
-            <Navbar />
+            <Navbar hideThemeToggle />
 
             <main className="advanced-home-content">
 
