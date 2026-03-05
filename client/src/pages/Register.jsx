@@ -13,6 +13,7 @@ const Register = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
+    const [step, setStep] = useState(1);
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -22,13 +23,29 @@ const Register = () => {
         setError('');
     };
 
+    const handleNextStep = (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (!formData.email || !formData.username) {
+            setError('E-posta ve kullanıcı adı zorunludur');
+            return;
+        }
+        setStep(2);
+    };
+
+    const handlePrevStep = () => {
+        setError('');
+        setStep(1);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
 
-        if (!formData.email || !formData.username || !formData.password) {
-            setError('Tüm alanları doldurun');
+        if (!formData.password) {
+            setError('Lütfen şifre girin');
             return;
         }
 
@@ -91,7 +108,10 @@ const Register = () => {
     return (
         <div className="auth-container">
             <div className="auth-card fade-in">
-                <div className="auth-logo">
+                <div className="auth-logo-vertical">
+                    <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
+                </div>
+                <div className="auth-logo-horizontal">
                     <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
                 </div>
 
@@ -100,99 +120,114 @@ const Register = () => {
                     <p>Oxypace'e katıl ve dünyayla bağlan</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="auth-form">
-                    <div className="form-group">
-                        <label htmlFor="email">E-posta</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            placeholder="ornek@email.com"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
+                <form onSubmit={step === 1 ? handleNextStep : handleSubmit} className="auth-form">
+                    {step === 1 && (
+                        <>
+                            <div className="form-group">
+                                <label htmlFor="email">E-posta</label>
+                                <input
+                                    type="email"
+                                    id="email"
+                                    name="email"
+                                    placeholder="ornek@email.com"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
 
-                    <div className="form-group">
-                        <label htmlFor="username">Kullanıcı Adı</label>
-                        <input
-                            type="text"
-                            id="username"
-                            name="username"
-                            placeholder="Benzersiz bir kullanıcı adı seç"
-                            value={formData.username}
-                            onChange={handleChange}
-                            required
-                        />
-                        <small>Kullanıcı adı sonradan değiştirilemez</small>
-                    </div>
+                            <div className="form-group">
+                                <label htmlFor="username">Kullanıcı Adı</label>
+                                <input
+                                    type="text"
+                                    id="username"
+                                    name="username"
+                                    placeholder="Benzersiz bir kullanıcı adı seç"
+                                    value={formData.username}
+                                    onChange={handleChange}
+                                    required
+                                />
+                                <small>Kullanıcı adı sonradan değiştirilemez</small>
+                            </div>
 
-                    <div className="form-group">
-                        <label htmlFor="password">Şifre</label>
-                        <div className="password-input-wrapper">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                id="password"
-                                name="password"
-                                placeholder="En az 6 karakter"
-                                value={formData.password}
-                                onChange={handleChange}
-                                required
-                            />
-                            <button
-                                type="button"
-                                className="password-toggle-btn"
-                                onClick={() => setShowPassword(!showPassword)}
-                                aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-                            >
-                                <PasswordToggleIcon show={showPassword} />
+                            {error && <div className="error-message">{error}</div>}
+
+                            <button type="submit" className="btn btn-primary" disabled={loading}>
+                                İleri
                             </button>
-                        </div>
-                    </div>
+                        </>
+                    )}
 
-                    <div className="form-group">
-                        <label htmlFor="confirmPassword">Şifre Tekrar</label>
-                        <div className="password-input-wrapper">
-                            <input
-                                type={showConfirmPassword ? 'text' : 'password'}
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                placeholder="Şifrenizi tekrar girin"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                required
-                            />
-                            <button
-                                type="button"
-                                className="password-toggle-btn"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                aria-label={
-                                    showConfirmPassword ? 'Şifreyi gizle' : 'Şifreyi göster'
-                                }
-                            >
-                                <PasswordToggleIcon show={showConfirmPassword} />
-                            </button>
-                        </div>
-                    </div>
+                    {step === 2 && (
+                        <>
+                            <div className="form-group">
+                                <label htmlFor="password">Şifre</label>
+                                <div className="password-input-wrapper">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        id="password"
+                                        name="password"
+                                        placeholder="En az 6 karakter"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle-btn"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                                    >
+                                        <PasswordToggleIcon show={showPassword} />
+                                    </button>
+                                </div>
+                            </div>
 
-                    {error && <div className="error-message">{error}</div>}
-                    {success && <div className="success-message">{success}</div>}
+                            <div className="form-group">
+                                <label htmlFor="confirmPassword">Şifre Tekrar</label>
+                                <div className="password-input-wrapper">
+                                    <input
+                                        type={showConfirmPassword ? 'text' : 'password'}
+                                        id="confirmPassword"
+                                        name="confirmPassword"
+                                        placeholder="Şifrenizi tekrar girin"
+                                        value={formData.confirmPassword}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle-btn"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        aria-label={
+                                            showConfirmPassword ? 'Şifreyi gizle' : 'Şifreyi göster'
+                                        }
+                                    >
+                                        <PasswordToggleIcon show={showConfirmPassword} />
+                                    </button>
+                                </div>
+                            </div>
 
-                    <p style={{ fontSize: '0.8rem', color: '#666', textAlign: 'center', marginBottom: '15px' }}>
-                        Hesap oluşturarak <Link to="/terms" style={{ color: '#6366f1' }}>Kullanım Koşulları</Link>'nı ve <Link to="/privacy" style={{ color: '#6366f1' }}>Gizlilik Politikası</Link>'nı kabul etmiş olursunuz.
-                    </p>
+                            {error && <div className="error-message">{error}</div>}
+                            {success && <div className="success-message">{success}</div>}
 
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
-                        {loading ? (
-                            <div
-                                className="spinner"
-                                style={{ width: '20px', height: '20px' }}
-                            ></div>
-                        ) : (
-                            'Kayıt Ol'
-                        )}
-                    </button>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" className="btn btn-secondary" onClick={handlePrevStep} style={{ flex: 1, padding: '14px', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 'bold' }}>
+                                    Geri
+                                </button>
+                                <button type="submit" className="btn btn-primary" disabled={loading} style={{ flex: 2, marginTop: '0' }}>
+                                    {loading ? (
+                                        <div
+                                            className="spinner"
+                                            style={{ width: '20px', height: '20px' }}
+                                        ></div>
+                                    ) : (
+                                        'Kayıt Ol'
+                                    )}
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </form>
 
                 <div className="auth-divider">
