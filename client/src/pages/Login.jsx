@@ -79,10 +79,20 @@ const Login = () => {
 
     return (
         <div className="auth-container">
+            {/* Video Background */}
+            <video
+                className="auth-bg-video"
+                autoPlay
+                loop
+                muted
+                playsInline
+            >
+                <source src="/auth-bg.mp4" type="video/mp4" />
+                <source src="/auth-bg.webm" type="video/webm" />
+            </video>
+            <div className="auth-bg-overlay" />
+
             <div className="auth-card fade-in">
-                <div className="auth-logo">
-                    <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
-                </div>
 
                 <div className="auth-header">
                     <h1>Tekrar Hoşgeldin</h1>
