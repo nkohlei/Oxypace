@@ -78,14 +78,20 @@ const Portal = () => {
 
     // Scroll To Top Logic
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const [scrollProgress, setScrollProgress] = useState(0);
     const feedRef = useRef(null);
 
     const handleScroll = (e) => {
-        if (e.target.scrollTop > 300) {
+        const el = e.target;
+        if (el.scrollTop > 300) {
             setShowScrollTop(true);
         } else {
             setShowScrollTop(false);
         }
+        // Calculate scroll progress
+        const scrollHeight = el.scrollHeight - el.clientHeight;
+        const progress = scrollHeight > 0 ? (el.scrollTop / scrollHeight) * 100 : 0;
+        setScrollProgress(progress);
     };
 
     const scrollToTop = () => {
@@ -845,13 +851,29 @@ const Portal = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Scroll To Top Button - Wide Pill */}
-                                                    <button
-                                                        className={`scroll-to-top-btn ${showScrollTop ? 'visible' : ''}`}
-                                                        onClick={scrollToTop}
-                                                    >
-                                                        Başa Dön
-                                                    </button>
+                                                    {/* Scroll To Top Button - Round with progress ring */}
+                                                    {(() => {
+                                                        const radius = 20;
+                                                        const circumference = 2 * Math.PI * radius;
+                                                        const strokeDashoffset = circumference - (scrollProgress / 100) * circumference;
+                                                        return (
+                                                            <button
+                                                                className={`floating-scroll-top portal-scroll-top ${showScrollTop ? 'visible' : ''}`}
+                                                                onClick={scrollToTop}
+                                                                aria-label="Yukarı Çık"
+                                                            >
+                                                                <svg className="progress-ring" width="50" height="50" viewBox="0 0 50 50">
+                                                                    <circle className="progress-ring-track" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" />
+                                                                    <circle className="progress-ring-fill" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" style={{ strokeDasharray: circumference, strokeDashoffset }} />
+                                                                </svg>
+                                                                <div className="scroll-icon">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="m18 15-6-6-6 6" />
+                                                                    </svg>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })()}
 
                                                     <div className="channel-input-area">
                                                         {/* Plus Menu Popover */}

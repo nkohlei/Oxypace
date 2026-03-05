@@ -4,22 +4,22 @@
   --bg-dark: #060913;
   --bg-darker: #030408;
   --bg-card: #0a0f20;
-  --bg-hover: rgba(38, 208, 206, 0.15);
+  --bg-hover: rgba(96, 165, 250, 0.15);
   --bg-input: #080c18;
 
-  /* Deep Blue & Cyan Modern Effects */
-  --primary-cyan: #26D0CE;
-  --primary-cyan-light: #5CE1E6;
-  --primary-cyan-dark: #1A2980;
+  /* Light Blue & Deep Navy Modern Effects */
+  --primary-cyan: #60A5FA;
+  --primary-cyan-light: #93C5FD;
+  --primary-cyan-dark: #1E3A5F;
 
-  --primary-glow: rgba(38, 208, 206, 0.5);
-  --primary-glow-soft: rgba(38, 208, 206, 0.25);
+  --primary-glow: rgba(96, 165, 250, 0.5);
+  --primary-glow-soft: rgba(96, 165, 250, 0.25);
 
   --primary-green: #32CD32;
   --primary-red: #FF0000;
 
   /* Gradients */
-  --gradient-neon: linear-gradient(135deg, #1A2980 0%, #26D0CE 100%);
+  --gradient-neon: linear-gradient(135deg, #1E3A5F 0%, #60A5FA 100%);
 
   /* Text Colors - High Contrast */
   --text-primary: #FFFFFF;
@@ -29,12 +29,12 @@
 
   /* Borders */
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-neon: #26D0CE;
+  --border-neon: #60A5FA;
 
   /* Shadows */
   --shadow-card: 0 15px 35px rgba(0, 0, 0, 0.6);
   --shadow-popover: 0 20px 40px rgba(0, 0, 0, 0.8);
-  --shadow-glow: 0 0 25px rgba(38, 208, 206, 0.4);
+  --shadow-glow: 0 0 25px rgba(96, 165, 250, 0.4);
 
   /* Neumorphism */
   --neu-bg: #0a0f20;
@@ -66,7 +66,7 @@
   --bg-darker: #F2F2F2;
   /* Very light gray for sidebars */
   --bg-card: #FFFFFF;
-  --bg-hover: rgba(0, 229, 255, 0.1);
+  --bg-hover: rgba(30, 58, 95, 0.15);
   --bg-input: #F5F5F5;
 
   /* Text - Stark Black for readability */
@@ -78,7 +78,15 @@
   /* Borders - Visible & Crisp */
   --border-subtle: #DDDDDD;
   /* Visible gray border */
-  --border-neon: #00E5FF;
+  --border-neon: #1E3A5F;
+
+  /* Accent overrides for light mode */
+  --primary-cyan: #1E3A5F;
+  --primary-cyan-light: #2B5280;
+  --primary-cyan-dark: #0F1F33;
+  --primary-glow: rgba(30, 58, 95, 0.5);
+  --primary-glow-soft: rgba(30, 58, 95, 0.25);
+  --gradient-neon: linear-gradient(135deg, #0F1F33 0%, #1E3A5F 100%);
 
   /* Shadows - Subtle for depth */
   --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.08);
@@ -186,7 +194,7 @@ textarea {
 
 input:focus,
 textarea:focus {
-  box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 0 2px rgba(38, 208, 206, 0.15);
+  box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 0 2px rgba(96, 165, 250, 0.15);
   outline: none;
 }
 

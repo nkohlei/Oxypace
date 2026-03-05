@@ -94,7 +94,7 @@
     border: none;
     background-color: var(--bg-hover);
     transform: scale(1.05);
-    box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(38, 208, 206, 0.2);
+    box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(96, 165, 250, 0.2);
 }
 
 @media (max-width: 768px) {
