@@ -122,6 +122,13 @@ const Home = () => {
 
             <main className="advanced-home-content">
 
+                {/* VIDEO BACKGROUND */}
+                <video className="home-bg-video" autoPlay muted loop playsInline>
+                    <source src="/auth-bg.mp4" type="video/mp4" />
+                    <source src="/auth-bg.webm" type="video/webm" />
+                </video>
+                <div className="home-bg-overlay"></div>
+
                 {/* ATMOSPHERIC BACKGROUND */}
                 <div className="atmospheric-bg">
                     <div className="gradient-sphere sphere-1"></div>
