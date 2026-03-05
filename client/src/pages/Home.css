@@ -42,9 +42,10 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 0;
-  background: radial-gradient(circle at center, #0a0f20 0%, #030408 100%);
+  z-index: 2;
+  background: transparent;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .advanced-home .gradient-sphere {
