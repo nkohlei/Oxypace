@@ -37,8 +37,8 @@
     padding: 0 16px;
     display: flex;
     align-items: center;
-    border-bottom: 1px solid var(--border-subtle);
-    box-shadow: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     background-color: var(--bg-dark);
     flex-shrink: 0;
 }
@@ -202,7 +202,6 @@
 
 .message-input-wrapper {
     background-color: var(--bg-input);
-    /* Theme aware background */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 16px;
@@ -210,17 +209,14 @@
     align-items: center;
     padding: 0 16px;
     height: 56px;
-    box-shadow: var(--shadow-sm);
-    /* Subtle shadow for depth */
-    border: 1px solid var(--border-subtle);
-    /* Theme aware border */
+    box-shadow: var(--neu-inset-dark), var(--neu-inset-light);
+    border: none;
     position: relative;
     transition: all 0.2s ease;
 }
 
 .message-input-wrapper:focus-within {
-    border-color: var(--primary-cyan);
-    box-shadow: 0 -2px 15px rgba(38, 208, 206, 0.15);
+    box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 0 2px rgba(38, 208, 206, 0.15);
 }
 
 /* Plus Menu Popover */
@@ -230,15 +226,16 @@
     bottom: auto;
     left: 0;
     width: 220px;
-    background-color: var(--bg-card);
-    /* Replaced #2b2d31 */
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 8px;
     padding: 8px;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    box-shadow: var(--shadow-popover);
-    border: 1px solid var(--border-subtle);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border: var(--glass-border);
     z-index: 100;
     animation: slideUp 0.2s ease-out;
 }
@@ -469,7 +466,9 @@
 }
 
 .edit-modal-modern {
-    background: var(--bg-card);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     width: 100%;
     max-width: 550px;
     max-height: 90vh;
@@ -477,8 +476,8 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: var(--shadow-popover);
-    border: 1px solid var(--border-subtle);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border: var(--glass-border);
 }
 
 .edit-modal-header-modern {
@@ -696,8 +695,8 @@
 }
 
 .privacy-card {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    background-color: var(--neu-bg);
+    border: none;
     border-radius: 24px;
     padding: 48px 32px;
     width: 100%;
@@ -706,7 +705,7 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    box-shadow: var(--shadow-popover);
+    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
 }
 
 .privacy-icon {
@@ -793,13 +792,16 @@
 
 .notifications-modal-content {
     position: relative;
-    background: var(--bg-primary);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 16px;
     max-width: 900px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: var(--glass-border);
     animation: slideUp 0.3s ease;
 }
 

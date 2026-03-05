@@ -13,15 +13,16 @@
 }
 
 .modal-content.advanced-modal {
-    background-color: var(--bg-card);
-    /* Replaced #0f172a */
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     padding: 32px;
     border-radius: 20px;
     width: 90%;
     max-width: 500px;
-    border: 1px solid var(--border-neon);
+    border: var(--glass-border);
     position: relative;
-    box-shadow: var(--shadow-popover);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header h2 {

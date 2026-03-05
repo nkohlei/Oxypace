@@ -17,14 +17,16 @@
 .settings-modal {
     width: 800px;
     height: 600px;
-    background-color: var(--bg-primary);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 8px;
     display: flex;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
     overflow: hidden;
     position: relative;
     animation: slideIn 0.2s ease;
-    border: 1px solid var(--border-subtle);
+    border: var(--glass-border);
 }
 
 @keyframes fadeIn {
@@ -56,7 +58,8 @@
     padding: 24px 12px;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--border-subtle);
+    border-right: none;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
 }
 
 .sidebar-header {
@@ -151,13 +154,15 @@
     top: 100%;
     left: 0;
     right: 0;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-subtle);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
     border-radius: 4px;
     z-index: 100;
     max-height: 200px;
     overflow-y: auto;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .member-card.full-width {

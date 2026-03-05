@@ -5,13 +5,12 @@
     width: 100%;
     height: 48px;
     min-height: 48px;
-    /* Prevent shrinking */
-    background: var(--bg-card);
-    /* Consistent with card bg */
-    border-bottom: 1px solid var(--border-color);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: var(--glass-border);
     z-index: 1100;
-    /* Ensure high enough z-index */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     flex-shrink: 0;
 }
 
@@ -225,12 +224,12 @@
     top: calc(100% + 12px);
     right: 0;
     width: 260px;
-    background: var(--bg-card);
-    /* Theme aware background */
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border-subtle);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
     border-radius: 16px;
-    box-shadow: var(--shadow-popover);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     padding: 8px;
     z-index: 2000;
     transform-origin: top right;
@@ -317,19 +316,18 @@
 /* Bottom Navigation (Mobile Only) */
 .bottom-nav {
     display: none;
-    /* Default hidden */
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     width: 100%;
-    background: var(--card-bg);
-    /* Use solid color to prevent see-through mess */
-    border-top: 1px solid var(--border-color);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-top: var(--glass-border);
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 2000;
     height: 60px;
-    /* Explicit height */
 }
 
 /* Mobile Responsiveness */

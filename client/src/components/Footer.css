@@ -1,6 +1,6 @@
 .app-footer {
     padding: 12px 24px;
-    border-top: 1px solid var(--border-color);
+    border-top: none;
     background-color: var(--bg-primary);
     width: 100%;
     display: flex;
@@ -10,6 +10,7 @@
     gap: 16px;
     flex-shrink: 0;
     z-index: 50;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .footer-links {

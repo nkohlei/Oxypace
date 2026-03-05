@@ -47,7 +47,8 @@
     flex-direction: column;
     flex-shrink: 0;
     overflow: hidden;
-    border-right: 1px solid var(--border-subtle);
+    border-right: none;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
 }
 
 .channel-header {
@@ -222,11 +223,11 @@
     }
 
     .menu-item.active {
-        background: var(--bg-card);
+        background: var(--neu-bg);
         color: var(--text-primary);
         font-weight: 600;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        border: 1px solid var(--border-subtle);
+        box-shadow: var(--neu-inset-dark), var(--neu-inset-light);
+        border: none;
     }
 
     .menu-item.active .menu-icon {
@@ -266,11 +267,12 @@
 }
 
 .settings-section {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    background: var(--neu-bg);
+    border: none;
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 16px;
+    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
 }
 
 /* Navigation & Menu Styles */
@@ -284,11 +286,12 @@
     display: flex;
     align-items: center;
     padding: 16px;
-    background: var(--bg-darker);
+    background: var(--neu-bg);
     border-radius: 12px;
-    border: 1px solid var(--border-subtle);
+    border: none;
     cursor: pointer;
     transition: 0.2s;
+    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
 }
 
 .menu-item:hover {
@@ -435,8 +438,10 @@
     top: 100%;
     left: 0;
     width: 100%;
-    background: var(--bg-darker);
-    border: 1px solid var(--border-subtle);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
     border-top: none;
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
