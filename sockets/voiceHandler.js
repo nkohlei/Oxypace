@@ -1,0 +1,144 @@
+/**
+ * Voice Channel Socket.IO Handler
+ * Manages real-time signaling for voice/video channels:
+ * - Join/leave voice rooms
+ * - Raise hand requests
+ * - Permission grants/revokes
+ * - Participant presence tracking
+ */
+
+// Track voice channel participants: roomName -> Map<userId, { socketId, username, avatar }>
+const voiceRooms = new Map();
+
+export const initializeVoiceHandler = (io) => {
+    io.on('connection', (socket) => {
+        // ─── Join Voice Channel ───
+        socket.on('voice:join', ({ roomName, userId, username, avatar }) => {
+            if (!roomName || !userId) return;
+
+            socket.join(`voice:${roomName}`);
+
+            // Track participant
+            if (!voiceRooms.has(roomName)) {
+                voiceRooms.set(roomName, new Map());
+            }
+            voiceRooms.get(roomName).set(userId, {
+                socketId: socket.id,
+                username,
+                avatar: avatar || '',
+                joinedAt: Date.now(),
+            });
+
+            // Store room info on socket for cleanup on disconnect
+            if (!socket._voiceRooms) socket._voiceRooms = new Set();
+            socket._voiceRooms.add(roomName);
+            socket._voiceUserId = userId;
+
+            // Broadcast updated participant list
+            const participants = getParticipantList(roomName);
+            io.to(`voice:${roomName}`).emit('voice:participants', {
+                roomName,
+                participants,
+            });
+
+            console.log(`🎙️ User ${username} joined voice room ${roomName} (${participants.length} participants)`);
+        });
+
+        // ─── Leave Voice Channel ───
+        socket.on('voice:leave', ({ roomName, userId }) => {
+            if (!roomName || !userId) return;
+            removeParticipant(io, roomName, userId);
+            socket.leave(`voice:${roomName}`);
+        });
+
+        // ─── Raise Hand (Stage Mode) ───
+        socket.on('voice:raise-hand', ({ roomName, userId, username, avatar, raised }) => {
+            if (!roomName || !userId) return;
+
+            io.to(`voice:${roomName}`).emit('voice:raise-hand', {
+                userId,
+                username,
+                avatar: avatar || '',
+                raised: raised !== false,
+                timestamp: Date.now(),
+            });
+
+            console.log(`✋ User ${username} ${raised !== false ? 'raised' : 'lowered'} hand in ${roomName}`);
+        });
+
+        // ─── Grant Speak Permission (Moderator → Listener) ───
+        socket.on('voice:grant-speak', ({ roomName, targetUserId }) => {
+            if (!roomName || !targetUserId) return;
+
+            io.to(`voice:${roomName}`).emit('voice:permissions-updated', {
+                userId: targetUserId,
+                canPublish: true,
+            });
+
+            console.log(`🎤 Speak granted to ${targetUserId} in ${roomName}`);
+        });
+
+        // ─── Revoke Speak Permission ───
+        socket.on('voice:revoke-speak', ({ roomName, targetUserId }) => {
+            if (!roomName || !targetUserId) return;
+
+            io.to(`voice:${roomName}`).emit('voice:permissions-updated', {
+                userId: targetUserId,
+                canPublish: false,
+            });
+
+            console.log(`🔇 Speak revoked from ${targetUserId} in ${roomName}`);
+        });
+
+        // ─── Cleanup on Disconnect ───
+        socket.on('disconnect', () => {
+            if (socket._voiceRooms && socket._voiceUserId) {
+                for (const roomName of socket._voiceRooms) {
+                    removeParticipant(io, roomName, socket._voiceUserId);
+                }
+            }
+        });
+    });
+};
+
+// ─── Helper Functions ───
+
+function removeParticipant(io, roomName, userId) {
+    const room = voiceRooms.get(roomName);
+    if (!room) return;
+
+    const participant = room.get(userId);
+    room.delete(userId);
+
+    // Cleanup empty rooms
+    if (room.size === 0) {
+        voiceRooms.delete(roomName);
+    }
+
+    // Broadcast updated participant list
+    const participants = getParticipantList(roomName);
+    io.to(`voice:${roomName}`).emit('voice:participants', {
+        roomName,
+        participants,
+    });
+
+    if (participant) {
+        console.log(`👋 User ${participant.username} left voice room ${roomName}`);
+    }
+}
+
+function getParticipantList(roomName) {
+    const room = voiceRooms.get(roomName);
+    if (!room) return [];
+
+    return Array.from(room.entries()).map(([userId, data]) => ({
+        userId,
+        username: data.username,
+        avatar: data.avatar,
+        joinedAt: data.joinedAt,
+    }));
+}
+
+// Export for external access (e.g., from routes)
+export const getVoiceRoomParticipants = (roomName) => getParticipantList(roomName);
+export const getActiveVoiceRooms = () => Array.from(voiceRooms.keys());

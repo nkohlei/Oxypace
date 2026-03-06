@@ -1,3 +1,5 @@
+import { initializeVoiceHandler } from './voiceHandler.js';
+
 export const initializeSocket = (io) => {
     // Store user socket connections
     const userSockets = new Map();
@@ -39,5 +41,9 @@ export const initializeSocket = (io) => {
         });
     });
 
+    // Initialize voice channel handler
+    initializeVoiceHandler(io);
+
     return io;
 };
+

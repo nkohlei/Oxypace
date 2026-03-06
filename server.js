@@ -26,6 +26,7 @@ import adminRoutes from './routes/admin.js';
 import portalRoutes from './routes/portals.js';
 import mediaRoutes from './routes/media.js';
 import badgeRoutes from './routes/badges.js';
+import voiceRoutes from './routes/voice.js';
 
 // Models for Sitemap
 import Portal from './models/Portal.js';
@@ -200,6 +201,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/badges', badgeRoutes);
+app.use('/api/voice', voiceRoutes);
 
 import contactRoutes from './routes/contact.js';
 

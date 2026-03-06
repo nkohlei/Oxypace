@@ -99,8 +99,18 @@ const portalSchema = new mongoose.Schema(
                     trim: true,
                 },
                 type: {
-                    type: String, // 'text', 'voice' etc.
+                    type: String,
+                    enum: ['text', 'voice', 'conference'],
                     default: 'text',
+                },
+                roomMode: {
+                    type: String,
+                    enum: ['free', 'stage'],
+                    default: 'free',
+                },
+                maxParticipants: {
+                    type: Number,
+                    default: 25,
                 },
                 isPrivate: {
                     type: Boolean,

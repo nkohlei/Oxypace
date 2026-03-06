@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BadgeProvider } from './context/BadgeContext';
+import { VoiceProvider } from './context/VoiceContext';
 import PrivateRoute from './components/PrivateRoute';
 
 // Advanced lazy loading wrapper to forcefully reload the page (once) 
@@ -325,9 +326,11 @@ function App() {
                 <AuthProvider>
                     <BadgeProvider>
                         <SocketProvider>
-                            <UIProvider>
-                                <AppLayout />
-                            </UIProvider>
+                            <VoiceProvider>
+                                <UIProvider>
+                                    <AppLayout />
+                                </UIProvider>
+                            </VoiceProvider>
                         </SocketProvider>
                     </BadgeProvider>
                 </AuthProvider>

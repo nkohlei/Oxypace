@@ -531,7 +531,7 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
 // @access  Private (Owner/Admin)
 router.post('/:id/channels', protect, async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, type, roomMode } = req.body;
         const portal = await Portal.findById(req.params.id);
 
         if (!portal) {
@@ -546,7 +546,19 @@ router.post('/:id/channels', protect, async (req, res) => {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        portal.channels.push({ name });
+        const channelData = { name };
+        if (type && ['text', 'voice', 'conference'].includes(type)) {
+            channelData.type = type;
+        }
+        if (roomMode && ['free', 'stage'].includes(roomMode)) {
+            channelData.roomMode = roomMode;
+        }
+        // Conference channels default to 'stage' mode
+        if (type === 'conference' && !roomMode) {
+            channelData.roomMode = 'stage';
+        }
+
+        portal.channels.push(channelData);
         await portal.save();
         res.json(portal.channels);
     } catch (error) {

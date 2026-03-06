@@ -29,6 +29,7 @@ const PortalSettingsModal = ({
 
     // Channel State
     const [newChannelName, setNewChannelName] = useState('');
+    const [newChannelType, setNewChannelType] = useState('text');
 
     // Member State
     const [memberSearch, setMemberSearch] = useState('');
@@ -402,11 +403,17 @@ const PortalSettingsModal = ({
         if (!newChannelName.trim()) return;
         if (!isAdmin) return;
         try {
-            const res = await axios.post(`/api/portals/${portal._id}/channels`, {
-                name: newChannelName,
-            });
+            const payload = { name: newChannelName, type: newChannelType };
+            // Conference channels default to stage mode
+            if (newChannelType === 'conference') {
+                payload.roomMode = 'stage';
+            } else if (newChannelType === 'voice') {
+                payload.roomMode = 'free';
+            }
+            const res = await axios.post(`/api/portals/${portal._id}/channels`, payload);
             onUpdate({ ...portal, channels: res.data });
             setNewChannelName('');
+            setNewChannelType('text');
         } catch (err) {
             alert('Kanal eklenemedi');
         }
@@ -965,21 +972,74 @@ const PortalSettingsModal = ({
                             <h2 className="settings-title">Kanallar</h2>
 
                             {isAdmin && (
-                                <div className="add-channel-bar">
-                                    <input
-                                        className="form-input"
-                                        placeholder="Yeni kanal adı (örn: oyun, müzik)"
-                                        value={newChannelName}
-                                        onChange={(e) => setNewChannelName(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
-                                    />
-                                    <button
-                                        className="btn-save"
-                                        style={{ background: '#5865f2' }}
-                                        onClick={handleAddChannel}
-                                    >
-                                        Oluştur
-                                    </button>
+                                <div className="add-channel-bar" style={{ flexDirection: 'column', gap: '10px' }}>
+                                    {/* Channel Type Selector */}
+                                    <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                        {[
+                                            { value: 'text', label: '# Metin', icon: '#' },
+                                            { value: 'voice', label: '🎙️ Ses', icon: '🎙️' },
+                                            { value: 'conference', label: '🎤 Konferans', icon: '🎤' },
+                                        ].map((t) => (
+                                            <button
+                                                key={t.value}
+                                                onClick={() => setNewChannelType(t.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px 12px',
+                                                    background: newChannelType === t.value
+                                                        ? (t.value === 'text' ? 'rgba(88, 101, 242, 0.2)' : t.value === 'voice' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(168, 85, 247, 0.2)')
+                                                        : 'rgba(255,255,255,0.04)',
+                                                    border: newChannelType === t.value
+                                                        ? `1px solid ${t.value === 'text' ? '#5865f2' : t.value === 'voice' ? '#22c55e' : '#a855f7'}`
+                                                        : '1px solid rgba(255,255,255,0.08)',
+                                                    borderRadius: '8px',
+                                                    color: newChannelType === t.value
+                                                        ? (t.value === 'text' ? '#818cf8' : t.value === 'voice' ? '#4ade80' : '#c084fc')
+                                                        : '#94a3b8',
+                                                    cursor: 'pointer',
+                                                    fontSize: '13px',
+                                                    fontWeight: newChannelType === t.value ? '600' : '400',
+                                                    transition: 'all 0.2s',
+                                                }}
+                                            >
+                                                {t.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* Channel Name Input + Create Button */}
+                                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                                        <input
+                                            className="form-input"
+                                            placeholder={
+                                                newChannelType === 'text'
+                                                    ? 'Kanal adı (örn: oyun, müzik)'
+                                                    : newChannelType === 'voice'
+                                                        ? 'Ses kanalı adı (örn: genel-ses)'
+                                                        : 'Konferans adı (örn: toplantı)'
+                                            }
+                                            value={newChannelName}
+                                            onChange={(e) => setNewChannelName(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button
+                                            className="btn-save"
+                                            style={{
+                                                background: newChannelType === 'text' ? '#5865f2' : newChannelType === 'voice' ? '#22c55e' : '#a855f7',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            onClick={handleAddChannel}
+                                        >
+                                            Oluştur
+                                        </button>
+                                    </div>
+                                    {newChannelType !== 'text' && (
+                                        <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+                                            {newChannelType === 'voice'
+                                                ? '💡 Ses kanallarında tüm katılımcılar serbestçe konuşabilir (N-to-N).'
+                                                : '💡 Konferans kanallarında yalnızca moderatörlerin izin verdiği kişiler konuşabilir (1-to-N).'}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -1094,7 +1154,9 @@ const PortalSettingsModal = ({
                                                             gap: '6px',
                                                         }}
                                                     >
-                                                        <span style={{ color: '#72767d' }}>#</span>
+                                                        <span style={{ color: ch.type === 'voice' ? '#22c55e' : ch.type === 'conference' ? '#a855f7' : '#72767d' }}>
+                                                            {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : '#'}
+                                                        </span>
                                                         {ch.name}
                                                         {ch.isPrivate && (
                                                             <svg
