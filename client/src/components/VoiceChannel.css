@@ -1,817 +1,501 @@
-/* ═══════════════════════════════════════════════
-   Voice & Conference Channel Styles
-   Premium glassmorphism design with animations
-   ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   VOICE & CONFERENCE CHANNEL STYLES — Discord-like
+   ═══════════════════════════════════════════════════════ */
 
 /* ─── Container ─── */
-.voice-channel-container {
+.vc-container {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
-    position: relative;
-    overflow: hidden;
-}
-
-.voice-channel-container::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at 30% 40%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
-        radial-gradient(circle at 70% 60%, rgba(168, 85, 247, 0.04) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-}
-
-/* ─── Header ─── */
-.voice-channel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    z-index: 2;
+    background: #1a1a2e;
     position: relative;
 }
 
-.voice-channel-header-info {
+/* ─── Lobby ─── */
+.vc-lobby {
+    flex: 1;
     display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.voice-channel-header-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-}
-
-.voice-channel-header-icon.free {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
-}
-
-.voice-channel-header-icon.stage {
-    background: linear-gradient(135deg, #a855f7, #7c3aed);
-    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
-}
-
-.voice-channel-header-icon svg {
-    color: white;
-}
-
-.voice-channel-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #f1f5f9;
-    margin: 0;
-}
-
-.voice-channel-subtitle {
-    font-size: 12px;
-    color: #94a3b8;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.voice-channel-subtitle .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #22c55e;
-    display: inline-block;
-    animation: pulse-dot 2s infinite;
-}
-
-@keyframes pulse-dot {
-
-    0%,
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 0.6;
-        transform: scale(0.8);
-    }
-}
-
-.voice-participant-count {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 20px;
-    font-size: 13px;
-    color: #cbd5e1;
-    font-weight: 500;
-}
-
-/* ─── Participants Grid ─── */
-.voice-participants-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-    z-index: 1;
-    position: relative;
-}
-
-.voice-participants-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 16px;
-    max-width: 900px;
-    margin: 0 auto;
+    padding: 40px 20px;
 }
 
-/* ─── Participant Card ─── */
-.voice-participant-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    padding: 20px 12px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-}
-
-.voice-participant-card:hover {
-    background: rgba(255, 255, 255, 0.07);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-}
-
-.voice-participant-card.speaking {
-    border-color: rgba(34, 197, 94, 0.5);
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.15),
-        0 0 40px rgba(34, 197, 94, 0.05);
-}
-
-.voice-participant-card.muted {
-    opacity: 0.7;
-}
-
-/* ─── Avatar ─── */
-.voice-avatar-wrapper {
-    position: relative;
-    width: 72px;
-    height: 72px;
-}
-
-.voice-avatar {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    transition: border-color 0.3s;
-}
-
-.voice-participant-card.speaking .voice-avatar {
-    border-color: #22c55e;
-}
-
-/* Speaking ring animation */
-.voice-speaking-ring {
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    width: calc(100% + 8px);
-    height: calc(100% + 8px);
-    border-radius: 50%;
-    border: 2px solid transparent;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.voice-participant-card.speaking .voice-speaking-ring {
-    opacity: 1;
-    border-color: #22c55e;
-    animation: speaking-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes speaking-pulse {
-    0% {
-        transform: scale(1);
-        opacity: 0.8;
-    }
-
-    50% {
-        transform: scale(1.08);
-        opacity: 0.4;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 0.8;
-    }
-}
-
-/* Muted indicator on avatar */
-.voice-muted-badge {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: #ef4444;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #1a1a2e;
-    z-index: 2;
-}
-
-.voice-muted-badge svg {
-    width: 12px;
-    height: 12px;
-    color: white;
-}
-
-.voice-participant-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e2e8f0;
-    text-align: center;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.voice-participant-role {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 2px 8px;
-    border-radius: 10px;
-}
-
-.voice-participant-role.owner {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: #1a1a2e;
-}
-
-.voice-participant-role.admin {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: white;
-}
-
-/* ─── Video Grid ─── */
-.voice-video-grid {
-    display: grid;
-    gap: 8px;
-    flex: 1;
-    padding: 16px;
-    z-index: 1;
-    position: relative;
-}
-
-.voice-video-grid.grid-1 {
-    grid-template-columns: 1fr;
-}
-
-.voice-video-grid.grid-2 {
-    grid-template-columns: 1fr 1fr;
-}
-
-.voice-video-grid.grid-3,
-.voice-video-grid.grid-4 {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-}
-
-.voice-video-grid.grid-many {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.voice-video-tile {
-    position: relative;
-    border-radius: 12px;
-    overflow: hidden;
-    background: rgba(0, 0, 0, 0.4);
-    aspect-ratio: 16/9;
-    min-height: 120px;
-}
-
-.voice-video-tile video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.voice-video-tile .video-name-overlay {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    padding: 4px 10px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    border-radius: 8px;
-    font-size: 12px;
-    color: white;
-    font-weight: 500;
-}
-
-/* ─── Control Bar ─── */
-.voice-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 16px 24px;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(30px);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    z-index: 2;
-    position: relative;
-}
-
-.voice-control-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-}
-
-.voice-control-btn svg {
-    width: 20px;
-    height: 20px;
-}
-
-.voice-control-btn.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: #f1f5f9;
-}
-
-.voice-control-btn.active:hover {
-    background: rgba(255, 255, 255, 0.18);
-}
-
-.voice-control-btn.muted {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-}
-
-.voice-control-btn.muted:hover {
-    background: rgba(239, 68, 68, 0.3);
-}
-
-.voice-control-btn.screen-share {
-    background: rgba(99, 102, 241, 0.2);
-    color: #818cf8;
-}
-
-.voice-control-btn.screen-share.active {
-    background: rgba(99, 102, 241, 0.4);
-    color: white;
-}
-
-.voice-control-btn.leave {
-    background: #ef4444;
-    color: white;
-    width: 56px;
-    height: 48px;
-    border-radius: 24px;
-}
-
-.voice-control-btn.leave:hover {
-    background: #dc2626;
-    transform: scale(1.05);
-}
-
-.voice-control-btn.raise-hand {
-    background: rgba(234, 179, 8, 0.15);
-    color: #eab308;
-}
-
-.voice-control-btn.raise-hand.raised {
-    background: rgba(234, 179, 8, 0.35);
-    animation: hand-bounce 0.6s ease;
-}
-
-@keyframes hand-bounce {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    30% {
-        transform: translateY(-8px);
-    }
-
-    60% {
-        transform: translateY(-3px);
-    }
-}
-
-.voice-control-tooltip {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 4px 10px;
-    background: #1e1e2e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    font-size: 11px;
-    color: #e2e8f0;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-}
-
-.voice-control-btn:hover .voice-control-tooltip {
-    opacity: 1;
-}
-
-/* ─── Stage Mode Specific ─── */
-.stage-layout {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-.stage-speakers-area {
-    flex: 1;
-    padding: 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-}
-
-.stage-speakers-area .voice-participant-card {
-    min-width: 160px;
-    background: rgba(168, 85, 247, 0.08);
-    border-color: rgba(168, 85, 247, 0.15);
-}
-
-.stage-divider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 24px;
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.stage-divider::before,
-.stage-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.stage-listeners-area {
-    padding: 16px 24px;
-    max-height: 40%;
-    overflow-y: auto;
-    background: rgba(0, 0, 0, 0.15);
-}
-
-.stage-listeners-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.stage-listener-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.2s;
-}
-
-.stage-listener-chip:hover {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.stage-listener-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.stage-listener-name {
-    font-size: 12px;
-    color: #94a3b8;
-    font-weight: 500;
-}
-
-/* ─── Raised Hand Indicator ─── */
-.raised-hand-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #eab308, #f59e0b);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    border: 2px solid #1a1a2e;
-    animation: hand-wave 1s ease-in-out infinite alternate;
-    z-index: 3;
-}
-
-@keyframes hand-wave {
-    0% {
-        transform: rotate(-10deg);
-    }
-
-    100% {
-        transform: rotate(10deg);
-    }
-}
-
-/* ─── Raised Hands Panel (Moderator) ─── */
-.raised-hands-panel {
-    position: absolute;
-    top: 70px;
-    right: 16px;
-    width: 280px;
-    background: rgba(15, 15, 26, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 16px;
-    z-index: 10;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.raised-hands-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #f1f5f9;
-    margin: 0 0 12px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.raised-hand-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
-    border-radius: 10px;
-    transition: background 0.2s;
-}
-
-.raised-hand-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.raised-hand-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.raised-hand-name {
-    flex: 1;
-    font-size: 13px;
-    font-weight: 600;
-    color: #e2e8f0;
-}
-
-.raised-hand-actions {
-    display: flex;
-    gap: 6px;
-}
-
-.raised-hand-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.raised-hand-btn.approve {
-    background: rgba(34, 197, 94, 0.2);
-    color: #22c55e;
-}
-
-.raised-hand-btn.approve:hover {
-    background: rgba(34, 197, 94, 0.4);
-}
-
-.raised-hand-btn.deny {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-}
-
-.raised-hand-btn.deny:hover {
-    background: rgba(239, 68, 68, 0.4);
-}
-
-/* ─── Empty State ─── */
-.voice-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 16px;
-    color: #64748b;
-    z-index: 1;
-    position: relative;
-}
-
-.voice-empty-icon {
+.vc-lobby-icon {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(88, 101, 242, 0.1);
+    border: 2px solid rgba(88, 101, 242, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #5865f2;
+    animation: vc-pulse 2s ease-in-out infinite;
 }
 
-.voice-empty-icon svg {
-    width: 36px;
-    height: 36px;
-    color: #475569;
+.vc-lobby-icon.conf {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.3);
+    color: #a855f7;
 }
 
-.voice-empty-title {
-    font-size: 18px;
+@keyframes vc-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+.vc-lobby-title {
+    font-size: 20px;
     font-weight: 700;
-    color: #94a3b8;
+    color: #e2e8f0;
+    margin: 0;
 }
 
-.voice-empty-subtitle {
-    font-size: 13px;
+.vc-lobby-subtitle {
+    font-size: 14px;
     color: #64748b;
+    margin: 0;
     text-align: center;
     max-width: 300px;
 }
 
-/* ─── Connecting State ─── */
-.voice-connecting {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 20px;
-    z-index: 1;
-    position: relative;
+.vc-lobby-hint {
+    font-size: 12px;
+    color: #64748b;
+    margin: 8px 0 0;
 }
 
-.voice-connecting-spinner {
+.vc-join-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+
+.vc-join-btn:hover {
+    background: #16a34a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+}
+
+.vc-join-btn.conf {
+    background: #a855f7;
+}
+
+.vc-join-btn.conf:hover {
+    background: #9333ea;
+    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
+}
+
+/* ─── Connecting Spinner ─── */
+.vc-connecting-spinner {
     width: 48px;
     height: 48px;
-    border: 3px solid rgba(99, 102, 241, 0.2);
-    border-top-color: #6366f1;
+    border: 3px solid rgba(88, 101, 242, 0.2);
+    border-top-color: #5865f2;
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: vc-spin 0.8s linear infinite;
 }
 
-@keyframes spin {
+@keyframes vc-spin {
     to {
         transform: rotate(360deg);
     }
 }
 
-.voice-connecting-text {
+.vc-error-icon {
+    font-size: 48px;
+}
+
+/* ─── Connected Header ─── */
+.vc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(30, 30, 50, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.vc-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.vc-header-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: vc-glow 2s ease-in-out infinite;
+}
+
+.vc-header-dot.conf {
+    background: #a855f7;
+}
+
+@keyframes vc-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+    }
+}
+
+.vc-header-title {
     font-size: 15px;
-    color: #94a3b8;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.vc-header-badge {
+    font-size: 12px;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 10px;
+    border-radius: 10px;
+}
+
+.vc-raised-hands-badge {
+    font-size: 13px;
+    color: #eab308;
+    background: rgba(234, 179, 8, 0.1);
+    padding: 4px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* ─── Participant Grid (Discord-style) ─── */
+.vc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+    align-content: start;
+}
+
+.vc-card {
+    background: #16162a;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.vc-card.speaking {
+    border-color: #22c55e;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.15);
+}
+
+.vc-card-video-area {
+    aspect-ratio: 16 / 12;
+    background: #0f0f1e;
+    position: relative;
+    overflow: hidden;
+}
+
+.vc-card-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vc-card-avatar-area {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1e1e3a 0%, #16162a 100%);
+}
+
+.vc-card-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(88, 101, 242, 0.3);
+}
+
+.vc-card-info {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.vc-card-name {
+    font-size: 13px;
     font-weight: 500;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* ─── Sidebar participant list under voice channels ─── */
-.voice-channel-users {
-    padding-left: 32px;
-    margin-top: 2px;
+.vc-card-role {
+    font-size: 11px;
+    color: #a855f7;
+    white-space: nowrap;
 }
 
-.voice-channel-user {
+.vc-card-indicators {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.vc-indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vc-indicator.muted {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.vc-indicator.muted svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* ─── Control Bar ─── */
+.vc-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 20px;
+    background: rgba(15, 15, 30, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.vc-ctrl-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.vc-ctrl-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.vc-ctrl-btn.on {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.vc-ctrl-btn.on:hover {
+    background: rgba(34, 197, 94, 0.25);
+}
+
+.vc-ctrl-btn.off {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.vc-ctrl-btn.off:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
+.vc-ctrl-btn.leave {
+    background: #ef4444;
+    color: #fff;
+}
+
+.vc-ctrl-btn.leave:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+}
+
+.vc-ctrl-btn.raise-hand {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+}
+
+.vc-ctrl-btn.raise-hand.raised {
+    background: rgba(234, 179, 8, 0.3);
+    animation: vc-hand-pulse 1s infinite;
+}
+
+@keyframes vc-hand-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* ─── Conference Stage ─── */
+.vc-stage-section {
+    padding: 12px 16px;
+}
+
+.vc-stage-section.listeners {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.vc-stage-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.vc-listeners-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vc-listener-chip {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 8px;
+    padding: 4px 10px 4px 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
     font-size: 12px;
     color: #94a3b8;
-    border-radius: 4px;
-    cursor: default;
 }
 
-.voice-channel-user-avatar {
-    width: 20px;
-    height: 20px;
+.vc-listener-avatar {
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     object-fit: cover;
 }
 
-.voice-channel-user.speaking {
+/* ─── Raised Hands Panel ─── */
+.vc-raised-panel {
+    padding: 8px 16px;
+    background: rgba(234, 179, 8, 0.05);
+    border-bottom: 1px solid rgba(234, 179, 8, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vc-raised-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.vc-raised-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.vc-raised-name {
+    flex: 1;
+    font-size: 13px;
+    color: #e2e8f0;
+}
+
+.vc-raised-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vc-raised-btn.approve {
+    background: rgba(34, 197, 94, 0.2);
     color: #22c55e;
 }
 
-/* ─── Responsive ─── */
-@media (max-width: 768px) {
-    .voice-participants-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 10px;
-    }
-
-    .voice-participant-card {
-        padding: 14px 8px;
-    }
-
-    .voice-avatar {
-        width: 56px;
-        height: 56px;
-    }
-
-    .voice-avatar-wrapper {
-        width: 56px;
-        height: 56px;
-    }
-
-    .voice-controls {
-        gap: 8px;
-        padding: 12px 16px;
-    }
-
-    .voice-control-btn {
-        width: 42px;
-        height: 42px;
-    }
-
-    .voice-control-btn.leave {
-        width: 50px;
-        height: 42px;
-    }
-
-    .voice-channel-header {
-        padding: 12px 16px;
-    }
-
-    .raised-hands-panel {
-        right: 8px;
-        width: 260px;
-    }
-
-    .voice-video-grid.grid-2,
-    .voice-video-grid.grid-3,
-    .voice-video-grid.grid-4 {
-        grid-template-columns: 1fr;
-    }
+.vc-raised-btn.approve:hover {
+    background: rgba(34, 197, 94, 0.4);
 }
 
-@media (max-width: 480px) {
-    .voice-participants-grid {
-        grid-template-columns: repeat(2, 1fr);
+.vc-raised-btn.deny {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.vc-raised-btn.deny:hover {
+    background: rgba(239, 68, 68, 0.4);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+    .vc-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+        padding: 8px;
     }
 
-    .voice-participant-count {
-        display: none;
+    .vc-card-avatar {
+        width: 48px;
+        height: 48px;
+    }
+
+    .vc-ctrl-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .vc-join-btn {
+        padding: 12px 24px;
+        font-size: 14px;
     }
 }
