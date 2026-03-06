@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback } from 'react';
+import { createContext, useContext, useReducer, useCallback, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
 import axios from 'axios';
@@ -35,20 +35,29 @@ function voiceReducer(state, action) {
         case 'SET_CONNECTING':
             return { ...state, isConnecting: true, error: null };
 
-        case 'JOIN_ROOM':
+        case 'TOKEN_RECEIVED':
+            // Token received from API — store room data but DON'T set isConnected yet
+            // isConnected will be set when LiveKit actually connects
             return {
                 ...state,
                 currentRoom: action.payload,
-                isConnecting: false,
-                isConnected: true,
-                isMuted: true,
-                isCameraOn: false,
+                isConnecting: true, // Still connecting until LiveKit connects
                 roomMode: action.payload.roomMode || 'free',
                 userRole: action.payload.userRole || 'member',
                 canSpeak: action.payload.roomMode !== 'stage' ||
                     ['owner', 'admin'].includes(action.payload.userRole),
                 raisedHands: [],
                 error: null,
+            };
+
+        case 'CONNECTED':
+            // LiveKit WebRTC connection established
+            return {
+                ...state,
+                isConnecting: false,
+                isConnected: true,
+                isMuted: true,
+                isCameraOn: false,
             };
 
         case 'LEAVE_ROOM':
@@ -110,13 +119,37 @@ export const VoiceProvider = ({ children }) => {
     const [state, dispatch] = useReducer(voiceReducer, initialState);
     const { socket } = useSocket();
     const { user } = useAuth();
+    const stateRef = useRef(state);
+    stateRef.current = state;
+
+    // ─── Mark Connected (called by components when LiveKit connects) ───
+    const setConnected = useCallback(() => {
+        dispatch({ type: 'CONNECTED' });
+    }, []);
+
+    // ─── Leave Voice Channel ───
+    const leaveVoiceChannel = useCallback(() => {
+        if (stateRef.current.currentRoom && socket) {
+            socket.emit('voice:leave', {
+                roomName: stateRef.current.currentRoom.roomName,
+                userId: user?._id,
+            });
+        }
+        dispatch({ type: 'LEAVE_ROOM' });
+    }, [socket, user]);
 
     // ─── Join Voice Channel ───
     const joinVoiceChannel = useCallback(async (portalId, channelId) => {
-        if (state.isConnecting || state.isConnected) {
-            // Already connected — leave first
-            if (state.currentRoom?.channelId === channelId) return;
-            await leaveVoiceChannel();
+        const s = stateRef.current;
+
+        if (s.isConnecting) return;
+
+        // If already in this channel, skip
+        if (s.currentRoom?.channelId === channelId && (s.isConnected || s.isConnecting)) return;
+
+        // If in a different room, leave first
+        if (s.currentRoom) {
+            leaveVoiceChannel();
         }
 
         dispatch({ type: 'SET_CONNECTING' });
@@ -137,7 +170,8 @@ export const VoiceProvider = ({ children }) => {
                 channelName,
             };
 
-            dispatch({ type: 'JOIN_ROOM', payload: roomData });
+            // Store token but don't mark as connected yet
+            dispatch({ type: 'TOKEN_RECEIVED', payload: roomData });
 
             // Notify socket for presence tracking
             if (socket) {
@@ -145,7 +179,7 @@ export const VoiceProvider = ({ children }) => {
                     roomName,
                     userId: user._id,
                     username: user.username,
-                    avatar: user.profileImage || '',
+                    avatar: user.profile?.avatar || '',
                 });
             }
         } catch (error) {
@@ -155,18 +189,7 @@ export const VoiceProvider = ({ children }) => {
                 payload: error.response?.data?.message || 'Failed to join voice channel',
             });
         }
-    }, [state.isConnecting, state.isConnected, state.currentRoom, socket, user]);
-
-    // ─── Leave Voice Channel ───
-    const leaveVoiceChannel = useCallback(() => {
-        if (state.currentRoom && socket) {
-            socket.emit('voice:leave', {
-                roomName: state.currentRoom.roomName,
-                userId: user?._id,
-            });
-        }
-        dispatch({ type: 'LEAVE_ROOM' });
-    }, [state.currentRoom, socket, user]);
+    }, [socket, user, leaveVoiceChannel]);
 
     // ─── Media Controls ───
     const toggleMute = useCallback(() => {
@@ -183,23 +206,23 @@ export const VoiceProvider = ({ children }) => {
 
     // ─── Raise Hand (Stage Mode) ───
     const raiseHand = useCallback((raised = true) => {
-        if (!state.currentRoom || !socket) return;
+        if (!stateRef.current.currentRoom || !socket) return;
 
         socket.emit('voice:raise-hand', {
-            roomName: state.currentRoom.roomName,
+            roomName: stateRef.current.currentRoom.roomName,
             userId: user._id,
             username: user.username,
-            avatar: user.profileImage || '',
+            avatar: user.profile?.avatar || '',
             raised,
         });
-    }, [state.currentRoom, socket, user]);
+    }, [socket, user]);
 
     // ─── Grant/Revoke Speak (Moderator) ───
     const grantSpeak = useCallback(async (targetUserId) => {
-        if (!state.currentRoom) return;
+        if (!stateRef.current.currentRoom) return;
 
         try {
-            const { portalId, channelId } = state.currentRoom;
+            const { portalId, channelId } = stateRef.current.currentRoom;
             await axios.post(`/api/voice/rooms/${portalId}/${channelId}/permissions`, {
                 targetUserId,
                 canPublish: true,
@@ -207,20 +230,20 @@ export const VoiceProvider = ({ children }) => {
 
             if (socket) {
                 socket.emit('voice:grant-speak', {
-                    roomName: state.currentRoom.roomName,
+                    roomName: stateRef.current.currentRoom.roomName,
                     targetUserId,
                 });
             }
         } catch (error) {
             console.error('Failed to grant speak:', error);
         }
-    }, [state.currentRoom, socket]);
+    }, [socket]);
 
     const revokeSpeak = useCallback(async (targetUserId) => {
-        if (!state.currentRoom) return;
+        if (!stateRef.current.currentRoom) return;
 
         try {
-            const { portalId, channelId } = state.currentRoom;
+            const { portalId, channelId } = stateRef.current.currentRoom;
             await axios.post(`/api/voice/rooms/${portalId}/${channelId}/permissions`, {
                 targetUserId,
                 canPublish: false,
@@ -228,17 +251,16 @@ export const VoiceProvider = ({ children }) => {
 
             if (socket) {
                 socket.emit('voice:revoke-speak', {
-                    roomName: state.currentRoom.roomName,
+                    roomName: stateRef.current.currentRoom.roomName,
                     targetUserId,
                 });
             }
         } catch (error) {
             console.error('Failed to revoke speak:', error);
         }
-    }, [state.currentRoom, socket]);
+    }, [socket]);
 
     // ─── Socket Event Listeners ───
-    // Register socket listeners when in a room
     const registerSocketListeners = useCallback(() => {
         if (!socket) return () => { };
 
@@ -272,6 +294,7 @@ export const VoiceProvider = ({ children }) => {
         ...state,
         joinVoiceChannel,
         leaveVoiceChannel,
+        setConnected,
         toggleMute,
         toggleCamera,
         toggleScreenShare,

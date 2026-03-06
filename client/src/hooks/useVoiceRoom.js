@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Room, RoomEvent, Track, ConnectionState } from 'livekit-client';
+import { Room, RoomEvent, ConnectionState } from 'livekit-client';
 
 /**
  * Custom hook for managing a LiveKit WebRTC room connection.
  * Handles room lifecycle, track management, and participant events.
  */
 export const useVoiceRoom = ({
-    token,
-    serverUrl,
     onConnected,
     onDisconnected,
     onParticipantJoined,
@@ -23,12 +21,45 @@ export const useVoiceRoom = ({
     const [audioTracks, setAudioTracks] = useState([]);
     const [videoTracks, setVideoTracks] = useState([]);
 
+    // ─── Helpers (stable, no dependencies) ───
+    const updateParticipants = useCallback((room) => {
+        if (!room) return;
+        const participants = Array.from(room.remoteParticipants.values()).map((p) => ({
+            identity: p.identity,
+            name: p.name,
+            metadata: p.metadata,
+            isSpeaking: p.isSpeaking,
+            isMicrophoneEnabled: p.isMicrophoneEnabled,
+            isCameraEnabled: p.isCameraEnabled,
+            isScreenShareEnabled: p.isScreenShareEnabled,
+            connectionQuality: p.connectionQuality,
+            audioTracks: Array.from(p.audioTrackPublications.values()),
+            videoTracks: Array.from(p.videoTrackPublications.values()),
+        }));
+        setRemoteParticipants(participants);
+    }, []);
+
+    const updateTracks = useCallback((room) => {
+        if (!room) return;
+        const audio = [];
+        const video = [];
+
+        for (const p of room.remoteParticipants.values()) {
+            for (const pub of p.audioTrackPublications.values()) {
+                if (pub.track) audio.push({ track: pub.track, participant: p });
+            }
+            for (const pub of p.videoTrackPublications.values()) {
+                if (pub.track) video.push({ track: pub.track, participant: p, source: pub.source });
+            }
+        }
+
+        setAudioTracks(audio);
+        setVideoTracks(video);
+    }, []);
+
     // ─── Connect to Room ───
     const connect = useCallback(async (connectToken, connectUrl) => {
-        const tkn = connectToken || token;
-        const url = connectUrl || serverUrl;
-
-        if (!tkn || !url) {
+        if (!connectToken || !connectUrl) {
             console.error('Token and serverUrl are required to connect');
             return;
         }
@@ -37,6 +68,7 @@ export const useVoiceRoom = ({
             // Disconnect existing room if any
             if (roomRef.current) {
                 await roomRef.current.disconnect();
+                roomRef.current = null;
             }
 
             const room = new Room({
@@ -108,14 +140,14 @@ export const useVoiceRoom = ({
 
             roomRef.current = room;
 
-            // Connect
-            await room.connect(url, tkn);
+            // Connect to LiveKit server
+            await room.connect(connectUrl, connectToken);
         } catch (error) {
             console.error('Failed to connect to voice room:', error);
             setConnectionState('disconnected');
             onError?.(error);
         }
-    }, [token, serverUrl]);
+    }, [updateParticipants, updateTracks]);
 
     // ─── Disconnect ───
     const disconnect = useCallback(async () => {
@@ -159,42 +191,6 @@ export const useVoiceRoom = ({
         }
     }, []);
 
-    // ─── Helpers ───
-    const updateParticipants = (room) => {
-        if (!room) return;
-        const participants = Array.from(room.remoteParticipants.values()).map((p) => ({
-            identity: p.identity,
-            name: p.name,
-            metadata: p.metadata ? JSON.parse(p.metadata) : {},
-            isSpeaking: p.isSpeaking,
-            isMicrophoneEnabled: p.isMicrophoneEnabled,
-            isCameraEnabled: p.isCameraEnabled,
-            isScreenShareEnabled: p.isScreenShareEnabled,
-            connectionQuality: p.connectionQuality,
-            audioTracks: Array.from(p.audioTrackPublications.values()),
-            videoTracks: Array.from(p.videoTrackPublications.values()),
-        }));
-        setRemoteParticipants(participants);
-    };
-
-    const updateTracks = (room) => {
-        if (!room) return;
-        const audio = [];
-        const video = [];
-
-        for (const p of room.remoteParticipants.values()) {
-            for (const pub of p.audioTrackPublications.values()) {
-                if (pub.track) audio.push({ track: pub.track, participant: p });
-            }
-            for (const pub of p.videoTrackPublications.values()) {
-                if (pub.track) video.push({ track: pub.track, participant: p, source: pub.source });
-            }
-        }
-
-        setAudioTracks(audio);
-        setVideoTracks(video);
-    };
-
     // ─── Cleanup on Unmount ───
     useEffect(() => {
         return () => {
@@ -218,8 +214,8 @@ export const useVoiceRoom = ({
         toggleMicrophone,
         toggleCamera,
         toggleScreenShare,
-        isConnected: connectionState === 'connected',
-        isConnecting: connectionState === 'connecting',
+        isConnected: connectionState === ConnectionState.Connected || connectionState === 'connected',
+        isConnecting: connectionState === ConnectionState.Connecting || connectionState === 'connecting',
     };
 };
 

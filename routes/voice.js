@@ -63,10 +63,10 @@ router.post('/token', protect, async (req, res) => {
         // Create access token with appropriate permissions
         const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
             identity: req.user._id.toString(),
-            name: req.user.displayName || req.user.username,
+            name: req.user.profile?.displayName || req.user.username,
             metadata: JSON.stringify({
                 username: req.user.username,
-                avatar: req.user.profileImage || '',
+                avatar: req.user.profile?.avatar || '',
                 role: userRole,
             }),
         });
@@ -213,8 +213,8 @@ router.post('/rooms/:portalId/:channelId/raise-hand', protect, async (req, res) 
             io.to(`voice:${roomName}`).emit('voice:raise-hand', {
                 userId: req.user._id.toString(),
                 username: req.user.username,
-                displayName: req.user.displayName || req.user.username,
-                avatar: req.user.profileImage || '',
+                displayName: req.user.profile?.displayName || req.user.username,
+                avatar: req.user.profile?.avatar || '',
                 raised: raised !== false,
             });
         }

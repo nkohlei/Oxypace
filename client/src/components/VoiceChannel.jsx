@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useVoice } from '../context/VoiceContext';
 import { useVoiceRoom } from '../hooks/useVoiceRoom';
 import { useAuth } from '../context/AuthContext';
@@ -12,14 +12,15 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const { user } = useAuth();
     const {
         currentRoom,
-        participants,
         isMuted,
         isCameraOn,
         isScreenSharing,
         isConnecting: contextConnecting,
         isConnected,
+        error,
         joinVoiceChannel,
         leaveVoiceChannel,
+        setConnected,
         toggleMute,
         toggleCamera,
         toggleScreenShare,
@@ -39,21 +40,30 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         isConnected: rtcConnected,
         isConnecting: rtcConnecting,
         localParticipant,
-    } = useVoiceRoom();
+    } = useVoiceRoom({
+        onConnected: () => {
+            // Notify VoiceContext that LiveKit is connected
+            setConnected();
+        },
+    });
 
     const audioRefs = useRef({});
-    const videoRefs = useRef({});
+    const hasConnectedRef = useRef(false);
 
     // ─── Join Room on Mount ───
     useEffect(() => {
-        if (!isConnected && !contextConnecting) {
-            joinVoiceChannel(portalId, channelId);
-        }
+        joinVoiceChannel(portalId, channelId);
+        return () => {
+            disconnect();
+            leaveVoiceChannel();
+            hasConnectedRef.current = false;
+        };
     }, [portalId, channelId]);
 
     // ─── Connect to LiveKit when token is available ───
     useEffect(() => {
-        if (currentRoom?.token && currentRoom?.serverUrl && !rtcConnected && !rtcConnecting) {
+        if (currentRoom?.token && currentRoom?.serverUrl && !rtcConnected && !rtcConnecting && !hasConnectedRef.current) {
+            hasConnectedRef.current = true;
             connect(currentRoom.token, currentRoom.serverUrl);
         }
     }, [currentRoom?.token, currentRoom?.serverUrl, rtcConnected, rtcConnecting, connect]);
@@ -99,14 +109,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         };
     }, [audioTracks]);
 
-    // ─── Leave on Unmount ───
-    useEffect(() => {
-        return () => {
-            disconnect();
-            leaveVoiceChannel();
-        };
-    }, []);
-
     // ─── Render Helpers ───
     const getAvatar = (participant) => {
         try {
@@ -123,13 +125,13 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
     const isSpeaking = (identity) => activeSpeakers.includes(identity);
 
-    // Build participant list from both socket and RTC data
+    // Build participant list from RTC data
     const allParticipants = [
         // Local participant
         ...(localParticipant ? [{
             identity: localParticipant.identity,
-            name: user?.displayName || user?.username || 'You',
-            metadata: JSON.stringify({ avatar: user?.profileImage || '', username: user?.username }),
+            name: user?.profile?.displayName || user?.username || 'You',
+            metadata: JSON.stringify({ avatar: user?.profile?.avatar || '', username: user?.username }),
             isSelf: true,
             isMuted: isMuted,
             isCameraOn: isCameraOn,
@@ -149,12 +151,46 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const hasVideos = activeVideoParticipants.length > 0 || isCameraOn;
 
     // ─── Loading State ───
-    if (contextConnecting || rtcConnecting) {
+    if (contextConnecting || rtcConnecting || (!rtcConnected && !error)) {
         return (
             <div className="voice-channel-container">
                 <div className="voice-connecting">
                     <div className="voice-connecting-spinner" />
                     <span className="voice-connecting-text">Ses kanalına bağlanılıyor...</span>
+                    {error && (
+                        <span style={{ color: '#ef4444', marginTop: '8px', fontSize: '13px' }}>{error}</span>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // ─── Error State ───
+    if (error && !rtcConnected) {
+        return (
+            <div className="voice-channel-container">
+                <div className="voice-connecting">
+                    <span style={{ fontSize: '36px' }}>⚠️</span>
+                    <span className="voice-connecting-text" style={{ color: '#ef4444' }}>Bağlantı Hatası</span>
+                    <span style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>{error}</span>
+                    <button
+                        onClick={() => {
+                            hasConnectedRef.current = false;
+                            joinVoiceChannel(portalId, channelId);
+                        }}
+                        style={{
+                            marginTop: '12px',
+                            padding: '8px 20px',
+                            background: '#5865f2',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                        }}
+                    >
+                        Tekrar Dene
+                    </button>
                 </div>
             </div>
         );
@@ -251,10 +287,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <div className="voice-participants-grid">
                             {allParticipants.map((p) => {
                                 const avatar = p.isSelf
-                                    ? user?.profileImage
+                                    ? user?.profile?.avatar
                                     : getAvatar(p);
                                 const name = p.isSelf
-                                    ? (user?.displayName || user?.username || 'Sen')
+                                    ? (user?.profile?.displayName || user?.username || 'Sen')
                                     : getUsername(p);
                                 const speaking = p.isSelf ? false : isSpeaking(p.identity);
                                 const muted = p.isMuted;

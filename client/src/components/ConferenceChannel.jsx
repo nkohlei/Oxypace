@@ -13,7 +13,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const { user } = useAuth();
     const {
         currentRoom,
-        participants,
         isMuted,
         isCameraOn,
         isScreenSharing,
@@ -22,8 +21,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         canSpeak,
         raisedHands,
         userRole,
+        error,
         joinVoiceChannel,
         leaveVoiceChannel,
+        setConnected,
         toggleMute,
         toggleCamera,
         toggleScreenShare,
@@ -46,24 +47,33 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         isConnected: rtcConnected,
         isConnecting: rtcConnecting,
         localParticipant,
-    } = useVoiceRoom();
+    } = useVoiceRoom({
+        onConnected: () => {
+            setConnected();
+        },
+    });
 
     const [showRaisedHands, setShowRaisedHands] = useState(false);
     const [handRaised, setHandRaised] = useState(false);
     const audioRefs = useRef({});
+    const hasConnectedRef = useRef(false);
 
     const isAdmin = userRole === 'owner' || userRole === 'admin';
 
     // ─── Join Room on Mount ───
     useEffect(() => {
-        if (!isConnected && !contextConnecting) {
-            joinVoiceChannel(portalId, channelId);
-        }
+        joinVoiceChannel(portalId, channelId);
+        return () => {
+            disconnect();
+            leaveVoiceChannel();
+            hasConnectedRef.current = false;
+        };
     }, [portalId, channelId]);
 
     // ─── Connect to LiveKit ───
     useEffect(() => {
-        if (currentRoom?.token && currentRoom?.serverUrl && !rtcConnected && !rtcConnecting) {
+        if (currentRoom?.token && currentRoom?.serverUrl && !rtcConnected && !rtcConnecting && !hasConnectedRef.current) {
+            hasConnectedRef.current = true;
             connect(currentRoom.token, currentRoom.serverUrl);
         }
     }, [currentRoom?.token, currentRoom?.serverUrl, rtcConnected, rtcConnecting, connect]);
@@ -106,14 +116,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         };
     }, [audioTracks]);
 
-    // ─── Leave on Unmount ───
-    useEffect(() => {
-        return () => {
-            disconnect();
-            leaveVoiceChannel();
-        };
-    }, []);
-
     // ─── Helpers ───
     const getAvatar = (p) => {
         try {
@@ -153,22 +155,50 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         raiseHand(newState);
     };
 
-    // ─── Handle Grant Speak ───
-    const handleGrantSpeak = (userId) => {
-        grantSpeak(userId);
-    };
-
-    const handleRevokeSpeak = (userId) => {
-        revokeSpeak(userId);
-    };
+    const handleGrantSpeak = (userId) => grantSpeak(userId);
+    const handleRevokeSpeak = (userId) => revokeSpeak(userId);
 
     // ─── Loading ───
-    if (contextConnecting || rtcConnecting) {
+    if (contextConnecting || rtcConnecting || (!rtcConnected && !error)) {
         return (
             <div className="voice-channel-container">
                 <div className="voice-connecting">
                     <div className="voice-connecting-spinner" />
                     <span className="voice-connecting-text">Konferans odasına bağlanılıyor...</span>
+                    {error && (
+                        <span style={{ color: '#ef4444', marginTop: '8px', fontSize: '13px' }}>{error}</span>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // ─── Error State ───
+    if (error && !rtcConnected) {
+        return (
+            <div className="voice-channel-container">
+                <div className="voice-connecting">
+                    <span style={{ fontSize: '36px' }}>⚠️</span>
+                    <span className="voice-connecting-text" style={{ color: '#ef4444' }}>Bağlantı Hatası</span>
+                    <span style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>{error}</span>
+                    <button
+                        onClick={() => {
+                            hasConnectedRef.current = false;
+                            joinVoiceChannel(portalId, channelId);
+                        }}
+                        style={{
+                            marginTop: '12px',
+                            padding: '8px 20px',
+                            background: '#a855f7',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                        }}
+                    >
+                        Tekrar Dene
+                    </button>
                 </div>
             </div>
         );
@@ -284,7 +314,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 <div className="voice-speaking-ring" />
                                 <img
                                     className="voice-avatar"
-                                    src={user?.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=a855f7&color=fff&size=72`}
+                                    src={user?.profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=a855f7&color=fff&size=72`}
                                     alt={user?.username}
                                     onError={(e) => {
                                         e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=a855f7&color=fff&size=72`;
@@ -299,7 +329,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                     </div>
                                 )}
                             </div>
-                            <span className="voice-participant-name">{user?.displayName || user?.username} (Sen)</span>
+                            <span className="voice-participant-name">{user?.profile?.displayName || user?.username} (Sen)</span>
                             <span className={`voice-participant-role ${isAdmin ? 'owner' : ''}`}>
                                 {isAdmin ? '🎤 Moderatör' : '🎙️ Konuşmacı'}
                             </span>
@@ -379,13 +409,13 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             <div className="stage-listener-chip">
                                 <img
                                     className="stage-listener-avatar"
-                                    src={user?.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=6366f1&color=fff&size=28`}
+                                    src={user?.profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=6366f1&color=fff&size=28`}
                                     alt={user?.username}
                                     onError={(e) => {
                                         e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=6366f1&color=fff&size=28`;
                                     }}
                                 />
-                                <span className="stage-listener-name">{user?.displayName || user?.username} (Sen)</span>
+                                <span className="stage-listener-name">{user?.profile?.displayName || user?.username} (Sen)</span>
                                 {handRaised && <span style={{ fontSize: '12px' }}>✋</span>}
                             </div>
                         )}
