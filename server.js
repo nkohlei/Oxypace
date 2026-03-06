@@ -1,7 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import passport from 'passport';
 import session from 'express-session';
@@ -41,9 +41,7 @@ import mongoSanitize from 'express-mongo-sanitize';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-dotenv.config();
-
+// Load environment variables (already handled at top of file via import 'dotenv/config')
 console.log('🔍 Checking Environment Variables...');
 console.log('Available Env Keys:', Object.keys(process.env).join(', '));
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Defined' : 'Not Defined');
