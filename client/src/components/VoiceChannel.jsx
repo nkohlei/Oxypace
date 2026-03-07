@@ -132,7 +132,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     // ─── LOBBY (Not Active in This Room) ───
     if (!isActiveRoom) {
         return (
-            <div className="vc-container glass-container">
+            <div className="vc-container glass-container lobby-bg">
                 <div className="vc-lobby glass-panel">
                     <div className="vc-lobby-icon glass-icon">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -144,9 +144,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
                     <p className="vc-lobby-subtitle">Sesli sohbete katılmak için aşağıdaki butona tıklayın</p>
                     <button className="vc-join-btn glass-join-btn action-btn-large" onClick={handleJoin}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-                        </svg>
                         Aramaya Katıl
                     </button>
                     {activeRoom && (
@@ -236,16 +233,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
                 )}
 
-                {/* 2. If focused, Spotlight layout (Hero + Carousel) */}
+                {/* 2. If focused, Spotlight layout (Carousel + Hero) */}
                 {focusedParticipant && (
                     <>
-                        <div className="vc-hero">
-                            {renderParticipantCard(focusedParticipant, 'hero')}
-                        </div>
                         <div className="vc-carousel custom-scrollbar">
                             {participants
                                 .filter(p => p.identity !== focusedIdentity)
                                 .map(p => renderParticipantCard(p, 'carousel'))}
+                        </div>
+                        <div className="vc-hero">
+                            {renderParticipantCard(focusedParticipant, 'hero')}
                         </div>
                     </>
                 )}
