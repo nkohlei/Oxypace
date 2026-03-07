@@ -110,54 +110,57 @@
     display: none;
 }
 
-/* Dynamic Grids (No Focus) - using Flexbox for maintained aspect ratio and centering */
+/* Dynamic Grids (No Focus) - Pure Grid with Auto-fit logic */
 .layout-dynamic .vc-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-content: center;
-    align-items: center;
+    display: grid;
     gap: 16px;
     height: 100%;
     width: 100%;
-    max-width: 1400px;
     margin: 0 auto;
+    align-content: center;
+    justify-content: center;
 }
 
 .layout-dynamic .vc-card.role-grid {
     aspect-ratio: 16 / 9;
+    width: 100%;
     height: auto;
-    flex-shrink: 0;
-    flex-grow: 1;
-    /* allow spreading logically */
+    max-height: 100%;
+    margin: 0 auto;
+    min-height: 0;
+    /* Prevents flex/grid implicit overflow */
 }
 
 /* 1 User */
-.layout-dynamic.grid-1 .vc-card.role-grid {
-    flex-basis: auto;
-    width: 100%;
-    max-width: 400px;
+.layout-dynamic.grid-1 .vc-grid {
+    grid-template-columns: 1fr;
+    max-width: 800px;
 }
 
 /* 2 Users */
-.layout-dynamic.grid-2 .vc-card.role-grid {
-    flex-basis: 40%;
-    min-width: 280px;
-    max-width: 380px;
+.layout-dynamic.grid-2 .vc-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 1200px;
 }
 
-/* 3 Users */
-.layout-dynamic.grid-3 .vc-card.role-grid {
-    flex-basis: 30%;
-    min-width: 250px;
-    max-width: 320px;
+/* 3 Users - 2 on top, 1 bottom center */
+.layout-dynamic.grid-3 .vc-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: 1fr 1fr;
+    max-width: 1200px;
+}
+
+.layout-dynamic.grid-3 .vc-card.role-grid:nth-child(3) {
+    grid-column: 1 / -1;
+    /* spans full width but we restrict its size */
+    width: 50%;
+    justify-self: center;
 }
 
 /* 4+ Users */
-.layout-dynamic.grid-4 .vc-card.role-grid {
-    flex-basis: 30%;
-    min-width: 200px;
-    max-width: 280px;
+.layout-dynamic.grid-4 .vc-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    max-width: 1400px;
 }
 
 /* Spotlight Layout (Sidebar Carousel + Hero) */
@@ -240,7 +243,9 @@
 .vc-card-video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    /* Contain to prevent cutting off in weird aspect ratios */
+    background: #000;
 }
 
 .vc-card-avatar-area {

@@ -2,9 +2,10 @@
 
 .global-voice-overlay {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    width: 280px;
+    bottom: 80px;
+    /* Sits just above the UserBar in the sidebar */
+    left: 20px;
+    width: 250px;
     background: rgba(20, 20, 22, 0.65);
     /* Glassmorphism Base */
     backdrop-filter: blur(16px);
