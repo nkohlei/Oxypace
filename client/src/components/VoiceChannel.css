@@ -1,225 +1,205 @@
-/* ═══════════════════════════════════════════════════════
-   VOICE & CONFERENCE CHANNEL STYLES — Discord-like
-   ═══════════════════════════════════════════════════════ */
+/* VoiceChannel.css - Glassmorphism & Spotlight Redesign */
 
-/* ─── Container ─── */
+/* Main Container */
 .vc-container {
-    display: flex;
-    flex-direction: column;
     height: 100%;
-    background: #1a1a2e;
-    position: relative;
-}
-
-/* ─── Lobby ─── */
-.vc-lobby {
-    flex: 1;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 40px 20px;
+    padding: 24px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
 }
 
-.vc-lobby-icon {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: rgba(88, 101, 242, 0.1);
-    border: 2px solid rgba(88, 101, 242, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #5865f2;
-    animation: vc-pulse 2s ease-in-out infinite;
+/* Glassmorphism Classes */
+.glass-container {
+    background: transparent;
 }
 
-.vc-lobby-icon.conf {
-    background: rgba(168, 85, 247, 0.1);
-    border-color: rgba(168, 85, 247, 0.3);
-    color: #a855f7;
+.glass-panel {
+    background: rgba(20, 20, 22, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
-@keyframes vc-pulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-
-    50% {
-        transform: scale(1.05);
-        opacity: 0.8;
-    }
+.glass-controls {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
 }
 
-.vc-lobby-title {
-    font-size: 20px;
-    font-weight: 700;
-    color: #e2e8f0;
-    margin: 0;
-}
-
-.vc-lobby-subtitle {
-    font-size: 14px;
-    color: #64748b;
-    margin: 0;
-    text-align: center;
-    max-width: 300px;
-}
-
-.vc-lobby-hint {
-    font-size: 12px;
-    color: #64748b;
-    margin: 8px 0 0;
-}
-
-.vc-join-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 32px;
-    background: #22c55e;
-    color: #fff;
-    border: none;
-    border-radius: 30px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 8px;
-}
-
-.vc-join-btn:hover {
-    background: #16a34a;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
-}
-
-.vc-join-btn.conf {
-    background: #a855f7;
-}
-
-.vc-join-btn.conf:hover {
-    background: #9333ea;
-    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
-}
-
-/* ─── Connecting Spinner ─── */
-.vc-connecting-spinner {
-    width: 48px;
-    height: 48px;
-    border: 3px solid rgba(88, 101, 242, 0.2);
-    border-top-color: #5865f2;
-    border-radius: 50%;
-    animation: vc-spin 0.8s linear infinite;
-}
-
-@keyframes vc-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.vc-error-icon {
-    font-size: 48px;
-}
-
-/* ─── Connected Header ─── */
+/* Header */
 .vc-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
-    background: rgba(30, 30, 50, 0.8);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    align-items: center;
+    padding-bottom: 20px;
     flex-shrink: 0;
 }
 
 .vc-header-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .vc-header-dot {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
+    background-color: var(--primary-green);
     border-radius: 50%;
-    background: #22c55e;
-    animation: vc-glow 2s ease-in-out infinite;
-}
-
-.vc-header-dot.conf {
-    background: #a855f7;
-}
-
-@keyframes vc-glow {
-
-    0%,
-    100% {
-        box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
-    }
-
-    50% {
-        box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
-    }
+    box-shadow: 0 0 10px var(--primary-green);
+    animation: pulse 2s infinite;
 }
 
 .vc-header-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #e2e8f0;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.vc-header-badge {
-    font-size: 12px;
-    color: #64748b;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 3px 10px;
-    border-radius: 10px;
-}
-
-.vc-raised-hands-badge {
+.glass-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 20px;
     font-size: 13px;
-    color: #eab308;
-    background: rgba(234, 179, 8, 0.1);
-    padding: 4px 12px;
-    border-radius: 10px;
-    cursor: pointer;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* ─── Participant Grid (Discord-style) ─── */
-.vc-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-    padding: 16px;
+/* Viewport Area (Grid & Hero) */
+.vc-viewport {
     flex: 1;
-    overflow-y: auto;
-    align-content: start;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: none;
+    /* Firefox */
 }
 
+.vc-viewport::-webkit-scrollbar {
+    display: none;
+}
+
+/* Dynamic Grids (No Focus) */
+.layout-dynamic.grid-1 .vc-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    height: 100%;
+}
+
+.layout-dynamic.grid-2 .vc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: 1fr;
+    gap: 16px;
+    height: 100%;
+}
+
+.layout-dynamic.grid-3 .vc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 16px;
+    height: 100%;
+}
+
+.layout-dynamic.grid-3 .vc-grid .vc-card:nth-child(3) {
+    grid-column: 1 / 3;
+    /* Standard layout for 3, can push the third to center if preferred */
+    margin: 0 auto;
+    width: 60%;
+}
+
+.layout-dynamic.grid-4 .vc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 16px;
+    height: 100%;
+}
+
+.vc-grid {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-auto-columns: 1fr;
+    gap: 16px;
+}
+
+/* Spotlight Layout (Hero + Carousel) */
+.layout-spotlight {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+}
+
+.vc-hero {
+    flex: 1;
+    /* Take up remaining height */
+    min-height: 0;
+    width: 100%;
+}
+
+/* Carousel at bottom */
+.vc-carousel {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    height: 160px;
+    /* Fixed height for carousel items */
+    flex-shrink: 0;
+    padding-bottom: 8px;
+    /* space for scrollbar */
+}
+
+/* 
+ * Video Card Architecture 
+ */
 .vc-card {
-    background: #16162a;
-    border-radius: 12px;
+    position: relative;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.4);
     overflow: hidden;
-    border: 2px solid transparent;
-    transition: border-color 0.3s, box-shadow 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.vc-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .vc-card.speaking {
-    border-color: #22c55e;
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.15);
+    border-color: var(--primary-green);
+    box-shadow: 0 0 20px rgba(35, 165, 89, 0.4);
 }
 
 .vc-card-video-area {
-    aspect-ratio: 16 / 12;
-    background: #0f0f1e;
-    position: relative;
-    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    /* Fallback */
 }
 
 .vc-card-video {
@@ -234,49 +214,97 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #1e1e3a 0%, #16162a 100%);
+    background: radial-gradient(circle at center, rgba(40, 40, 45, 1) 0%, rgba(20, 20, 24, 1) 100%);
 }
 
 .vc-card-avatar {
-    width: 64px;
-    height: 64px;
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid rgba(88, 101, 242, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    border: 4px solid rgba(255, 255, 255, 0.05);
 }
 
-.vc-card-info {
-    padding: 8px 12px;
+/* Carousel Specific Overrides */
+.vc-card.role-carousel {
+    width: 240px;
+    /* fixed width for horizontal scroll */
+    flex-shrink: 0;
+    border-radius: 12px;
+}
+
+.vc-card.role-carousel .vc-card-avatar {
+    width: 64px;
+    height: 64px;
+}
+
+/* Hero Specific Overrides */
+.vc-card.role-hero {
+    height: 100%;
+    width: 100%;
+    border-radius: 20px;
+    cursor: default;
+    /* Taking off hover pointer if hero */
+}
+
+.vc-card.role-hero:hover {
+    transform: none;
+    /* No float animation on hero */
+}
+
+.vc-card.role-hero .vc-card-avatar {
+    width: 160px;
+    height: 160px;
+}
+
+.vc-focus-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px;
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
+    justify-content: center;
+}
+
+/* Overlay Info */
+.vc-card-info {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    padding: 8px 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .vc-card-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: #e2e8f0;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    max-width: 150px;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.vc-card-role {
-    font-size: 11px;
-    color: #a855f7;
-    white-space: nowrap;
 }
 
 .vc-card-indicators {
     display: flex;
-    gap: 4px;
-    flex-shrink: 0;
+    gap: 6px;
 }
 
 .vc-indicator {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -284,218 +312,130 @@
 }
 
 .vc-indicator.muted {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    background: #f23f43;
+    color: white;
+    box-shadow: 0 0 10px rgba(242, 63, 67, 0.3);
 }
 
-.vc-indicator.muted svg {
-    width: 12px;
-    height: 12px;
-}
-
-/* ─── Control Bar ─── */
+/* Bottom Controls */
 .vc-controls {
+    margin-top: 24px;
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 14px 20px;
-    background: rgba(15, 15, 30, 0.95);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 16px;
+    padding: 16px;
     flex-shrink: 0;
 }
 
+/* Neumorphic Controls in VoiceChannel */
 .vc-ctrl-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .vc-ctrl-btn svg {
-    width: 20px;
-    height: 20px;
+    transition: transform 0.2s;
 }
 
-.vc-ctrl-btn.on {
-    background: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
+.vc-ctrl-btn:hover svg {
+    transform: scale(1.1);
 }
 
-.vc-ctrl-btn.on:hover {
-    background: rgba(34, 197, 94, 0.25);
+.action-btn-red {
+    background: #f23f43 !important;
+    color: white !important;
+    box-shadow: 0 4px 16px rgba(242, 63, 67, 0.4) !important;
 }
 
-.vc-ctrl-btn.off {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+.action-btn-red:hover {
+    background: #e0383b !important;
+    transform: translateY(-2px);
 }
 
-.vc-ctrl-btn.off:hover {
-    background: rgba(239, 68, 68, 0.25);
-}
-
-.vc-ctrl-btn.leave {
-    background: #ef4444;
-    color: #fff;
-}
-
-.vc-ctrl-btn.leave:hover {
-    background: #dc2626;
-    transform: scale(1.05);
-}
-
-.vc-ctrl-btn.raise-hand {
-    background: rgba(234, 179, 8, 0.15);
-    color: #eab308;
-}
-
-.vc-ctrl-btn.raise-hand.raised {
-    background: rgba(234, 179, 8, 0.3);
-    animation: vc-hand-pulse 1s infinite;
-}
-
-@keyframes vc-hand-pulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.1);
-    }
-}
-
-/* ─── Conference Stage ─── */
-.vc-stage-section {
-    padding: 12px 16px;
-}
-
-.vc-stage-section.listeners {
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    flex-shrink: 0;
-}
-
-.vc-stage-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 10px;
-}
-
-.vc-listeners-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.vc-listener-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px 4px 4px;
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 16px;
-    font-size: 12px;
-    color: #94a3b8;
-}
-
-.vc-listener-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-/* ─── Raised Hands Panel ─── */
-.vc-raised-panel {
-    padding: 8px 16px;
-    background: rgba(234, 179, 8, 0.05);
-    border-bottom: 1px solid rgba(234, 179, 8, 0.1);
+/* Sub-panels (Lobby / Generating) */
+.vc-lobby {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-}
-
-.vc-raised-item {
-    display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 0;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+    margin: auto;
+    max-width: 500px;
 }
 
-.vc-raised-avatar {
-    width: 24px;
-    height: 24px;
+.vc-lobby-icon {
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
-    object-fit: cover;
-}
-
-.vc-raised-name {
-    flex: 1;
-    font-size: 13px;
-    color: #e2e8f0;
-}
-
-.vc-raised-btn {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-bottom: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    box-shadow: inset 0 2px 10px rgba(255, 255, 255, 0.05);
 }
 
-.vc-raised-btn.approve {
-    background: rgba(34, 197, 94, 0.2);
-    color: #22c55e;
+.vc-error-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
 }
 
-.vc-raised-btn.approve:hover {
-    background: rgba(34, 197, 94, 0.4);
+.vc-lobby-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 12px 0;
+    color: var(--text-primary);
 }
 
-.vc-raised-btn.deny {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+.vc-lobby-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin: 0 0 32px 0;
+    line-height: 1.5;
 }
 
-.vc-raised-btn.deny:hover {
-    background: rgba(239, 68, 68, 0.4);
+.action-btn-large {
+    padding: 16px 32px;
+    font-size: 16px;
+    gap: 12px;
+    background: var(--primary-indigo);
+    color: white;
+    border-radius: 16px;
 }
 
-/* ─── Responsive ─── */
-@media (max-width: 600px) {
-    .vc-grid {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 8px;
-        padding: 8px;
+.vc-connecting-spinner {
+    width: 64px;
+    height: 64px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid var(--primary-indigo);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 24px;
+}
+
+.vc-lobby-warning {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
     }
 
-    .vc-card-avatar {
-        width: 48px;
-        height: 48px;
-    }
-
-    .vc-ctrl-btn {
-        width: 40px;
-        height: 40px;
-    }
-
-    .vc-join-btn {
-        padding: 12px 24px;
-        font-size: 14px;
+    100% {
+        transform: rotate(360deg);
     }
 }

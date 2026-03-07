@@ -1,0 +1,252 @@
+/* GlobalVoiceOverlay.css - Glassmorphism & Neumorphism Styles */
+
+.global-voice-overlay {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 280px;
+    background: rgba(20, 20, 22, 0.65);
+    /* Glassmorphism Base */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.global-voice-overlay.minimized {
+    width: auto;
+    min-width: 140px;
+    border-radius: 24px;
+}
+
+/* Header */
+.global-voice-overlay .overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: grab;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.global-voice-overlay .overlay-header:active {
+    cursor: grabbing;
+}
+
+.overlay-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.live-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--primary-green);
+    box-shadow: 0 0 8px var(--primary-green);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(35, 165, 89, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(35, 165, 89, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(35, 165, 89, 0);
+    }
+}
+
+.overlay-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.icon-btn.leave-btn:hover {
+    background: rgba(242, 63, 67, 0.2);
+    color: #f23f43;
+}
+
+/* Body */
+.global-voice-overlay .overlay-body {
+    padding: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.global-voice-overlay .overlay-body:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.avatars-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-bubble {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin-left: -12px;
+    border: 3px solid rgba(30, 30, 34, 0.8);
+    position: relative;
+    background: var(--bg-card);
+    transition: transform 0.2s;
+}
+
+.avatar-bubble:first-child {
+    margin-left: 0;
+}
+
+.avatar-bubble:hover {
+    transform: translateY(-4px);
+}
+
+.avatar-bubble img,
+.avatar-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-fallback {
+    background: var(--primary-cyan);
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.avatar-bubble.speaking {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 12px rgba(35, 165, 89, 0.5);
+}
+
+.more-count {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mute-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: #f23f43;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(30, 30, 34, 0.8);
+}
+
+/* Footer / Neumorphic Controls */
+.global-voice-overlay .overlay-footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Neumorphism Buttons */
+.neumorphic-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    border: none;
+    border-radius: 12px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    /* Default: Stand out (Drop shadow) */
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.2));
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.4),
+        -2px -2px 6px rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.neumorphic-btn:hover {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(0, 0, 0, 0.1));
+}
+
+.neumorphic-btn:active {
+    /* Pressed state */
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5),
+        inset -2px -2px 5px rgba(255, 255, 255, 0.02);
+}
+
+/* Active State (Inset) e.g. Muted */
+.neumorphic-btn.inset {
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.6),
+        inset -2px -2px 6px rgba(255, 255, 255, 0.02);
+}
+
+.neumorphic-btn.muted {
+    color: #f23f43;
+}
+
+.neumorphic-btn.action-btn {
+    background: var(--primary-indigo);
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    flex: 2;
+}
+
+.neumorphic-btn.action-btn:hover {
+    background: #5355c9;
+}
