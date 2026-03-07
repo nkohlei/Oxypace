@@ -61,7 +61,7 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose }) => {
                     type="text"
                     placeholder="Mesaj yaz..."
                     value={inputText}
-                    onChange={(e) => setInputText(e.target)}
+                    onChange={(e) => setInputText(e.target.value)}
                     className="chat-input neumorphic-input"
                 />
                 <button

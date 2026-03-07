@@ -29,14 +29,18 @@ export const VoiceProvider = ({ children }) => {
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
 
-    // Ensure room is cleaned up on unmount
+    // Ensure room is cleaned up on unmount or user logout
     useEffect(() => {
+        if (!user && connectionState !== ConnectionState.Disconnected) {
+            if (room) room.disconnect();
+            setConnectionState(ConnectionState.Disconnected);
+        }
         return () => {
             if (room) {
                 room.disconnect();
             }
         };
-    }, [room]);
+    }, [room, user, connectionState]);
 
     // Handle participant list updates
     const updateParticipantList = useCallback((currentRoom) => {

@@ -123,7 +123,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     // ─── PARTIAL COMPONENTS ───
     const renderSpeakerCard = (p) => {
         return (
-            <div key={p.identity} className={`vc-card ${p.isSpeaking ? 'speaking' : ''}`}>
+            <div key={p.identity} className={`vc-card role-grid ${p.isSpeaking ? 'speaking' : ''}`}>
                 <div className="vc-card-video-area">
                     {p.isCameraOn && p.videoTrack ? (
                         <video
