@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ConnectionState } from 'livekit-client';
+import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +33,9 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [canSpeak, setCanSpeak] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
 
+    // Pre-join stats
+    const [lobbyCount, setLobbyCount] = useState(null);
+
     // Is this channel the active global room?
     const isActiveRoom = activeRoom?.channelId === channelId;
     const isConnected = isActiveRoom && connectionState === ConnectionState.Connected;
@@ -55,6 +59,30 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             setCanSpeak(false);
         }
     }, [isActiveRoom]);
+
+    // Fetch lobby count on mount
+    useEffect(() => {
+        if (isActiveRoom || !portalId || !channelId) return;
+
+        let isMounted = true;
+        const fetchCount = async () => {
+            try {
+                const res = await axios.get(`/api/voice/rooms/${portalId}/${channelId}/participants`);
+                if (isMounted && res.data && res.data.participants) {
+                    setLobbyCount(res.data.participants.length);
+                }
+            } catch (err) {
+                console.error("Failed to fetch lobby count", err);
+            }
+        };
+
+        fetchCount();
+        const interval = setInterval(fetchCount, 10000); // refresh every 10s
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, [isActiveRoom, portalId, channelId]);
 
     // Socket listeners for raise hand / permissions
     useEffect(() => {
@@ -202,6 +230,13 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
                     <h2 className="vc-lobby-title">{channelName || 'Konferans Odası'}</h2>
                     <p className="vc-lobby-subtitle">Konferansa katılmak için aşağıdaki butona tıklayın</p>
+
+                    {lobbyCount !== null && lobbyCount > 0 && (
+                        <div style={{ marginBottom: '24px', background: 'var(--bg-success)', color: 'var(--text-success)', padding: '6px 16px', borderRadius: '16px', fontSize: '14px', fontWeight: 'bold' }}>
+                            {lobbyCount} kişi odada
+                        </div>
+                    )}
+
                     <button className="vc-join-btn conf glass-join-btn action-btn-large" onClick={handleJoin}>
                         Konferansa Katıl
                     </button>

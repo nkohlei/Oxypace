@@ -18,7 +18,7 @@
 }
 
 .lobby-bg {
-    background: linear-gradient(-45deg, #091221, #0d274d, #1a4a82, #071529);
+    background: linear-gradient(-45deg, var(--bg-card), var(--bg-hover), var(--bg-darker), var(--bg-primary));
     background-size: 400% 400%;
     animation: gradientShift 5s ease infinite;
 }

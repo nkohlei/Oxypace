@@ -63,7 +63,6 @@ import UserBar from './components/UserBar';
 import SplashScreen from './components/SplashScreen';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
-import GlobalVoiceOverlay from './components/GlobalVoiceOverlay';
 import './AppLayout.css';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
@@ -330,7 +329,6 @@ function App() {
                             <VoiceProvider>
                                 <UIProvider>
                                     <AppLayout />
-                                    <GlobalVoiceOverlay />
                                 </UIProvider>
                             </VoiceProvider>
                         </SocketProvider>
