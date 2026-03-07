@@ -24,12 +24,13 @@
 @keyframes sidebarPopIn {
     from {
         opacity: 0;
-        transform: scale(0.95) translateX(10px);
+        transform: scale(0.95);
+        /* removed translation which caused scrollbar horizontal shift jitter */
     }
 
     to {
         opacity: 1;
-        transform: scale(1) translateX(0);
+        transform: scale(1);
     }
 }
 
@@ -187,6 +188,8 @@
     min-height: 44px !important;
     max-width: 44px !important;
     max-height: 44px !important;
+    flex: 0 0 44px !important;
+    /* Critical to prevent flexbox from stretching it into an oval */
     flex-shrink: 0;
     border-radius: 50% !important;
     /* Force perfectly circular */

@@ -135,20 +135,20 @@
 /* 1 User */
 .layout-dynamic.grid-1 .vc-grid {
     grid-template-columns: 1fr;
-    max-width: 800px;
+    max-width: 500px;
 }
 
 /* 2 Users */
 .layout-dynamic.grid-2 .vc-grid {
     grid-template-columns: repeat(2, 1fr);
-    max-width: 1200px;
+    max-width: 700px;
 }
 
 /* 3 Users - 2 on top, 1 bottom center */
 .layout-dynamic.grid-3 .vc-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: 1fr 1fr;
-    max-width: 1200px;
+    max-width: 700px;
 }
 
 .layout-dynamic.grid-3 .vc-card.role-grid:nth-child(3) {
@@ -160,8 +160,8 @@
 
 /* 4+ Users */
 .layout-dynamic.grid-4 .vc-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    max-width: 1400px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    max-width: 900px;
 }
 
 /* Spotlight Layout (Sidebar Carousel + Hero) */
@@ -244,8 +244,8 @@
 .vc-card-video {
     width: 100%;
     height: 100%;
-    object-fit: contain;
-    /* Contain to prevent cutting off in weird aspect ratios */
+    object-fit: cover;
+    /* Cover is better to fill the 4:3 box, preventing ugly black pillarboxes */
     background: #000;
 }
 
