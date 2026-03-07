@@ -11,7 +11,7 @@
     flex-direction: column;
     border-radius: 16px;
     z-index: 100;
-    animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: sidebarPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     background: rgba(20, 21, 25, 0.7);
     /* Deep dark glass */
     backdrop-filter: blur(20px);
@@ -21,15 +21,15 @@
     overflow: hidden;
 }
 
-@keyframes slideInRight {
+@keyframes sidebarPopIn {
     from {
         opacity: 0;
-        transform: translateX(50px);
+        transform: scale(0.95) translateX(10px);
     }
 
     to {
         opacity: 1;
-        transform: translateX(0);
+        transform: scale(1) translateX(0);
     }
 }
 
@@ -55,11 +55,13 @@
     color: var(--text-muted);
     cursor: pointer;
     border-radius: 50%;
-    padding: 6px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    padding: 0;
 }
 
 .chat-close-btn:hover {
@@ -179,15 +181,20 @@
 }
 
 .chat-send-btn {
-    width: 44px;
-    height: 44px;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
     flex-shrink: 0;
     border-radius: 50% !important;
-    /* Force circular */
+    /* Force perfectly circular */
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
+    padding: 0 !important;
+    box-sizing: border-box;
 }
 
 .chat-send-btn:disabled {
