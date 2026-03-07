@@ -172,9 +172,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
                     <p className="vc-lobby-subtitle">Sesli sohbete katılmak için aşağıdaki butona tıklayın</p>
 
-                    {lobbyCount !== null && lobbyCount > 0 && (
-                        <div style={{ marginBottom: '24px', background: 'var(--bg-success)', color: 'var(--text-success)', padding: '6px 16px', borderRadius: '16px', fontSize: '14px', fontWeight: 'bold' }}>
-                            {lobbyCount} kişi odada
+                    {lobbyCount !== null && (
+                        <div style={{ marginBottom: '24px', background: lobbyCount > 0 ? 'var(--bg-success)' : 'rgba(255,255,255,0.05)', color: lobbyCount > 0 ? 'var(--text-success)' : 'var(--text-muted)', padding: '6px 16px', borderRadius: '16px', fontSize: '14px', fontWeight: 'bold' }}>
+                            {lobbyCount === 0 ? 'Şu an odada kimse yok' : `${lobbyCount} kişi odada`}
                         </div>
                     )}
 

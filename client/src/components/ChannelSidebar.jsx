@@ -410,7 +410,7 @@ const ChannelSidebar = ({
             </div>
 
             {/* User Control Bar - Bottom of Sidebar */}
-            <UserBar />
+            <UserBar currentChannelId={currentChannel} />
 
             <style>{`
             .channel-sidebar {

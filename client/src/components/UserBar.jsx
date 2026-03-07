@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ConnectionState } from 'livekit-client';
 import './UserBar.css';
 
-const UserBar = () => {
+const UserBar = ({ currentChannelId }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -16,6 +16,12 @@ const UserBar = () => {
     const isConnected = connectionState === ConnectionState.Connected;
 
     const [showPopover, setShowPopover] = React.useState(false);
+    const [pinnedParticipant, setPinnedParticipant] = React.useState(null);
+
+    // Visibility logic for the rich voice bar
+    const isPortalRoute = location.pathname.includes(`/portal/${activeRoom?.portalId}`);
+    const isViewingActiveVoiceChannel = isPortalRoute && currentChannelId === activeRoom?.channelId;
+    const showVoiceBar = isConnected && activeRoom && !isViewingActiveVoiceChannel;
 
     // Close popover when clicking outside
     React.useEffect(() => {
@@ -33,64 +39,98 @@ const UserBar = () => {
     return (
         <div className="user-bar-container" style={{ position: 'relative', flexDirection: 'column', height: 'auto', padding: 0 }}>
             {/* Voice Connection Panel (Visible when connected) */}
-            {isConnected && activeRoom && location.pathname !== `/portal/${activeRoom.portalId}` && (
+            {showVoiceBar && (
                 <div
                     style={{
                         width: '100%',
-                        padding: '8px 12px',
-                        backgroundColor: 'var(--primary-green)',
-                        color: '#fff',
+                        padding: '12px',
+                        backgroundColor: 'var(--bg-darker)',
+                        borderTop: '1px solid var(--border-subtle)',
+                        borderBottom: '1px solid rgba(0,0,0,0.1)',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        boxSizing: 'border-box',
-                        borderBottom: '1px solid rgba(0,0,0,0.1)'
+                        flexDirection: 'column',
+                        gap: '8px',
+                        boxSizing: 'border-box'
                     }}
-                    onClick={() => navigate(`/portal/${activeRoom.portalId}`)}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                        <div style={{
-                            width: '10px', height: '10px', backgroundColor: '#fff',
-                            borderRadius: '50%', boxShadow: '0 0 8px rgba(255,255,255,0.8)',
-                            animation: 'pulse 1.5s infinite'
-                        }} />
-                        <span style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            Sese Bağlı
-                        </span>
+                    {/* Header Row */}
+                    <div
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => navigate(`/portal/${activeRoom.portalId}`)}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                            <div style={{
+                                width: '8px', height: '8px', backgroundColor: 'var(--primary-green)',
+                                borderRadius: '50%', boxShadow: '0 0 6px rgba(35,165,89,0.8)',
+                                animation: 'pulse 2s infinite'
+                            }} />
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--primary-green)', whiteSpace: 'nowrap' }}>
+                                Sese Bağlı
+                            </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={e => e.stopPropagation()}>
+                            <button
+                                onClick={disconnectFromChannel}
+                                title="Ayrıl"
+                                style={{
+                                    background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    padding: '2px', borderRadius: '4px'
+                                }}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
+                                    <line x1="23" y1="1" x2="1" y2="23" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                        <button
-                            onClick={toggleMicrophone}
-                            style={{
-                                background: 'transparent', border: 'none', color: '#fff',
-                                cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                borderRadius: '4px', opacity: localState.isMuted ? 0.7 : 1
-                            }}
-                            title={localState.isMuted ? "Mikrofonu Aç" : "Mikrofonu Kapat"}
-                        >
-                            {localState.isMuted ? (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .34-.03.67-.08 1" /><line x1="12" y1="19" x2="12" y2="23" /></svg>
-                            ) : (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V5a3 3 0 0 1 3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>
-                            )}
-                        </button>
-                        <button
-                            onClick={disconnectFromChannel}
-                            title="Ayrıl"
-                            style={{
-                                background: 'transparent', border: 'none', color: '#fff',
-                                cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                borderRadius: '4px'
-                            }}
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
-                                <line x1="23" y1="1" x2="1" y2="23" />
-                            </svg>
-                        </button>
-                    </div>
+                    {/* Participant Avatars */}
+                    {participants.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                            {participants.map(p => (
+                                <div
+                                    key={p.identity}
+                                    onClick={() => setPinnedParticipant(prev => prev === p.identity ? null : p.identity)}
+                                    style={{
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        borderRadius: '50%',
+                                        padding: '2px',
+                                        border: pinnedParticipant === p.identity ? '2px solid #fff' : '2px solid transparent',
+                                        transition: 'all 0.2s',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                    title={p.name}
+                                >
+                                    <img
+                                        src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=2b2d31&color=fff`}
+                                        alt={p.name}
+                                        style={{
+                                            width: '28px', height: '28px', borderRadius: '50%',
+                                            border: p.isSpeaking ? '2px solid var(--primary-green)' : '2px solid transparent',
+                                            transition: 'border-color 0.2s'
+                                        }}
+                                    />
+                                    {p.isMuted && (
+                                        <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: 'var(--bg-darker)', borderRadius: '50%', padding: '1px' }}>
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3">
+                                                <line x1="1" y1="1" x2="23" y2="23" />
+                                                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Pinned Video Area */}
+                    {pinnedParticipant && participants.find(p => p.identity === pinnedParticipant) && (
+                        <MiniVideo participant={participants.find(p => p.identity === pinnedParticipant)} />
+                    )}
                 </div>
             )}
 
@@ -391,6 +431,44 @@ const UserBar = () => {
                 }
                 `}
             </style>
+        </div>
+    );
+};
+
+// Sub-component to render pinned participant video
+const MiniVideo = ({ participant }) => {
+    const videoEl = React.useRef(null);
+
+    React.useEffect(() => {
+        if (videoEl.current && participant?.videoTrack) {
+            participant.videoTrack.attach(videoEl.current);
+        }
+        return () => {
+            if (participant?.videoTrack) {
+                participant.videoTrack.detach();
+            }
+        };
+    }, [participant?.videoTrack]);
+
+    return (
+        <div style={{ width: '100%', height: '140px', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', marginTop: '4px' }}>
+            {participant.isCameraOn && participant.videoTrack ? (
+                <video
+                    ref={videoEl}
+                    autoPlay
+                    muted={participant.isLocal}
+                    playsInline
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+            ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)' }}>
+                    <img src={participant.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.name)}&background=2b2d31&color=fff`} style={{ width: '48px', height: '48px', borderRadius: '50%' }} alt="Avatar" />
+                </div>
+            )}
+            <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: participant.isSpeaking ? 'var(--primary-green)' : 'transparent', transition: 'background 0.2s' }} />
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100px' }}>{participant.name}</span>
+            </div>
         </div>
     );
 };
