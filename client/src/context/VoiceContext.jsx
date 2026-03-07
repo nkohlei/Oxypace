@@ -25,6 +25,7 @@ export const VoiceProvider = ({ children }) => {
     // Derived UI states
     const [participants, setParticipants] = useState([]);
     const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false });
+    const [pinnedParticipant, setPinnedParticipant] = useState(null);
 
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
@@ -86,6 +87,12 @@ export const VoiceProvider = ({ children }) => {
             });
         }
         setParticipants(list);
+
+        // Check if the currently pinned participant is still in the room
+        setPinnedParticipant(prev => {
+            if (prev && !list.find(p => p.identity === prev)) return null;
+            return prev;
+        });
     }, []);
 
     // Main connection function
@@ -195,6 +202,7 @@ export const VoiceProvider = ({ children }) => {
         setActiveRoom(null);
         setParticipants([]);
         setChatMessages([]);
+        setPinnedParticipant(null);
         setConnectionState(ConnectionState.Disconnected);
     }, [room]);
 
@@ -264,8 +272,9 @@ export const VoiceProvider = ({ children }) => {
         toggleMicrophone,
         toggleCamera,
         sendChatMessage,
-        grantSpeak,
         revokeSpeak,
+        pinnedParticipant,
+        setPinnedParticipant,
     };
 
     return <VoiceContext.Provider value={value}>{children}</VoiceContext.Provider>;

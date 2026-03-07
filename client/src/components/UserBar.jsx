@@ -11,12 +11,11 @@ const UserBar = ({ currentChannelId }) => {
     const navigate = useNavigate();
 
     // Global Voice State
-    const { activeRoom, connectionState, localState, toggleMicrophone, disconnectFromChannel, participants } = useVoice();
+    const { activeRoom, connectionState, localState, toggleMicrophone, disconnectFromChannel, participants, pinnedParticipant, setPinnedParticipant } = useVoice();
     const location = useLocation();
     const isConnected = connectionState === ConnectionState.Connected;
 
     const [showPopover, setShowPopover] = React.useState(false);
-    const [pinnedParticipant, setPinnedParticipant] = React.useState(null);
 
     // Visibility logic for the rich voice bar
     const isPortalRoute = location.pathname.includes(`/portal/${activeRoom?.portalId}`);

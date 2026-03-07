@@ -55,7 +55,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         };
 
         fetchCount();
-        const interval = setInterval(fetchCount, 10000); // refresh every 10s
+        const interval = setInterval(fetchCount, 2000); // refresh every 2s for real-time feel
         return () => {
             isMounted = false;
             clearInterval(interval);
