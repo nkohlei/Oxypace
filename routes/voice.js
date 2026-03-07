@@ -5,11 +5,14 @@ import Portal from '../models/Portal.js';
 
 const router = express.Router();
 
-// LiveKit configuration
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey';
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secret';
-const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
-const LIVEKIT_HTTP_URL = LIVEKIT_URL.replace('ws://', 'http://').replace('wss://', 'https://');
+// Helper: Get LiveKit config lazily at runtime
+const getLiveKitConfig = () => {
+    const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey';
+    const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secret';
+    const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
+    const LIVEKIT_HTTP_URL = LIVEKIT_URL.replace('ws://', 'http://').replace('wss://', 'https://');
+    return { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL, LIVEKIT_HTTP_URL };
+};
 
 // Helper: Generate a unique room name from portal+channel IDs
 const getRoomName = (portalId, channelId) => `portal_${portalId}_channel_${channelId}`;
@@ -59,6 +62,8 @@ router.post('/token', protect, async (req, res) => {
         const roomName = getRoomName(portalId, channelId);
         const isStageMode = channel.type === 'conference' || channel.roomMode === 'stage';
         const isAdmin = userRole === 'owner' || userRole === 'admin';
+
+        const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL } = getLiveKitConfig();
 
         // Create access token with appropriate permissions
         const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
@@ -117,6 +122,8 @@ router.get('/rooms/:portalId/:channelId/participants', protect, async (req, res)
         const { portalId, channelId } = req.params;
         const roomName = getRoomName(portalId, channelId);
 
+        const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_HTTP_URL } = getLiveKitConfig();
+
         const roomService = new RoomServiceClient(LIVEKIT_HTTP_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
         try {
@@ -168,6 +175,7 @@ router.post('/rooms/:portalId/:channelId/permissions', protect, async (req, res)
         }
 
         const roomName = getRoomName(portalId, channelId);
+        const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_HTTP_URL } = getLiveKitConfig();
         const roomService = new RoomServiceClient(LIVEKIT_HTTP_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
         await roomService.updateParticipant(roomName, targetUserId, undefined, {
