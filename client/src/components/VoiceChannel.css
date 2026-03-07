@@ -188,8 +188,19 @@
 }
 
 .vc-card.speaking {
-    border-color: var(--primary-green);
-    box-shadow: 0 0 20px rgba(35, 165, 89, 0.4);
+    border-color: #00a8fc;
+    box-shadow: 0 0 24px rgba(0, 168, 252, 0.6), inset 0 0 12px rgba(0, 168, 252, 0.3);
+    animation: speakerGlow 1.5s infinite alternate;
+}
+
+@keyframes speakerGlow {
+    from {
+        box-shadow: 0 0 12px rgba(0, 168, 252, 0.4), inset 0 0 8px rgba(0, 168, 252, 0.2);
+    }
+
+    to {
+        box-shadow: 0 0 28px rgba(0, 168, 252, 0.8), inset 0 0 16px rgba(0, 168, 252, 0.4);
+    }
 }
 
 .vc-card-video-area {
@@ -411,6 +422,27 @@
     background: var(--primary-indigo);
     color: white;
     border-radius: 16px;
+}
+
+.glass-join-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.3s ease;
+}
+
+.glass-join-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+.circular {
+    border-radius: 50% !important;
 }
 
 .vc-connecting-spinner {

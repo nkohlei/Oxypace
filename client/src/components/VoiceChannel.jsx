@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ConnectionState } from 'livekit-client';
 import { useVoice } from '../context/VoiceContext';
+import VoiceChatSidebar from './VoiceChatSidebar';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -10,13 +11,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         participants,
         errorMsg,
         localState,
+        chatMessages,
         connectToChannel,
         disconnectFromChannel,
         toggleMicrophone,
-        toggleCamera
+        toggleCamera,
+        sendChatMessage
     } = useVoice();
 
     const [focusedIdentity, setFocusedIdentity] = useState(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Is this channel the active global room?
     const isActiveRoom = activeRoom?.channelId === channelId;
@@ -67,14 +71,19 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             playsInline
                         />
                     ) : (
-                        <div className="vc-card-avatar-area">
+                        <div className="vc-card-avatar-area" style={getCardBackground(p.identity)}>
                             <img
                                 className="vc-card-avatar"
-                                src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=5865f2&color=fff&size=120`}
+                                src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`}
                                 alt=""
-                                onError={e => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=5865f2&color=fff&size=120`; }}
+                                onError={e => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`; }}
                             />
                         </div>
+                    )}
+
+                    {/* IMPORTANT FIX: Render remote audio tracks so sound actually plays when in the room */}
+                    {!p.isLocal && p.audioTrack && (
+                        <AudioTrackPlayer track={p.audioTrack} />
                     )}
                 </div>
 
@@ -103,6 +112,23 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         );
     };
 
+    // Helper to generate dynamic subtle gradients based on identity
+    const getCardBackground = (identity) => {
+        if (!identity) return { background: '#2b2d31' };
+
+        let hash = 0;
+        for (let i = 0; i < identity.length; i++) {
+            hash = identity.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        const hue1 = hash % 360;
+        const hue2 = (hash * 13) % 360;
+
+        return {
+            background: `linear-gradient(135deg, hsl(${hue1}, 50%, 20%), hsl(${hue2}, 40%, 15%))`
+        };
+    };
+
     // ─── LOBBY (Not Active in This Room) ───
     if (!isActiveRoom) {
         return (
@@ -117,8 +143,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
                     <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
                     <p className="vc-lobby-subtitle">Sesli sohbete katılmak için aşağıdaki butona tıklayın</p>
-                    <button className="vc-join-btn neumorphic-btn action-btn-large" onClick={handleJoin}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <button className="vc-join-btn glass-join-btn action-btn-large" onClick={handleJoin}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
                         </svg>
                         Aramaya Katıl
@@ -187,6 +213,17 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <span className="vc-header-title">{channelName || 'Ses Kanalı'}</span>
                     <span className="vc-header-badge glass-badge">{participants.length} katılımcı</span>
                 </div>
+                <div className="vc-header-right">
+                    <button
+                        className={`vc-ctrl-btn neumorphic-btn circular ${isChatOpen ? 'active' : ''}`}
+                        onClick={() => setIsChatOpen(!isChatOpen)}
+                        title="Sohbeti Aç/Kapat"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Viewport Area */}
@@ -217,7 +254,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             {/* Glassmorphic Control Bar */}
             <div className="vc-controls glass-controls">
                 <button
-                    className={`vc-ctrl-btn neumorphic-btn ${localState.isMuted ? 'inset muted' : 'active'}`}
+                    className={`vc-ctrl-btn neumorphic-btn circular ${localState.isMuted ? 'inset muted danger' : 'active'}`}
                     onClick={toggleMicrophone}
                     title={localState.isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
                 >
@@ -237,7 +274,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     )}
                 </button>
                 <button
-                    className={`vc-ctrl-btn neumorphic-btn ${localState.isCameraOn ? 'active' : 'inset'}`}
+                    className={`vc-ctrl-btn neumorphic-btn circular ${localState.isCameraOn ? 'active' : 'inset'}`}
                     onClick={toggleCamera}
                     title={localState.isCameraOn ? 'Kamerayı Kapat' : 'Kamerayı Aç'}
                 >
@@ -256,7 +293,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
                 <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
 
-                <button className="vc-ctrl-btn neumorphic-btn leave action-btn-red" onClick={handleLeave} title="Aramadan Ayrıl">
+                <button className="vc-ctrl-btn neumorphic-btn circular leave action-btn-red danger" onClick={handleLeave} title="Aramadan Ayrıl">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
                         <line x1="23" y1="1" x2="17" y2="7" />
@@ -264,8 +301,31 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </svg>
                 </button>
             </div>
+
+            {/* Sliding Text Chat Sidebar */}
+            {isChatOpen && (
+                <VoiceChatSidebar
+                    messages={chatMessages}
+                    onSendMessage={sendChatMessage}
+                    onClose={() => setIsChatOpen(false)}
+                />
+            )}
         </div>
     );
+};
+
+// Helper component to render and play the LiveKit AudioTrack natively
+const AudioTrackPlayer = ({ track }) => {
+    const audioEl = React.useRef(null);
+    React.useEffect(() => {
+        if (audioEl.current && track) {
+            track.attach(audioEl.current);
+        }
+        return () => {
+            if (track) track.detach();
+        };
+    }, [track]);
+    return <audio ref={audioEl} autoPlay />;
 };
 
 export default VoiceChannel;

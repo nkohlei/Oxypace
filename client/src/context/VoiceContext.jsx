@@ -26,6 +26,9 @@ export const VoiceProvider = ({ children }) => {
     const [participants, setParticipants] = useState([]);
     const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false });
 
+    // Chat states
+    const [chatMessages, setChatMessages] = useState([]);
+
     // Ensure room is cleaned up on unmount
     useEffect(() => {
         return () => {
@@ -90,6 +93,7 @@ export const VoiceProvider = ({ children }) => {
 
         setConnectionState(ConnectionState.Connecting);
         setErrorMsg('');
+        setChatMessages([]); // Clear chat on new room connect
 
         try {
             // 1. Fetch Token
@@ -127,6 +131,27 @@ export const VoiceProvider = ({ children }) => {
             newRoom.on(RoomEvent.LocalTrackPublished, updateList);
             newRoom.on(RoomEvent.LocalTrackUnpublished, updateList);
 
+            // Listen for DataChannel (Chat)
+            newRoom.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+                if (topic === 'chat') {
+                    const decoder = new TextDecoder();
+                    try {
+                        const msgObj = JSON.parse(decoder.decode(payload));
+                        // Append to messages
+                        setChatMessages(prev => [...prev, {
+                            id: Date.now() + Math.random(),
+                            senderName: participant?.name || participant?.identity || 'Unknown',
+                            senderId: participant?.identity,
+                            text: msgObj.text,
+                            timestamp: new Date().toISOString(),
+                            isLocal: false
+                        }]);
+                    } catch (e) {
+                        console.error("Failed to parse chat message", e);
+                    }
+                }
+            });
+
             // 4. Connect
             await newRoom.connect(serverUrl, token);
             setRoom(newRoom);
@@ -143,9 +168,13 @@ export const VoiceProvider = ({ children }) => {
                 });
             }
 
-            // 6. Connect Microphone automatically by default (Optional UX decision, keeping muted for now)
-            // await newRoom.localParticipant.setMicrophoneEnabled(true);
-            // setLocalState(prev => ({ ...prev, isMuted: false }));
+            // 6. Force hardware tracks off (Local UI state is currently initialized to true/false above)
+            // Even if browser defaults allow hardware, we strictly enforce muted on join.
+            if (newRoom.localParticipant) {
+                await newRoom.localParticipant.setMicrophoneEnabled(false);
+                await newRoom.localParticipant.setCameraEnabled(false);
+                setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false });
+            }
 
         } catch (err) {
             console.error('Failed to connect to LiveKit:', err);
@@ -161,6 +190,7 @@ export const VoiceProvider = ({ children }) => {
         }
         setActiveRoom(null);
         setParticipants([]);
+        setChatMessages([]);
         setConnectionState(ConnectionState.Disconnected);
     }, [room]);
 
@@ -178,6 +208,31 @@ export const VoiceProvider = ({ children }) => {
         await room.localParticipant.setCameraEnabled(willEnable);
         setLocalState(prev => ({ ...prev, isCameraOn: willEnable }));
     }, [room, localState.isCameraOn]);
+
+    // Send Chat Message
+    const sendChatMessage = useCallback(async (text) => {
+        if (!room || !room.localParticipant || !text.trim()) return;
+
+        const payload = JSON.stringify({ text });
+        const encoder = new TextEncoder();
+
+        try {
+            // Using reliable data delivery
+            await room.localParticipant.publishData(encoder.encode(payload), { reliable: true, topic: 'chat' });
+
+            // Re-append to our own local state
+            setChatMessages(prev => [...prev, {
+                id: Date.now() + Math.random(),
+                senderName: user?.profile?.displayName || user?.username || room.localParticipant.name || 'Sen',
+                senderId: room.localParticipant.identity,
+                text: text,
+                timestamp: new Date().toISOString(),
+                isLocal: true
+            }]);
+        } catch (err) {
+            console.error("Failed to send chat message", err);
+        }
+    }, [room, user]);
 
     // Permissions (Admin)
     const grantSpeak = useCallback(async (portalId, channelId, targetUserId) => {
@@ -199,10 +254,12 @@ export const VoiceProvider = ({ children }) => {
         participants,
         errorMsg,
         localState,
+        chatMessages,
         connectToChannel,
         disconnectFromChannel,
         toggleMicrophone,
         toggleCamera,
+        sendChatMessage,
         grantSpeak,
         revokeSpeak,
     };
