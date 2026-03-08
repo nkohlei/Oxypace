@@ -73,6 +73,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 }
             } catch (err) {
                 console.error("Failed to fetch lobby count", err);
+                if (isMounted) setLobbyCount(0);
             }
         };
 
@@ -219,7 +220,26 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     if (!isActiveRoom) {
         return (
             <div className="vc-container glass-container lobby-bg">
-                <div className="vc-lobby glass-panel">
+                <div className="vc-lobby glass-panel" style={{ position: 'relative' }}>
+
+                    {/* Top Right Live Participant Badge */}
+                    {lobbyCount !== null && (
+                        <div style={{
+                            position: 'absolute', top: '16px', right: '16px',
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: 'rgba(0,0,0,0.2)', padding: '6px 12px',
+                            borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                            color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                            <div style={{
+                                width: '8px', height: '8px', borderRadius: '50%',
+                                background: lobbyCount > 0 ? 'var(--primary-green)' : 'var(--text-muted)',
+                                boxShadow: lobbyCount > 0 ? '0 0 8px var(--primary-green)' : 'none'
+                            }} />
+                            <span>İçeride: {lobbyCount} Kişi</span>
+                        </div>
+                    )}
+
                     <div className="vc-lobby-icon conf glass-icon">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -229,13 +249,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         </svg>
                     </div>
                     <h2 className="vc-lobby-title">{channelName || 'Konferans Odası'}</h2>
-                    <p className="vc-lobby-subtitle">Konferansa katılmak için aşağıdaki butona tıklayın</p>
-
-                    {lobbyCount !== null && (
-                        <div style={{ marginBottom: '24px', background: lobbyCount > 0 ? 'var(--bg-success)' : 'rgba(255,255,255,0.05)', color: lobbyCount > 0 ? 'var(--text-success)' : 'var(--text-muted)', padding: '6px 16px', borderRadius: '16px', fontSize: '14px', fontWeight: 'bold' }}>
-                            {lobbyCount === 0 ? 'Şu an odada kimse yok' : `${lobbyCount} kişi odada`}
-                        </div>
-                    )}
+                    <p className="vc-lobby-subtitle" style={{ marginBottom: '24px' }}>Konferansa katılmak için aşağıdaki butona tıklayın</p>
 
                     <button className="vc-join-btn conf glass-join-btn action-btn-large" onClick={handleJoin}>
                         Konferansa Katıl
