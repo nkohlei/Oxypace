@@ -482,7 +482,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             {/* Sliding Sidebars (Listeners & Chat) */}
-            <div style={{ position: 'absolute', right: '24px', top: '24px', bottom: '96px', display: 'flex', gap: '16px', zIndex: 100, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', right: '24px', top: '84px', bottom: '96px', display: 'flex', gap: '16px', zIndex: 100, pointerEvents: 'none' }}>
                 {/* Listeners Sidebar */}
                 {isListenersOpen && (
                     <div className="voice-chat-sidebar glass-panel" style={{ position: 'relative', right: 'auto', top: 'auto', bottom: 'auto', width: '280px', pointerEvents: 'auto', animation: 'sidebarPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>

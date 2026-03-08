@@ -51,7 +51,7 @@ export const initializeVoiceHandler = (io) => {
             socket.leave(`voice:${roomName}`);
         });
 
-        // ─── Raise Hand (Stage Mode) ───
+        {/* ─── Raise Hand (Stage Mode) ─── */ }
         socket.on('voice:raise-hand', ({ roomName, userId, username, avatar, raised }) => {
             if (!roomName || !userId) return;
 
@@ -64,6 +64,14 @@ export const initializeVoiceHandler = (io) => {
             });
 
             console.log(`✋ User ${username} ${raised !== false ? 'raised' : 'lowered'} hand in ${roomName}`);
+        });
+
+        // ─── Toggle Chat Restrictions ───
+        socket.on('voice:chat-mode-toggle', ({ roomName, restricted }) => {
+            if (!roomName) return;
+
+            io.to(`voice:${roomName}`).emit('voice:chat-mode', { restricted });
+            console.log(`💬 Chat mode toggled in ${roomName}: restricted=${restricted}`);
         });
 
         // ─── Grant Speak Permission (Moderator → Listener) ───

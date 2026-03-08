@@ -56,31 +56,37 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
                 <div ref={endOfMessagesRef} />
             </div>
 
-            <form className="chat-input-area" onSubmit={handleSend}>
-                <input
-                    type="text"
-                    placeholder="Mesaj yaz..."
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    className="chat-input neumorphic-input"
-                    disabled={isRestricted && !isAdmin && !canSpeak}
-                />
-                <button
-                    type="submit"
-                    className="chat-send-btn neumorphic-btn active flex-center"
-                    disabled={(!inputText.trim()) || (isRestricted && !isAdmin && !canSpeak)}
-                    style={{ width: '40px', height: '40px', padding: '0', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" style={{ marginLeft: '-2px' }}>
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </button>
-            </form>
-            {isRestricted && !isAdmin && !canSpeak && (
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px', paddingBottom: '8px' }}>
-                    Sadece yöneticiler mesaj gönderebilir.
+            {isRestricted && !isAdmin && !canSpeak ? (
+                <div style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <span style={{ fontSize: '13px', fontWeight: '500' }}>Sadece Yöneticiler Mesaj Gönderebilir</span>
+                    </div>
                 </div>
+            ) : (
+                <form className="chat-input-area" onSubmit={handleSend}>
+                    <input
+                        type="text"
+                        placeholder="Mesaj yaz..."
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        className="chat-input neumorphic-input"
+                    />
+                    <button
+                        type="submit"
+                        className="chat-send-btn neumorphic-btn active flex-center"
+                        disabled={(!inputText.trim())}
+                        style={{ width: '40px', height: '40px', padding: '0', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" style={{ marginLeft: '-2px' }}>
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </form>
             )}
         </div>
     );
