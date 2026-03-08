@@ -52,13 +52,19 @@ export const VoiceProvider = ({ children }) => {
         if (currentRoom.localParticipant) {
             const p = currentRoom.localParticipant;
             let avatar = '';
-            try { avatar = JSON.parse(p.metadata || '{}').avatar || ''; } catch { }
+            let role = 'member';
+            try {
+                const meta = JSON.parse(p.metadata || '{}');
+                avatar = meta.avatar || '';
+                if (meta.role) role = meta.role;
+            } catch { }
             const videoPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.Camera);
             const audioPub = Array.from(p.audioTrackPublications.values()).find(pub => pub.track);
             list.push({
                 identity: p.identity,
                 name: p.name || p.identity,
                 avatar,
+                role,
                 isLocal: true,
                 isMuted: !p.isMicrophoneEnabled,
                 isCameraOn: p.isCameraEnabled,
@@ -71,13 +77,19 @@ export const VoiceProvider = ({ children }) => {
         // Add Remote Participants
         for (const p of currentRoom.remoteParticipants.values()) {
             let avatar = '';
-            try { avatar = JSON.parse(p.metadata || '{}').avatar || ''; } catch { }
+            let role = 'member';
+            try {
+                const meta = JSON.parse(p.metadata || '{}');
+                avatar = meta.avatar || '';
+                if (meta.role) role = meta.role;
+            } catch { }
             const videoPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.Camera);
             const audioPub = Array.from(p.audioTrackPublications.values()).find(pub => pub.track);
             list.push({
                 identity: p.identity,
                 name: p.name || p.identity,
                 avatar,
+                role,
                 isLocal: false,
                 isMuted: !p.isMicrophoneEnabled,
                 isCameraOn: p.isCameraEnabled,
