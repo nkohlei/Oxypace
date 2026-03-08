@@ -155,13 +155,15 @@ router.get('/rooms/:portalId/:channelId/participants', protect, async (req, res)
             res.json({ participants: mapped, roomName });
         } catch (err) {
             // Room may not exist yet (no one joined)
-            if (err.message?.includes('not found')) {
+            if (err.message?.toLowerCase().includes('not found')) {
                 return res.json({ participants: [], roomName });
             }
+            // If it's a different error, log it specifically
+            console.error('[Livekit Error inside listParticipants]:', err);
             throw err;
         }
     } catch (error) {
-        console.error('List participants error:', error);
+        console.error('List participants outer error:', error);
         res.status(500).json({ message: 'Failed to list participants' });
     }
 });
