@@ -128,18 +128,29 @@ router.get('/rooms/:portalId/:channelId/participants', protect, async (req, res)
 
         try {
             const participants = await roomService.listParticipants(roomName);
-            const mapped = participants.map((p) => ({
-                identity: p.identity,
-                name: p.name,
-                metadata: p.metadata ? JSON.parse(p.metadata) : {},
-                isSpeaking: p.isSpeaking,
-                joinedAt: p.joinedAt,
-                tracks: p.tracks?.map((t) => ({
-                    source: t.source,
-                    type: t.type,
-                    muted: t.muted,
-                })),
-            }));
+            const mapped = participants.map((p) => {
+                let parsedMeta = {};
+                if (p.metadata) {
+                    try {
+                        parsedMeta = JSON.parse(p.metadata);
+                    } catch (e) {
+                        parsedMeta = { raw: p.metadata };
+                    }
+                }
+
+                return {
+                    identity: p.identity,
+                    name: p.name,
+                    metadata: parsedMeta,
+                    isSpeaking: p.isSpeaking,
+                    joinedAt: p.joinedAt,
+                    tracks: p.tracks?.map((t) => ({
+                        source: t.source,
+                        type: t.type,
+                        muted: t.muted,
+                    })),
+                };
+            });
 
             res.json({ participants: mapped, roomName });
         } catch (err) {
