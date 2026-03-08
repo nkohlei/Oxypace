@@ -103,8 +103,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         };
 
         const onPermissions = ({ userId, canPublish }) => {
-            if (userId === user?._id) {
+            if (String(userId) === String(user?._id)) {
                 setCanSpeak(canPublish);
+            }
+            if (canPublish) {
+                setRaisedHands(prev => prev.filter(h => String(h.userId) !== String(userId)));
             }
         };
 
@@ -151,11 +154,17 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     };
 
     const handleGrant = async (userId) => {
-        try { await grantSpeak(portalId, channelId, userId); } catch (e) { console.error(e); }
+        try {
+            await grantSpeak(portalId, channelId, userId);
+            setRaisedHands(prev => prev.filter(h => String(h.userId) !== String(userId)));
+        } catch (e) { console.error(e); }
     };
 
     const handleRevoke = async (userId) => {
-        try { await revokeSpeak(portalId, channelId, userId); } catch (e) { console.error(e); }
+        try {
+            await revokeSpeak(portalId, channelId, userId);
+            setRaisedHands(prev => prev.filter(h => String(h.userId) !== String(userId)));
+        } catch (e) { console.error(e); }
     };
 
     // Derived states

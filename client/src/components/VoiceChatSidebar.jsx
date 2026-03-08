@@ -79,7 +79,7 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
             </form>
             {isRestricted && !isAdmin && !canSpeak && (
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px', paddingBottom: '8px' }}>
-                    Sadece yöneticiler ve izin verilenler mesaj gönderebilir.
+                    Sadece yöneticiler mesaj gönderebilir.
                 </div>
             )}
         </div>
