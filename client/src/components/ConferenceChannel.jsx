@@ -142,7 +142,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
     const handleSendMessage = (text) => {
         // Prevent backend/API spam by enforcing state explicitly before context trigger
-        if (isChatRestricted && !isAdmin && !canSpeak) {
+        if (isChatRestricted && !isAdmin) {
             console.warn("Chat is restricted. Message blocked.");
             return;
         }
@@ -542,7 +542,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             onClose={() => setIsChatOpen(false)}
                             isRestricted={isChatRestricted}
                             isAdmin={isAdmin}
-                            canSpeak={canSpeak}
                         />
                     </div>
                 )}

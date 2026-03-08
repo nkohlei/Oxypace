@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './VoiceChatSidebar.css';
 
-const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAdmin, canSpeak }) => {
+const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAdmin }) => {
     const [inputText, setInputText] = useState('');
     const endOfMessagesRef = useRef(null);
 
@@ -56,7 +56,7 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
                 <div ref={endOfMessagesRef} />
             </div>
 
-            {isRestricted && !isAdmin && !canSpeak ? (
+            {isRestricted && !isAdmin ? (
                 <div style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-muted)' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
