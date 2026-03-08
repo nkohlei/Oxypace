@@ -248,11 +248,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
                     </div>
-                    <h2 className="vc-lobby-title">{channelName || 'Konferans Odası'}</h2>
-                    <p className="vc-lobby-subtitle" style={{ marginBottom: '24px' }}>Konferansa katılmak için aşağıdaki butona tıklayın</p>
+                    <h2 className="vc-lobby-title">{channelName || 'Seminer Odası'}</h2>
+                    <p className="vc-lobby-subtitle" style={{ marginBottom: '24px' }}>Seminere katılmak için aşağıdaki butona tıklayın</p>
 
                     <button className="vc-join-btn conf glass-join-btn action-btn-large" onClick={handleJoin}>
-                        Konferansa Katıl
+                        Seminere Katıl
                     </button>
                     {activeRoom && (
                         <p className="vc-lobby-warning" style={{ marginTop: '16px' }}>
@@ -271,7 +271,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 <div className="vc-lobby glass-panel">
                     <div className="vc-connecting-spinner loader" />
                     <h2 className="vc-lobby-title">Bağlanılıyor...</h2>
-                    <p className="vc-lobby-subtitle">Konferans odasına bağlantı kuruluyor</p>
+                    <p className="vc-lobby-subtitle">Seminer odasına bağlantı kuruluyor</p>
                 </div>
             </div>
         );
@@ -310,7 +310,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             <div className="vc-header conf">
                 <div className="vc-header-left">
                     <div className="vc-header-dot conf" />
-                    <span className="vc-header-title">{channelName || 'Konferans'}</span>
+                    <span className="vc-header-title">{channelName || 'Seminer'}</span>
                     <span className="vc-header-badge glass-badge">{isAdmin ? '🎤 Moderatör' : canSpeak ? '🎙️ Konuşmacı' : '👁️ Dinleyici'}</span>
                 </div>
                 <div className="vc-header-right" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

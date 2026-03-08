@@ -978,7 +978,7 @@ const PortalSettingsModal = ({
                                         {[
                                             { value: 'text', label: '# Metin', icon: '#' },
                                             { value: 'voice', label: '🎙️ Ses', icon: '🎙️' },
-                                            { value: 'conference', label: '🎤 Konferans', icon: '🎤' },
+                                            { value: 'conference', label: '🎤 Seminer', icon: '🎤' },
                                         ].map((t) => (
                                             <button
                                                 key={t.value}
@@ -1015,7 +1015,7 @@ const PortalSettingsModal = ({
                                                     ? 'Kanal adı (örn: oyun, müzik)'
                                                     : newChannelType === 'voice'
                                                         ? 'Ses kanalı adı (örn: genel-ses)'
-                                                        : 'Konferans adı (örn: toplantı)'
+                                                        : 'Seminer adı (örn: egitim)'
                                             }
                                             value={newChannelName}
                                             onChange={(e) => setNewChannelName(e.target.value)}
@@ -1037,7 +1037,7 @@ const PortalSettingsModal = ({
                                         <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
                                             {newChannelType === 'voice'
                                                 ? '💡 Ses kanallarında tüm katılımcılar serbestçe konuşabilir (N-to-N).'
-                                                : '💡 Konferans kanallarında yalnızca moderatörlerin izin verdiği kişiler konuşabilir (1-to-N).'}
+                                                : '💡 Seminer kanallarında yalnızca yöneticiler yayın yapabilir, diğer üyeler dinleyicidir.'}
                                         </div>
                                     )}
                                 </div>
