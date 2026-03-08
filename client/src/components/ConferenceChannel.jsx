@@ -32,6 +32,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [handRaised, setHandRaised] = useState(false);
     const [canSpeak, setCanSpeak] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [isChatRestricted, setIsChatRestricted] = useState(false);
+    const [isListenersOpen, setIsListenersOpen] = useState(false);
 
     // Pre-join stats
     const [lobbyCount, setLobbyCount] = useState(null);
@@ -105,14 +107,25 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             }
         };
 
+        const onChatMode = ({ restricted }) => {
+            setIsChatRestricted(restricted);
+        };
+
         socket.on('voice:raise-hand', onRaiseHand);
         socket.on('voice:permissions-updated', onPermissions);
+        socket.on('voice:chat-mode', onChatMode);
 
         return () => {
             socket.off('voice:raise-hand', onRaiseHand);
             socket.off('voice:permissions-updated', onPermissions);
+            socket.off('voice:chat-mode', onChatMode);
         };
     }, [socket, user, isActiveRoom]);
+
+    const toggleChatMode = () => {
+        if (!isAdmin || !socket || !activeRoom) return;
+        socket.emit('voice:chat-mode-toggle', { roomName: activeRoom.roomName, restricted: !isChatRestricted });
+    };
 
     const handleJoin = () => {
         connectToChannel(portalId, channelId);
@@ -314,11 +327,34 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     <span className="vc-header-badge glass-badge">{isAdmin ? '🎤 Moderatör' : canSpeak ? '🎙️ Konuşmacı' : '👁️ Dinleyici'}</span>
                 </div>
                 <div className="vc-header-right" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    {isAdmin && raisedHands.length > 0 && (
-                        <div className="glass-badge" style={{ background: 'rgba(99, 102, 241, 0.2)', borderColor: 'rgba(99, 102, 241, 0.4)' }}>
-                            ✋ {raisedHands.length} söz isteği
-                        </div>
+                    {isAdmin && (
+                        <button
+                            className={`vc-ctrl-btn neumorphic-btn circular ${isChatRestricted ? 'active danger' : ''}`}
+                            onClick={toggleChatMode}
+                            title={isChatRestricted ? 'Sohbeti Herkese Aç' : 'Sohbeti Yalnızca Yöneticiye Kapat'}
+                            style={{ padding: '0 12px', borderRadius: '20px', fontSize: '12px', width: 'auto' }}
+                        >
+                            {isChatRestricted ? '🔒 Sohbet Kilitli' : '🔓 Sohbet Açık'}
+                        </button>
                     )}
+                    <button
+                        className={`vc-ctrl-btn neumorphic-btn circular ${isListenersOpen ? 'active' : ''}`}
+                        onClick={() => setIsListenersOpen(!isListenersOpen)}
+                        title="Dinleyicileri Aç/Kapat"
+                        style={{ position: 'relative' }}
+                    >
+                        {raisedHands.length > 0 && isAdmin && (
+                            <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', borderRadius: '50%', fontSize: '10px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                                {raisedHands.length}
+                            </span>
+                        )}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                    </button>
                     <button
                         className={`vc-ctrl-btn neumorphic-btn circular ${isChatOpen ? 'active' : ''}`}
                         onClick={() => setIsChatOpen(!isChatOpen)}
@@ -331,58 +367,15 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 </div>
             </div>
 
-            {/* Raised Hands Panel (Admin) */}
-            {isAdmin && raisedHands.length > 0 && (
-                <div className="vc-raised-panel glass-panel" style={{ padding: '8px 16px', marginBottom: '16px', display: 'flex', gap: '8px', overflowX: 'auto' }}>
-                    {raisedHands.map(h => (
-                        <div key={h.userId} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '16px' }}>
-                            <img src={h.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(h.username)}&background=6366f1&color=fff&size=28`} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                            <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{h.displayName || h.username}</span>
-                            <button className="icon-btn" style={{ color: '#23a559' }} onClick={() => handleGrant(h.userId)} title="Söz Ver">✓</button>
-                            <button className="icon-btn" style={{ color: '#f23f43' }} onClick={() => handleRevoke(h.userId)} title="Reddet">✕</button>
-                        </div>
-                    ))}
-                </div>
-            )}
-
             {/* Viewport Area */}
-            <div className="vc-viewport custom-scrollbar" style={{ gap: '24px', display: 'block' }}>
-
-                {/* Stage: Speakers */}
-                <div className="vc-stage-section">
-                    <div style={{ fontSize: '18px', fontWeight: '800', marginBottom: '12px', color: 'rgba(255,255,255,0.8)' }}>🎤 Sahnede</div>
-
-                    {/* Always ensure speakers are arranged flexibly in the grid architecture */}
-                    <div className="vc-grid layout-dynamic grid-3" style={{ height: 'auto', minHeight: '300px', paddingBottom: '16px' }}>
-
+            <div className="vc-viewport custom-scrollbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '100%', maxWidth: '800px', padding: '20px' }}>
+                    <div className={`vc-grid layout-dynamic ${speakerParticipants.length < 2 && !(isAdmin || canSpeak) ? 'grid-1' : speakerParticipants.length >= 3 ? 'grid-4' : 'grid-3'}`} style={{ height: 'auto', minHeight: '300px' }}>
                         {/* Local speaker (if they have mic privileges) */}
                         {(isAdmin || canSpeak) && renderSpeakerCard(localUserObject)}
 
                         {/* Remote Speakers */}
                         {speakerParticipants.map(p => renderSpeakerCard(p))}
-                    </div>
-                </div>
-
-                {/* Listeners */}
-                <div className="vc-stage-section listeners" style={{ marginTop: '24px' }}>
-                    <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                        👁️ Dinleyiciler ({listenerParticipants.length + (!isAdmin && !canSpeak ? 1 : 0)})
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                        {!isAdmin && !canSpeak && (
-                            <div className="glass-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '24px', background: 'rgba(255,255,255,0.02)' }}>
-                                <img src={localUserObject.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(localUserObject.name)}&background=6366f1&color=fff&size=28`} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                                <span>{localUserObject.name} (Sen)</span>
-                                {handRaised && <span>✋</span>}
-                            </div>
-                        )}
-                        {listenerParticipants.map(p => (
-                            <div key={p.identity} className="glass-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '24px', background: 'rgba(255,255,255,0.02)' }}>
-                                <img src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=6366f1&color=fff&size=28`} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                                <span>{p.name}</span>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>
@@ -436,13 +429,57 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             {/* Sliding Text Chat Sidebar */}
-            {isChatOpen && (
-                <VoiceChatSidebar
-                    messages={chatMessages}
-                    onSendMessage={sendChatMessage}
-                    onClose={() => setIsChatOpen(false)}
-                />
-            )}
+            <div style={{ position: 'absolute', right: '16px', top: '80px', bottom: '96px', display: 'flex', gap: '16px', zIndex: 100, pointerEvents: 'none' }}>
+                {isListenersOpen && (
+                    <div className="voice-chat-sidebar glass-panel" style={{ position: 'relative', right: 'auto', top: 'auto', bottom: 'auto', pointerEvents: 'auto', animation: 'sidebarPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+                        <div className="chat-header">
+                            <h3>Dinleyiciler ({listenerParticipants.length + (!isAdmin && !canSpeak ? 1 : 0)})</h3>
+                            <button className="chat-close-btn icon-btn" onClick={() => setIsListenersOpen(false)}>
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        <div className="chat-messages custom-scrollbar" style={{ gap: '8px' }}>
+                            {!isAdmin && !canSpeak && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <img src={localUserObject.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(localUserObject.name)}&background=6366f1&color=fff&size=28`} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{localUserObject.name} (Sen)</span>
+                                    </div>
+                                    {handRaised && <span style={{ fontSize: '18px' }}>✋</span>}
+                                </div>
+                            )}
+                            {listenerParticipants.map(p => {
+                                const hasRaisedHand = raisedHands.some(h => h.userId === p.identity);
+                                return (
+                                    <div key={p.identity} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: hasRaisedHand ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <img src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=6366f1&color=fff&size=32`} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                            <span style={{ fontSize: '14px', fontWeight: hasRaisedHand ? 'bold' : 'normal' }}>{p.name} {hasRaisedHand && '✋'}</span>
+                                        </div>
+                                        {isAdmin && hasRaisedHand && (
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: '#23a559', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleGrant(p.identity)} title="Söz Ver">✓</button>
+                                                <button style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: '#f23f43', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleRevoke(p.identity)} title="Reddet">✕</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+                {isChatOpen && (
+                    <div style={{ position: 'relative', pointerEvents: 'auto', width: '320px', animation: 'sidebarPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+                        <VoiceChatSidebar
+                            messages={chatMessages}
+                            onSendMessage={sendChatMessage}
+                            onClose={() => setIsChatOpen(false)}
+                            isRestricted={isChatRestricted}
+                            isAdmin={isAdmin}
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
