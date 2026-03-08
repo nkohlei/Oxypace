@@ -272,6 +272,7 @@ export const VoiceProvider = ({ children }) => {
         toggleMicrophone,
         toggleCamera,
         sendChatMessage,
+        grantSpeak,
         revokeSpeak,
         pinnedParticipant,
         setPinnedParticipant,
