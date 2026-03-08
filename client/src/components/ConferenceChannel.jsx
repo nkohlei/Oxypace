@@ -35,6 +35,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [isChatRestricted, setIsChatRestricted] = useState(false);
     const [isListenersOpen, setIsListenersOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [focusedIdentity, setFocusedIdentity] = useState(null);
 
     // Pre-join stats
     const [lobbyCount, setLobbyCount] = useState(null);
@@ -139,6 +140,15 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         disconnectFromChannel();
     };
 
+    const handleSendMessage = (text) => {
+        // Prevent backend/API spam by enforcing state explicitly before context trigger
+        if (isChatRestricted && !isAdmin && !canSpeak) {
+            console.warn("Chat is restricted. Message blocked.");
+            return;
+        }
+        sendChatMessage(text);
+    };
+
     const handleRaiseHand = () => {
         const newState = !handRaised;
         setHandRaised(newState);
@@ -168,14 +178,29 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     };
 
     // Derived states
-    // A participant is a speaker if they are an admin OR if they are unmuted/have camera on (and are on stage)
-    const speakerParticipants = participants.filter(p => !p.isLocal && (p.role === 'owner' || p.role === 'admin' || !p.isMuted || p.isCameraOn));
+    // Admins are always speakers. Guests become speakers if they can publish (unmuted or camera on)
+    const adminSpeakers = participants.filter(p => !p.isLocal && (p.role === 'owner' || p.role === 'admin'));
+    if (isAdmin) adminSpeakers.unshift(localUserObject);
+
+    const guestSpeakers = participants.filter(p => !p.isLocal && p.role !== 'owner' && p.role !== 'admin' && (!p.isMuted || p.isCameraOn));
+    if (!isAdmin && canSpeak) guestSpeakers.unshift(localUserObject);
+
     const listenerParticipants = participants.filter(p => !p.isLocal && p.role !== 'owner' && p.role !== 'admin' && p.isMuted && !p.isCameraOn);
 
     // ─── PARTIAL COMPONENTS ───
-    const renderSpeakerCard = (p) => {
+    const renderSpeakerCard = (p, isFocused = false) => {
+        const isClickable = adminSpeakers.length + guestSpeakers.length > 1;
         return (
-            <div key={p.identity} className={`vc-card role-grid ${p.isSpeaking ? 'speaking' : ''}`}>
+            <div
+                key={p.identity}
+                className={`vc-card role-grid ${p.isSpeaking ? 'speaking' : ''} ${isFocused ? 'focused' : ''}`}
+                onClick={() => {
+                    if (isClickable) {
+                        setFocusedIdentity(isFocused ? null : p.identity);
+                    }
+                }}
+                style={{ cursor: isClickable ? 'pointer' : 'default', transition: 'all 0.3s ease' }}
+            >
                 <div className="vc-card-video-area">
                     {p.isCameraOn && p.videoTrack ? (
                         <video
@@ -250,43 +275,53 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     // ─── LOBBY ───
     if (!isActiveRoom) {
         return (
-            <div className="vc-container glass-container lobby-bg">
-                <div className="vc-lobby glass-panel" style={{ position: 'relative' }}>
+            <div className="vc-container glass-container lobby-bg" style={{ background: 'linear-gradient(135deg, rgba(8,10,15,0.95), rgba(18,20,30,0.95))' }}>
+                <div className="vc-lobby glass-panel" style={{ position: 'relative', border: '1px solid rgba(255,255,255,0.08)', padding: '40px', maxWidth: '460px', borderRadius: '24px', boxShadow: '0 12px 40px rgba(0,0,0,0.4)', background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)' }}>
 
                     {/* Top Right Live Participant Badge */}
                     {lobbyCount !== null && (
                         <div style={{
-                            position: 'absolute', top: '16px', right: '16px',
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            background: 'rgba(0,0,0,0.2)', padding: '6px 12px',
-                            borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-                            color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.05)'
+                            position: 'absolute', top: '20px', right: '20px',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            background: 'rgba(0,0,0,0.4)', padding: '8px 14px',
+                            borderRadius: '20px', fontSize: '13px', fontWeight: '500',
+                            color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.1)',
+                            backdropFilter: 'blur(10px)'
                         }}>
                             <div style={{
                                 width: '8px', height: '8px', borderRadius: '50%',
-                                background: lobbyCount > 0 ? 'var(--primary-green)' : 'var(--text-muted)',
-                                boxShadow: lobbyCount > 0 ? '0 0 8px var(--primary-green)' : 'none'
+                                background: lobbyCount > 0 ? '#23a559' : 'var(--text-muted)',
+                                boxShadow: lobbyCount > 0 ? '0 0 10px #23a559' : 'none',
+                                animation: lobbyCount > 0 ? 'pulse 2s infinite' : 'none'
                             }} />
                             <span>İçeride: {lobbyCount} Kişi</span>
                         </div>
                     )}
 
-                    <div className="vc-lobby-icon conf glass-icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <div className="vc-lobby-icon conf glass-icon" style={{ width: '80px', height: '80px', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)', color: '#818cf8', marginBottom: '24px' }}>
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                             <line x1="12" y1="19" x2="12" y2="23" />
                             <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
                     </div>
-                    <h2 className="vc-lobby-title">{channelName || 'Seminer Odası'}</h2>
-                    <p className="vc-lobby-subtitle" style={{ marginBottom: '24px' }}>Seminere katılmak için aşağıdaki butona tıklayın</p>
+                    <h2 className="vc-lobby-title" style={{ fontSize: '28px', fontWeight: '700', letterSpacing: '-0.5px', marginBottom: '8px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                        {channelName || 'Seminer Odası'}
+                    </h2>
+                    <p className="vc-lobby-subtitle" style={{ fontSize: '15px', color: 'rgba(255,255,255,0.6)', marginBottom: '32px', lineHeight: '1.5' }}>
+                        Şu an dinleyici bekleme salonundasınız. Ses ve görüntü kapalı olarak katılacaksınız. İçeriden söz hakkı isteyebilirsiniz.
+                    </p>
 
-                    <button className="vc-join-btn conf glass-join-btn action-btn-large" onClick={handleJoin}>
-                        Seminere Katıl
+                    <button
+                        className="vc-join-btn conf glass-join-btn action-btn-large"
+                        onClick={handleJoin}
+                        style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', padding: '16px', fontSize: '16px', fontWeight: '600', letterSpacing: '0.5px' }}
+                    >
+                        Salona Geçiş Yap
                     </button>
                     {activeRoom && (
-                        <p className="vc-lobby-warning" style={{ marginTop: '16px' }}>
+                        <p className="vc-lobby-warning" style={{ marginTop: '20px', fontSize: '13px', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
                             Katıldığınızda diğer kanaldan otomatik ayrılırsınız.
                         </p>
                     )}
@@ -344,7 +379,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 {isAdmin && (
                     <button
                         className={`vc-ctrl-btn neumorphic-btn ${isListenersOpen ? 'active' : ''}`}
-                        onClick={() => setIsListenersOpen(!isListenersOpen)}
+                        onClick={() => {
+                            setIsListenersOpen(!isListenersOpen);
+                            setIsChatOpen(false);
+                            setIsSettingsOpen(false);
+                        }}
                         title="Dinleyiciler"
                         style={{ position: 'relative' }}
                     >
@@ -364,7 +403,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
                 <button
                     className={`vc-ctrl-btn neumorphic-btn ${isChatOpen ? 'active' : ''}`}
-                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    onClick={() => {
+                        setIsChatOpen(!isChatOpen);
+                        setIsListenersOpen(false);
+                        setIsSettingsOpen(false);
+                    }}
                     title="Sohbet"
                 >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
@@ -378,7 +421,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         <button
                             className={`vc-ctrl-btn neumorphic-btn ${isSettingsOpen ? 'active' : ''}`}
                             title="Seminer Ayarları"
-                            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                            onClick={() => {
+                                setIsSettingsOpen(!isSettingsOpen);
+                                setIsChatOpen(false);
+                                setIsListenersOpen(false);
+                            }}
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
                                 <circle cx="12" cy="12" r="3"></circle>
@@ -390,43 +437,46 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                     Yönetici Konfor Araçları
                                 </div>
-                                <button
-                                    className={`vc-ctrl-btn neumorphic-btn ${isChatRestricted ? 'danger active' : ''}`}
-                                    onClick={() => {
-                                        toggleChatMode();
-                                        setIsSettingsOpen(false);
-                                    }}
-                                    title={isChatRestricted ? 'Sohbeti Herkese Aç' : 'Sohbeti Yalnızca Yöneticiye Kapat'}
-                                    style={{ padding: '12px 16px', borderRadius: '12px', fontSize: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', border: '1px solid rgba(255,255,255,0.05)', height: 'auto' }}
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18" style={{ marginRight: '10px' }}>
-                                        {isChatRestricted ? (
-                                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-                                        ) : (
-                                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                                        )}
-                                    </svg>
-                                    <span style={{ textAlign: 'left', lineHeight: '1.4' }}>
-                                        {isChatRestricted ? 'Oda Sohbeti Kilitli' : 'Sohbet Kilidini Aç'}
-                                    </span>
-                                </button>
+                                <div style={{ padding: '4px 0', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px', cursor: 'pointer', background: 'transparent' }} onClick={toggleChatMode}>
+                                        <span style={{ fontSize: '14px', color: 'white' }}>Herkese Açık Sohbet</span>
+                                        <div className={`switch-toggle ${!isChatRestricted ? 'on' : 'off'}`} style={{ width: '40px', height: '22px', background: !isChatRestricted ? '#23a559' : 'rgba(255,255,255,0.1)', borderRadius: '12px', position: 'relative', transition: 'background 0.3s' }}>
+                                            <div style={{ width: '18px', height: '18px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: !isChatRestricted ? '20px' : '2px', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Viewport Area */}
-            <div className="vc-viewport custom-scrollbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px 100px 24px' }}>
-                <div style={{ width: '100%', maxWidth: '600px', padding: '20px' }}>
-                    <div className={`vc-grid layout-dynamic ${speakerParticipants.length < 2 && !(isAdmin || canSpeak) ? 'grid-1' : speakerParticipants.length >= 3 ? 'grid-4' : 'grid-3'}`} style={{ height: 'auto', minHeight: '300px' }}>
-                        {/* Local speaker (if they have mic privileges) */}
-                        {(isAdmin || canSpeak) && renderSpeakerCard(localUserObject)}
+            {/* Viewport Area (Spotlight / Left Strip layout) */}
+            <div className="vc-viewport layout-spotlight" style={{ padding: '80px 24px 100px 24px' }}>
 
-                        {/* Remote Speakers */}
-                        {speakerParticipants.map(p => renderSpeakerCard(p))}
+                {/* Left Strip for Guests (If any exist) */}
+                {guestSpeakers.length > 0 && (
+                    <div className="vc-carousel custom-scrollbar" style={{ width: '200px', flexShrink: 0 }}>
+                        {guestSpeakers.map(p => {
+                            if (p.identity === focusedIdentity) return null; // rendered in center instead
+                            return renderSpeakerCard(p);
+                        })}
+                    </div>
+                )}
+
+                {/* Main Hero Area for Admins & Focused */}
+                <div className="vc-hero" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <div className={`vc-grid layout-dynamic grid-1`} style={{ width: '100%', maxWidth: focusedIdentity ? '800px' : '600px', height: 'auto', maxHeight: '100%' }}>
+                        {focusedIdentity ? (
+                            // Render uniquely focused card
+                            [...adminSpeakers, ...guestSpeakers].map(p => p.identity === focusedIdentity ? renderSpeakerCard(p, true) : null)
+                        ) : (
+                            // Default: Render all admins
+                            adminSpeakers.map(p => renderSpeakerCard(p))
+                        )}
                     </div>
                 </div>
+
             </div>
 
             {/* Sliding Sidebars (Listeners & Chat) */}
@@ -486,7 +536,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     <div style={{ position: 'relative', pointerEvents: 'auto', width: '300px', height: '100%', animation: 'sidebarPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
                         <VoiceChatSidebar
                             messages={chatMessages}
-                            onSendMessage={sendChatMessage}
+                            onSendMessage={handleSendMessage}
                             onClose={() => setIsChatOpen(false)}
                             isRestricted={isChatRestricted}
                             isAdmin={isAdmin}
