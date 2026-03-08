@@ -177,6 +177,19 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         } catch (e) { console.error(e); }
     };
 
+    // ─── CONNECTED STATE BASE ───
+    const localUserObject = {
+        identity: user?._id,
+        name: user?.profile?.displayName || user?.username,
+        avatar: user?.profile?.avatar || '',
+        isLocal: true,
+        role: userRole,
+        isMuted: localState.isMuted,
+        isCameraOn: localState.isCameraOn,
+        isSpeaking: participants.find(p => p.isLocal)?.isSpeaking,
+        videoTrack: participants.find(p => p.isLocal)?.videoTrack
+    };
+
     // Derived states
     // Admins are always speakers. Guests become speakers if they can publish (unmuted or camera on)
     const adminSpeakers = participants.filter(p => !p.isLocal && (p.role === 'owner' || p.role === 'admin'));
@@ -358,17 +371,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     }
 
     // ─── CONNECTED ───
-    const localUserObject = {
-        identity: user?._id,
-        name: user?.profile?.displayName || user?.username,
-        avatar: user?.profile?.avatar || '',
-        isLocal: true,
-        role: userRole,
-        isMuted: localState.isMuted,
-        isCameraOn: localState.isCameraOn,
-        isSpeaking: participants.find(p => p.isLocal)?.isSpeaking,
-        videoTrack: participants.find(p => p.isLocal)?.videoTrack
-    };
 
     return (
         <div className="vc-container glass-container">
