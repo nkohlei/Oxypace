@@ -34,6 +34,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isChatRestricted, setIsChatRestricted] = useState(false);
     const [isListenersOpen, setIsListenersOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Pre-join stats
     const [lobbyCount, setLobbyCount] = useState(null);
@@ -194,8 +195,16 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
                 <div className="vc-card-info">
                     <span className="vc-card-name">{p.name} {p.isLocal && '(Sen)'}</span>
-                    <span className="vc-card-role" style={{ fontSize: '12px', marginLeft: '4px' }}>
-                        {p.role === 'owner' ? '👑' : p.role === 'admin' ? '🛡️' : ''}
+                    <span className="vc-card-role" style={{ fontSize: '12px', marginLeft: '4px', display: 'flex', alignItems: 'center' }}>
+                        {p.role === 'owner' ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" width="14" height="14" title="Kurucu">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                        ) : p.role === 'admin' ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" width="14" height="14" title="Yönetici">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg>
+                        ) : ''}
                     </span>
                     <div className="vc-card-indicators">
                         {p.isMuted && (
@@ -321,23 +330,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         <div className="vc-container glass-container">
             {/* Isolated Top Right Controls */}
             <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 110, display: 'flex', gap: '12px', alignItems: 'center' }}>
-                {isAdmin && (
-                    <button
-                        className={`vc-ctrl-btn neumorphic-btn circular ${isChatRestricted ? 'active danger' : ''}`}
-                        onClick={toggleChatMode}
-                        title={isChatRestricted ? 'Sohbeti Herkese Aç' : 'Sohbeti Yalnızca Yöneticiye Kapat'}
-                        style={{ padding: '0 12px', borderRadius: '20px', fontSize: '12px', width: 'auto' }}
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" style={{ marginRight: '6px' }}>
-                            {isChatRestricted ? (
-                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-                            ) : (
-                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                            )}
-                        </svg>
-                        {isChatRestricted ? 'Sohbet Kilitli' : 'Sohbet Açık'}
-                    </button>
-                )}
+                {/* Removed floating Chat Mode Toggle, now inside Settings menu */}
 
                 <button
                     className={`vc-ctrl-btn neumorphic-btn circular ${isListenersOpen ? 'active' : ''}`}
@@ -368,21 +361,51 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     </svg>
                 </button>
 
-                {/* Minimalist Settings Icon */}
-                <button
-                    className="vc-ctrl-btn neumorphic-btn circular"
-                    title="Seminer Ayarları"
-                >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </button>
+                {/* Settings Icon with Dropdown */}
+                <div style={{ position: 'relative' }}>
+                    <button
+                        className={`vc-ctrl-btn neumorphic-btn circular ${isSettingsOpen ? 'active' : ''}`}
+                        title="Seminer Ayarları"
+                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                    {isSettingsOpen && isAdmin && (
+                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', top: '100%', right: '0', marginTop: '12px', padding: '12px', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 120 }}>
+                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Yönetici Konfor Araçları
+                            </div>
+                            <button
+                                className={`vc-ctrl-btn neumorphic-btn ${isChatRestricted ? 'danger active' : ''}`}
+                                onClick={() => {
+                                    toggleChatMode();
+                                    setIsSettingsOpen(false);
+                                }}
+                                title={isChatRestricted ? 'Sohbeti Herkese Aç' : 'Sohbeti Yalnızca Yöneticiye Kapat'}
+                                style={{ padding: '12px 16px', borderRadius: '12px', fontSize: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', border: '1px solid rgba(255,255,255,0.05)', height: 'auto' }}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18" style={{ marginRight: '10px' }}>
+                                    {isChatRestricted ? (
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+                                    ) : (
+                                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                    )}
+                                </svg>
+                                <span style={{ textAlign: 'left', lineHeight: '1.4' }}>
+                                    {isChatRestricted ? 'Oda Sohbeti Kilitli' : 'Sohbet Kilidini Aç'}
+                                </span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Viewport Area */}
             <div className="vc-viewport custom-scrollbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px 100px 24px' }}>
-                <div style={{ width: '100%', maxWidth: '800px', padding: '20px' }}>
+                <div style={{ width: '100%', maxWidth: '600px', padding: '20px' }}>
                     <div className={`vc-grid layout-dynamic ${speakerParticipants.length < 2 && !(isAdmin || canSpeak) ? 'grid-1' : speakerParticipants.length >= 3 ? 'grid-4' : 'grid-3'}`} style={{ height: 'auto', minHeight: '300px' }}>
                         {/* Local speaker (if they have mic privileges) */}
                         {(isAdmin || canSpeak) && renderSpeakerCard(localUserObject)}
