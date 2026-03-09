@@ -137,20 +137,20 @@
 /* 1 User */
 .layout-dynamic.grid-1 .vc-grid {
     grid-template-columns: 1fr;
-    max-width: 350px;
+    max-width: 600px; /* Increased from 350px */
 }
 
 /* 2 Users */
 .layout-dynamic.grid-2 .vc-grid {
     grid-template-columns: repeat(2, 1fr);
-    max-width: 500px;
+    max-width: 800px; /* Increased from 500px */
 }
 
 /* 3 Users - 2 on top, 1 bottom center */
 .layout-dynamic.grid-3 .vc-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: 1fr 1fr;
-    max-width: 500px;
+    max-width: 800px; /* Increased from 500px */
 }
 
 .layout-dynamic.grid-3 .vc-card.role-grid:nth-child(3) {
@@ -162,8 +162,8 @@
 
 /* 4+ Users */
 .layout-dynamic.grid-4 .vc-grid {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    max-width: 600px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Increased minmax base */
+    max-width: 1000px; /* Increased from 600px */
 }
 
 /* Spotlight Layout (Sidebar Carousel + Hero) */

@@ -5,8 +5,8 @@
 export const linkifyText = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // Regex to match URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    // Regex to match URLs (http, https, or starting with www.)
+    const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
 
     const parts = text.split(urlRegex);
 
@@ -14,10 +14,11 @@ export const linkifyText = (text) => {
         if (urlRegex.test(part)) {
             // Reset regex lastIndex
             urlRegex.lastIndex = 0;
+            const href = part.toLowerCase().startsWith('www.') ? `http://${part}` : part;
             return (
                 <a
                     key={index}
-                    href={part}
+                    href={href}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="linkified-url"
@@ -44,7 +45,7 @@ export const truncateAndLinkifyText = (text, maxLength) => {
         return { elements: linkifyText(text), isTruncated: false };
     }
 
-    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
     const parts = text.split(urlRegex);
 
     let currentLength = 0;
@@ -56,10 +57,11 @@ export const truncateAndLinkifyText = (text, maxLength) => {
 
         if (urlRegex.test(part)) {
             urlRegex.lastIndex = 0;
+            const href = part.toLowerCase().startsWith('www.') ? `http://${part}` : part;
             elements.push(
                 <a
                     key={`url-${i}`}
-                    href={part}
+                    href={href}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="linkified-url"

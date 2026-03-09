@@ -234,10 +234,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         </div>
                     )}
 
-                    {/* IMPORTANT FIX: Render remote audio tracks */}
-                    {!p.isLocal && p.audioTrack && (
-                        <AudioTrackPlayer track={p.audioTrack} />
-                    )}
+                    {/* Audio track rendering is now handled globally in VoiceContext.jsx to prevent cutoffs */}
                 </div>
 
                 <div className="vc-card-info">
@@ -259,6 +256,15 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <line x1="1" y1="1" x2="23" y2="23" />
                                     <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                                </svg>
+                            </div>
+                        )}
+                        {!p.isLocal && p.connectionQuality !== undefined && (
+                            <div className="vc-indicator ping" style={{ background: 'rgba(0,0,0,0.5)', padding: '4px', borderRadius: '4px', display: 'flex' }} title={`Bağlantı: ${p.connectionQuality === 1 ? 'Zayıf' : p.connectionQuality === 2 ? 'İyi' : p.connectionQuality === 3 ? 'Mükemmel' : 'Zayıf/Koptu'}`}>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+                                    <rect x="2" y="16" width="4" height="6" rx="1" fill={p.connectionQuality >= 1 ? (p.connectionQuality === 1 ? '#ef4444' : '#22c55e') : '#4b5563'} />
+                                    <rect x="10" y="10" width="4" height="12" rx="1" fill={p.connectionQuality >= 2 ? '#22c55e' : '#4b5563'} />
+                                    <rect x="18" y="4" width="4" height="18" rx="1" fill={p.connectionQuality === 3 ? '#22c55e' : '#4b5563'} />
                                 </svg>
                             </div>
                         )}
@@ -602,20 +608,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             </div>
         </div>
     );
-};
-
-// Helper component to render and play the LiveKit AudioTrack natively
-const AudioTrackPlayer = ({ track }) => {
-    const audioEl = React.useRef(null);
-    React.useEffect(() => {
-        if (audioEl.current && track) {
-            track.attach(audioEl.current);
-        }
-        return () => {
-            if (track) track.detach();
-        };
-    }, [track]);
-    return <audio ref={audioEl} autoPlay />;
 };
 
 export default ConferenceChannel;

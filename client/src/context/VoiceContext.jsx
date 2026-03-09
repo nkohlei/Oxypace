@@ -30,18 +30,25 @@ export const VoiceProvider = ({ children }) => {
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
 
-    // Ensure room is cleaned up on unmount or user logout
+    // Ensure room is cleaned up on user logout only
     useEffect(() => {
         if (!user && connectionState !== ConnectionState.Disconnected) {
-            if (room) room.disconnect();
-            setConnectionState(ConnectionState.Disconnected);
-        }
-        return () => {
             if (room) {
                 room.disconnect();
             }
-        };
+            setConnectionState(ConnectionState.Disconnected);
+        }
+        // Removed aggressive cleanup return on re-renders to prevent sudden disconnects during UI state changes
     }, [room, user, connectionState]);
+
+    // Local Sound Helper
+    const playInteractionSound = useCallback((type) => {
+        try {
+            const audio = new Audio(`/sounds/${type}.mp3`);
+            audio.volume = type === 'message' ? 0.3 : 0.5;
+            audio.play().catch(() => { });
+        } catch (e) { }
+    }, []);
 
     // Handle participant list updates
     const updateParticipantList = useCallback((currentRoom) => {
@@ -69,6 +76,7 @@ export const VoiceProvider = ({ children }) => {
                 isMuted: !p.isMicrophoneEnabled,
                 isCameraOn: p.isCameraEnabled,
                 isSpeaking: p.isSpeaking,
+                connectionQuality: p.connectionQuality,
                 videoTrack: videoPub?.track || null,
                 audioTrack: audioPub?.track || null,
             });
@@ -94,6 +102,7 @@ export const VoiceProvider = ({ children }) => {
                 isMuted: !p.isMicrophoneEnabled,
                 isCameraOn: p.isCameraEnabled,
                 isSpeaking: p.isSpeaking,
+                connectionQuality: p.connectionQuality,
                 videoTrack: videoPub?.track || null,
                 audioTrack: audioPub?.track || null,
             });
@@ -144,13 +153,14 @@ export const VoiceProvider = ({ children }) => {
             });
 
             const updateList = () => updateParticipantList(newRoom);
-            newRoom.on(RoomEvent.ParticipantConnected, updateList);
-            newRoom.on(RoomEvent.ParticipantDisconnected, updateList);
+            newRoom.on(RoomEvent.ParticipantConnected, (p) => { playInteractionSound('join'); updateList(); });
+            newRoom.on(RoomEvent.ParticipantDisconnected, (p) => { playInteractionSound('leave'); updateList(); });
             newRoom.on(RoomEvent.TrackSubscribed, updateList);
             newRoom.on(RoomEvent.TrackUnsubscribed, updateList);
             newRoom.on(RoomEvent.TrackMuted, updateList);
             newRoom.on(RoomEvent.TrackUnmuted, updateList);
             newRoom.on(RoomEvent.ActiveSpeakersChanged, updateList);
+            newRoom.on(RoomEvent.ConnectionQualityChanged, updateList);
             newRoom.on(RoomEvent.LocalTrackPublished, updateList);
             newRoom.on(RoomEvent.LocalTrackUnpublished, updateList);
 
@@ -169,6 +179,7 @@ export const VoiceProvider = ({ children }) => {
                             timestamp: new Date().toISOString(),
                             isLocal: false
                         }]);
+                        playInteractionSound('message');
                     } catch (e) {
                         console.error("Failed to parse chat message", e);
                     }
@@ -253,6 +264,7 @@ export const VoiceProvider = ({ children }) => {
                 timestamp: new Date().toISOString(),
                 isLocal: true
             }]);
+            playInteractionSound('message');
         } catch (err) {
             console.error("Failed to send chat message", err);
         }
@@ -290,5 +302,34 @@ export const VoiceProvider = ({ children }) => {
         setPinnedParticipant,
     };
 
-    return <VoiceContext.Provider value={value}>{children}</VoiceContext.Provider>;
+    return (
+        <VoiceContext.Provider value={value}>
+            {children}
+            <GlobalAudioRenderer participants={participants} />
+        </VoiceContext.Provider>
+    );
+};
+
+// Global Audio Component for cross-navigation persistence
+const GlobalAudioRenderer = ({ participants }) => {
+    return (
+        <div style={{ display: 'none' }}>
+            {participants.filter(p => !p.isLocal && p.audioTrack).map(p => (
+                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack} />
+            ))}
+        </div>
+    );
+};
+
+const AudioTrackPlayer = ({ track }) => {
+    const audioEl = useRef(null);
+    useEffect(() => {
+        if (audioEl.current && track) {
+            track.attach(audioEl.current);
+        }
+        return () => {
+            if (track) track.detach();
+        };
+    }, [track]);
+    return <audio ref={audioEl} autoPlay />;
 };
