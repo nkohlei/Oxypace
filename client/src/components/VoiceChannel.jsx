@@ -89,7 +89,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
         // If they are screen sharing and are in the 'hero' role, render the screen share track
         const isShowingScreen = role === 'hero' && p.screenShareTrack;
-        const trackToRender = isShowingScreen ? p.screenShareTrack : p.videoTrack;
+
+        // Only use the camera video track if the camera is explicitly known to be ON
+        // This prevents black screen lingering when the track is locally muted but hasn't fully detached
+        const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
 
         return (
             <div

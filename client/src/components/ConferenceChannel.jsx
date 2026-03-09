@@ -209,7 +209,9 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     // ─── PARTIAL COMPONENTS ───
     const renderSpeakerCard = (p, isFocused = false) => {
         const isClickable = adminSpeakers.length + guestSpeakers.length > 1;
-        const trackToRender = (isFocused && p.screenShareTrack) ? p.screenShareTrack : p.videoTrack;
+
+        // Prevent muted/locally detached tracks from rendering a solid black square
+        const trackToRender = (isFocused && p.screenShareTrack) ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
 
         return (
             <div
