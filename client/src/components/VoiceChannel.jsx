@@ -19,7 +19,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         toggleMicrophone,
         toggleCamera,
         toggleScreenShare,
-        sendChatMessage
+        sendChatMessage,
+        roomStartTime
     } = useVoice();
 
     const [focusedIdentity, setFocusedIdentity] = useState(null);

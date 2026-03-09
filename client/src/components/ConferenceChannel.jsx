@@ -203,6 +203,9 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
     const listenerParticipants = participants.filter(p => !p.isLocal && p.role !== 'owner' && p.role !== 'admin' && p.isMuted && !p.isCameraOn);
 
+    const screenSharer = participants.find(p => p.screenShareTrack);
+    const activeFocusIdentity = screenSharer ? screenSharer.identity : focusedIdentity;
+
     // ─── PARTIAL COMPONENTS ───
     const renderSpeakerCard = (p, isFocused = false) => {
         const isClickable = adminSpeakers.length + guestSpeakers.length > 1;
@@ -472,7 +475,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 {guestSpeakers.length > 0 && (
                     <div className="vc-carousel custom-scrollbar" style={{ width: '200px', flexShrink: 0 }}>
                         {guestSpeakers.map(p => {
-                            if (p.identity === focusedIdentity && !p.screenShareTrack) return null; // rendered in center instead
+                            if (p.identity === activeFocusIdentity && !p.screenShareTrack) return null; // rendered in center instead
                             return renderSpeakerCard(p);
                         })}
                     </div>
@@ -480,10 +483,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
                 {/* Main Hero Area for Admins & Focused */}
                 <div className="vc-hero" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                    <div className={`vc-grid layout-dynamic grid-1`} style={{ width: '100%', maxWidth: focusedIdentity ? '800px' : '600px', height: 'auto', maxHeight: '100%' }}>
-                        {focusedIdentity ? (
+                    <div className={`vc-grid layout-dynamic grid-1`} style={{ width: '100%', maxWidth: activeFocusIdentity ? '800px' : '600px', height: 'auto', maxHeight: '100%' }}>
+                        {activeFocusIdentity ? (
                             // Render uniquely focused card
-                            [...adminSpeakers, ...guestSpeakers].map(p => p.identity === focusedIdentity ? renderSpeakerCard(p, true) : null)
+                            [...adminSpeakers, ...guestSpeakers].map(p => p.identity === activeFocusIdentity ? renderSpeakerCard(p, true) : null)
                         ) : (
                             // Default: Render all admins
                             adminSpeakers.map(p => renderSpeakerCard(p))
