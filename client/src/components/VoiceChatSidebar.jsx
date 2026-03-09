@@ -20,6 +20,24 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
         }
     };
 
+    // Helper function to render text with clickable URLs
+    const renderMessageText = (text) => {
+        if (!text) return null;
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const parts = text.split(urlRegex);
+
+        return parts.map((part, i) => {
+            if (part.match(urlRegex)) {
+                return (
+                    <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="chat-link" style={{ color: '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                        {part}
+                    </a>
+                );
+            }
+            return part;
+        });
+    };
+
     return (
         <div className="voice-chat-sidebar glass-panel">
             <div className="chat-header">
@@ -45,7 +63,7 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
                         <div key={msg.id} className={`chat-bubble-wrapper ${msg.isLocal ? 'local' : 'remote'}`}>
                             {!msg.isLocal && <span className="chat-sender-name">{msg.senderName}</span>}
                             <div className="chat-bubble">
-                                {msg.text}
+                                {renderMessageText(msg.text)}
                             </div>
                             <span className="chat-timestamp">
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
