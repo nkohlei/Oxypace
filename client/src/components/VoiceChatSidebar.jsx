@@ -29,7 +29,7 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
         return parts.map((part, i) => {
             if (part.match(urlRegex)) {
                 return (
-                    <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="chat-link" style={{ color: '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                    <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="chat-link">
                         {part}
                     </a>
                 );

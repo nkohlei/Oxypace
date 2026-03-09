@@ -207,3 +207,20 @@
     color: var(--text-muted);
     box-shadow: none;
 }
+
+/* Chat Link Styling */
+.chat-link {
+    text-decoration: underline;
+    word-break: break-all;
+    font-weight: 600;
+}
+
+.chat-bubble-wrapper.local .chat-link {
+    color: #1e40af;
+    /* Dark blue for the cyan local background */
+}
+
+.chat-bubble-wrapper.remote .chat-link {
+    color: #60a5fa;
+    /* Light blue for the dark remote background */
+}
