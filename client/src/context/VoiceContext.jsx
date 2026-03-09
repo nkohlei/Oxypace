@@ -27,6 +27,9 @@ export const VoiceProvider = ({ children }) => {
     const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false });
     const [pinnedParticipant, setPinnedParticipant] = useState(null);
 
+    // Additional Voice states
+    const [roomStartTime, setRoomStartTime] = useState(null);
+
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
 
@@ -67,6 +70,8 @@ export const VoiceProvider = ({ children }) => {
             } catch { }
             const videoPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.Camera);
             const audioPub = Array.from(p.audioTrackPublications.values()).find(pub => pub.track);
+            const screenPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.ScreenShare);
+
             list.push({
                 identity: p.identity,
                 name: p.name || p.identity,
@@ -75,10 +80,12 @@ export const VoiceProvider = ({ children }) => {
                 isLocal: true,
                 isMuted: !p.isMicrophoneEnabled,
                 isCameraOn: p.isCameraEnabled,
+                isScreenSharing: p.isScreenShareEnabled,
                 isSpeaking: p.isSpeaking,
                 connectionQuality: p.connectionQuality,
                 videoTrack: videoPub?.track || null,
                 audioTrack: audioPub?.track || null,
+                screenShareTrack: screenPub?.track || null,
             });
         }
 
@@ -93,6 +100,8 @@ export const VoiceProvider = ({ children }) => {
             } catch { }
             const videoPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.Camera);
             const audioPub = Array.from(p.audioTrackPublications.values()).find(pub => pub.track);
+            const screenPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.ScreenShare);
+
             list.push({
                 identity: p.identity,
                 name: p.name || p.identity,
@@ -101,10 +110,12 @@ export const VoiceProvider = ({ children }) => {
                 isLocal: false,
                 isMuted: !p.isMicrophoneEnabled,
                 isCameraOn: p.isCameraEnabled,
+                isScreenSharing: p.isScreenShareEnabled,
                 isSpeaking: p.isSpeaking,
                 connectionQuality: p.connectionQuality,
                 videoTrack: videoPub?.track || null,
                 audioTrack: audioPub?.track || null,
+                screenShareTrack: screenPub?.track || null,
             });
         }
         setParticipants(list);
@@ -138,6 +149,9 @@ export const VoiceProvider = ({ children }) => {
                 dynacast: true,
                 audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
                 videoCaptureDefaults: { resolution: { width: 640, height: 480, frameRate: 24 } },
+                publishDefaults: {
+                    screenShareEncoding: { maxBitrate: 1500000, maxFramerate: 30 } // Bandwidth optimization for low-latency
+                }
             });
 
             // 3. Bind Events
@@ -196,9 +210,15 @@ export const VoiceProvider = ({ children }) => {
             if (socket) {
                 socket.emit('voice:join', {
                     roomName,
-                    userId: user?._id,
-                    username: user?.username,
+                    userId: user?._id?.toString(),
+                    username: user?.username || 'Unknown',
                     avatar: user?.profile?.avatar || '',
+                });
+
+                socket.on('voice:participants', (data) => {
+                    if (data.startedAt) {
+                        setRoomStartTime(data.startedAt);
+                    }
                 });
             }
 
@@ -244,6 +264,17 @@ export const VoiceProvider = ({ children }) => {
         setLocalState(prev => ({ ...prev, isCameraOn: willEnable }));
     }, [room, localState.isCameraOn]);
 
+    const toggleScreenShare = useCallback(async () => {
+        if (!room || !room.localParticipant) return;
+        const willEnable = !localState.isScreenSharing;
+        try {
+            await room.localParticipant.setScreenShareEnabled(willEnable);
+            setLocalState(prev => ({ ...prev, isScreenSharing: willEnable }));
+        } catch (err) {
+            console.warn('Screen share failed or cancelled:', err);
+        }
+    }, [room, localState.isScreenSharing]);
+
     // Send Chat Message
     const sendChatMessage = useCallback(async (text) => {
         if (!room || !room.localParticipant || !text.trim()) return;
@@ -288,6 +319,7 @@ export const VoiceProvider = ({ children }) => {
         activeRoom,
         connectionState,
         participants,
+        roomStartTime, // Exposed for frontend RoomTimer
         errorMsg,
         localState,
         chatMessages,
@@ -295,6 +327,7 @@ export const VoiceProvider = ({ children }) => {
         disconnectFromChannel,
         toggleMicrophone,
         toggleCamera,
+        toggleScreenShare, // Exposed to trigger screen sharing
         sendChatMessage,
         grantSpeak,
         revokeSpeak,

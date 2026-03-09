@@ -5,6 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
+import RoomTimer from './RoomTimer';
 import './VoiceChannel.css';
 
 const ConferenceChannel = ({ portalId, channelId, channelName }) => {
@@ -19,9 +20,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         disconnectFromChannel,
         toggleMicrophone,
         toggleCamera,
+        toggleScreenShare,
         grantSpeak,
         revokeSpeak,
-        sendChatMessage
+        sendChatMessage,
+        roomStartTime
     } = useVoice();
 
     const { socket } = useSocket();
@@ -203,9 +206,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     // ─── PARTIAL COMPONENTS ───
     const renderSpeakerCard = (p, isFocused = false) => {
         const isClickable = adminSpeakers.length + guestSpeakers.length > 1;
+        const trackToRender = (isFocused && p.screenShareTrack) ? p.screenShareTrack : p.videoTrack;
+
         return (
             <div
-                key={p.identity}
+                key={`${p.identity}-speaker`}
                 className={`vc-card role-grid ${p.isSpeaking ? 'speaking' : ''} ${isFocused ? 'focused' : ''}`}
                 onClick={() => {
                     if (isClickable) {
@@ -215,10 +220,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 style={{ cursor: isClickable ? 'pointer' : 'default', transition: 'all 0.3s ease' }}
             >
                 <div className="vc-card-video-area">
-                    {p.isCameraOn && p.videoTrack ? (
+                    {trackToRender ? (
                         <video
                             className="vc-card-video"
-                            ref={el => { if (el && p.videoTrack) p.videoTrack.attach(el); }}
+                            ref={el => { if (el && trackToRender) trackToRender.attach(el); }}
                             autoPlay
                             muted={p.isLocal} // Native mute for local
                             playsInline
@@ -377,11 +382,12 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     }
 
     // ─── CONNECTED ───
-
     return (
         <div className="vc-container glass-container">
             {/* Isolated Top Right Controls */}
             <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 110, display: 'flex', gap: '12px', alignItems: 'center' }}>
+                {roomStartTime && <RoomTimer startedAt={roomStartTime} />}
+
                 {/* Removed floating Chat Mode Toggle, now inside Settings menu */}
 
                 {isAdmin && (
@@ -466,7 +472,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 {guestSpeakers.length > 0 && (
                     <div className="vc-carousel custom-scrollbar" style={{ width: '200px', flexShrink: 0 }}>
                         {guestSpeakers.map(p => {
-                            if (p.identity === focusedIdentity) return null; // rendered in center instead
+                            if (p.identity === focusedIdentity && !p.screenShareTrack) return null; // rendered in center instead
                             return renderSpeakerCard(p);
                         })}
                     </div>
@@ -577,6 +583,29 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
                             ) : (
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                            )}
+                        </button>
+
+                        <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
+
+                        <button
+                            className={`vc-ctrl-btn neumorphic-btn ${localState.isScreenSharing ? 'active' : 'inset'}`}
+                            onClick={toggleScreenShare}
+                            title={localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}
+                            style={localState.isScreenSharing ? { background: '#22c55e', color: 'white', borderColor: '#22c55e' } : {}}
+                        >
+                            {localState.isScreenSharing ? (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                                    <line x1="8" y1="21" x2="16" y2="21" />
+                                    <line x1="12" y1="17" x2="12" y2="21" />
+                                </svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                                    <line x1="8" y1="21" x2="16" y2="21" />
+                                    <line x1="12" y1="17" x2="12" y2="21" />
+                                </svg>
                             )}
                         </button>
                     </>

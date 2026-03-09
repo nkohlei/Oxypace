@@ -3,6 +3,7 @@ import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
+import RoomTimer from './RoomTimer';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -17,6 +18,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         disconnectFromChannel,
         toggleMicrophone,
         toggleCamera,
+        toggleScreenShare,
         sendChatMessage
     } = useVoice();
 
@@ -83,18 +85,23 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     // Helper component to render a participant card inside the grid
     const renderParticipantCard = (p, role = 'grid') => {
         const isFocused = focusedIdentity === p.identity;
+
+        // If they are screen sharing and are in the 'hero' role, render the screen share track
+        const isShowingScreen = role === 'hero' && p.screenShareTrack;
+        const trackToRender = isShowingScreen ? p.screenShareTrack : p.videoTrack;
+
         return (
             <div
-                key={p.identity}
+                key={`${p.identity}-${role}`}
                 className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`}
                 onClick={() => handleFocus(p.identity)}
                 title="Odaklanmak için tıkla"
             >
                 <div className="vc-card-video-area">
-                    {p.isCameraOn && p.videoTrack ? (
+                    {trackToRender ? (
                         <video
                             className="vc-card-video"
-                            ref={el => { if (el && p.videoTrack) p.videoTrack.attach(el); }}
+                            ref={el => { if (el && trackToRender) trackToRender.attach(el); }}
                             autoPlay
                             muted={p.isLocal} // Native mute for local
                             playsInline
@@ -242,9 +249,12 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
     // ─── CONNECTED (Main Layout) ───
 
-    // Derived layout state
-    const focusedParticipant = focusedIdentity
-        ? participants.find(p => p.identity === focusedIdentity)
+    // Screen Share Spotlight Logic Override
+    const screenSharer = participants.find(p => p.screenShareTrack);
+    const activeFocusIdentity = screenSharer ? screenSharer.identity : focusedIdentity;
+
+    const focusedParticipant = activeFocusIdentity
+        ? participants.find(p => p.identity === activeFocusIdentity)
         : null;
 
     const othersCount = participants.length;
@@ -262,6 +272,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         <div className="vc-container glass-container">
             {/* Isolated Top Right Controls */}
             <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 50, display: 'flex', gap: '12px' }}>
+                {roomStartTime && <RoomTimer startedAt={roomStartTime} />}
                 <button
                     className={`vc-ctrl-btn neumorphic-btn ${isChatOpen ? 'active' : ''}`}
                     onClick={() => setIsChatOpen(!isChatOpen)}
@@ -283,13 +294,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
                 )}
 
-                {/* 2. If focused, Spotlight layout (Carousel + Hero) */}
+                {/* 2. If focused or screen sharing, Spotlight layout (Carousel + Hero) */}
                 {focusedParticipant && (
                     <>
                         <div className="vc-carousel custom-scrollbar">
                             {participants
-                                .filter(p => p.identity !== focusedIdentity)
+                                .filter(p => p.identity !== activeFocusIdentity)
                                 .map(p => renderParticipantCard(p, 'carousel'))}
+
+                            {/* Bring screen sharer's face into carousel if they also have camera on */}
+                            {screenSharer && screenSharer.videoTrack && renderParticipantCard(screenSharer, 'carousel')}
                         </div>
                         <div className="vc-hero">
                             {renderParticipantCard(focusedParticipant, 'hero')}
@@ -334,6 +348,29 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
                             <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34" />
                             <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                    )}
+                </button>
+
+                <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
+
+                <button
+                    className={`vc-ctrl-btn neumorphic-btn ${localState.isScreenSharing ? 'active' : 'inset'}`}
+                    onClick={toggleScreenShare}
+                    title={localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}
+                    style={localState.isScreenSharing ? { background: '#22c55e', color: 'white', borderColor: '#22c55e' } : {}}
+                >
+                    {localState.isScreenSharing ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                            <line x1="8" y1="21" x2="16" y2="21" />
+                            <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                    ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                            <line x1="8" y1="21" x2="16" y2="21" />
+                            <line x1="12" y1="17" x2="12" y2="21" />
                         </svg>
                     )}
                 </button>

@@ -8,6 +8,10 @@
  */
 
 // Track voice channel participants: roomName -> Map<userId, { socketId, username, avatar }>
+// Structure:
+// voiceRooms = new Map([
+//    ["roomA", { participants: Map<userId, data>, startedAt: timestamp }]
+// ])
 const voiceRooms = new Map();
 
 export const initializeVoiceHandler = (io) => {
@@ -20,9 +24,13 @@ export const initializeVoiceHandler = (io) => {
 
             // Track participant
             if (!voiceRooms.has(roomName)) {
-                voiceRooms.set(roomName, new Map());
+                voiceRooms.set(roomName, {
+                    participants: new Map(),
+                    startedAt: Date.now()
+                });
             }
-            voiceRooms.get(roomName).set(userId, {
+            const roomData = voiceRooms.get(roomName);
+            roomData.participants.set(userId, {
                 socketId: socket.id,
                 username,
                 avatar: avatar || '',
@@ -34,11 +42,12 @@ export const initializeVoiceHandler = (io) => {
             socket._voiceRooms.add(roomName);
             socket._voiceUserId = userId;
 
-            // Broadcast updated participant list
+            // Broadcast updated participant list and room start time
             const participants = getParticipantList(roomName);
             io.to(`voice:${roomName}`).emit('voice:participants', {
                 roomName,
                 participants,
+                startedAt: roomData.startedAt
             });
 
             console.log(`🎙️ User ${username} joined voice room ${roomName} (${participants.length} participants)`);
@@ -112,23 +121,24 @@ export const initializeVoiceHandler = (io) => {
 // ─── Helper Functions ───
 
 function removeParticipant(io, roomName, userId) {
-    const room = voiceRooms.get(roomName);
-    if (!room) return;
+    const roomData = voiceRooms.get(roomName);
+    if (!roomData) return;
 
-    const participant = room.get(userId);
-    room.delete(userId);
+    const participant = roomData.participants.get(userId);
+    roomData.participants.delete(userId);
 
     // Cleanup empty rooms
-    if (room.size === 0) {
+    if (roomData.participants.size === 0) {
         voiceRooms.delete(roomName);
+    } else {
+        // Broadcast updated participant list
+        const participants = getParticipantList(roomName);
+        io.to(`voice:${roomName}`).emit('voice:participants', {
+            roomName,
+            participants,
+            startedAt: roomData.startedAt
+        });
     }
-
-    // Broadcast updated participant list
-    const participants = getParticipantList(roomName);
-    io.to(`voice:${roomName}`).emit('voice:participants', {
-        roomName,
-        participants,
-    });
 
     if (participant) {
         console.log(`👋 User ${participant.username} left voice room ${roomName}`);
@@ -136,10 +146,10 @@ function removeParticipant(io, roomName, userId) {
 }
 
 function getParticipantList(roomName) {
-    const room = voiceRooms.get(roomName);
-    if (!room) return [];
+    const roomData = voiceRooms.get(roomName);
+    if (!roomData || !roomData.participants) return [];
 
-    return Array.from(room.entries()).map(([userId, data]) => ({
+    return Array.from(roomData.participants.entries()).map(([userId, data]) => ({
         userId,
         username: data.username,
         avatar: data.avatar,
