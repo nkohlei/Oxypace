@@ -18,17 +18,25 @@ export const setupChangeStreams = (io) => {
         }
 
         if (postStream) {
-            postStream.on('change', (change) => {
-                if (change.operationType === 'insert') {
-                    const newPost = change.fullDocument;
-                    io.emit('global:post_created', newPost);
-                } else if (change.operationType === 'update') {
-                    const updatedPost = change.fullDocument;
-                    if (updatedPost) {
-                        io.emit('global:post_updated', updatedPost);
+            postStream.on('change', async (change) => {
+                try {
+                    if (change.operationType === 'insert') {
+                        // Document comes from updateLookup but is NOT populated by default.
+                        // We must populate it so clients don't crash expecting an author object.
+                        const newPost = await Post.findById(change.documentKey._id).populate('author', 'username profile verificationBadge');
+                        if (newPost) {
+                            io.emit('global:post_created', newPost);
+                        }
+                    } else if (change.operationType === 'update') {
+                        const updatedPost = await Post.findById(change.documentKey._id).populate('author', 'username profile verificationBadge');
+                        if (updatedPost) {
+                            io.emit('global:post_updated', updatedPost);
+                        }
+                    } else if (change.operationType === 'delete') {
+                        io.emit('global:post_deleted', { _id: change.documentKey._id });
                     }
-                } else if (change.operationType === 'delete') {
-                    io.emit('global:post_deleted', { _id: change.documentKey._id });
+                } catch (err) {
+                    console.error('Error populating Realtime Post:', err.message);
                 }
             });
 

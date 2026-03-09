@@ -291,14 +291,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
             {/* Left Column: Avatar */}
             <div className="post-left">
                 <Link
-                    to={`/profile/${post.author.username}`}
+                    to={`/profile/${author.username}`}
                     className="avatar-link"
                     onClick={handleProfileClick}
                 >
-                    {post.author.profile?.avatar ? (
+                    {author.profile?.avatar ? (
                         <img
-                            src={getImageUrl(post.author.profile.avatar)}
-                            alt={post.author.username}
+                            src={getImageUrl(author.profile.avatar)}
+                            alt={author.username}
                             className="author-avatar"
                             loading="lazy"
                             decoding="async"
@@ -307,7 +307,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         />
                     ) : (
                         <div className="author-placeholder">
-                            {post.author.username[0].toUpperCase()}
+                            {author.username?.charAt(0)?.toUpperCase() || '?'}
                         </div>
                     )}
                 </Link>
@@ -344,7 +344,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             <span className="author-name">
                                 {author.profile?.displayName || author.username}
                             </span>
-                            <Badge type={post.author.verificationBadge} size={16} />
+                            <Badge type={author.verificationBadge} size={16} />
                             <span className="author-username">@{author.username}</span>
                         </Link>
                         <span className="post-time">· {formatDate(post.createdAt)}</span>
