@@ -63,6 +63,7 @@ import UserBar from './components/UserBar';
 import SplashScreen from './components/SplashScreen';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
+import { useRealtimeSync } from './hooks/useRealtimeSync';
 import './AppLayout.css';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
@@ -93,6 +94,7 @@ const PageLoader = () => (
 
 // Separate layout component to use useUI hook
 const AppLayout = () => {
+    useRealtimeSync(); // Global websocket synchronization
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useUI();
     const { user, token } = useAuth();
     const location = useLocation();

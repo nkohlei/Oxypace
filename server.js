@@ -12,6 +12,8 @@ import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import { configurePassport } from './config/passport.js';
 import { initializeSocket } from './sockets/index.js';
+import { setupRedisAdapter } from './sockets/redisAdapter.js';
+import { setupChangeStreams } from './services/realtimeChangeStream.js';
 import cron from 'node-cron';
 import axios from 'axios';
 import authRoutes from './routes/auth.js';
@@ -271,7 +273,9 @@ app.get('/api/health', (req, res) => {
 });
 
 // Initialize Socket.IO
+setupRedisAdapter(io);
 initializeSocket(io);
+setupChangeStreams(io);
 
 // Start server
 // Start server only if run directly

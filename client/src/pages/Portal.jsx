@@ -14,6 +14,7 @@ import Navbar from '../components/Navbar';
 import SEO from '../components/SEO';
 import VoiceChannel from '../components/VoiceChannel';
 import ConferenceChannel from '../components/ConferenceChannel';
+import { useGlobalStore } from '../store/useGlobalStore';
 import './Portal.css';
 
 
@@ -24,7 +25,8 @@ const Portal = () => {
     const { isSidebarOpen, closeSidebar } = useUI();
 
     const [portal, setPortal] = useState(null);
-    const [posts, setPosts] = useState([]);
+    const posts = useGlobalStore((state) => state.posts);
+    const setPosts = useGlobalStore((state) => state.setPosts);
     const [loading, setLoading] = useState(true);
     const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
     const [error, setError] = useState('');

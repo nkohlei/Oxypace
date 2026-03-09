@@ -10,6 +10,7 @@ import ShareModal from './ShareModal';
 import Badge from './Badge';
 import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
+import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 
 // Lightweight YouTube facade — loads iframe only on click
@@ -122,8 +123,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         }
     };
 
+    const cachedUser = useGlobalStore(state => state.usersCache[post.author?._id]);
+
+    const authorBase = post.author ? {
+        ...post.author,
+        ...cachedUser,
+        profile: {
+            ...post.author.profile,
+            ...(cachedUser?.profile || {})
+        }
+    } : null;
+
     // Safe check for author existence (Process orphaned posts)
-    const author = post.author || {
+    const author = authorBase || {
         _id: 'deleted',
         username: 'Silinmiş Kullanıcı',
         profile: { displayName: 'Silinmiş Kullanıcı', avatar: null },
