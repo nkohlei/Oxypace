@@ -163,7 +163,8 @@ const Settings = () => {
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    background: 'linear-gradient(to bottom, #2b2d31, #1e1f22)',
+                    background: 'var(--bg-secondary)',
+                    borderBottom: '1px solid var(--border-subtle)',
                     zIndex: 0
                 }}></div>
 
@@ -200,7 +201,7 @@ const Settings = () => {
                 <div
                     className={`channel-item ${activeMenu === 'account' ? 'active' : ''}`}
                     onClick={() => setActiveMenu('account')}
-                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'account' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'account' ? 'var(--bg-hover)' : 'transparent' }}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'account' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'account' ? 'var(--bg-hover)' : 'transparent' }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     <span style={{ fontWeight: 500 }}>Hesabım</span>
@@ -209,7 +210,7 @@ const Settings = () => {
                 <div
                     className={`channel-item ${activeMenu === 'verification' ? 'active' : ''}`}
                     onClick={() => setActiveMenu('verification')}
-                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'verification' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'verification' ? 'var(--bg-hover)' : 'transparent' }}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'verification' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'verification' ? 'var(--bg-hover)' : 'transparent' }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     <span style={{ fontWeight: 500 }}>Doğrulama</span>
@@ -218,7 +219,7 @@ const Settings = () => {
                 <div
                     className={`channel-item ${activeMenu === 'privacy' ? 'active' : ''}`}
                     onClick={() => setActiveMenu('privacy')}
-                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'privacy' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'privacy' ? 'var(--bg-hover)' : 'transparent' }}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'privacy' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'privacy' ? 'var(--bg-hover)' : 'transparent' }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     <span style={{ fontWeight: 500 }}>Gizlilik</span>
@@ -238,7 +239,7 @@ const Settings = () => {
                 <div
                     className={`channel-item ${activeMenu === 'notifications' ? 'active' : ''}`}
                     onClick={() => setActiveMenu('notifications')}
-                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'notifications' ? 'white' : '#949ba4', backgroundColor: activeMenu === 'notifications' ? 'var(--bg-hover)' : 'transparent' }}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'notifications' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'notifications' ? 'var(--bg-hover)' : 'transparent' }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                     <span style={{ fontWeight: 500 }}>Bildirimler</span>
@@ -296,7 +297,7 @@ const Settings = () => {
                 <div
                     className={`channel-item ${activeMenu === 'danger' ? 'active' : ''}`}
                     onClick={() => setActiveMenu('danger')}
-                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'danger' ? 'white' : '#ff4d4d', backgroundColor: activeMenu === 'danger' ? 'rgba(255, 77, 77, 0.1)' : 'transparent' }}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'danger' ? 'var(--text-primary)' : '#ff4d4d', backgroundColor: activeMenu === 'danger' ? 'rgba(255, 77, 77, 0.1)' : 'transparent' }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#ff4d4d' }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                     <span style={{ fontWeight: 500, color: '#ff4d4d' }}>Hesap İşlemleri</span>
@@ -322,7 +323,6 @@ const Settings = () => {
                         <path d="M15 18l-6-6 6-6" />
                     </svg>
                 </button>
-                <span className="hashtag" style={{ color: 'var(--primary-color)' }}>#</span>
                 <h3 className="channel-name" style={{ color: 'var(--text-primary)' }}>{title}</h3>
             </div>
         </header>
@@ -365,7 +365,6 @@ const Settings = () => {
 
         return (
             <main className={`discord-main-content ${activeMenu === 'main' ? 'hidden-on-mobile' : ''}`}>
-                {activeMenu !== 'main' && renderHeader(title)}
                 <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 24px 24px 24px' }}>
                     {content}
                 </div>

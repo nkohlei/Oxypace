@@ -42,13 +42,13 @@
 /* Sidebar Styling */
 .channel-sidebar {
     width: 240px;
-    background-color: var(--bg-darker);
+    background-color: var(--bg-secondary);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     overflow: hidden;
-    border-right: none;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+    border-right: 1px solid var(--border-subtle);
+    box-shadow: none;
 }
 
 .channel-header {
@@ -84,18 +84,18 @@
 
 /* Scrollbar for Sidebar */
 .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-    background-color: #2b2d31;
+    width: 6px;
+    height: 6px;
+    background-color: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #1a1b1e;
+    background-color: var(--border-subtle);
     border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background-color: #2b2d31;
+    background-color: transparent;
 }
 
 /* Channel Top Bar (Header in Content) */
