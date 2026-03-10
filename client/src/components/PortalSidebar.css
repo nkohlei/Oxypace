@@ -144,26 +144,34 @@ body:has(.portal-sidebar) .app-wrapper {
 
 /* --- Menu Flyout Redesign --- */
 
-.flyout-backdrop {
+.flyout-container {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
+    z-index: 100000;
+    /* Stays above absolutely everything */
+    pointer-events: none;
+    /* Allows clicking through when inactive */
+}
+
+.flyout-container.active {
+    pointer-events: auto;
+}
+
+.flyout-backdrop {
+    position: absolute;
+    inset: 0;
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(8px) brightness(0.6);
     -webkit-backdrop-filter: blur(8px) brightness(0.6);
-    z-index: 99990;
-    /* Global blur below the sidebar (99995) */
     opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
+    transition: opacity 0.3s ease;
 }
 
-.flyout-backdrop.active {
+.flyout-container.active .flyout-backdrop {
     opacity: 1;
-    visibility: visible;
 }
 
 .flyout-wrapper {
@@ -172,41 +180,36 @@ body:has(.portal-sidebar) .app-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Highest explicitly set z-index for flyout wrapper */
-    z-index: 100000;
+    /* Ensure the hamburger button sits ON TOP of the global flyout container backdrop */
+    z-index: 100001;
 }
 
-/* Blur the rest of the sidebar items when flyout is active 
-   This matches the global backdrop effect visually. */
+/* Blur the rest of the sidebar items when flyout is active */
 .portal-sidebar.flyout-active> :not(.flyout-wrapper) {
     filter: blur(4px) brightness(0.6);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
 }
 
-/* Ensure the wrapper doesn't capture hover outside its bounds, 
-   except when the panel is animating out. The panel itself will keep hover active. */
-
 .hamburger-item {
     margin-bottom: 0;
-    /* Space handled by separator */
 }
 
-/* Override active state for hamburger so it doesn't look permanently pressed */
-.hamburger-item.active .portal-icon {
-    background-color: var(--neu-bg);
-    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
-    transform: none;
+.hamburger-item.active .portal-icon,
+.flyout-wrapper:hover .portal-icon {
+    background-color: var(--bg-hover);
+    box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(96, 165, 250, 0.2);
+    transform: scale(1.05);
 }
 
 .flyout-panel {
     position: absolute;
-    left: calc(100% + 12px);
-    /* Position right of the sidebar */
-    top: 0;
+    left: 80px;
+    /* 72px sidebar + gap */
+    top: 20px;
+    /* Align with hamburger */
     width: 200px;
-    background: #1a1a1a;
-    /* use solid color to prevent compositing bug */
+    background: rgba(15, 15, 15, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     padding: 8px;
@@ -214,35 +217,18 @@ body:has(.portal-sidebar) .app-wrapper {
     flex-direction: column;
     gap: 4px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-    z-index: 100000;
 
     /* Animation initial state */
     opacity: 0;
-    visibility: hidden;
-    transform: translateX(-10px);
-    transition: all 0.25s cubic-bezier(0.1, 0.7, 1.0, 0.1);
-
-    /* Required to catch hover when moving from icon to panel */
+    transform: translateX(-20px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
 }
 
-.flyout-wrapper:hover .flyout-panel,
-.flyout-panel.open {
+.flyout-container.active .flyout-panel {
     opacity: 1;
-    visibility: visible;
     transform: translateX(0);
     pointer-events: auto;
-}
-
-/* Invisible bridge so hover isn't lost when moving mouse right */
-.flyout-panel::before {
-    content: '';
-    position: absolute;
-    left: -16px;
-    top: 0;
-    bottom: 0;
-    width: 16px;
-    background: transparent;
 }
 
 .flyout-item {
@@ -252,17 +238,19 @@ body:has(.portal-sidebar) .app-wrapper {
     padding: 10px 12px;
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.85);
-    /* Hardcode light text */
     cursor: pointer;
-    transition: all 0.2s ease;
     font-size: 14px;
     font-weight: 500;
-    opacity: 1 !important;
-    /* Force visibility */
-    visibility: visible !important;
-    position: relative;
-    z-index: 100001;
-    /* Above the panel's background */
+
+    /* Staggered text animation initial state */
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+}
+
+.flyout-container.active .flyout-item {
+    opacity: 1;
+    transform: translateX(0);
 }
 
 .flyout-item:hover {
@@ -286,7 +274,6 @@ body:has(.portal-sidebar) .app-wrapper {
 
 @media (max-width: 768px) {
     .flyout-panel {
-        left: calc(100% + 8px);
-        width: 180px;
+        left: 50px;
     }
 }
