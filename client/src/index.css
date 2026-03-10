@@ -38,18 +38,21 @@
   --shadow-popover: 0 20px 40px rgba(0, 0, 0, 0.8);
   --shadow-glow: 0 0 25px rgba(96, 165, 250, 0.4);
 
-  /* Neumorphism */
-  --neu-bg: var(--bg-dark);
-  --neu-shadow-dark: 6px 6px 12px rgba(0, 0, 0, 0.7);
-  --neu-shadow-light: -6px -6px 12px rgba(255, 255, 255, 0.05);
-  --neu-inset-dark: inset 4px 4px 8px rgba(0, 0, 0, 0.7);
-  --neu-inset-light: inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+  /* Font */
+  --font-primary: 'Inter', sans-serif;
 
-  /* Glassmorphism */
+  /* Neumorphism - Softened per rescue plan */
+  --neu-bg: var(--bg-dark);
+  --neu-shadow-dark: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  --neu-shadow-light: -4px -4px 10px rgba(255, 255, 255, 0.03);
+  --neu-inset-dark: inset 4px 4px 8px rgba(0, 0, 0, 0.5);
+  --neu-inset-light: inset -4px -4px 8px rgba(255, 255, 255, 0.03);
+
+  /* Glassmorphism - Softened */
   --glass-bg: rgba(6, 9, 19, 0.65);
-  --glass-blur: blur(16px);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-  --glass-reflection: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
+  --glass-blur: blur(12px);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-reflection: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
 
   /* Layout */
   --nav-top-height: 50px;
@@ -110,8 +113,9 @@
 }
 
 html {
-  font-size: 17px;
+  font-size: 16px;
   height: 100%;
+  box-sizing: border-box;
 }
 
 * {
@@ -127,6 +131,18 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.app-wrapper {
+  padding-top: var(--nav-top-height);
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.app-content {
+  width: 100%;
 }
 
 #root {
@@ -500,8 +516,8 @@ button,
 
     body.dark-mode {
         /* Reduce shadow heaviness */
-        --neu-shadow-dark: 5px 5px 12px rgba(0, 0, 0, 0.4);
-        --neu-shadow-light: -5px -5px 12px rgba(255, 255, 255, 0.02);
+        --neu-shadow-dark: 4px 4px 10px rgba(0, 0, 0, 0.3);
+        --neu-shadow-light: -4px -4px 10px rgba(255, 255, 255, 0.02);
         --glass-blur: blur(8px);
         --glass-bg: rgba(6, 9, 19, 0.95); /* More solid to hide behind */
     }
