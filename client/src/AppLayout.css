@@ -38,7 +38,8 @@
     position: relative;
     z-index: 100;
     flex-shrink: 0;
-    overflow: hidden;
+    overflow: visible;
+    /* Must be visible to allow flyout menu to overflow */
     border-right: none;
     background: var(--bg-darker);
     box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
