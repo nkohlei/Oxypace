@@ -34,20 +34,39 @@ const PortalSidebar = () => {
 
     return (
         <>
-            {/* Backdrop and Panel rendered via Portal so they escape ALL stacking contexts */}
+            {/* Backdrop for global blur, still rendered in Portal to escape staking contexts */}
             {typeof document !== 'undefined' && createPortal(
-                <div className={`flyout-container ${showFlyout ? 'active' : ''}`}>
+                <div className={`flyout-backdrop-container ${showFlyout ? 'active' : ''}`}>
                     <div className="flyout-backdrop"></div>
-                    <div
-                        className="flyout-panel"
-                        onMouseEnter={() => setShowFlyout(true)}
-                        onMouseLeave={() => setShowFlyout(false)}
-                    >
+                </div>,
+                document.body
+            )}
+
+            <div className={`portal-sidebar ${showFlyout ? 'flyout-active' : ''}`}>
+                {/* Hamburger Menu & Dropdown Wrapper - All in one interactive hit-box */}
+                <div
+                    className="dropdown-wrapper"
+                    onMouseEnter={() => setShowFlyout(true)}
+                    onMouseLeave={() => setShowFlyout(false)}
+                >
+                    {/* Hamburger Menu Icon (Trigger) */}
+                    <div className={`sidebar-item hamburger-item ${showFlyout ? 'active' : ''}`}>
+                        <div className="portal-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </div>
+                    </div>
+
+                    {/* Dropdown Menu Panel */}
+                    <div className={`dropdown-panel ${showFlyout ? 'active' : ''}`}>
                         {/* Messages / Inbox */}
                         <div
-                            className={`flyout-item ${isActive('/inbox') ? 'active' : ''}`}
-                            onClick={() => { handleNavigation('/inbox'); setShowFlyout(false); }}
-                            style={{ animationDelay: '0.05s' }}
+                            className={`dropdown-item ${isActive('/inbox') ? 'active' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleNavigation('/inbox'); setShowFlyout(false); }}
+                            style={{ transitionDelay: '0.05s' }}
                             title="Mesajlar"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
@@ -57,9 +76,9 @@ const PortalSidebar = () => {
 
                         {/* Search / Discover */}
                         <div
-                            className={`flyout-item ${isActive('/search') ? 'active' : ''}`}
-                            onClick={() => { handleNavigation('/search'); setShowFlyout(false); }}
-                            style={{ animationDelay: '0.1s' }}
+                            className={`dropdown-item ${isActive('/search') ? 'active' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleNavigation('/search'); setShowFlyout(false); }}
+                            style={{ transitionDelay: '0.1s' }}
                             title="Keşfet"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
@@ -70,12 +89,13 @@ const PortalSidebar = () => {
 
                         {/* Create Portal Button */}
                         <div
-                            className="flyout-item create-action"
-                            onClick={() => {
+                            className="dropdown-item create-action"
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 setShowCreateModal(true);
                                 setShowFlyout(false);
                             }}
-                            style={{ animationDelay: '0.15s' }}
+                            style={{ transitionDelay: '0.15s' }}
                             title="Portal Oluştur"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
@@ -86,39 +106,18 @@ const PortalSidebar = () => {
 
                         {/* Channel Sidebar Toggle (Mobile/Window Mode) */}
                         <div
-                            className="flyout-item toggle-action"
+                            className="dropdown-item toggle-action"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 toggleSidebar();
                                 setShowFlyout(false);
                             }}
-                            style={{ animationDelay: '0.2s' }}
+                            style={{ transitionDelay: '0.2s' }}
                             title="Menüyü Aç/Kapat"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                                 <polyline points="13 17 18 12 13 7"></polyline>
                                 <polyline points="6 17 11 12 6 7"></polyline>
-                            </svg>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            <div className={`portal-sidebar ${showFlyout ? 'flyout-active' : ''}`}>
-                {/* Hamburger Menu & Flyout Wrapper */}
-                <div
-                    className="flyout-wrapper"
-                    onMouseEnter={() => setShowFlyout(true)}
-                    onMouseLeave={() => setShowFlyout(false)}
-                >
-                    {/* Hamburger Menu Icon */}
-                    <div className={`sidebar-item hamburger-item ${showFlyout ? 'active' : ''}`}>
-                        <div className="portal-icon">
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="3" y1="12" x2="21" y2="12"></line>
-                                <line x1="3" y1="6" x2="21" y2="6"></line>
-                                <line x1="3" y1="18" x2="21" y2="18"></line>
                             </svg>
                         </div>
                     </div>

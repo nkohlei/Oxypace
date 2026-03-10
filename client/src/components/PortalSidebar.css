@@ -142,9 +142,9 @@ body:has(.portal-sidebar) .app-wrapper {
     padding-left: 0 !important;
 }
 
-/* --- Menu Flyout Redesign --- */
+/* --- Menu Dropdown Redesign --- */
 
-.flyout-container {
+.flyout-backdrop-container {
     position: fixed;
     top: 0;
     left: 0;
@@ -156,7 +156,7 @@ body:has(.portal-sidebar) .app-wrapper {
     /* Allows clicking through when inactive */
 }
 
-.flyout-container.active {
+.flyout-backdrop-container.active {
     pointer-events: auto;
 }
 
@@ -164,17 +164,17 @@ body:has(.portal-sidebar) .app-wrapper {
     position: absolute;
     inset: 0;
     background: transparent;
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     opacity: 0;
     transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.flyout-container.active .flyout-backdrop {
+.flyout-backdrop-container.active .flyout-backdrop {
     opacity: 1;
 }
 
-.flyout-wrapper {
+.dropdown-wrapper {
     position: relative;
     width: 100%;
     display: flex;
@@ -184,8 +184,8 @@ body:has(.portal-sidebar) .app-wrapper {
     z-index: 100001;
 }
 
-/* Blur the rest of the sidebar items when flyout is active */
-.portal-sidebar.flyout-active> :not(.flyout-wrapper) {
+/* Blur the rest of the sidebar items when dropdown is active */
+.portal-sidebar.flyout-active> :not(.dropdown-wrapper) {
     filter: blur(4px) brightness(0.6);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
@@ -196,55 +196,59 @@ body:has(.portal-sidebar) .app-wrapper {
 }
 
 .hamburger-item.active .portal-icon,
-.flyout-wrapper:hover .portal-icon {
+.dropdown-wrapper:hover .portal-icon {
     background-color: var(--bg-hover);
     box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(96, 165, 250, 0.2);
     transform: scale(1.05);
 }
 
-.flyout-panel {
+.dropdown-panel {
     position: absolute;
-    left: 80px;
-    /* 72px sidebar + gap */
-    top: 20px;
-    /* Align with hamburger */
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    top: 56px;
+    /* Just below the 48px hamburger + 8px gap */
     background: var(--neu-bg, rgba(15, 15, 15, 0.95));
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 48px;
-    /* Changed to match circular items */
+    /* Circular styling wrapper */
     padding: 8px;
     display: flex;
-    flex-direction: row;
-    /* Horizontal layout */
+    flex-direction: column;
+    /* Vertical layout */
     gap: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
 
-    /* Animation initial state */
+    /* Animation initial state: hidden, slight translation up */
     opacity: 0;
-    transform: translateX(-20px);
+    visibility: hidden;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
 }
 
-/* The Hover Bridge - Invisible padding to prevent gap hover dropout */
-.flyout-panel::before {
+/* The Hover Bridge - Invisible hit-box downwards */
+.dropdown-wrapper::after {
     content: "";
     position: absolute;
-    top: 0;
-    left: -20px;
-    /* Span the gap back to the hamburger menu */
-    width: 20px;
-    height: 100%;
+    top: 48px;
+    /* Start right below the hamburger icon */
+    left: 0;
+    width: 100%;
+    height: 16px;
+    /* Gap coverage to the dropdown panel */
     background: transparent;
+    z-index: 10000;
 }
 
-.flyout-container.active .flyout-panel {
+.dropdown-wrapper:hover .dropdown-panel,
+.dropdown-panel.active {
     opacity: 1;
-    transform: translateX(0);
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
     pointer-events: auto;
 }
 
-.flyout-item {
+.dropdown-item {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -254,50 +258,57 @@ body:has(.portal-sidebar) .app-wrapper {
     color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
 
-    /* Staggered text animation initial state */
+    /* Staggered transition */
     opacity: 0;
-    transform: translateX(-10px);
+    transform: translateY(-8px);
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.flyout-container.active .flyout-item {
+.dropdown-wrapper:hover .dropdown-item,
+.dropdown-panel.active .dropdown-item {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
 }
 
-.flyout-item:hover {
+.dropdown-item:hover {
     background: var(--bg-hover, rgba(255, 255, 255, 0.1));
     color: var(--text-primary);
     box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(96, 165, 250, 0.2);
     transform: scale(1.05);
 }
 
-.flyout-item.active {
+.dropdown-item.active {
     background: var(--bg-hover, rgba(255, 255, 255, 0.1));
     color: var(--primary-color, #6366f1);
     box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(96, 165, 250, 0.2);
 }
 
-.flyout-item svg {
+.dropdown-item svg {
     flex-shrink: 0;
 }
 
-.flyout-item.create-action:hover {
+.dropdown-item.create-action:hover {
     color: var(--primary-green, #10b981);
     background: var(--bg-hover, rgba(16, 185, 129, 0.1));
 }
 
 @media (max-width: 768px) {
-    .flyout-panel {
-        left: 50px;
+    .dropdown-panel {
+        left: 50%;
+        transform: translateX(-50%) translateY(-10px);
     }
 
-    .flyout-item {
+    .dropdown-wrapper:hover .dropdown-panel,
+    .dropdown-panel.active {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .dropdown-item {
         width: 38px;
         height: 38px;
     }
 
-    .flyout-item svg {
+    .dropdown-item svg {
         width: 18px;
         height: 18px;
     }
