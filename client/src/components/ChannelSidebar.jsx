@@ -407,24 +407,25 @@ const ChannelSidebar = ({
                         </div>
                     );
                 })}
-
-                {/* Footer Copyright */}
-                <div style={{
-                    marginTop: 'auto',
-                    paddingTop: '24px',
-                    paddingBottom: '8px',
-                    fontSize: '11px',
-                    color: 'var(--text-tertiary)',
-                    textAlign: 'center',
-                    opacity: 0.6,
-                    userSelect: 'none',
-                }}>
-                    © 2026 Oxypace. Tüm hakları saklıdır.
-                </div>
             </div>
 
             {/* User Control Bar - Bottom of Sidebar */}
             <UserBar currentChannelId={currentChannel} />
+
+            {/* Footer Copyright */}
+            <div style={{
+                paddingTop: '4px',
+                paddingBottom: '8px',
+                fontSize: '11px',
+                color: 'var(--text-tertiary)',
+                textAlign: 'center',
+                opacity: 0.6,
+                userSelect: 'none',
+                backgroundColor: 'var(--bg-secondary)', /* match sidebar background */
+                borderTop: '1px solid var(--border-subtle)', /* separator from user bar */
+            }}>
+                © 2026 Oxypace. Tüm hakları saklıdır.
+            </div>
 
             <style>{`
             .channel-sidebar {
