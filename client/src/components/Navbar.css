@@ -441,16 +441,16 @@ body.dark-mode .logo-text {
     border-radius: 50%;
 }
 
-z-index: 2000;
-transform-origin: top right;
-animation: dropdownScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.create-btn {
+    margin-top: -24px;
 }
 
-@keyframes dropdownScale {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-10px);
-    }
+.create-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
 
     to {
         opacity: 1;
@@ -664,8 +664,8 @@ animation: dropdownScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .theme-track {
-    width: 90px;
-    height: 38px;
+    width: 70px;
+    height: 30px;
     border-radius: 20px;
     position: relative;
     display: flex;
@@ -681,14 +681,14 @@ animation: dropdownScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: inset 4px 4px 8px rgba(166, 171, 189, 0.4), inset -4px -4px 8px #ffffff;
 }
 
-/* Dark Mode Track */
+/* Dark Mode Track (Night Blue) */
 .neumorphic-theme-toggle.dark .theme-track {
-    background-color: #313339;
-    box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.45), inset -4px -4px 8px rgba(255, 255, 255, 0.04);
+    background-color: #1a2235;
+    box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.5), inset -4px -4px 8px rgba(255, 255, 255, 0.04);
 }
 
 .theme-text {
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 800;
     letter-spacing: 0.5px;
     position: absolute;
@@ -707,17 +707,17 @@ animation: dropdownScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
 .neumorphic-theme-toggle.light .theme-text {
     color: #9aa0a6;
-    padding-left: 30px;
+    padding-left: 24px;
 }
 
 .neumorphic-theme-toggle.dark .theme-text {
     color: #555860;
-    padding-right: 30px;
+    padding-right: 24px;
 }
 
 .theme-thumb {
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     position: absolute;
     display: flex;
@@ -729,19 +729,21 @@ animation: dropdownScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
 .neumorphic-theme-toggle.light .theme-thumb {
     background-color: #ebecf0;
-    box-shadow: 4px 4px 8px rgba(166, 171, 189, 0.45), -4px -4px 8px #ffffff;
+    box-shadow: 3px 3px 6px rgba(166, 171, 189, 0.45), -3px -3px 6px #ffffff;
     left: 3px;
-    color: #a0a5aa;
+    color: #f97316;
+    /* Orange Sun */
 }
 
 .neumorphic-theme-toggle.dark .theme-thumb {
-    background-color: #3b3d44;
+    background-color: #232c43;
     box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), -3px -3px 6px rgba(255, 255, 255, 0.05);
-    left: calc(100% - 35px);
-    color: #a9aeba;
+    left: calc(100% - 27px);
+    color: #facc15;
+    /* Yellow Moon */
 }
 
 .theme-thumb svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
