@@ -275,29 +275,6 @@
     box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
 }
 
-@media (max-width: 768px) {
-    .settings-title {
-        font-size: 1.2rem;
-        padding: 12px 0;
-    }
-
-    .settings-section {
-        padding: 12px; /* Smaller padding on mobile */
-        border-radius: 12px;
-        margin-bottom: 10px;
-    }
-    
-    .setting-group h3 {
-        font-size: 0.8rem;
-        margin-bottom: 8px;
-    }
-
-    .setting-action-btn {
-        padding: 12px;
-        font-size: 0.9rem;
-    }
-}
-
 /* Navigation & Menu Styles */
 .settings-menu-list {
     display: flex;
@@ -430,39 +407,6 @@
     cursor: pointer;
     transition: all 0.2s;
     min-height: 70px;
-}
-
-@media (max-width: 768px) {
-    .dropdown-trigger {
-        padding: 10px 12px;
-        min-height: 50px;
-        border-radius: 8px;
-    }
-    .placeholder-text {
-        font-size: 0.85rem;
-    }
-    .dropdown-option {
-        padding: 10px;
-    }
-    .cat-icon-box {
-        width: 32px;
-        height: 32px;
-        font-size: 1.2rem;
-    }
-    .option-info h4 {
-        font-size: 0.9rem;
-    }
-    .option-info p {
-        font-size: 0.75rem;
-    }
-    .apply-btn {
-        padding: 12px;
-        font-size: 0.95rem;
-        margin-top: 16px;
-    }
-    .verification-status {
-        padding: 16px;
-    }
 }
 
 .dropdown-trigger:hover {

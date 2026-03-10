@@ -1,7 +1,7 @@
 /* Main App Layout - Full Screen Discord Style */
 .app-container {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     /* Allows footer to sit below the main horizontal flex area */
     flex: 1;
     /* Take up available space */
@@ -93,7 +93,16 @@
 
     /* Fixed Left Rail - ALWAYS VISIBLE */
     .portal-sidebar-wrapper {
-        display: none !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 42px;
+        height: 100vh;
+        z-index: 3000;
+        transform: none;
+        border-right: none;
+        box-shadow: 4px 0 14px rgba(0, 0, 0, 0.4);
     }
 
     /* Toggle Arrow Removed - Controlled by internal button now */

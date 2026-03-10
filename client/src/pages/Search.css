@@ -163,65 +163,16 @@
     .modern-portals-grid {
         grid-template-columns: 1fr;
         padding-bottom: 80px;
-        gap: 12px;
+        /* Ensure space for scrolling past sticky elements if any */
     }
 
     .search-container {
-        padding: 12px;
+        padding: 16px;
+        /* Smaller padding on mobile */
     }
 
     .search-header {
         margin-bottom: 20px;
-    }
-    
-    .modern-portal-card {
-        flex-direction: row;
-        height: auto;
-        min-height: 80px;
-        padding: 12px;
-        align-items: center;
-    }
-
-    .card-banner {
-        display: none; /* Hide large banner on mobile */
-    }
-
-    .card-icon-wrapper {
-        margin: 0;
-        width: 50px;
-        height: 50px;
-        padding: 0;
-        box-shadow: none;
-        flex-shrink: 0;
-    }
-
-    .card-icon-img, .card-icon-placeholder {
-        border-radius: 8px;
-    }
-
-    .card-body {
-        padding: 0 0 0 12px;
-        justify-content: center;
-    }
-
-    .card-title {
-        margin: 0 0 4px 0;
-        font-size: 1rem;
-    }
-
-    .card-desc {
-        display: none; /* Hide description to save space */
-    }
-
-    .card-footer {
-        margin-top: 4px;
-        justify-content: flex-start;
-        gap: 12px;
-    }
-
-    .join-action-btn, .join-status-btn {
-        padding: 4px 10px;
-        font-size: 0.75rem;
     }
 }
 
