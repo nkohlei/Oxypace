@@ -16,7 +16,7 @@
     border-top: none;
     border-bottom: none;
     position: relative;
-    z-index: 10;
+    z-index: 20;
 }
 
 .portal-sidebar::-webkit-scrollbar {
@@ -138,4 +138,138 @@
 
 body:has(.portal-sidebar) .app-wrapper {
     padding-left: 0 !important;
+}
+
+/* --- Menu Flyout Redesign --- */
+
+.flyout-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px) brightness(0.7);
+    -webkit-backdrop-filter: blur(8px) brightness(0.7);
+    z-index: 15;
+    /* Below sidebar (20) but above rest of app */
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.flyout-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.flyout-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Ensure z-index is respected for absolute children */
+    z-index: 21;
+}
+
+/* Ensure the wrapper doesn't capture hover outside its bounds, 
+   except when the panel is animating out. The panel itself will keep hover active. */
+
+.hamburger-item {
+    margin-bottom: 0;
+    /* Space handled by separator */
+}
+
+/* Override active state for hamburger so it doesn't look permanently pressed */
+.hamburger-item.active .portal-icon {
+    background-color: var(--neu-bg);
+    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
+    transform: none;
+}
+
+.flyout-panel {
+    position: absolute;
+    left: calc(100% + 12px);
+    /* Position right of the sidebar */
+    top: 0;
+    width: 200px;
+    background: rgba(15, 15, 15, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+    /* Animation initial state */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+    transition: all 0.25s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+
+    /* Required to catch hover when moving from icon to panel */
+    pointer-events: none;
+}
+
+.flyout-wrapper:hover .flyout-panel,
+.flyout-panel.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+/* Invisible bridge so hover isn't lost when moving mouse right */
+.flyout-panel::before {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 0;
+    bottom: 0;
+    width: 16px;
+    background: transparent;
+}
+
+.flyout-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.flyout-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.flyout-item.active {
+    background: var(--primary-color-alpha, rgba(99, 102, 241, 0.15));
+    color: var(--primary-color, #6366f1);
+}
+
+.flyout-item svg {
+    flex-shrink: 0;
+}
+
+.flyout-item.create-action:hover {
+    color: var(--primary-green, #10b981);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+@media (max-width: 768px) {
+    .flyout-panel {
+        left: calc(100% + 8px);
+        width: 180px;
+    }
 }

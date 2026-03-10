@@ -12,6 +12,8 @@ const PortalSidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showFlyout, setShowFlyout] = useState(false);
+
 
     // If not authenticated, don't show sidebar (or show limited version)
     if (!isAuthenticated) return null;
@@ -31,27 +33,82 @@ const PortalSidebar = () => {
 
     return (
         <>
-            <div className="portal-sidebar">
-                {/* Close/Back Button at top */}
-                {/* Close/Back Button Removed - Integrated into Toggle Arrow */}
+            {/* Backdrop for the flyout and right content area */}
+            <div className={`flyout-backdrop ${showFlyout ? 'active' : ''}`}></div>
 
-                {/* Messages / Inbox */}
+            <div className="portal-sidebar">
+                {/* Hamburger Menu & Flyout Wrapper */}
                 <div
-                    className={`sidebar-item ${isActive('/inbox') ? 'active' : ''}`}
-                    onClick={() => handleNavigation('/inbox')}
-                    data-tooltip="Mesajlar"
+                    className="flyout-wrapper"
+                    onMouseEnter={() => setShowFlyout(true)}
+                    onMouseLeave={() => setShowFlyout(false)}
                 >
-                    <div className="portal-icon">
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="24"
-                            height="24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
+                    {/* Hamburger Menu Icon */}
+                    <div className="sidebar-item hamburger-item">
+                        <div className="portal-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </div>
+                    </div>
+
+                    {/* Flyout Panel */}
+                    <div className={`flyout-panel ${showFlyout ? 'open' : ''}`}>
+                        {/* Messages / Inbox */}
+                        <div
+                            className={`flyout-item ${isActive('/inbox') ? 'active' : ''}`}
+                            onClick={() => { handleNavigation('/inbox'); setShowFlyout(false); }}
                         >
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Mesajlar</span>
+                        </div>
+
+                        {/* Search / Discover */}
+                        <div
+                            className={`flyout-item ${isActive('/search') ? 'active' : ''}`}
+                            onClick={() => { handleNavigation('/search'); setShowFlyout(false); }}
+                        >
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span>Keşfet</span>
+                        </div>
+
+                        {/* Create Portal Button */}
+                        <div
+                            className="flyout-item create-action"
+                            onClick={() => {
+                                setShowCreateModal(true);
+                                setShowFlyout(false);
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Portal Oluştur</span>
+                        </div>
+
+                        {/* Channel Sidebar Toggle (Mobile/Window Mode) */}
+                        <div
+                            className="flyout-item toggle-action"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSidebar();
+                                setShowFlyout(false);
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="13 17 18 12 13 7"></polyline>
+                                <polyline points="6 17 11 12 6 7"></polyline>
+                            </svg>
+                            <span>Menüyü Aç/Kapat</span>
+                        </div>
                     </div>
                 </div>
 
@@ -129,76 +186,6 @@ const PortalSidebar = () => {
                 }
             `}</style>
 
-                <div className="sidebar-separator"></div>
-
-                {/* Search / Discover */}
-                <div
-                    className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
-                    onClick={() => handleNavigation('/search')}
-                    data-tooltip="Keşfet"
-                >
-                    <div className="portal-icon">
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="24"
-                            height="24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </div>
-                </div>
-
-                {/* Create Portal Button */}
-                <div
-                    className="sidebar-item"
-                    onClick={() => {
-                        setShowCreateModal(true);
-                        // Do not close sidebar as per request
-                    }}
-                    data-tooltip="Portal Oluştur"
-                >
-                    <div className="portal-icon create-portal-btn">
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="24"
-                            height="24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </div>
-                </div>
-
-                {/* Channel Sidebar Toggle (Mobile/Window Mode) */}
-                <div
-                    className="sidebar-item toggle-channels-btn"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSidebar();
-                    }}
-                    title="Yan Menüyü Aç/Kapat"
-                >
-                    <div className="portal-icon">
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="24"
-                            height="24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <polyline points="13 17 18 12 13 7"></polyline>
-                            <polyline points="6 17 11 12 6 7"></polyline>
-                        </svg>
-                    </div>
-                </div>
             </div>
 
             {/* Create Portal Modal */}
