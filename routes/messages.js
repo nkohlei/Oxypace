@@ -3,6 +3,7 @@ import { protect } from '../middleware/auth.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import { messageValidation, mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
 import upload from '../middleware/upload.js';
 
@@ -11,7 +12,7 @@ const router = express.Router();
 // @route   POST /api/messages/:id/react
 // @desc    React to a message
 // @access  Private
-router.post('/:id/react', protect, async (req, res) => {
+router.post('/:id/react', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const { emoji } = req.body;
         const message = await Message.findById(req.params.id);
@@ -69,6 +70,7 @@ router.post('/:id/react', protect, async (req, res) => {
 router.post(
     '/',
     protect,
+    messageValidation,
     (req, res, next) => {
         upload.single('media')(req, res, (err) => {
             if (err instanceof multer.MulterError) {
@@ -86,8 +88,7 @@ router.post(
             if (req.file) {
                 // Use backend proxy URL instead of R2 direct URL
                 const backendUrl =
-                    process.env.BACKEND_URL ||
-                    'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                    process.env.BACKEND_URL;
                 media = `${backendUrl}/api/media/${req.file.key}`;
             }
 
@@ -234,7 +235,7 @@ router.get('/conversations', protect, async (req, res) => {
 // @route   GET /api/messages/:userId
 // @desc    Get conversation with a specific user
 // @access  Private
-router.get('/:userId', protect, async (req, res) => {
+router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) => {
     try {
         const currentUserId = req.user._id;
         const otherUserId = req.params.userId;
@@ -281,7 +282,7 @@ router.get('/:userId', protect, async (req, res) => {
 // @route   DELETE /api/messages/:id
 // @desc    Delete a message
 // @access  Private
-router.delete('/:id', protect, async (req, res) => {
+router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const message = await Message.findById(req.params.id);
 

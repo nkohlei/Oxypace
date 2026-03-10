@@ -3,13 +3,14 @@ import Comment from '../models/Comment.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
 import { protect } from '../middleware/auth.js';
+import { commentValidation, mongoIdValidation } from '../middleware/validation.js';
 
 const router = express.Router();
 
 // @route   GET /api/comments/:commentId
 // @desc    Get single comment by ID
 // @access  Public
-router.get('/:commentId', async (req, res) => {
+router.get('/:commentId', mongoIdValidation('commentId'), async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.commentId)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
@@ -29,7 +30,7 @@ router.get('/:commentId', async (req, res) => {
 // @route   GET /api/comments/:commentId/replies
 // @desc    Get replies to a comment
 // @access  Public
-router.get('/:commentId/replies', async (req, res) => {
+router.get('/:commentId/replies', mongoIdValidation('commentId'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
@@ -75,7 +76,7 @@ import upload from '../middleware/upload.js';
 // @route   POST /api/comments/post/:postId
 // @desc    Add comment to post
 // @access  Private
-router.post('/post/:postId', protect, upload.single('media'), async (req, res) => {
+router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValidation, upload.single('media'), async (req, res) => {
     try {
         const { content } = req.body;
         // Content might be optional if media exists, but usually text is required?
@@ -100,7 +101,7 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
             const backendUrl =
-                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                process.env.BACKEND_URL;
             media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
@@ -146,14 +147,14 @@ router.post('/post/:postId', protect, upload.single('media'), async (req, res) =
         res.status(201).json(comment);
     } catch (error) {
         console.error('Create comment error:', error);
-        res.status(500).json({ message: error.message || 'Server error' });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @route   POST /api/comments/comment/:commentId
 // @desc    Reply to comment
 // @access  Private
-router.post('/comment/:commentId', protect, upload.single('media'), async (req, res) => {
+router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), commentValidation, upload.single('media'), async (req, res) => {
     try {
         const { content } = req.body;
 
@@ -173,7 +174,7 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
             const backendUrl =
-                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                process.env.BACKEND_URL;
             media = `${backendUrl}/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
@@ -224,7 +225,7 @@ router.post('/comment/:commentId', protect, upload.single('media'), async (req, 
 // @route   GET /api/comments/post/:postId
 // @desc    Get post comments (top-level only)
 // @access  Public
-router.get('/post/:postId', async (req, res) => {
+router.get('/post/:postId', mongoIdValidation('postId'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
@@ -259,7 +260,7 @@ router.get('/post/:postId', async (req, res) => {
 // @route   GET /api/comments/comment/:commentId/replies
 // @desc    Get comment replies
 // @access  Public
-router.get('/comment/:commentId/replies', async (req, res) => {
+router.get('/comment/:commentId/replies', mongoIdValidation('commentId'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
@@ -292,7 +293,7 @@ router.get('/comment/:commentId/replies', async (req, res) => {
 // @route   DELETE /api/comments/:commentId
 // @desc    Delete own comment
 // @access  Private
-router.delete('/:commentId', protect, async (req, res) => {
+router.delete('/:commentId', protect, mongoIdValidation('commentId'), async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.commentId);
 
@@ -334,7 +335,7 @@ router.delete('/:commentId', protect, async (req, res) => {
 // @route   POST /api/comments/:commentId/like
 // @desc    Like/unlike a comment
 // @access  Private
-router.post('/:commentId/like', protect, async (req, res) => {
+router.post('/:commentId/like', protect, mongoIdValidation('commentId'), async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.commentId);
 
@@ -368,7 +369,7 @@ router.post('/:commentId/like', protect, async (req, res) => {
 // @route   GET /api/comments/user/:userId
 // @desc    Get comments by user
 // @access  Private
-router.get('/user/:userId', protect, async (req, res) => {
+router.get('/user/:userId', protect, mongoIdValidation('userId'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;

@@ -3,6 +3,7 @@ import multer from 'multer';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
+import { postValidation, mongoIdValidation } from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ import upload from '../middleware/upload.js';
 router.post(
     '/',
     protect,
+    postValidation,
     (req, res, next) => {
         console.log('📤 POST /api/posts - Upload request received');
         console.log('📤 Content-Type:', req.headers['content-type']);
@@ -190,7 +192,7 @@ router.get('/', optionalProtect, async (req, res) => {
 // @route   GET /api/posts/:id
 // @desc    Get single post by ID
 // @access  Public (Optional Auth)
-router.get('/:id', optionalProtect, async (req, res) => {
+router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const post = await Post.findById(req.params.id).populate(
             'author',
@@ -228,7 +230,7 @@ router.get('/:id', optionalProtect, async (req, res) => {
 // @route   GET /api/posts/user/:userId
 // @desc    Get posts by user ID
 // @access  Public (Optional Auth)
-router.get('/user/:userId', optionalProtect, async (req, res) => {
+router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async (req, res) => {
     try {
         // Privacy Check First
         const targetUser = await User.findById(req.params.userId);
@@ -282,7 +284,7 @@ router.get('/user/:userId', optionalProtect, async (req, res) => {
 // @route   DELETE /api/posts/:id
 // @desc    Delete a post
 // @access  Private
-router.delete('/:id', protect, async (req, res) => {
+router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const post = await Post.findById(req.params.id);
 
@@ -307,7 +309,7 @@ router.delete('/:id', protect, async (req, res) => {
 // @route   PUT /api/posts/:id/pin
 // @desc    Toggle pin status of a post
 // @access  Private (Admin/Owner only)
-router.put('/:id/pin', protect, async (req, res) => {
+router.put('/:id/pin', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const post = await Post.findById(req.params.id);
         if (!post) {

@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { protect, optionalProtect } from '../middleware/auth.js';
+import { profileValidation, mongoIdValidation } from '../middleware/validation.js';
 
 import User from '../models/User.js';
 import Post from '../models/Post.js';
@@ -13,7 +14,7 @@ const router = express.Router();
 // @route   POST /api/users/follow/:id
 // @desc    Follow/Unfollow user or cancel request
 // @access  Private
-router.post('/follow/:id', protect, async (req, res) => {
+router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         if (req.params.id === req.user._id.toString()) {
             return res.status(400).json({ message: 'You cannot follow yourself' });
@@ -112,7 +113,7 @@ router.post('/follow/:id', protect, async (req, res) => {
 // @route   POST /api/users/follow/accept/:id
 // @desc    Accept follow request (Enable Mutual Friendship)
 // @access  Private
-router.post('/follow/accept/:id', protect, async (req, res) => {
+router.post('/follow/accept/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const requesterId = req.params.id;
         const currentUser = await User.findById(req.user._id);
@@ -186,7 +187,7 @@ router.post('/follow/accept/:id', protect, async (req, res) => {
 // @route   POST /api/users/follow/decline/:id
 // @desc    Decline follow request
 // @access  Private
-router.post('/follow/decline/:id', protect, async (req, res) => {
+router.post('/follow/decline/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const requesterId = req.params.id;
         const currentUser = await User.findById(req.user._id);
@@ -256,7 +257,7 @@ router.get('/me', protect, async (req, res) => {
 // @route   PUT /api/users/me
 // @desc    Update current user profile
 // @access  Private
-router.put('/me', protect, async (req, res) => {
+router.put('/me', protect, profileValidation, async (req, res) => {
     try {
         const { displayName, bio, avatar, username } = req.body;
 
@@ -504,7 +505,7 @@ router.post(
 
             // Use backend proxy URL instead of R2 direct URL
             const backendUrl =
-                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                process.env.BACKEND_URL;
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             user.profile.avatar = publicUrl;
             await user.save();
@@ -549,7 +550,7 @@ router.post(
 
             // Use backend proxy URL instead of R2 direct URL
             const backendUrl =
-                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                process.env.BACKEND_URL;
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             user.profile.coverImage = publicUrl;
             await user.save();
@@ -568,7 +569,7 @@ router.post(
 // @route   POST /api/users/me/save/:postId
 // @desc    Save/unsave a post
 // @access  Private
-router.post('/me/save/:postId', protect, async (req, res) => {
+router.post('/me/save/:postId', protect, mongoIdValidation('postId'), async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
         const postId = req.params.postId;
@@ -645,7 +646,7 @@ router.get('/me/saved', protect, async (req, res) => {
 // @route   POST /api/users/me/hide/:postId
 // @desc    Hide/unhide a post
 // @access  Private
-router.post('/me/hide/:postId', protect, async (req, res) => {
+router.post('/me/hide/:postId', protect, mongoIdValidation('postId'), async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
         const postId = req.params.postId;
@@ -689,7 +690,7 @@ router.get('/me/hidden', protect, async (req, res) => {
 // @route   GET /api/users/:id/followers
 // @desc    Get user followers
 // @access  Private
-router.get('/:id/followers', protect, async (req, res) => {
+router.get('/:id/followers', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id).populate(
             'followers',
@@ -722,7 +723,7 @@ router.get('/:id/followers', protect, async (req, res) => {
 // @route   GET /api/users/:id/following
 // @desc    Get user following
 // @access  Private
-router.get('/:id/following', protect, async (req, res) => {
+router.get('/:id/following', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id).populate(
             'following',

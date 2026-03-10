@@ -4,6 +4,7 @@ import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { protect, optionalProtect } from '../middleware/auth.js';
+import { mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
 import upload from '../middleware/upload.js';
 
@@ -40,7 +41,7 @@ router.post('/', protect, async (req, res) => {
 
         res.status(201).json(portal);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -97,7 +98,7 @@ router.get('/', optionalProtect, async (req, res) => {
 
         res.json(formattedPortals);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 // @desc    Get portals with location (for 3D map)
@@ -152,7 +153,7 @@ router.get('/map', optionalProtect, async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -160,7 +161,7 @@ router.get('/map', optionalProtect, async (req, res) => {
 // @desc    Get portal by ID
 // @route   GET /api/portals/:id
 // @access  Public
-router.get('/:id', optionalProtect, async (req, res) => {
+router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
             .populate('owner', 'username profile.displayName profile.avatar')
@@ -218,14 +219,14 @@ router.get('/:id', optionalProtect, async (req, res) => {
 
         res.json(portalObj);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Get posts for a specific portal
 // @route   GET /api/portals/:id/posts
 // @access  Public (if public portal) / Private (if private)
-router.get('/:id/posts', optionalProtect, async (req, res) => {
+router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const portalId = req.params.id;
         const channel = req.query.channel || 'general';
@@ -321,14 +322,14 @@ router.get('/:id/posts', optionalProtect, async (req, res) => {
 
         res.json(posts);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Join a portal
 // @route   POST /api/portals/:id/join
 // @access  Private
-router.post('/:id/join', protect, async (req, res) => {
+router.post('/:id/join', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
 
@@ -385,14 +386,14 @@ router.post('/:id/join', protect, async (req, res) => {
 
         res.json({ message: 'Portala başarıyla katıldınız', status: 'joined' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Leave a portal
 // @route   POST /api/portals/:id/leave
 // @access  Private
-router.post('/:id/leave', protect, async (req, res) => {
+router.post('/:id/leave', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
 
@@ -418,11 +419,11 @@ router.post('/:id/leave', protect, async (req, res) => {
 
         res.json({ message: 'Left portal successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
-router.put('/:id', protect, async (req, res) => {
+router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const { name, description, privacy, allowedUsers, location, showOnMap } = req.body;
         const portal = await Portal.findById(req.params.id);
@@ -456,14 +457,14 @@ router.put('/:id', protect, async (req, res) => {
 
         res.json(portal);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Upload portal avatar
 // @route   POST /api/portals/:id/avatar
 // @access  Private (Owner only)
-router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) => {
+router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avatar'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
         if (!portal) {
@@ -477,7 +478,7 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
             const backendUrl =
-                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                process.env.BACKEND_URL;
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
@@ -495,7 +496,7 @@ router.post('/:id/avatar', protect, upload.single('avatar'), async (req, res) =>
 // @desc    Upload portal banner
 // @route   POST /api/portals/:id/banner
 // @access  Private (Owner only)
-router.post('/:id/banner', protect, upload.single('banner'), async (req, res) => {
+router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('banner'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
         if (!portal) {
@@ -509,7 +510,7 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
         if (req.file) {
             // Use backend proxy URL instead of R2 direct URL
             const backendUrl =
-                process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                process.env.BACKEND_URL;
             const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
@@ -529,7 +530,7 @@ router.post('/:id/banner', protect, upload.single('banner'), async (req, res) =>
 // @desc    Add a channel
 // @route   POST /api/portals/:id/channels
 // @access  Private (Owner/Admin)
-router.post('/:id/channels', protect, async (req, res) => {
+router.post('/:id/channels', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const { name, type, roomMode } = req.body;
         const portal = await Portal.findById(req.params.id);
@@ -562,14 +563,14 @@ router.post('/:id/channels', protect, async (req, res) => {
         await portal.save();
         res.json(portal.channels);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Delete a channel
 // @route   DELETE /api/portals/:id/channels/:channelId
 // @access  Private (Owner/Admin)
-router.delete('/:id/channels/:channelId', protect, async (req, res) => {
+router.delete('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoIdValidation('channelId'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
         if (!portal) {
@@ -589,14 +590,14 @@ router.delete('/:id/channels/:channelId', protect, async (req, res) => {
         await portal.save();
         res.json(portal.channels);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Update a channel
 // @route   PUT /api/portals/:id/channels/:channelId
 // @access  Private (Owner/Admin)
-router.put('/:id/channels/:channelId', protect, async (req, res) => {
+router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoIdValidation('channelId'), async (req, res) => {
     try {
         const { name, isPrivate } = req.body;
         const portal = await Portal.findById(req.params.id);
@@ -626,7 +627,7 @@ router.put('/:id/channels/:channelId', protect, async (req, res) => {
         await portal.save();
         res.json(portal.channels);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -635,7 +636,7 @@ router.put('/:id/channels/:channelId', protect, async (req, res) => {
 // @desc    Link/Unlink Admin (Er Yönetici Atama/Alma)
 // @route   POST /api/portals/:id/roles
 // @access  Private (Owner Only - As Yönetici)
-router.post('/:id/roles', protect, async (req, res) => {
+router.post('/:id/roles', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const { userId, action } = req.body; // action: 'promote' or 'demote'
         const portal = await Portal.findById(req.params.id);
@@ -664,14 +665,14 @@ router.post('/:id/roles', protect, async (req, res) => {
         await portal.populate('admins', 'username profile.displayName profile.avatar');
         res.json(portal.admins);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Kick Member
 // @route   POST /api/portals/:id/kick
 // @access  Private (Owner/Admin)
-router.post('/:id/kick', protect, async (req, res) => {
+router.post('/:id/kick', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const { userId } = req.body;
         const portal = await Portal.findById(req.params.id);
@@ -710,14 +711,14 @@ router.post('/:id/kick', protect, async (req, res) => {
 
         res.json({ message: 'User kicked', userId });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Block User
 // @route   POST /api/portals/:id/block
 // @access  Private (Owner/Admin)
-router.post('/:id/block', protect, async (req, res) => {
+router.post('/:id/block', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const { userId } = req.body;
         const portal = await Portal.findById(req.params.id);
@@ -755,14 +756,14 @@ router.post('/:id/block', protect, async (req, res) => {
 
         res.json({ message: 'User blocked', userId });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Unblock User
 // @route   POST /api/portals/:id/unblock
 // @access  Private (Owner/Admin)
-router.post('/:id/unblock', protect, async (req, res) => {
+router.post('/:id/unblock', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const { userId } = req.body;
         const portal = await Portal.findById(req.params.id);
@@ -783,14 +784,14 @@ router.post('/:id/unblock', protect, async (req, res) => {
 
         res.json({ message: 'User unblocked', userId });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Get blocked users
 // @route   GET /api/portals/:id/blocked
 // @access  Private (Owner/Admin)
-router.get('/:id/blocked', protect, async (req, res) => {
+router.get('/:id/blocked', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id).populate(
             'blockedUsers',
@@ -810,7 +811,7 @@ router.get('/:id/blocked', protect, async (req, res) => {
 
         res.json(portal.blockedUsers);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -890,7 +891,7 @@ router.get('/:id/notifications', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Get notifications error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -932,7 +933,7 @@ router.post('/:id/approve-member', protect, async (req, res) => {
         res.json({ message: 'Üyelik isteği onaylandı', userId });
     } catch (error) {
         console.error('Approve member error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -968,7 +969,7 @@ router.post('/:id/reject-member', protect, async (req, res) => {
         res.json({ message: 'Üyelik isteği reddedildi', userId });
     } catch (error) {
         console.error('Reject member error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 // @desc    Change portal status (Active / Closed / Suspended)
@@ -997,7 +998,7 @@ router.put('/:id/status', protect, async (req, res) => {
         res.json(updatedPortal);
     } catch (error) {
         console.error('Portal status update error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -1033,7 +1034,7 @@ router.put('/:id/transfer', protect, async (req, res) => {
         res.json(updatedPortal);
     } catch (error) {
         console.error('Portal ownership transfer error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -1067,7 +1068,7 @@ router.delete('/:id', protect, async (req, res) => {
         res.json({ message: 'Portal kalıcı olarak silindi' });
     } catch (error) {
         console.error('Portal delete error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
