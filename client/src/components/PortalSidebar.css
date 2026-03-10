@@ -205,16 +205,16 @@ body:has(.portal-sidebar) .app-wrapper {
     /* Position right of the sidebar */
     top: 0;
     width: 200px;
-    background: rgba(15, 15, 15, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: #1a1a1a;
+    /* use solid color to prevent compositing bug */
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     padding: 8px;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    z-index: 100000;
 
     /* Animation initial state */
     opacity: 0;
@@ -251,11 +251,18 @@ body:has(.portal-sidebar) .app-wrapper {
     gap: 12px;
     padding: 10px 12px;
     border-radius: 8px;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.85);
+    /* Hardcode light text */
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
     font-weight: 500;
+    opacity: 1 !important;
+    /* Force visibility */
+    visibility: visible !important;
+    position: relative;
+    z-index: 100001;
+    /* Above the panel's background */
 }
 
 .flyout-item:hover {
