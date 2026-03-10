@@ -13,7 +13,6 @@ const PortalSidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [showFlyout, setShowFlyout] = useState(false);
 
 
     // If not authenticated, don't show sidebar (or show limited version)
@@ -34,122 +33,106 @@ const PortalSidebar = () => {
 
     return (
         <>
-            {/* Backdrop for global blur, still rendered in Portal to escape staking contexts */}
-            {typeof document !== 'undefined' && createPortal(
-                <div className={`flyout-backdrop-container ${showFlyout ? 'active' : ''}`}>
-                    <div className="flyout-backdrop"></div>
-                </div>,
-                document.body
-            )}
-
-            <div className={`portal-sidebar ${showFlyout ? 'flyout-active' : ''}`}>
-                {/* Hamburger Menu & Dropdown Wrapper - All in one interactive hit-box */}
+            <div className="portal-sidebar">
+                {/* Top Actions: Messages and Search */}
                 <div
-                    className="dropdown-wrapper"
-                    onMouseEnter={() => setShowFlyout(true)}
-                    onMouseLeave={() => setShowFlyout(false)}
+                    className={`sidebar-item ${isActive('/inbox') ? 'active' : ''}`}
+                    onClick={() => handleNavigation('/inbox')}
                 >
-                    {/* Hamburger Menu Icon (Trigger) */}
-                    <div className={`sidebar-item hamburger-item ${showFlyout ? 'active' : ''}`}>
-                        <div className="portal-icon">
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="3" y1="12" x2="21" y2="12"></line>
-                                <line x1="3" y1="6" x2="21" y2="6"></line>
-                                <line x1="3" y1="18" x2="21" y2="18"></line>
-                            </svg>
-                        </div>
+                    <div className="portal-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
                     </div>
+                    {/* Hover Tooltip */}
+                    <div className="portal-tooltip">
+                        <span className="tooltip-text">Mesajlar</span>
+                        <div className="tooltip-arrow"></div>
+                    </div>
+                </div>
 
-                    {/* Dropdown Menu Panel */}
-                    <div className={`dropdown-panel ${showFlyout ? 'active' : ''}`}>
-                        {/* Messages / Inbox */}
-                        <div
-                            className={`dropdown-item ${isActive('/inbox') ? 'active' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); handleNavigation('/inbox'); setShowFlyout(false); }}
-                            style={{ transitionDelay: '0.05s' }}
-                            title="Mesajlar"
-                        >
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                            </svg>
-                        </div>
-
-                        {/* Search / Discover */}
-                        <div
-                            className={`dropdown-item ${isActive('/search') ? 'active' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); handleNavigation('/search'); setShowFlyout(false); }}
-                            style={{ transitionDelay: '0.1s' }}
-                            title="Keşfet"
-                        >
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                        </div>
-
-                        {/* Create Portal Button */}
-                        <div
-                            className="dropdown-item create-action"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setShowCreateModal(true);
-                                setShowFlyout(false);
-                            }}
-                            style={{ transitionDelay: '0.15s' }}
-                            title="Portal Oluştur"
-                        >
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                        </div>
-
-                        {/* Channel Sidebar Toggle (Mobile/Window Mode) */}
-                        <div
-                            className="dropdown-item toggle-action"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleSidebar();
-                                setShowFlyout(false);
-                            }}
-                            style={{ transitionDelay: '0.2s' }}
-                            title="Menüyü Aç/Kapat"
-                        >
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="13 17 18 12 13 7"></polyline>
-                                <polyline points="6 17 11 12 6 7"></polyline>
-                            </svg>
-                        </div>
+                <div
+                    className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
+                    onClick={() => handleNavigation('/search')}
+                >
+                    <div className="portal-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                    <div className="portal-tooltip">
+                        <span className="tooltip-text">Keşfet</span>
+                        <div className="tooltip-arrow"></div>
                     </div>
                 </div>
 
                 <div className="sidebar-separator"></div>
 
-                {/* User's Portals */}
-                {user?.joinedPortals &&
-                    user.joinedPortals
-                        .filter((p) => p && p._id && p.name) // Strict filter
-                        .map((portal) => (
-                            <div
-                                key={portal._id}
-                                className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
-                                onClick={() => handleNavigation(`/portal/${portal._id}`)}
-                            >
-                                <div className="portal-icon">
-                                    {portal.avatar ? (
-                                        <img src={getImageUrl(portal.avatar)} alt={portal.name} />
-                                    ) : (
-                                        <span>{portal.name.substring(0, 2).toUpperCase()}</span>
-                                    )}
-                                </div>
+                {/* User's Portals (Scrollable Area) */}
+                <div className="portals-scroll-area">
+                    {user?.joinedPortals &&
+                        user.joinedPortals
+                            .filter((p) => p && p._id && p.name) // Strict filter
+                            .map((portal) => (
+                                <div
+                                    key={portal._id}
+                                    className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
+                                    onClick={() => handleNavigation(`/portal/${portal._id}`)}
+                                >
+                                    <div className="portal-icon">
+                                        {portal.avatar ? (
+                                            <img src={getImageUrl(portal.avatar)} alt={portal.name} />
+                                        ) : (
+                                            <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                        )}
+                                    </div>
 
-                                {/* Hover Tooltip (Simple Bubble Style) */}
-                                <div className="portal-tooltip">
-                                    <span className="tooltip-text">{portal.name}</span>
-                                    <div className="tooltip-arrow"></div>
+                                    {/* Hover Tooltip (Simple Bubble Style) */}
+                                    <div className="portal-tooltip">
+                                        <span className="tooltip-text">{portal.name}</span>
+                                        <div className="tooltip-arrow"></div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                </div>
+
+                <div className="sidebar-separator"></div>
+
+                {/* Bottom Actions: Create Portal and Sidebar Toggle */}
+                <div className="sidebar-bottom-actions">
+                    <div
+                        className="sidebar-item create-action"
+                        onClick={() => setShowCreateModal(true)}
+                    >
+                        <div className="portal-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </div>
+                        <div className="portal-tooltip">
+                            <span className="tooltip-text">Portal Oluştur</span>
+                            <div className="tooltip-arrow"></div>
+                        </div>
+                    </div>
+
+                    <div
+                        className="sidebar-item toggle-action mobile-only-toggle"
+                        onClick={() => toggleSidebar()}
+                    >
+                        <div className="portal-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="13 17 18 12 13 7"></polyline>
+                                <polyline points="6 17 11 12 6 7"></polyline>
+                            </svg>
+                        </div>
+                        <div className="portal-tooltip">
+                            <span className="tooltip-text">Menüyü Aç/Kapat</span>
+                            <div className="tooltip-arrow"></div>
+                        </div>
+                    </div>
+                </div>
 
                 <style>{`
                 .portal-tooltip {
