@@ -275,6 +275,13 @@
     box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
 }
 
+@media (max-width: 768px) {
+    .settings-section {
+        padding: 12px; /* Smaller padding on mobile */
+        border-radius: 12px;
+    }
+}
+
 /* Navigation & Menu Styles */
 .settings-menu-list {
     display: flex;
@@ -407,6 +414,16 @@
     cursor: pointer;
     transition: all 0.2s;
     min-height: 70px;
+}
+
+@media (max-width: 768px) {
+    .dropdown-trigger {
+        padding: 12px;
+        min-height: 60px;
+    }
+    .placeholder-text {
+        font-size: 0.9rem;
+    }
 }
 
 .dropdown-trigger:hover {

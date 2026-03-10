@@ -93,16 +93,7 @@
 
     /* Fixed Left Rail - ALWAYS VISIBLE */
     .portal-sidebar-wrapper {
-        position: fixed;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        width: 42px;
-        height: 100vh;
-        z-index: 3000;
-        transform: none;
-        border-right: none;
-        box-shadow: 4px 0 14px rgba(0, 0, 0, 0.4);
+        display: none !important;
     }
 
     /* Toggle Arrow Removed - Controlled by internal button now */

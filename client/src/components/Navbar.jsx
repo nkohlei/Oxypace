@@ -105,6 +105,16 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             </svg>
                         </button>
 
+                        {/* Mobile Back Button - Visible only on mobile and not on home page */}
+                        {location.pathname !== '/' && (
+                            <button className="mobile-back-btn" onClick={() => navigate(-1)} aria-label="Geri Dön">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                                    <polyline points="12 19 5 12 12 5"></polyline>
+                                </svg>
+                            </button>
+                        )}
+
                         <Link to="/" className="brand-logo">
                             <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
                             <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />

@@ -486,26 +486,60 @@ button,
   }
 }
 
-/* ==========================================================================
-   Çok Dar Ekranlar ve Eski Nesil Cihazlar İçin (> 480px Mikro Adaptasyon)
-   ========================================================================== */
+/* =========================================================================
+   COMPACT MOBILE UI FIXES (Prevent Visual Overload) 
+   ========================================================================= */
+
+@media (max-width: 768px) {
+    :root {
+        --nav-top-height: 48px;
+        --nav-bottom-height: 50px;
+        /* Global scaling down */
+        font-size: 15px; 
+    }
+
+    body.dark-mode {
+        /* Reduce shadow heaviness */
+        --neu-shadow-dark: 5px 5px 12px rgba(0, 0, 0, 0.4);
+        --neu-shadow-light: -5px -5px 12px rgba(255, 255, 255, 0.02);
+        --glass-blur: blur(8px);
+        --glass-bg: rgba(6, 9, 19, 0.95); /* More solid to hide behind */
+    }
+
+    body:not(.dark-mode) {
+        --neu-shadow-dark: 5px 5px 12px rgba(166, 171, 189, 0.3);
+        --neu-shadow-light: -5px -5px 12px #ffffff;
+        --glass-blur: blur(8px);
+        --glass-bg: rgba(255, 255, 255, 0.95);
+    }
+
+    .app-wrapper {
+        padding-bottom: env(safe-area-inset-bottom);
+        overflow-x: hidden;
+    }
+
+    .app-content {
+        padding-top: var(--nav-top-height);
+        padding-bottom: var(--nav-bottom-height);
+    }
+}
+
 @media (max-width: 480px) {
-  :root {
-    --nav-top-height: 36px;
-  }
+    :root {
+        font-size: 14px; /* Micro-scaling typography */
+    }
 
-  html {
-    font-size: 14px !important; /* Tipografiyi biraz daha kompaktlaştır */
-  }
-
-  h1, .h1 { font-size: 24px !important; }
+    /* Smaller spacing globally */
+    .container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
   h2, .h2 { font-size: 20px !important; }
 
   button, .btn, input, textarea, select {
     padding: 6px 12px !important;
     /* Min height 40px korunmaya devam eder (dokunmatik cihaz gereksinimi) */
   }
-
   .modal, .glass-panel, .popover, .dialog, .window {
     width: calc(100% - 16px) !important; /* Boşluklar iyice daraltılır */
     margin: 8px auto !important;
