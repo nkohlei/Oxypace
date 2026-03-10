@@ -363,3 +363,155 @@ button,
 }
 
 /* Glassmorphism utilities handled elsewhere */
+
+/* ==========================================================================
+   Mobil ve Pencere Modu İçin Kompakt UI Adaptasyonu 
+   (Viewport < 768px & < 480px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* 1. Mikro-Ölçekleme ve Boyutlandırma (Downsizing) */
+  :root {
+    --nav-top-height: 40px; /* Navbar ve top barlar daraltıldı */
+  }
+
+  /* Boyutlandırmaların küçültülmesi (%20-%30 oranında) */
+  .app-content, .card, .glass-panel, .container {
+    padding: clamp(10px, 3vw, 16px) !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Butonlar, Inputlar ve Form Elemanları (Touch Target Minimum 40x40px) */
+  button, .btn, input, textarea, select {
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    min-height: 40px !important;
+    min-width: 40px !important;
+  }
+  
+  /* İkonlar (Dokunmatik kullanım hassasiyeti için hizalandı) */
+  svg, .icon, i {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* Navigasyon ve Kenar Çubukları */
+  .sidebar, .portal-bar, .user-bar, .navbar {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* 2. Tipografik Daraltma (Mobile Typography) */
+  html {
+    font-size: 15px !important;
+  }
+
+  h1, .h1 {
+    font-size: 28px !important;
+    line-height: 1.3 !important;
+    margin-bottom: 12px !important;
+  }
+
+  h2, .h2 {
+    font-size: 22px !important;
+    line-height: 1.35 !important;
+    margin-bottom: 10px !important;
+  }
+
+  h3, .h3 {
+    font-size: 18px !important;
+    line-height: 1.4 !important;
+  }
+
+  p, span, div, li, a {
+    line-height: 1.4 !important; /* Satır aralığı daraltıldı (1.6 -> 1.4) */
+  }
+
+  /* 3. Mobil Uyumlu Neumorphism ve Glassmorphism */
+  :root {
+    /* Karanlık Tema (Dark Mode) Neumorphic gölge daraltmaları (Daha keskin, daha az spread) */
+    --neu-shadow-dark: 3px 3px 6px rgba(0, 0, 0, 0.6);
+    --neu-shadow-light: -3px -3px 6px rgba(255, 255, 255, 0.03);
+    --neu-inset-dark: inset 2px 2px 4px rgba(0, 0, 0, 0.6);
+    --neu-inset-light: inset -2px -2px 4px rgba(255, 255, 255, 0.03);
+    
+    /* Glassmorphism bulanıklık (blur) hafifletme (Performans ve netlik için) */
+    --glass-blur: blur(8px);
+    
+    /* Popover ve standart gölgelerde küçülme */
+    --shadow-card: 0 8px 16px rgba(0, 0, 0, 0.5);
+    --shadow-popover: 0 10px 20px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 15px rgba(96, 165, 250, 0.3);
+  }
+
+  /* Aydınlık Tema (Light Mode) Neumorphic gölge daraltmaları */
+  [data-theme='light'] {
+    --neu-shadow-dark: 3px 3px 6px rgba(180, 180, 180, 0.4);
+    --neu-shadow-light: -3px -3px 6px rgba(255, 255, 255, 0.9);
+    --neu-inset-dark: inset 2px 2px 4px rgba(180, 180, 180, 0.4);
+    --neu-inset-light: inset -2px -2px 4px rgba(255, 255, 255, 0.9);
+    
+    --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.08);
+    --shadow-popover: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Pencere ve Modallar (Tam ekranı kaplamayıp kenarlardan safe-area boşluğu bırakır) */
+  .modal, .glass-panel, .popover, .dialog, .window {
+    width: calc(100% - 32px) !important; /* Sağdan/soldan toplam 32px kısıtlandı */
+    max-width: 100% !important;
+    margin: 16px auto !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 4. Esnek Yerleşim (Liquid Layout) ve Yatay Kaydırma Önlemleri */
+  html, body, #root, .app-wrapper, .app-content {
+    overflow-x: hidden !important; /* Ekranın sağından taşmaları kesin engeller */
+    max-width: 100vw !important;
+  }
+
+  /* Grid ve Flex Container'ların Mobilde Tek Sütun Akışına Geçmesi */
+  .grid, .grid-container, .flex-row {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+
+  /* Medya Öğeleri ve Kartlar için %100 veya Dinamik Genişlik */
+  .card, .post-card, .feed-item, img, video {
+    width: 100% !important;
+    max-width: calc(100vw - 32px) !important;
+    object-fit: contain;
+  }
+}
+
+/* ==========================================================================
+   Çok Dar Ekranlar ve Eski Nesil Cihazlar İçin (> 480px Mikro Adaptasyon)
+   ========================================================================== */
+@media (max-width: 480px) {
+  :root {
+    --nav-top-height: 36px;
+  }
+
+  html {
+    font-size: 14px !important; /* Tipografiyi biraz daha kompaktlaştır */
+  }
+
+  h1, .h1 { font-size: 24px !important; }
+  h2, .h2 { font-size: 20px !important; }
+
+  button, .btn, input, textarea, select {
+    padding: 6px 12px !important;
+    /* Min height 40px korunmaya devam eder (dokunmatik cihaz gereksinimi) */
+  }
+
+  .modal, .glass-panel, .popover, .dialog, .window {
+    width: calc(100% - 16px) !important; /* Boşluklar iyice daraltılır */
+    margin: 8px auto !important;
+  }
+  
+  .card, .post-card, .feed-item, img, video {
+    max-width: calc(100vw - 16px) !important;
+  }
+}
