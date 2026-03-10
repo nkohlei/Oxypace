@@ -119,58 +119,36 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     )}
 
                     <div className="nav-right">
-                        {/* Theme Toggle Button - hidden on map page */}
-                        {!hideThemeToggle && <button
-                            className="theme-toggle-btn-modern icon-only"
-                            onClick={toggleTheme}
-                            aria-label={isDark ? 'Açık temaya geç' : 'Koyu temaya geç'}
-                            title={isDark ? 'Açık Tema' : 'Koyu Tema'}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'transparent',
-                                border: 'none',
-                                padding: '8px',
-                                borderRadius: '50%',
-                                cursor: 'pointer',
-                                color: 'var(--text-secondary)',
-                                transition: 'all 0.2s',
-                            }}
-                        >
-                            {isDark ? (
-                                <svg
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    stroke="none"
-                                    style={{ color: '#fbbf24' }}
-                                >
-                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                                </svg>
-                            ) : (
-                                <svg
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    style={{ color: '#f59e0b' }}
-                                >
-                                    <circle cx="12" cy="12" r="5" />
-                                    <line x1="12" y1="1" x2="12" y2="3" />
-                                    <line x1="12" y1="21" x2="12" y2="23" />
-                                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                                    <line x1="1" y1="12" x2="3" y2="12" />
-                                    <line x1="21" y1="12" x2="23" y2="12" />
-                                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                                </svg>
-                            )}
-                        </button>}
+                        {/* Modern Theme Toggle Switch */}
+                        {!hideThemeToggle && (
+                            <div className="theme-toggle-switch-container" title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
+                                <input
+                                    type="checkbox"
+                                    id="theme-toggle-checkbox"
+                                    className="theme-toggle-checkbox"
+                                    checked={isDark}
+                                    onChange={toggleTheme}
+                                    aria-label="Temayı değiştir"
+                                />
+                                <label htmlFor="theme-toggle-checkbox" className="theme-toggle-label">
+                                    <svg className="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="5" />
+                                        <line x1="12" y1="1" x2="12" y2="3" />
+                                        <line x1="12" y1="21" x2="12" y2="23" />
+                                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                                        <line x1="1" y1="12" x2="3" y2="12" />
+                                        <line x1="21" y1="12" x2="23" y2="12" />
+                                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                                    </svg>
+                                    <svg className="moon-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                                    </svg>
+                                    <span className="theme-toggle-ball"></span>
+                                </label>
+                            </div>
+                        )}
                         {user ? (
                             <>
                                 {/* Notification Button */}

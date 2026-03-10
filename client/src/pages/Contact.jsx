@@ -86,7 +86,20 @@ const Contact = () => {
                 lineHeight: '1.7'
             }}>
                 <div className="legal-header" style={{ marginBottom: '40px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
-                    <h1 style={{ fontSize: '2.5rem', marginBottom: '10px', background: 'linear-gradient(45deg, #FF5F1F, #FF8C00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>İletişim</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                        <Link to="/settings" style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '40px', height: '40px', borderRadius: '50%',
+                            background: 'var(--bg-primary)', color: 'var(--text-primary)',
+                            textDecoration: 'none', transition: '0.2s',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                        }} className="back-btn-hover">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                        </Link>
+                        <h1 style={{ fontSize: '2.5rem', margin: 0, background: 'linear-gradient(45deg, #FF5F1F, #FF8C00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>İletişim</h1>
+                    </div>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Bize ulaşın, yardımcı olmaktan mutluluk duyarız.</p>
                 </div>
 
@@ -214,6 +227,10 @@ const Contact = () => {
                         padding: 20px !important;
                         margin: 20px auto !important;
                     }
+                }
+                .back-btn-hover:hover {
+                    background: var(--bg-hover) !important;
+                    transform: translateX(-2px);
                 }
             `}</style>
         </div>

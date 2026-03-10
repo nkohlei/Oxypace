@@ -305,7 +305,7 @@ const Settings = () => {
 
                 <div className="settings-footer-info" style={{ marginTop: 'auto', paddingTop: '24px' }}>
                     <p>OxySpace v2.4.0</p>
-                    <p>&copy; 2026</p>
+                    <p>&copy; 2026 Oxypace</p>
                 </div>
             </div>
         </div>
