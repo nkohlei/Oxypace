@@ -238,9 +238,9 @@ body.dark-mode .logo-text {
     top: calc(100% + 12px);
     right: 0;
     width: 260px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: rgba(6, 9, 19, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: var(--glass-border);
     border-radius: 16px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
@@ -248,6 +248,10 @@ body.dark-mode .logo-text {
     z-index: 2000;
     transform-origin: top right;
     animation: dropdownScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='light'] .header-dropdown {
+    background: rgba(255, 255, 255, 0.88);
 }
 
 @keyframes dropdownScale {
