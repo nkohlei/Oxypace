@@ -40,7 +40,7 @@ const PortalSidebar = () => {
                 document.body
             )}
 
-            <div className="portal-sidebar">
+            <div className={`portal-sidebar ${showFlyout ? 'flyout-active' : ''}`}>
                 {/* Hamburger Menu & Flyout Wrapper */}
                 <div
                     className="flyout-wrapper"
