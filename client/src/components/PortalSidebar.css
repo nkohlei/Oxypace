@@ -16,7 +16,8 @@
     border-top: none;
     border-bottom: none;
     position: relative;
-    z-index: 20;
+    z-index: 9998;
+    /* Base sidebar z-index (high to be above most page elements) */
 }
 
 .portal-sidebar::-webkit-scrollbar {

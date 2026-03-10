@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
@@ -33,8 +34,11 @@ const PortalSidebar = () => {
 
     return (
         <>
-            {/* Backdrop for the flyout and right content area */}
-            <div className={`flyout-backdrop ${showFlyout ? 'active' : ''}`}></div>
+            {/* Backdrop for the flyout rendered via Portal so it escapes stacking contexts and covers everything */}
+            {typeof document !== 'undefined' && createPortal(
+                <div className={`flyout-backdrop ${showFlyout ? 'active' : ''}`}></div>,
+                document.body
+            )}
 
             <div className="portal-sidebar">
                 {/* Hamburger Menu & Flyout Wrapper */}
