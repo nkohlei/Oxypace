@@ -163,11 +163,11 @@ body:has(.portal-sidebar) .app-wrapper {
 .flyout-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px) brightness(0.6);
-    -webkit-backdrop-filter: blur(8px) brightness(0.6);
+    background: transparent;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .flyout-container.active .flyout-backdrop {
@@ -208,21 +208,34 @@ body:has(.portal-sidebar) .app-wrapper {
     /* 72px sidebar + gap */
     top: 20px;
     /* Align with hamburger */
-    width: 200px;
-    background: rgba(15, 15, 15, 0.95);
+    background: var(--neu-bg, rgba(15, 15, 15, 0.95));
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
+    border-radius: 48px;
+    /* Changed to match circular items */
     padding: 8px;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    /* Horizontal layout */
+    gap: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 
     /* Animation initial state */
     opacity: 0;
     transform: translateX(-20px);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
+}
+
+/* The Hover Bridge - Invisible padding to prevent gap hover dropout */
+.flyout-panel::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -20px;
+    /* Span the gap back to the hamburger menu */
+    width: 20px;
+    height: 100%;
+    background: transparent;
 }
 
 .flyout-container.active .flyout-panel {
@@ -234,18 +247,17 @@ body:has(.portal-sidebar) .app-wrapper {
 .flyout-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border-radius: 8px;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
     color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
 
     /* Staggered text animation initial state */
     opacity: 0;
     transform: translateX(-10px);
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .flyout-container.active .flyout-item {
@@ -254,13 +266,16 @@ body:has(.portal-sidebar) .app-wrapper {
 }
 
 .flyout-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-hover, rgba(255, 255, 255, 0.1));
     color: var(--text-primary);
+    box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(96, 165, 250, 0.2);
+    transform: scale(1.05);
 }
 
 .flyout-item.active {
-    background: var(--primary-color-alpha, rgba(99, 102, 241, 0.15));
+    background: var(--bg-hover, rgba(255, 255, 255, 0.1));
     color: var(--primary-color, #6366f1);
+    box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 10px rgba(96, 165, 250, 0.2);
 }
 
 .flyout-item svg {
@@ -269,11 +284,21 @@ body:has(.portal-sidebar) .app-wrapper {
 
 .flyout-item.create-action:hover {
     color: var(--primary-green, #10b981);
-    background: rgba(16, 185, 129, 0.1);
+    background: var(--bg-hover, rgba(16, 185, 129, 0.1));
 }
 
 @media (max-width: 768px) {
     .flyout-panel {
         left: 50px;
+    }
+
+    .flyout-item {
+        width: 38px;
+        height: 38px;
+    }
+
+    .flyout-item svg {
+        width: 18px;
+        height: 18px;
     }
 }

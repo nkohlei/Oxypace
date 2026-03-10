@@ -48,11 +48,11 @@ const PortalSidebar = () => {
                             className={`flyout-item ${isActive('/inbox') ? 'active' : ''}`}
                             onClick={() => { handleNavigation('/inbox'); setShowFlyout(false); }}
                             style={{ animationDelay: '0.05s' }}
+                            title="Mesajlar"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                             </svg>
-                            <span>Mesajlar</span>
                         </div>
 
                         {/* Search / Discover */}
@@ -60,12 +60,12 @@ const PortalSidebar = () => {
                             className={`flyout-item ${isActive('/search') ? 'active' : ''}`}
                             onClick={() => { handleNavigation('/search'); setShowFlyout(false); }}
                             style={{ animationDelay: '0.1s' }}
+                            title="Keşfet"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             </svg>
-                            <span>Keşfet</span>
                         </div>
 
                         {/* Create Portal Button */}
@@ -76,12 +76,12 @@ const PortalSidebar = () => {
                                 setShowFlyout(false);
                             }}
                             style={{ animationDelay: '0.15s' }}
+                            title="Portal Oluştur"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
-                            <span>Portal Oluştur</span>
                         </div>
 
                         {/* Channel Sidebar Toggle (Mobile/Window Mode) */}
@@ -93,12 +93,12 @@ const PortalSidebar = () => {
                                 setShowFlyout(false);
                             }}
                             style={{ animationDelay: '0.2s' }}
+                            title="Menüyü Aç/Kapat"
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                                 <polyline points="13 17 18 12 13 7"></polyline>
                                 <polyline points="6 17 11 12 6 7"></polyline>
                             </svg>
-                            <span>Menüyü Aç/Kapat</span>
                         </div>
                     </div>
                 </div>,
