@@ -132,19 +132,6 @@ const PortalSidebar = () => {
                             <div className="tooltip-arrow"></div>
                         </div>
                     </div>
-
-                    {/* Copyright Footer */}
-                    <div style={{
-                        marginTop: '12px',
-                        fontSize: '9px',
-                        color: 'var(--text-tertiary)',
-                        textAlign: 'center',
-                        opacity: 0.6,
-                        userSelect: 'none',
-                        letterSpacing: '0.5px'
-                    }}>
-                        © 2026 <br /> OXYPACE
-                    </div>
                 </div>
 
                 <style>{`

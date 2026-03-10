@@ -180,7 +180,7 @@ const ChannelSidebar = ({
             {/* Scrollable Area */}
             <div
                 className="custom-scrollbar"
-                style={{ flex: 1, padding: '0 8px 8px 8px', overflowY: 'auto' }}
+                style={{ flex: 1, padding: '0 8px 8px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
             >
                 {/* 2. Bildirimler (Portal Notifications - Admin Only) */}
                 {canManage && (
@@ -407,6 +407,20 @@ const ChannelSidebar = ({
                         </div>
                     );
                 })}
+
+                {/* Footer Copyright */}
+                <div style={{
+                    marginTop: 'auto',
+                    paddingTop: '24px',
+                    paddingBottom: '8px',
+                    fontSize: '11px',
+                    color: 'var(--text-tertiary)',
+                    textAlign: 'center',
+                    opacity: 0.6,
+                    userSelect: 'none',
+                }}>
+                    © 2026 Oxypace. Tüm hakları saklıdır.
+                </div>
             </div>
 
             {/* User Control Bar - Bottom of Sidebar */}

@@ -82,18 +82,19 @@
     height: 1.25rem;
     object-fit: contain;
     /* Adjust for light/dark mode filtering. 
-       Default is light mode: convert black to Navy Blue using CSS filters. 
-       Formula for navy is roughly: invert(16%) sepia(87%) saturate(2398%) hue-rotate(222deg) brightness(85%) contrast(106%) */
-    filter: invert(16%) sepia(87%) saturate(2398%) hue-rotate(222deg) brightness(85%) contrast(106%);
+       Base image is WHITE.
+       Light mode: convert WHITE to NAVY using CSS filters. 
+       First brightness(0) makes it black, then filter to navy. */
+    filter: brightness(0) invert(18%) sepia(43%) saturate(3665%) hue-rotate(206deg) brightness(90%) contrast(101%);
     transition: filter 0.3s ease;
 }
 
-/* Dark mode generic selector assuming [data-theme="dark"] or similar exists, but we can also use media queries if preferred. 
-   Usually there's a body.dark or [data-theme='dark'] class. If not we use the theme state. */
+/* Dark mode generic selector */
 :root[data-theme="dark"] .logo-text,
 .dark .logo-text,
 body.dark-mode .logo-text {
-    filter: invert(1);
+    /* Keep it white in dark mode */
+    filter: none;
 }
 
 .logo-image {
