@@ -81,7 +81,19 @@
 .logo-text {
     height: 1.25rem;
     object-fit: contain;
-    filter: drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000) drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
+    /* Adjust for light/dark mode filtering. 
+       Default is light mode: convert black to Navy Blue using CSS filters. 
+       Formula for navy is roughly: invert(16%) sepia(87%) saturate(2398%) hue-rotate(222deg) brightness(85%) contrast(106%) */
+    filter: invert(16%) sepia(87%) saturate(2398%) hue-rotate(222deg) brightness(85%) contrast(106%);
+    transition: filter 0.3s ease;
+}
+
+/* Dark mode generic selector assuming [data-theme="dark"] or similar exists, but we can also use media queries if preferred. 
+   Usually there's a body.dark or [data-theme='dark'] class. If not we use the theme state. */
+:root[data-theme="dark"] .logo-text,
+.dark .logo-text,
+body.dark-mode .logo-text {
+    filter: invert(1);
 }
 
 .logo-image {
