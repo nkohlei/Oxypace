@@ -238,14 +238,19 @@ router.get('/me', protect, async (req, res) => {
         const ownedPortals = await Portal.find({ owner: req.user._id }).select('name avatar');
 
         // Merge joined and owned portals to create unified 'portals' list
-        const allPortals = [...(user.joinedPortals || [])];
+        const allPortals = [...(user.joinedPortals || [])].filter(Boolean);
         ownedPortals.forEach((owned) => {
-            if (!allPortals.some((p) => p._id.toString() === owned._id.toString())) {
+            if (!allPortals.some((p) => p && p._id && p._id.toString() === owned._id.toString())) {
                 allPortals.push(owned);
             }
         });
 
         userObj.portals = allPortals;
+
+        // Filter out nulls from following array
+        if (Array.isArray(userObj.following)) {
+            userObj.following = userObj.following.filter(Boolean);
+        }
 
         res.json(userObj);
     } catch (error) {
@@ -401,7 +406,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
 
                 // Calculate Mutual Portals
                 const myPortalIds = currentUser.joinedPortals.map((id) => id.toString());
-                const theirPortalIds = user.joinedPortals.map((p) =>
+                const theirPortalIds = user.joinedPortals.filter(Boolean).map((p) =>
                     p._id ? p._id.toString() : p.toString()
                 );
                 const mutualPortalIds = myPortalIds.filter((id) => theirPortalIds.includes(id));
@@ -409,7 +414,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
                 if (mutualPortalIds.length > 0) {
                     // Filter from the already populated user.joinedPortals
                     mutualPortals = user.joinedPortals.filter((p) =>
-                        mutualPortalIds.includes(p._id.toString())
+                        p && p._id && mutualPortalIds.includes(p._id.toString())
                     );
                 }
             }
@@ -446,11 +451,11 @@ router.get('/:username', optionalProtect, async (req, res) => {
         } else {
             // Repopulate portals if needed or use what we have (we populated joinedPortals)
             // Merge joinedPortals and ownedPortals, distinct by _id
-            const allPortals = [...user.joinedPortals];
+            const allPortals = [...user.joinedPortals].filter(Boolean);
 
             // Add owned portals if not already present
             ownedPortals.forEach((owned) => {
-                if (!allPortals.some((p) => p._id.toString() === owned._id.toString())) {
+                if (!allPortals.some((p) => p && p._id && p._id.toString() === owned._id.toString())) {
                     allPortals.push(owned);
                 }
             });
@@ -705,7 +710,7 @@ router.get('/:id/followers', protect, mongoIdValidation('id'), async (req, res) 
             const isOwner = req.user._id.toString() === user._id.toString();
             // Check if follower (since followers are populated, check safely)
             const isFollower = user.followers.some(
-                (follower) => follower._id.toString() === req.user._id.toString()
+                (follower) => follower && follower._id && follower._id.toString() === req.user._id.toString()
             );
 
             if (!isOwner && !isFollower) {
@@ -713,7 +718,7 @@ router.get('/:id/followers', protect, mongoIdValidation('id'), async (req, res) 
             }
         }
 
-        res.json(user.followers);
+        res.json(user.followers.filter(Boolean));
     } catch (error) {
         console.error('Get followers error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -751,7 +756,7 @@ router.get('/:id/following', protect, mongoIdValidation('id'), async (req, res) 
             }
         }
 
-        res.json(user.following);
+        res.json(user.following.filter(Boolean));
     } catch (error) {
         console.error('Get following error:', error);
         res.status(500).json({ message: 'Server error' });
