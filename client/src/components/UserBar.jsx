@@ -105,7 +105,7 @@ const UserBar = ({ currentChannelId }) => {
                                     title={p.name}
                                 >
                                     <img
-                                        src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=2b2d31&color=fff`}
+                                        src={getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=2b2d31&color=fff`}
                                         alt={p.name}
                                         style={{
                                             width: '28px', height: '28px', borderRadius: '50%',
@@ -461,7 +461,7 @@ const MiniVideo = ({ participant }) => {
                 />
             ) : (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)' }}>
-                    <img src={participant.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.name)}&background=2b2d31&color=fff`} style={{ width: '48px', height: '48px', borderRadius: '50%' }} alt="Avatar" />
+                    <img src={getImageUrl(participant.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.name)}&background=2b2d31&color=fff`} style={{ width: '48px', height: '48px', borderRadius: '50%' }} alt="Avatar" />
                 </div>
             )}
             <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -6,6 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import RoomTimer from './RoomTimer';
+import { getImageUrl } from '../utils/imageUtils';
 import './VoiceChannel.css';
 
 const ConferenceChannel = ({ portalId, channelId, channelName }) => {
@@ -237,7 +238,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         <div className="vc-card-avatar-area" style={getCardBackground(p.identity)}>
                             <img
                                 className="vc-card-avatar"
-                                src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`}
+                                src={getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`}
                                 alt=""
                                 onError={e => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`; }}
                             />
@@ -524,7 +525,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 return (
                                     <div key={p.identity} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: hasRaisedHand ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
-                                            <img src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=6366f1&color=fff&size=32`} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                            <img src={getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=6366f1&color=fff&size=32`} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
                                             {hasRaisedHand && (
                                                 <div style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px', display: 'flex' }}>
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">

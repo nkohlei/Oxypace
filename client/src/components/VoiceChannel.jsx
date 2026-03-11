@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import RoomTimer from './RoomTimer';
+import { getImageUrl } from '../utils/imageUtils';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -114,7 +115,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <div className="vc-card-avatar-area" style={getCardBackground(p.identity)}>
                             <img
                                 className="vc-card-avatar"
-                                src={p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`}
+                                src={getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`}
                                 alt=""
                                 onError={e => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`; }}
                             />
