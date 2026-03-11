@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ProfileImageModal.css';
 
-const ProfileImageModal = ({ isOpen, onClose, imageSrc, isOwnProfile, onEdit }) => {
+const ProfileImageModal = ({ isOpen, onClose, imageSrc, isOwnProfile, onEdit, username }) => {
+    const [imgError, setImgError] = useState(false);
+
     if (!isOpen) return null;
+
+    const hasValidImage = imageSrc && !imgError;
 
     return (
         <div className="profile-image-modal-overlay" onClick={onClose}>
@@ -15,7 +19,18 @@ const ProfileImageModal = ({ isOpen, onClose, imageSrc, isOwnProfile, onEdit }) 
                 </button>
 
                 <div className="profile-image-container">
-                    <img src={imageSrc} alt="Profile" className="profile-image-full" />
+                    {hasValidImage ? (
+                        <img
+                            src={imageSrc}
+                            alt="Profile"
+                            className="profile-image-full"
+                            onError={() => setImgError(true)}
+                        />
+                    ) : (
+                        <div className="profile-image-placeholder-large">
+                            {username?.[0]?.toUpperCase() || '?'}
+                        </div>
+                    )}
                 </div>
 
                 {isOwnProfile && (
@@ -23,10 +38,7 @@ const ProfileImageModal = ({ isOpen, onClose, imageSrc, isOwnProfile, onEdit }) 
                         className="profile-image-edit-btn"
                         onClick={() => {
                             onEdit();
-                            onClose(); // Optional: close modal after clicking edit, or keep it open?
-                            // User request implies "edit button is IN the modal", so clicking it likely triggers the file selector.
-                            // The file selector change will eventually trigger the cropper, which is a separate modal.
-                            // So closing this view modal seems appropriate when transitioning to the edit flow.
+                            onClose();
                         }}
                     >
                         <svg

@@ -930,6 +930,7 @@ const Profile = () => {
                 }
                 isOwnProfile={isOwnProfile}
                 onEdit={() => avatarInputRef.current?.click()}
+                username={profileUser?.username}
             />
 
             {/* Image Cropper Modal */}
