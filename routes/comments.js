@@ -99,10 +99,8 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
         let mediaType = 'none';
 
         if (req.file) {
-            // Use backend proxy URL instead of R2 direct URL
-            const backendUrl =
-                process.env.BACKEND_URL;
-            media = `${backendUrl}/api/media/${req.file.key}`;
+            // Store relative path - client's getImageUrl will construct full URL
+            media = `/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -172,10 +170,8 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
         let mediaType = 'none';
 
         if (req.file) {
-            // Use backend proxy URL instead of R2 direct URL
-            const backendUrl =
-                process.env.BACKEND_URL;
-            media = `${backendUrl}/api/media/${req.file.key}`;
+            // Store relative path - client's getImageUrl will construct full URL
+            media = `/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 

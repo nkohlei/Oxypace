@@ -508,10 +508,8 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            // Use backend proxy URL instead of R2 direct URL
-            const backendUrl =
-                process.env.BACKEND_URL;
-            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
+            // Store relative path - client's getImageUrl will construct full URL
+            const publicUrl = `/api/media/${req.file.key}`;
             user.profile.avatar = publicUrl;
             await user.save();
 
@@ -553,10 +551,8 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            // Use backend proxy URL instead of R2 direct URL
-            const backendUrl =
-                process.env.BACKEND_URL;
-            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
+            // Store relative path - client's getImageUrl will construct full URL
+            const publicUrl = `/api/media/${req.file.key}`;
             user.profile.coverImage = publicUrl;
             await user.save();
 

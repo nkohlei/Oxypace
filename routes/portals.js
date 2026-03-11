@@ -476,10 +476,8 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
         }
 
         if (req.file) {
-            // Use backend proxy URL instead of R2 direct URL
-            const backendUrl =
-                process.env.BACKEND_URL;
-            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
+            // Store relative path - client's getImageUrl will construct full URL
+            const publicUrl = `/api/media/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');
@@ -508,10 +506,8 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
         }
 
         if (req.file) {
-            // Use backend proxy URL instead of R2 direct URL
-            const backendUrl =
-                process.env.BACKEND_URL;
-            const publicUrl = `${backendUrl}/api/media/${req.file.key}`;
+            // Store relative path - client's getImageUrl will construct full URL
+            const publicUrl = `/api/media/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');

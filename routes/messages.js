@@ -86,10 +86,8 @@ router.post(
             const { recipientId, content, postId, portalId, replyToId } = req.body;
             let media = undefined;
             if (req.file) {
-                // Use backend proxy URL instead of R2 direct URL
-                const backendUrl =
-                    process.env.BACKEND_URL;
-                media = `${backendUrl}/api/media/${req.file.key}`;
+                // Store relative path - client's getImageUrl will construct full URL
+                media = `/api/media/${req.file.key}`;
             }
 
             if (!recipientId || (!content && !media && !postId && !portalId)) {

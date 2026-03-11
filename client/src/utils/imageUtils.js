@@ -5,7 +5,17 @@
  */
 export const getImageUrl = (path) => {
     if (!path) return null;
-    if (path.startsWith('http') || path.startsWith('blob:')) return path;
+
+    // Fix legacy URLs stored with 'undefined' prefix from missing BACKEND_URL env var
+    let cleanPath = path;
+    if (cleanPath.startsWith('undefined/')) {
+        cleanPath = cleanPath.replace('undefined/', '/');
+    }
+    if (cleanPath.startsWith('undefined')) {
+        cleanPath = cleanPath.replace('undefined', '');
+    }
+
+    if (cleanPath.startsWith('http') || cleanPath.startsWith('blob:')) return cleanPath;
 
     // Get Base URL (e.g., https://api.com/api)
     let baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -21,7 +31,7 @@ export const getImageUrl = (path) => {
     }
 
     // Ensure path starts with /
-    const safePath = path.startsWith('/') ? path : `/${path}`;
+    const safePath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
 
     return `${baseUrl}${safePath}`;
 };
