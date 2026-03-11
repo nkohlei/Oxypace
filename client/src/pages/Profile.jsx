@@ -94,7 +94,11 @@ const Profile = () => {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            const updatedUser = { ...currentUser };
+            // Deep copy to ensure React detects the state change
+            const updatedUser = {
+                ...currentUser,
+                profile: { ...currentUser.profile },
+            };
             if (mode === 'avatar') {
                 updatedUser.profile.avatar = response.data.avatar;
                 setProfileUser((prev) => ({
@@ -200,14 +204,17 @@ const Profile = () => {
                 privacy: { portalVisibility: formData.portalVisibility },
             });
 
-            const updatedUser = { ...currentUser };
-            // Deep merge might be needed for real app, but simplified:
-            if (updatedUser.profile) {
-                updatedUser.profile.displayName = formData.displayName;
-                updatedUser.profile.bio = formData.bio;
-            }
-            if (!updatedUser.settings) updatedUser.settings = {};
-            if (!updatedUser.settings.privacy) updatedUser.settings.privacy = {};
+            // Deep copy to ensure React detects the state change
+            const updatedUser = {
+                ...currentUser,
+                profile: { ...(currentUser.profile || {}) },
+                settings: {
+                    ...(currentUser.settings || {}),
+                    privacy: { ...(currentUser.settings?.privacy || {}) },
+                },
+            };
+            updatedUser.profile.displayName = formData.displayName;
+            updatedUser.profile.bio = formData.bio;
             updatedUser.settings.privacy.portalVisibility = formData.portalVisibility;
 
             updateUser(updatedUser);
