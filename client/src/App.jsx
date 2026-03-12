@@ -124,8 +124,8 @@ const AppLayout = () => {
             // the #root flex container retains its expanded height even after overflow:hidden is applied.
             // Setting inline styles forces an immediate reflow to 100vh.
             if (root) {
-                root.style.height = '100vh';
-                root.style.maxHeight = '100vh';
+                root.style.height = '100dvh';
+                root.style.maxHeight = '100dvh';
                 root.style.overflow = 'hidden';
             }
 

@@ -471,7 +471,7 @@
     -webkit-backdrop-filter: var(--glass-blur);
     width: 100%;
     max-width: 550px;
-    max-height: 90vh;
+    max-height: 90dvh;
     border-radius: 20px;
     display: flex;
     flex-direction: column;

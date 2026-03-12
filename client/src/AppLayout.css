@@ -98,7 +98,7 @@
         left: 0;
         bottom: 0;
         width: 42px;
-        height: 100vh;
+        height: 100dvh;
         z-index: 3000;
         transform: translateX(-100%);
         border-right: none;
