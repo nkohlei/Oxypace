@@ -108,6 +108,11 @@ const AppLayout = () => {
     const isAdminPage = location.pathname === '/admin';
     const isCleanLayout = isMapPage || isAdminPage;
 
+    // Route-based sidebar visibility for mobile (Discord-style)
+    const isHomePage = location.pathname === '/';
+    const isPortalPage = location.pathname.startsWith('/portal/');
+    const showSidebarOnMobile = isHomePage || isPortalPage;
+
     useLayoutEffect(() => {
         const root = document.getElementById('root');
         if (isLoggedIn) {
@@ -192,14 +197,14 @@ const AppLayout = () => {
 
                 {/* Portal Sidebar — hidden on clean layout pages */}
                 {user && !isCleanLayout && (
-                    <div className={`portal-sidebar-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+                    <div className={`portal-sidebar-wrapper ${isSidebarOpen ? 'sidebar-open' : ''} ${showSidebarOnMobile ? 'mobile-show-sidebar' : ''}`}>
                         <PortalSidebar />
                     </div>
                 )}
 
                 {/* Global User Bar Removed - Moved to Sidebars */}
 
-                <div className="main-content-wrapper">
+                <div className={`main-content-wrapper ${!showSidebarOnMobile ? 'mobile-no-sidebar' : ''}`}>
                     <div className="content-scroll-area">
                         <Suspense fallback={<PageLoader />}>
                             <Routes>

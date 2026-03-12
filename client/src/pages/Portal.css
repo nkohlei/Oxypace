@@ -936,6 +936,63 @@
         margin-left: 0;
     }
 
+    /* === Mobile Channel Navigation (Discord-Style) === */
+
+    /* Channel sidebar: inline flow on mobile (not fixed overlay) */
+    .channel-sidebar {
+        width: 100% !important;
+        max-width: 100% !important;
+        position: static !important;
+        transform: none !important;
+        height: auto !important;
+        min-height: 100% !important;
+        box-shadow: none !important;
+    }
+
+    /* When a channel is selected — hide the sidebar, show fullscreen feed */
+    .channel-sidebar.mobile-hidden {
+        display: none !important;
+    }
+
+    /* When no channel is selected — hide the feed, show the channel list */
+    .discord-main-content.mobile-content-hidden {
+        display: none !important;
+    }
+
+    /* Fullscreen feed mode — main content takes full width */
+    .mobile-feed-active .discord-main-content {
+        width: 100%;
+        flex: 1;
+    }
+
+    /* Channel Back Button in channel-top-bar */
+    .channel-back-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        cursor: pointer;
+        padding: 6px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 50%;
+        margin-right: 4px;
+        transition: all 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+        flex-shrink: 0;
+    }
+
+    .channel-back-btn:hover {
+        background: var(--bg-hover);
+        color: var(--primary-color);
+    }
+
+    .channel-back-btn:active {
+        transform: scale(0.9);
+    }
+
     .channel-top-bar {
         padding: 0 12px;
         height: 56px;

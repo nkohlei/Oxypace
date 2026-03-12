@@ -33,6 +33,33 @@
     gap: 16px;
 }
 
+/* Mobile Back Button — visible only on mobile, non-Home pages */
+.mobile-back-btn {
+    display: none;
+    /* Hidden on desktop */
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-back-btn:hover {
+    background: var(--bg-hover);
+    color: var(--primary-color);
+}
+
+.mobile-back-btn:active {
+    transform: scale(0.9);
+}
+
 .mobile-menu-btn {
     display: none;
     /* Hidden on desktop */
@@ -350,6 +377,11 @@ body.dark-mode .logo-text {
 
 /* Mobile Responsiveness */
 @media (max-width: 900px) {
+
+    /* Mobile Back Button — visible on mobile */
+    .mobile-back-btn {
+        display: flex;
+    }
 
     /* Increased breakpoint for visibility on tablets/small laptops */
     .mobile-menu-btn {

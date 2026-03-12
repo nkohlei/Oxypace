@@ -22,7 +22,7 @@ const Portal = () => {
     const { id } = useParams();
     const { user, updateUser, loading: authLoading } = useAuth();
     const navigate = useNavigate();
-    const { isSidebarOpen, closeSidebar } = useUI();
+    const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = useUI();
 
     const [portal, setPortal] = useState(null);
     const posts = useGlobalStore((state) => state.posts);
@@ -110,8 +110,9 @@ const Portal = () => {
     const handleChannelSelect = (channelId) => {
         setCurrentChannel(channelId);
         setShowScrollTop(false); // Reset scroll button when changing channels
-        if (window.innerWidth <= 768) {
+        if (isMobileView) {
             closeSidebar();
+            setMobileChannelOpen(true); // Go to fullscreen feed mode
         }
     };
 
@@ -417,6 +418,7 @@ const Portal = () => {
         setCurrentChannel(null); // Reset channel to avoid using old portal's channel
         setPortal(null); // Clear portal data to prevent showing old content
         setError('');
+        setMobileChannelOpen(false); // Reset mobile feed state
     }, [id]);
 
     const handleDeletePost = (postId) => {
@@ -693,7 +695,7 @@ const Portal = () => {
             )}
 
 
-            <div className="discord-split-view">
+            <div className={`discord-split-view ${isMobileView && mobileChannelOpen ? 'mobile-feed-active' : ''}`}>
                 {user && (
                     <ChannelSidebar
                         portal={portal}
@@ -706,11 +708,11 @@ const Portal = () => {
                         }}
                         currentChannel={currentChannel}
                         onChangeChannel={handleChannelSelect}
-                        className={isSidebarOpen ? 'mobile-open' : ''}
+                        className={`${isSidebarOpen ? 'mobile-open' : ''} ${isMobileView && mobileChannelOpen ? 'mobile-hidden' : ''}`}
                     />
                 )}
 
-                <main className="discord-main-content">
+                <main className={`discord-main-content ${isMobileView && !mobileChannelOpen ? 'mobile-content-hidden' : ''}`}>
                     {/* Determine current channel type */}
                     {(() => {
                         const currentChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
@@ -724,6 +726,19 @@ const Portal = () => {
                                 {!isVoiceChannel && (
                                     <header className="channel-top-bar">
                                         <div className="channel-title-wrapper">
+                                            {/* Mobile Back Button — return to channel list */}
+                                            {isMobileView && mobileChannelOpen && (
+                                                <button
+                                                    className="channel-back-btn"
+                                                    onClick={() => setMobileChannelOpen(false)}
+                                                    aria-label="Geri"
+                                                    title="Kanallara Dön"
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                                    </svg>
+                                                </button>
+                                            )}
                                             <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
                                                 {channelType === 'voice' || channelType === 'conference' ? (
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary-color)' }}>
@@ -778,6 +793,33 @@ const Portal = () => {
                                     {isVoiceChannel ? (
                                         /* Voice or Conference Channel */
                                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                            {/* Mobile Back Button for Voice Channels */}
+                                            {isMobileView && mobileChannelOpen && (
+                                                <header className="channel-top-bar">
+                                                    <div className="channel-title-wrapper">
+                                                        <button
+                                                            className="channel-back-btn"
+                                                            onClick={() => setMobileChannelOpen(false)}
+                                                            aria-label="Geri"
+                                                            title="Kanallara Dön"
+                                                        >
+                                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="15 18 9 12 15 6"></polyline>
+                                                            </svg>
+                                                        </button>
+                                                        <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary-color)' }}>
+                                                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                                                <line x1="12" y1="19" x2="12" y2="23" />
+                                                            </svg>
+                                                        </span>
+                                                        <h3 className="channel-name" style={{ color: 'var(--primary-color)' }}>
+                                                            {channelName}
+                                                        </h3>
+                                                    </div>
+                                                </header>
+                                            )}
                                             {channelType === 'conference' ? (
                                                 <ConferenceChannel
                                                     portalId={id}

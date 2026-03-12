@@ -12,9 +12,10 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const { user, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
-    const { toggleSidebar } = useUI();
+    const { toggleSidebar, isMobileView } = useUI();
     const location = useLocation();
     const navigate = useNavigate();
+    const isHomePage = location.pathname === '/';
     const [showMenu, setShowMenu] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const menuRef = useRef(null);
@@ -96,6 +97,26 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
+                        {/* Mobile Back Button — visible on non-Home pages at ≤768px */}
+                        {isMobileView && !isHomePage && user && (
+                            <button
+                                className="mobile-back-btn"
+                                onClick={() => {
+                                    if (window.history.length > 1) {
+                                        navigate(-1);
+                                    } else {
+                                        navigate('/');
+                                    }
+                                }}
+                                aria-label="Geri"
+                                title="Geri"
+                            >
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                </svg>
+                            </button>
+                        )}
+
                         {/* Mobile Sidebar Toggle - Visible only on mobile */}
                         <button className="mobile-menu-btn" onClick={toggleSidebar} aria-label="Menüyü aç">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

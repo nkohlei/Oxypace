@@ -91,7 +91,7 @@
         position: relative;
     }
 
-    /* Fixed Left Rail - ALWAYS VISIBLE */
+    /* Sidebar HIDDEN by default on mobile — only shown on Home/Portal pages */
     .portal-sidebar-wrapper {
         position: fixed;
         top: 0;
@@ -100,9 +100,15 @@
         width: 42px;
         height: 100vh;
         z-index: 3000;
-        transform: none;
+        transform: translateX(-100%);
         border-right: none;
         box-shadow: 4px 0 14px rgba(0, 0, 0, 0.4);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Show sidebar only on Home & Portal pages */
+    .portal-sidebar-wrapper.mobile-show-sidebar {
+        transform: translateX(0);
     }
 
     /* Toggle Arrow Removed - Controlled by internal button now */
@@ -110,11 +116,18 @@
         display: none !important;
     }
 
-    /* Content needs to be pushed over or handle the offset if necessary */
+    /* Content offset when sidebar IS visible */
     .main-content-wrapper {
         margin-left: 42px;
-        /* Push content to right to make room for fixed bar */
         width: calc(100vw - 42px);
+        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Full width when sidebar is NOT visible (non-Home/Portal pages) */
+    .main-content-wrapper.mobile-no-sidebar {
+        margin-left: 0;
+        width: 100vw;
     }
 
     /* GUEST MODE - Reset for full width */

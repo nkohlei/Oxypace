@@ -446,31 +446,12 @@ const ChannelSidebar = ({
             }
             
             @media (max-width: 768px) {
-                .channel-sidebar {
-                    width: 240px;
-                    max-width: 85vw;
-                    position: fixed;
-                    top: 0;
-                    left: 42px;
-                    z-index: 2000;
-                    height: 100dvh;
-                    transform: translateX(-100%);
-                    box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-                }
-                .channel-sidebar.mobile-open {
-                    transform: translateX(0);
-                }
-                
                 .channel-header {
                     height: 80px;
                 }
             }
             
             @media (max-width: 480px) {
-                .channel-sidebar {
-                    max-width: calc(100vw - 42px);
-                }
-                
                 .channel-header {
                     height: 60px;
                 }
