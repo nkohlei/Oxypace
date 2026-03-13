@@ -1,9 +1,5 @@
-import { useRef, useState } from 'react';
-import InviteUserModal from './InviteUserModal';
-import Badge from './Badge';
-import UserBar from './UserBar';
-
-import { getImageUrl } from '../utils/imageUtils';
+import { useNavigate } from 'react-router-dom';
+import { useUI } from '../context/UIContext';
 
 const ChannelSidebar = ({
     portal,
@@ -15,6 +11,8 @@ const ChannelSidebar = ({
     canManage,
 }) => {
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const navigate = useNavigate();
+    const { isMobileView } = useUI();
 
     if (!portal) return null;
 
@@ -83,11 +81,11 @@ const ChannelSidebar = ({
                     style={{
                         position: 'relative',
                         zIndex: 2,
-                        padding: '12px 16px',
+                        padding: isMobileView ? '0 16px' : '12px 16px',
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
-                        justifyContent: 'space-between',
+                        justifyContent: isMobileView ? 'center' : 'space-between',
                     }}
                 >
                     {/* Top Row: Name + Icons */}
@@ -95,30 +93,45 @@ const ChannelSidebar = ({
                         style={{
                             display: 'flex',
                             justifyContent: 'space-between',
-                            alignItems: 'flex-start',
+                            alignItems: 'center',
                         }}
                     >
                         <div
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '4px',
+                                gap: '8px',
                                 maxWidth: '85%',
                             }}
                         >
-                            {/* Flower/Boost Icon (Pink) */}
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="#ff73fa"
-                                style={{ flexShrink: 0 }}
-                            >
-                                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                            </svg>
+                            {/* Mobile Local Back Button — returns to Home/Portal List */}
+                            {isMobileView && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate('/');
+                                    }}
+                                    className="channel-sidebar-back-btn"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'white',
+                                        padding: '4px',
+                                        marginRight: '4px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))'
+                                    }}
+                                >
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                </button>
+                            )}
                             <h2
                                 style={{
-                                    fontSize: '16px',
+                                    fontSize: isMobileView ? '18px' : '16px',
                                     fontWeight: '900',
                                     color: 'white',
                                     textShadow: '0 1px 2px rgba(0,0,0,0.8)',
@@ -131,18 +144,6 @@ const ChannelSidebar = ({
                                 {portal.name}
                                 <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={16} />
                             </h2>
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="white"
-                                style={{
-                                    flexShrink: 0,
-                                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))',
-                                }}
-                            >
-                                <path d="M7 10l5 5 5-5H7z" />
-                            </svg>
                         </div>
                         {/* Invite/People Icon */}
                         {isMember && (

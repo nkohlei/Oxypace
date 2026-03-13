@@ -114,8 +114,11 @@ const AppLayout = () => {
 
     // Route-based sidebar visibility for mobile (Discord-style)
     const isHomePage = location.pathname === '/';
-    // Sidebar only visible on Homepage for mobile
-    const showSidebarOnMobile = isHomePage;
+    const isPortalPage = location.pathname.startsWith('/portal/');
+    const { mobileChannelOpen } = useUI();
+
+    // Sidebar visible on Home OR Portal Selection screen (when channel feed is NOT open)
+    const showSidebarOnMobile = (isHomePage || isPortalPage) && !mobileChannelOpen;
 
     useLayoutEffect(() => {
         const root = document.getElementById('root');

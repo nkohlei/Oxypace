@@ -159,6 +159,13 @@
         transform: translateX(0);
     }
 
+    /* Hide sidebar completely when a channel feed is open on mobile */
+    .mobile-feed-active .portal-sidebar-wrapper {
+        transform: translateX(-100%);
+        pointer-events: none;
+        display: none !important;
+    }
+
     .main-content-wrapper {
         margin-left: 0;
         width: 100vw;
@@ -166,10 +173,10 @@
                     width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Shift content only when sidebar is active on Home/Portal */
-    .main-content-wrapper:not(.mobile-no-sidebar) {
-        margin-left: 64px; /* Reduced from 72px */
-        width: calc(100vw - 64px); /* Reduced from 72px */
+    /* Shift content only when sidebar is active on Home/Portal and NO channel is open */
+    .main-content-wrapper:not(.mobile-no-sidebar):not(.mobile-feed-active) {
+        margin-left: 64px; 
+        width: calc(100vw - 64px);
     }
 
     /* GUEST MODE - Reset */
