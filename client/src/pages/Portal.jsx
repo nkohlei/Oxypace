@@ -715,11 +715,10 @@ const Portal = () => {
 
                 <main className={`discord-main-content ${isMobileView && !mobileChannelOpen ? 'mobile-content-hidden' : ''}`}>
                     {/* Dual Header: Sub-Header System */}
-                    {isMobileView && (
+                    {isMobileView && !mobileChannelOpen && (
                         <SubHeader 
-                            title={mobileChannelOpen ? (portal?.channels?.find(c => c._id === currentChannel)?.name || 'Kanal') : (portal?.name || 'Portal')} 
-                            showBack={mobileChannelOpen}
-                            onBack={() => setMobileChannelOpen(false)}
+                            title={portal?.name || 'Portal'} 
+                            showBack={false}
                         />
                     )}
 
@@ -734,8 +733,21 @@ const Portal = () => {
                             <>
                                 {/* ... Header and Feed as before ... */}
                                 {!isVoiceChannel && (
-                                    <header className="channel-top-bar desktop-only">
+                                    <header className={`channel-top-bar ${!isMobileView ? 'desktop-only' : ''}`}>
                                         <div className="channel-title-wrapper">
+                                            {isMobileView && (
+                                                <button 
+                                                    className="sub-header-back-circle mobile-only" 
+                                                    onClick={() => setMobileChannelOpen(false)}
+                                                    aria-label="Geri"
+                                                    style={{ marginRight: '8px' }}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <path d="M19 12H5"></path>
+                                                        <polyline points="12 19 5 12 12 5"></polyline>
+                                                    </svg>
+                                                </button>
+                                            )}
                                             <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
                                                 {channelType === 'voice' || channelType === 'conference' ? (
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary-color)' }}>

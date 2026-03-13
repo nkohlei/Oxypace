@@ -1,8 +1,11 @@
 /* Main App Layout - Full Screen Discord Style */
 :root {
-    --global-header-height: calc(56px + env(safe-area-inset-top, 0px));
+    --global-header-height-base: 56px;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --global-header-height: calc(var(--global-header-height-base) + var(--safe-area-top));
     --sub-header-height: 44px;
     --dual-header-total: calc(var(--global-header-height) + var(--sub-header-height));
+    --total-header-height: var(--global-header-height);
 }
 
 .mobile-app-header {
@@ -146,9 +149,8 @@
         width: calc(100vw - 64px);
     }
 
-    /* GUEST MODE - Reset */
-    .app-container.guest-mode .mobile-app-header {
-        display: none !important;
+    .portal-sidebar-wrapper, .main-content-wrapper {
+        padding-top: var(--total-header-height);
     }
 }
 

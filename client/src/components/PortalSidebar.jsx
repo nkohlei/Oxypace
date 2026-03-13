@@ -116,22 +116,6 @@ const PortalSidebar = () => {
                             <div className="tooltip-arrow"></div>
                         </div>
                     </div>
-
-                    <div
-                        className="sidebar-item toggle-action mobile-only-toggle"
-                        onClick={() => toggleSidebar()}
-                    >
-                        <div className="portal-icon">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="13 17 18 12 13 7"></polyline>
-                                <polyline points="6 17 11 12 6 7"></polyline>
-                            </svg>
-                        </div>
-                        <div className="portal-tooltip">
-                            <span className="tooltip-text">Menüyü Aç/Kapat</span>
-                            <div className="tooltip-arrow"></div>
-                        </div>
-                    </div>
                 </div>
 
                 <style>{`

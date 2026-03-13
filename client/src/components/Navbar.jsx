@@ -324,6 +324,43 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         </svg>
                                         Kaydedilenler
                                     </Link>
+                                    <button
+                                        className="dropdown-item"
+                                        onClick={() => {
+                                            setShowNotifications(true);
+                                            setShowMenu(false);
+                                        }}
+                                    >
+                                        <div className="icon-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '20px', height: '20px' }}>
+                                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                            </svg>
+                                            {unreadCount > 0 && (
+                                                <span 
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '-4px',
+                                                        right: '-4px',
+                                                        background: 'var(--primary-cyan)',
+                                                        color: '#000',
+                                                        fontSize: '10px',
+                                                        fontWeight: 'bold',
+                                                        borderRadius: '50%',
+                                                        width: '14px',
+                                                        height: '14px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        boxShadow: '0 0 8px var(--primary-cyan)'
+                                                    }}
+                                                >
+                                                    {unreadCount}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span style={{ marginLeft: '12px' }}>Bildirimler</span>
+                                    </button>
                                     <Link
                                         to="/settings"
                                         className="dropdown-item"
