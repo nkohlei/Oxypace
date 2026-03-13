@@ -60,6 +60,12 @@ const Portal = lazyWithRetry(() => import('./pages/Portal'));
 const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
 const EarthSimulation = lazyWithRetry(() => import('./pages/MapDirectory/EarthSimulation'));
 
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Device } from '@capacitor/device';
+import { Camera } from '@capacitor/camera';
+import { Filesystem } from '@capacitor/filesystem';
+
 import PortalSidebar from './components/PortalSidebar';
 import UserBar from './components/UserBar';
 import SplashScreen from './components/SplashScreen';
@@ -71,6 +77,57 @@ import './AppLayout.css';
 const MAINTENANCE_MODE = false;
 
 import { useUI, UIProvider } from './context/UIContext';
+
+// Native Permission Helper
+import { PushNotifications } from '@capacitor/push-notifications';
+
+const requestNativePermissions = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    try {
+        // Request Camera & Photos
+        const cameraStatus = await Camera.checkPermissions();
+        if (cameraStatus.camera !== 'granted' || cameraStatus.photos !== 'granted') {
+            await Camera.requestPermissions();
+        }
+
+        // Request Filesystem (Storage)
+        const fsStatus = await Filesystem.checkPermissions();
+        if (fsStatus.publicStorage !== 'granted') {
+            await Filesystem.requestPermissions();
+        }
+
+        // Push Notifications Registration
+        let pushStatus = await PushNotifications.checkPermissions();
+        if (pushStatus.receive !== 'granted') {
+            pushStatus = await PushNotifications.requestPermissions();
+        }
+
+        if (pushStatus.receive === 'granted') {
+            await PushNotifications.register();
+            
+            // Listeners
+            await PushNotifications.addListener('registration', (token) => {
+                console.log('Push registration success, token: ' + token.value);
+                // TODO: Send token to backend via API
+            });
+
+            await PushNotifications.addListener('registrationError', (error) => {
+                console.error('Push registration error: ' + JSON.stringify(error));
+            });
+
+            await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                console.log('Push received: ' + JSON.stringify(notification));
+            });
+        }
+
+        // Configure Status Bar for professional look
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#0a0a0a' });
+    } catch (err) {
+        console.warn('Native initialization error:', err);
+    }
+};
 
 // Loading fallback component
 const PageLoader = () => (
@@ -312,6 +369,12 @@ const AppLayout = () => {
 
 function App() {
     const [showSplash, setShowSplash] = useState(true);
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            requestNativePermissions();
+        }
+    }, []);
 
     // If maintenance mode is on, show maintenance page
     if (MAINTENANCE_MODE) {
