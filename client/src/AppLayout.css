@@ -148,10 +148,20 @@
         margin-left: 64px; 
         width: calc(100vw - 64px);
     }
+}
 
-    .portal-sidebar-wrapper, .main-content-wrapper {
-        padding-top: var(--total-header-height);
-    }
+/* Main Horizontal Layout */
+.horizontal-layout-container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    padding-top: var(--total-header-height);
+}
+
+.portal-sidebar-wrapper, .main-content-wrapper {
+    height: 100%;
 }
 
 /* Mobile Sidebar Overlay (Backdrop) */

@@ -311,13 +311,6 @@ const Settings = () => {
         </div>
     );
 
-    const renderHeader = (title, backTo = 'main') => (
-        <header className="channel-top-bar desktop-only" style={{ marginBottom: '20px' }}>
-            <div className="channel-title-wrapper" style={{ flex: 1 }}>
-                <h3 className="channel-name" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-            </div>
-        </header>
-    );
 
     const renderContent = () => {
         let content = null;
@@ -365,7 +358,6 @@ const Settings = () => {
 
     const renderAccountMenu = () => (
         <div className="submenu-content">
-            {renderHeader('Hesap')}
 
             <div className="setting-group">
                 <h3>Güvenlik</h3>
@@ -390,7 +382,6 @@ const Settings = () => {
 
     const renderVerificationMenu = () => (
         <div className="submenu-content">
-            {renderHeader('Doğrulanmış Hesap', 'account')}
 
             <div className="verification-container">
                 {user?.verificationRequest?.status === 'pending' ? (
@@ -596,7 +587,6 @@ const Settings = () => {
 
     const renderPrivacyMenu = () => (
         <div className="submenu-content">
-            {renderHeader('Gizlilik')}
             <div className="settings-section">
                 <div className="setting-item">
                     <div className="setting-info">
@@ -618,7 +608,6 @@ const Settings = () => {
 
     const renderNotificationsMenu = () => (
         <div className="submenu-content">
-            {renderHeader('Bildirimler')}
             <div className="settings-section">
                 {Object.entries({
                     email: 'E-posta Bildirimleri',
@@ -646,7 +635,6 @@ const Settings = () => {
 
     const renderDangerMenu = () => (
         <div className="submenu-content">
-            {renderHeader('Tehlikeli Alan')}
             <div className="settings-section danger-section">
                 <button className="logout-btn" onClick={handleLogout}>
                     Çıkış Yap
@@ -662,13 +650,7 @@ const Settings = () => {
         <div className="app-wrapper full-height discord-layout">
             <Navbar />
             <SubHeader 
-                title={
-                    activeMenu === 'account' ? 'Hesabım' :
-                    activeMenu === 'verification' ? 'Doğrulama' :
-                    activeMenu === 'privacy' ? 'Gizlilik' :
-                    activeMenu === 'notifications' ? 'Bildirimler' :
-                    activeMenu === 'danger' ? 'Tehlikeli Alan' : 'Ayarlar'
-                }
+                variant="frosted"
                 showBack={true}
                 onBack={() => activeMenu === 'main' ? navigate('/') : setActiveMenu('main')}
             />

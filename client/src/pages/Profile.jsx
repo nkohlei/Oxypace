@@ -362,7 +362,7 @@ const Profile = () => {
                 />
             )}
             <Navbar />
-            <SubHeader title={profileUser?.profile?.displayName || profileUser?.username || 'Profil'} />
+            <SubHeader variant="frosted" showBack={true} />
             <main className="app-content profile-page-content">
 
                 {/* Wide Profile Card */}

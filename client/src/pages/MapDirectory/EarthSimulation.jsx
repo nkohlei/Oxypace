@@ -265,7 +265,7 @@ export default function EarthSimulation() {
 
             {/* Unified Navbar with portal search in center */}
             <Navbar centerContent={portalSearchBox} hideThemeToggle={true} mapMode={true} />
-            <SubHeader title="Portal Haritası" showBack={true} />
+            <SubHeader variant="frosted" showBack={true} />
 
             <main style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
                 {/* Globe canvas — full area */}

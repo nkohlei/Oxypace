@@ -265,7 +265,7 @@ const Inbox = () => {
         <div className="app-wrapper inbox-wrapper">
             <Navbar />
             <SubHeader 
-                title={selectedUser ? (selectedUser.profile?.displayName || selectedUser.username) : "Mesajlar"}
+                variant="frosted"
                 showBack={true}
                 onBack={selectedUser ? handleBackToList : () => navigate('/')}
             />

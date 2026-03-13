@@ -1,8 +1,10 @@
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-/* ... other imports ... */
+import './SubHeader.css';
 
-const SubHeader = ({ title, onBack, showBack = true, rightAction }) => {
-    /* ... state/logic ... */
+const SubHeader = ({ title, onBack, showBack = true, rightAction, variant }) => {
+    const navigate = useNavigate();
+
     const handleBack = () => {
         if (onBack) {
             onBack();
@@ -11,18 +13,24 @@ const SubHeader = ({ title, onBack, showBack = true, rightAction }) => {
         }
     };
 
+    const isFrosted = variant === 'frosted';
+
     return (
-        <div className="sub-header">
-            <div className="sub-header-container">
-                <div className="sub-header-left">
+        <div className={`sub-header ${isFrosted ? 'frosted' : ''}`}>
+            <div className={isFrosted ? '' : 'sub-header-container'}>
+                <div className={isFrosted ? '' : 'sub-header-left'}>
                     {showBack && (
-                        <button className="sub-header-back-circle" onClick={handleBack} aria-label="Geri">
-                            <ArrowLeft size={20} strokeWidth={2.5} />
+                        <button 
+                            className={`sub-header-back-circle ${isFrosted ? 'frosted' : ''}`} 
+                            onClick={handleBack} 
+                            aria-label="Geri"
+                        >
+                            <ArrowLeft size={isFrosted ? 24 : 20} strokeWidth={2.5} />
                         </button>
                     )}
-                    <h2 className="sub-header-title">{title}</h2>
+                    {!isFrosted && <h2 className="sub-header-title">{title}</h2>}
                 </div>
-                {rightAction && (
+                {!isFrosted && rightAction && (
                     <div className="sub-header-right">
                         {rightAction}
                     </div>

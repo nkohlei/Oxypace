@@ -324,12 +324,10 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         </svg>
                                         Kaydedilenler
                                     </Link>
-                                    <button
+                                    <Link
+                                        to="/notifications"
                                         className="dropdown-item"
-                                        onClick={() => {
-                                            setShowNotifications(true);
-                                            setShowMenu(false);
-                                        }}
+                                        onClick={() => setShowMenu(false)}
                                     >
                                         <div className="icon-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '20px', height: '20px' }}>
@@ -360,7 +358,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             )}
                                         </div>
                                         <span style={{ marginLeft: '12px' }}>Bildirimler</span>
-                                    </button>
+                                    </Link>
                                     <Link
                                         to="/settings"
                                         className="dropdown-item"
