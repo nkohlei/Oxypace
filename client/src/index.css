@@ -127,6 +127,30 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
+  
+  /* Safe Area Support */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Native Mobile Feel: Disable browser interactions */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  
+  input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
 }
 
 #root {

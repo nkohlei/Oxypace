@@ -5,7 +5,9 @@ import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BadgeProvider } from './context/BadgeContext';
 import { VoiceProvider } from './context/VoiceContext';
+import { useNavigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
+import { ChevronLeft } from 'lucide-react';
 
 // Advanced lazy loading wrapper to forcefully reload the page (once) 
 // if a chunk fails to load due to a new Vercel deployment.
@@ -90,6 +92,22 @@ const PageLoader = () => (
     </div>
 );
 
+const MobileHeader = ({ showBack, title }) => {
+    const navigate = useNavigate();
+
+    return (
+        <div className="mobile-app-header">
+            {showBack && (
+                <button className="mobile-back-btn" onClick={() => navigate(-1)} aria-label="Geri">
+                    <ChevronLeft size={24} />
+                </button>
+            )}
+            <h1 className="mobile-page-title">{title}</h1>
+            <div className="mobile-header-spacer"></div>
+        </div>
+    );
+};
+
 
 // Separate layout component to use useUI hook
 const AppLayout = () => {
@@ -160,8 +178,24 @@ const AppLayout = () => {
         };
     }, [isLoggedIn, location.pathname]);
 
+    // Page titles for mobile header
+    const getPageTitle = () => {
+        if (location.pathname === '/') return 'Oxypace';
+        if (location.pathname.startsWith('/portal/')) return 'Portal';
+        if (location.pathname === '/profile') return 'Profilim';
+        if (location.pathname.startsWith('/profile/')) return 'Profil';
+        if (location.pathname === '/settings') return 'Ayarlar';
+        if (location.pathname === '/inbox') return 'Mesajlar';
+        if (location.pathname === '/notifications') return 'Bildirimler';
+        if (location.pathname === '/search') return 'Keşfet';
+        return 'Oxypace';
+    };
+
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
+            {isLoggedIn && !isCleanLayout && (
+                <MobileHeader showBack={!isHomePage} title={getPageTitle()} />
+            )}
             <div className="horizontal-layout-container" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {/* Mobile Overlay */}
                 <div

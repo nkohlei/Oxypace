@@ -1,4 +1,12 @@
 /* Main App Layout - Full Screen Discord Style */
+:root {
+    --mobile-header-height: 56px;
+}
+
+.mobile-app-header {
+    display: none;
+}
+
 .app-container {
     display: flex;
     flex-direction: column;
@@ -91,49 +99,81 @@
         position: relative;
     }
 
-    /* Sidebar HIDDEN by default on mobile — only shown on Home/Portal pages */
+    /* Mobile Header Styling */
+    .mobile-app-header {
+        display: flex;
+        align-items: center;
+        height: var(--mobile-header-height);
+        background: var(--bg-darker);
+        padding: 0 16px;
+        position: sticky;
+        top: 0;
+        z-index: 2000;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .mobile-back-btn {
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        padding: 8px;
+        margin-left: -8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mobile-page-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0 12px;
+        flex: 1;
+        letter-spacing: -0.3px;
+    }
+
+    .mobile-header-spacer {
+        width: 40px;
+    }
+
+    /* Side-by-Side Panels Logic */
     .portal-sidebar-wrapper {
         position: fixed;
-        top: 0;
+        top: var(--mobile-header-height);
         left: 0;
         bottom: 0;
-        width: 42px;
-        height: 100dvh;
-        z-index: 3000;
+        width: 72px; /* Standard Discord width */
+        height: calc(100dvh - var(--mobile-header-height));
+        z-index: 1000;
         transform: translateX(-100%);
-        border-right: none;
-        box-shadow: 4px 0 14px rgba(0, 0, 0, 0.4);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 4px 0 14px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Show sidebar only on Home & Portal pages */
+    /* Visible on Home/Portal pages - Side by Side */
     .portal-sidebar-wrapper.mobile-show-sidebar {
         transform: translateX(0);
     }
 
-    /* Toggle Arrow Removed - Controlled by internal button now */
-    .sidebar-toggle-arrow {
-        display: none !important;
-    }
-
-    /* Content offset when sidebar IS visible */
     .main-content-wrapper {
-        margin-left: 42px;
-        width: calc(100vw - 42px);
+        margin-left: 0;
+        width: 100vw;
         transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Full width when sidebar is NOT visible (non-Home/Portal pages) */
-    .main-content-wrapper.mobile-no-sidebar {
-        margin-left: 0;
-        width: 100vw;
+    /* Shift content only when sidebar is active on Home/Portal */
+    .main-content-wrapper:not(.mobile-no-sidebar) {
+        margin-left: 72px;
+        width: calc(100vw - 72px);
     }
 
-    /* GUEST MODE - Reset for full width */
-    .app-container.guest-mode .main-content-wrapper {
-        margin-left: 0 !important;
-        width: 100vw !important;
+    /* GUEST MODE - Reset */
+    .app-container.guest-mode .mobile-app-header {
+        display: none !important;
     }
 }
 
