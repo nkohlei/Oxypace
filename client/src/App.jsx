@@ -118,7 +118,7 @@ const AppLayout = () => {
     const { mobileChannelOpen } = useUI();
 
     // Sidebar visible on Home OR Portal Selection screen (when channel feed is NOT open)
-    const showSidebarOnMobile = (isHomePage || isPortalPage) && !mobileChannelOpen;
+    const showSidebarOnMobile = isLoggedIn && (isHomePage || isPortalPage) && !mobileChannelOpen;
 
     useLayoutEffect(() => {
         const root = document.getElementById('root');

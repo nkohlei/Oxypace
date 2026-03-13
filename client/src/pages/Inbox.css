@@ -545,9 +545,8 @@
         display: none;
         position: fixed;
         top: 0;
-        left: 42px;
-        /* Match new sidebar width */
-        width: calc(100% - 42px);
+        left: 0;
+        width: 100%;
         height: 100%;
         z-index: 50;
     }
