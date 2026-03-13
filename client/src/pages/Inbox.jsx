@@ -567,7 +567,6 @@ const Inbox = () => {
                                             />
                                             <div
                                                 className="plus-menu"
-                                                style={{ bottom: '80px', left: '20px' }}
                                             >
                                                 <div
                                                     className="plus-menu-item"
