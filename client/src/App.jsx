@@ -80,6 +80,8 @@ import { useUI, UIProvider } from './context/UIContext';
 // Native Permission Helper
 import { PushNotifications } from '@capacitor/push-notifications';
 
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
+
 const requestNativePermissions = async () => {
     if (!Capacitor.isNativePlatform()) return;
 
@@ -372,6 +374,7 @@ function App() {
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
             requestNativePermissions();
+            CapacitorUpdater.notifyAppReady();
         }
     }, []);
 
