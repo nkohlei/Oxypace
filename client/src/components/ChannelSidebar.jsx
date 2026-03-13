@@ -45,15 +45,29 @@ const ChannelSidebar = ({
                 borderRight: '1px solid var(--border-subtle)',
             }}
         >
-            {/* 1. Header with Full Image Banner - Hidden on mobile as SubHeader takes over */}
-            {/* 1. Header with Full Image Banner - Hidden on mobile as SubHeader takes over */}
-            {!isMobileView && (
+            {/* 1. Header with Full Image Banner */}
+            <div
+                className="channel-header"
+                onClick={() => canManage && onEdit('overview')}
+                style={{ cursor: canManage ? 'pointer' : 'default' }}
+            >
+                {/* ... Banner content ... */}
                 <div
-                    className="channel-header"
-                    onClick={() => canManage && onEdit('overview')}
-                    style={{ cursor: canManage ? 'pointer' : 'default' }}
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        backgroundImage: portal.coverImage
+                            ? `url(${getImageUrl(portal.coverImage)})`
+                            : portal.banner
+                                ? `url(${getImageUrl(portal.banner)})`
+                                : 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                    }}
                 >
-                    {/* ... Banner content ... */}
                     <div
                         style={{
                             position: 'absolute',
@@ -61,81 +75,64 @@ const ChannelSidebar = ({
                             left: 0,
                             width: '100%',
                             height: '100%',
-                            backgroundImage: portal.coverImage
-                                ? `url(${getImageUrl(portal.coverImage)})`
-                                : portal.banner
-                                    ? `url(${getImageUrl(portal.banner)})`
-                                    : 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
+                            background:
+                                'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)',
                         }}
-                    >
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: '100%',
-                                background:
-                                    'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)',
-                            }}
-                        ></div>
-                    </div>
+                    ></div>
+                </div>
 
+                <div
+                    style={{
+                        position: 'relative',
+                        zIndex: 2,
+                        padding: '12px 16px',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                    }}
+                >
                     <div
                         style={{
-                            position: 'relative',
-                            zIndex: 2,
-                            padding: '12px 16px',
-                            height: '100%',
                             display: 'flex',
-                            flexDirection: 'column',
                             justifyContent: 'space-between',
+                            alignItems: 'center',
                         }}
                     >
-                        <div
+                        <h2
                             style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
+                                fontSize: '16px',
+                                fontWeight: '900',
+                                color: 'white',
+                                textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                margin: 0,
                             }}
                         >
-                            <h2
+                            {portal.name}
+                            <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={16} />
+                        </h2>
+                        {isMember && (
+                            <div
                                 style={{
-                                    fontSize: '16px',
-                                    fontWeight: '900',
                                     color: 'white',
-                                    textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    margin: 0,
+                                    cursor: 'pointer',
+                                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))',
                                 }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowInviteModal(true);
+                                }}
+                                title="Kullanıcı Davet Et"
                             >
-                                {portal.name}
-                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={16} />
-                            </h2>
-                            {isMember && (
-                                <div
-                                    style={{
-                                        color: 'white',
-                                        cursor: 'pointer',
-                                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))',
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowInviteModal(true);
-                                    }}
-                                    title="Kullanıcı Davet Et"
-                                >
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                                </div>
-                            )}
-                        </div>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Scrollable Area */}
             <div

@@ -736,17 +736,10 @@ const Portal = () => {
                                     <header className={`channel-top-bar ${!isMobileView ? 'desktop-only' : ''}`}>
                                         <div className="channel-title-wrapper">
                                             {isMobileView && (
-                                                <button 
-                                                    className="sub-header-back-circle mobile-only" 
-                                                    onClick={() => setMobileChannelOpen(false)}
-                                                    aria-label="Geri"
-                                                    style={{ marginRight: '8px' }}
-                                                >
-                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                        <path d="M19 12H5"></path>
-                                                        <polyline points="12 19 5 12 12 5"></polyline>
-                                                    </svg>
-                                                </button>
+                                                <SubHeader 
+                                                    variant="frosted" 
+                                                    onBack={() => setMobileChannelOpen(false)} 
+                                                />
                                             )}
                                             <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
                                                 {channelType === 'voice' || channelType === 'conference' ? (

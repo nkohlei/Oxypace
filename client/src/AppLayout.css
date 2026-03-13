@@ -119,7 +119,6 @@
         border-right: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 4px 0 14px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        padding-top: var(--global-header-height);
         background: var(--bg-darker);
     }
 
@@ -138,7 +137,6 @@
     .main-content-wrapper {
         margin-left: 0;
         width: 100vw;
-        padding-top: var(--global-header-height);
         transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }

@@ -15,22 +15,38 @@ const SubHeader = ({ title, onBack, showBack = true, rightAction, variant }) => 
 
     const isFrosted = variant === 'frosted';
 
+    if (isFrosted) {
+        return (
+            <div className="sub-header frosted">
+                {showBack && (
+                    <button 
+                        className="sub-header-back-circle frosted" 
+                        onClick={handleBack} 
+                        aria-label="Geri"
+                    >
+                        <ArrowLeft size={24} strokeWidth={2.5} />
+                    </button>
+                )}
+            </div>
+        );
+    }
+
     return (
-        <div className={`sub-header ${isFrosted ? 'frosted' : ''}`}>
-            <div className={isFrosted ? '' : 'sub-header-container'}>
-                <div className={isFrosted ? '' : 'sub-header-left'}>
+        <div className="sub-header">
+            <div className="sub-header-container">
+                <div className="sub-header-left">
                     {showBack && (
                         <button 
-                            className={`sub-header-back-circle ${isFrosted ? 'frosted' : ''}`} 
+                            className="sub-header-back-circle" 
                             onClick={handleBack} 
                             aria-label="Geri"
                         >
-                            <ArrowLeft size={isFrosted ? 24 : 20} strokeWidth={2.5} />
+                            <ArrowLeft size={20} strokeWidth={2.5} />
                         </button>
                     )}
-                    {!isFrosted && <h2 className="sub-header-title">{title}</h2>}
+                    <h2 className="sub-header-title">{title}</h2>
                 </div>
-                {!isFrosted && rightAction && (
+                {rightAction && (
                     <div className="sub-header-right">
                         {rightAction}
                     </div>

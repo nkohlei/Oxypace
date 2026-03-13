@@ -64,34 +64,49 @@
     letter-spacing: -0.3px;
 }
 
-/* Frosted Variant */
+/* Frosted Variant - Floating Round Button */
 .sub-header.frosted {
     position: fixed;
-    top: calc(var(--total-header-height) + 16px);
-    left: 20px;
-    width: auto;
-    height: auto;
-    background: rgba(255, 255, 255, 0.03);
+    top: 16px;
+    left: 16px;
+    width: 48px;
+    height: 48px;
+    background: rgba(15, 15, 15, 0.4);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
     padding: 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    z-index: 2000;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    z-index: 9999; /* Ensure it's above portal bars and other stuff */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sub-header.frosted:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
 }
 
 .sub-header-back-circle.frosted {
     background: transparent;
     border: none;
     box-shadow: none;
-    width: 44px;
-    height: 44px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
 }
 
 @media (max-width: 768px) {
     .sub-header.frosted {
-        top: calc(var(--total-header-height) + 12px);
+        top: 12px;
         left: 12px;
+        width: 44px;
+        height: 44px;
     }
 }
