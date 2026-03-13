@@ -403,11 +403,13 @@ body.dark-mode .logo-text {
     }
 
     .logo-text {
-        display: none !important;
+        display: block !important;
+        height: 1rem;
     }
 
     .brand-logo .logo-image {
-        height: 24px;
+        height: 28px;
+        width: 28px;
     }
 
     .mobile-menu-btn, .mobile-universal-back-btn, .mobile-back-btn {
