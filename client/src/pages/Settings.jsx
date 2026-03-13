@@ -650,9 +650,11 @@ const Settings = () => {
         <div className="app-wrapper full-height discord-layout">
             <Navbar />
             <SubHeader 
+                title="Ayarlar"
                 variant="frosted"
                 showBack={true}
                 onBack={() => activeMenu === 'main' ? navigate('/') : setActiveMenu('main')}
+                desktopHidden={true}
             />
 
             <div className="discord-split-view">

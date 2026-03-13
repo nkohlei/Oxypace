@@ -265,9 +265,11 @@ const Inbox = () => {
         <div className="app-wrapper inbox-wrapper">
             <Navbar />
             <SubHeader 
+                title="Mesajlar"
                 variant="frosted"
                 showBack={true}
                 onBack={selectedUser ? handleBackToList : () => navigate('/')}
+                desktopHidden={true}
             />
             <main className="app-content">
                 <div className={`inbox-container ${selectedUser ? 'chat-active' : ''}`}>

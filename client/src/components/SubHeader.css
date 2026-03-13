@@ -64,8 +64,16 @@
     letter-spacing: -0.3px;
 }
 
-/* Frosted Variant - Floating Round Button */
-.sub-header.frosted {
+/* Desktop Hidden Utility */
+@media (min-width: 769px) {
+    .sub-header.desktop-hidden {
+        display: none !important;
+    }
+}
+
+/* Frosted Variant - Floating */
+/* When it's a minimal circle (no title) */
+.sub-header.frosted:not(:has(.sub-header-container)) {
     position: fixed;
     top: 16px;
     left: 16px;
@@ -78,14 +86,29 @@
     border-radius: 50%;
     padding: 0;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-    z-index: 9999; /* Ensure it's above portal bars and other stuff */
+    z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sub-header.frosted:hover {
+/* When it has a container (title + back button) */
+.sub-header.frosted:has(.sub-header-container) {
+    background: rgba(15, 15, 15, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.sub-header.frosted:hover:not(:has(.sub-header-container)) {
     background: rgba(255, 255, 255, 0.1);
     transform: scale(1.05);
 }
@@ -102,8 +125,17 @@
     color: white;
 }
 
+/* Specific size for the back button in the bar variant */
+.sub-header.frosted .sub-header-back-circle {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+}
+
 @media (max-width: 768px) {
-    .sub-header.frosted {
+    .sub-header.frosted:not(:has(.sub-header-container)) {
         top: 12px;
         left: 12px;
         width: 44px;

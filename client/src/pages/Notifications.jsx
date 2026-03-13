@@ -149,7 +149,7 @@ const Notifications = () => {
     return (
         <div className="app-wrapper">
             <Navbar />
-            <SubHeader title="Bildirimler" showBack={true} onBack={() => navigate('/')} />
+            <SubHeader title="Bildirimler" showBack={true} onBack={() => navigate('/')} desktopHidden={true} />
             <main className="app-content">
                 <div className="notifications-container">
                     <div className="notifications-header">
