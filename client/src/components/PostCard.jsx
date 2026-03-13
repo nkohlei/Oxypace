@@ -12,6 +12,7 @@ import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
+import './MessageBubble.css'; // Reusing download logic styles if needed, or ensuring consistency
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -231,6 +232,30 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         setShowShareModal(true);
     };
 
+    const handleDownload = async (e) => {
+        if (e) e.stopPropagation();
+        if (!post.media) return;
+
+        const url = getImageUrl(post.media);
+        try {
+            const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+            setShowMenu(false);
+        } catch (error) {
+            console.error('Download error:', error);
+            alert('İndirme başarısız oldu.');
+        }
+    };
+
 
 
     const handleCardClick = (e) => {
@@ -395,6 +420,24 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                                     </svg>
                                 </button>
+                                
+                                {post.media && (
+                                    <button className="menu-item" onClick={handleDownload}>
+                                        İndir
+                                        <svg
+                                            className="menu-icon-right"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                            <polyline points="7 10 12 15 17 10" />
+                                            <line x1="12" y1="15" x2="12" y2="3" />
+                                        </svg>
+                                    </button>
+                                )}
+
                                 <button className="menu-item" onClick={handleShare}>
                                     Gönder
                                     <svg
