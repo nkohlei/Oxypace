@@ -261,11 +261,11 @@ const VideoPlayer = ({ src, poster, className }) => {
             <div className="video-container" onClick={togglePlay}>
                 <video
                     ref={videoRef}
-                    src={isVisible || isLoaded ? src : undefined}
+                    src={src}
                     loop
                     poster={poster}
                     className="main-video"
-                    preload="none"
+                    preload="metadata"
                     playsInline
                     onLoadedMetadata={() => {
                         setIsLoaded(true);

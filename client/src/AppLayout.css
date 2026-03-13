@@ -135,17 +135,12 @@
     }
 
     .main-content-wrapper {
-        margin-left: 0;
-        width: 100vw;
-        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-left: 0 !important;
+        width: 100vw !important;
+        transition: none; /* Disable transition on mobile to avoid jitters */
     }
 
-    /* Shift content only when sidebar is active on Home/Portal and NO channel is open */
-    .main-content-wrapper:not(.mobile-no-sidebar):not(.mobile-feed-active) {
-        margin-left: 64px; 
-        width: calc(100vw - 64px);
-    }
+    /* Shift content logic removed - sidebar will be overlay on mobile */
 }
 
 /* Main Horizontal Layout */
