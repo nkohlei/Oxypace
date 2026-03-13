@@ -98,24 +98,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                 <div className="nav-container">
                     <div className="nav-left">
                         {/* Mobile Back Button — visible on non-Home pages at ≤768px */}
-                        {isMobileView && !isHomePage && user && (
-                            <button
-                                className="mobile-back-btn"
-                                onClick={() => {
-                                    if (window.history.length > 1) {
-                                        navigate(-1);
-                                    } else {
-                                        navigate('/');
-                                    }
-                                }}
-                                aria-label="Geri"
-                                title="Geri"
-                            >
-                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="15 18 9 12 15 6"></polyline>
-                                </svg>
-                            </button>
-                        )}
+                        {/* Mobile Back Button removed as per list */}
 
                         {/* Mobile Sidebar Toggle - Visible only on mobile */}
                         <button className="mobile-menu-btn" onClick={toggleSidebar} aria-label="Menüyü aç">
@@ -213,27 +196,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                     </div>
                                 </Link>
 
-                                {/* Menu Button for Quick Actions */}
-                                <div className="header-menu-wrapper" ref={menuRef}>
-                                    <button
-                                        className="header-icon menu-trigger"
-                                        onClick={() => setShowMenu(!showMenu)}
-                                        aria-label="Kullanıcı menüsü"
-                                        aria-expanded={showMenu}
-                                        aria-haspopup="true"
-                                        title="Menü"
-                                    >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                        >
-                                            <circle cx="12" cy="12" r="1" />
-                                            <circle cx="12" cy="5" r="1" />
-                                            <circle cx="12" cy="19" r="1" />
-                                        </svg>
-                                    </button>
+                                {/* Redundant menu trigger removed, logic moved to profile button */}
                                     {/* Dropdown Menu */}
                                     {showMenu && (
                                         <div className="header-dropdown">
@@ -379,63 +342,216 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             </>
                         ) : null}
 
-                        {/* Unified Profile/Login Button (Always Visible) */}
-                        {/* Unified Profile/Login Button or Guest Actions */}
-                        {user ? (
-                            <Link
-                                to="/profile"
-                                className="header-icon profile-unified-btn"
-                                title="Profilim"
-                            >
-                                {user?.profile?.avatar ? (
-                                    <img
-                                        src={getImageUrl(user.profile.avatar)}
-                                        alt="Profile"
-                                        className="nav-profile-img"
-                                    />
-                                ) : (
-                                    <div className="nav-profile-placeholder">
+                        {/* Unified Profile Button (Toggles Dropdown) */}
+                        <div className="header-menu-wrapper" ref={menuRef}>
+                            {user ? (
+                                <button
+                                    className={`header-icon profile-unified-btn ${showMenu ? 'active' : ''}`}
+                                    onClick={() => setShowMenu(!showMenu)}
+                                    title="Profilim ve Menü"
+                                    aria-expanded={showMenu}
+                                    aria-haspopup="true"
+                                >
+                                    {user?.profile?.avatar ? (
+                                        <img
+                                            src={getImageUrl(user.profile.avatar)}
+                                            alt="Profile"
+                                            className="nav-profile-img"
+                                        />
+                                    ) : (
+                                        <div className="nav-profile-placeholder">
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="1.5"
+                                            >
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="12" cy="7" r="4"></circle>
+                                            </svg>
+                                        </div>
+                                    )}
+                                </button>
+                            ) : (
+                                <div className="guest-nav-actions">
+                                    <Link
+                                        to="/login"
+                                        className="guest-login-btn"
+                                    >
+                                        Giriş Yap
+                                    </Link>
+                                    <Link
+                                        to="/register"
+                                        className="guest-register-btn"
+                                    >
+                                        Kaydol
+                                    </Link>
+                                </div>
+                            )}
+
+                            {/* Dropdown Menu (Existing logic wrapped here) */}
+                            {showMenu && (
+                                <div className="header-dropdown">
+                                    {/* Dropdown Header with User Info */}
+                                    <div
+                                        className="dropdown-user-info"
+                                        style={{
+                                            padding: '12px 16px',
+                                            borderBottom: '1px solid var(--border-subtle)',
+                                            marginBottom: '8px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                        }}
+                                    >
+                                        {user?.profile?.avatar ? (
+                                            <img
+                                                src={getImageUrl(user.profile.avatar)}
+                                                alt="Avatar"
+                                                style={{
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    borderRadius: '50%',
+                                                    objectFit: 'cover',
+                                                }}
+                                            />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    borderRadius: '50%',
+                                                    background: 'var(--bg-secondary)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontSize: '18px',
+                                                        fontWeight: 'bold',
+                                                        color: 'var(--text-primary)',
+                                                    }}
+                                                >
+                                                    {user?.username?.[0]?.toUpperCase()}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    fontWeight: '700',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '0.95rem',
+                                                }}
+                                            >
+                                                {user?.username}
+                                            </span>
+                                            <span
+                                                style={{
+                                                    fontSize: '0.8rem',
+                                                    color: 'var(--text-secondary)',
+                                                }}
+                                            >
+                                                Giriş Yapıldı
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        to="/profile"
+                                        className="dropdown-item"
+                                        onClick={() => setShowMenu(false)}
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="12" cy="7" r="4"></circle>
+                                        </svg>
+                                        Profilim
+                                    </Link>
+                                    {user?.isAdmin && (
+                                        <Link
+                                            to="/admin"
+                                            className="dropdown-item admin-link"
+                                            onClick={() => setShowMenu(false)}
+                                        >
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="1.5"
+                                            >
+                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                            </svg>
+                                            Yönetici Paneli
+                                        </Link>
+                                    )}
+                                    <Link
+                                        to="/saved"
+                                        className="dropdown-item"
+                                        onClick={() => setShowMenu(false)}
+                                    >
                                         <svg
                                             viewBox="0 0 24 24"
                                             fill="none"
                                             stroke="currentColor"
                                             strokeWidth="1.5"
                                         >
-                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="12" cy="7" r="4"></circle>
+                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                                         </svg>
-                                    </div>
-                                )}
-                            </Link>
-                        ) : (
-                            <div className="guest-nav-actions">
-                                <Link
-                                    to="/login"
-                                    className="guest-login-btn"
-                                >
-                                    Giriş Yap
-                                </Link>
-                                <Link
-                                    to="/register"
-                                    className="guest-register-btn"
-                                >
-                                    Kaydol
-                                </Link>
-                            </div>
-                        )}
+                                        Kaydedilenler
+                                    </Link>
+                                    <Link
+                                        to="/settings"
+                                        className="dropdown-item"
+                                        onClick={() => setShowMenu(false)}
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                        >
+                                            <circle cx="12" cy="12" r="3" />
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                        </svg>
+                                        Ayarlar
+                                    </Link>
+                                    <div className="dropdown-divider" />
+                                    <button
+                                        className="dropdown-item logout"
+                                        onClick={handleLogout}
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.5"
+                                        >
+                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                            <polyline points="16 17 21 12 16 7" />
+                                            <line x1="21" y1="12" x2="9" y2="12" />
+                                        </svg>
+                                        Çıkış Yap
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </header >
-
-            {/* Mobile Floating Create Button (Always Visible on Mobile) */}
-            < Link to="/create" className="mobile-fab-create" >
+            <Link to="/create" className="mobile-fab-create">
                 <div className="fab-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </div>
-            </Link >
+            </Link>
 
 
         </>

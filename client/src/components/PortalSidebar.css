@@ -100,15 +100,19 @@
 }
 
 @media (max-width: 768px) {
+    .portal-sidebar {
+        padding: 50px 0 20px 0; /* Add top padding for fixed navbar if needed, or safe area */
+    }
+
     .sidebar-item {
-        width: 38px;
-        height: 38px;
-        margin-bottom: 6px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 8px;
     }
 
     .portal-icon {
-        width: 32px;
-        height: 32px;
+        width: 42px; /* Slimmed from 48px but bigger than 32px for better Discord look */
+        height: 42px;
         font-size: 14px;
     }
 

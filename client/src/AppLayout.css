@@ -141,16 +141,17 @@
     /* Side-by-Side Panels Logic */
     .portal-sidebar-wrapper {
         position: fixed;
-        top: var(--mobile-header-height);
+        top: 0; /* Changed from var(--mobile-header-height) */
         left: 0;
         bottom: 0;
-        width: 72px; /* Standard Discord width */
-        height: calc(100dvh - var(--mobile-header-height));
+        width: 64px; /* Reduced from 72px */
+        height: 100dvh; /* Full height since header is fixed over it or sibling */
         z-index: 1000;
         transform: translateX(-100%);
         border-right: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 4px 0 14px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        padding-top: env(safe-area-inset-top);
     }
 
     /* Visible on Home/Portal pages - Side by Side */
@@ -167,8 +168,8 @@
 
     /* Shift content only when sidebar is active on Home/Portal */
     .main-content-wrapper:not(.mobile-no-sidebar) {
-        margin-left: 72px;
-        width: calc(100vw - 72px);
+        margin-left: 64px; /* Reduced from 72px */
+        width: calc(100vw - 64px); /* Reduced from 72px */
     }
 
     /* GUEST MODE - Reset */

@@ -92,21 +92,7 @@ const PageLoader = () => (
     </div>
 );
 
-const MobileHeader = ({ showBack, title }) => {
-    const navigate = useNavigate();
-
-    return (
-        <div className="mobile-app-header">
-            {showBack && (
-                <button className="mobile-back-btn" onClick={() => navigate(-1)} aria-label="Geri">
-                    <ChevronLeft size={24} />
-                </button>
-            )}
-            <h1 className="mobile-page-title">{title}</h1>
-            <div className="mobile-header-spacer"></div>
-        </div>
-    );
-};
+// Redundant MobileHeader removed
 
 
 // Separate layout component to use useUI hook
@@ -128,8 +114,8 @@ const AppLayout = () => {
 
     // Route-based sidebar visibility for mobile (Discord-style)
     const isHomePage = location.pathname === '/';
-    const isPortalPage = location.pathname.startsWith('/portal/');
-    const showSidebarOnMobile = isHomePage || isPortalPage;
+    // Sidebar only visible on Homepage for mobile
+    const showSidebarOnMobile = isHomePage;
 
     useLayoutEffect(() => {
         const root = document.getElementById('root');
@@ -193,9 +179,6 @@ const AppLayout = () => {
 
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
-            {isLoggedIn && !isCleanLayout && (
-                <MobileHeader showBack={!isHomePage} title={getPageTitle()} />
-            )}
             <div className="horizontal-layout-container" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {/* Mobile Overlay */}
                 <div
