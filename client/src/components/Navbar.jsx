@@ -402,6 +402,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                         </div>
                     </div>
                 </div>
+            </header>
             <Link to="/create" className="mobile-fab-create">
                 <div className="fab-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
