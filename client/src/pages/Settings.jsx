@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import './Settings.css';
 
 const Settings = () => {
@@ -311,17 +312,8 @@ const Settings = () => {
     );
 
     const renderHeader = (title, backTo = 'main') => (
-        <header className="channel-top-bar" style={{ marginBottom: '20px' }}>
+        <header className="channel-top-bar desktop-only" style={{ marginBottom: '20px' }}>
             <div className="channel-title-wrapper" style={{ flex: 1 }}>
-                <button
-                    className="back-btn mobile-only"
-                    onClick={() => setActiveMenu(backTo)}
-                    style={{ marginRight: '16px', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
-                >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                        <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                </button>
                 <h3 className="channel-name" style={{ color: 'var(--text-primary)' }}>{title}</h3>
             </div>
         </header>
@@ -669,6 +661,17 @@ const Settings = () => {
     return (
         <div className="app-wrapper full-height discord-layout">
             <Navbar />
+            <SubHeader 
+                title={
+                    activeMenu === 'account' ? 'Hesabım' :
+                    activeMenu === 'verification' ? 'Doğrulama' :
+                    activeMenu === 'privacy' ? 'Gizlilik' :
+                    activeMenu === 'notifications' ? 'Bildirimler' :
+                    activeMenu === 'danger' ? 'Tehlikeli Alan' : 'Ayarlar'
+                }
+                showBack={true}
+                onBack={() => activeMenu === 'main' ? navigate('/') : setActiveMenu('main')}
+            />
 
             <div className="discord-split-view">
                 {renderSidebar()}

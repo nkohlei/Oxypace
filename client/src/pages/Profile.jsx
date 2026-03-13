@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import Badge from '../components/Badge';
 import ImageCropper from '../components/ImageCropper';
 import ProfileImageModal from '../components/ProfileImageModal'; // Import the new modal
@@ -361,6 +362,7 @@ const Profile = () => {
                 />
             )}
             <Navbar />
+            <SubHeader title={profileUser?.profile?.displayName || profileUser?.username || 'Profil'} />
             <main className="app-content profile-page-content">
 
                 {/* Wide Profile Card */}

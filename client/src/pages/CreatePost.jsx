@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import './CreatePost.css';
 
 const CreatePost = () => {
@@ -118,9 +119,23 @@ const CreatePost = () => {
     return (
         <div className="app-wrapper">
             <Navbar />
+            <SubHeader 
+                title="Yeni Gönderi" 
+                showBack={true} 
+                onBack={() => navigate('/')}
+                rightAction={
+                    <button
+                        className="share-btn"
+                        onClick={handleSubmit}
+                        disabled={loading || (!content && !mediaFile)}
+                    >
+                        {loading ? 'Paylaşılıyor...' : 'Paylaş'}
+                    </button>
+                }
+            />
             <main className="app-content">
                 <div className="create-post-container">
-                    <div className="create-header">
+                    <div className="create-header desktop-only">
                         <button className="close-btn" onClick={() => navigate('/')}>
                             <svg
                                 viewBox="0 0 24 24"

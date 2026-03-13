@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import EarthCanvas from './EarthCanvas';
 import Navbar from '../../components/Navbar';
+import SubHeader from '../../components/SubHeader';
 import SEO from '../../components/SEO';
 import axios from 'axios';
 
@@ -264,6 +265,7 @@ export default function EarthSimulation() {
 
             {/* Unified Navbar with portal search in center */}
             <Navbar centerContent={portalSearchBox} hideThemeToggle={true} mapMode={true} />
+            <SubHeader title="Portal Haritası" showBack={true} />
 
             <main style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
                 {/* Globe canvas — full area */}
@@ -282,11 +284,7 @@ export default function EarthSimulation() {
                 {/* Left controls panel */}
                 <div className={`map-left-panel ${showMobileControls ? 'mobile-visible' : 'mobile-hidden'}`}>
                     <div className="map-controls-bar glass-panel borderless">
-                        <Link to="/search" className="map-ctrl-btn" title="Arama Sayfasına Dön" style={{ color: '#fb923c' }}>
-                            <span className="material-symbols-outlined">arrow_back</span>
-                        </Link>
-
-                        <div className="map-ctrl-separator" />
+                        <div className="map-ctrl-separator desktop-only" />
 
                         <button
                             onClick={() => togglePanel('search')}

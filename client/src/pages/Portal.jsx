@@ -11,6 +11,7 @@ const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal
 const PortalNotifications = lazy(() => import('../components/PortalNotifications'));
 import AdUnit from '../components/AdUnit';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import SEO from '../components/SEO';
 import VoiceChannel from '../components/VoiceChannel';
 import ConferenceChannel from '../components/ConferenceChannel';
@@ -713,6 +714,15 @@ const Portal = () => {
                 )}
 
                 <main className={`discord-main-content ${isMobileView && !mobileChannelOpen ? 'mobile-content-hidden' : ''}`}>
+                    {/* Dual Header: Sub-Header System */}
+                    {isMobileView && (
+                        <SubHeader 
+                            title={mobileChannelOpen ? (portal?.channels?.find(c => c._id === currentChannel)?.name || 'Kanal') : (portal?.name || 'Portal')} 
+                            showBack={mobileChannelOpen}
+                            onBack={() => setMobileChannelOpen(false)}
+                        />
+                    )}
+
                     {/* Determine current channel type */}
                     {(() => {
                         const currentChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
@@ -724,21 +734,8 @@ const Portal = () => {
                             <>
                                 {/* ... Header and Feed as before ... */}
                                 {!isVoiceChannel && (
-                                    <header className="channel-top-bar">
+                                    <header className="channel-top-bar desktop-only">
                                         <div className="channel-title-wrapper">
-                                            {/* Mobile Back Button — return to channel list */}
-                                            {isMobileView && mobileChannelOpen && (
-                                                <button
-                                                    className="channel-back-btn"
-                                                    onClick={() => setMobileChannelOpen(false)}
-                                                    aria-label="Geri"
-                                                    title="Kanallara Dön"
-                                                >
-                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="15 18 9 12 15 6"></polyline>
-                                                    </svg>
-                                                </button>
-                                            )}
                                             <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
                                                 {channelType === 'voice' || channelType === 'conference' ? (
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary-color)' }}>

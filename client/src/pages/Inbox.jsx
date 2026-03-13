@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import MessageBubble from '../components/MessageBubble';
 import NewMessageModal from '../components/NewMessageModal';
 import { getImageUrl } from '../utils/imageUtils';
@@ -263,12 +264,17 @@ const Inbox = () => {
     return (
         <div className="app-wrapper inbox-wrapper">
             <Navbar />
+            <SubHeader 
+                title={selectedUser ? (selectedUser.profile?.displayName || selectedUser.username) : "Mesajlar"}
+                showBack={true}
+                onBack={selectedUser ? handleBackToList : () => navigate('/')}
+            />
             <main className="app-content">
                 <div className={`inbox-container ${selectedUser ? 'chat-active' : ''}`}>
                     {/* Left Side: Conversations */}
                     <div className="conversations-view">
                         <div className="inbox-header">
-                            <h1>Mesajlar</h1>
+                            <h1 className="desktop-only">Mesajlar</h1>
                             <button
                                 className="compose-btn"
                                 onClick={() => setShowNewMessageModal(true)}
@@ -377,7 +383,7 @@ const Inbox = () => {
                     {selectedUser ? (
                         <div className="chat-view">
                             <div className="chat-header">
-                                <button className="back-btn" onClick={handleBackToList}>
+                                <button className="back-btn desktop-only" onClick={handleBackToList}>
                                     <svg
                                         viewBox="0 0 24 24"
                                         fill="none"

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -148,10 +149,11 @@ const Notifications = () => {
     return (
         <div className="app-wrapper">
             <Navbar />
+            <SubHeader title="Bildirimler" showBack={true} onBack={() => navigate('/')} />
             <main className="app-content">
                 <div className="notifications-container">
                     <div className="notifications-header">
-                        <h1>Bildirimler</h1>
+                        <h1 className="desktop-only">Bildirimler</h1>
                         {notifications.some((n) => !n.read) && (
                             <button className="mark-read-btn" onClick={handleMarkAllRead}>
                                 Tümünü Okundu İşaretle

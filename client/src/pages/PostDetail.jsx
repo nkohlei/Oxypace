@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import CommentSection from '../components/CommentSection';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
@@ -180,10 +181,15 @@ const PostDetail = () => {
                 />
             )}
             <Navbar />
+            <SubHeader 
+                title={post?.title || "Gönderi"} 
+                showBack={true} 
+                onBack={() => navigate(-1)} 
+            />
             <main className="app-content">
                 <div className="post-detail-container">
                     {/* Back Button */}
-                    <button className="back-btn" onClick={() => navigate(-1)}>
+                    <button className="back-btn desktop-only" onClick={() => navigate(-1)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points="15 18 9 12 15 6" />
                         </svg>

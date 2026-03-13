@@ -45,9 +45,10 @@ const ChannelSidebar = ({
                 borderRight: '1px solid var(--border-subtle)',
             }}
         >
-            {/* 1. Header with Full Image Banner */}
-            <div
-                className="channel-header"
+            {/* 1. Header with Full Image Banner - Hidden on mobile as SubHeader takes over */}
+            {!isMobileView && (
+                <div
+                    className="channel-header"
                 onClick={() => canManage && onEdit('overview')}
                 style={{ cursor: canManage ? 'pointer' : 'default' }}
             >
@@ -183,6 +184,7 @@ const ChannelSidebar = ({
                     </div>
                 </div>
             </div>
+        )}
 
             {/* Scrollable Area */}
             <div

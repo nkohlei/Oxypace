@@ -97,28 +97,6 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
-                        {/* Universal Mobile Back Button — visible on non-Home pages at ≤768px */}
-                        {!isHomePage && isMobileView && (
-                            <button 
-                                className="mobile-universal-back-btn" 
-                                onClick={() => navigate(-1)}
-                                aria-label="Geri Dön"
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <polyline points="15 18 9 12 15 6"></polyline>
-                                </svg>
-                            </button>
-                        )}
-
-                        {/* Mobile Sidebar Toggle - Visible only on mobile */}
-                        <button className="mobile-menu-btn" onClick={toggleSidebar} aria-label="Menüyü aç">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                <line x1="3" y1="12" x2="21" y2="12"></line>
-                                <line x1="3" y1="6" x2="21" y2="6"></line>
-                                <line x1="3" y1="18" x2="21" y2="18"></line>
-                            </svg>
-                        </button>
-
                         <Link to="/" className="brand-logo">
                             <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
                             <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />

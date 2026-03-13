@@ -1,6 +1,8 @@
 /* Main App Layout - Full Screen Discord Style */
 :root {
-    --mobile-header-height: 56px;
+    --global-header-height: calc(56px + env(safe-area-inset-top, 0px));
+    --sub-header-height: 44px;
+    --dual-header-total: calc(var(--global-header-height) + var(--sub-header-height));
 }
 
 .mobile-app-header {
@@ -90,9 +92,6 @@
 /* -----------------------------------------------------------------------------
    RESPONSIVE LAYOUT (Mobile & Tablet)
    ----------------------------------------------------------------------------- */
-/* -----------------------------------------------------------------------------
-   RESPONSIVE LAYOUT (Mobile & Tablet)
-   ----------------------------------------------------------------------------- */
 @media (max-width: 768px) {
     .app-container {
         /* On mobile, we still use flex, but ensure the sidebar is handled correctly */
@@ -101,57 +100,24 @@
 
     /* Mobile Header Styling */
     .mobile-app-header {
-        display: flex;
-        align-items: center;
-        height: var(--mobile-header-height);
-        background: var(--bg-darker);
-        padding: 0 16px;
-        position: sticky;
-        top: 0;
-        z-index: 2000;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    .mobile-back-btn {
-        background: none;
-        border: none;
-        color: var(--text-primary);
-        padding: 8px;
-        margin-left: -8px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .mobile-page-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0 0 0 12px;
-        flex: 1;
-        letter-spacing: -0.3px;
-    }
-
-    .mobile-header-spacer {
-        width: 40px;
+        display: none;
     }
 
     /* Side-by-Side Panels Logic */
     .portal-sidebar-wrapper {
         position: fixed;
-        top: 0; /* Changed from var(--mobile-header-height) */
+        top: 0;
         left: 0;
         bottom: 0;
-        width: 64px; /* Reduced from 72px */
-        height: 100dvh; /* Full height since header is fixed over it or sibling */
+        width: 64px;
+        height: 100dvh;
         z-index: 1000;
         transform: translateX(-100%);
         border-right: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 4px 0 14px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        padding-top: env(safe-area-inset-top);
+        padding-top: var(--global-header-height);
+        background: var(--bg-darker);
     }
 
     /* Visible on Home/Portal pages - Side by Side */
@@ -169,6 +135,7 @@
     .main-content-wrapper {
         margin-left: 0;
         width: 100vw;
+        padding-top: var(--global-header-height);
         transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }

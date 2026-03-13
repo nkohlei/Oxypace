@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import SubHeader from '../components/SubHeader';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
@@ -112,6 +113,7 @@ const Search = () => {
     return (
         <div className="app-wrapper search-page-wrapper">
             <Navbar />
+            <SubHeader title="Keşfet" showBack={true} onBack={() => navigate('/')} />
             <main className="app-content search-main-content">
                 <div className="search-container">
                     {/* Search Header */}

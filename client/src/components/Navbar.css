@@ -2,18 +2,18 @@
     position: fixed; /* Keep it fixed at the top */
     top: 0;
     width: 100%;
-    height: 48px;
-    min-height: 48px;
+    height: var(--global-header-height); /* Dynamic height including safe area */
+    min-height: 56px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-bottom: var(--glass-border);
-    z-index: 2000; /* Higher than sidebar */
+    z-index: 2100; /* Highest priority */
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     flex-shrink: 0;
-    padding-top: env(safe-area-inset-top, 20px); /* Notch safe area support */
+    padding-top: env(safe-area-inset-top, 0px); /* Safe area support */
     display: flex;
-    align-items: center; /* Vertical Center */
+    align-items: center;
 }
 
 .nav-container {
@@ -378,49 +378,39 @@ body.dark-mode .logo-text {
     height: 60px;
 }
 
-/* Mobile Responsiveness */
+/* Mobile Responsiveness - Global Bar Mode */
 @media (max-width: 768px) {
     .navbar {
-        height: 72px; /* Increased height for mobile */
-        min-height: 72px;
-        display: flex;
-        align-items: center;
+        height: 56px; /* Standard Global Bar height */
+        min-height: 56px;
+        padding-top: env(safe-area-inset-top, 0px);
     }
 
     .nav-container {
-        padding: 0 12px;
+        padding: 0 16px;
         height: 100%;
-        display: flex;
-        align-items: center;
     }
 
     .nav-left, .nav-right {
         display: flex;
-        align-items: center; /* Center all icons vertically */
+        align-items: center;
         height: 100%;
     }
 
-    .mobile-back-btn,
-    .mobile-universal-back-btn,
-    .mobile-menu-btn {
-        display: flex !important; /* Force show on mobile */
-    }
-
     .header-icon {
-        transform: scale(0.85); /* Scale icons down by 15% */
-        padding: 5px;
-    }
-
-    .brand-logo .logo-image {
-        height: 28px;
+        transform: scale(0.8); /* Scale icons down slightly more */
     }
 
     .logo-text {
-        display: none !important; /* Hide logo text to save space */
+        display: none !important;
     }
 
-    .nav-right {
-        gap: 8px;
+    .brand-logo .logo-image {
+        height: 24px;
+    }
+
+    .mobile-menu-btn, .mobile-universal-back-btn, .mobile-back-btn {
+        display: none !important; /* Strictly hidden in Global Bar */
     }
 }
 
