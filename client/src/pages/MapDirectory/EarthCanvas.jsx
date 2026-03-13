@@ -11,11 +11,11 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
     const isAnimating = useRef(false);
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
     const [showLabels, setShowLabels] = useState(false);
-    const [showLabels, setShowLabels] = useState(false);
     const lastLabelState = useRef(false);
     const lastFrameTime = useRef(0);
     const fpsLimit = useRef(30); // Cap at 30 FPS for mobile stability
 
+    const animateZoom = useCallback(() => {
         // FPS CAPPING LOGIC
         const now = performance.now();
         const delta = now - lastFrameTime.current;
