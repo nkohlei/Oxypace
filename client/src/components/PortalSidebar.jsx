@@ -166,8 +166,11 @@ const PortalSidebar = () => {
 
             </div>
 
-            {/* Create Portal Modal */}
-            {showCreateModal && <CreatePortalModal onClose={() => setShowCreateModal(false)} />}
+            {/* Create Portal Modal - Rendered at root level to bypass sidebar transforms */}
+            {showCreateModal && createPortal(
+                <CreatePortalModal onClose={() => setShowCreateModal(false)} />,
+                document.body
+            )}
         </>
     );
 };

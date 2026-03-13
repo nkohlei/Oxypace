@@ -177,6 +177,52 @@ const Settings = () => {
                     display: 'flex',
                     alignItems: 'center'
                 }}>
+                    {activeMenu === 'main' && (
+                        <button 
+                            className="mobile-back-btn-inline" 
+                            onClick={() => navigate('/')}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text-primary)',
+                                marginRight: '12px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                    )}
+                    {activeMenu !== 'main' && (
+                        <button 
+                            className="mobile-back-btn-inline" 
+                            onClick={() => setActiveMenu('main')}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text-primary)',
+                                marginRight: '12px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                    )}
                     <h2 style={{
                         color: 'var(--text-primary)',
                         fontSize: '20px',
@@ -649,13 +695,6 @@ const Settings = () => {
     return (
         <div className="app-wrapper full-height discord-layout">
             <Navbar />
-            <SubHeader 
-                title="Ayarlar"
-                variant="frosted"
-                showBack={true}
-                onBack={() => activeMenu === 'main' ? navigate('/') : setActiveMenu('main')}
-                desktopHidden={true}
-            />
 
             <div className="discord-split-view">
                 {renderSidebar()}

@@ -113,19 +113,21 @@ const Search = () => {
     return (
         <div className="app-wrapper search-page-wrapper">
             <Navbar />
-            <SubHeader title="Keşfet" showBack={true} onBack={() => navigate('/')} desktopHidden={true} />
             <main className="app-content search-main-content">
                 <div className="search-container">
                     {/* Search Header */}
                     <div className="search-header">
-                        <button 
-                            className="search-mobile-back-btn" 
-                            onClick={() => navigate('/')}
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
-                                <path d="M19 12H5M12 19l-7-7 7-7" />
-                            </svg>
-                        </button>
+                        <div className="title-with-back">
+                            <button 
+                                className="mobile-back-btn-inline" 
+                                onClick={() => navigate('/')}
+                            >
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <h1 className="search-title">Keşfet</h1>
+                        </div>
                         <div className="search-input-wrapper">
                             <svg
                                 viewBox="0 0 24 24"

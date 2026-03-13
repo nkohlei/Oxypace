@@ -149,11 +149,20 @@ const Notifications = () => {
     return (
         <div className="app-wrapper">
             <Navbar />
-            <SubHeader title="Bildirimler" showBack={true} onBack={() => navigate('/')} desktopHidden={true} />
             <main className="app-content">
                 <div className="notifications-container">
                     <div className="notifications-header">
-                        <h1 className="desktop-only">Bildirimler</h1>
+                        <div className="title-with-back">
+                            <button 
+                                className="mobile-back-btn-inline" 
+                                onClick={() => navigate('/')}
+                            >
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <h1>Bildirimler</h1>
+                        </div>
                         {notifications.some((n) => !n.read) && (
                             <button className="mark-read-btn" onClick={handleMarkAllRead}>
                                 Tümünü Okundu İşaretle

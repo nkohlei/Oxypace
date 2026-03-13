@@ -135,10 +135,65 @@
 }
 
 @media (max-width: 768px) {
-    .sub-header.frosted:not(:has(.sub-header-container)) {
-        top: 12px;
-        left: 12px;
-        width: 44px;
-        height: 44px;
+    .mobile-back-btn-inline {
+        display: flex;
+    }
+    
+    .desktop-only {
+        display: none !important;
+    }
+    
+    /* Ensure existing titles are visible on mobile if we want the back button next to them */
+    .inbox-header h1.desktop-only,
+    .notifications-header h1.desktop-only,
+    .channel-header h2.desktop-only,
+    .search-title {
+        display: block !important;
+        font-size: 1.5rem !important;
+        margin: 0 !important;
+    }
+    
+    .inbox-header, .notifications-header, .channel-header, .search-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 12px 16px !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        background: var(--bg-primary) !important;
+    }
+}
+/* Inline Back Button for Mobile Titles */
+.title-with-back {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mobile-back-btn-inline {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.mobile-back-btn-inline:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+    .mobile-back-btn-inline {
+        display: flex;
+    }
+    
+    .desktop-only {
+        display: none !important;
     }
 }

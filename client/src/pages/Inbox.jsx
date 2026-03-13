@@ -264,19 +264,22 @@ const Inbox = () => {
     return (
         <div className="app-wrapper inbox-wrapper">
             <Navbar />
-            <SubHeader 
-                title="Mesajlar"
-                variant="frosted"
-                showBack={true}
-                onBack={selectedUser ? handleBackToList : () => navigate('/')}
-                desktopHidden={true}
-            />
             <main className="app-content">
                 <div className={`inbox-container ${selectedUser ? 'chat-active' : ''}`}>
                     {/* Left Side: Conversations */}
                     <div className="conversations-view">
                         <div className="inbox-header">
-                            <h1 className="desktop-only">Mesajlar</h1>
+                            <div className="title-with-back">
+                                <button 
+                                    className="mobile-back-btn-inline" 
+                                    onClick={() => navigate('/')}
+                                >
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <h1>Mesajlar</h1>
+                            </div>
                             <button
                                 className="compose-btn"
                                 onClick={() => setShowNewMessageModal(true)}

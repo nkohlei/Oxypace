@@ -158,6 +158,12 @@
     padding-top: var(--total-header-height);
 }
 
+@media (max-width: 768px) {
+    .horizontal-layout-container {
+        padding-top: 56px; /* Explicit height to match navbar on mobile */
+    }
+}
+
 .portal-sidebar-wrapper, .main-content-wrapper {
     height: 100%;
 }
