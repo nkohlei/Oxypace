@@ -221,7 +221,7 @@
 }
 
 /* Plus Menu Popover */
-.plus-menu {
+.discord-layout .plus-menu {
     position: absolute;
     top: 100%;
     bottom: auto;
@@ -253,7 +253,7 @@
     }
 }
 
-.plus-menu-item {
+.discord-layout .plus-menu-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -266,12 +266,12 @@
     font-weight: 500;
 }
 
-.plus-menu-item:hover {
+.discord-layout .plus-menu-item:hover {
     background-color: var(--primary-cyan);
     color: #000;
 }
 
-.plus-menu-icon {
+.discord-layout .plus-menu-icon {
     width: 20px;
     height: 20px;
     display: flex;

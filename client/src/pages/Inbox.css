@@ -589,7 +589,7 @@
 }
 
 /* Plus Menu Popover */
-.plus-menu {
+.inbox-container .plus-menu {
     position: absolute;
     bottom: 75px; /* Open upwards above the input */
     left: 20px;
@@ -620,7 +620,7 @@
     }
 }
 
-.plus-menu-item {
+.inbox-container .plus-menu-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -633,11 +633,11 @@
     transition: background 0.2s;
 }
 
-.plus-menu-item:hover {
+.inbox-container .plus-menu-item:hover {
     background: var(--bg-hover);
 }
 
-.plus-menu-icon {
+.inbox-container .plus-menu-icon {
     display: flex;
     align-items: center;
     justify-content: center;
