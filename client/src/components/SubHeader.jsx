@@ -1,11 +1,8 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
-import './SubHeader.css';
+import { ArrowLeft } from 'lucide-react';
+/* ... other imports ... */
 
 const SubHeader = ({ title, onBack, showBack = true, rightAction }) => {
-    const navigate = useNavigate();
-
+    /* ... state/logic ... */
     const handleBack = () => {
         if (onBack) {
             onBack();
@@ -19,8 +16,8 @@ const SubHeader = ({ title, onBack, showBack = true, rightAction }) => {
             <div className="sub-header-container">
                 <div className="sub-header-left">
                     {showBack && (
-                        <button className="sub-header-back" onClick={handleBack} aria-label="Geri">
-                            <ChevronLeft size={24} />
+                        <button className="sub-header-back-circle" onClick={handleBack} aria-label="Geri">
+                            <ArrowLeft size={20} strokeWidth={2.5} />
                         </button>
                     )}
                     <h2 className="sub-header-title">{title}</h2>

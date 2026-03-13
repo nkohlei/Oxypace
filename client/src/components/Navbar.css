@@ -1,6 +1,7 @@
 .navbar {
     position: fixed; /* Keep it fixed at the top */
     top: 0;
+    left: 0;
     width: 100%;
     height: var(--global-header-height); /* Dynamic height including safe area */
     min-height: 56px;
@@ -8,7 +9,7 @@
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-bottom: var(--glass-border);
-    z-index: 2100; /* Highest priority */
+    z-index: 2500; /* Rock-solid highest priority */
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     flex-shrink: 0;
     padding-top: env(safe-area-inset-top, 0px); /* Safe area support */

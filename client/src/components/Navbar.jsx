@@ -113,7 +113,12 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     <div className="nav-right">
                         {/* Modern Neumorphic Theme Toggle */}
                         {!hideThemeToggle && (
-                            <div className={`neumorphic-theme-toggle ${isDark ? 'dark' : 'light'}`} onClick={toggleTheme} title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
+                            <div 
+                                className={`neumorphic-theme-toggle ${isDark ? 'dark' : 'light'}`} 
+                                onClick={toggleTheme} 
+                                title={isDark ? 'Açık Tema' : 'Koyu Tema'}
+                                style={{ transform: 'scale(0.7)', transformOrigin: 'right center' }}
+                            >
                                 <div className="theme-track">
                                     <span className="theme-text">
                                         {isDark ? (
@@ -146,45 +151,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                         )}
                         {user ? (
                             <>
-                                {/* Notification Button */}
-                                <Link
-                                    to="/notifications"
-                                    className="header-icon notification-btn"
-                                    aria-label="Bildirimler"
-                                    onClick={async () => {
-                                        setUnreadCount(0);
-                                        try {
-                                            await axios.put('/api/notifications/read');
-                                        } catch (error) {
-                                            // ignore error
-                                        }
-                                    }}
-                                >
-                                    <div className="nav-icon-wrapper">
-                                        <svg
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill={
-                                                location.pathname === '/notifications'
-                                                    ? 'currentColor'
-                                                    : 'none'
-                                            }
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        >
-                                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                                        </svg>
-                                        {unreadCount > 0 && (
-                                            <span className="nav-badge top-badge"></span>
-                                        )}
-                                    </div>
-                                </Link>
-
-                                {/* Dropdown logic moved to unified profile button below */}
+                                {/* Notification logic integrated into Profile Button below */}
                             </>
                         ) : null}
 
@@ -198,25 +165,30 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                     aria-expanded={showMenu}
                                     aria-haspopup="true"
                                 >
-                                    {user?.profile?.avatar ? (
-                                        <img
-                                            src={getImageUrl(user.profile.avatar)}
-                                            alt="Profile"
-                                            className="nav-profile-img"
-                                        />
-                                    ) : (
-                                        <div className="nav-profile-placeholder">
-                                            <svg
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                            >
-                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                                <circle cx="12" cy="7" r="4"></circle>
-                                            </svg>
-                                        </div>
-                                    )}
+                                    <div className="nav-icon-wrapper" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {user?.profile?.avatar ? (
+                                            <img
+                                                src={getImageUrl(user.profile.avatar)}
+                                                alt="Profile"
+                                                className="nav-profile-img"
+                                            />
+                                        ) : (
+                                            <div className="nav-profile-placeholder">
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="1.5"
+                                                >
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="12" cy="7" r="4"></circle>
+                                                </svg>
+                                            </div>
+                                        )}
+                                        {unreadCount > 0 && (
+                                            <span className="nav-badge top-badge" style={{ transform: 'translate(25%, -25%)' }}></span>
+                                        )}
+                                    </div>
                                 </button>
                             ) : (
                                 <div className="guest-nav-actions">

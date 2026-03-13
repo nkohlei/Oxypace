@@ -190,30 +190,6 @@ const AppLayout = () => {
                     aria-hidden="true"
                 />
 
-                {/* Sidebar Toggle Arrow - Hidden on clean layout pages */}
-                {user && !isCleanLayout && (
-                    <div
-                        className={`sidebar-toggle-arrow ${isSidebarOpen ? 'open' : ''}`}
-                        onClick={toggleSidebar}
-                        role="button"
-                        tabIndex="0"
-                        aria-label={isSidebarOpen ? 'Menüyü kapat' : 'Menüyü aç'}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSidebar(); } }}
-                        title={isSidebarOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
-                    >
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="24"
-                            height="24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            {/* Arrow direction flips via CSS rotation */}
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
-                )}
 
                 {/* Portal Sidebar — hidden on clean layout pages */}
                 {user && !isCleanLayout && (
