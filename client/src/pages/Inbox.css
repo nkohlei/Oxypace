@@ -281,13 +281,18 @@
 }
 
 .back-btn {
-    display: none;
-    background: transparent;
-    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
     cursor: pointer;
-    padding: 8px;
     border-radius: 50%;
+    transition: all 0.2s;
+    flex-shrink: 0;
 }
 
 .back-btn:hover {
@@ -561,14 +566,6 @@
     }
 
     .back-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
         margin-right: 8px;
     }
 
