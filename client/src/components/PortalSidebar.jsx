@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +7,7 @@ import CreatePortalModal from './CreatePortalModal';
 import { getImageUrl } from '../utils/imageUtils';
 import './PortalSidebar.css';
 
-const PortalSidebar = memo(() => {
+const PortalSidebar = () => {
     const { user, isAuthenticated } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
     const navigate = useNavigate();
@@ -173,6 +173,6 @@ const PortalSidebar = memo(() => {
             )}
         </>
     );
-});
+};
 
 export default PortalSidebar;

@@ -6,7 +6,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { linkifyText } from '../utils/linkify';
 import './MessageBubble.css';
 
-const MessageBubble = React.memo(({ message, isOwn, onDelete, onReply, onReact }) => {
+const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     const formatTime = (date) => {
         return new Date(date).toLocaleTimeString('tr-TR', {
             hour: '2-digit',
@@ -150,6 +150,7 @@ const MessageBubble = React.memo(({ message, isOwn, onDelete, onReply, onReact }
                 <div
                     className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''}`}
                 >
+                    {/* Full Screen Foggy Overlay for Delete Confirmation */}
                     {/* Full Screen Foggy Overlay for Delete Confirmation */}
                     {confirmDelete &&
                         createPortal(
@@ -370,6 +371,6 @@ const MessageBubble = React.memo(({ message, isOwn, onDelete, onReply, onReact }
             )}
         </>
     );
-});
+};
 
 export default MessageBubble;

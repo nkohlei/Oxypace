@@ -388,14 +388,14 @@ const Inbox = () => {
                     {selectedUser ? (
                         <div className="chat-view">
                             <div className="chat-header">
-                                <button className="mobile-back-btn-inline" onClick={handleBackToList} style={{ marginRight: '12px' }}>
+                                <button className="back-btn desktop-only" onClick={handleBackToList}>
                                     <svg
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
-                                        strokeWidth="2.5"
-                                        width="20"
-                                        height="20"
+                                        strokeWidth="2"
+                                        width="24"
+                                        height="24"
                                     >
                                         <line x1="19" y1="12" x2="5" y2="12"></line>
                                         <polyline points="12 19 5 12 12 5"></polyline>
