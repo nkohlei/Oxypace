@@ -14,7 +14,6 @@
     border-radius: 0;
     box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
     border-right: none;
-    box-sizing: border-box;
     border-top: none;
     border-bottom: none;
     position: relative;
@@ -102,7 +101,7 @@
 
 @media (max-width: 768px) {
     .portal-sidebar {
-        padding: 10px 0 20px 0; /* Minimal top padding, wrapper already has --total-header-height */
+        padding: 50px 0 20px 0; /* Add top padding for fixed navbar if needed, or safe area */
     }
 
     .sidebar-item {

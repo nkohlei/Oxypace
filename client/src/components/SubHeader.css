@@ -6,10 +6,9 @@
     display: flex;
     align-items: center;
     position: sticky;
-    top: 0; /* Sticks within main-content-wrapper which starts below Navbar */
+    top: 0; /* Sticky to its parent main-content-wrapper which has padding-top for global bar */
     z-index: 1000;
     padding: 0 16px;
-    box-sizing: border-box;
 }
 
 .sub-header-container {

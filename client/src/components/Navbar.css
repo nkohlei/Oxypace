@@ -3,7 +3,8 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: var(--total-header-height); /* Dynamic height including safe area */
+    height: var(--global-header-height); /* Dynamic height including safe area */
+    min-height: 56px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -11,9 +12,9 @@
     z-index: 2500; /* Rock-solid highest priority */
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     flex-shrink: 0;
+    padding-top: env(safe-area-inset-top, 0px); /* Safe area support */
     display: flex;
     align-items: center;
-    box-sizing: border-box;
 }
 
 .nav-container {

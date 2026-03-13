@@ -1,16 +1,106 @@
 /* Main App Layout - Full Screen Discord Style */
 :root {
-    --global-header-height: 56px;
-    --safe-area-top: env(safe-area-inset-top, 0px);
-    --total-header-height: calc(var(--global-header-height) + var(--safe-area-top));
+    --global-header-height: calc(56px + env(safe-area-inset-top, 0px));
     --sub-header-height: 44px;
-    --dual-header-total: calc(var(--total-header-height) + var(--sub-header-height));
+    --dual-header-total: calc(var(--global-header-height) + var(--sub-header-height));
 }
-/* ... lines 7-93 ... */
+
+.mobile-app-header {
+    display: none;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    /* Allows footer to sit below the main horizontal flex area */
+    flex: 1;
+    /* Take up available space */
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-primary);
+    position: relative;
+    /* Ensure stacking context */
+}
+
+/* Guest mode: allow the Home page to scroll naturally */
+.app-container.guest-mode {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+}
+
+.app-container.guest-mode .main-content-wrapper {
+    height: auto;
+    overflow: visible;
+}
+
+.app-container.guest-mode .content-scroll-area {
+    overflow: visible;
+}
+
+/* Sidebar Wrapper - Fixed Left Rail */
+.portal-sidebar-wrapper {
+    width: 72px;
+    height: 100%;
+    position: relative;
+    z-index: 100;
+    flex-shrink: 0;
+    overflow: visible;
+    /* Must be visible to allow flyout menu to overflow */
+    border-right: none;
+    background: var(--bg-darker);
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scrollable Content Wrapper */
+.main-content-wrapper {
+    flex-grow: 1;
+    min-width: 0;
+    /* Prevent flex child overflow */
+    height: 100%;
+    position: relative;
+    background-color: var(--bg-primary);
+    overflow: hidden;
+    /* No scroll on main wrapper */
+    display: flex;
+    flex-direction: column;
+}
+
+.content-scroll-area {
+    flex: 1;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    /* Scroll behavior smooth if desired */
+    scroll-behavior: smooth;
+}
+
+/* Sidebar Toggle Arrow - Visible only on Mobile/Tablet */
+.sidebar-toggle-arrow {
+    display: none;
+}
+
+/* -----------------------------------------------------------------------------
+   RESPONSIVE LAYOUT (Mobile & Tablet)
+   ----------------------------------------------------------------------------- */
 @media (max-width: 768px) {
     .app-container {
         /* On mobile, we still use flex, but ensure the sidebar is handled correctly */
         position: relative;
+    }
+
+    /* Mobile Header Styling */
+    .mobile-app-header {
+        display: none;
     }
 
     /* Side-by-Side Panels Logic */
@@ -26,7 +116,7 @@
         border-right: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 4px 0 14px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        padding-top: var(--total-header-height);
+        padding-top: var(--global-header-height);
         background: var(--bg-darker);
     }
 
@@ -45,7 +135,7 @@
     .main-content-wrapper {
         margin-left: 0;
         width: 100vw;
-        padding-top: var(--total-header-height);
+        padding-top: var(--global-header-height);
         transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
