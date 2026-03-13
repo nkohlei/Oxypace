@@ -1,5 +1,11 @@
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUI } from '../context/UIContext';
+import InviteUserModal from './InviteUserModal';
+import Badge from './Badge';
+import UserBar from './UserBar';
+
+import { getImageUrl } from '../utils/imageUtils';
 
 const ChannelSidebar = ({
     portal,
