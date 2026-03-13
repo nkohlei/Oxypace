@@ -96,9 +96,8 @@
 .message-media img,
 .bubble-video {
     border-radius: 12px;
-    max-width: 300px;
-    max-height: 300px;
-    width: auto;
+    max-width: 400px;
+    width: 100%;
     height: auto;
     object-fit: cover;
     margin-bottom: 4px;
@@ -115,8 +114,8 @@
 
 .video-container {
     position: relative;
-    max-width: 300px;
-    max-height: 300px;
+    max-width: 400px;
+    width: 100%;
     border-radius: 12px;
     overflow: hidden;
     background: #000;
@@ -185,6 +184,10 @@
 }
 
 @media (max-width: 768px) {
+    .msg-download-btn {
+        opacity: 1; /* Always visible on mobile */
+    }
+    
     .message-row.mobile-actions-visible .message-actions {
         opacity: 1;
         visibility: visible;

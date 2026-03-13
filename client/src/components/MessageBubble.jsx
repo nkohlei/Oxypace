@@ -17,12 +17,13 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     const handleDownload = async (e, url) => {
         e.stopPropagation();
         try {
+            const filename = url.split('/').pop() || `oxypace-file-${Date.now()}`;
             const response = await fetch(url);
             const blob = await response.blob();
             const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = blobUrl;
-            a.download = `oxypace-msg-${Date.now()}.png`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(blobUrl);
