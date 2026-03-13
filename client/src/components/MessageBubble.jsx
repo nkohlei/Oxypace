@@ -186,14 +186,28 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                     <div className="message-bubble-content">
                         {message.media && (
                             <div className="message-media" onClick={toggleLightbox}>
-                                <img
-                                    src={
-                                        message.isOptimistic
-                                            ? message.media
-                                            : getImageUrl(message.media)
-                                    }
-                                    alt="Attachment"
-                                />
+                                {message.media.match(/\.(mp4|webm|ogg|mov)$/i) || (message.isOptimistic && message.media.startsWith('blob:')) && message.mediaType?.startsWith('video') ? (
+                                    <div className="video-container">
+                                        <video
+                                            src={message.isOptimistic ? message.media : getImageUrl(message.media)}
+                                            className="bubble-video"
+                                        />
+                                        <div className="video-play-overlay">
+                                            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <img
+                                        src={
+                                            message.isOptimistic
+                                                ? message.media
+                                                : getImageUrl(message.media)
+                                        }
+                                        alt="Attachment"
+                                    />
+                                )}
                                 {!message.isOptimistic && (
                                     <button
                                         className="msg-download-btn"
@@ -361,11 +375,21 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
             {/* Lightbox Modal */}
             {showLightbox && (
                 <div className="lightbox-overlay" onClick={toggleLightbox}>
-                    <div className="lightbox-content">
-                        <img
-                            src={message.isOptimistic ? message.media : getImageUrl(message.media)}
-                            alt="Full Size"
-                        />
+                    <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                        {message.media.match(/\.(mp4|webm|ogg|mov)$/i) || (message.isOptimistic && message.media.startsWith('blob:')) && message.mediaType?.startsWith('video') ? (
+                            <video 
+                                src={message.isOptimistic ? message.media : getImageUrl(message.media)} 
+                                controls 
+                                autoPlay 
+                                className="lightbox-video"
+                            />
+                        ) : (
+                            <img
+                                src={message.isOptimistic ? message.media : getImageUrl(message.media)}
+                                alt="Full Size"
+                            />
+                        )}
+                        <button className="lightbox-close" onClick={toggleLightbox}>×</button>
                     </div>
                 </div>
             )}

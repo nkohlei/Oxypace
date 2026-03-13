@@ -175,6 +175,7 @@ const Inbox = () => {
             },
             content: newMessage,
             media: media ? URL.createObjectURL(media) : null,
+            mediaType: media?.type,
             createdAt: new Date().toISOString(),
             isOptimistic: true,
             replyTo: replyingTo,
@@ -541,6 +542,26 @@ const Inbox = () => {
 
                             <form onSubmit={handleSendMessage} className="message-form">
                                 <div className="message-input-wrapper">
+                                    {media && (
+                                        <div className="selected-media-pill">
+                                            <div className="media-pill-icon">
+                                                {media.type.startsWith('image') ? '🖼️' : '🎥'}
+                                            </div>
+                                            <span className="media-pill-name">{media.name}</span>
+                                            <button 
+                                                type="button" 
+                                                className="remove-media-btn"
+                                                onClick={() => {
+                                                    setMedia(null);
+                                                    if (fileInputRef.current) fileInputRef.current.value = '';
+                                                    if (videoInputRef.current) videoInputRef.current.value = '';
+                                                    if (gifInputRef.current) gifInputRef.current.value = '';
+                                                }}
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    )}
                                     {/* Plus / Upload Button */}
                                     <button
                                         type="button"
