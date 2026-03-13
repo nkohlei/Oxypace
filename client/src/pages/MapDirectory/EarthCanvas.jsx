@@ -11,9 +11,20 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
     const isAnimating = useRef(false);
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
     const [showLabels, setShowLabels] = useState(false);
+    const [showLabels, setShowLabels] = useState(false);
     const lastLabelState = useRef(false);
+    const lastFrameTime = useRef(0);
+    const fpsLimit = useRef(30); // Cap at 30 FPS for mobile stability
 
-    const animateZoom = useCallback(() => {
+        // FPS CAPPING LOGIC
+        const now = performance.now();
+        const delta = now - lastFrameTime.current;
+        if (delta < 1000 / fpsLimit.current) {
+            requestAnimationFrame(animateZoom);
+            return;
+        }
+        lastFrameTime.current = now;
+
         if (!globeRef.current || !isAnimating.current) return;
         const pov = globeRef.current.pointOfView();
         const diffAlt = targetAltitude.current - pov.altitude;
@@ -42,8 +53,6 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
             const curUnderMouse = globeRef.current.toGlobeCoords(mousePos.current.x, mousePos.current.y);
 
             if (curUnderMouse) {
-                // Kamera nereye gitmeli ki imlecin altındaki nokta çivili kalsın?
-                // Hata buradaydı: Çapa noktasından ekran noktasını çıkarıp ekliyorduk, bu ters tepebilir.
                 let diffLat = zoomAnchor.current.lat - curUnderMouse.lat;
                 let diffLng = zoomAnchor.current.lng - curUnderMouse.lng;
 
@@ -53,7 +62,6 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                 const dampingFactor = 0.15;
                 nextLat += diffLat * dampingFactor;
                 nextLng += diffLng * dampingFactor;
-
             }
         }
 
@@ -61,8 +69,6 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
         nextLat = Math.max(-90, Math.min(90, nextLat));
         nextLng = ((nextLng + 180) % 360 + 360) % 360 - 180;
 
-        // Sıfır saniye (anlık) frame çizimi ile kamerayı mutlak noktaya taşıyoruz
-        // Yumuşama (Lerp) işlemi animasyon döngüsünün matematiginin içinde (yukarıda) olduğu için burası sıfır saniye kalmalıdır.
         globeRef.current.pointOfView({ lat: nextLat, lng: nextLng, altitude: nextAltitude }, 0);
         requestAnimationFrame(animateZoom);
     }, []);
@@ -112,7 +118,23 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
 
             // Eski ışıklandırma iptal, ışığı onGlobeReady içinde halledeceğiz
         }
-        return () => window.removeEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            // Explicitly dispose of Three.js objects to prevent memory leaks
+            if (globeRef.current) {
+                const scene = globeRef.current.scene();
+                scene.traverse((object) => {
+                    if (object.geometry) object.geometry.dispose();
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(mat => mat.dispose());
+                        } else {
+                            object.material.dispose();
+                        }
+                    }
+                });
+            }
+        };
     }, []);
 
     const handleWheel = useCallback((e) => {
