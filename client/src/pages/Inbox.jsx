@@ -450,64 +450,6 @@ const Inbox = () => {
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {media && (
-                                <div
-                                    className="media-preview"
-                                    style={{
-                                        padding: '8px',
-                                        background: 'rgba(0,0,0,0.2)',
-                                        borderRadius: '8px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                    }}
-                                >
-                                    {media.type.startsWith('video') ? (
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                color: 'var(--text-primary)',
-                                            }}
-                                        >
-                                            <span>🎥</span>
-                                            <span>Video seçildi</span>
-                                        </div>
-                                    ) : (
-                                        <img
-                                            src={URL.createObjectURL(media)}
-                                            alt="Preview"
-                                            style={{
-                                                maxHeight: '200px',
-                                                maxWidth: '100%',
-                                                borderRadius: '4px',
-                                            }}
-                                        />
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setMedia(null);
-                                            if (fileInputRef.current)
-                                                fileInputRef.current.value = '';
-                                            if (videoInputRef.current)
-                                                videoInputRef.current.value = '';
-                                            if (gifInputRef.current)
-                                                gifInputRef.current.value = '';
-                                        }}
-                                        style={{
-                                            marginLeft: '10px',
-                                            background: 'none',
-                                            border: 'none',
-                                            color: 'var(--text-muted)',
-                                            cursor: 'pointer',
-                                            fontSize: '16px',
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            )}
 
                             {replyingTo && (
                                 <div className="reply-preview-bar">
