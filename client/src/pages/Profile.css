@@ -273,7 +273,6 @@
     min-width: 0;
     background: var(--bg-card);
     overflow-y: auto;
-    max-height: 600px;
 }
 
 .profile-tabs {
@@ -297,13 +296,15 @@
 }
 
 .profile-tab-item {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text-secondary);
     padding-bottom: 12px;
     position: relative;
     cursor: pointer;
     transition: color 0.3s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .profile-tab-item:hover {
