@@ -482,49 +482,48 @@ const Profile = () => {
 
                 {/* Wide Profile Card */}
                 <div className="profile-card profile-card-horizontal">
-                    {/* Banner section */}
-                    <div className="profile-banner">
-                        {profileUser?.profile?.coverImage ? (
-                            <img src={getImageUrl(profileUser.profile.coverImage)} alt="Banner" />
-                        ) : (
-                            <div
-                                className="banner-placeholder"
-                                style={{
-                                    backgroundColor: profileUser?.profile?.bannerColor || '#1e1f22',
-                                }}
-                            ></div>
-                        )}
-
-                        {isOwnProfile && (
-                            <button
-                                className="edit-banner-btn"
-                                onClick={() => coverInputRef.current.click()}
-                            >
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    width="20"
-                                    height="20"
-                                >
-                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                                    <circle cx="12" cy="13" r="4"></circle>
-                                </svg>
-                            </button>
-                        )}
-                        <input
-                            type="file"
-                            ref={coverInputRef}
-                            onChange={handleCoverSelect}
-                            style={{ display: 'none' }}
-                            accept="image/*"
-                        />
-                    </div>
-
                     <div className="profile-horizontal-layout">
-                        {/* LEFT SECTION: User Info Sidebar */}
+                        {/* LEFT SECTION: Banner + User Info */}
                         <aside className="profile-left-column">
+                            {/* Banner INSIDE left column only */}
+                            <div className="profile-banner">
+                                {profileUser?.profile?.coverImage ? (
+                                    <img src={getImageUrl(profileUser.profile.coverImage)} alt="Banner" />
+                                ) : (
+                                    <div
+                                        className="banner-placeholder"
+                                        style={{
+                                            backgroundColor: profileUser?.profile?.bannerColor || '#1e1f22',
+                                        }}
+                                    ></div>
+                                )}
+
+                                {isOwnProfile && (
+                                    <button
+                                        className="edit-banner-btn"
+                                        onClick={() => coverInputRef.current.click()}
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            width="20"
+                                            height="20"
+                                        >
+                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                            <circle cx="12" cy="13" r="4"></circle>
+                                        </svg>
+                                    </button>
+                                )}
+                                <input
+                                    type="file"
+                                    ref={coverInputRef}
+                                    onChange={handleCoverSelect}
+                                    style={{ display: 'none' }}
+                                    accept="image/*"
+                                />
+                            </div>
                             <div className="profile-avatar-wrapper">
                                 <div
                                     className="profile-avatar-container"

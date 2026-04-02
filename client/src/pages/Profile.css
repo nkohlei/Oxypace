@@ -8,6 +8,7 @@
     width: 100%;
     font-family: 'Outfit', sans-serif;
     background-color: var(--bg-primary);
+    overflow: hidden;
 }
 
 .profile-card-horizontal {
@@ -21,7 +22,8 @@
     margin: 30px auto;
     display: flex;
     flex-direction: column;
-    min-height: 520px;
+    height: calc(100vh - 140px);
+    max-height: 700px;
     border: none;
 }
 
@@ -29,14 +31,17 @@
     display: flex;
     flex: 1;
     background-color: var(--bg-card);
+    min-height: 0;
 }
 
-/* Banner */
+/* Banner — now inside left column */
 .profile-banner {
-    height: 240px;
+    height: 200px;
     background-color: var(--bg-secondary);
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
+    border-radius: 0;
 }
 
 .profile-banner img {
@@ -52,8 +57,8 @@
 
 .edit-banner-btn {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 12px;
+    right: 12px;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(8px);
     color: white;
@@ -76,46 +81,44 @@
 
 /* User Info Sidebar (LEFT) */
 .profile-left-column {
-    width: 50%;
-    /* border-right removed */
-    padding: 0 20px 30px 40px;
+    width: 45%;
+    padding: 0;
     background-color: var(--bg-card);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
+/* Left column inner content below banner */
 .profile-avatar-wrapper {
     position: relative;
-    margin-top: -85px;
-    /* Deeper offset into banner */
-    margin-bottom: 24px;
-    /* Deeper offset into banner */
-    margin-bottom: 24px;
+    margin-top: -60px;
+    margin-bottom: 16px;
+    padding: 0 24px;
     width: 100%;
-    /* Changed to full width to handle flex children */
     display: flex;
     align-items: flex-end;
     gap: 16px;
     z-index: 30;
-    /* Avatar highly visible */
 }
 
 .profile-avatar-container {
-    width: 160px;
-    height: 160px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     background-color: var(--bg-secondary);
-    border: 8px solid var(--bg-card);
+    border: 6px solid var(--bg-card);
     position: relative;
-    /* overflow: hidden; REMOVED to show button */
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     transition: transform 0.3s ease;
+    flex-shrink: 0;
 }
 
 .profile-avatar-container:hover {
-    transform: translateY(-5px);
+    transform: translateY(-3px);
 }
 
 .profile-avatar-container img {
@@ -123,7 +126,6 @@
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
-    /* Added to maintain circle shape */
 }
 
 .edit-avatar-btn {
@@ -131,13 +133,12 @@
     top: 0;
     right: 0;
     transform: translate(30%, -30%);
-    /* Moves it to overlap the border */
     background: var(--primary-cyan);
     color: white;
     border: 3px solid #111214;
     padding: 6px;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
@@ -156,18 +157,20 @@
 .user-details-info {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
+    padding: 0 24px 24px;
 }
 
 .user-main-title .title-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 4px;
+    flex-wrap: wrap;
 }
 
 .user-main-title h1 {
-    font-size: clamp(24px, 4vw, 30px);
+    font-size: clamp(20px, 3.5vw, 26px);
     font-weight: 700;
     color: var(--text-primary);
     letter-spacing: -0.5px;
@@ -175,7 +178,7 @@
 
 .profile-username-tag {
     color: var(--text-secondary);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 500;
     font-family: 'Inter', sans-serif;
 }
@@ -184,13 +187,13 @@
     background: var(--bg-hover);
     border: 1px solid var(--border-subtle);
     color: var(--text-secondary);
-    padding: 6px 14px;
+    padding: 5px 12px;
     border-radius: 10px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     transition: all 0.2s ease;
     margin-left: auto;
 }
@@ -202,16 +205,14 @@
 }
 
 .profile-bio-text {
-    font-size: 15px;
+    font-size: 13px;
     color: var(--text-secondary);
-    line-height: 1.6;
-    font-size: 15px;
-    line-height: 1.6;
+    line-height: 1.5;
     background: var(--bg-secondary);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    padding: 16px;
-    border-radius: 16px;
+    padding: 12px;
+    border-radius: 12px;
     border: 1px solid var(--border-subtle);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
@@ -219,7 +220,7 @@
 .profile-date-text {
     display: flex;
     align-items: center;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -233,10 +234,10 @@
 }
 
 .profile-action-btn {
-    height: 48px;
+    height: 40px;
     border-radius: 14px;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 14px;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
     align-items: center;
@@ -246,33 +247,34 @@
 }
 
 .profile-action-btn.icon-only {
-    width: 48px;
+    width: 40px;
     padding: 0;
 }
 
 .profile-header-actions {
-    position: absolute;
-    top: 20px;
-    right: 20px;
+    padding: 12px 24px 0;
+    display: flex;
+    justify-content: flex-start;
     z-index: 40;
 }
 
 .action-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
-/* Content Area (RIGHT) */
+/* Content Area (RIGHT) — starts from card top */
 .profile-right-column {
     flex: 1;
-    width: 50%;
-    padding: 30px 40px 30px 20px;
+    width: 55%;
+    padding: 20px 24px;
     display: flex;
     flex-direction: column;
     min-width: 0;
     background: var(--bg-card);
-    overflow-y: auto;
+    border-left: 1px solid var(--border-subtle);
+    min-height: 0;
 }
 
 .profile-tabs {
@@ -293,6 +295,9 @@
 .profile-tab-view {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
 }
 
 .profile-tab-item {
@@ -929,6 +934,13 @@
 
 /* Mobile Adjustments */
 @media (max-width: 900px) {
+    .profile-card-horizontal {
+        height: auto;
+        max-height: none;
+        border-radius: 0;
+        margin: 0;
+    }
+
     .profile-horizontal-layout {
         flex-direction: column;
     }
@@ -937,7 +949,46 @@
         width: 100%;
         border-right: none;
         border-bottom: 1px solid var(--border-subtle);
-        padding-bottom: 40px;
+        overflow-y: visible;
+    }
+
+    .profile-right-column {
+        border-left: none;
+        width: 100%;
+        padding: 16px;
+        max-height: none;
+    }
+
+    .profile-tab-view {
+        overflow-y: visible;
+    }
+
+    .profile-banner {
+        height: 180px;
+    }
+
+    .profile-avatar-container {
+        width: 100px;
+        height: 100px;
+        border-width: 5px;
+    }
+
+    .profile-avatar-wrapper {
+        margin-top: -50px;
+        padding: 0 16px;
+    }
+
+    .user-details-info {
+        padding: 0 16px 20px;
+    }
+
+    .profile-header-actions {
+        padding: 8px 16px 0;
+    }
+
+    .profile-page-content {
+        padding: 0;
+        overflow: visible;
     }
 }
 
