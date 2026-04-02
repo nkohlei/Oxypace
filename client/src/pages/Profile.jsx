@@ -1,14 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import Badge from '../components/Badge';
 import ImageCropper from '../components/ImageCropper';
-import ProfileImageModal from '../components/ProfileImageModal'; // Import the new modal
+import ProfileImageModal from '../components/ProfileImageModal';
 import SEO from '../components/SEO';
+import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
+import VideoPlayer from '../components/VideoPlayer';
 import './Profile.css';
 
 
@@ -27,8 +29,21 @@ const Profile = () => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState('memberships'); // Default tab
+    const [activeTab, setActiveTab] = useState('posts'); // Default tab - Posts first
     const [showMenu, setShowMenu] = useState(false);
+
+    // Posts State
+    const [userPosts, setUserPosts] = useState([]);
+    const [postsLoading, setPostsLoading] = useState(false);
+    const [postsError, setPostsError] = useState('');
+
+    // Profile Compose State
+    const [composeText, setComposeText] = useState('');
+    const [composeMedia, setComposeMedia] = useState(null);
+    const [composeMediaPreview, setComposeMediaPreview] = useState(null);
+    const [composeLoading, setComposeLoading] = useState(false);
+    const [composeFocused, setComposeFocused] = useState(false);
+    const composeMediaInputRef = useRef(null);
 
     // Cropping State
     const [cropperImage, setCropperImage] = useState(null);
@@ -45,10 +60,10 @@ const Profile = () => {
     useEffect(() => {
         if (isOwnProfile) {
             fetchMyProfile();
-            setActiveTab('memberships'); // Reset to default for own profile
+            setActiveTab('posts'); // Reset to posts for own profile
         } else {
             fetchUserProfile(username);
-            setActiveTab('memberships'); // Reset for others
+            setActiveTab('posts'); // Reset for others
         }
     }, [username, isOwnProfile]);
 
@@ -64,6 +79,106 @@ const Profile = () => {
         } catch (err) {
             console.error('Failed to fetch my profile:', err);
         }
+    };
+
+    // Fetch user posts
+    const fetchUserPosts = useCallback(async (userId) => {
+        if (!userId) return;
+        setPostsLoading(true);
+        setPostsError('');
+        try {
+            const res = await axios.get(`/api/posts/user/${userId}`);
+            // Handle both {posts: [...]} and direct array response formats
+            const postsData = Array.isArray(res.data) ? res.data : (res.data?.posts || []);
+            setUserPosts(postsData);
+        } catch (err) {
+            console.error('Failed to fetch user posts:', err);
+            if (err.response?.status === 404) {
+                setPostsError('not_found');
+            } else {
+                setPostsError('error');
+            }
+            setUserPosts([]);
+        } finally {
+            setPostsLoading(false);
+        }
+    }, []);
+
+    // Fetch posts when profile user is loaded or tab switches to posts
+    useEffect(() => {
+        if (profileUser?._id && activeTab === 'posts') {
+            fetchUserPosts(profileUser._id);
+        }
+    }, [profileUser?._id, activeTab, fetchUserPosts]);
+
+    // Handle profile compose post
+    const handleProfilePost = async () => {
+        if (!composeText.trim() && !composeMedia) return;
+        setComposeLoading(true);
+        try {
+            const formDataObj = new FormData();
+            formDataObj.append('content', composeText);
+            if (composeMedia) {
+                formDataObj.append('media', composeMedia);
+            }
+            // No portalId = profile-only post
+            const backendUrl = import.meta.env.DEV
+                ? '/api/posts'
+                : 'https://globalmessage-backend.koyeb.app/api/posts';
+            const res = await axios.post(backendUrl, formDataObj);
+            // Prepend optimistically
+            setUserPosts(prev => [{
+                ...res.data,
+                author: {
+                    _id: currentUser._id,
+                    username: currentUser.username,
+                    profile: currentUser.profile,
+                    verificationBadge: currentUser.verificationBadge
+                },
+                isOptimistic: true
+            }, ...prev]);
+            setComposeText('');
+            setComposeMedia(null);
+            setComposeMediaPreview(null);
+            setComposeFocused(false);
+        } catch (err) {
+            console.error('Profile post failed:', err);
+            setError('Gönderi paylaşılamadı');
+        } finally {
+            setComposeLoading(false);
+        }
+    };
+
+    const handleComposeMediaSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 25 * 1024 * 1024) {
+            setError("Dosya boyutu 25MB'dan büyük olamaz.");
+            return;
+        }
+        setComposeMedia(file);
+        setComposeMediaPreview(URL.createObjectURL(file));
+        e.target.value = '';
+    };
+
+    const removeComposeMedia = () => {
+        setComposeMedia(null);
+        setComposeMediaPreview(null);
+    };
+
+    // Format date helper for posts
+    const formatPostDate = (date) => {
+        const now = new Date();
+        const postDate = new Date(date);
+        const diff = now - postDate;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        if (minutes < 1) return 'şimdi';
+        if (minutes < 60) return `${minutes}d`;
+        if (hours < 24) return `${hours}s`;
+        if (days < 7) return `${days}g`;
+        return postDate.toLocaleDateString('tr-TR');
     };
 
     const fetchUserProfile = async (username) => {
@@ -528,6 +643,12 @@ const Profile = () => {
                         <section className="profile-right-column">
                             <div className="profile-tabs">
                                 <div
+                                    className={`profile-tab-item ${activeTab === 'posts' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('posts')}
+                                >
+                                    Gönderiler
+                                </div>
+                                <div
                                     className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
                                     onClick={() => setActiveTab('memberships')}
                                 >
@@ -557,6 +678,223 @@ const Profile = () => {
                             </div>
 
                             <div className="profile-tab-view">
+                                {/* POSTS TAB */}
+                                {activeTab === 'posts' && (
+                                    <div className="tab-content fade-in">
+                                        {/* Compose Box — own profile only */}
+                                        {isOwnProfile && (
+                                            <div className={`profile-compose-box ${composeFocused ? 'focused' : ''}`}>
+                                                <div className="compose-avatar">
+                                                    {currentUser?.profile?.avatar ? (
+                                                        <img src={getImageUrl(currentUser.profile.avatar)} alt="" />
+                                                    ) : (
+                                                        <div className="compose-avatar-placeholder">
+                                                            {currentUser?.username?.[0]?.toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="compose-input-area">
+                                                    <textarea
+                                                        placeholder="Ne düşünüyorsun?"
+                                                        value={composeText}
+                                                        onChange={(e) => setComposeText(e.target.value)}
+                                                        onFocus={() => setComposeFocused(true)}
+                                                        rows={composeFocused ? 3 : 1}
+                                                        className="compose-textarea"
+                                                    />
+                                                    {composeMediaPreview && (
+                                                        <div className="compose-media-preview">
+                                                            <img src={composeMediaPreview} alt="Preview" />
+                                                            <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
+                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {composeFocused && (
+                                                        <div className="compose-actions">
+                                                            <div className="compose-tools">
+                                                                <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()}>
+                                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                                        <circle cx="8.5" cy="8.5" r="1.5" />
+                                                                        <polyline points="21 15 16 10 5 21" />
+                                                                    </svg>
+                                                                </button>
+                                                                <input
+                                                                    ref={composeMediaInputRef}
+                                                                    type="file"
+                                                                    accept="image/*,.gif"
+                                                                    onChange={handleComposeMediaSelect}
+                                                                    style={{ display: 'none' }}
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                className="compose-submit-btn"
+                                                                onClick={handleProfilePost}
+                                                                disabled={composeLoading || (!composeText.trim() && !composeMedia)}
+                                                            >
+                                                                {composeLoading ? (
+                                                                    <div className="compose-spinner" />
+                                                                ) : 'Paylaş'}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Posts Feed */}
+                                        {postsLoading ? (
+                                            <div className="profile-posts-loading">
+                                                <div className="spinner" />
+                                            </div>
+                                        ) : postsError === 'not_found' ? (
+                                            <div className="empty-tab">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                                </svg>
+                                                <p>Henüz gönderi yok.</p>
+                                            </div>
+                                        ) : postsError ? (
+                                            <div className="empty-tab">
+                                                Gönderiler yüklenemedi.
+                                            </div>
+                                        ) : userPosts.length === 0 ? (
+                                            <div className="empty-tab">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                                </svg>
+                                                <p>Henüz gönderi paylaşılmamış.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="profile-posts-feed">
+                                                {userPosts.map((post) => (
+                                                    <article key={post._id} className="profile-post-card">
+                                                        {/* Portal/Channel Badge */}
+                                                        {post.portal && (
+                                                            <div
+                                                                className="post-portal-badge"
+                                                                onClick={() => navigate(`/portal/${post.portal._id || post.portal}`)}
+                                                            >
+                                                                <div className="badge-portal-avatar">
+                                                                    {post.portal.avatar ? (
+                                                                        <img src={getImageUrl(post.portal.avatar)} alt="" />
+                                                                    ) : (
+                                                                        <div className="badge-avatar-placeholder">
+                                                                            {(post.portal.name || 'P')?.[0]}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <span className="badge-portal-name">{post.portal.name || 'Portal'}</span>
+                                                                {post.channel && (
+                                                                    <>
+                                                                        <svg className="badge-separator" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <polyline points="9 18 15 12 9 6" />
+                                                                        </svg>
+                                                                        <span className="badge-channel-name">#{post.channel.name || 'kanal'}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {!post.portal && (
+                                                            <div className="post-portal-badge personal-badge">
+                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                                    <circle cx="12" cy="7" r="4" />
+                                                                </svg>
+                                                                <span className="badge-portal-name">Kişisel Paylaşım</span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Post Content */}
+                                                        <div className="profile-post-body">
+                                                            <div className="profile-post-header">
+                                                                <Link to={`/profile/${post.author?.username || profileUser?.username}`} className="post-author-link">
+                                                                    <span className="post-author-name">
+                                                                        {post.author?.profile?.displayName || post.author?.username || profileUser?.profile?.displayName || profileUser?.username}
+                                                                    </span>
+                                                                    <Badge type={post.author?.verificationBadge || profileUser?.verificationBadge} size={14} />
+                                                                    <span className="post-author-username">@{post.author?.username || profileUser?.username}</span>
+                                                                </Link>
+                                                                <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
+                                                            </div>
+
+                                                            {post.content && (
+                                                                <div className="profile-post-text">
+                                                                    <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                                        {post.content.length > 280
+                                                                            ? <>{linkifyText(post.content.slice(0, 280))}...
+                                                                                <Link to={`/post/${post._id}`} className="read-more-link">devamını gör</Link>
+                                                                              </>
+                                                                            : linkifyText(post.content)
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Media */}
+                                                            {post.media && (
+                                                                <div className="profile-post-media">
+                                                                    {post.mediaType === 'video' ? (
+                                                                        <VideoPlayer src={getImageUrl(post.media)} className="post-video-player" />
+                                                                    ) : post.mediaType === 'youtube' ? (
+                                                                        <div className="profile-post-youtube">
+                                                                            <img
+                                                                                src={`https://img.youtube.com/vi/${(() => {
+                                                                                    const match = post.media.match(/(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*)/);
+                                                                                    return match ? match[1] : '';
+                                                                                })()}/hqdefault.jpg`}
+                                                                                alt="YouTube"
+                                                                                loading="lazy"
+                                                                            />
+                                                                            <div className="youtube-play-overlay">
+                                                                                <svg viewBox="0 0 68 48" width="48" height="34">
+                                                                                    <path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="red" />
+                                                                                    <path d="M45 24L27 14v20" fill="white" />
+                                                                                </svg>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <img
+                                                                            src={getImageUrl(post.media)}
+                                                                            alt="Post media"
+                                                                            loading="lazy"
+                                                                            decoding="async"
+                                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Post Stats */}
+                                                            <div className="profile-post-stats">
+                                                                {post.likeCount > 0 && (
+                                                                    <span className="stat-item">
+                                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="none">
+                                                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                                                        </svg>
+                                                                        {post.likeCount}
+                                                                    </span>
+                                                                )}
+                                                                {post.commentCount > 0 && (
+                                                                    <span className="stat-item">
+                                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                                                        </svg>
+                                                                        {post.commentCount}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </article>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {activeTab === 'memberships' && (
                                     <div className="tab-content fade-in">
                                         <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
