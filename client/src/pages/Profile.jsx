@@ -385,18 +385,9 @@ const Profile = () => {
         }
     };
 
-    const handleMessage = async () => {
+    const handleMessage = () => {
         if (!profileUser || isOwnProfile) return;
-        try {
-            // Create DM or get existing
-            const response = await axios.post('/api/channels', {
-                type: 'dm',
-                recipientId: profileUser._id,
-            });
-            navigate(`/channels/me/${response.data._id}`);
-        } catch (err) {
-            console.error('Message action failed:', err);
-        }
+        navigate(`/inbox?user=${profileUser.username}`);
     };
 
     // Helper for button text
@@ -884,6 +875,19 @@ const Profile = () => {
                                                                     <span className="post-author-username">@{post.author?.username || profileUser?.username}</span>
                                                                 </Link>
                                                                 <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
+                                                                {isOwnProfile && post.portal && (
+                                                                    <button
+                                                                        className="go-to-post-btn"
+                                                                        onClick={() => navigate(`/portal/${post.portal._id || post.portal}?post=${post._id}`)}
+                                                                        title="Gönderiye Git"
+                                                                    >
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                                            <polyline points="15 3 21 3 21 9"></polyline>
+                                                                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
                                                             </div>
 
                                                             {post.content && (

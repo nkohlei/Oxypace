@@ -224,7 +224,7 @@
     font-size: 14px;
     font-weight: 500;
     font-family: 'Inter', sans-serif;
-    margin-top: -2px;
+    margin-top: 2px;
 }
 
 .profile-edit-trigger-btn {
@@ -873,6 +873,25 @@
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
+}
+
+.go-to-post-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.go-to-post-btn:hover {
+    color: var(--primary-cyan);
+    background: rgba(96, 165, 250, 0.1);
 }
 
 .post-author-link {
