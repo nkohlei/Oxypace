@@ -126,6 +126,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         className="native-video-element"
         playsInline
         loop
+        crossOrigin="anonymous"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
       />
