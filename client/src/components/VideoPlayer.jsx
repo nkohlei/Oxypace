@@ -1,93 +1,55 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize2 } from 'lucide-react';
+import { Play, Pause, Maximize2 } from 'lucide-react';
 import './VideoPlayer.css';
-
-/**
- * GLOBAL VIDEO REGISTRY (v15.1 - THE FINAL TRUTH)
- * Absolute Fix for Browser Audio Block & Progress Bar Logic.
- */
-const activeVideos = new Set();
-let sessionUnmuted = false;
-
-if (typeof window !== 'undefined') {
-  const globalUnmuteHandler = () => {
-    if (sessionUnmuted) return;
-    sessionUnmuted = true;
-    
-    // Direct DOM manipulation during the SAME user gesture event loop
-    activeVideos.forEach(video => {
-      if (video) {
-        video.muted = false;
-        video.volume = 1;
-        video.play().catch(() => {});
-      }
-    });
-
-    window.dispatchEvent(new CustomEvent('OX_SOUND_ACTIVATED'));
-    
-    // Unblock site-wide
-    window.removeEventListener('mousedown', globalUnmuteHandler, true);
-    window.removeEventListener('touchstart', globalUnmuteHandler, true);
-    window.removeEventListener('keydown', globalUnmuteHandler, true);
-  };
-
-  window.addEventListener('mousedown', globalUnmuteHandler, { capture: true, passive: true });
-  window.addEventListener('touchstart', globalUnmuteHandler, { capture: true, passive: true });
-}
 
 const VideoPlayer = ({ src, poster, className }) => {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(!sessionUnmuted);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [showSoundToast, setShowSoundToast] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
 
-  // 1. Lifecycle: Register/Unregister with global registry
+  // --- Strict Unmuted Autoplay Engine ---
   useEffect(() => {
     const video = videoRef.current;
     if (video) {
-      activeVideos.add(video);
-      // Ensure initial muted state (Mandatory for autoplay)
-      video.muted = !sessionUnmuted;
-      video.volume = 1;
+        // ALWAYS Unmuted by strict user policy!
+        video.muted = false;
+        video.volume = 1;
+
+        // Ensure we load the metadata for accurate progress bars
+        video.load();
+        
+        // Try forcing play immediately on mount
+        const playPromise = video.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                setIsPlaying(true);
+                setAutoplayBlocked(false);
+            }).catch(error => {
+                // Browser natively blocked unmuted autoplay (Chrome/Safari policy)
+                // Video stays paused, we show a play button telling user to interact.
+                console.warn('Autoplay natively blocked by browser:', error);
+                setIsPlaying(false);
+                setAutoplayBlocked(true);
+            });
+        }
     }
+  }, [src]); // Re-run when video source changes
 
-    const onSoundActivated = () => {
-      setIsMuted(false);
-      setShowSoundToast(true);
-      setTimeout(() => setShowSoundToast(false), 3000);
-    };
-
-    window.addEventListener('OX_SOUND_ACTIVATED', onSoundActivated);
-    if (sessionUnmuted) setIsMuted(false);
-
-    return () => {
-      if (video) activeVideos.delete(video);
-      window.removeEventListener('OX_SOUND_ACTIVATED', onSoundActivated);
-    };
-  }, []);
-
-  // 2. Playback Handlers: NO STOP PROPAGATION (Must bubble to trigger unblock)
+  // Playback Handlers
   const togglePlay = (e) => {
-    // CRITICAL: We DO NOT e.stopPropagation() here anymore.
-    // This allows the click to bubble up to the global unblock handler.
-    
+    if (e) e.stopPropagation();
     if (!videoRef.current) return;
-
-    // Direct, Immediate Unblock on First Interaction
-    if (videoRef.current.muted) {
-       videoRef.current.muted = false;
-       videoRef.current.volume = 1;
-       setIsMuted(false);
-    }
 
     if (videoRef.current.paused) {
       videoRef.current.play().catch(() => {});
       setIsPlaying(true);
+      setAutoplayBlocked(false);
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -102,9 +64,7 @@ const VideoPlayer = ({ src, poster, className }) => {
     setCurrentTime(current);
     if (total > 0) {
       setDuration(total);
-      // Precision math for the progress bar (Fixed 'sonda kalma' bug)
-      const preciseProgress = (current / total) * 100;
-      setProgress(preciseProgress);
+      setProgress((current / total) * 100);
     }
   };
 
@@ -128,16 +88,11 @@ const VideoPlayer = ({ src, poster, className }) => {
 
   return (
     <div 
-      className={`native-player-container left-aligned v15-final ${className || ''}`}
+      className={`native-player-container left-aligned v16-scale ${className || ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={togglePlay}
     >
-      {/* 
-          CRITICAL: NO muted={isMuted} prop here. 
-          React state can conflict with browser video properties.
-          We control muted status DIRECTLY through the videoRef.
-      */}
       <video
         ref={videoRef}
         src={src}
@@ -145,45 +100,38 @@ const VideoPlayer = ({ src, poster, className }) => {
         className="native-video-element"
         playsInline
         loop
-        autoPlay
+        // Did not include `autoPlay` as a prop directly because React can conflict with 
+        // our custom playPromise logic above.
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
         onWaiting={() => setIsBuffering(true)}
-        onPlaying={() => setIsBuffering(false)}
+        onPlaying={() => { setIsBuffering(false); setIsPlaying(true); setAutoplayBlocked(false); }}
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
       />
 
-      {/* 1. Universal "Sound Blocked" Toast (Subtle) */}
-      {isMuted && !isBuffering && (
-        <div className="native-unmute-hint">
-          <VolumeX size={16} /> <span>SESİ AÇMAK İÇİN SİTEDE HERHANGİ BİR YERE TIKLAYIN</span>
-        </div>
-      )}
-
-      {/* 2. Sound Activation Feedback */}
-      {showSoundToast && (
-        <div className="native-sound-toast">
-          <Volume2 size={16} /> <span>SES ETKİN</span>
-        </div>
-      )}
-
-      {/* 3. Loading Loader */}
+      {/* Loading Loader */}
       {isBuffering && (
         <div className="native-loader-overlay">
           <div className="native-spinner"></div>
-          <span className="native-loader-text">YÜKLENİYOR...</span>
         </div>
       )}
 
-      {/* 4. Play Hint (on pause) */}
-      {!isPlaying && !isBuffering && (
+      {/* Tarayıcı Engeli Uyarısı (Click to Start) */}
+      {autoplayBlocked && !isPlaying && !isBuffering && (
+        <div className="native-autoplay-warning">
+          <span>Başlat</span>
+        </div>
+      )}
+
+      {/* Play Hint (on standard pause) */}
+      {!isPlaying && !isBuffering && !autoplayBlocked && (
         <div className="native-play-hint">
           <Play size={48} fill="white" stroke="none" />
         </div>
       )}
 
-      {/* 5. Interface Row */}
+      {/* Interface Row */}
       <div className={`native-controls-ui ${isHovered || !isPlaying ? 'is-visible' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="native-progress-area" onClick={handleScrub}>
           <div className="native-progress-track">
@@ -206,6 +154,7 @@ const VideoPlayer = ({ src, poster, className }) => {
           </div>
 
           <div className="native-controls-right">
+             {/* No volume buttons entirely as requested! */}
              <button className="native-control-btn" onClick={() => videoRef.current?.requestFullscreen()}>
                 <Maximize2 size={18} />
              </button>

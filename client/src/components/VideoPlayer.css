@@ -1,5 +1,5 @@
-/* Gesture Lock VideoPlayer v15.0 - Absolute Audio Fix */
-.native-player-container.v15-gesture {
+/* Scale Native VideoPlayer v16.0 - Full Autoplay & True Scale */
+.native-player-container.v16-scale {
     position: relative;
     width: fit-content;
     max-width: 100%;
@@ -18,61 +18,42 @@
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: 85vh;
+    /* REMOVED max-height to respect the video's natural dimensions */
     object-fit: contain;
     border-radius: 12px;
 }
 
-/* --- THE UNMUTE HINTS (SUBTLE) --- */
-.native-unmute-hint {
+/* --- AUTOPLAY WARNING (When browser blocks unmuted playback) --- */
+.native-autoplay-warning {
     position: absolute;
-    top: 15px;
-    left: 15px;
+    inset: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    pointer-events: none;
+}
+
+.native-autoplay-warning span {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    padding: 12px 24px;
+    border-radius: 30px;
     color: #fff;
-    font-size: 10px;
+    font-size: 14px;
     font-weight: 800;
     letter-spacing: 1px;
-    pointer-events: none;
-    z-index: 60;
-    animation: native-pulse 2s infinite;
+    font-family: 'Inter', sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    animation: native-pulse 2.5s infinite;
 }
 
 @keyframes native-pulse {
-    0% { opacity: 0.8; }
-    50% { opacity: 1; }
-    100% { opacity: 0.8; }
-}
-
-.native-sound-toast {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: #fff;
-    color: #000;
-    border-radius: 30px;
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: 1px;
-    z-index: 70;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    animation: native-slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes native-slideIn {
-    from { transform: translateY(-20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    0% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 0.8; transform: scale(1); }
 }
 
 /* --- THE LOADER --- */
@@ -83,32 +64,22 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(4px);
     z-index: 40;
-    gap: 15px;
 }
 
 .native-spinner {
-    width: 50px;
-    height: 50px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top: 3px solid #fff;
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #fff;
     border-radius: 50%;
     animation: native-spin 1s linear infinite;
 }
 
 @keyframes native-spin {
     to { transform: rotate(360deg); }
-}
-
-.native-loader-text {
-    color: #fff;
-    font-size: 11px;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    letter-spacing: 2px;
-    opacity: 0.7;
 }
 
 /* --- PLAY HINT --- */
@@ -129,7 +100,7 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 30px 20px 15px;
+    padding: 40px 20px 15px;
     background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
     opacity: 0;
     transform: translateY(10px);
@@ -222,7 +193,7 @@
 }
 
 .native-time-display {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
     font-family: 'Inter', sans-serif;
     display: flex;
