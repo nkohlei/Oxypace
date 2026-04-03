@@ -1,15 +1,15 @@
-/* Refined Vidstack Wrapper v7.0 - Left Aligned Pro */
-.vidstack-wrapper.left-aligned.v7-pro {
+/* Refined Vidstack Wrapper v8.0 - Nuclear Stability */
+.vidstack-wrapper.left-aligned.v8-nuclear {
     position: relative;
     width: fit-content;
     max-width: 100%;
-    margin: 12px 0; /* Aligned to the left */
+    margin: 12px 0; /* Forced Left Alignment */
     border-radius: 12px;
     overflow: hidden;
     background: transparent;
     user-select: none;
     display: block;
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.6);
 }
 
 .vidstack-player {
@@ -33,8 +33,8 @@
     background: transparent;
 }
 
-/* --- INTERACTIVE LAYER --- */
-.vid-overlay-surface {
+/* --- THE INTERACTIVE CONTROL SURFACE --- */
+.vid-control-surface {
     position: absolute;
     inset: 0;
     display: flex;
@@ -44,31 +44,39 @@
     cursor: pointer;
 }
 
-/* Muted Alert - Subtle guidance */
-.vid-muted-alert {
+/* Unmute Prompt - For when the browser blocks audio */
+.vid-unmute-prompt {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 20px;
+    right: 20px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: 40px;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(12px);
-    border: 1.5px solid rgba(0, 195, 255, 0.6);
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 50px;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(15px);
+    border: 1.5px solid rgba(0, 195, 255, 0.8);
     color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-    z-index: 15;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    z-index: 20;
     pointer-events: none;
+    box-shadow: 0 0 20px rgba(0, 195, 255, 0.3);
+    animation: bounceSlow 2s ease-in-out infinite;
 }
 
-/* Center Play Icon */
-.vid-center-play {
-    width: 60px;
-    height: 60px;
-    background: rgba(0, 0, 0, 0.5);
+@keyframes bounceSlow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* Center Play/Pause State Icon */
+.vid-state-icon {
+    width: 65px;
+    height: 65px;
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
@@ -77,124 +85,127 @@
     justify-content: center;
     color: #fff;
     opacity: 0;
-    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-    transform: scale(0.85);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: scale(0.8);
 }
 
-.vid-overlay-surface:hover .vid-center-play.is-paused {
+.vid-control-surface:hover .vid-state-icon.is-paused {
     opacity: 1;
     transform: scale(1);
 }
 
-/* --- BOTTOM CONTROLS BAR (HOVER-ONLY) --- */
-.vid-controls-bar {
+/* --- THE "O KADAR" MINIMAL UI (HOVER-ONLY) --- */
+.vid-minimal-ui {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 30px 15px 12px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
-    opacity: 0; /* Hidden by default */
-    transform: translateY(10px);
-    transition: all 0.3s ease-out;
-    z-index: 20;
+    padding: 35px 20px 15px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
+    opacity: 0;
+    transform: translateY(15px);
+    transition: all 0.4s ease;
+    z-index: 25;
     box-sizing: border-box;
 }
 
-.vidstack-wrapper:hover .vid-controls-bar {
+.vidstack-wrapper:hover .vid-minimal-ui {
     opacity: 1;
     transform: translateY(0);
 }
 
-/* Slider Area */
-.vid-slider-area {
+/* High-Contrast Progress Bar */
+.vid-progress-wrapper {
     width: 100%;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
-.vid-timeslider {
+.vid-slider-root {
     position: relative;
     width: 100%;
-    height: 6px;
+    height: 8px; /* Slightly thicker for stability */
     cursor: pointer;
     display: flex;
     align-items: center;
 }
 
-.vid-ts-track {
+.vid-slider-track {
     width: 100%;
     height: 4px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 4px;
 }
 
-.vid-ts-fill {
+.vid-slider-fill {
     height: 100%;
     background: #00c3ff;
     border-radius: 4px;
-    box-shadow: 0 0 12px #00c3ff;
+    box-shadow: 0 0 15px #00c3ff;
 }
 
-.vid-ts-progress {
+.vid-slider-buffered {
     height: 100%;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
 }
 
-.vid-ts-thumb {
-    width: 14px;
-    height: 14px;
+.vid-slider-thumb {
+    width: 15px;
+    height: 15px;
     background: #fff;
     border-radius: 50%;
-    box-shadow: 0 0 12px #00c3ff;
+    box-shadow: 0 0 15px #00c3ff;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, transform 0.2s;
 }
 
-.vid-timeslider:hover .vid-ts-thumb {
+.vid-slider-root:hover .vid-slider-thumb {
     opacity: 1;
+    transform: scale(1.2);
 }
 
-/* Bottom Meta Row */
-.vid-meta-row {
+/* Bottom Meta Info Row */
+.vid-bottom-meta {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.vid-left-side {
+.vid-playback-group {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.vid-ctrl-btn {
+.vid-btn-small {
     background: none;
     border: none;
     color: #fff;
     cursor: pointer;
-    padding: 4px;
+    padding: 6px;
     transition: transform 0.2s;
 }
 
-.vid-ctrl-btn:hover {
+.vid-btn-small:hover {
     color: #00c3ff;
-    transform: scale(1.1);
+    transform: scale(1.15);
 }
 
-/* Time Display (Current / Duration) */
-.vid-time-info {
+/* Precision Time Display (Current / Total) */
+.vid-timestamp {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     color: #fff;
     font-size: 13px;
-    font-family: inherit;
-    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.divider {
-    opacity: 0.5;
+.vid-sep {
+    color: #00c3ff;
+    opacity: 0.8;
 }
 
 /* State Visibility Helpers */
