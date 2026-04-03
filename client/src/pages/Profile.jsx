@@ -137,11 +137,11 @@ const Profile = () => {
             if (composeMedia) {
                 formDataObj.append('media', composeMedia);
             }
-            // No portalId = profile-only post
-            const backendUrl = import.meta.env.DEV
-                ? '/api/posts'
-                : 'https://globalmessage-backend.koyeb.app/api/posts';
-            const res = await axios.post(backendUrl, formDataObj);
+            
+            // Standard relative path; Vite proxy will forward to koyeb in dev, 
+            // and Vercel will rewrite to koyeb in prod
+            const res = await axios.post('/api/posts', formDataObj);
+            
             // Prepend optimistically
             setUserPosts(prev => [{
                 ...res.data,
@@ -180,7 +180,23 @@ const Profile = () => {
     const removeComposeMedia = () => {
         setComposeMedia(null);
         setComposeMediaPreview(null);
+        if (composeMediaInputRef.current) {
+            composeMediaInputRef.current.value = '';
+        }
     };
+
+    // Close compose box on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (composeFocused && composeBoxRef.current && !composeBoxRef.current.contains(e.target)) {
+                if (!composeText.trim() && !composeMedia) {
+                    setComposeFocused(false);
+                }
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [composeFocused, composeText, composeMedia]);
 
     // Format date helper for posts
     const formatPostDate = (date) => {

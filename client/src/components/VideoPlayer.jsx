@@ -89,23 +89,20 @@ const VideoPlayer = ({ src, poster, className }) => {
                 const [entry] = entries;
                 setIsVisible(entry.isIntersecting);
 
-                if (entry.isIntersecting) {
-                    if (videoRef.current && !isLoaded) {
-                        videoRef.current.preload = 'metadata';
-                    }
-                } else {
+                if (!entry.isIntersecting) {
+                    // Pause only when completely out of view
                     if (videoRef.current && !videoRef.current.paused) {
                         videoRef.current.pause();
                         setIsPlaying(false);
                     }
                 }
             },
-            { threshold: 0.5, rootMargin: '100px 0px' }
+            { threshold: 0.0, rootMargin: '100px 0px' }
         );
 
         if (containerRef.current) observer.observe(containerRef.current);
         return () => containerRef.current && observer.unobserve(containerRef.current);
-    }, [isLoaded]);
+    }, []);
 
     // --- Event Handlers ---
 
@@ -265,7 +262,7 @@ const VideoPlayer = ({ src, poster, className }) => {
                     loop
                     poster={poster}
                     className="main-video"
-                    preload="none"
+                    preload="metadata"
                     playsInline
                     onLoadedMetadata={() => {
                         setIsLoaded(true);

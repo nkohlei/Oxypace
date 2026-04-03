@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import PostCard from '../components/PostCard';
 import ChannelSidebar from '../components/ChannelSidebar';
@@ -21,6 +21,9 @@ import './Portal.css';
 
 const Portal = () => {
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
+    const urlChannel = searchParams.get('channel');
+    const urlPost = searchParams.get('post');
     const { user, updateUser, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = useUI();
@@ -37,6 +40,7 @@ const Portal = () => {
 
     // Channel State
     const [currentChannel, setCurrentChannel] = useState(null);
+    const [hasScrolledToPost, setHasScrolledToPost] = useState(false);
     const [messageText, setMessageText] = useState('');
 
     // UI Toggles
@@ -233,6 +237,13 @@ const Portal = () => {
         if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
             // Check if we need to set a default channel (only if currentChannel is null)
             if (!currentChannel) {
+                if (urlChannel) {
+                    const matchedChannel = portal.channels.find(c => String(c._id) === String(urlChannel));
+                    if (matchedChannel) {
+                        setCurrentChannel(matchedChannel._id);
+                        return;
+                    }
+                }
                 const defaultChannel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
                 if (defaultChannel) {
                     setCurrentChannel(defaultChannel._id);
@@ -257,6 +268,21 @@ const Portal = () => {
             fetchChannelPosts();
         }
     }, [id, currentChannel, portal]);
+
+    // Scroll to specific post when loaded
+    useEffect(() => {
+        if (urlPost && !hasScrolledToPost && !contentLoading && Array.isArray(posts) && posts.length > 0) {
+            const postElement = document.getElementById(`post-${urlPost}`);
+            if (postElement) {
+                setTimeout(() => {
+                    postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    postElement.classList.add('highlight-post');
+                    setTimeout(() => postElement.classList.remove('highlight-post'), 2000);
+                    setHasScrolledToPost(true);
+                }, 100);
+            }
+        }
+    }, [urlPost, posts, contentLoading, hasScrolledToPost]);
 
     useEffect(() => {
         if (portal && user) {

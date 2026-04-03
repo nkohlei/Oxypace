@@ -305,6 +305,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
     return (
         <article
+            id={`post-${post._id}`}
             className={`post-card twitter-layout ${post.isOptimistic ? 'optimistic' : ''}`}
             onClick={handleCardClick}
             onMouseLeave={handleMouseLeave}
