@@ -894,7 +894,7 @@ const Profile = () => {
                                                                 {isOwnProfile && post.portal && (
                                                                     <button
                                                                         className="go-to-post-btn"
-                                                                        onClick={() => navigate(`/portal/${post.portal._id || post.portal}?post=${post._id}`)}
+                                                                        onClick={() => navigate(`/post/${post._id}`)}
                                                                         title="Gönderiye Git"
                                                                     >
                                                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

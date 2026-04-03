@@ -259,8 +259,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
 
     const handleCardClick = (e) => {
-        // Static message - no navigation
-        e.preventDefault();
+        // Prevent navigation if clicking on a button, link, or menu
+        if (
+            e.target.closest('button') ||
+            e.target.closest('a') ||
+            e.target.closest('.post-menu-dropdown') ||
+            e.target.closest('.post-header-menu') ||
+            e.target.closest('.video-container') ||
+            e.target.closest('.double-tap-zone') ||
+            e.target.closest('.video-controls-overlay')
+        ) {
+            return;
+        }
+        navigate(`/post/${post._id}`);
     };
 
     const handleProfileClick = (e) => {

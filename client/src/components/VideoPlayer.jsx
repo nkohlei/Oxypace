@@ -113,7 +113,18 @@ const VideoPlayer = ({ src, poster, className }) => {
         if (isPlaying) {
             videoRef.current.pause();
         } else {
-            videoRef.current.play();
+            const playPromise = videoRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log('Play blocked:', error);
+                    // If browser blocks unmuted play, try muting it first
+                    if (!videoRef.current.muted) {
+                        videoRef.current.muted = true;
+                        setIsMuted(true);
+                        videoRef.current.play().catch(e => console.error('Still blocked', e));
+                    }
+                });
+            }
         }
     };
 
@@ -151,6 +162,8 @@ const VideoPlayer = ({ src, poster, className }) => {
 
     // Double Tap Logic
     const lastTapRef = useRef(0);
+    const tapTimeoutRef = useRef(null);
+
     const handleZoneClick = (direction, e) => {
         e.stopPropagation();
         const now = Date.now();
@@ -158,17 +171,21 @@ const VideoPlayer = ({ src, poster, className }) => {
 
         if (diff < 300) {
             // Double Tap Detected
+            clearTimeout(tapTimeoutRef.current);
             setTapAnimation(direction);
             const seekAmount = 10;
             if (videoRef.current) {
                 videoRef.current.currentTime += (direction === 'left' ? -seekAmount : seekAmount);
             }
             setTimeout(() => setTapAnimation(null), 500);
+            lastTapRef.current = 0; // Reset
         } else {
-            // Single Tap - toggle play/pause
-            togglePlay();
+            // Single Tap - Wait to see if it becomes a double tap
+            lastTapRef.current = now;
+            tapTimeoutRef.current = setTimeout(() => {
+                togglePlay();
+            }, 300);
         }
-        lastTapRef.current = now;
 
         // Ensure controls show on tap
         handleMouseMove();
@@ -180,6 +197,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         setVolume(val);
         if (videoRef.current) {
             videoRef.current.volume = val;
+            videoRef.current.muted = (val === 0);
             setIsMuted(val === 0);
         }
         handleMouseMove();
@@ -191,9 +209,11 @@ const VideoPlayer = ({ src, poster, className }) => {
 
         if (isMuted) {
             videoRef.current.volume = volume || 1;
+            videoRef.current.muted = false;
             setIsMuted(false);
         } else {
             videoRef.current.volume = 0;
+            videoRef.current.muted = true;
             setIsMuted(true);
         }
         handleMouseMove();
