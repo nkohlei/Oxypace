@@ -12,7 +12,6 @@ const VideoPlayer = ({ src, poster, className }) => {
     const [buffered, setBuffered] = useState(0);
     const [isMuted, setIsMuted] = useState(true); // Must be true for autoplay
     const [showControls, setShowControls] = useState(true);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [hasInteraction, setHasInteraction] = useState(false);
 
     const controlsTimeoutRef = useRef(null);
@@ -21,7 +20,6 @@ const VideoPlayer = ({ src, poster, className }) => {
     useEffect(() => {
         if (!videoRef.current) return;
         videoRef.current.muted = isMuted;
-        // Explicitly set volume when unmuted to ensure sound
         if (!isMuted) {
             videoRef.current.volume = 1;
         }
@@ -106,29 +104,12 @@ const VideoPlayer = ({ src, poster, className }) => {
 
     const toggleMute = (e) => {
         if (e) e.stopPropagation();
-        // FORCE sound on click
         setIsMuted(!isMuted);
         if (videoRef.current) {
             videoRef.current.muted = !isMuted;
             videoRef.current.volume = 1;
         }
     };
-
-    const toggleFullscreen = (e) => {
-        e.stopPropagation();
-        if (!containerRef.current) return;
-        if (!document.fullscreenElement) {
-            containerRef.current.requestFullscreen?.() || containerRef.current.webkitRequestFullscreen?.();
-        } else {
-            document.exitFullscreen?.();
-        }
-    };
-
-    useEffect(() => {
-        const handleFS = () => setIsFullscreen(!!document.fullscreenElement);
-        document.addEventListener('fullscreenchange', handleFS);
-        return () => document.removeEventListener('fullscreenchange', handleFS);
-    }, []);
 
     const formatTime = (seconds) => {
         if (isNaN(seconds)) return "0:00";
@@ -141,8 +122,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         Play: () => <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M8 5v14l11-7z" /></svg>,
         Pause: () => <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>,
         VolumeMute: () => <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3z" /></svg>,
-        VolumeUp: () => <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>,
-        Fullscreen: () => <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zM17 7h-3V5h5v5h-2V7z" /></svg>
+        VolumeUp: () => <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>
     };
 
     return (
@@ -167,14 +147,14 @@ const VideoPlayer = ({ src, poster, className }) => {
                 />
             </div>
 
-            {/* Big Play Button Overlay */}
+            {/* Play/Pause Overlay Only */}
             {!isPlaying && (
                 <button className="minimal-play-overlay" onClick={togglePlay}>
                     <Icons.Play />
                 </button>
             )}
 
-            {/* Unmute Prompt */}
+            {/* Unmute Prompt (Pure necessity for sound) */}
             {isMuted && isPlaying && (
                 <button className="minimal-unmute-btn" onClick={toggleMute}>
                     <Icons.VolumeMute />
@@ -182,7 +162,7 @@ const VideoPlayer = ({ src, poster, className }) => {
                 </button>
             )}
 
-            {/* Simple Controls */}
+            {/* Control Bar (Scrubbing + Time + Play/Pause) */}
             <div className={`minimal-controls ${showControls ? 'visible' : ''}`}>
                 <div className="minimal-scrubber" onClick={handleSeek}>
                     <div className="minimal-buffer" style={{ width: `${buffered}%` }} />
@@ -195,10 +175,8 @@ const VideoPlayer = ({ src, poster, className }) => {
                     </button>
                     
                     <span className="minimal-time">{formatTime(currentTime)} / {formatTime(duration)}</span>
-
-                    <button className="minimal-btn fs-btn" onClick={toggleFullscreen}>
-                        <Icons.Fullscreen />
-                    </button>
+                    
+                    {/* No Fullscreen Button "o kadar" */}
                 </div>
             </div>
         </div>
