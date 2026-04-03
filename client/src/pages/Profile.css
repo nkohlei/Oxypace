@@ -120,8 +120,16 @@
     width: 100%;
     display: flex;
     align-items: flex-end;
+    justify-content: space-between;
     gap: 16px;
     z-index: 30;
+}
+
+.profile-top-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px; /* Add slight margin to align visually near center of avatar */
 }
 
 .profile-avatar-container {
@@ -183,14 +191,23 @@
 .user-main-title {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
 }
 
 .user-main-title .title-row {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 6px;
     flex-wrap: wrap;
+    line-height: 0.9;
+    margin-bottom: 2px;
+}
+
+.badge-alignment-container {
+    display: flex;
+    align-items: flex-end;
+    /* Adjust margin slightly if the checkmark sits too low compared to text baseline */
+    margin-bottom: 2px; 
 }
 
 .user-main-title h1 {
@@ -198,6 +215,8 @@
     font-weight: 700;
     color: var(--text-primary);
     letter-spacing: -0.5px;
+    margin: 0;
+    line-height: 0.9;
 }
 
 .profile-username-tag {
@@ -205,6 +224,7 @@
     font-size: 14px;
     font-weight: 500;
     font-family: 'Inter', sans-serif;
+    margin-top: -2px;
 }
 
 .profile-edit-trigger-btn {

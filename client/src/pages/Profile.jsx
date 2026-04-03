@@ -565,9 +565,44 @@ const Profile = () => {
                                     style={{ display: 'none' }}
                                     accept="image/*"
                                 />
+
+                                <div className="profile-top-right-actions">
+                                    {/* Action Buttons: Tanış/Mesaj for other profiles, Düzenle for own */}
+                                    {!isOwnProfile && (
+                                        <div className="profile-header-actions">
+                                            <div className="action-row">
+                                                {getFollowButton()}
+                                                <button
+                                                    className="profile-action-btn primary"
+                                                    onClick={handleMessage}
+                                                    style={{ minWidth: '80px' }}
+                                                >
+                                                    Mesaj
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {isOwnProfile && (
+                                        <button
+                                            className="profile-edit-trigger-btn"
+                                            onClick={() => setEditing(true)}
+                                        >
+                                            <svg
+                                                width="14"
+                                                height="14"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2.5"
+                                            >
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                            Düzenle
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-
-
 
                             <div className="user-details-info">
                                 <div className="user-main-title">
@@ -576,47 +611,14 @@ const Profile = () => {
                                             {profileUser?.profile?.displayName ||
                                                 profileUser?.username}
                                         </h1>
-                                        <Badge type={profileUser?.verificationBadge} />
+                                        <div className="badge-alignment-container">
+                                            <Badge type={profileUser?.verificationBadge} />
+                                        </div>
                                     </div>
                                     <span className="profile-username-tag">
                                         @{profileUser?.username}
                                     </span>
                                 </div>
-
-                                {/* Action Buttons: Tanış/Mesaj for other profiles, Düzenle for own */}
-                                {!isOwnProfile && (
-                                    <div className="profile-header-actions">
-                                        <div className="action-row">
-                                            {getFollowButton()}
-                                            <button
-                                                className="profile-action-btn primary"
-                                                onClick={handleMessage}
-                                                style={{ minWidth: '80px' }}
-                                            >
-                                                Mesaj
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                {isOwnProfile && (
-                                    <button
-                                        className="profile-edit-trigger-btn"
-                                        onClick={() => setEditing(true)}
-                                    >
-                                        <svg
-                                            width="14"
-                                            height="14"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2.5"
-                                        >
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                        </svg>
-                                        Düzenle
-                                    </button>
-                                )}
 
                                 {profileUser?.profile?.bio && (
                                     <div className="profile-bio-text">
