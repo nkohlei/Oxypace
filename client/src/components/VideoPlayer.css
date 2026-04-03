@@ -1,16 +1,14 @@
-/* Scale Native VideoPlayer v16.0 - Full Autoplay & True Scale */
+/* Scale Native VideoPlayer v16.0 - Full Autoplay & True Scale (Pure DOM) */
 .native-player-container.v16-scale {
     position: relative;
     width: fit-content;
     max-width: 100%;
-    margin: 12px 0; /* Aligned to the left */
+    margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
     background: #000;
-    user-select: none;
     display: block;
     box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.7);
-    cursor: pointer;
 }
 
 .native-video-element {
@@ -18,111 +16,34 @@
     width: auto;
     max-width: 100%;
     height: auto;
-    /* REMOVED max-height to respect the video's natural dimensions */
     object-fit: contain;
     border-radius: 12px;
+    background: transparent;
 }
 
-/* --- AUTOPLAY WARNING (When browser blocks unmuted playback) --- */
-.native-autoplay-warning {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: 20;
-    pointer-events: none;
-}
-
-.native-autoplay-warning span {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(8px);
-    padding: 12px 24px;
-    border-radius: 30px;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    font-family: 'Inter', sans-serif;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    animation: native-pulse 2.5s infinite;
-}
-
-@keyframes native-pulse {
-    0% { opacity: 0.8; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.05); }
-    100% { opacity: 0.8; transform: scale(1); }
-}
-
-/* --- THE LOADER --- */
-.native-loader-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(4px);
-    z-index: 40;
-}
-
-.native-spinner {
-    width: 60px;
-    height: 60px;
-    border: 4px solid rgba(255, 255, 255, 0.1);
-    border-top: 4px solid #fff;
-    border-radius: 50%;
-    animation: native-spin 1s linear infinite;
-}
-
-@keyframes native-spin {
-    to { transform: rotate(360deg); }
-}
-
-/* --- PLAY HINT --- */
-.native-play-hint {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    pointer-events: none;
-    opacity: 0.8;
-}
-
-/* --- CUSTOM CONTROLS --- */
+/* --- TERTEMİZ CUSTOM KONTROLLER (Her Zaman Görünür) --- */
 .native-controls-ui {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 40px 20px 15px;
+    padding: 30px 20px 15px;
     background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.4s ease-out;
     z-index: 50;
     box-sizing: border-box;
-}
-
-.native-player-container:hover .native-controls-ui,
-.native-controls-ui.is-visible {
+    /* Her zaman görünür olması için hover şartları kaldırıldı */
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
 }
 
-/* THE PROGRESS BAR (Standard White/Grey) */
+/* PROGRESS BAR (Parlayan mavi yok, standart beyaz/gri) */
 .native-progress-area {
     width: 100%;
     height: 10px;
     display: flex;
     align-items: center;
     cursor: pointer;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .native-progress-track {
@@ -162,34 +83,11 @@
     transform: translateY(-50%) scale(1.2);
 }
 
-/* BOTTOM BUTTONS */
+/* SÜRE GÖSTERİCİ (Sol Altta Sabit) */
 .native-bottom-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-}
-
-.native-controls-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    color: #fff;
-}
-
-.native-control-btn {
-    background: none;
-    border: none;
-    color: #fff;
-    padding: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-}
-
-.native-control-btn:hover {
-    transform: scale(1.2);
+    justify-content: flex-start;
 }
 
 .native-time-display {
@@ -200,6 +98,7 @@
     align-items: center;
     gap: 6px;
     opacity: 0.9;
+    color: #fff;
 }
 
 .native-time-sep {
