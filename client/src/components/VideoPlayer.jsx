@@ -10,14 +10,14 @@ const VideoPlayer = ({ src, poster, className }) => {
     const [duration, setDuration] = useState(0);
     const [progress, setProgress] = useState(0);
     const [buffered, setBuffered] = useState(0);
-    const [volume, setVolume] = useState(1);
-    const [isMuted, setIsMuted] = useState(false);
+    const [isMuted, setIsMuted] = useState(true); // Default to muted for autoplay
     const [showControls, setShowControls] = useState(true);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const [showSpeedMenu, setShowSpeedMenu] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [tapAnimation, setTapAnimation] = useState(null); // 'left' or 'right'
-    
+    const [tapAnimation, setTapAnimation] = useState(null); 
+    const [hasInteractionRef, setHasInteraction] = useState(false); // Flag for manual pausing
+
     // Timer for hiding controls
     const controlsTimeoutRef = useRef(null);
     const lastTapRef = useRef(0);
@@ -27,9 +27,8 @@ const VideoPlayer = ({ src, poster, className }) => {
         if (!videoRef.current) return;
         // Directly sync React state with DOM properties
         videoRef.current.muted = isMuted;
-        videoRef.current.volume = isMuted ? 0 : volume;
         videoRef.current.playbackRate = playbackSpeed;
-    }, [isMuted, volume, playbackSpeed]);
+    }, [isMuted, playbackSpeed]);
 
     // --- Control Visibility Logic ---
     const resetControlsTimer = useCallback(() => {
@@ -51,43 +50,45 @@ const VideoPlayer = ({ src, poster, className }) => {
         };
     }, [isPlaying, resetControlsTimer]);
 
-    // --- Intersection Observer (Pause when out of view) ---
+    // --- Intersection Observer (Autoplay on Scroll) ---
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
-                    if (!entry.isIntersecting && videoRef.current && !videoRef.current.paused) {
-                        videoRef.current.pause();
-                        setIsPlaying(false);
+                    if (entry.isIntersecting) {
+                        // Autoplay if the user hasn't manually paused it yet
+                        if (videoRef.current && videoRef.current.paused && !hasInteractionRef) {
+                            videoRef.current.play().catch(e => console.log("Autoplay blocked by browser policy"));
+                        }
+                    } else {
+                        // Pause when completely out of view
+                        if (videoRef.current && !videoRef.current.paused) {
+                            videoRef.current.pause();
+                            setIsPlaying(false);
+                        }
                     }
                 });
             },
-            { threshold: 0.1 }
+            { threshold: 0.5 } // Standard: only start when half is visible
         );
 
         if (containerRef.current) observer.observe(containerRef.current);
         return () => containerRef.current && observer.unobserve(containerRef.current);
-    }, []);
+    }, [hasInteractionRef]);
 
-    // --- Core Action: Toggle Play/Pause (Trusted Gesture) ---
+    // --- Core Action: Toggle Play/Pause ---
     const togglePlay = (e) => {
         if (e) e.stopPropagation();
         if (!videoRef.current) return;
 
         if (videoRef.current.paused) {
-            // First-play gesture starts here
-            const playPromise = videoRef.current.play();
-            if (playPromise !== undefined) {
-                playPromise.catch((error) => {
-                    console.error("Playback blocked. Falling back to muted.", error);
-                    setIsMuted(true);
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(e => console.error("Total block:", e));
-                });
-            }
+            videoRef.current.play();
+            setHasInteraction(false); // Reset manual pause flag on manual play
         } else {
             videoRef.current.pause();
+            setHasInteraction(true); // Flag that user manually paused
         }
+        resetControlsTimer();
     };
 
     // --- Event Handlers ---
@@ -111,23 +112,14 @@ const VideoPlayer = ({ src, poster, className }) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const percentage = Math.max(0, Math.min(1, x / rect.width));
-        const newTime = percentage * videoRef.current.duration;
+        const newTime = percentage * (videoRef.current.duration || 0);
         videoRef.current.currentTime = newTime;
         setProgress(percentage * 100);
     };
 
-    const handleVolumeChange = (e) => {
-        e.stopPropagation();
-        const val = parseFloat(e.target.value);
-        setVolume(val);
-        setIsMuted(val === 0);
-        resetControlsTimer();
-    };
-
     const toggleMute = (e) => {
-        e.stopPropagation();
+        if (e) e.stopPropagation();
         setIsMuted(!isMuted);
-        if (isMuted && volume === 0) setVolume(1);
         resetControlsTimer();
     };
 
@@ -165,18 +157,17 @@ const VideoPlayer = ({ src, poster, className }) => {
         const diff = now - lastTapRef.current;
 
         if (diff < 300) {
-            // Double Tap Detected
             setTapAnimation(direction);
             const seekAmount = 10;
             if (videoRef.current) {
                 videoRef.current.currentTime += (direction === 'left' ? -seekAmount : seekAmount);
             }
             setTimeout(() => setTapAnimation(null), 500);
+            lastTapRef.current = 0;
         } else {
-            // Single Tap - Just toggle play
+            lastTapRef.current = now;
             togglePlay();
         }
-        lastTapRef.current = now;
         resetControlsTimer();
     };
 
@@ -199,7 +190,7 @@ const VideoPlayer = ({ src, poster, className }) => {
 
     return (
         <div 
-            className={`modern-video-player ${className || ''}`} 
+            className={`modern-video-player adaptive-player ${className || ''}`} 
             ref={containerRef}
             onMouseMove={resetControlsTimer}
             onMouseEnter={resetControlsTimer}
@@ -236,11 +227,11 @@ const VideoPlayer = ({ src, poster, className }) => {
                 </button>
             )}
 
-            {/* Muted Hint */}
-            {isMuted && isPlaying && !showControls && (
-                <div className="muted-hint" onClick={toggleMute}>
+            {/* Muted Hint Indicator (Sesi Aç) */}
+            {isMuted && isPlaying && (
+                <div className="muted-hint persistent-hint" onClick={toggleMute}>
                     <Icons.VolumeMute width="16" height="16" />
-                    Tıkla Sesi Aç
+                    Sesi Aç
                 </div>
             )}
 
@@ -259,17 +250,9 @@ const VideoPlayer = ({ src, poster, className }) => {
                             {isPlaying ? <Icons.Pause width="24" height="24" /> : <Icons.Play width="24" height="24" />}
                         </button>
 
-                        <div className="volume-box">
-                            <button className="icon-btn" onClick={toggleMute}>
-                                {isMuted ? <Icons.VolumeMute width="22" height="22" /> : <Icons.VolumeUp width="22" height="22" />}
-                            </button>
-                            <input 
-                                type="range" min="0" max="1" step="0.01" 
-                                value={isMuted ? 0 : volume} 
-                                onChange={handleVolumeChange}
-                                className="volume-slider"
-                            />
-                        </div>
+                        <button className="icon-btn" onClick={toggleMute}>
+                            {isMuted ? <Icons.VolumeMute width="22" height="22" /> : <Icons.VolumeUp width="22" height="22" />}
+                        </button>
 
                         <span className="time-text">{formatTime(currentTime)} / {formatTime(duration)}</span>
                     </div>
