@@ -1,5 +1,5 @@
-/* Reliability King VideoPlayer v11.0 */
-.vidstack-wrapper.left-aligned.v11-pro {
+/* Final Word VideoPlayer v12.0 - The Definition of Done */
+.vidstack-wrapper.left-aligned.v12-final {
     position: relative;
     width: fit-content;
     max-width: 100%;
@@ -30,8 +30,8 @@
     border-radius: 12px;
 }
 
-/* --- THE INTERACTIVE LAYER --- */
-.vid-interaction-layer {
+/* --- THE CENTERAL INTERACTION / UNMUTE LAYER --- */
+.vid-click-surface {
     position: absolute;
     inset: 0;
     display: flex;
@@ -41,86 +41,86 @@
     cursor: pointer;
 }
 
-/* Loading Overlay - Clearer "YÜKLENİYOR..." */
-.vid-loading-container {
+/* Loading Overlay - Clearer "YÜKLENİYOR" */
+.vid-loading-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
     z-index: 40;
     gap: 15px;
 }
 
-.vid-loading-text {
+.vid-loading-label {
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     font-family: 'Inter', sans-serif;
     font-weight: 800;
-    letter-spacing: 2px;
-    opacity: 0.8;
+    letter-spacing: 3px;
+    opacity: 0.9;
 }
 
-.vid-spinner {
-    width: 60px;
-    height: 60px;
+.vid-spinner-pro {
+    width: 65px;
+    height: 65px;
 }
 
-.vid-spinner-track {
+.vid-spinner-track-pro {
     width: 100%;
     height: 100%;
-    border: 4px solid rgba(255, 255, 255, 0.2);
+    border: 5px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
 }
 
-.vid-spinner-fill {
+.vid-spinner-fill-pro {
     width: 100%;
     height: 100%;
-    border: 4px solid #fff;
+    border: 5px solid #fff;
     border-top-color: transparent;
     border-radius: 50%;
 }
 
-/* Unmute Overlay - Large, Centered and Subtle */
-.vid-unmute-overlay {
+/* Unmute Overlay - Large Circle Logic */
+.vid-sound-unblock {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.2); 
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 20;
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(2px);
     transition: opacity 0.3s ease;
 }
 
-.vid-unmute-btn {
+.vid-unmute-circle {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    padding: 20px 35px;
-    border-radius: 60px;
+    padding: 30px 45px;
+    border-radius: 80px;
     background: rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
     color: #fff;
-    font-size: 13px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
-    animation: scalePulse 2.5s infinite ease-in-out;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    animation: bounceScale 2s infinite ease-in-out;
 }
 
-@keyframes scalePulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.03); }
+@keyframes bounceScale {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.05); opacity: 1; }
 }
 
-/* Play Icon Overlay on Pause */
-.vid-action-overlay {
+/* Action Icon on State Change */
+.vid-state-hint {
     color: white;
     opacity: 0;
     transform: scale(0.8);
@@ -129,19 +129,19 @@
     z-index: 10;
 }
 
-.vid-action-overlay.is-visible {
+.vid-state-hint.is-paused {
     opacity: 1;
     transform: scale(1);
 }
 
-/* --- THE CLEAN MINIMAL INTERFACE (HOVER-ONLY) --- */
-.vid-interface {
+/* --- THE PROFESSIONAL REALISTIC INTERFACE (HOVER-ONLY) --- */
+.vid-pro-interface {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     padding: 40px 20px 15px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+    background: linear-gradient(transparent, rgba(0, 0, 0, 1));
     opacity: 0;
     transform: translateY(10px);
     transition: all 0.4s ease-out;
@@ -150,19 +150,19 @@
     pointer-events: none;
 }
 
-.vidstack-wrapper:hover .vid-interface {
+.vidstack-wrapper:hover .vid-pro-interface {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
 }
 
-/* The 'Normal' Progress Bar - Standard YouTube/Netflix Styling */
-.vid-scrub-area {
+/* Standard YouTube/Netflix Style Progress Bar */
+.vid-progress-section {
     width: 100%;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
 
-.vid-time-slider {
+.vid-standard-slider {
     position: relative;
     width: 100%;
     height: 10px; /* Improved hit area */
@@ -171,88 +171,95 @@
     align-items: center;
 }
 
-.vid-time-track {
+.vid-track-bg-pro {
     width: 100%;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.2);
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2) !important;
     border-radius: 4px;
     transition: height 0.2s;
 }
 
-.vid-time-slider:hover .vid-time-track {
-    height: 5px;
+.vid-standard-slider:hover .vid-track-bg-pro {
+    height: 6px;
 }
 
-.vid-time-fill {
+.vid-track-fill-pro {
     height: 100%;
-    background: #fff; /* NORMAL WHITE - NO BLUE */
+    background: #fff !important; /* ABSOLUTE WHITE - NO BLUE */
     border-radius: 4px;
 }
 
-.vid-time-buffered {
+.vid-track-buffer-pro {
     height: 100%;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1) !important;
     border-radius: 4px;
 }
 
 /* Realistic Thumb */
-.vid-time-thumb {
-    width: 12px;
-    height: 12px;
-    background: #fff;
+.vid-thumb-pro {
+    width: 14px;
+    height: 14px;
+    background: #fff !important;
     border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
     opacity: 0;
     transition: opacity 0.2s, transform 0.2s;
 }
 
-.vid-time-slider:hover .vid-time-thumb {
+.vid-standard-slider:hover .vid-thumb-pro {
     opacity: 1;
-    transform: scale(1.2);
+    transform: scale(1.3);
 }
 
-/* Bottom Tools */
-.vid-bottom-bar {
+/* Bottom Controls Row */
+.vid-controls-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.vid-left-cluster {
+.vid-controls-left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.vid-play-toggle {
+.vid-play-btn {
     background: none;
     border: none;
     color: #fff;
     cursor: pointer;
-    padding: 6px;
+    padding: 8px;
     transition: transform 0.2s;
 }
 
-.vid-play-toggle:hover {
-    transform: scale(1.15);
+.vid-play-btn:hover {
+    transform: scale(1.2);
 }
 
-/* Saniye Saniye Takip (Current / Duration) */
-.vid-time-display {
+/* Timestamps - Precision Tracking */
+.vid-time-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-.vid-dash {
-    opacity: 0.5;
+.vid-sep {
+    opacity: 0.4;
+    font-weight: 400;
 }
 
 /* State Visibility Helpers */
 .vidstack-player[data-playing] .vds-play-icon { display: none !important; }
 .vidstack-player[data-paused] .vds-pause-icon { display: none !important; }
+/* Global Blue Kill */
+[data-vds-theme="dark"] {
+    --vds-slider-thumb-bg: #fff !important;
+    --vds-slider-track-fill-bg: #fff !important;
+    --vds-video-brand: #fff !important;
+}

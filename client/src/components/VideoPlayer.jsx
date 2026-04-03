@@ -13,8 +13,8 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import '@vidstack/react/player/styles/base.css';
 import './VideoPlayer.css';
 
-// Global session unblocking system (v11.0 - THE RELIABILITY KING)
-const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V11';
+// Global session unblocking system (v12.0 - THE DEFINITION OF DONE)
+const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V12';
 
 if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined) {
   window.__OX_SESSION_UNMUTED__ = false;
@@ -33,7 +33,7 @@ if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined
 const VideoPlayer = ({ src, poster, className }) => {
   const playerRef = useRef(null);
   const remote = useMediaRemote(playerRef);
-  const { paused, muted, buffering } = useMediaStore(playerRef);
+  const { paused, muted, buffering, duration } = useMediaStore(playerRef);
   const [sessionUnmuted, setSessionUnmuted] = useState(typeof window !== 'undefined' ? window.__OX_SESSION_UNMUTED__ : false);
 
   // Sync with global unblock
@@ -50,6 +50,7 @@ const VideoPlayer = ({ src, poster, className }) => {
     return () => window.removeEventListener(UNMUTE_EVENT, onGlobalUnmute);
   }, [remote]);
 
+  // SMART ACTION: Unmute first, then toggle play/pause
   const handleManualAction = (e) => {
     if (e) e.stopPropagation();
 
@@ -59,26 +60,25 @@ const VideoPlayer = ({ src, poster, className }) => {
       window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
     }
 
-    // 2. Control Playback
     if (playerRef.current && remote) {
-      remote.unmute();
-      remote.setVolume(1);
-      
-      if (paused) {
+      if (muted) {
+        // IF MUTED: Unmute and play (Don't toggle play status)
+        remote.unmute();
+        remote.setVolume(1);
         remote.play();
       } else {
-        remote.pause();
+        // IF ALREADY UNMUTED: Standard play/pause toggle
+        if (paused) {
+          remote.play();
+        } else {
+          remote.pause();
+        }
       }
     }
   };
 
   return (
-    <div className={`vidstack-wrapper left-aligned v11-pro ${className || ''}`}>
-      {/* 
-          CRITICAL: key={src} ensures the MediaPlayer is completely 
-          re-mounted when the video changes, which fixes the "stuck at end" 
-          progress bar bug and resets all internal states.
-      */}
+    <div className={`vidstack-wrapper left-aligned v12-final ${className || ''}`}>
       <MediaPlayer
         key={src}
         src={src}
@@ -96,58 +96,58 @@ const VideoPlayer = ({ src, poster, className }) => {
         <MediaProvider />
 
         {/* --- CENTERAL INTERACTION / UNMUTE OVERLAY --- */}
-        <div className="vid-interaction-layer" onClick={handleManualAction}>
-          {/* Buffering Spinner (Explicit Loader) */}
+        <div className="vid-click-surface" onClick={handleManualAction}>
+          {/* Buffering Spinner (Prominent Loader) */}
           {buffering && (
-            <div className="vid-loading-container">
-              <Spinner.Root className="vid-spinner">
-                <Spinner.Track className="vid-spinner-track" />
-                <Spinner.TrackFill className="vid-spinner-fill" />
+            <div className="vid-loading-overlay">
+              <Spinner.Root className="vid-spinner-pro">
+                <Spinner.Track className="vid-spinner-track-pro" />
+                <Spinner.TrackFill className="vid-spinner-fill-pro" />
               </Spinner.Root>
-              <span className="vid-loading-text">YÜKLENİYOR...</span>
+              <span className="vid-loading-label">YÜKLENİYOR</span>
             </div>
           )}
 
-          {/* Muted Indicator / Prompt */}
+          {/* Special Tap-for-Sound Unblocker */}
           {!sessionUnmuted && !buffering && (
-            <div className="vid-unmute-overlay">
-              <div className="vid-unmute-btn">
-                <VolumeX size={32} strokeWidth={2.5} />
-                <span>SESİ ETKİNLEŞTİR</span>
+            <div className="vid-sound-unblock">
+              <div className="vid-unmute-circle">
+                <VolumeX size={36} strokeWidth={2.5} />
+                <span>SESİ AÇ</span>
               </div>
             </div>
           )}
 
-          {/* Large Action Visual on Pause */}
-          <div className={`vid-action-overlay ${paused && !buffering ? 'is-visible' : ''}`}>
+          {/* Action Icon on State Change */}
+          <div className={`vid-state-hint ${paused && !buffering ? 'is-paused' : ''}`}>
             <Play size={44} fill="white" />
           </div>
         </div>
 
-        {/* --- PROFESSIONAL UI (REALISTIC & FUNCTIONAL) --- */}
-        <div className="vid-interface">
-          {/* Functional, Standard Progress Bar (White on Grey) */}
-          <div className="vid-scrub-area">
-            <TimeSlider.Root className="vid-time-slider">
-              <TimeSlider.Track className="vid-time-track">
-                <TimeSlider.TrackFill className="vid-time-fill" />
-                <TimeSlider.Progress className="vid-time-buffered" />
+        {/* --- PROFESSIONAL REALISTIC INTERFACE (HOVER-ONLY) --- */}
+        <div className="vid-pro-interface">
+          {/* High-Accuracy Standard Progress Bar */}
+          <div className="vid-progress-section">
+            <TimeSlider.Root className="vid-standard-slider">
+              <TimeSlider.Track className="vid-track-bg-pro">
+                <TimeSlider.TrackFill className="vid-track-fill-pro" />
+                <TimeSlider.Progress className="vid-track-buffer-pro" />
               </TimeSlider.Track>
-              <TimeSlider.Thumb className="vid-time-thumb" />
+              <TimeSlider.Thumb className="vid-thumb-pro" />
             </TimeSlider.Root>
           </div>
 
-          <div className="vid-bottom-bar">
-            <div className="vid-left-cluster">
-              <PlayButton className="vid-play-toggle">
+          <div className="vid-controls-row">
+            <div className="vid-controls-left">
+              <PlayButton className="vid-play-btn">
                 <Play size={18} fill="white" className="vds-play-icon" />
                 <Pause size={18} fill="white" className="vds-pause-icon" />
               </PlayButton>
               
-              {/* Saniye Saniye Takip (Current / Duration) */}
-              <div className="vid-time-display">
+              {/* "Saniye Saniye" - Accurate Timestamps */}
+              <div className="vid-time-info">
                 <Time type="current" />
-                <span className="vid-dash">/</span>
+                <span className="vid-sep">/</span>
                 <Time type="duration" />
               </div>
             </div>
