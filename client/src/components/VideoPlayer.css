@@ -1,9 +1,9 @@
-/* Refined Vidstack Wrapper */
-.vidstack-wrapper.refined-player {
+/* Final Refined Vidstack Wrapper - Left Aligned */
+.vidstack-wrapper.left-aligned {
     position: relative;
     width: fit-content;
     max-width: 100%;
-    margin: 8px auto;
+    margin: 8px 0; /* Aligned to the left as requested */
     border-radius: 12px;
     overflow: hidden;
     background: transparent;
@@ -18,7 +18,7 @@
     height: auto;
     border-radius: 12px;
     overflow: hidden;
-    background: #000;
+    background: transparent; /* No artificial bars */
 }
 
 .vidstack-player video {
@@ -32,95 +32,67 @@
     background: transparent;
 }
 
-/* Center Play/Pause Overlay - Pulse on Interaction */
-.vid-center-overlay {
+/* User Interaction Layer - Big Play/Pause */
+.vid-interaction-layer {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 10;
+    cursor: pointer;
+}
+
+.vid-center-icon {
     pointer-events: none;
 }
 
-.vid-hero-play {
+.vid-hero-btn {
     width: 60px;
     height: 60px;
     background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    cursor: pointer;
-    pointer-events: auto;
+    opacity: 0;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: scale(0.85);
 }
 
-.vid-hero-play:hover {
-    transform: scale(1.15);
-    background: rgba(0, 195, 255, 0.2);
-    border-color: rgba(0, 195, 255, 0.4);
+.vid-interaction-layer:hover .vid-hero-btn {
+    opacity: 1;
+    transform: scale(1);
 }
 
-/* Hide hero when playing to avoid clutter */
-.vidstack-player[data-playing] .vid-hero-play {
+/* Only show big play icon when PAUSED */
+.vidstack-player[data-playing] .vid-hero-btn {
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, -50%) scale(0.8);
 }
 
-/* Suitable Unmute Prompt (Chrome unblocker) */
-.vid-unblocker-container {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    z-index: 25;
-}
-
-.vid-suitable-unmute {
-    background: rgba(0, 195, 255, 0.3);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(0, 195, 255, 0.5);
-    padding: 6px 14px;
-    border-radius: 20px;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s;
-    letter-spacing: 0.5px;
-}
-
-.vid-suitable-unmute:hover {
-    background: rgba(0, 195, 255, 0.5);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(0, 195, 255, 0.4);
-}
-
-/* --- HOVER-ONLY CONTROLS (İstediğin Sadelik) --- */
+/* --- HOVER-ONLY CONTROLS (O Kadar) --- */
 .vid-hover-controls {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     padding: 20px 15px 12px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
     opacity: 0; /* Hidden by default */
     transform: translateY(10px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 20;
     pointer-events: none;
     box-sizing: border-box;
 }
 
-/* Re-appear ONLY on hover */
-.vidstack-wrapper:hover .vid-hover-controls {
+/* Fade in on hover OR when paused */
+.vidstack-wrapper:hover .vid-hover-controls,
+.vidstack-player[data-paused] .vid-hover-controls {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
@@ -141,7 +113,7 @@
 .vid-slider-track {
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 3px;
 }
 
@@ -149,12 +121,12 @@
     height: 100%;
     background: #00c3ff;
     border-radius: 3px;
-    box-shadow: 0 0 10px rgba(0, 195, 255, 0.6);
+    box-shadow: 0 0 12px rgba(0, 195, 255, 0.7);
 }
 
 .vid-slider-progress {
     height: 100%;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 3px;
 }
 
@@ -165,21 +137,20 @@
     border-radius: 50%;
     opacity: 0;
     transition: opacity 0.2s;
-    box-shadow: 0 0 5px rgba(0, 195, 255, 1);
+    box-shadow: 0 0 8px rgba(0, 195, 255, 1);
 }
 
 .vid-time-slider:hover .vid-slider-thumb {
     opacity: 1;
 }
 
-/* Action Row (ONLY play/pause bottom btn) */
+/* Bottom Action Row */
 .vid-bottom-actions {
     display: flex;
     align-items: center;
-    gap: 15px;
 }
 
-.vid-play-pause-btn {
+.vid-mini-play-btn {
     background: none;
     border: none;
     color: #fff;
@@ -192,10 +163,13 @@
     transition: transform 0.1s;
 }
 
-.vid-play-pause-btn:hover {
-    transform: scale(1.1);
+.vid-mini-play-btn:hover {
+    transform: scale(1.15);
     color: #00c3ff;
 }
+
+/* Removed unblock-sound UI button as requested */
+.vid-unblocker-container { display: none !important; }
 
 /* State Visibility Helpers */
 .vidstack-player[data-playing] .vds-play-icon { display: none !important; }
