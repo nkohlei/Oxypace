@@ -1,77 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import './VideoPlayer.css';
 
-// --- HAYALET OYNATICI (STEALTH) GLOBAL MOTORU ---
-// Chrome'un tekerlek kaydırmasına uyguladığı yasağı delme merkezi.
-const activeVideos = new Set();
-let hasInteractedGlobally = false;
-
-if (typeof window !== 'undefined') {
-  const stealthUnmuteHandler = () => {
-    if (hasInteractedGlobally) return;
-    hasInteractedGlobally = true;
-    
-    // Kullanıcı tesadüfen de olsa bir yere tıkladığı AN tüm videoların sesini aç!
-    activeVideos.forEach(video => {
-      if (video) {
-        video.muted = false;
-        video.volume = 1;
-        // Eğer sessizde çalıyorsa tık diye sesi gelir.
-      }
-    });
-
-    window.removeEventListener('mousedown', stealthUnmuteHandler, true);
-    window.removeEventListener('touchstart', stealthUnmuteHandler, true);
-    window.removeEventListener('keydown', stealthUnmuteHandler, true);
-  };
-
-  window.addEventListener('mousedown', stealthUnmuteHandler, { capture: true, passive: true });
-  window.addEventListener('touchstart', stealthUnmuteHandler, { capture: true, passive: true });
-  window.addEventListener('keydown', stealthUnmuteHandler, { capture: true, passive: true });
-}
-
 const VideoPlayer = ({ src, poster, className }) => {
   const videoRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  // --- Strict IntersectionObserver Autoplay & Fallback ---
+  // --- Strict IntersectionObserver Autoplay ---
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    activeVideos.add(video);
+    // Kesinlikle ses açık ve özellikleri sabit
+    video.muted = false;
+    video.volume = 1;
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-            
-            // Eğer daha siteye tıklanmadıysa (Masaüstünde mouse tekerleğiyle gelindiğinde)
-            if (!hasInteractedGlobally) {
-                 // Önce şansımızı deneriz: Belki mobildedir ve touch scroll yapmıştır, sesli oynamaya izin verilir.
-                 video.muted = false;
-                 video.volume = 1;
-                 
-                 // Sesli başlat!
-                 video.play().catch((e) => {
-                     // Chrome dedi ki: "HAYIR Tıklamadı, sesli oynatamazsın!"
-                     if (e.name === 'NotAllowedError') {
-                          // HAYALET ÇÖZÜM: Videoyu donuk bırakmak yerine anında sesi kısıp oynat!
-                          // Böylece video ekranda akar. İlk tıklandığında ses açılır.
-                          video.muted = true;
-                          video.play().catch(()=>{}); 
-                     }
-                 });
-            } else {
-                 // Zaten tıklanmış, tüm kilitler açık, direkt sesli başlat.
-                 video.muted = false;
-                 video.volume = 1;
-                 video.play().catch(()=>{});
-            }
-
+            // Ekrana girdiğinde direkt oynamasını emret!
+            // Chrome yasaklarsa bile, CORS sorunu çözüldüğü için artık senin eklentin üzerinden vs ses akabilir.
+            video.muted = false;
+            video.play().catch(() => {
+                // If blocked by Chrome Autoplay Policies, fail silently.
+            });
         } else {
-            // Videodan çıkıldığında otomatik durdur (Kendi kendine durma sorununun ilacı)
+            // Videodan çıkıldığında otomatik durdur
             video.pause();
         }
       });
@@ -81,7 +36,6 @@ const VideoPlayer = ({ src, poster, className }) => {
     
     return () => {
       observer.disconnect();
-      activeVideos.delete(video);
     };
   }, [src]);
 
