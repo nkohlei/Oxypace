@@ -314,7 +314,11 @@ const VideoPlayer = ({ src, poster, className }) => {
 
             {/* Big Center Play Button (overlay) */}
             {!isPlaying && !tapAnimation && (
-                <div className="center-play-overlay">
+                <div 
+                    className="center-play-overlay" 
+                    onClick={togglePlay}
+                    style={{ pointerEvents: 'auto', zIndex: 9 }}
+                >
                     <div className="play-button" style={{ transform: 'scale(1.2)' }}>
                         <Icons.Play width="36" height="36" />
                     </div>

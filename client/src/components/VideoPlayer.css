@@ -360,8 +360,8 @@
         padding: 12px 12px 12px;
     }
 
-    .volume-container {
-        display: none;
+    .volume-slider-wrapper {
+        display: none !important;
     }
 
     .control-btn {
