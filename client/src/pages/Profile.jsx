@@ -44,6 +44,7 @@ const Profile = () => {
     const [composeLoading, setComposeLoading] = useState(false);
     const [composeFocused, setComposeFocused] = useState(false);
     const composeMediaInputRef = useRef(null);
+    const composeBoxRef = useRef(null);
 
     // Cropping State
     const [cropperImage, setCropperImage] = useState(null);
@@ -66,6 +67,21 @@ const Profile = () => {
             setActiveTab('posts'); // Reset for others
         }
     }, [username, isOwnProfile]);
+
+    // Click outside compose box to close
+    useEffect(() => {
+        if (!composeFocused) return;
+        const handleClickOutside = (e) => {
+            if (composeBoxRef.current && !composeBoxRef.current.contains(e.target)) {
+                // Only collapse if there's no text or media
+                if (!composeText.trim() && !composeMedia) {
+                    setComposeFocused(false);
+                }
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [composeFocused, composeText, composeMedia]);
 
     const fetchMyProfile = async () => {
         try {
@@ -551,20 +567,7 @@ const Profile = () => {
                                 />
                             </div>
 
-                            {!isOwnProfile && (
-                                <div className="profile-header-actions">
-                                    <div className="action-row">
-                                        {getFollowButton()}
-                                        <button
-                                            className="profile-action-btn primary"
-                                            onClick={handleMessage}
-                                            style={{ minWidth: '80px' }}
-                                        >
-                                            Mesaj
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+
 
                             <div className="user-details-info">
                                 <div className="user-main-title">
@@ -574,30 +577,46 @@ const Profile = () => {
                                                 profileUser?.username}
                                         </h1>
                                         <Badge type={profileUser?.verificationBadge} />
-                                        {isOwnProfile && (
-                                            <button
-                                                className="profile-edit-trigger-btn"
-                                                onClick={() => setEditing(true)}
-                                            >
-                                                <svg
-                                                    width="14"
-                                                    height="14"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.5"
-                                                >
-                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                </svg>
-                                                Düzenle
-                                            </button>
-                                        )}
                                     </div>
                                     <span className="profile-username-tag">
                                         @{profileUser?.username}
                                     </span>
                                 </div>
+
+                                {/* Action Buttons: Tanış/Mesaj for other profiles, Düzenle for own */}
+                                {!isOwnProfile && (
+                                    <div className="profile-header-actions">
+                                        <div className="action-row">
+                                            {getFollowButton()}
+                                            <button
+                                                className="profile-action-btn primary"
+                                                onClick={handleMessage}
+                                                style={{ minWidth: '80px' }}
+                                            >
+                                                Mesaj
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {isOwnProfile && (
+                                    <button
+                                        className="profile-edit-trigger-btn"
+                                        onClick={() => setEditing(true)}
+                                    >
+                                        <svg
+                                            width="14"
+                                            height="14"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2.5"
+                                        >
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        Düzenle
+                                    </button>
+                                )}
 
                                 {profileUser?.profile?.bio && (
                                     <div className="profile-bio-text">
@@ -682,7 +701,11 @@ const Profile = () => {
                                     <div className="tab-content fade-in">
                                         {/* Compose Box — own profile only */}
                                         {isOwnProfile && (
-                                            <div className={`profile-compose-box ${composeFocused ? 'focused' : ''}`}>
+                                            <div
+                                                ref={composeBoxRef}
+                                                className={`profile-compose-box ${composeFocused ? 'focused' : ''}`}
+                                                onClick={() => { if (!composeFocused) setComposeFocused(true); }}
+                                            >
                                                 <div className="compose-avatar">
                                                     {currentUser?.profile?.avatar ? (
                                                         <img src={getImageUrl(currentUser.profile.avatar)} alt="" />
@@ -693,52 +716,93 @@ const Profile = () => {
                                                     )}
                                                 </div>
                                                 <div className="compose-input-area">
-                                                    <textarea
-                                                        placeholder="Ne düşünüyorsun?"
-                                                        value={composeText}
-                                                        onChange={(e) => setComposeText(e.target.value)}
-                                                        onFocus={() => setComposeFocused(true)}
-                                                        rows={composeFocused ? 3 : 1}
-                                                        className="compose-textarea"
-                                                    />
-                                                    {composeMediaPreview && (
-                                                        <div className="compose-media-preview">
-                                                            <img src={composeMediaPreview} alt="Preview" />
-                                                            <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
-                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                                                </svg>
-                                                            </button>
+                                                    {!composeFocused ? (
+                                                        <div className="compose-placeholder-trigger">
+                                                            Ne düşünüyorsun?
                                                         </div>
-                                                    )}
-                                                    {composeFocused && (
-                                                        <div className="compose-actions">
-                                                            <div className="compose-tools">
-                                                                <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()}>
-                                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                                                        <circle cx="8.5" cy="8.5" r="1.5" />
-                                                                        <polyline points="21 15 16 10 5 21" />
-                                                                    </svg>
-                                                                </button>
-                                                                <input
-                                                                    ref={composeMediaInputRef}
-                                                                    type="file"
-                                                                    accept="image/*,.gif"
-                                                                    onChange={handleComposeMediaSelect}
-                                                                    style={{ display: 'none' }}
-                                                                />
+                                                    ) : (
+                                                        <>
+                                                            <textarea
+                                                                placeholder="Ne düşünüyorsun?"
+                                                                value={composeText}
+                                                                onChange={(e) => setComposeText(e.target.value)}
+                                                                autoFocus
+                                                                rows={3}
+                                                                className="compose-textarea"
+                                                            />
+                                                            {composeMediaPreview && (
+                                                                <div className="compose-media-preview">
+                                                                    {composeMedia?.type?.startsWith('video') ? (
+                                                                        <video src={composeMediaPreview} className="compose-preview-video" />
+                                                                    ) : (
+                                                                        <img src={composeMediaPreview} alt="Preview" />
+                                                                    )}
+                                                                    <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
+                                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                            <div className="compose-actions">
+                                                                <div className="compose-tools">
+                                                                    <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()} title="Fotoğraf / GIF">
+                                                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                                            <circle cx="8.5" cy="8.5" r="1.5" />
+                                                                            <polyline points="21 15 16 10 5 21" />
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button type="button" className="compose-tool-btn" onClick={() => {
+                                                                        const ta = composeBoxRef.current?.querySelector('.compose-textarea');
+                                                                        if (ta) {
+                                                                            const start = ta.selectionStart;
+                                                                            const end = ta.selectionEnd;
+                                                                            const text = composeText;
+                                                                            setComposeText(text.substring(0, start) + '😀' + text.substring(end));
+                                                                        } else {
+                                                                            setComposeText(prev => prev + '😀');
+                                                                        }
+                                                                    }} title="Emoji">
+                                                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                                            <circle cx="12" cy="12" r="10" />
+                                                                            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                                                                            <line x1="9" y1="9" x2="9.01" y2="9" />
+                                                                            <line x1="15" y1="9" x2="15.01" y2="9" />
+                                                                        </svg>
+                                                                    </button>
+                                                                    <input
+                                                                        ref={composeMediaInputRef}
+                                                                        type="file"
+                                                                        accept="image/*,video/*,.gif"
+                                                                        onChange={handleComposeMediaSelect}
+                                                                        style={{ display: 'none' }}
+                                                                    />
+                                                                </div>
+                                                                <div className="compose-right-actions">
+                                                                    <span className="compose-char-count" style={{ opacity: composeText.length > 200 ? 1 : 0 }}>
+                                                                        {composeText.length}/500
+                                                                    </span>
+                                                                    <button
+                                                                        className="compose-submit-btn"
+                                                                        onClick={handleProfilePost}
+                                                                        disabled={composeLoading || (!composeText.trim() && !composeMedia)}
+                                                                    >
+                                                                        {composeLoading ? (
+                                                                            <div className="compose-spinner" />
+                                                                        ) : (
+                                                                            <>
+                                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                                                                    <line x1="22" y1="2" x2="11" y2="13" />
+                                                                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                                                                </svg>
+                                                                                Paylaş
+                                                                            </>
+                                                                        )}
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <button
-                                                                className="compose-submit-btn"
-                                                                onClick={handleProfilePost}
-                                                                disabled={composeLoading || (!composeText.trim() && !composeMedia)}
-                                                            >
-                                                                {composeLoading ? (
-                                                                    <div className="compose-spinner" />
-                                                                ) : 'Paylaş'}
-                                                            </button>
-                                                        </div>
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>

@@ -265,12 +265,35 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge');
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
+            .populate('portal', 'name avatar channels');
+
+        // Resolve channel names from portal.channels subdocuments
+        const postsWithChannelNames = posts.map(post => {
+            const postObj = post.toObject();
+            if (postObj.portal && postObj.channel && postObj.channel !== 'general' && postObj.portal.channels) {
+                const matchedChannel = postObj.portal.channels.find(
+                    ch => ch._id.toString() === postObj.channel
+                );
+                if (matchedChannel) {
+                    postObj.channel = { _id: postObj.channel, name: matchedChannel.name };
+                } else {
+                    postObj.channel = { _id: postObj.channel, name: 'genel' };
+                }
+            } else if (postObj.portal && postObj.channel === 'general') {
+                postObj.channel = { _id: 'general', name: 'genel' };
+            }
+            // Remove channels array from portal to keep response lean
+            if (postObj.portal && postObj.portal.channels) {
+                delete postObj.portal.channels;
+            }
+            return postObj;
+        });
 
         const total = await Post.countDocuments({ author: req.params.userId });
 
         res.json({
-            posts,
+            posts: postsWithChannelNames,
             currentPage: page,
             totalPages: Math.ceil(total / limit),
             totalPosts: total,
