@@ -107,21 +107,27 @@ const VideoPlayer = ({ src, poster, className }) => {
     // --- Event Handlers ---
 
     const togglePlay = (e) => {
-        e?.stopPropagation();
+        if (e) e.stopPropagation();
         if (!videoRef.current) return;
 
         if (isPlaying) {
             videoRef.current.pause();
         } else {
-            // Force browser metadata to unmute before playing!
+            // Force sound on
             videoRef.current.muted = false;
-            videoRef.current.volume = volume || 1;
+            if (videoRef.current.volume === 0) {
+                videoRef.current.volume = volume || 1;
+            }
             setIsMuted(false);
 
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.catch(error => {
-                    console.error('Play exactly blocked:', error);
+                    console.error("Play failed, trying muted:", error);
+                    // If still blocked, fallback to muted so it at least plays
+                    videoRef.current.muted = true;
+                    setIsMuted(true);
+                    videoRef.current.play().catch(e => console.error("Muted play also failed:", e));
                 });
             }
         }
@@ -169,7 +175,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         const diff = now - lastTapRef.current;
 
         if (diff < 300) {
-            // Double Tap Detected
+            // Double Tap Detected - Seek
             clearTimeout(tapTimeoutRef.current);
             setTapAnimation(direction);
             const seekAmount = 10;
@@ -177,16 +183,14 @@ const VideoPlayer = ({ src, poster, className }) => {
                 videoRef.current.currentTime += (direction === 'left' ? -seekAmount : seekAmount);
             }
             setTimeout(() => setTapAnimation(null), 500);
-            lastTapRef.current = 0; // Reset
+            lastTapRef.current = 0;
         } else {
-            // Single Tap - Wait to see if it becomes a double tap
+            // Single Tap - Toggle Play IMMEDIATELY to avoid breaking Trusted Gesture
             lastTapRef.current = now;
-            tapTimeoutRef.current = setTimeout(() => {
-                togglePlay();
-            }, 300);
+            togglePlay();
         }
 
-        // Ensure controls show on tap
+        // Ensure controls show
         handleMouseMove();
     };
 
@@ -277,7 +281,7 @@ const VideoPlayer = ({ src, poster, className }) => {
             <div className="video-container" onClick={togglePlay}>
                 <video
                     ref={videoRef}
-                    src={isVisible || isLoaded ? src : undefined}
+                    src={src}
                     loop
                     poster={poster}
                     className="main-video"
