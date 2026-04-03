@@ -1,5 +1,5 @@
-/* Refined Vidstack Wrapper v6.0 - Left Aligned & Enhanced UI */
-.vidstack-wrapper.left-aligned.v6-evolution {
+/* Refined Vidstack Wrapper v7.0 - Left Aligned Pro */
+.vidstack-wrapper.left-aligned.v7-pro {
     position: relative;
     width: fit-content;
     max-width: 100%;
@@ -9,7 +9,7 @@
     background: transparent;
     user-select: none;
     display: block;
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
 }
 
 .vidstack-player {
@@ -44,37 +44,32 @@
     cursor: pointer;
 }
 
-/* Muted Badge - Appears when muted to guide the user */
-.vid-muted-badge {
+/* Muted Alert - Subtle guidance */
+.vid-muted-alert {
     position: absolute;
     top: 15px;
     right: 15px;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
-    border-radius: 30px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1.5px solid rgba(0, 195, 255, 0.5);
+    padding: 10px 16px;
+    border-radius: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(0, 195, 255, 0.6);
     color: #fff;
     font-size: 11px;
+    font-weight: 600;
     z-index: 15;
     pointer-events: none;
-    animation: fadeInOut 2s ease-in-out infinite alternate;
 }
 
-@keyframes fadeInOut {
-    0% { opacity: 0.7; transform: translateY(0); }
-    100% { opacity: 1; transform: translateY(-3px); }
-}
-
-/* Center Control Icon */
-.vid-center-control {
+/* Center Play Icon */
+.vid-center-play {
     width: 60px;
     height: 60px;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
     display: flex;
@@ -82,11 +77,11 @@
     justify-content: center;
     color: #fff;
     opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
     transform: scale(0.85);
 }
 
-.vid-overlay-surface:hover .vid-center-control.is-paused {
+.vid-overlay-surface:hover .vid-center-play.is-paused {
     opacity: 1;
     transform: scale(1);
 }
@@ -111,69 +106,69 @@
     transform: translateY(0);
 }
 
-/* Slider Container & Time Slider */
-.vid-slider-container {
+/* Slider Area */
+.vid-slider-area {
     width: 100%;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
-.vid-time-slider {
+.vid-timeslider {
     position: relative;
     width: 100%;
-    height: 4px;
+    height: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
 }
 
-.vid-slider-track {
+.vid-ts-track {
     width: 100%;
-    height: 100%;
+    height: 4px;
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
 }
 
-.vid-slider-fill {
+.vid-ts-fill {
     height: 100%;
     background: #00c3ff;
     border-radius: 4px;
-    box-shadow: 0 0 10px #00c3ff;
+    box-shadow: 0 0 12px #00c3ff;
 }
 
-.vid-slider-progress {
+.vid-ts-progress {
     height: 100%;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
 }
 
-.vid-slider-thumb {
-    width: 12px;
-    height: 12px;
+.vid-ts-thumb {
+    width: 14px;
+    height: 14px;
     background: #fff;
     border-radius: 50%;
-    box-shadow: 0 0 10px #00c3ff;
+    box-shadow: 0 0 12px #00c3ff;
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.vid-time-slider:hover .vid-slider-thumb {
+.vid-timeslider:hover .vid-ts-thumb {
     opacity: 1;
 }
 
-/* Controls Row */
-.vid-controls-row {
+/* Bottom Meta Row */
+.vid-meta-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.vid-left-tools {
+.vid-left-side {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 15px;
 }
 
-.vid-action-btn {
+.vid-ctrl-btn {
     background: none;
     border: none;
     color: #fff;
@@ -182,23 +177,23 @@
     transition: transform 0.2s;
 }
 
-.vid-action-btn:hover {
+.vid-ctrl-btn:hover {
     color: #00c3ff;
     transform: scale(1.1);
 }
 
 /* Time Display (Current / Duration) */
-.vid-time-display {
+.vid-time-info {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     color: #fff;
     font-size: 13px;
     font-family: inherit;
     font-weight: 500;
 }
 
-.vid-time-divider {
+.divider {
     opacity: 0.5;
 }
 

@@ -8,12 +8,12 @@ import {
   useMediaStore,
   useMediaRemote
 } from '@vidstack/react';
-import { Play, Pause, VolumeX, Volume2 } from 'lucide-react';
+import { Play, Pause, VolumeX } from 'lucide-react';
 import '@vidstack/react/player/styles/base.css';
 import './VideoPlayer.css';
 
-// Global session unblocking system (re-used for v6)
-const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V6';
+// Global session unblocking system (re-used for v7)
+const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V7';
 
 if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined) {
   window.__OX_SESSION_UNMUTED__ = false;
@@ -37,40 +37,51 @@ if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined
 const VideoPlayer = ({ src, poster, className }) => {
   const playerRef = useRef(null);
   const remote = useMediaRemote(playerRef);
-  const { muted, paused, currentTime, duration } = useMediaStore(playerRef);
+  const { muted, paused } = useMediaStore(playerRef);
+  const [localMuted, setLocalMuted] = useState(!window.__OX_SESSION_UNMUTED__);
 
   // Sync with global unmute state
   useEffect(() => {
     const handleGlobalUnmute = () => {
-      if (remote) {
-        remote.unmute();
-        remote.setVolume(1);
+      if (playerRef.current) {
+        playerRef.current.muted = false;
+        playerRef.current.volume = 1;
       }
+      setLocalMuted(false);
     };
 
     window.addEventListener(UNMUTE_EVENT, handleGlobalUnmute);
     if (window.__OX_SESSION_UNMUTED__) handleGlobalUnmute();
 
     return () => window.removeEventListener(UNMUTE_EVENT, handleGlobalUnmute);
-  }, [remote]);
+  }, []);
 
   const handleInteraction = (e) => {
     if (e) e.stopPropagation();
     
-    // Force unblock if not already done
-    if (!window.__OX_SESSION_UNMUTED__) {
-      window.__OX_SESSION_UNMUTED__ = true;
-      window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
-    }
-
-    if (remote) {
-      if (muted) remote.unmute();
-      remote.togglePaused();
+    // SYNCHRONOUS UNMUTE (Forced for all browsers)
+    if (playerRef.current) {
+      playerRef.current.muted = false;
+      playerRef.current.volume = 1;
+      setLocalMuted(false);
+      
+      // Signal others
+      if (!window.__OX_SESSION_UNMUTED__) {
+        window.__OX_SESSION_UNMUTED__ = true;
+        window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
+      }
+      
+      // Control Playback
+      if (playerRef.current.paused) {
+        playerRef.current.play();
+      } else {
+        playerRef.current.pause();
+      }
     }
   };
 
   return (
-    <div className={`vidstack-wrapper left-aligned v6-evolution ${className || ''}`}>
+    <div className={`vidstack-wrapper left-aligned v7-pro ${className || ''}`}>
       <MediaPlayer
         src={src}
         poster={poster}
@@ -79,7 +90,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         playsInline
         loop
         autoplay="visible"
-        muted={!window.__OX_SESSION_UNMUTED__}
+        muted={localMuted} // Start muted for autoplay
         volume={1}
         crossOrigin="anonymous"
       >
@@ -88,48 +99,47 @@ const VideoPlayer = ({ src, poster, className }) => {
         {/* --- INTERACTIVE LAYER --- */}
         <div className="vid-overlay-surface" onClick={handleInteraction}>
           {/* Muted Warning Icon (disappears after unmuting) */}
-          {muted && (
-            <div className="vid-muted-badge">
-              <VolumeX size={18} />
-              <span>Sesi Açmak İçin Tıkla</span>
+          {localMuted && (
+            <div className="vid-muted-alert">
+              <VolumeX size={20} />
+              <span>SESİ ETKİNLEŞTİRMEK İÇİN DOKUNUN</span>
             </div>
           )}
 
           {/* Big Play/Pause Center Icon */}
-          <div className={`vid-center-control ${paused ? 'is-paused' : 'is-playing'}`}>
-            <Play size={44} fill="currentColor" />
+          <div className={`vid-center-play ${paused ? 'is-paused' : 'is-playing'}`}>
+            {paused ? <Play size={44} fill="white" /> : <Pause size={44} fill="white" />}
           </div>
         </div>
 
-        {/* --- HOVER-ONLY CONTROLS --- */}
+        {/* --- HOVER-ONLY CONTROLS (THE BAR) --- */}
         <div className="vid-controls-bar">
-          {/* Enhanced Time Slider */}
-          <div className="vid-slider-container">
-            <TimeSlider.Root className="vid-time-slider">
-              <TimeSlider.Track className="vid-slider-track">
-                <TimeSlider.TrackFill className="vid-slider-fill" />
-                <TimeSlider.Progress className="vid-slider-progress" />
+          {/* Robust Progress Slider */}
+          <div className="vid-slider-area">
+            <TimeSlider.Root className="vid-timeslider">
+              <TimeSlider.Track className="vid-ts-track">
+                <TimeSlider.TrackFill className="vid-ts-fill" />
+                <TimeSlider.Progress className="vid-ts-progress" />
               </TimeSlider.Track>
-              <TimeSlider.Thumb className="vid-slider-thumb" />
+              <TimeSlider.Thumb className="vid-ts-thumb" />
             </TimeSlider.Root>
           </div>
 
-          <div className="vid-controls-row">
-            <div className="vid-left-tools">
-              <PlayButton className="vid-action-btn">
-                <Play size={20} fill="currentColor" className="vds-play-icon" />
-                <Pause size={20} fill="currentColor" className="vds-pause-icon" />
+          <div className="vid-meta-row">
+            <div className="vid-left-side">
+              {/* Simple Play Button */}
+              <PlayButton className="vid-ctrl-btn">
+                <Play size={20} fill="white" className="vds-play-icon" />
+                <Pause size={20} fill="white" className="vds-pause-icon" />
               </PlayButton>
               
-              {/* Time Display (Current / Duration) */}
-              <div className="vid-time-display">
+              {/* Time Info (00:00 / 00:00) */}
+              <div className="vid-time-info">
                 <Time type="current" />
-                <span className="vid-time-divider">/</span>
+                <span className="divider">/</span>
                 <Time type="duration" />
               </div>
             </div>
-
-            {/* Right side tools CAN be added here later if needed */}
           </div>
         </div>
       </MediaPlayer>
