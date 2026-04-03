@@ -1,247 +1,64 @@
-.modern-video-player.adaptive-player {
+.minimal-video-player {
     position: relative;
     width: 100%;
-    max-width: 100%;
     margin: 0 auto;
-    border-radius: 20px;
-    background: #000;
+    border-radius: 12px;
     overflow: hidden;
+    background: transparent; /* NO MORE BLACK BARS */
     user-select: none;
-    /* Adaptive scaling: Remove fixed aspect ratio */
-    height: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: block;
 }
 
 .video-surface {
-    position: relative;
+    display: block;
     width: 100%;
-    height: auto;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .video-element {
     width: 100%;
     height: auto;
-    max-height: 85vh; /* Prevent overly tall videos from taking the whole screen */
+    max-height: 85vh;
     display: block;
-    object-fit: contain;
+    object-fit: contain; /* Respect original ratios */
+    background: #000; /* Only backgrounds the actual video area */
+    border-radius: 12px;
 }
 
-/* Wide Screen / Desktop Fill Logic */
-@media (min-width: 1024px) {
-    .modern-video-player.adaptive-player {
-        /* On wide screens, ensure the video feels prominent */
-        border-radius: 16px;
-    }
-    
-    .video-element {
-        /* Fill the container width */
-        width: 100%;
-    }
-}
-
-/* Glassmorphism Controls */
-.player-controls {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 20px 20px 15px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
-    backdrop-filter: blur(12px);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 20;
-    pointer-events: none;
-    box-sizing: border-box;
-}
-
-.player-controls.visible {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
-
-/* Scrubber Box */
-.scrubber-box {
-    position: relative;
-    width: 100%;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    cursor: pointer;
-    margin-bottom: 12px;
-    transition: height 0.2s;
-}
-
-.scrubber-box:hover {
-    height: 8px;
-}
-
-.buffer-bar {
-    position: absolute;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-}
-
-.progress-bar {
-    position: absolute;
-    height: 100%;
-    background: linear-gradient(90deg, #00d2ff, #00a8fc);
-    border-radius: 10px;
-    box-shadow: 0 0 12px rgba(0, 210, 255, 0.5);
-}
-
-.handle {
-    position: absolute;
-    right: -6px;
-    top: 50%;
-    transform: translateY(-50%) scale(0);
-    width: 12px;
-    height: 12px;
-    background: #fff;
-    border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s;
-}
-
-.scrubber-box:hover .handle {
-    transform: translateY(-50%) scale(1);
-}
-
-/* Main Controls Row */
-.controls-main {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-/* Icons and Buttons */
-.icon-btn, .text-btn {
-    background: none;
-    border: none;
-    color: #fff;
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.icon-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    transform: scale(1.08);
-}
-
-.time-text {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 13px;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    margin-left: 4px;
-}
-
-/* Removed Volume Slider Styles */
-
-/* Speed Menu */
-.speed-wrap {
-    position: relative;
-}
-
-.speed-picker {
-    position: absolute;
-    bottom: 160%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(15, 15, 15, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 14px;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 65px;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
-}
-
-.speed-picker button {
-    background: none;
-    border: none;
-    color: #fff;
-    padding: 8px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    transition: all 0.2s;
-    text-align: center;
-}
-
-.speed-picker button:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.speed-picker button.active {
-    background: rgba(0, 210, 255, 0.15);
-    color: #00d2ff;
-    font-weight: 700;
-}
-
-/* Big Play Overlay */
-.big-play-btn {
+/* Play/Pause Overlay */
+.minimal-play-overlay {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 70px;
-    height: 70px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 10;
+    transition: transform 0.2s;
 }
 
-.big-play-btn:hover {
-    transform: translate(-50%, -50%) scale(1.12);
-    background: rgba(255, 255, 255, 0.15);
+.minimal-play-overlay:hover {
+    transform: translate(-50%, -50%) scale(1.1);
 }
 
-/* Muted Hint Indicator (Persistent on Autoplay) */
-.muted-hint.persistent-hint {
+/* Unmute Button */
+.minimal-unmute-btn {
     position: absolute;
     top: 15px;
     right: 15px;
-    background: rgba(0, 210, 255, 0.2);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(0, 210, 255, 0.4);
-    padding: 6px 14px;
+    background: rgba(0, 195, 255, 0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 195, 255, 0.5);
+    padding: 6px 12px;
     border-radius: 20px;
     color: #fff;
     font-size: 11px;
@@ -250,29 +67,90 @@
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    z-index: 25;
+    z-index: 20;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
-.muted-hint:hover {
-    background: rgba(0, 210, 255, 0.35);
-    transform: translateY(-1px);
+/* Simple Controls */
+.minimal-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 15px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 15;
+    pointer-events: none;
+    box-sizing: border-box;
 }
 
-/* Mobile Adjustments */
-@media (max-width: 768px) {
-    .modern-video-player.adaptive-player {
-        border-radius: 0; /* Full width flow on mobile feeds */
-        border: none;
-    }
-    
-    .video-element {
-        max-height: 75vh;
-    }
-    
-    .player-controls {
-        padding: 10px 15px;
-    }
+.minimal-controls.visible {
+    opacity: 1;
+    pointer-events: auto;
 }
+
+/* Scrubber */
+.minimal-scrubber {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.minimal-buffer {
+    position: absolute;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.minimal-progress {
+    position: absolute;
+    height: 100%;
+    background: #00c3ff;
+    border-radius: 2px;
+    box-shadow: 0 0 10px rgba(0, 195, 255, 0.5);
+}
+
+/* Actions Row */
+.minimal-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.minimal-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+    transition: transform 0.1s;
+}
+
+.minimal-btn:hover {
+    transform: scale(1.1);
+    opacity: 1;
+}
+
+.minimal-time {
+    color: #fff;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.fs-btn {
+    margin-left: auto;
+}
+
+/* REMOVED ALL PROGRAMMER TRIPS: 10s Badges, Seek Zones, Speed Menus */

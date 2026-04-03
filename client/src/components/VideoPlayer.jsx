@@ -10,27 +10,23 @@ const VideoPlayer = ({ src, poster, className }) => {
     const [duration, setDuration] = useState(0);
     const [progress, setProgress] = useState(0);
     const [buffered, setBuffered] = useState(0);
-    const [isMuted, setIsMuted] = useState(true); // Default to muted for autoplay
+    const [isMuted, setIsMuted] = useState(true); // Must be true for autoplay
     const [showControls, setShowControls] = useState(true);
-    const [playbackSpeed, setPlaybackSpeed] = useState(1);
-    const [showSpeedMenu, setShowSpeedMenu] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [tapAnimation, setTapAnimation] = useState(null); 
-    const [hasInteractionRef, setHasInteraction] = useState(false); // Flag for manual pausing
+    const [hasInteraction, setHasInteraction] = useState(false);
 
-    // Timer for hiding controls
     const controlsTimeoutRef = useRef(null);
-    const lastTapRef = useRef(0);
 
-    // --- State-to-DOM Synchronization (The "No Sound" Fix) ---
+    // --- State-to-DOM Synchronization ---
     useEffect(() => {
         if (!videoRef.current) return;
-        // Directly sync React state with DOM properties
         videoRef.current.muted = isMuted;
-        videoRef.current.playbackRate = playbackSpeed;
-    }, [isMuted, playbackSpeed]);
+        // Explicitly set volume when unmuted to ensure sound
+        if (!isMuted) {
+            videoRef.current.volume = 1;
+        }
+    }, [isMuted]);
 
-    // --- Control Visibility Logic ---
     const resetControlsTimer = useCallback(() => {
         setShowControls(true);
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -38,7 +34,6 @@ const VideoPlayer = ({ src, poster, className }) => {
         if (isPlaying) {
             controlsTimeoutRef.current = setTimeout(() => {
                 setShowControls(false);
-                setShowSpeedMenu(false);
             }, 3000);
         }
     }, [isPlaying]);
@@ -50,48 +45,42 @@ const VideoPlayer = ({ src, poster, className }) => {
         };
     }, [isPlaying, resetControlsTimer]);
 
-    // --- Intersection Observer (Autoplay on Scroll) ---
+    // --- Autoplay on Scroll ---
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting) {
-                        // Autoplay if the user hasn't manually paused it yet
-                        if (videoRef.current && videoRef.current.paused && !hasInteractionRef) {
-                            videoRef.current.play().catch(e => console.log("Autoplay blocked by browser policy"));
+                        if (videoRef.current && videoRef.current.paused && !hasInteraction) {
+                            videoRef.current.play().catch(() => {});
                         }
                     } else {
-                        // Pause when completely out of view
                         if (videoRef.current && !videoRef.current.paused) {
                             videoRef.current.pause();
-                            setIsPlaying(false);
                         }
                     }
                 });
             },
-            { threshold: 0.5 } // Standard: only start when half is visible
+            { threshold: 0.5 }
         );
 
         if (containerRef.current) observer.observe(containerRef.current);
         return () => containerRef.current && observer.unobserve(containerRef.current);
-    }, [hasInteractionRef]);
+    }, [hasInteraction]);
 
-    // --- Core Action: Toggle Play/Pause ---
     const togglePlay = (e) => {
         if (e) e.stopPropagation();
         if (!videoRef.current) return;
 
         if (videoRef.current.paused) {
             videoRef.current.play();
-            setHasInteraction(false); // Reset manual pause flag on manual play
+            setHasInteraction(false); 
         } else {
             videoRef.current.pause();
-            setHasInteraction(true); // Flag that user manually paused
+            setHasInteraction(true); 
         }
-        resetControlsTimer();
     };
 
-    // --- Event Handlers ---
     const handleTimeUpdate = () => {
         if (!videoRef.current) return;
         const current = videoRef.current.currentTime;
@@ -112,35 +101,26 @@ const VideoPlayer = ({ src, poster, className }) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const percentage = Math.max(0, Math.min(1, x / rect.width));
-        const newTime = percentage * (videoRef.current.duration || 0);
-        videoRef.current.currentTime = newTime;
-        setProgress(percentage * 100);
+        videoRef.current.currentTime = percentage * videoRef.current.duration;
     };
 
     const toggleMute = (e) => {
         if (e) e.stopPropagation();
+        // FORCE sound on click
         setIsMuted(!isMuted);
-        resetControlsTimer();
-    };
-
-    const handleSpeedChange = (speed) => {
-        setPlaybackSpeed(speed);
-        setShowSpeedMenu(false);
-        resetControlsTimer();
+        if (videoRef.current) {
+            videoRef.current.muted = !isMuted;
+            videoRef.current.volume = 1;
+        }
     };
 
     const toggleFullscreen = (e) => {
         e.stopPropagation();
         if (!containerRef.current) return;
-
         if (!document.fullscreenElement) {
-            if (containerRef.current.requestFullscreen) {
-                containerRef.current.requestFullscreen();
-            } else if (containerRef.current.webkitRequestFullscreen) {
-                containerRef.current.webkitRequestFullscreen();
-            }
+            containerRef.current.requestFullscreen?.() || containerRef.current.webkitRequestFullscreen?.();
         } else {
-            if (document.exitFullscreen) document.exitFullscreen();
+            document.exitFullscreen?.();
         }
     };
 
@@ -150,27 +130,6 @@ const VideoPlayer = ({ src, poster, className }) => {
         return () => document.removeEventListener('fullscreenchange', handleFS);
     }, []);
 
-    // --- Interaction Zones (Double Tap to Seek) ---
-    const handleZoneClick = (direction, e) => {
-        e.stopPropagation();
-        const now = Date.now();
-        const diff = now - lastTapRef.current;
-
-        if (diff < 300) {
-            setTapAnimation(direction);
-            const seekAmount = 10;
-            if (videoRef.current) {
-                videoRef.current.currentTime += (direction === 'left' ? -seekAmount : seekAmount);
-            }
-            setTimeout(() => setTapAnimation(null), 500);
-            lastTapRef.current = 0;
-        } else {
-            lastTapRef.current = now;
-            togglePlay();
-        }
-        resetControlsTimer();
-    };
-
     const formatTime = (seconds) => {
         if (isNaN(seconds)) return "0:00";
         const min = Math.floor(seconds / 60);
@@ -179,22 +138,18 @@ const VideoPlayer = ({ src, poster, className }) => {
     };
 
     const Icons = {
-        Play: (props) => <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M8 5v14l11-7z" /></svg>,
-        Pause: (props) => <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>,
-        VolumeUp: (props) => <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>,
-        VolumeMute: (props) => <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3z" /></svg>,
-        Fullscreen: (props) => <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zM17 7h-3V5h5v5h-2V7z" /></svg>,
-        Forward: (props) => <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" /></svg>,
-        Backward: (props) => <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z" /></svg>
+        Play: () => <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M8 5v14l11-7z" /></svg>,
+        Pause: () => <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>,
+        VolumeMute: () => <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3z" /></svg>,
+        VolumeUp: () => <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>,
+        Fullscreen: () => <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zM17 7h-3V5h5v5h-2V7z" /></svg>
     };
 
     return (
         <div 
-            className={`modern-video-player adaptive-player ${className || ''}`} 
+            className={`minimal-video-player ${className || ''}`} 
             ref={containerRef}
             onMouseMove={resetControlsTimer}
-            onMouseEnter={resetControlsTimer}
-            onMouseLeave={() => isPlaying && setShowControls(false)}
         >
             <div className="video-surface" onClick={togglePlay}>
                 <video
@@ -212,69 +167,38 @@ const VideoPlayer = ({ src, poster, className }) => {
                 />
             </div>
 
-            {/* Interaction Zones */}
-            <div className={`seek-zone left ${tapAnimation === 'left' ? 'active' : ''}`} onClick={(e) => handleZoneClick('left', e)}>
-                <div className="tap-badge"><Icons.Backward width="24" height="24" /><span>10s</span></div>
-            </div>
-            <div className={`seek-zone right ${tapAnimation === 'right' ? 'active' : ''}`} onClick={(e) => handleZoneClick('right', e)}>
-                <div className="tap-badge"><Icons.Forward width="24" height="24" /><span>10s</span></div>
-            </div>
-
-            {/* Center Play Overlay */}
-            {!isPlaying && !tapAnimation && (
-                <button className="big-play-btn" onClick={togglePlay}>
-                    <Icons.Play width="48" height="48" />
+            {/* Big Play Button Overlay */}
+            {!isPlaying && (
+                <button className="minimal-play-overlay" onClick={togglePlay}>
+                    <Icons.Play />
                 </button>
             )}
 
-            {/* Muted Hint Indicator (Sesi Aç) */}
+            {/* Unmute Prompt */}
             {isMuted && isPlaying && (
-                <div className="muted-hint persistent-hint" onClick={toggleMute}>
-                    <Icons.VolumeMute width="16" height="16" />
-                    Sesi Aç
-                </div>
+                <button className="minimal-unmute-btn" onClick={toggleMute}>
+                    <Icons.VolumeMute />
+                    <span>SESİ AÇ</span>
+                </button>
             )}
 
-            {/* Controls Overlay */}
-            <div className={`player-controls ${showControls ? 'visible' : ''}`}>
-                <div className="scrubber-box" onClick={handleSeek}>
-                    <div className="buffer-bar" style={{ width: `${buffered}%` }} />
-                    <div className="progress-bar" style={{ width: `${progress}%` }}>
-                        <div className="handle" />
-                    </div>
+            {/* Simple Controls */}
+            <div className={`minimal-controls ${showControls ? 'visible' : ''}`}>
+                <div className="minimal-scrubber" onClick={handleSeek}>
+                    <div className="minimal-buffer" style={{ width: `${buffered}%` }} />
+                    <div className="minimal-progress" style={{ width: `${progress}%` }} />
                 </div>
 
-                <div className="controls-main">
-                    <div className="group">
-                        <button className="icon-btn" onClick={togglePlay}>
-                            {isPlaying ? <Icons.Pause width="24" height="24" /> : <Icons.Play width="24" height="24" />}
-                        </button>
+                <div className="minimal-actions">
+                    <button className="minimal-btn" onClick={togglePlay}>
+                        {isPlaying ? <Icons.Pause /> : <Icons.Play />}
+                    </button>
+                    
+                    <span className="minimal-time">{formatTime(currentTime)} / {formatTime(duration)}</span>
 
-                        <button className="icon-btn" onClick={toggleMute}>
-                            {isMuted ? <Icons.VolumeMute width="22" height="22" /> : <Icons.VolumeUp width="22" height="22" />}
-                        </button>
-
-                        <span className="time-text">{formatTime(currentTime)} / {formatTime(duration)}</span>
-                    </div>
-
-                    <div className="group">
-                        <div className="speed-wrap">
-                            <button className="text-btn" onClick={(e) => { e.stopPropagation(); setShowSpeedMenu(!showSpeedMenu); }}>
-                                {playbackSpeed}x
-                            </button>
-                            {showSpeedMenu && (
-                                <div className="speed-picker">
-                                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map(s => (
-                                        <button key={s} className={playbackSpeed === s ? 'active' : ''} onClick={() => handleSpeedChange(s)}>{s}x</button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <button className="icon-btn" onClick={toggleFullscreen}>
-                            <Icons.Fullscreen width="22" height="22" />
-                        </button>
-                    </div>
+                    <button className="minimal-btn fs-btn" onClick={toggleFullscreen}>
+                        <Icons.Fullscreen />
+                    </button>
                 </div>
             </div>
         </div>
