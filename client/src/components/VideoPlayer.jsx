@@ -6,6 +6,9 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  
+  // Gerçek zamanlı donma/yüklenme sensörü
+  const [isLoading, setIsLoading] = useState(true);
 
   // --- Strict IntersectionObserver Autoplay ---
   useEffect(() => {
@@ -19,15 +22,17 @@ const VideoPlayer = ({ src, poster, className }) => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-            // Ekrana girdiğinde direkt oynamasını emret!
-            // Chrome yasaklarsa bile, CORS sorunu çözüldüğü için artık senin eklentin üzerinden vs ses akabilir.
-            video.muted = false;
-            video.play().catch(() => {
-                // If blocked by Chrome Autoplay Policies, fail silently.
-            });
+            // Ekrana girdiğinde direkt oynamasını emret! (Sadece kullanıcı KENDİ DURDURMADIYSA)
+            if (video.dataset.userPaused !== "true") {
+                video.muted = false;
+                video.play().catch(() => {});
+            }
         } else {
-            // Videodan çıkıldığında otomatik durdur
-            video.pause();
+            // Videodan çıkıldığında otomatik durdur. Ama kullanıcının özel kararını sıfırlama,
+            // böylece durdurup giden adam geldiğinde tekrar başlamaması sağlanır.
+            if (video.dataset.userPaused !== "true") {
+                video.pause();
+            }
         }
       });
     }, { threshold: 0.5 }); // %50 görünüm oranı
@@ -64,6 +69,18 @@ const VideoPlayer = ({ src, poster, className }) => {
     setProgress(clickedProgress * 100);
   };
 
+  // Videoya Direk Tıklayıp Durdurma/Oynatma
+  const handleVideoClick = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+        videoRef.current.dataset.userPaused = "false";
+        videoRef.current.play().catch(()=>{});
+    } else {
+        videoRef.current.dataset.userPaused = "true";
+        videoRef.current.pause();
+    }
+  };
+
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
@@ -81,9 +98,23 @@ const VideoPlayer = ({ src, poster, className }) => {
         playsInline
         loop
         crossOrigin="anonymous"
+        onClick={handleVideoClick}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
+        // Gerçek Ağ & Yükleme Sensörleri
+        onWaiting={() => setIsLoading(true)}
+        onLoadStart={() => setIsLoading(true)}
+        onPlaying={() => setIsLoading(false)}
+        onCanPlay={() => setIsLoading(false)}
+        onCanPlayThrough={() => setIsLoading(false)}
       />
+
+      {/* GERÇEK YÜKLENİYOR ANİMASYONU */}
+      {isLoading && (
+        <div className="native-loader-overlay">
+            <div className="pro-spinner"></div>
+        </div>
+      )}
 
       {/* SADECE Alttaki Süre ve Bar Arayüzü (Tertemiz) */}
       <div className="native-controls-ui is-always-visible">

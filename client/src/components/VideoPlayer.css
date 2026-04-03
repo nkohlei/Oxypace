@@ -19,6 +19,42 @@
     object-fit: contain;
     border-radius: 12px;
     background: transparent;
+    cursor: pointer;
+}
+
+/* --- THE REAL LOADER (Tied directly to video data events) --- */
+.native-loader-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 40;
+    pointer-events: none; /* Let clicks pass through to the video */
+    animation: fadeInLoader 0.2s ease-in;
+}
+
+@keyframes fadeInLoader {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Professional Spinner */
+.pro-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* --- TERTEMİZ CUSTOM KONTROLLER (Her Zaman Görünür) --- */
