@@ -4,71 +4,76 @@ import {
   MediaProvider, 
   PlayButton, 
   TimeSlider,
+  useMediaRemote,
 } from '@vidstack/react';
 import { Play, Pause } from 'lucide-react';
 import '@vidstack/react/player/styles/base.css';
 import './VideoPlayer.css';
 
-// Global flag to track if sound has been unblocked for this session
-if (typeof window !== 'undefined' && window.__OX_VIDEO_UNMUTED__ === undefined) {
-  window.__OX_VIDEO_UNMUTED__ = false;
+// Global session unblocking system
+const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE';
+
+if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined) {
+  window.__OX_SESSION_UNMUTED__ = false;
+  
+  // Create a master unblocker that listens for ANY user interaction on the page
+  const unblockAll = () => {
+    if (!window.__OX_SESSION_UNMUTED__) {
+      window.__OX_SESSION_UNMUTED__ = true;
+      window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
+      // Cleanup global listeners once unblocked
+      window.removeEventListener('mousedown', unblockAll);
+      window.removeEventListener('touchstart', unblockAll);
+      window.removeEventListener('keydown', unblockAll);
+    }
+  };
+
+  window.addEventListener('mousedown', unblockAll);
+  window.addEventListener('touchstart', unblockAll);
+  window.addEventListener('keydown', unblockAll);
 }
 
 const VideoPlayer = ({ src, poster, className }) => {
   const playerRef = useRef(null);
-  const [isMuted, setIsMuted] = useState(!window.__OX_VIDEO_UNMUTED__);
-  const [hasInteraction, setHasInteraction] = useState(false);
+  const remote = useMediaRemote(playerRef);
+  const [isMuted, setIsMuted] = useState(!window.__OX_SESSION_UNMUTED__);
 
-  // Sync with global unmute state
+  // Listen for the global unblock signal
   useEffect(() => {
-    const checkGlobalUnmute = () => {
-      if (window.__OX_VIDEO_UNMUTED__ && isMuted) {
-        setIsMuted(false);
-        if (playerRef.current) playerRef.current.muted = false;
+    const handleGlobalUnmute = () => {
+      // Direct remote control for 100% reliability
+      if (remote) {
+        remote.unmute();
+        remote.setVolume(1);
       }
-    };
-
-    const interval = setInterval(checkGlobalUnmute, 500); // Polling for global unmute
-    return () => clearInterval(interval);
-  }, [isMuted]);
-
-  // Global listener for first interaction to unblock sound (Chrome Engine)
-  useEffect(() => {
-    const handleGlobalInteraction = () => {
-      if (!window.__OX_VIDEO_UNMUTED__) {
-        window.__OX_VIDEO_UNMUTED__ = true;
-        setIsMuted(false);
-        if (playerRef.current) {
-          playerRef.current.muted = false;
-          playerRef.current.volume = 1;
-        }
-      }
-    };
-
-    window.addEventListener('mousedown', handleGlobalInteraction, { once: true });
-    window.addEventListener('touchstart', handleGlobalInteraction, { once: true });
-    
-    return () => {
-      window.removeEventListener('mousedown', handleGlobalInteraction);
-      window.removeEventListener('touchstart', handleGlobalInteraction);
-    };
-  }, []);
-
-  const handlePlayToggle = (e) => {
-    if (e) e.stopPropagation();
-    
-    // Any click on the player unblocks sound for everyone
-    if (!window.__OX_VIDEO_UNMUTED__) {
-      window.__OX_VIDEO_UNMUTED__ = true;
       setIsMuted(false);
+    };
+
+    window.addEventListener(UNMUTE_EVENT, handleGlobalUnmute);
+    
+    // If mounted after unblocking, sync immediately
+    if (window.__OX_SESSION_UNMUTED__) {
+       handleGlobalUnmute();
     }
 
+    return () => window.removeEventListener(UNMUTE_EVENT, handleGlobalUnmute);
+  }, [remote]);
+
+  const handleInteraction = (e) => {
+    if (e) e.stopPropagation();
+    
+    // Manually trigger the unblocking if not already done
+    if (!window.__OX_SESSION_UNMUTED__) {
+      window.__OX_SESSION_UNMUTED__ = true;
+      window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
+    }
+
+    // Toggle play/pause
     if (playerRef.current) {
         if (playerRef.current.paused) {
             playerRef.current.play();
         } else {
             playerRef.current.pause();
-            setHasInteraction(true); // Manually stopped
         }
     }
   };
@@ -83,15 +88,15 @@ const VideoPlayer = ({ src, poster, className }) => {
         playsInline
         loop
         autoplay="visible"
-        muted={isMuted} // Controlled by global session interaction
+        muted={isMuted}
         onPlay={() => {}}
         onPause={() => {}}
       >
         <MediaProvider />
 
-        {/* Big Play Overlay (Durdur/Oynat) */}
-        <div className="vid-interaction-layer" onClick={handlePlayToggle}>
-           <div className="vid-center-icon">
+        {/* 100% Interaction Surface - Clicking here unblocks sound and toggles play */}
+        <div className="vid-click-surface" onClick={handleInteraction}>
+           <div className="vid-icon-wrapper">
               <PlayButton className="vid-hero-btn">
                 <Play size={40} className="vds-play-icon" />
                 <Pause size={40} className="vds-pause-icon" />
@@ -110,7 +115,7 @@ const VideoPlayer = ({ src, poster, className }) => {
           </TimeSlider.Root>
 
           <div className="vid-bottom-actions">
-            <PlayButton className="vid-mini-play-btn" onClick={handlePlayToggle}>
+            <PlayButton className="vid-mini-play-btn" onClick={handleInteraction}>
               <Play size={18} className="vds-play-icon" fill="currentColor" />
               <Pause size={18} className="vds-pause-icon" fill="currentColor" />
             </PlayButton>
