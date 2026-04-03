@@ -113,16 +113,15 @@ const VideoPlayer = ({ src, poster, className }) => {
         if (isPlaying) {
             videoRef.current.pause();
         } else {
+            // Force browser metadata to unmute before playing!
+            videoRef.current.muted = false;
+            videoRef.current.volume = volume || 1;
+            setIsMuted(false);
+
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.catch(error => {
-                    console.log('Play blocked:', error);
-                    // If browser blocks unmuted play, try muting it first
-                    if (!videoRef.current.muted) {
-                        videoRef.current.muted = true;
-                        setIsMuted(true);
-                        videoRef.current.play().catch(e => console.error('Still blocked', e));
-                    }
+                    console.error('Play exactly blocked:', error);
                 });
             }
         }
@@ -314,15 +313,23 @@ const VideoPlayer = ({ src, poster, className }) => {
 
             {/* Big Center Play Button (overlay) */}
             {!isPlaying && !tapAnimation && (
-                <div 
+                <button 
                     className="center-play-overlay" 
                     onClick={togglePlay}
-                    style={{ pointerEvents: 'auto', zIndex: 9 }}
+                    style={{ 
+                        pointerEvents: 'auto', 
+                        zIndex: 9, 
+                        background: 'none', 
+                        border: 'none', 
+                        outline: 'none',
+                        cursor: 'pointer' 
+                    }}
+                    aria-label="Videoyu Başlat"
                 >
                     <div className="play-button" style={{ transform: 'scale(1.2)' }}>
                         <Icons.Play width="36" height="36" />
                     </div>
-                </div>
+                </button>
             )}
 
             {/* Controls Overlay */}
