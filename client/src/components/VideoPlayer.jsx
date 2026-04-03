@@ -13,8 +13,8 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import '@vidstack/react/player/styles/base.css';
 import './VideoPlayer.css';
 
-// Global session unblocking system (v10.1 - THE PROFESSIONAL STANDARD)
-const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V10';
+// Global session unblocking system (v11.0 - THE RELIABILITY KING)
+const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V11';
 
 if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined) {
   window.__OX_SESSION_UNMUTED__ = false;
@@ -40,15 +40,15 @@ const VideoPlayer = ({ src, poster, className }) => {
   useEffect(() => {
     const onGlobalUnmute = () => {
       setSessionUnmuted(true);
-      if (playerRef.current) {
-        playerRef.current.muted = false;
-        playerRef.current.volume = 1;
+      if (playerRef.current && remote) {
+        remote.unmute();
+        remote.setVolume(1);
       }
     };
     window.addEventListener(UNMUTE_EVENT, onGlobalUnmute);
     if (window.__OX_SESSION_UNMUTED__) onGlobalUnmute();
     return () => window.removeEventListener(UNMUTE_EVENT, onGlobalUnmute);
-  }, []);
+  }, [remote]);
 
   const handleManualAction = (e) => {
     if (e) e.stopPropagation();
@@ -59,22 +59,28 @@ const VideoPlayer = ({ src, poster, className }) => {
       window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
     }
 
-    // 2. Direct Unmute/Play
-    if (playerRef.current) {
-      playerRef.current.muted = false;
-      playerRef.current.volume = 1;
-
-      if (playerRef.current.paused) {
-        playerRef.current.play();
+    // 2. Control Playback
+    if (playerRef.current && remote) {
+      remote.unmute();
+      remote.setVolume(1);
+      
+      if (paused) {
+        remote.play();
       } else {
-        playerRef.current.pause();
+        remote.pause();
       }
     }
   };
 
   return (
-    <div className={`vidstack-wrapper left-aligned v10-pro ${className || ''}`}>
+    <div className={`vidstack-wrapper left-aligned v11-pro ${className || ''}`}>
+      {/* 
+          CRITICAL: key={src} ensures the MediaPlayer is completely 
+          re-mounted when the video changes, which fixes the "stuck at end" 
+          progress bar bug and resets all internal states.
+      */}
       <MediaPlayer
+        key={src}
         src={src}
         poster={poster}
         ref={playerRef}
@@ -91,56 +97,57 @@ const VideoPlayer = ({ src, poster, className }) => {
 
         {/* --- CENTERAL INTERACTION / UNMUTE OVERLAY --- */}
         <div className="vid-interaction-layer" onClick={handleManualAction}>
-          {/* Muted Indicator / Prompt */}
-          {!sessionUnmuted && (
-            <div className="vid-unmute-overlay">
-              <div className="vid-unmute-btn">
-                <VolumeX size={32} strokeWidth={2.5} />
-                <span>SESİ AÇ</span>
-              </div>
-            </div>
-          )}
-
-          {/* Buffering Spinner */}
+          {/* Buffering Spinner (Explicit Loader) */}
           {buffering && (
-            <div className="vid-buffering">
+            <div className="vid-loading-container">
               <Spinner.Root className="vid-spinner">
                 <Spinner.Track className="vid-spinner-track" />
                 <Spinner.TrackFill className="vid-spinner-fill" />
               </Spinner.Root>
+              <span className="vid-loading-text">YÜKLENİYOR...</span>
             </div>
           )}
 
-          {/* Big Play Icon on Pause */}
-          <div className={`vid-action-overlay ${paused ? 'is-visible' : ''}`}>
-            <Play size={50} fill="white" />
+          {/* Muted Indicator / Prompt */}
+          {!sessionUnmuted && !buffering && (
+            <div className="vid-unmute-overlay">
+              <div className="vid-unmute-btn">
+                <VolumeX size={32} strokeWidth={2.5} />
+                <span>SESİ ETKİNLEŞTİR</span>
+              </div>
+            </div>
+          )}
+
+          {/* Large Action Visual on Pause */}
+          <div className={`vid-action-overlay ${paused && !buffering ? 'is-visible' : ''}`}>
+            <Play size={44} fill="white" />
           </div>
         </div>
 
-        {/* --- CLEAN PROFESSIONAL UI (HOVER-ONLY) --- */}
-        <div className="vid-ui-container">
-          {/* Functional, Realistic Progress Bar */}
-          <div className="vid-progress-holder">
-            <TimeSlider.Root className="vid-slider-main">
-              <TimeSlider.Track className="vid-slider-track-bg">
-                <TimeSlider.TrackFill className="vid-slider-fill-normal" />
-                <TimeSlider.Progress className="vid-slider-buffered-normal" />
+        {/* --- PROFESSIONAL UI (REALISTIC & FUNCTIONAL) --- */}
+        <div className="vid-interface">
+          {/* Functional, Standard Progress Bar (White on Grey) */}
+          <div className="vid-scrub-area">
+            <TimeSlider.Root className="vid-time-slider">
+              <TimeSlider.Track className="vid-time-track">
+                <TimeSlider.TrackFill className="vid-time-fill" />
+                <TimeSlider.Progress className="vid-time-buffered" />
               </TimeSlider.Track>
-              <TimeSlider.Thumb className="vid-slider-thumb-normal" />
+              <TimeSlider.Thumb className="vid-time-thumb" />
             </TimeSlider.Root>
           </div>
 
-          <div className="vid-controls-footer">
-            <div className="vid-left-tools">
-              <PlayButton className="vid-btn-bare">
-                <Play size={20} fill="white" className="vds-play-icon" />
-                <Pause size={20} fill="white" className="vds-pause-icon" />
+          <div className="vid-bottom-bar">
+            <div className="vid-left-cluster">
+              <PlayButton className="vid-play-toggle">
+                <Play size={18} fill="white" className="vds-play-icon" />
+                <Pause size={18} fill="white" className="vds-pause-icon" />
               </PlayButton>
               
               {/* Saniye Saniye Takip (Current / Duration) */}
-              <div className="vid-timestamp-normal">
+              <div className="vid-time-display">
                 <Time type="current" />
-                <span className="vid-tm-sep">/</span>
+                <span className="vid-dash">/</span>
                 <Time type="duration" />
               </div>
             </div>

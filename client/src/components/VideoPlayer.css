@@ -1,5 +1,5 @@
-/* Professional Standard VideoPlayer v10.0 */
-.vidstack-wrapper.left-aligned.v10-pro {
+/* Reliability King VideoPlayer v11.0 */
+.vidstack-wrapper.left-aligned.v11-pro {
     position: relative;
     width: fit-content;
     max-width: 100%;
@@ -41,49 +41,27 @@
     cursor: pointer;
 }
 
-/* Unmute Overlay - Large, Centered and Subtle */
-.vid-unmute-overlay {
+/* Loading Overlay - Clearer "YÜKLENİYOR..." */
+.vid-loading-container {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3); /* Subtle dimming */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
-    backdrop-filter: blur(4px);
-    transition: opacity 0.3s ease;
-}
-
-.vid-unmute-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
-    padding: 25px 40px;
-    border-radius: 60px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
-    animation: scalePulse 2s infinite ease-in-out;
-}
-
-@keyframes scalePulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-/* Buffering Spinner */
-.vid-buffering {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    z-index: 25;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    z-index: 40;
+    gap: 15px;
+}
+
+.vid-loading-text {
+    color: #fff;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    letter-spacing: 2px;
+    opacity: 0.8;
 }
 
 .vid-spinner {
@@ -106,6 +84,41 @@
     border-radius: 50%;
 }
 
+/* Unmute Overlay - Large, Centered and Subtle */
+.vid-unmute-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2); 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
+}
+
+.vid-unmute-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 35px;
+    border-radius: 60px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+    animation: scalePulse 2.5s infinite ease-in-out;
+}
+
+@keyframes scalePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
 /* Play Icon Overlay on Pause */
 .vid-action-overlay {
     color: white;
@@ -113,6 +126,7 @@
     transform: scale(0.8);
     transition: all 0.3s ease;
     pointer-events: none;
+    z-index: 10;
 }
 
 .vid-action-overlay.is-visible {
@@ -120,8 +134,8 @@
     transform: scale(1);
 }
 
-/* --- THE CLEAN MINIMAL UI (HOVER-ONLY) --- */
-.vid-ui-container {
+/* --- THE CLEAN MINIMAL INTERFACE (HOVER-ONLY) --- */
+.vid-interface {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -129,82 +143,88 @@
     padding: 40px 20px 15px;
     background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
     opacity: 0;
-    transform: translateY(15px);
+    transform: translateY(10px);
     transition: all 0.4s ease-out;
-    z-index: 30;
+    z-index: 50;
     box-sizing: border-box;
     pointer-events: none;
 }
 
-.vidstack-wrapper:hover .vid-ui-container {
+.vidstack-wrapper:hover .vid-interface {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
 }
 
-/* The "Normal" Progress Bar - No Glow / White on Grey */
-.vid-progress-holder {
+/* The 'Normal' Progress Bar - Standard YouTube/Netflix Styling */
+.vid-scrub-area {
     width: 100%;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
-.vid-slider-main {
+.vid-time-slider {
     position: relative;
     width: 100%;
-    height: 8px; /* High stability hit area */
+    height: 10px; /* Improved hit area */
     cursor: pointer;
     display: flex;
     align-items: center;
 }
 
-.vid-slider-track-bg {
+.vid-time-track {
     width: 100%;
-    height: 4px;
+    height: 3px;
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
+    transition: height 0.2s;
 }
 
-.vid-slider-fill-normal {
+.vid-time-slider:hover .vid-time-track {
+    height: 5px;
+}
+
+.vid-time-fill {
     height: 100%;
-    background: #fff; /* NORMAL WHITE */
+    background: #fff; /* NORMAL WHITE - NO BLUE */
     border-radius: 4px;
 }
 
-.vid-slider-buffered-normal {
+.vid-time-buffered {
     height: 100%;
     background: rgba(255, 255, 255, 0.15);
     border-radius: 4px;
 }
 
-.vid-slider-thumb-normal {
+/* Realistic Thumb */
+.vid-time-thumb {
     width: 12px;
     height: 12px;
     background: #fff;
     border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     opacity: 0;
     transition: opacity 0.2s, transform 0.2s;
 }
 
-.vid-slider-main:hover .vid-slider-thumb-normal {
+.vid-time-slider:hover .vid-time-thumb {
     opacity: 1;
     transform: scale(1.2);
 }
 
 /* Bottom Tools */
-.vid-controls-footer {
+.vid-bottom-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.vid-left-tools {
+.vid-left-cluster {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.vid-btn-bare {
+.vid-play-toggle {
     background: none;
     border: none;
     color: #fff;
@@ -213,22 +233,23 @@
     transition: transform 0.2s;
 }
 
-.vid-btn-bare:hover {
+.vid-play-toggle:hover {
     transform: scale(1.15);
 }
 
-/* Precision Time Display (Current / Duration) */
-.vid-timestamp-normal {
+/* Saniye Saniye Takip (Current / Duration) */
+.vid-time-display {
     display: flex;
     align-items: center;
     gap: 8px;
     color: #fff;
     font-size: 13px;
     font-family: 'Inter', sans-serif;
-    font-weight: 600;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
-.vid-tm-sep {
+.vid-dash {
     opacity: 0.5;
 }
 
