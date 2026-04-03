@@ -1,38 +1,88 @@
 import { useEffect, useRef, useState } from 'react';
 import './VideoPlayer.css';
 
+// --- HAYALET OYNATICI (STEALTH) GLOBAL MOTORU ---
+// Chrome'un tekerlek kaydırmasına uyguladığı yasağı delme merkezi.
+const activeVideos = new Set();
+let hasInteractedGlobally = false;
+
+if (typeof window !== 'undefined') {
+  const stealthUnmuteHandler = () => {
+    if (hasInteractedGlobally) return;
+    hasInteractedGlobally = true;
+    
+    // Kullanıcı tesadüfen de olsa bir yere tıkladığı AN tüm videoların sesini aç!
+    activeVideos.forEach(video => {
+      if (video) {
+        video.muted = false;
+        video.volume = 1;
+        // Eğer sessizde çalıyorsa tık diye sesi gelir.
+      }
+    });
+
+    window.removeEventListener('mousedown', stealthUnmuteHandler, true);
+    window.removeEventListener('touchstart', stealthUnmuteHandler, true);
+    window.removeEventListener('keydown', stealthUnmuteHandler, true);
+  };
+
+  window.addEventListener('mousedown', stealthUnmuteHandler, { capture: true, passive: true });
+  window.addEventListener('touchstart', stealthUnmuteHandler, { capture: true, passive: true });
+  window.addEventListener('keydown', stealthUnmuteHandler, { capture: true, passive: true });
+}
+
 const VideoPlayer = ({ src, poster, className }) => {
   const videoRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  // --- Strict IntersectionObserver Autoplay (Ekran Gözüktüğü An!) ---
+  // --- Strict IntersectionObserver Autoplay & Fallback ---
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Kesinlikle ses açık ve özellikleri sabit
-    video.muted = false;
-    video.volume = 1;
+    activeVideos.add(video);
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-            // %50 ekrana girdiğinde patlat (Otomatik Oynat)
-            video.play().catch(() => {
-                // Tarayıcı sessizce engellerse bile ekranda çirkin butonlar GÖSTERME.
-                // Sadece arkada bekler, kullanıcı her an sayfa kaydırdığında tekrar dener.
-            });
+            
+            // Eğer daha siteye tıklanmadıysa (Masaüstünde mouse tekerleğiyle gelindiğinde)
+            if (!hasInteractedGlobally) {
+                 // Önce şansımızı deneriz: Belki mobildedir ve touch scroll yapmıştır, sesli oynamaya izin verilir.
+                 video.muted = false;
+                 video.volume = 1;
+                 
+                 // Sesli başlat!
+                 video.play().catch((e) => {
+                     // Chrome dedi ki: "HAYIR Tıklamadı, sesli oynatamazsın!"
+                     if (e.name === 'NotAllowedError') {
+                          // HAYALET ÇÖZÜM: Videoyu donuk bırakmak yerine anında sesi kısıp oynat!
+                          // Böylece video ekranda akar. İlk tıklandığında ses açılır.
+                          video.muted = true;
+                          video.play().catch(()=>{}); 
+                     }
+                 });
+            } else {
+                 // Zaten tıklanmış, tüm kilitler açık, direkt sesli başlat.
+                 video.muted = false;
+                 video.volume = 1;
+                 video.play().catch(()=>{});
+            }
+
         } else {
-            // Ekrandan çıkınca durdur ("Kendi kendine duruyor" sorununun tek kontrollü yeri)
+            // Videodan çıkıldığında otomatik durdur (Kendi kendine durma sorununun ilacı)
             video.pause();
         }
       });
-    }, { threshold: 0.5 }); // %50 görünürlük sınırı
+    }, { threshold: 0.5 }); // %50 görünüm oranı
 
     observer.observe(video);
-    return () => observer.disconnect();
+    
+    return () => {
+      observer.disconnect();
+      activeVideos.delete(video);
+    };
   }, [src]);
 
   // Zaman İlerleyişini Yakalama (Bar için)
@@ -75,7 +125,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         poster={poster}
         className="native-video-element"
         playsInline
-        loop // Otomatik tekrar!
+        loop
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
       />
