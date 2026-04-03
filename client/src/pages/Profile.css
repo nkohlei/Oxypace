@@ -4,11 +4,13 @@
 .profile-page-content {
     display: flex;
     justify-content: center;
-    padding: 30px 15px;
+    align-items: center;
+    padding: 0 15px; /* Removed vertical padding to prevent scroll */
     width: 100%;
+    height: calc(100vh - 65px); /* Lock to exact viewport minus navbar */
     font-family: 'Outfit', sans-serif;
     background-color: var(--bg-primary);
-    overflow: hidden;
+    overflow: hidden; /* Ensure the whole page never scrolls */
 }
 
 .profile-card-horizontal {
@@ -19,11 +21,11 @@
     box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
     max-width: 1000px;
     width: 100%;
-    margin: 30px auto;
+    margin: 0 auto; /* Removed vertical margin to let container align it */
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 140px);
-    max-height: 700px;
+    height: 100%;
+    max-height: calc(100vh - 100px); /* Leaves a sleek 15px gap above and below */
     border: none;
 }
 
