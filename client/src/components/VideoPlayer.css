@@ -1,15 +1,15 @@
-/* Refined Vidstack Wrapper v8.0 - Nuclear Stability */
-.vidstack-wrapper.left-aligned.v8-nuclear {
+/* Refined Vidstack Wrapper v9.0 - The Final Word */
+.vidstack-wrapper.left-aligned.v9-final {
     position: relative;
     width: fit-content;
     max-width: 100%;
     margin: 12px 0; /* Forced Left Alignment */
     border-radius: 12px;
     overflow: hidden;
-    background: transparent;
+    background: #000;
     user-select: none;
     display: block;
-    box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.7);
 }
 
 .vidstack-player {
@@ -18,23 +18,20 @@
     max-width: 100%;
     height: auto;
     border-radius: 12px;
-    overflow: hidden;
-    background: #000;
 }
 
 .vidstack-player video {
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: 85vh;
+    max-height: 85vh; /* Responsive height */
     display: block;
     object-fit: contain;
     border-radius: 12px;
-    background: transparent;
 }
 
-/* --- THE INTERACTIVE CONTROL SURFACE --- */
-.vid-control-surface {
+/* --- THE SUPER INTERACTIVE OVERLAY --- */
+.vid-click-target {
     position: absolute;
     inset: 0;
     display: flex;
@@ -44,140 +41,145 @@
     cursor: pointer;
 }
 
-/* Unmute Prompt - For when the browser blocks audio */
-.vid-unmute-prompt {
+/* Unmute Badge - Modern, Glowing, Prompting Click */
+.vid-unblock-badge {
     position: absolute;
     top: 20px;
     right: 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 20px;
+    gap: 12px;
+    padding: 12px 24px;
     border-radius: 50px;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(15px);
-    border: 1.5px solid rgba(0, 195, 255, 0.8);
+    border: 1.5px solid rgba(0, 195, 255, 0.9);
     color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
     z-index: 20;
     pointer-events: none;
-    box-shadow: 0 0 20px rgba(0, 195, 255, 0.3);
-    animation: bounceSlow 2s ease-in-out infinite;
+    box-shadow: 0 0 25px rgba(0, 195, 255, 0.4);
+    animation: pulseGlow 1.5s ease-in-out infinite;
 }
 
-@keyframes bounceSlow {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
 }
 
-/* Center Play/Pause State Icon */
-.vid-state-icon {
-    width: 65px;
-    height: 65px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+/* Central Play Fade-in */
+.vid-central-play {
+    width: 70px;
+    height: 70px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
     opacity: 0;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    transform: scale(0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(0.7);
 }
 
-.vid-control-surface:hover .vid-state-icon.is-paused {
+.vid-central-play.show-paused {
     opacity: 1;
     transform: scale(1);
 }
 
-/* --- THE "O KADAR" MINIMAL UI (HOVER-ONLY) --- */
-.vid-minimal-ui {
+/* --- STABILIZED PRO BAR (HOVER-ONLY) --- */
+.vid-pro-ui {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 35px 20px 15px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
+    padding: 40px 20px 15px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.98));
     opacity: 0;
     transform: translateY(15px);
-    transition: all 0.4s ease;
+    transition: all 0.4s ease-out;
     z-index: 25;
     box-sizing: border-box;
+    pointer-events: none; /* Allow clicks through to surface unless hovering controls */
 }
 
-.vidstack-wrapper:hover .vid-minimal-ui {
+.vid-pro-ui:hover, 
+.vidstack-wrapper:hover .vid-pro-ui {
     opacity: 1;
     transform: translateY(0);
+    pointer-events: auto;
 }
 
-/* High-Contrast Progress Bar */
-.vid-progress-wrapper {
+/* The "Stabil" Progress Bar */
+.vid-bar-container {
     width: 100%;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
-.vid-slider-root {
+.v9-time-slider {
     position: relative;
     width: 100%;
-    height: 8px; /* Slightly thicker for stability */
+    height: 8px; /* Thicker - Better for scrolling */
     cursor: pointer;
     display: flex;
     align-items: center;
 }
 
-.vid-slider-track {
+.v9-track {
     width: 100%;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    transition: height 0.2s;
 }
 
-.vid-slider-fill {
+.v9-track-fill {
     height: 100%;
     background: #00c3ff;
-    border-radius: 4px;
+    border-radius: 3px;
     box-shadow: 0 0 15px #00c3ff;
 }
 
-.vid-slider-buffered {
+.v9-track-progress {
     height: 100%;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
-.vid-slider-thumb {
-    width: 15px;
-    height: 15px;
+.v9-thumb {
+    width: 16px;
+    height: 16px;
     background: #fff;
     border-radius: 50%;
     box-shadow: 0 0 15px #00c3ff;
     opacity: 0;
     transition: opacity 0.2s, transform 0.2s;
+    border: 2px solid #00c3ff;
 }
 
-.vid-slider-root:hover .vid-slider-thumb {
+.v9-time-slider:hover .v9-thumb {
     opacity: 1;
     transform: scale(1.2);
 }
 
-/* Bottom Meta Info Row */
-.vid-bottom-meta {
+/* Bottom Controls */
+.vid-control-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.vid-playback-group {
+.vid-left-cluster {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.vid-btn-small {
+.vid-simple-play {
     background: none;
     border: none;
     color: #fff;
@@ -186,26 +188,26 @@
     transition: transform 0.2s;
 }
 
-.vid-btn-small:hover {
+.vid-simple-play:hover {
     color: #00c3ff;
-    transform: scale(1.15);
+    transform: scale(1.2);
 }
 
-/* Precision Time Display (Current / Total) */
-.vid-timestamp {
+/* "Süre Bilgisi" - Precision Timestamps */
+.vid-time-group {
     display: flex;
     align-items: center;
     gap: 8px;
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    font-weight: 700;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
 }
 
-.vid-sep {
+.v9-sep {
     color: #00c3ff;
-    opacity: 0.8;
+    opacity: 0.6;
 }
 
 /* State Visibility Helpers */

@@ -12,21 +12,22 @@ import { Play, Pause, VolumeX } from 'lucide-react';
 import '@vidstack/react/player/styles/base.css';
 import './VideoPlayer.css';
 
-// Global session unblocking system (v8 - THE NUCLEAR OPTION)
-const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V8';
+// Global session unblocking system (v9.0 - THE FINAL WORD)
+const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V9';
 
 if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined) {
   window.__OX_SESSION_UNMUTED__ = false;
   
-  const activateAudioEngine = () => {
+  const activateAudioEngine = (event) => {
+    // Only trigger on real user gestures (clicks, taps, keys)
     if (!window.__OX_SESSION_UNMUTED__) {
       window.__OX_SESSION_UNMUTED__ = true;
       window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
       
       // Cleanup
-      window.removeEventListener('mousedown', activateAudioEngine);
-      window.removeEventListener('touchstart', activateAudioEngine);
-      window.removeEventListener('keydown', activateAudioEngine);
+      window.removeEventListener('mousedown', activateAudioEngine, true);
+      window.removeEventListener('touchstart', activateAudioEngine, true);
+      window.removeEventListener('keydown', activateAudioEngine, true);
     }
   };
 
@@ -38,18 +39,22 @@ if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined
 const VideoPlayer = ({ src, poster, className }) => {
   const playerRef = useRef(null);
   const remote = useMediaRemote(playerRef);
-  const { paused, muted } = useMediaStore(playerRef);
+  const { paused, muted, duration } = useMediaStore(playerRef);
   const [isUnmutedSession, setIsUnmutedSession] = useState(typeof window !== 'undefined' ? window.__OX_SESSION_UNMUTED__ : false);
 
-  // Synchronize ALL players when one is unmuted
+  // --- AUDIO SYNCHRONIZER (THE HEART OF V9) ---
   useEffect(() => {
-    const syncUnmute = () => {
+    const applyAudioSettings = () => {
       setIsUnmutedSession(true);
       if (playerRef.current) {
-        // Direct DOM access for absolute reliability
-        playerRef.current.muted = false;
-        playerRef.current.volume = 1;
-        // Also use remote just in case
+        // Direct DOM Force - This is the most reliable way
+        const videoElement = playerRef.current.querySelector('video');
+        if (videoElement) {
+          videoElement.muted = false;
+          videoElement.volume = 1;
+        }
+        
+        // Remote Sync
         if (remote) {
           remote.unmute();
           remote.setVolume(1);
@@ -57,27 +62,23 @@ const VideoPlayer = ({ src, poster, className }) => {
       }
     };
 
-    window.addEventListener(UNMUTE_EVENT, syncUnmute);
-    if (window.__OX_SESSION_UNMUTED__) syncUnmute();
+    window.addEventListener(UNMUTE_EVENT, applyAudioSettings);
+    // If the session is already unmuted, apply immediately
+    if (window.__OX_SESSION_UNMUTED__) applyAudioSettings();
 
-    return () => window.removeEventListener(UNMUTE_EVENT, syncUnmute);
+    return () => window.removeEventListener(UNMUTE_EVENT, applyAudioSettings);
   }, [remote]);
 
-  const handleManualInteraction = (e) => {
+  const handleManualAction = (e) => {
     if (e) e.stopPropagation();
     
-    // 1. Force Global Unblock
+    // Ensure global unblock on any manual interaction
     if (!window.__OX_SESSION_UNMUTED__) {
       window.__OX_SESSION_UNMUTED__ = true;
       window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
     }
 
-    // 2. Direct Hardware-Level Unmute
     if (playerRef.current) {
-      playerRef.current.muted = false;
-      playerRef.current.volume = 1;
-      
-      // 3. Playback Control
       if (playerRef.current.paused) {
         playerRef.current.play();
       } else {
@@ -87,7 +88,7 @@ const VideoPlayer = ({ src, poster, className }) => {
   };
 
   return (
-    <div className={`vidstack-wrapper left-aligned v8-nuclear ${className || ''}`}>
+    <div className={`vidstack-wrapper left-aligned v9-final ${className || ''}`}>
       <MediaPlayer
         src={src}
         poster={poster}
@@ -96,53 +97,53 @@ const VideoPlayer = ({ src, poster, className }) => {
         playsInline
         loop
         autoplay="visible"
-        muted={!isUnmutedSession} // Reactive muted prop
+        muted={!isUnmutedSession}
         volume={1}
+        preload="auto"
         crossOrigin="anonymous"
       >
         <MediaProvider />
 
-        {/* --- THE INTERACTIVE STABILIZER LAYER --- */}
-        <div className="vid-control-surface" onClick={handleManualInteraction}>
-          {/* Muted Warning (Only shows if session is still muted) */}
+        {/* --- SUPER INTERACTIVE OVERLAY --- */}
+        <div className="vid-click-target" onClick={handleManualAction}>
+          {/* Mute Visual Reminder - Prompting the first click */}
           {!isUnmutedSession && (
-            <div className="vid-unmute-prompt">
-              <VolumeX size={24} />
+            <div className="vid-unblock-badge">
+              <VolumeX size={22} color="white" />
               <span>SESİ ETKİNLEŞTİR</span>
             </div>
           )}
 
-          {/* Large Center Play/Pause State */}
-          <div className={`vid-state-icon ${paused ? 'is-paused' : 'is-playing'}`}>
-            {paused ? <Play size={48} fill="white" /> : <Pause size={48} fill="white" />}
+          {/* Big Center State Icon (Fade in on hover or pause) */}
+          <div className={`vid-central-play ${paused ? 'show-paused' : ''}`}>
+            <Play size={44} fill="white" />
           </div>
         </div>
 
-        {/* --- STABLE PROGRESS BAR & TIME INFO (HOVER-ONLY) --- */}
-        <div className="vid-minimal-ui">
-          {/* Higher-Precision Progress Bar */}
-          <div className="vid-progress-wrapper">
-            <TimeSlider.Root className="vid-slider-root">
-              <TimeSlider.Track className="vid-slider-track">
-                <TimeSlider.TrackFill className="vid-slider-fill" />
-                <TimeSlider.Progress className="vid-slider-buffered" />
+        {/* --- THE STABILIZED PRO BAR (HOVER-ONLY) --- */}
+        <div className="vid-pro-ui">
+          <div className="vid-bar-container">
+            <TimeSlider.Root className="v9-time-slider">
+              <TimeSlider.Track className="v9-track">
+                <TimeSlider.TrackFill className="v9-track-fill" />
+                <TimeSlider.Progress className="v9-track-progress" />
               </TimeSlider.Track>
-              <TimeSlider.Thumb className="vid-slider-thumb" />
+              <TimeSlider.Thumb className="v9-thumb" />
             </TimeSlider.Root>
           </div>
 
-          <div className="vid-bottom-meta">
-            <div className="vid-playback-group">
-              <PlayButton className="vid-btn-small">
-                <Play size={22} fill="white" className="vds-play-icon" />
-                <Pause size={22} fill="white" className="vds-pause-icon" />
+          <div className="vid-control-row">
+            <div className="vid-left-cluster">
+              <PlayButton className="vid-simple-play">
+                <Play size={20} fill="white" className="vds-play-icon" />
+                <Pause size={20} fill="white" className="vds-pause-icon" />
               </PlayButton>
               
-              {/* Precision Time Information */}
-              <div className="vid-timestamp">
-                <Time type="current" />
-                <span className="vid-sep">/</span>
-                <Time type="duration" />
+              {/* "Süre Bilgisi" - Precision Timestamps */}
+              <div className="vid-time-group">
+                <Time type="current" className="v9-time" />
+                <span className="v9-sep">/</span>
+                <Time type="duration" className="v9-time" />
               </div>
             </div>
           </div>
