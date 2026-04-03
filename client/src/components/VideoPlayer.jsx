@@ -2,49 +2,71 @@ import { useEffect, useRef, useState } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 import './VideoPlayer.css';
 
-// Invisible Session Unblocker (v14.0)
-const GLOBAL_UNMUTE_EVENT = 'OX_NATIVE_UNMUTE';
+/**
+ * GLOBAL VIDEO REGISTRY (v15.0 - THE GESTURE LOCK)
+ * This ensures that when the user clicks ANYWHERE on the page, 
+ * the browser directly touches every video and forces it UNMUTED.
+ * This is the ONLY reliable way to bypass strict browser privacy blocks.
+ */
+const activeVideos = new Set();
+let sessionUnmuted = false;
 
-if (typeof window !== 'undefined' && window.__OX_NATIVE_UNMUTED__ === undefined) {
-  window.__OX_NATIVE_UNMUTED__ = false;
-  
-  const triggerUnmute = () => {
-    if (!window.__OX_NATIVE_UNMUTED__) {
-      window.__OX_NATIVE_UNMUTED__ = true;
-      window.dispatchEvent(new CustomEvent(GLOBAL_UNMUTE_EVENT));
-    }
+if (typeof window !== 'undefined') {
+  const globalUnmuteHandler = () => {
+    if (sessionUnmuted) return;
+    sessionUnmuted = true;
+    
+    // Direct DOM manipulation during a "user gesture" event loop
+    activeVideos.forEach(video => {
+      if (video) {
+        video.muted = false;
+        video.volume = 1;
+        video.play().catch(() => {}); // Ensure it's playing
+      }
+    });
+
+    window.dispatchEvent(new CustomEvent('OX_SOUND_ACTIVATED'));
+    
+    // Cleanup listeners after activation
+    window.removeEventListener('mousedown', globalUnmuteHandler, true);
+    window.removeEventListener('touchstart', globalUnmuteHandler, true);
+    window.removeEventListener('keydown', globalUnmuteHandler, true);
   };
 
-  // The moment the user clicks ANYWHERE on the site, we unblock audio for everyone
-  window.addEventListener('mousedown', triggerUnmute, { capture: true, once: true, passive: true });
-  window.addEventListener('touchstart', triggerUnmute, { capture: true, once: true, passive: true });
-  window.addEventListener('keydown', triggerUnmute, { capture: true, once: true, passive: true });
+  window.addEventListener('mousedown', globalUnmuteHandler, { capture: true, passive: true });
+  window.addEventListener('touchstart', globalUnmuteHandler, { capture: true, passive: true });
+  window.addEventListener('keydown', globalUnmuteHandler, { capture: true, passive: true });
 }
 
 const VideoPlayer = ({ src, poster, className }) => {
   const videoRef = useRef(null);
-  const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(!sessionUnmuted);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showSoundToast, setShowSoundToast] = useState(false);
 
-  // 1. Audio Synchronization
+  // 1. Lifecycle: Register/Unregister with the Global Registry
   useEffect(() => {
-    const handleGlobalUnmute = () => {
+    const video = videoRef.current;
+    if (video) activeVideos.add(video);
+
+    const onSoundActivated = () => {
       setIsMuted(false);
-      if (videoRef.current) {
-        videoRef.current.muted = false;
-        videoRef.current.volume = 1;
-      }
+      setShowSoundToast(true);
+      setTimeout(() => setShowSoundToast(false), 3000);
     };
 
-    window.addEventListener(GLOBAL_UNMUTE_EVENT, handleGlobalUnmute);
-    if (window.__OX_NATIVE_UNMUTED__) handleGlobalUnmute();
-    return () => window.removeEventListener(GLOBAL_UNMUTE_EVENT, handleGlobalUnmute);
+    window.addEventListener('OX_SOUND_ACTIVATED', onSoundActivated);
+    if (sessionUnmuted) setIsMuted(false);
+
+    return () => {
+      if (video) activeVideos.delete(video);
+      window.removeEventListener('OX_SOUND_ACTIVATED', onSoundActivated);
+    };
   }, []);
 
   // 2. Playback Handlers
@@ -52,18 +74,19 @@ const VideoPlayer = ({ src, poster, className }) => {
     if (e) e.stopPropagation();
     if (!videoRef.current) return;
 
+    // Direct unmuting attempt on specific video click
+    if (videoRef.current.muted) {
+       videoRef.current.muted = false;
+       videoRef.current.volume = 1;
+       setIsMuted(false);
+    }
+
     if (videoRef.current.paused) {
-      videoRef.current.play().catch(console.warn);
+      videoRef.current.play().catch(() => {});
       setIsPlaying(true);
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
-    }
-
-    // Also trigger global unblock if this was the first interaction
-    if (!window.__OX_NATIVE_UNMUTED__) {
-      window.__OX_NATIVE_UNMUTED__ = true;
-      window.dispatchEvent(new CustomEvent(GLOBAL_UNMUTE_EVENT));
     }
   };
 
@@ -72,7 +95,7 @@ const VideoPlayer = ({ src, poster, className }) => {
     const current = videoRef.current.currentTime;
     const total = videoRef.current.duration;
     setCurrentTime(current);
-    if (total) {
+    if (total > 0) {
       setDuration(total);
       setProgress((current / total) * 100);
     }
@@ -97,13 +120,11 @@ const VideoPlayer = ({ src, poster, className }) => {
 
   return (
     <div 
-      ref={containerRef}
-      className={`native-player-container left-aligned v14-restoration ${className || ''}`}
+      className={`native-player-container left-aligned v15-gesture ${className || ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={togglePlay}
     >
-      {/* THE CORE ENGINE: Native HTML5 Video */}
       <video
         ref={videoRef}
         src={src}
@@ -121,7 +142,21 @@ const VideoPlayer = ({ src, poster, className }) => {
         onPlay={() => setIsPlaying(true)}
       />
 
-      {/* 1. Loading Spinner (Native CSS) */}
+      {/* 1. Universal "Sound Blocked" Toast (Subtle) */}
+      {isMuted && !isBuffering && (
+        <div className="native-unmute-hint">
+          <VolumeX size={16} /> <span>SESİ AÇMAK İÇİN SİTEDE HERHANGİ BİR YERE TIKLAYIN</span>
+        </div>
+      )}
+
+      {/* 2. Sound Activation Feedback */}
+      {showSoundToast && (
+        <div className="native-sound-toast">
+          <Volume2 size={16} /> <span>SES ETKİN</span>
+        </div>
+      )}
+
+      {/* 3. Loading Loader */}
       {isBuffering && (
         <div className="native-loader-overlay">
           <div className="native-spinner"></div>
@@ -129,17 +164,15 @@ const VideoPlayer = ({ src, poster, className }) => {
         </div>
       )}
 
-      {/* 2. Interaction Layer Hint (Only on Pause) */}
+      {/* 4. Play Hint (on pause) */}
       {!isPlaying && !isBuffering && (
         <div className="native-play-hint">
           <Play size={48} fill="white" stroke="none" />
         </div>
       )}
 
-      {/* 3. Professional Realistic Interface (Hover Only) */}
+      {/* 5. Interface Row */}
       <div className={`native-controls-ui ${isHovered || !isPlaying ? 'is-visible' : ''}`} onClick={(e) => e.stopPropagation()}>
-        
-        {/* THE REAL PROGRESS BAR (High-Accuracy) */}
         <div className="native-progress-area" onClick={handleScrub}>
           <div className="native-progress-track">
             <div className="native-progress-fill" style={{ width: `${progress}%` }}>
