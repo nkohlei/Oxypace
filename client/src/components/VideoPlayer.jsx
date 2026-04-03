@@ -1,174 +1,172 @@
 import { useEffect, useRef, useState } from 'react';
-import { 
-  MediaPlayer, 
-  MediaProvider, 
-  PlayButton, 
-  TimeSlider,
-  Time,
-  useMediaStore,
-  useMediaRemote,
-  Spinner
-} from '@vidstack/react';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import '@vidstack/react/player/styles/base.css';
+import { Play, Pause, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 import './VideoPlayer.css';
 
-// Global session unblocking system (v13.0 - THE ULTIMATE OVERRIDE)
-const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE_V13';
+// Invisible Session Unblocker (v14.0)
+const GLOBAL_UNMUTE_EVENT = 'OX_NATIVE_UNMUTE';
 
-if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined) {
-  window.__OX_SESSION_UNMUTED__ = false;
+if (typeof window !== 'undefined' && window.__OX_NATIVE_UNMUTED__ === undefined) {
+  window.__OX_NATIVE_UNMUTED__ = false;
   
-  const activateAudioEngine = () => {
-    if (!window.__OX_SESSION_UNMUTED__) {
-      window.__OX_SESSION_UNMUTED__ = true;
-      window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
+  const triggerUnmute = () => {
+    if (!window.__OX_NATIVE_UNMUTED__) {
+      window.__OX_NATIVE_UNMUTED__ = true;
+      window.dispatchEvent(new CustomEvent(GLOBAL_UNMUTE_EVENT));
     }
   };
 
-  window.addEventListener('mousedown', activateAudioEngine, { capture: true, once: true, passive: true });
-  window.addEventListener('touchstart', activateAudioEngine, { capture: true, once: true, passive: true });
+  // The moment the user clicks ANYWHERE on the site, we unblock audio for everyone
+  window.addEventListener('mousedown', triggerUnmute, { capture: true, once: true, passive: true });
+  window.addEventListener('touchstart', triggerUnmute, { capture: true, once: true, passive: true });
+  window.addEventListener('keydown', triggerUnmute, { capture: true, once: true, passive: true });
 }
 
 const VideoPlayer = ({ src, poster, className }) => {
-  const playerRef = useRef(null);
-  const remote = useMediaRemote(playerRef);
-  const { paused, muted, buffering } = useMediaStore(playerRef);
-  const [sessionUnmuted, setSessionUnmuted] = useState(typeof window !== 'undefined' ? window.__OX_SESSION_UNMUTED__ : false);
+  const videoRef = useRef(null);
+  const containerRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Sync with global unblock
+  // 1. Audio Synchronization
   useEffect(() => {
-    const onGlobalUnmute = () => {
-      setSessionUnmuted(true);
-      if (playerRef.current && remote) {
-        // Direct DOM Force
-        const video = playerRef.current.querySelector('video');
-        if (video) {
-          video.muted = false;
-          video.volume = 1;
-        }
-        remote.unmute();
-        remote.setVolume(1);
+    const handleGlobalUnmute = () => {
+      setIsMuted(false);
+      if (videoRef.current) {
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1;
       }
     };
-    window.addEventListener(UNMUTE_EVENT, onGlobalUnmute);
-    if (window.__OX_SESSION_UNMUTED__) onGlobalUnmute();
-    return () => window.removeEventListener(UNMUTE_EVENT, onGlobalUnmute);
-  }, [remote]);
 
-  // SMART ACTION: Unmute first, then toggle play/pause
-  const handleManualAction = (e) => {
+    window.addEventListener(GLOBAL_UNMUTE_EVENT, handleGlobalUnmute);
+    if (window.__OX_NATIVE_UNMUTED__) handleGlobalUnmute();
+    return () => window.removeEventListener(GLOBAL_UNMUTE_EVENT, handleGlobalUnmute);
+  }, []);
+
+  // 2. Playback Handlers
+  const togglePlay = (e) => {
     if (e) e.stopPropagation();
+    if (!videoRef.current) return;
 
-    // 1. Unblock session globally if needed
-    if (!window.__OX_SESSION_UNMUTED__) {
-      window.__OX_SESSION_UNMUTED__ = true;
-      window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(console.warn);
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
     }
 
-    if (playerRef.current && remote) {
-      if (muted) {
-        // IF MUTED: Unmute and play (Don't toggle play status)
-        const video = playerRef.current.querySelector('video');
-        if (video) {
-          video.muted = false;
-          video.volume = 1;
-        }
-        remote.unmute();
-        remote.setVolume(1);
-        remote.play();
-      } else {
-        // IF ALREADY UNMUTED: Standard play/pause toggle
-        if (paused) {
-          remote.play();
-        } else {
-          remote.pause();
-        }
-      }
+    // Also trigger global unblock if this was the first interaction
+    if (!window.__OX_NATIVE_UNMUTED__) {
+      window.__OX_NATIVE_UNMUTED__ = true;
+      window.dispatchEvent(new CustomEvent(GLOBAL_UNMUTE_EVENT));
     }
   };
 
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    const current = videoRef.current.currentTime;
+    const total = videoRef.current.duration;
+    setCurrentTime(current);
+    if (total) {
+      setDuration(total);
+      setProgress((current / total) * 100);
+    }
+  };
+
+  const handleScrub = (e) => {
+    if (!videoRef.current || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const clickedProgress = x / rect.width;
+    const newTime = clickedProgress * duration;
+    videoRef.current.currentTime = newTime;
+    setProgress(clickedProgress * 100);
+  };
+
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   return (
-    <div className={`vidstack-wrapper left-aligned v13-ultimate ${className || ''}`}>
-      <MediaPlayer
-        key={src}
+    <div 
+      ref={containerRef}
+      className={`native-player-container left-aligned v14-restoration ${className || ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={togglePlay}
+    >
+      {/* THE CORE ENGINE: Native HTML5 Video */}
+      <video
+        ref={videoRef}
         src={src}
         poster={poster}
-        ref={playerRef}
-        className="vidstack-player"
+        className="native-video-element"
         playsInline
         loop
-        autoplay="visible"
-        muted={!sessionUnmuted}
-        volume={1}
-        preload="auto"
-        crossOrigin="anonymous"
-        onLoadedMetadata={() => {
-          // Jumpstart the engine to ensure progress bar is synced
-          if (playerRef.current) playerRef.current.currentTime = 0;
-        }}
-      >
-        <MediaProvider />
+        autoPlay
+        muted={isMuted}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleTimeUpdate}
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => setIsBuffering(false)}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+      />
 
-        {/* --- ULTIMATE INTERACTION LAYER --- */}
-        <div className="vid-ultimate-overlay" onClick={handleManualAction}>
-          {/* Buffering Indicator (Clearer "Yükleniyor") */}
-          {buffering && (
-            <div className="vid-buffering-hint">
-              <Spinner.Root className="vid-loader-spinner">
-                <Spinner.Track className="vid-loader-track" />
-                <Spinner.TrackFill className="vid-loader-fill" />
-              </Spinner.Root>
-              <span className="vid-loader-text">YÜKLENİYOR...</span>
+      {/* 1. Loading Spinner (Native CSS) */}
+      {isBuffering && (
+        <div className="native-loader-overlay">
+          <div className="native-spinner"></div>
+          <span className="native-loader-text">YÜKLENİYOR...</span>
+        </div>
+      )}
+
+      {/* 2. Interaction Layer Hint (Only on Pause) */}
+      {!isPlaying && !isBuffering && (
+        <div className="native-play-hint">
+          <Play size={48} fill="white" stroke="none" />
+        </div>
+      )}
+
+      {/* 3. Professional Realistic Interface (Hover Only) */}
+      <div className={`native-controls-ui ${isHovered || !isPlaying ? 'is-visible' : ''}`} onClick={(e) => e.stopPropagation()}>
+        
+        {/* THE REAL PROGRESS BAR (High-Accuracy) */}
+        <div className="native-progress-area" onClick={handleScrub}>
+          <div className="native-progress-track">
+            <div className="native-progress-fill" style={{ width: `${progress}%` }}>
+              <div className="native-progress-thumb" />
             </div>
-          )}
-
-          {/* Sound Unblock Prompter */}
-          {!sessionUnmuted && !buffering && (
-            <div className="vid-unmute-prompter">
-              <div className="vid-unmute-button">
-                <VolumeX size={32} strokeWidth={2.5} />
-                <span>SESİ AÇ</span>
-              </div>
-            </div>
-          )}
-
-          {/* Pause Visual */}
-          <div className={`vid-pause-icon-overlay ${paused && !buffering ? 'is-visible' : ''}`}>
-            <Play size={44} fill="white" />
           </div>
         </div>
 
-        {/* --- REALISTIC MINIMAL INTERFACE (HOVER-ONLY) --- */}
-        <div className="vid-minimal-ui">
-          {/* Functional Progress Bar (Classic White) */}
-          <div className="vid-scrub-section">
-            <TimeSlider.Root className="vid-pro-slider">
-              <TimeSlider.Track className="vid-pro-track">
-                <TimeSlider.TrackFill className="vid-pro-fill" />
-                <TimeSlider.Progress className="vid-pro-buffered" />
-              </TimeSlider.Track>
-              <TimeSlider.Thumb className="vid-pro-thumb" />
-            </TimeSlider.Root>
-          </div>
-
-          <div className="vid-tools-row">
-            <div className="vid-tools-left">
-              <PlayButton className="vid-play-button">
-                <Play size={18} fill="white" className="vds-play-icon" />
-                <Pause size={18} fill="white" className="vds-pause-icon" />
-              </PlayButton>
-              
-              {/* Saniye Saniye Takip */}
-              <div className="vid-timestamp-info">
-                <Time type="current" />
-                <span className="vid-slash">/</span>
-                <Time type="duration" />
-              </div>
+        <div className="native-bottom-row">
+          <div className="native-controls-left">
+            <button className="native-control-btn" onClick={togglePlay}>
+              {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" />}
+            </button>
+            <div className="native-time-display">
+              <span>{formatTime(currentTime)}</span>
+              <span className="native-time-sep">/</span>
+              <span>{formatTime(duration)}</span>
             </div>
           </div>
+
+          <div className="native-controls-right">
+             <button className="native-control-btn" onClick={() => videoRef.current?.requestFullscreen()}>
+                <Maximize2 size={18} />
+             </button>
+          </div>
         </div>
-      </MediaPlayer>
+      </div>
     </div>
   );
 };

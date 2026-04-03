@@ -1,5 +1,5 @@
-/* Ultimate Override VideoPlayer v13.0 - The End of Blue */
-.vidstack-wrapper.left-aligned.v13-ultimate {
+/* Native Restoration VideoPlayer v14.0 - Direct Control */
+.native-player-container.left-aligned.v14-restoration {
     position: relative;
     width: fit-content;
     max-width: 100%;
@@ -10,255 +10,184 @@
     user-select: none;
     display: block;
     box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.7);
+    cursor: pointer;
 }
 
-.vidstack-player {
+.native-video-element {
     display: block;
-    width: fit-content;
-    max-width: 100%;
-    height: auto;
-    border-radius: 12px;
-}
-
-.vidstack-player video {
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: 85vh; /* Responsive height */
-    display: block;
+    max-height: 85vh;
     object-fit: contain;
     border-radius: 12px;
 }
 
-/* --- THE ULTIMATE INTERACTION LAYER --- */
-.vid-ultimate-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    cursor: pointer;
-}
-
-/* Loading Overlay - Clearer "YÜKLENİYOR" */
-.vid-buffering-hint {
+/* --- THE LOADER (PROMINENT) --- */
+.native-loader-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
     z-index: 40;
     gap: 15px;
 }
 
-.vid-loader-text {
+.native-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #fff;
+    border-radius: 50%;
+    animation: native-spin 1s linear infinite;
+}
+
+@keyframes native-spin {
+    to { transform: rotate(360deg); }
+}
+
+.native-loader-text {
     color: #fff;
     font-size: 13px;
     font-family: 'Inter', sans-serif;
     font-weight: 800;
     letter-spacing: 2px;
-    opacity: 0.9;
+    opacity: 0.8;
 }
 
-.vid-loader-spinner {
-    width: 60px;
-    height: 60px;
-}
-
-.vid-loader-track {
-    width: 100%;
-    height: 100%;
-    border: 4px solid rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-}
-
-.vid-loader-fill {
-    width: 100%;
-    height: 100%;
-    border: 4px solid #fff;
-    border-top-color: transparent;
-    border-radius: 50%;
-}
-
-/* Unmute Overlay - Large, Centered and Subtle */
-.vid-unmute-prompter {
+/* --- PLAY HINT --- */
+.native-play-hint {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.2); 
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 20;
-    backdrop-filter: blur(4px);
-}
-
-.vid-unmute-button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 25px 45px;
-    border-radius: 80px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: 2px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    animation: scaleHeartbeat 2.5s infinite ease-in-out;
-}
-
-@keyframes scaleHeartbeat {
-    0%, 100% { transform: scale(1); opacity: 0.9; }
-    50% { transform: scale(1.05); opacity: 1; }
-}
-
-/* Action Icon on Pause */
-.vid-pause-icon-overlay {
-    color: white;
-    opacity: 0;
-    transform: scale(0.8);
-    transition: all 0.3s ease;
-    pointer-events: none;
     z-index: 10;
+    pointer-events: none;
 }
 
-.vid-pause-icon-overlay.is-visible {
-    opacity: 1;
-    transform: scale(1);
-}
-
-/* --- THE REALISTIC MINIMAL UI (HOVER-ONLY) --- */
-.vid-minimal-ui {
+/* --- CUSTOM CONTROLS (HOVER ONLY) --- */
+.native-controls-ui {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     padding: 40px 20px 15px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 1));
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
     opacity: 0;
     transform: translateY(10px);
     transition: all 0.4s ease-out;
     z-index: 50;
     box-sizing: border-box;
-    pointer-events: none;
+    cursor: default;
 }
 
-.vidstack-wrapper:hover .vid-minimal-ui {
+.native-player-container:hover .native-controls-ui,
+.native-controls-ui.is-visible {
     opacity: 1;
     transform: translateY(0);
-    pointer-events: auto;
 }
 
-/* The 'Normal' Progress Bar - Standard YouTube/Netflix Styling */
-.vid-scrub-section {
+/* THE REAL PROGRESS BAR - Standard White/Grey Style */
+.native-progress-area {
     width: 100%;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
     margin-bottom: 12px;
 }
 
-.vid-pro-slider {
-    position: relative;
+.native-progress-track {
     width: 100%;
-    height: 10px; /* Hit area */
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-}
-
-.vid-pro-track {
-    width: 100%;
-    height: 3px;
+    height: 4px;
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
+    position: relative;
     transition: height 0.2s;
 }
 
-.vid-pro-slider:hover .vid-pro-track {
-    height: 5px;
+.native-progress-area:hover .native-progress-track {
+    height: 6px;
 }
 
-.vid-pro-fill {
+.native-progress-fill {
     height: 100%;
-    background: #fff !important; /* ABSOLUTE WHITE - NO BLUE */
+    background: #fff; /* NORMAL WHITE - NO BLUE */
     border-radius: 4px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 
-.vid-pro-buffered {
-    height: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-}
-
-/* Realistic Thumb */
-.vid-pro-thumb {
-    width: 13px;
-    height: 13px;
-    background: #fff !important;
+.native-progress-thumb {
+    width: 14px;
+    height: 14px;
+    background: #fff;
     border-radius: 50%;
+    position: absolute;
+    right: -7px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
     opacity: 0;
     transition: opacity 0.2s, transform 0.2s;
 }
 
-.vid-pro-slider:hover .vid-pro-thumb {
+.native-progress-area:hover .native-progress-thumb {
     opacity: 1;
     transform: scale(1.2);
 }
 
-/* Bottom Tools Row */
-.vid-tools-row {
+/* BOTTOM BUTTONS */
+.native-bottom-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.vid-tools-left {
+.native-controls-left {
     display: flex;
     align-items: center;
     gap: 15px;
+    color: #fff;
 }
 
-.vid-play-button {
+.native-control-btn {
     background: none;
     border: none;
     color: #fff;
+    padding: 6px;
     cursor: pointer;
-    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 0.2s;
 }
 
-.vid-play-button:hover {
-    transform: scale(1.2);
+.native-control-btn:hover {
+    transform: scale(1.15);
 }
 
-/* Timestamp-精准追踪 Tracking */
-.vid-timestamp-info {
+.native-time-display {
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.native-time-sep {
+    opacity: 0.5;
+}
+
+.native-controls-right {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #fff;
-    font-size: 14px;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-}
-
-.vid-slash {
-    opacity: 0.4;
-    font-weight: 400;
-}
-
-/* State Visibility Helpers */
-.vidstack-player[data-playing] .vds-play-icon { display: none !important; }
-.vidstack-player[data-paused] .vds-pause-icon { display: none !important; }
-
-/* Global Blue Kill - Library Variables */
-:root {
-    --vds-slider-track-fill-bg: #fff !important;
-    --vds-slider-thumb-bg: #fff !important;
-    --vds-video-brand: #fff !important;
 }
