@@ -1,9 +1,9 @@
-/* Final Refined Vidstack Wrapper - Left Aligned */
+/* Final Refined Vidstack Wrapper v5.0 - Left Aligned & Audio Optimized */
 .vidstack-wrapper.left-aligned {
     position: relative;
     width: fit-content;
     max-width: 100%;
-    margin: 8px 0; /* Aligned to the left as requested */
+    margin: 8px 0; /* Aligned to the left */
     border-radius: 12px;
     overflow: hidden;
     background: transparent;
@@ -18,7 +18,7 @@
     height: auto;
     border-radius: 12px;
     overflow: hidden;
-    background: transparent; /* No artificial bars */
+    background: #000;
 }
 
 .vidstack-player video {
@@ -32,8 +32,8 @@
     background: transparent;
 }
 
-/* User Interaction Layer - Big Play/Pause */
-.vid-interaction-layer {
+/* User Interaction Layer - Full Surface */
+.vid-interaction-surface {
     position: absolute;
     inset: 0;
     display: flex;
@@ -43,16 +43,16 @@
     cursor: pointer;
 }
 
-.vid-center-icon {
+.vid-interaction-icon-box {
     pointer-events: none;
 }
 
-.vid-hero-btn {
-    width: 60px;
-    height: 60px;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+.vid-hero-center-btn {
+    width: 65px;
+    height: 65px;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -60,97 +60,98 @@
     color: #fff;
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    transform: scale(0.85);
+    transform: scale(0.8);
 }
 
-.vid-interaction-layer:hover .vid-hero-btn {
+.vid-interaction-surface:hover .vid-hero-center-btn {
     opacity: 1;
     transform: scale(1);
 }
 
-/* Only show big play icon when PAUSED */
-.vidstack-player[data-playing] .vid-hero-btn {
+/* Hide hero when playing to avoid clutter */
+.vidstack-player[data-playing] .vid-hero-center-btn {
     opacity: 0;
     pointer-events: none;
 }
 
-/* --- HOVER-ONLY CONTROLS (O Kadar) --- */
-.vid-hover-controls {
+/* --- HOVER-ONLY CONTROLS (O Kadar v5.0) --- */
+.vid-hover-minimal-overlay {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 20px 15px 12px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+    padding: 24px 16px 12px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
     opacity: 0; /* Hidden by default */
-    transform: translateY(10px);
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(12px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 20;
     pointer-events: none;
     box-sizing: border-box;
 }
 
-/* Fade in on hover OR when paused */
-.vidstack-wrapper:hover .vid-hover-controls,
-.vidstack-player[data-paused] .vid-hover-controls {
+/* Reveal only on hover or when paused/buffering */
+.vidstack-wrapper:hover .vid-hover-minimal-overlay,
+.vidstack-player[data-paused] .vid-hover-minimal-overlay,
+.vidstack-player[data-buffering] .vid-hover-minimal-overlay {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
 }
 
 /* Scrubber / Slider Style */
-.vid-time-slider {
+.vid-time-scrubber {
     position: relative;
     width: 100%;
     height: 3px;
     display: flex;
     align-items: center;
     cursor: pointer;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     outline: none;
 }
 
-.vid-slider-track {
+.vid-scrubber-track {
     width: 100%;
     height: 100%;
     background: rgba(255, 255, 255, 0.15);
     border-radius: 3px;
 }
 
-.vid-slider-fill {
+.vid-scrubber-fill {
     height: 100%;
     background: #00c3ff;
     border-radius: 3px;
-    box-shadow: 0 0 12px rgba(0, 195, 255, 0.7);
+    box-shadow: 0 0 15px rgba(0, 195, 255, 0.8);
 }
 
-.vid-slider-progress {
+.vid-scrubber-progress {
     height: 100%;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 3px;
 }
 
-.vid-slider-thumb {
-    width: 10px;
-    height: 10px;
+.vid-scrubber-thumb {
+    width: 12px;
+    height: 12px;
     background: #fff;
     border-radius: 50%;
     opacity: 0;
     transition: opacity 0.2s;
-    box-shadow: 0 0 8px rgba(0, 195, 255, 1);
+    box-shadow: 0 0 10px #00c3ff;
 }
 
-.vid-time-slider:hover .vid-slider-thumb {
+.vid-time-scrubber:hover .vid-scrubber-thumb {
     opacity: 1;
 }
 
-/* Bottom Action Row */
-.vid-bottom-actions {
+/* Action Row */
+.vid-bottom-row-actions {
     display: flex;
     align-items: center;
 }
 
-.vid-mini-play-btn {
+.vid-sm-play-pause {
     background: none;
     border: none;
     color: #fff;
@@ -160,16 +161,18 @@
     align-items: center;
     justify-content: center;
     opacity: 0.9;
-    transition: transform 0.1s;
+    transition: transform 0.15s;
 }
 
-.vid-mini-play-btn:hover {
-    transform: scale(1.15);
+.vid-sm-play-pause:hover {
+    transform: scale(1.2);
     color: #00c3ff;
 }
 
-/* Removed unblock-sound UI button as requested */
-.vid-unblocker-container { display: none !important; }
+/* No Sound Toggle Area as requested */
+.vid-unmute-hint, .vid-suitable-unmute, .vid-unblocker-container {
+    display: none !important;
+}
 
 /* State Visibility Helpers */
 .vidstack-player[data-playing] .vds-play-icon { display: none !important; }

@@ -10,72 +10,78 @@ import { Play, Pause } from 'lucide-react';
 import '@vidstack/react/player/styles/base.css';
 import './VideoPlayer.css';
 
-// Global session unblocking system
-const UNMUTE_EVENT = 'OX_GLOBAL_UNMUTE';
+// --- v5.0 GLOBAL AUDIO BRIDGE ---
+const UNMUTE_EVENT = 'OX_FINAL_UNMUTE';
 
-if (typeof window !== 'undefined' && window.__OX_SESSION_UNMUTED__ === undefined) {
-  window.__OX_SESSION_UNMUTED__ = false;
+if (typeof window !== 'undefined' && window.__OX_AUDIO_UNLOCKED__ === undefined) {
+  window.__OX_AUDIO_UNLOCKED__ = false;
   
-  // Create a master unblocker that listens for ANY user interaction on the page
-  const unblockAll = () => {
-    if (!window.__OX_SESSION_UNMUTED__) {
-      window.__OX_SESSION_UNMUTED__ = true;
-      window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
-      // Cleanup global listeners once unblocked
-      window.removeEventListener('mousedown', unblockAll);
-      window.removeEventListener('touchstart', unblockAll);
-      window.removeEventListener('keydown', unblockAll);
+  const unlockAudio = () => {
+    if (!window.__OX_AUDIO_UNLOCKED__) {
+      // 1. Create a dummy AudioContext to "bless" the Tab's audio engine
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        ctx.resume().then(() => {
+          window.__OX_AUDIO_UNLOCKED__ = true;
+          window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
+          console.log("Audio Engine Unlocked for Session");
+          
+          // Cleanup listeners once unblocked
+          window.removeEventListener('mousedown', unlockAudio);
+          window.removeEventListener('touchstart', unlockAudio);
+          window.removeEventListener('keydown', unlockAudio);
+        }).catch(() => {});
+      }
     }
   };
 
-  window.addEventListener('mousedown', unblockAll);
-  window.addEventListener('touchstart', unblockAll);
-  window.addEventListener('keydown', unblockAll);
+  window.addEventListener('mousedown', unlockAudio, { passive: true });
+  window.addEventListener('touchstart', unlockAudio, { passive: true });
+  window.addEventListener('keydown', unlockAudio, { passive: true });
 }
 
 const VideoPlayer = ({ src, poster, className }) => {
   const playerRef = useRef(null);
   const remote = useMediaRemote(playerRef);
-  const [isMuted, setIsMuted] = useState(!window.__OX_SESSION_UNMUTED__);
+  const [isMuted, setIsMuted] = useState(!window.__OX_AUDIO_UNLOCKED__);
 
-  // Listen for the global unblock signal
+  // Robust sync with global unblocking event
   useEffect(() => {
-    const handleGlobalUnmute = () => {
-      // Direct remote control for 100% reliability
-      if (remote) {
-        remote.unmute();
-        remote.setVolume(1);
+    const syncAudio = () => {
+      if (window.__OX_AUDIO_UNLOCKED__) {
+        if (remote) {
+          remote.unmute();
+          remote.setVolume(1);
+        }
+        setIsMuted(false);
       }
-      setIsMuted(false);
     };
 
-    window.addEventListener(UNMUTE_EVENT, handleGlobalUnmute);
-    
-    // If mounted after unblocking, sync immediately
-    if (window.__OX_SESSION_UNMUTED__) {
-       handleGlobalUnmute();
-    }
+    window.addEventListener(UNMUTE_EVENT, syncAudio);
+    if (window.__OX_AUDIO_UNLOCKED__) syncAudio();
 
-    return () => window.removeEventListener(UNMUTE_EVENT, handleGlobalUnmute);
+    return () => window.removeEventListener(UNMUTE_EVENT, syncAudio);
   }, [remote]);
 
   const handleInteraction = (e) => {
     if (e) e.stopPropagation();
     
-    // Manually trigger the unblocking if not already done
-    if (!window.__OX_SESSION_UNMUTED__) {
-      window.__OX_SESSION_UNMUTED__ = true;
-      window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
-    }
-
-    // Toggle play/pause
+    // Fallback unmuting directly on the player ref for instant response
     if (playerRef.current) {
-        if (playerRef.current.paused) {
-            playerRef.current.play();
-        } else {
-            playerRef.current.pause();
-        }
+       playerRef.current.muted = false;
+       playerRef.current.volume = 1;
+       if (playerRef.current.paused) playerRef.current.play();
+       else playerRef.current.pause();
     }
+    
+    // Re-trigger global unlock if not already set
+    if (!window.__OX_AUDIO_UNLOCKED__) {
+       window.__OX_AUDIO_UNLOCKED__ = true;
+       window.dispatchEvent(new CustomEvent(UNMUTE_EVENT));
+    }
+    
+    setIsMuted(false);
   };
 
   return (
@@ -88,34 +94,34 @@ const VideoPlayer = ({ src, poster, className }) => {
         playsInline
         loop
         autoplay="visible"
-        muted={isMuted}
-        onPlay={() => {}}
-        onPause={() => {}}
+        muted={isMuted} // Initial state for autoplay reliability
+        volume={1}
+        crossOrigin="anonymous" // Helpful for some media servers
       >
         <MediaProvider />
 
-        {/* 100% Interaction Surface - Clicking here unblocks sound and toggles play */}
-        <div className="vid-click-surface" onClick={handleInteraction}>
-           <div className="vid-icon-wrapper">
-              <PlayButton className="vid-hero-btn">
+        {/* Full Post Surface Interaction - Left Click unblocks and plays */}
+        <div className="vid-interaction-surface" onClick={handleInteraction}>
+           <div className="vid-interaction-icon-box">
+              <PlayButton className="vid-hero-center-btn">
                 <Play size={40} className="vds-play-icon" />
                 <Pause size={40} className="vds-pause-icon" />
               </PlayButton>
            </div>
         </div>
 
-        {/* Hover-Only Minimal Bottom Controls bar */}
-        <div className="vid-hover-controls">
-          <TimeSlider.Root className="vid-time-slider">
-            <TimeSlider.Track className="vid-slider-track">
-              <TimeSlider.TrackFill className="vid-slider-fill" />
-              <TimeSlider.Progress className="vid-slider-progress" />
+        {/* Hover-Only Progress Controls bar */}
+        <div className="vid-hover-minimal-overlay">
+          <TimeSlider.Root className="vid-time-scrubber">
+            <TimeSlider.Track className="vid-scrubber-track">
+              <TimeSlider.TrackFill className="vid-scrubber-fill" />
+              <TimeSlider.Progress className="vid-scrubber-progress" />
             </TimeSlider.Track>
-            <TimeSlider.Thumb className="vid-slider-thumb" />
+            <TimeSlider.Thumb className="vid-scrubber-thumb" />
           </TimeSlider.Root>
 
-          <div className="vid-bottom-actions">
-            <PlayButton className="vid-mini-play-btn" onClick={handleInteraction}>
+          <div className="vid-bottom-row-actions">
+            <PlayButton className="vid-sm-play-pause" onClick={handleInteraction}>
               <Play size={18} className="vds-play-icon" fill="currentColor" />
               <Pause size={18} className="vds-pause-icon" fill="currentColor" />
             </PlayButton>
