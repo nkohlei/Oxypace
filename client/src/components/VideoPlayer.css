@@ -1,5 +1,5 @@
-/* Final Word VideoPlayer v12.0 - The Definition of Done */
-.vidstack-wrapper.left-aligned.v12-final {
+/* Ultimate Override VideoPlayer v13.0 - The End of Blue */
+.vidstack-wrapper.left-aligned.v13-ultimate {
     position: relative;
     width: fit-content;
     max-width: 100%;
@@ -30,8 +30,8 @@
     border-radius: 12px;
 }
 
-/* --- THE CENTERAL INTERACTION / UNMUTE LAYER --- */
-.vid-click-surface {
+/* --- THE ULTIMATE INTERACTION LAYER --- */
+.vid-ultimate-overlay {
     position: absolute;
     inset: 0;
     display: flex;
@@ -42,85 +42,84 @@
 }
 
 /* Loading Overlay - Clearer "YÜKLENİYOR" */
-.vid-loading-overlay {
+.vid-buffering-hint {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
     z-index: 40;
     gap: 15px;
 }
 
-.vid-loading-label {
+.vid-loader-text {
     color: #fff;
-    font-size: 14px;
+    font-size: 13px;
     font-family: 'Inter', sans-serif;
     font-weight: 800;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     opacity: 0.9;
 }
 
-.vid-spinner-pro {
-    width: 65px;
-    height: 65px;
+.vid-loader-spinner {
+    width: 60px;
+    height: 60px;
 }
 
-.vid-spinner-track-pro {
+.vid-loader-track {
     width: 100%;
     height: 100%;
-    border: 5px solid rgba(255, 255, 255, 0.1);
+    border: 4px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
 }
 
-.vid-spinner-fill-pro {
+.vid-loader-fill {
     width: 100%;
     height: 100%;
-    border: 5px solid #fff;
+    border: 4px solid #fff;
     border-top-color: transparent;
     border-radius: 50%;
 }
 
-/* Unmute Overlay - Large Circle Logic */
-.vid-sound-unblock {
+/* Unmute Overlay - Large, Centered and Subtle */
+.vid-unmute-prompter {
     position: absolute;
     inset: 0;
+    background: rgba(0, 0, 0, 0.2); 
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 20;
-    background: rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(2px);
-    transition: opacity 0.3s ease;
+    backdrop-filter: blur(4px);
 }
 
-.vid-unmute-circle {
+.vid-unmute-button {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    padding: 30px 45px;
+    padding: 25px 45px;
     border-radius: 80px;
     background: rgba(0, 0, 0, 0.7);
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     color: #fff;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 900;
     letter-spacing: 2px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    animation: bounceScale 2s infinite ease-in-out;
+    animation: scaleHeartbeat 2.5s infinite ease-in-out;
 }
 
-@keyframes bounceScale {
+@keyframes scaleHeartbeat {
     0%, 100% { transform: scale(1); opacity: 0.9; }
     50% { transform: scale(1.05); opacity: 1; }
 }
 
-/* Action Icon on State Change */
-.vid-state-hint {
+/* Action Icon on Pause */
+.vid-pause-icon-overlay {
     color: white;
     opacity: 0;
     transform: scale(0.8);
@@ -129,13 +128,13 @@
     z-index: 10;
 }
 
-.vid-state-hint.is-paused {
+.vid-pause-icon-overlay.is-visible {
     opacity: 1;
     transform: scale(1);
 }
 
-/* --- THE PROFESSIONAL REALISTIC INTERFACE (HOVER-ONLY) --- */
-.vid-pro-interface {
+/* --- THE REALISTIC MINIMAL UI (HOVER-ONLY) --- */
+.vid-minimal-ui {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -150,81 +149,81 @@
     pointer-events: none;
 }
 
-.vidstack-wrapper:hover .vid-pro-interface {
+.vidstack-wrapper:hover .vid-minimal-ui {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
 }
 
-/* Standard YouTube/Netflix Style Progress Bar */
-.vid-progress-section {
+/* The 'Normal' Progress Bar - Standard YouTube/Netflix Styling */
+.vid-scrub-section {
     width: 100%;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
-.vid-standard-slider {
+.vid-pro-slider {
     position: relative;
     width: 100%;
-    height: 10px; /* Improved hit area */
+    height: 10px; /* Hit area */
     cursor: pointer;
     display: flex;
     align-items: center;
 }
 
-.vid-track-bg-pro {
+.vid-pro-track {
     width: 100%;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.2) !important;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
     transition: height 0.2s;
 }
 
-.vid-standard-slider:hover .vid-track-bg-pro {
-    height: 6px;
+.vid-pro-slider:hover .vid-pro-track {
+    height: 5px;
 }
 
-.vid-track-fill-pro {
+.vid-pro-fill {
     height: 100%;
     background: #fff !important; /* ABSOLUTE WHITE - NO BLUE */
     border-radius: 4px;
 }
 
-.vid-track-buffer-pro {
+.vid-pro-buffered {
     height: 100%;
-    background: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
 }
 
 /* Realistic Thumb */
-.vid-thumb-pro {
-    width: 14px;
-    height: 14px;
+.vid-pro-thumb {
+    width: 13px;
+    height: 13px;
     background: #fff !important;
     border-radius: 50%;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
     opacity: 0;
     transition: opacity 0.2s, transform 0.2s;
 }
 
-.vid-standard-slider:hover .vid-thumb-pro {
+.vid-pro-slider:hover .vid-pro-thumb {
     opacity: 1;
-    transform: scale(1.3);
+    transform: scale(1.2);
 }
 
-/* Bottom Controls Row */
-.vid-controls-row {
+/* Bottom Tools Row */
+.vid-tools-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.vid-controls-left {
+.vid-tools-left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.vid-play-btn {
+.vid-play-button {
     background: none;
     border: none;
     color: #fff;
@@ -233,12 +232,12 @@
     transition: transform 0.2s;
 }
 
-.vid-play-btn:hover {
+.vid-play-button:hover {
     transform: scale(1.2);
 }
 
-/* Timestamps - Precision Tracking */
-.vid-time-info {
+/* Timestamp-精准追踪 Tracking */
+.vid-timestamp-info {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -246,10 +245,9 @@
     font-size: 14px;
     font-family: 'Inter', sans-serif;
     font-weight: 800;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-.vid-sep {
+.vid-slash {
     opacity: 0.4;
     font-weight: 400;
 }
@@ -257,9 +255,10 @@
 /* State Visibility Helpers */
 .vidstack-player[data-playing] .vds-play-icon { display: none !important; }
 .vidstack-player[data-paused] .vds-pause-icon { display: none !important; }
-/* Global Blue Kill */
-[data-vds-theme="dark"] {
-    --vds-slider-thumb-bg: #fff !important;
+
+/* Global Blue Kill - Library Variables */
+:root {
     --vds-slider-track-fill-bg: #fff !important;
+    --vds-slider-thumb-bg: #fff !important;
     --vds-video-brand: #fff !important;
 }
