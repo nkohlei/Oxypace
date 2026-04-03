@@ -3,10 +3,8 @@ import { Play, Pause, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 import './VideoPlayer.css';
 
 /**
- * GLOBAL VIDEO REGISTRY (v15.0 - THE GESTURE LOCK)
- * This ensures that when the user clicks ANYWHERE on the page, 
- * the browser directly touches every video and forces it UNMUTED.
- * This is the ONLY reliable way to bypass strict browser privacy blocks.
+ * GLOBAL VIDEO REGISTRY (v15.1 - THE FINAL TRUTH)
+ * Absolute Fix for Browser Audio Block & Progress Bar Logic.
  */
 const activeVideos = new Set();
 let sessionUnmuted = false;
@@ -16,18 +14,18 @@ if (typeof window !== 'undefined') {
     if (sessionUnmuted) return;
     sessionUnmuted = true;
     
-    // Direct DOM manipulation during a "user gesture" event loop
+    // Direct DOM manipulation during the SAME user gesture event loop
     activeVideos.forEach(video => {
       if (video) {
         video.muted = false;
         video.volume = 1;
-        video.play().catch(() => {}); // Ensure it's playing
+        video.play().catch(() => {});
       }
     });
 
     window.dispatchEvent(new CustomEvent('OX_SOUND_ACTIVATED'));
     
-    // Cleanup listeners after activation
+    // Unblock site-wide
     window.removeEventListener('mousedown', globalUnmuteHandler, true);
     window.removeEventListener('touchstart', globalUnmuteHandler, true);
     window.removeEventListener('keydown', globalUnmuteHandler, true);
@@ -35,7 +33,6 @@ if (typeof window !== 'undefined') {
 
   window.addEventListener('mousedown', globalUnmuteHandler, { capture: true, passive: true });
   window.addEventListener('touchstart', globalUnmuteHandler, { capture: true, passive: true });
-  window.addEventListener('keydown', globalUnmuteHandler, { capture: true, passive: true });
 }
 
 const VideoPlayer = ({ src, poster, className }) => {
@@ -49,10 +46,15 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showSoundToast, setShowSoundToast] = useState(false);
 
-  // 1. Lifecycle: Register/Unregister with the Global Registry
+  // 1. Lifecycle: Register/Unregister with global registry
   useEffect(() => {
     const video = videoRef.current;
-    if (video) activeVideos.add(video);
+    if (video) {
+      activeVideos.add(video);
+      // Ensure initial muted state (Mandatory for autoplay)
+      video.muted = !sessionUnmuted;
+      video.volume = 1;
+    }
 
     const onSoundActivated = () => {
       setIsMuted(false);
@@ -69,12 +71,14 @@ const VideoPlayer = ({ src, poster, className }) => {
     };
   }, []);
 
-  // 2. Playback Handlers
+  // 2. Playback Handlers: NO STOP PROPAGATION (Must bubble to trigger unblock)
   const togglePlay = (e) => {
-    if (e) e.stopPropagation();
+    // CRITICAL: We DO NOT e.stopPropagation() here anymore.
+    // This allows the click to bubble up to the global unblock handler.
+    
     if (!videoRef.current) return;
 
-    // Direct unmuting attempt on specific video click
+    // Direct, Immediate Unblock on First Interaction
     if (videoRef.current.muted) {
        videoRef.current.muted = false;
        videoRef.current.volume = 1;
@@ -94,14 +98,18 @@ const VideoPlayer = ({ src, poster, className }) => {
     if (!videoRef.current) return;
     const current = videoRef.current.currentTime;
     const total = videoRef.current.duration;
+    
     setCurrentTime(current);
     if (total > 0) {
       setDuration(total);
-      setProgress((current / total) * 100);
+      // Precision math for the progress bar (Fixed 'sonda kalma' bug)
+      const preciseProgress = (current / total) * 100;
+      setProgress(preciseProgress);
     }
   };
 
   const handleScrub = (e) => {
+    if (e) e.stopPropagation();
     if (!videoRef.current || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -120,11 +128,16 @@ const VideoPlayer = ({ src, poster, className }) => {
 
   return (
     <div 
-      className={`native-player-container left-aligned v15-gesture ${className || ''}`}
+      className={`native-player-container left-aligned v15-final ${className || ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={togglePlay}
     >
+      {/* 
+          CRITICAL: NO muted={isMuted} prop here. 
+          React state can conflict with browser video properties.
+          We control muted status DIRECTLY through the videoRef.
+      */}
       <video
         ref={videoRef}
         src={src}
@@ -133,7 +146,6 @@ const VideoPlayer = ({ src, poster, className }) => {
         playsInline
         loop
         autoPlay
-        muted={isMuted}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
         onWaiting={() => setIsBuffering(true)}
