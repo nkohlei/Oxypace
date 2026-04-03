@@ -1,14 +1,15 @@
-/* Final Refined Vidstack Wrapper v5.0 - Left Aligned & Audio Optimized */
-.vidstack-wrapper.left-aligned {
+/* Refined Vidstack Wrapper v6.0 - Left Aligned & Enhanced UI */
+.vidstack-wrapper.left-aligned.v6-evolution {
     position: relative;
     width: fit-content;
     max-width: 100%;
-    margin: 8px 0; /* Aligned to the left */
+    margin: 12px 0; /* Aligned to the left */
     border-radius: 12px;
     overflow: hidden;
     background: transparent;
     user-select: none;
     display: block;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 .vidstack-player {
@@ -32,8 +33,8 @@
     background: transparent;
 }
 
-/* User Interaction Layer - Full Surface */
-.vid-interaction-surface {
+/* --- INTERACTIVE LAYER --- */
+.vid-overlay-surface {
     position: absolute;
     inset: 0;
     display: flex;
@@ -43,15 +44,37 @@
     cursor: pointer;
 }
 
-.vid-interaction-icon-box {
+/* Muted Badge - Appears when muted to guide the user */
+.vid-muted-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 30px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(0, 195, 255, 0.5);
+    color: #fff;
+    font-size: 11px;
+    z-index: 15;
     pointer-events: none;
+    animation: fadeInOut 2s ease-in-out infinite alternate;
 }
 
-.vid-hero-center-btn {
-    width: 65px;
-    height: 65px;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(12px);
+@keyframes fadeInOut {
+    0% { opacity: 0.7; transform: translateY(0); }
+    100% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* Center Control Icon */
+.vid-center-control {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
     display: flex;
@@ -59,119 +82,124 @@
     justify-content: center;
     color: #fff;
     opacity: 0;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    transform: scale(0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(0.85);
 }
 
-.vid-interaction-surface:hover .vid-hero-center-btn {
+.vid-overlay-surface:hover .vid-center-control.is-paused {
     opacity: 1;
     transform: scale(1);
 }
 
-/* Hide hero when playing to avoid clutter */
-.vidstack-player[data-playing] .vid-hero-center-btn {
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* --- HOVER-ONLY CONTROLS (O Kadar v5.0) --- */
-.vid-hover-minimal-overlay {
+/* --- BOTTOM CONTROLS BAR (HOVER-ONLY) --- */
+.vid-controls-bar {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 24px 16px 12px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
+    padding: 30px 15px 12px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
     opacity: 0; /* Hidden by default */
-    transform: translateY(12px);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(10px);
+    transition: all 0.3s ease-out;
     z-index: 20;
-    pointer-events: none;
     box-sizing: border-box;
 }
 
-/* Reveal only on hover or when paused/buffering */
-.vidstack-wrapper:hover .vid-hover-minimal-overlay,
-.vidstack-player[data-paused] .vid-hover-minimal-overlay,
-.vidstack-player[data-buffering] .vid-hover-minimal-overlay {
+.vidstack-wrapper:hover .vid-controls-bar {
     opacity: 1;
     transform: translateY(0);
-    pointer-events: auto;
 }
 
-/* Scrubber / Slider Style */
-.vid-time-scrubber {
+/* Slider Container & Time Slider */
+.vid-slider-container {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.vid-time-slider {
     position: relative;
     width: 100%;
-    height: 3px;
+    height: 4px;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    cursor: pointer;
-    margin-bottom: 10px;
-    outline: none;
 }
 
-.vid-scrubber-track {
+.vid-slider-track {
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 }
 
-.vid-scrubber-fill {
+.vid-slider-fill {
     height: 100%;
     background: #00c3ff;
-    border-radius: 3px;
-    box-shadow: 0 0 15px rgba(0, 195, 255, 0.8);
+    border-radius: 4px;
+    box-shadow: 0 0 10px #00c3ff;
 }
 
-.vid-scrubber-progress {
+.vid-slider-progress {
     height: 100%;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
 }
 
-.vid-scrubber-thumb {
+.vid-slider-thumb {
     width: 12px;
     height: 12px;
     background: #fff;
     border-radius: 50%;
+    box-shadow: 0 0 10px #00c3ff;
     opacity: 0;
     transition: opacity 0.2s;
-    box-shadow: 0 0 10px #00c3ff;
 }
 
-.vid-time-scrubber:hover .vid-scrubber-thumb {
+.vid-time-slider:hover .vid-slider-thumb {
     opacity: 1;
 }
 
-/* Action Row */
-.vid-bottom-row-actions {
+/* Controls Row */
+.vid-controls-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
 }
 
-.vid-sm-play-pause {
+.vid-left-tools {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.vid-action-btn {
     background: none;
     border: none;
     color: #fff;
     cursor: pointer;
-    padding: 2px;
+    padding: 4px;
+    transition: transform 0.2s;
+}
+
+.vid-action-btn:hover {
+    color: #00c3ff;
+    transform: scale(1.1);
+}
+
+/* Time Display (Current / Duration) */
+.vid-time-display {
     display: flex;
     align-items: center;
-    justify-content: center;
-    opacity: 0.9;
-    transition: transform 0.15s;
+    gap: 4px;
+    color: #fff;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
 }
 
-.vid-sm-play-pause:hover {
-    transform: scale(1.2);
-    color: #00c3ff;
-}
-
-/* No Sound Toggle Area as requested */
-.vid-unmute-hint, .vid-suitable-unmute, .vid-unblocker-container {
-    display: none !important;
+.vid-time-divider {
+    opacity: 0.5;
 }
 
 /* State Visibility Helpers */
