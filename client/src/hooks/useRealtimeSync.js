@@ -10,26 +10,12 @@ export const useRealtimeSync = () => {
     useEffect(() => {
         if (!socket || !connected) return;
 
-        // Scoped events (Portal/Channel specific)
-        socket.on('post:created', (newPost) => {
-            console.log('📡 Scoped Post Created:', newPost.content.substring(0, 30));
-            addPostEvent(newPost);
-        });
+        // Scoped events (Portal/Channel specific) are now handled inside the specific page components
+        // (e.g., Portal.jsx) to ensure strict context isolation and avoid "leakage" between rooms.
 
-        socket.on('post:updated', (updatedPost) => {
-            console.log('📡 Scoped Post Updated:', updatedPost._id);
-            updatePostEvent(updatedPost);
-        });
-
-        // Global events
-        socket.on('global:post_created', (newPost) => {
-            // We keep this for now! If the global store is used for a "Global Feed" elsewhere,
-            // we might want it. But for Portal/Channel isolation, the scoped events handle it.
-            // addPostEvent(newPost); // REMOVED to avoid duplicates if we are in a portal
-        });
-
-        socket.on('global:post_updated', (updatedPost) => {
-            // updatePostEvent(updatedPost); // REMOVED
+        // Global events that still apply everywhere
+        socket.on('global:post_deleted', ({ _id }) => {
+            deletePostEvent(_id);
         });
 
         socket.on('global:post_deleted', ({ _id }) => {

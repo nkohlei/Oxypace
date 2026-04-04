@@ -72,6 +72,40 @@ const Portal = () => {
             console.log(`🔌 Joining channel room: ${currentChannel}`);
         }
 
+        // --- STRICT CONTEXT FILTERING ---
+        // We listen here (within the component lifecycle) instead of globally
+        // to ensure we only process events meant for THIS specific portal/channel.
+        
+        const handleNewPost = (newPost) => {
+            // BEGİNSE: The "Doorman" check
+            const isTargetPortal = String(newPost.portal) === String(id);
+            const isTargetChannel = String(newPost.channel) === String(currentChannel);
+
+            if (isTargetPortal && isTargetChannel) {
+                console.log('✅ Realtime Post Accepted for this view');
+                setPosts([newPost, ...postsRef.current]);
+            } else {
+                console.log('🚫 Realtime Post Rejected: Wrong context', {
+                    postPortal: newPost.portal,
+                    currentPortal: id,
+                    postChannel: newPost.channel,
+                    currentChannel: currentChannel
+                });
+            }
+        };
+
+        const handleUpdatePost = (updatedPost) => {
+            const isTargetPortal = String(updatedPost.portal) === String(id);
+            if (isTargetPortal) {
+                const addPostEvent = useGlobalStore.getState().addPostEvent; // Fallback to store method
+                // Actually, since we have setPosts, we can just update the local state correctly
+                setPosts(postsRef.current.map(p => p._id === updatedPost._id ? updatedPost : p));
+            }
+        };
+
+        socket.on('post:created', handleNewPost);
+        socket.on('post:updated', handleUpdatePost);
+
         return () => {
             // Leave Portal Room
             socket.emit('leave_portal', id);
@@ -80,6 +114,9 @@ const Portal = () => {
             if (currentChannel) {
                 socket.emit('leave_channel', currentChannel);
             }
+
+            socket.off('post:created', handleNewPost);
+            socket.off('post:updated', handleUpdatePost);
         };
     }, [socket, connected, id, currentChannel]);
 

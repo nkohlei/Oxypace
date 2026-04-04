@@ -295,8 +295,16 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
         }
 
         if (targetChannel) {
-            // Use the specific ID of the channel for the query
-            query.channel = targetChannel._id.toString();
+            // Support BOTH ID-based and Name-based queries for backward compatibility
+            // Also include common fallbacks if this is a "general" style channel
+            const isGeneral = ['genel', 'general', 'genel sohbet'].includes(targetChannel.name.toLowerCase()) || channel === 'general';
+            
+            const channelMatches = [targetChannel._id.toString(), targetChannel.name];
+            if (isGeneral) {
+                channelMatches.push(null, 'general', 'genel', 'genel sohbet');
+            }
+            
+            query.channel = { $in: [...new Set(channelMatches)] };
         } else {
             // If the requested channel is truly not found, return empty
             return res.json([]);
