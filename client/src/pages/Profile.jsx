@@ -883,12 +883,12 @@ const Profile = () => {
                                                         {/* Post Content */}
                                                         <div className="profile-post-body">
                                                             <div className="profile-post-header">
-                                                                <Link to={`/profile/${post.author?.username || profileUser?.username}`} className="post-author-link">
+                                                                <Link to={`/profile/${post.author?.username || profileUser?.username || 'deleted'}`} className="post-author-link">
                                                                     <span className="post-author-name">
-                                                                        {post.author?.profile?.displayName || post.author?.username || profileUser?.profile?.displayName || profileUser?.username}
+                                                                        {post.author?.profile?.displayName || post.author?.username || profileUser?.profile?.displayName || profileUser?.username || 'Silinmiş Kullanıcı'}
                                                                     </span>
                                                                     <Badge type={post.author?.verificationBadge || profileUser?.verificationBadge} size={14} />
-                                                                    <span className="post-author-username">@{post.author?.username || profileUser?.username}</span>
+                                                                    <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
                                                                 </Link>
                                                                 <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
                                                                 {isOwnProfile && post.portal && (
