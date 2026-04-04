@@ -1,5 +1,7 @@
 import Parser from 'rss-parser';
 import mongoose from 'mongoose';
+import axios from 'axios';
+import { translate } from 'google-translate-api-x';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Portal from '../models/Portal.js';
@@ -18,6 +20,43 @@ const parser = new Parser({
 });
 
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
+
+// Translation helper
+const translateText = async (text) => {
+    if (!text) return "";
+    try {
+        const res = await translate(text, { to: 'tr' });
+        console.log(`🌐 Translated: ${text.substring(0, 30)}... -> ${res.text.substring(0, 30)}...`);
+        return res.text;
+    } catch (error) {
+        console.error("❌ Translation failed:", error.message);
+        return text; // Fallback to original
+    }
+};
+
+// HD Metadata Scraper (OpenGraph)
+const fetchHDMetadata = async (url) => {
+    try {
+        const { data: html } = await axios.get(url, { 
+            timeout: 5000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+        });
+        
+        // Match og:image
+        const ogImageMatch = html.match(/<meta[^>]+property="og:image"[^>]+content="([^">]+)"/i) || 
+                             html.match(/<meta[^>]+content="([^">]+)"[^>]+property="og:image"/i);
+        
+        // Match youtube/vimeo links in page
+        const youtubeMatch = html.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/i);
+
+        return {
+            hdImage: ogImageMatch ? ogImageMatch[1] : null,
+            videoUrl: youtubeMatch ? youtubeMatch[0] : null
+        };
+    } catch (error) {
+        return { hdImage: null, videoUrl: null };
+    }
+};
 
 // --- MULTI-BOT ARCHITECTURE ---
 const BOT_CONFIGS = [
@@ -52,7 +91,7 @@ const BOT_CONFIGS = [
 
 // Initialize the master loop
 export default async function startBotLoop() {
-    console.log('🤖 Starting Intelligent Multi-News Bot Service...');
+    console.log('🤖 Starting Elite Multi-News Bot Service (Turkish/HD/Video)...');
 
     if (mongoose.connection.readyState !== 1) {
         console.log('⏳ Waiting for DB connection...');
@@ -64,60 +103,35 @@ export default async function startBotLoop() {
     }
 
     try {
-        // Prepare operational configs for all bots
         const activeBots = [];
-
         for (const config of BOT_CONFIGS) {
             const user = await User.findOne({ username: config.botUsername });
-            if (!user) {
-                console.warn(`⚠️ Skipping ${config.botUsername}: User not found in DB.`);
-                continue;
-            }
+            if (!user) continue;
 
             const portal = await Portal.findOne({ name: config.portalName });
-            if (!portal) {
-                console.warn(`⚠️ Skipping ${config.botUsername}: Target Portal "${config.portalName}" not found.`);
-                continue;
-            }
+            if (!portal) continue;
 
             let channel;
-            // Find specific channel if provided
             if (config.channelName) {
                 channel = portal.channels.find(c => c.name === config.channelName);
             }
-            
-            // Fallback strategy
             if (!channel) {
                 channel = portal.channels.find(c => ['genel', 'general', 'GENEL'].includes(c.name)) || portal.channels[0];
             }
+            if (!channel) continue;
 
-            if (!channel) {
-                console.warn(`⚠️ Skipping ${config.botUsername}: No suitable channel found in portal ${portal.name}.`);
-                continue;
-            }
-
-            activeBots.push({
-                user,
-                portal,
-                channel,
-                feeds: config.feeds
-            });
-            console.log(`✅ [${config.botUsername}] Online -> Routing to ${portal.name} #${channel.name}`);
+            activeBots.push({ user, portal, channel, feeds: config.feeds });
+            console.log(`✅ [${config.botUsername}] Online -> Turkish/HD Mode Active`);
         }
 
-        if (activeBots.length === 0) {
-            console.error('❌ No bots were successfully configured. Aborting Bot Service.');
-            return;
-        }
+        if (activeBots.length === 0) return;
 
-        // Executor Function
         const runScrapeCycle = async () => {
             for (const bot of activeBots) {
                 await checkNewsForBot(bot);
             }
         };
 
-        // Run Immediately, then on interval
         await runScrapeCycle();
         setInterval(runScrapeCycle, CHECK_INTERVAL_MS);
 
@@ -126,50 +140,47 @@ export default async function startBotLoop() {
     }
 }
 
-// Scraper Engine per Bot
 const checkNewsForBot = async (bot) => {
     for (const url of bot.feeds) {
         try {
             console.log(`📡 [${bot.user.username}] Scanning: ${url}`);
             const feed = await parser.parseURL(url);
-
-            // Get Top 2 freshest items
-            const itemsToProcess = feed.items.slice(0, 2).reverse();
+            const itemsToProcess = feed.items.slice(0, 5).reverse();
 
             for (const item of itemsToProcess) {
                 await processItem(item, bot);
             }
         } catch (error) {
-            console.error(`⚠️ [${bot.user.username}] Failed fetching feed (${url}):`, error.message);
+            console.error(`⚠️ [${bot.user.username}] Failed fetching feed:`, error.message);
         }
     }
 };
 
-// Rich Media Extractor Algorithm
-const extractRichMedia = (item) => {
+const extractRichMedia = async (item) => {
     let mediaUrl = '';
     let mediaType = 'none';
 
-    // 1. Check Native Enclosures for direct injections (Podcast/Video/Image)
+    // 1. YouTube detection in the link itself
+    const youtubeRegex = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/i;
+    const linkMatch = (item.link || '').match(youtubeRegex);
+    if (linkMatch) return { mediaUrl: linkMatch[0], mediaType: 'youtube' };
+
+    // 2. Enclosures
     if (item.enclosure && item.enclosure.url) {
-        if (item.enclosure.type && item.enclosure.type.includes('video')) {
-            return { mediaUrl: item.enclosure.url, mediaType: 'video' };
-        }
-        if (item.enclosure.type && item.enclosure.type.includes('image')) {
+        if (item.enclosure.type?.includes('video')) return { mediaUrl: item.enclosure.url, mediaType: 'video' };
+        if (item.enclosure.type?.includes('image')) {
             mediaUrl = item.enclosure.url;
             mediaType = 'image';
         }
     }
 
-    // 2. Scan XML Namespaced <media:content>
+    // 3. Media:Content
     if (item.mediaContent && Array.isArray(item.mediaContent) && item.mediaContent.length > 0) {
-        // Prioritize Video
-        const videoRes = item.mediaContent.find(m => m.$ && m.$.type && m.$.type.includes('video'));
+        const videoRes = item.mediaContent.find(m => m.$?.type?.includes('video'));
         if (videoRes && videoRes.$.url) return { mediaUrl: videoRes.$.url, mediaType: 'video' };
 
-        // Fallback to Image
         if (!mediaUrl) {
-            const imgRes = item.mediaContent.find(m => m.$ && (m.$.medium === 'image' || (m.$.type && m.$.type.includes('image'))));
+            const imgRes = item.mediaContent.find(m => m.$ && (m.$.medium === 'image' || m.$.type?.includes('image')));
             if (imgRes && imgRes.$.url) {
                 mediaUrl = imgRes.$.url;
                 mediaType = 'image';
@@ -177,29 +188,18 @@ const extractRichMedia = (item) => {
         }
     }
 
-    // 2.5 Scan <media:thumbnail> (Common in BBC/ESPN)
-    if (!mediaUrl && item.mediaThumbnail && Array.isArray(item.mediaThumbnail) && item.mediaThumbnail.length > 0) {
-        const thumbRes = item.mediaThumbnail[0];
-        if (thumbRes && thumbRes.$.url) {
-            mediaUrl = thumbRes.$.url;
-            mediaType = 'image';
-        }
+    // 4. Fallback to Thumbnails
+    if (!mediaUrl && item.mediaThumbnail && item.mediaThumbnail[0]) {
+        mediaUrl = item.mediaThumbnail[0].$.url;
+        mediaType = 'image';
     }
 
-    // 3. Regex Deep-Scan inside CDATA Content (HTML Payloads)
-    const rawContent = item.contentEncoded || item.content || '';
-    
-    // Check embedded HTML5 Video
-    if (mediaType !== 'video') {
-        const vidMatch = rawContent.match(/<source[^>]+src="([^">]+\.mp4[^">]*)"/i) || rawContent.match(/<video[^>]+src="([^">]+\.mp4[^">]*)"/i);
-        if (vidMatch) return { mediaUrl: vidMatch[1], mediaType: 'video' };
-    }
-
-    // Check embedded Images if none found yet
-    if (!mediaUrl) {
-        const imgMatch = rawContent.match(/<img[^>]+src="([^">]+)"/i);
-        if (imgMatch) {
-            mediaUrl = imgMatch[1];
+    // 5. DEEP SCRAPE for OG:IMAGE (HD Image Requirement)
+    if (item.link) {
+        const metadata = await fetchHDMetadata(item.link);
+        if (metadata.videoUrl) return { mediaUrl: metadata.videoUrl, mediaType: 'youtube' };
+        if (metadata.hdImage) {
+            mediaUrl = metadata.hdImage;
             mediaType = 'image';
         }
     }
@@ -207,59 +207,49 @@ const extractRichMedia = (item) => {
     return { mediaUrl, mediaType };
 };
 
-// Process and Deploy Payload
 const processItem = async (item, bot) => {
     const guid = item.guid || item.link;
-
-    // Fast deduplication check
     const isShared = await BotHistory.findOne({ guid, botName: bot.user.username });
     if (isShared) return;
 
-    // Double security check to ensure no portal flooding
-    const exists = await Post.findOne({
-        author: bot.user._id,
-        portal: bot.portal._id,
-        content: { $regex: item.link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
-    });
-
-    if (exists) {
-        await BotHistory.create({ guid, botName: bot.user.username });
-        return;
-    }
-
-    console.log(`🆕 [${bot.user.username}] Extracting Payload: ${item.title}`);
-
     try {
-        const { mediaUrl, mediaType } = extractRichMedia(item);
+        const { mediaUrl, mediaType } = await extractRichMedia(item);
 
+        // MANDATORY IMAGE POLICY
+        if (!mediaUrl || mediaType === 'none') {
+            console.warn(`⏭️ [${bot.user.username}] Skipping post: No HD visual found for "${item.title}"`);
+            await BotHistory.create({ guid, botName: bot.user.username });
+            return;
+        }
+
+        console.log(`🆕 [${bot.user.username}] Processing Elite Payload (TR/HD): ${item.title}`);
+        console.log(`📸 Using Media: ${mediaUrl.substring(0, 50)}... (${mediaType})`);
+
+        // Translate Title & Description
+        const translatedTitle = await translateText(item.title);
         let description = item.contentSnippet || item.content || '';
-        // Clean brutal HTML fragments
-        description = description.replace(/<[^>]+>/g, '').trim(); 
+        description = description.replace(/<[^>]+>/g, '').trim();
+        if (description.length > 300) description = description.substring(0, 300) + '...';
         
-        if (description.length > 250) description = description.substring(0, 250) + '...';
-        if (description.length < 10) description = ""; // Nullify garbage text payloads
+        const translatedDesc = await translateText(description);
 
-        // Construct Premium Readout
-        const formattedContent = `📢 **${item.title}**\n\n${description ? `📝 ${description}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
+        const formattedContent = `📢 **${translatedTitle}**\n\n${translatedDesc ? `📝 ${translatedDesc}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
 
         const newPost = new Post({
             content: formattedContent,
             author: bot.user._id,
             portal: bot.portal._id,
             channel: bot.channel._id,
-            likes: [],
-            comments: [],
-            isPinned: false,
-            media: mediaUrl || '',
-            mediaType: mediaUrl ? mediaType : 'none',
+            media: mediaUrl,
+            mediaType: mediaType,
             createdAt: new Date()
         });
 
         await newPost.save();
         await BotHistory.create({ guid, botName: bot.user.username });
-        console.log(`✅ [${bot.user.username}] Blast Deployed Successfully! (Media: ${mediaType})`);
+        console.log(`✅ [${bot.user.username}] Elite Post Deployed: ${translatedTitle.substring(0, 30)}... (Type: ${mediaType})`);
 
     } catch (error) {
-        console.error(`❌ [${bot.user.username}] Failed to construct & publish post:`, error);
+        console.error(`❌ [${bot.user.username}] Failed elite publish:`, error.message);
     }
 };
