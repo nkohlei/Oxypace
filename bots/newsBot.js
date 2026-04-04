@@ -53,7 +53,7 @@ const BOT_CONFIGS = [
     {
         botUsername: 'GamesNews',
         portalName: 'OXYᴳᴬᴹᴱ', 
-        channelName: 'genel sohbet', // Updated to match UI
+        channelName: 'Game News 🐦🔥', // Corrected channel name
         feeds: [
             'https://feeds.feedburner.com/ign/news',
             'https://www.gamespot.com/feeds/news/'
