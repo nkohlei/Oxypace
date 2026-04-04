@@ -1,165 +1,243 @@
-
 import Parser from 'rss-parser';
 import mongoose from 'mongoose';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
-import Portal from '../models/Portal.js'; // Ensure Portal model is imported
-import BotHistory from '../models/BotHistory.js'; // Use BotHistory for duplicate checking
+import Portal from '../models/Portal.js';
+import BotHistory from '../models/BotHistory.js';
 
-const parser = new Parser();
+// Extend parser to capture rich media attributes hidden in XML namespaces
+const parser = new Parser({
+    customFields: {
+        item: [
+            ['media:content', 'mediaContent', { keepArray: true }],
+            ['media:thumbnail', 'mediaThumbnail', { keepArray: true }],
+            ['enclosure', 'enclosure'],
+            ['content:encoded', 'contentEncoded']
+        ]
+    }
+});
 
-// Configuration
-const RSS_FEEDS = [
-    'https://feeds.feedburner.com/ign/news', // IGN - Major global news, GTA 6, etc.
-    'https://www.gamespot.com/feeds/news/'   // GameSpot - Industry news, popular games
-];
-const BOT_USERNAME = 'GamesNews';
-const TARGET_PORTAL_NAME = 'OXYᴳᴬᴹᴱ';
-const TARGET_PORTAL_ID = '698cf346bb064b2d0bc7881b'; // OXYᴳᴬᴹᴱ
-const TARGET_CHANNEL_ID = '698d1824db5ccf0a4f06c9a1'; // genel
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 
-// State
-let botUserId = null;
-let targetPortalId = null;
-let targetChannelId = null;
+// --- MULTI-BOT ARCHITECTURE ---
+const BOT_CONFIGS = [
+    {
+        botUsername: 'GamesNews',
+        portalName: 'OXYᴳᴬᴹᴱ',
+        feeds: [
+            'https://feeds.feedburner.com/ign/news',
+            'https://www.gamespot.com/feeds/news/'
+        ]
+    },
+    {
+        botUsername: 'TechNews',
+        portalName: 'AI World',
+        feeds: [
+            'https://techcrunch.com/feed/',
+            'https://www.theverge.com/rss/index.xml'
+        ]
+    },
+    {
+        botUsername: 'SportsNews',
+        portalName: 'Oxypace Global',
+        feeds: [
+            'https://www.espn.com/espn/rss/news',
+            'https://feeds.bbci.co.uk/sport/rss.xml'
+        ]
+    }
+];
 
-// Initialize
+// Initialize the master loop
 export default async function startBotLoop() {
-    console.log('🤖 Starting Game News Bot Service...');
+    console.log('🤖 Starting Intelligent Multi-News Bot Service...');
 
-    // Wait for DB connection if not ready
-    // Wait for DB connection if not ready
     if (mongoose.connection.readyState !== 1) {
         console.log('⏳ Waiting for DB connection...');
         await new Promise(resolve => {
             if (mongoose.connection.readyState === 1) return resolve();
             mongoose.connection.once('connected', resolve);
         });
-        console.log('✅ DB Connected, proceeding with bot startup...');
+        console.log('✅ DB Connected, proceeding with bots startup...');
     }
 
     try {
-        // 1. Get Bot User ID
-        const user = await User.findOne({ username: BOT_USERNAME });
-        if (!user) {
-            console.error(`❌ Bot user "${BOT_USERNAME}" not found!`);
+        // Prepare operational configs for all bots
+        const activeBots = [];
+
+        for (const config of BOT_CONFIGS) {
+            const user = await User.findOne({ username: config.botUsername });
+            if (!user) {
+                console.warn(`⚠️ Skipping ${config.botUsername}: User not found in DB.`);
+                continue;
+            }
+
+            const portal = await Portal.findOne({ name: config.portalName });
+            if (!portal) {
+                console.warn(`⚠️ Skipping ${config.botUsername}: Target Portal "${config.portalName}" not found.`);
+                continue;
+            }
+
+            const channel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
+            if (!channel) {
+                console.warn(`⚠️ Skipping ${config.botUsername}: No suitable channel found in portal ${portal.name}.`);
+                continue;
+            }
+
+            activeBots.push({
+                user,
+                portal,
+                channel,
+                feeds: config.feeds
+            });
+            console.log(`✅ [${config.botUsername}] Online -> Routing to ${portal.name} #${channel.name}`);
+        }
+
+        if (activeBots.length === 0) {
+            console.error('❌ No bots were successfully configured. Aborting Bot Service.');
             return;
         }
-        botUserId = user._id;
 
-        // 2. Get Target Portal/Channel
-        const portal = await Portal.findOne({ name: TARGET_PORTAL_NAME });
-        if (!portal) {
-            console.error(`❌ Target portal "${TARGET_PORTAL_NAME}" not found!`);
-            return;
-        }
-        targetPortalId = portal._id;
+        // Executor Function
+        const runScrapeCycle = async () => {
+            for (const bot of activeBots) {
+                await checkNewsForBot(bot);
+            }
+        };
 
-        // Find "genel" channel or take the first text channel
-        const channel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
-        if (!channel) {
-            console.error('❌ No suitable channel found in portal!');
-            return;
-        }
-        targetChannelId = channel._id;
-
-        console.log(`✅ Game News Bot Configured: ${user.username} -> ${portal.name} #${channel.name}`);
-
-        // 3. Initial Fetch
-        await checkNews();
-
-        // 4. Schedule
-        setInterval(checkNews, CHECK_INTERVAL_MS);
+        // Run Immediately, then on interval
+        await runScrapeCycle();
+        setInterval(runScrapeCycle, CHECK_INTERVAL_MS);
 
     } catch (error) {
-        console.error('❌ Failed to start News Bot:', error);
+        console.error('❌ Failed to start Multi-Bot Engine:', error);
     }
-};
+}
 
-const checkNews = async () => {
-    for (const url of RSS_FEEDS) {
+// Scraper Engine per Bot
+const checkNewsForBot = async (bot) => {
+    for (const url of bot.feeds) {
         try {
-            console.log(`📡 Fetching news from: ${url}`);
+            console.log(`📡 [${bot.user.username}] Scanning: ${url}`);
             const feed = await parser.parseURL(url);
 
-            // Process latest 2 items from EACH feed to ensure variety
+            // Get Top 2 freshest items
             const itemsToProcess = feed.items.slice(0, 2).reverse();
 
             for (const item of itemsToProcess) {
-                await processItem(item);
+                await processItem(item, bot);
             }
         } catch (error) {
-            console.error(`⚠️ Failed to fetch feed (${url}):`, error.message);
+            console.error(`⚠️ [${bot.user.username}] Failed fetching feed (${url}):`, error.message);
         }
     }
 };
 
-const processItem = async (item) => {
+// Rich Media Extractor Algorithm
+const extractRichMedia = (item) => {
+    let mediaUrl = '';
+    let mediaType = 'none';
+
+    // 1. Check Native Enclosures for direct injections (Podcast/Video/Image)
+    if (item.enclosure && item.enclosure.url) {
+        if (item.enclosure.type && item.enclosure.type.includes('video')) {
+            return { mediaUrl: item.enclosure.url, mediaType: 'video' };
+        }
+        if (item.enclosure.type && item.enclosure.type.includes('image')) {
+            mediaUrl = item.enclosure.url;
+            mediaType = 'image';
+        }
+    }
+
+    // 2. Scan XML Namespaced <media:content>
+    if (item.mediaContent && Array.isArray(item.mediaContent) && item.mediaContent.length > 0) {
+        // Prioritize Video
+        const videoRes = item.mediaContent.find(m => m.$ && m.$.type && m.$.type.includes('video'));
+        if (videoRes && videoRes.$.url) return { mediaUrl: videoRes.$.url, mediaType: 'video' };
+
+        // Fallback to Image
+        if (!mediaUrl) {
+            const imgRes = item.mediaContent.find(m => m.$ && (m.$.medium === 'image' || (m.$.type && m.$.type.includes('image'))));
+            if (imgRes && imgRes.$.url) {
+                mediaUrl = imgRes.$.url;
+                mediaType = 'image';
+            }
+        }
+    }
+
+    // 3. Regex Deep-Scan inside CDATA Content (HTML Payloads)
+    const rawContent = item.contentEncoded || item.content || '';
+    
+    // Check embedded HTML5 Video
+    if (mediaType !== 'video') {
+        const vidMatch = rawContent.match(/<source[^>]+src="([^">]+\.mp4[^">]*)"/i) || rawContent.match(/<video[^>]+src="([^">]+\.mp4[^">]*)"/i);
+        if (vidMatch) return { mediaUrl: vidMatch[1], mediaType: 'video' };
+    }
+
+    // Check embedded Images if none found yet
+    if (!mediaUrl) {
+        const imgMatch = rawContent.match(/<img[^>]+src="([^">]+)"/i);
+        if (imgMatch) {
+            mediaUrl = imgMatch[1];
+            mediaType = 'image';
+        }
+    }
+
+    return { mediaUrl, mediaType };
+};
+
+// Process and Deploy Payload
+const processItem = async (item, bot) => {
     const guid = item.guid || item.link;
 
-    // Check history (deduplication)
-    const isShared = await BotHistory.findOne({ guid, botName: BOT_USERNAME });
+    // Fast deduplication check
+    const isShared = await BotHistory.findOne({ guid, botName: bot.user.username });
     if (isShared) return;
 
-    // Check Post DB (double safety)
+    // Double security check to ensure no portal flooding
     const exists = await Post.findOne({
-        author: botUserId,
-        portal: targetPortalId,
-        content: { $regex: item.link }
+        author: bot.user._id,
+        portal: bot.portal._id,
+        content: { $regex: item.link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
     });
 
     if (exists) {
-        await BotHistory.create({ guid, botName: BOT_USERNAME });
+        await BotHistory.create({ guid, botName: bot.user.username });
         return;
     }
 
-    // Filter Logic (Optional): Check for specific keywords if requested
-    // User asked for: Companies, Dev Stages (GTA 6), Discounts, Popular Games
-    // The selected feeds (IGN/GameSpot) general news already cover these naturally.
-    // We can filter OUT things if needed, but for now we accept all "News".
+    console.log(`🆕 [${bot.user.username}] Extracting Payload: ${item.title}`);
 
-    console.log(`🆕 Posting Game News: ${item.title}`);
-
-    // Create Post
-    await createPost(item);
-
-    // Add to history
-    await BotHistory.create({ guid, botName: BOT_USERNAME });
-};
-
-const createPost = async (item) => {
     try {
-        // Extract Image if available in content (merlin usually puts it in description)
-        let mediaUrl = '';
-        const imgMatch = item.content?.match(/<img[^>]+src="([^">]+)"/);
-        if (imgMatch) {
-            mediaUrl = imgMatch[1];
-        }
+        const { mediaUrl, mediaType } = extractRichMedia(item);
 
-        // Clean up description (remove HTML tags)
         let description = item.contentSnippet || item.content || '';
-        if (description.length > 200) description = description.substring(0, 200) + '...';
+        // Clean brutal HTML fragments
+        description = description.replace(/<[^>]+>/g, '').trim(); 
+        
+        if (description.length > 250) description = description.substring(0, 250) + '...';
+        if (description.length < 10) description = ""; // Nullify garbage text payloads
 
-        const content = `**${item.title}**\n\n${description}\n\n🔗 Source: ${item.link}`;
+        // Construct Premium Readout
+        const formattedContent = `📢 **${item.title}**\n\n${description ? `📝 ${description}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
 
         const newPost = new Post({
-            content: content,
-            author: botUserId,
-            portal: targetPortalId,
-            channel: targetChannelId, // Store channel ID
+            content: formattedContent,
+            author: bot.user._id,
+            portal: bot.portal._id,
+            channel: bot.channel._id,
             likes: [],
             comments: [],
             isPinned: false,
-            media: mediaUrl, // Add image if found
-            mediaType: mediaUrl ? 'image' : 'none',
+            media: mediaUrl || '',
+            mediaType: mediaUrl ? mediaType : 'none',
             createdAt: new Date()
         });
 
         await newPost.save();
-        console.log('📢 News posted successfully!');
+        await BotHistory.create({ guid, botName: bot.user.username });
+        console.log(`✅ [${bot.user.username}] Blast Deployed Successfully! (Media: ${mediaType})`);
 
     } catch (error) {
-        console.error('❌ Failed to publish news post:', error);
+        console.error(`❌ [${bot.user.username}] Failed to construct & publish post:`, error);
     }
 };
