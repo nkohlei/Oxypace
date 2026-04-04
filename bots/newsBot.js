@@ -23,7 +23,7 @@ const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 const BOT_CONFIGS = [
     {
         botUsername: 'GamesNews',
-        portalName: 'OXYᴳᴬＭＥ', // Using the exact name
+        portalName: 'OXYᴳᴬᴹᴱ', 
         channelName: 'genel', 
         feeds: [
             'https://feeds.feedburner.com/ign/news',
