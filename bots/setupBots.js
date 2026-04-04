@@ -24,7 +24,7 @@ const BOTS_TO_CREATE = [
     },
     {
         email: 'sportsbot@oxypace.com',
-        username: 'SportsNews',
+        username: 'SportNews',
         password: 'password123',
         profile: {
             displayName: 'World Sports',

@@ -38,7 +38,7 @@ const BOT_CONFIGS = [
         ]
     },
     {
-        botUsername: 'SportsNews',
+        botUsername: 'SportNews',
         portalName: 'Oxypace Global',
         feeds: [
             'https://www.espn.com/espn/rss/news',
