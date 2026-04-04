@@ -279,20 +279,26 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             }
         }
 
+        const query = { portal: portalId };
+
         // Channel Filtering Logic: Find the actual channel object to get its exact ID/Name
-        const targetChannel = portal.channels.find(
+        let targetChannel = portal.channels.find(
             (c) =>
                 c._id.toString() === channel ||
                 c.name === channel ||
                 (channel === 'general' && ['genel', 'general', 'genel sohbet'].includes(c.name.toLowerCase()))
         );
 
+        // Fallback: If "general" was requested but NO matched channel was found, pick the first one
+        if (!targetChannel && channel === 'general' && portal.channels.length > 0) {
+            targetChannel = portal.channels[0];
+        }
+
         if (targetChannel) {
-            // Use the specific ID of the channel for the query - NO MORE FALLBACKS TO NULL
+            // Use the specific ID of the channel for the query
             query.channel = targetChannel._id.toString();
         } else {
-            // If the requested channel is not found in the portal's channel list,
-            // we return zero results instead of leaking everything.
+            // If the requested channel is truly not found, return empty
             return res.json([]);
         }
 
