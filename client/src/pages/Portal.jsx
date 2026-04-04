@@ -44,9 +44,9 @@ const Portal = () => {
         console.log(`🔌 Joining portal room: ${id}`);
 
         // Join Channel Room if present
-        if (urlChannel) {
-            socket.emit('join_channel', urlChannel);
-            console.log(`🔌 Joining channel room: ${urlChannel}`);
+        if (currentChannel) {
+            socket.emit('join_channel', currentChannel);
+            console.log(`🔌 Joining channel room: ${currentChannel}`);
         }
 
         return () => {
@@ -54,11 +54,11 @@ const Portal = () => {
             socket.emit('leave_portal', id);
             
             // Leave Channel Room if was joined
-            if (urlChannel) {
-                socket.emit('leave_channel', urlChannel);
+            if (currentChannel) {
+                socket.emit('leave_channel', currentChannel);
             }
         };
-    }, [socket, connected, id, urlChannel]);
+    }, [socket, connected, id, currentChannel]);
     const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
     const [error, setError] = useState('');
     const [suspensionInfo, setSuspensionInfo] = useState(null);

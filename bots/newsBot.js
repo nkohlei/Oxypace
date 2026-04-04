@@ -48,11 +48,12 @@ const fetchHDMetadata = async (url) => {
 };
 
 // --- MULTI-BOT ARCHITECTURE ---
+// --- MULTI-BOT ARCHITECTURE ---
 const BOT_CONFIGS = [
     {
         botUsername: 'GamesNews',
         portalName: 'OXYᴳᴬᴹᴱ', 
-        channelName: 'genel', 
+        channelName: 'genel sohbet', // Updated to match UI
         feeds: [
             'https://feeds.feedburner.com/ign/news',
             'https://www.gamespot.com/feeds/news/'
@@ -91,51 +92,48 @@ export default async function startBotLoop() {
         console.log('✅ DB Connected, proceeding with bots startup...');
     }
 
-    try {
-        const activeBots = [];
+    const runScrapeCycle = async () => {
+        console.log(`🕒 [${new Date().toLocaleTimeString()}] Starting Bot Scrape Cycle...`);
         for (const config of BOT_CONFIGS) {
-            const user = await User.findOne({ username: config.botUsername });
-            if (!user) continue;
-
-            const portal = await Portal.findOne({ name: config.portalName });
-            if (!portal) continue;
-
-            let channel;
-            if (config.channelName) {
-                channel = portal.channels.find(c => c.name === config.channelName);
-                if (!channel) {
-                    console.error(`❌ [${config.botUsername}] Specific channel "${config.channelName}" not found in portal "${config.portalName}". Skipping bot.`);
+            try {
+                // FETCH FRESH CONTEXT FOR EVERY BOT EVERY CYCLE
+                const user = await User.findOne({ username: config.botUsername });
+                if (!user) {
+                    console.error(`❌ Bot user "${config.botUsername}" not found.`);
                     continue;
                 }
-            } else {
-                // If no channelName specified, fallback to a sensible default, but we'll keep it strict for these news bots
-                channel = portal.channels.find(c => ['genel', 'general', 'GENEL'].includes(c.name)) || portal.channels[0];
-            }
 
-            activeBots.push({ user, portal, channel, feeds: config.feeds });
-            console.log(`✅ [${config.botUsername}] Online -> Target Room: ${config.portalName} / ${channel.name}`);
+                const portal = await Portal.findOne({ name: config.portalName });
+                if (!portal) {
+                    console.error(`❌ Portal "${config.portalName}" not found for bot "${config.botUsername}".`);
+                    continue;
+                }
+
+                const channel = portal.channels.find(c => c.name === config.channelName);
+                if (!channel) {
+                    console.error(`❌ Channel "${config.channelName}" not found in portal "${config.portalName}". Skipping bot.`);
+                    continue;
+                }
+
+                // Inject fresh context into the check function
+                await checkNewsForBot({ user, portal, channel, feeds: config.feeds });
+                
+            } catch (err) {
+                console.error(`❌ Error processing bot "${config.botUsername}":`, err.message);
+            }
         }
+    };
 
-        if (activeBots.length === 0) return;
-
-        const runScrapeCycle = async () => {
-            for (const bot of activeBots) {
-                await checkNewsForBot(bot);
-            }
-        };
-
-        await runScrapeCycle();
-        setInterval(runScrapeCycle, CHECK_INTERVAL_MS);
-
-    } catch (error) {
-        console.error('❌ Failed to start Multi-Bot Engine:', error);
-    }
+    // Run first cycle immediately
+    await runScrapeCycle();
+    // Then schedule
+    setInterval(runScrapeCycle, CHECK_INTERVAL_MS);
 }
 
 const checkNewsForBot = async (bot) => {
     for (const url of bot.feeds) {
         try {
-            console.log(`📡 [${bot.user.username}] Scanning: ${url}`);
+            console.log(`📡 [${bot.user.username}] Scanning: ${url} -> Targeting Channel ID: ${bot.channel._id}`);
             const feed = await parser.parseURL(url);
             const itemsToProcess = feed.items.slice(0, 5).reverse();
 

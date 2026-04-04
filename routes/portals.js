@@ -279,32 +279,21 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             }
         }
 
-        // Channel Privacy Check
+        // Channel Filtering Logic: Find the actual channel object to get its exact ID/Name
         const targetChannel = portal.channels.find(
             (c) =>
+                c._id.toString() === channel ||
                 c.name === channel ||
-                (channel === 'general' && (c.name === 'genel' || c.name === 'general'))
+                (channel === 'general' && ['genel', 'general', 'genel sohbet'].includes(c.name.toLowerCase()))
         );
-        if (targetChannel && targetChannel.isPrivate) {
-            const isMember =
-                userId && portal.members.some((m) => m.toString() === userId.toString());
-            // For now, private channels are only for members. Future: admins only etc.
-            if (!isMember) {
-                return res.status(403).json({ message: 'Bu kanal gizlidir.' });
-            }
-        }
 
-        const query = { portal: portalId };
-
-        if (channel === 'general') {
-            query.$or = [
-                { channel: 'general' },
-                { channel: 'genel' },
-                { channel: { $exists: false } },
-                { channel: null }
-            ];
+        if (targetChannel) {
+            // Use the specific ID of the channel for the query - NO MORE FALLBACKS TO NULL
+            query.channel = targetChannel._id.toString();
         } else {
-            query.channel = channel;
+            // If the requested channel is not found in the portal's channel list,
+            // we return zero results instead of leaking everything.
+            return res.json([]);
         }
 
         // Pagination
