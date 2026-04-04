@@ -1,0 +1,670 @@
+[
+  {
+    "_id": "69485e416ce2eac8943a5de2",
+    "name": "Oxypace Global",
+    "description": "Bi portalcık\n",
+    "owner": "6937c5642c0f22a53c965fb5",
+    "admins": [
+      "6937c5642c0f22a53c965fb5",
+      "69389186e78edd0d15a4d6bb"
+    ],
+    "members": [
+      "6937c5642c0f22a53c965fb5",
+      "69389186e78edd0d15a4d6bb",
+      "6935ab3622c8aa0a82c0205f",
+      "6934b237d4876a7108627862",
+      "69369b9dbf0c56cd128dcb78",
+      "69389ab8e78edd0d15a4d882",
+      "69389b71e78edd0d15a4d8a3",
+      "696fdabe13e1ceaa0394e830",
+      "697143d79205b2a1f218fd1a",
+      "6972be8f26ec17495c8677ec",
+      "69834b87d10428b644b89961",
+      "69834b87d10428b644b89964",
+      "698a6bcf97a26fd591123f06",
+      "698d0a63bb064b2d0bc79494",
+      "69d172757bfba7599e161b77"
+    ],
+    "privacy": "private",
+    "avatar": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/avatars/avatar-1770496605520-829959667.gif",
+    "themeColor": "#3b82f6",
+    "createdAt": "2025-12-21T20:53:21.475Z",
+    "updatedAt": "2026-04-04T20:34:54.606Z",
+    "__v": 33,
+    "banner": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/banners/banner-1771680094062-493279427.gif",
+    "channels": [
+      {
+        "name": "genel sohbet",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "698d1824db5ccf0a4f06c99b"
+      },
+      {
+        "name": "Sports News 🏆 (EN)",
+        "type": "text",
+        "_id": "69835858dff9f89766c44c20",
+        "isPrivate": false
+      },
+      {
+        "name": "Tech News 🚀 (EN)",
+        "type": "text",
+        "_id": "69835873dff9f89766c44c26",
+        "isPrivate": false
+      },
+      {
+        "name": "zıbab",
+        "type": "voice",
+        "roomMode": "free",
+        "maxParticipants": 25,
+        "isPrivate": false,
+        "_id": "69ab5d63ce66065726417887"
+      },
+      {
+        "name": "Seminer",
+        "type": "conference",
+        "roomMode": "stage",
+        "maxParticipants": 25,
+        "isPrivate": false,
+        "_id": "69ab5daace660657264178df"
+      }
+    ],
+    "joinRequests": [],
+    "blockedUsers": [],
+    "allowedUsers": [],
+    "badges": [
+      "oxypace-global"
+    ],
+    "isVerified": false,
+    "status": "active",
+    "warnings": [
+      {
+        "message": "Good afternoon",
+        "date": "2026-03-06T12:56:05.921Z",
+        "issuedBy": "6937c5642c0f22a53c965fb5",
+        "_id": "69aacee53eb271d8c01c66b2"
+      }
+    ],
+    "statusReason": "",
+    "location": {
+      "lat": 40.7127281,
+      "lng": -74.0060152,
+      "label": "New York,  Amerika Birleşik Devletleri"
+    },
+    "showOnMap": true
+  },
+  {
+    "_id": "696f84a52de332d2c621a8c1",
+    "name": "ONLYKURD",
+    "description": "Partiya Karkerên Kurdistanê",
+    "owner": "69389186e78edd0d15a4d6bb",
+    "admins": [
+      "69389186e78edd0d15a4d6bb",
+      "6937c5642c0f22a53c965fb5",
+      "696fdabe13e1ceaa0394e830"
+    ],
+    "members": [
+      "69389186e78edd0d15a4d6bb",
+      "6937c5642c0f22a53c965fb5",
+      "696fdabe13e1ceaa0394e830"
+    ],
+    "privacy": "restricted",
+    "avatar": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/avatars/avatar-1770853111794-924096460.gif",
+    "banner": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/banners/banner-1770829131226-248288902.jpg",
+    "themeColor": "#3b82f6",
+    "channels": [
+      {
+        "name": "Gerila",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "698d1824db5ccf0a4f06c99d"
+      },
+      {
+        "name": "boş",
+        "type": "text",
+        "_id": "696fb67f0617910c9458f92a",
+        "isPrivate": true
+      }
+    ],
+    "joinRequests": [],
+    "createdAt": "2026-01-20T13:35:33.567Z",
+    "updatedAt": "2026-03-04T01:30:10.705Z",
+    "__v": 20,
+    "blockedUsers": [
+      "6935ab3622c8aa0a82c0205f",
+      "698a6bcf97a26fd591123f06"
+    ],
+    "allowedUsers": [],
+    "badges": [
+      "kurd"
+    ],
+    "isVerified": false,
+    "status": "active",
+    "warnings": [
+      {
+        "message": "Bi can, bi xwin, em te re ne , ey Serok!",
+        "date": "2026-02-13T14:41:29.282Z",
+        "issuedBy": "6937c5642c0f22a53c965fb5",
+        "_id": "698f38195866beb30f22eb70"
+      },
+      {
+        "message": "Bi can, bi xwin, em te re ne, ey Serok",
+        "date": "2026-02-13T15:44:58.460Z",
+        "issuedBy": "6937c5642c0f22a53c965fb5",
+        "_id": "698f46fa55ed38a478568249"
+      }
+    ],
+    "statusReason": "",
+    "location": {
+      "lat": 37.9162222,
+      "lng": 40.2363542,
+      "label": "Diyarbakır,  Sur"
+    },
+    "showOnMap": true
+  },
+  {
+    "_id": "6976172b98d5f83da80884d2",
+    "name": "Goat",
+    "description": "LIONEL ANDRÉS MESSI CUCCITINI",
+    "owner": "69389186e78edd0d15a4d6bb",
+    "admins": [
+      "69389186e78edd0d15a4d6bb"
+    ],
+    "members": [
+      "69389186e78edd0d15a4d6bb",
+      "6937c5642c0f22a53c965fb5",
+      "697bb8c39be53871984514bf",
+      "6935ab3622c8aa0a82c0205f",
+      "696fdabe13e1ceaa0394e830",
+      "69b2a886e5a48fa876039cd1",
+      "69834b87d10428b644b89961"
+    ],
+    "privacy": "public",
+    "avatar": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/avatars/avatar-1771680936161-4649048.gif",
+    "banner": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/banners/banner-1771680925464-243894155.gif",
+    "themeColor": "#3b82f6",
+    "channels": [
+      {
+        "name": "m",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "6989f5b0a47ca1d6873e3978"
+      },
+      {
+        "name": "e",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "6989f5b1a47ca1d6873e397d"
+      },
+      {
+        "name": "s",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "6989f5b2a47ca1d6873e3983"
+      },
+      {
+        "name": "s",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "6989f5b3a47ca1d6873e398a"
+      },
+      {
+        "name": "i",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "6989f5b4a47ca1d6873e3992"
+      },
+      {
+        "name": "Messi",
+        "type": "voice",
+        "roomMode": "free",
+        "maxParticipants": 25,
+        "isPrivate": false,
+        "_id": "69b2a928e5a48fa876039e78"
+      }
+    ],
+    "joinRequests": [],
+    "createdAt": "2026-01-25T13:14:19.347Z",
+    "updatedAt": "2026-04-04T21:59:12.485Z",
+    "__v": 19,
+    "blockedUsers": [],
+    "allowedUsers": [],
+    "badges": [
+      "goat"
+    ],
+    "isVerified": false,
+    "status": "active",
+    "warnings": [
+      {
+        "message": "Tehlikeli!",
+        "date": "2026-02-13T18:21:23.255Z",
+        "issuedBy": "6937c5642c0f22a53c965fb5",
+        "_id": "698f6ba3cde741123026bb9c"
+      }
+    ],
+    "statusReason": "",
+    "location": {
+      "lat": 41.3825802,
+      "lng": 2.177073,
+      "label": "Barselona,  Barcelonès"
+    },
+    "showOnMap": true
+  },
+  {
+    "_id": "698cf346bb064b2d0bc7881b",
+    "name": "OXYᴳᴬᴹᴱ",
+    "description": "Oyunlara dair gelişmelerden anında haberdar olun (Türkçe)",
+    "owner": "6937c5642c0f22a53c965fb5",
+    "admins": [
+      "6937c5642c0f22a53c965fb5",
+      "698d0a63bb064b2d0bc79494",
+      "69389186e78edd0d15a4d6bb"
+    ],
+    "members": [
+      "6937c5642c0f22a53c965fb5",
+      "69389186e78edd0d15a4d6bb",
+      "698a6bcf97a26fd591123f06",
+      "698d0a63bb064b2d0bc79494",
+      "6935ab3622c8aa0a82c0205f",
+      "696fdabe13e1ceaa0394e830",
+      "69834b87d10428b644b89964",
+      "69834b87d10428b644b89961"
+    ],
+    "blockedUsers": [],
+    "privacy": "public",
+    "allowedUsers": [],
+    "avatar": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/avatars/avatar-1770847118905-784304833.jpg",
+    "banner": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/banners/banner-1770846158824-929849060.jpg",
+    "themeColor": "#3b82f6",
+    "channels": [
+      {
+        "name": "Game News 🐦‍🔥",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "698d1824db5ccf0a4f06c9a1"
+      },
+      {
+        "name": "Meets 🧠",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "698cf346bb064b2d0bc7881c"
+      }
+    ],
+    "joinRequests": [],
+    "createdAt": "2026-02-11T21:23:18.653Z",
+    "updatedAt": "2026-04-04T22:00:48.030Z",
+    "__v": 13,
+    "badges": [
+      "partner"
+    ],
+    "isVerified": false,
+    "status": "active",
+    "warnings": [],
+    "statusReason": "",
+    "suspendedUntil": null,
+    "location": {
+      "lat": 51.5074456,
+      "lng": -0.1277653,
+      "label": "Londra,  İngiltere"
+    },
+    "showOnMap": true
+  },
+  {
+    "_id": "698f48ca55ed38a478568561",
+    "name": "JO JO JOKER",
+    "description": "I smile all the time now!",
+    "owner": "6937c5642c0f22a53c965fb5",
+    "admins": [
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "members": [
+      "6937c5642c0f22a53c965fb5",
+      "6935ab3622c8aa0a82c0205f",
+      "69389186e78edd0d15a4d6bb",
+      "696fdabe13e1ceaa0394e830"
+    ],
+    "blockedUsers": [],
+    "privacy": "public",
+    "allowedUsers": [],
+    "avatar": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/avatars/avatar-1771874229509-856092855.gif",
+    "banner": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/banners/banner-1771874256839-448451477.gif",
+    "themeColor": "#3b82f6",
+    "isVerified": false,
+    "badges": [],
+    "status": "active",
+    "channels": [
+      {
+        "name": "BATMAN YOK SIKINTI YOK",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "698f48ca55ed38a478568562"
+      }
+    ],
+    "joinRequests": [],
+    "warnings": [
+      {
+        "message": "Razer",
+        "date": "2026-02-28T12:44:17.378Z",
+        "issuedBy": "6937c5642c0f22a53c965fb5",
+        "_id": "69a2e32164dfdb553f2c1d4b"
+      }
+    ],
+    "createdAt": "2026-02-13T15:52:42.033Z",
+    "updatedAt": "2026-03-01T20:26:58.603Z",
+    "__v": 6,
+    "statusReason": "",
+    "suspendedUntil": null,
+    "location": {
+      "lat": 34.0980031,
+      "lng": -118.329523,
+      "label": "Hollywood,  Los Angeles"
+    },
+    "showOnMap": true
+  },
+  {
+    "_id": "69a48a87c86222e58be4972c",
+    "name": "OXYMOVIE",
+    "description": "Vizyona girecek dev yapımlar, usta yönetmenlerden son projeler ve ödül sezonunun favorileri. Beyazperdenin en güvenilir haber kaynağı, OXYMOVIE!",
+    "owner": "6937c5642c0f22a53c965fb5",
+    "admins": [
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "members": [
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "blockedUsers": [],
+    "privacy": "public",
+    "allowedUsers": [],
+    "avatar": "/api/media/avatars/avatar-1773250011601-907567854.jpg",
+    "banner": "/api/media/banners/banner-1773250463180-833873796.gif",
+    "themeColor": "#3b82f6",
+    "isVerified": false,
+    "badges": [],
+    "status": "active",
+    "statusReason": "",
+    "suspendedUntil": null,
+    "channels": [
+      {
+        "name": "genel",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a48a87c86222e58be4972d"
+      }
+    ],
+    "joinRequests": [],
+    "location": {
+      "lat": 41.0265498,
+      "lng": 29.0151321,
+      "label": "Üsküdar,  İstanbul"
+    },
+    "showOnMap": true,
+    "warnings": [],
+    "createdAt": "2026-03-01T18:50:47.424Z",
+    "updatedAt": "2026-03-11T17:34:26.176Z",
+    "__v": 0
+  },
+  {
+    "_id": "69a490424f9874ba6d6dd7ce",
+    "name": "AI World",
+    "description": "Boundaries are being redrawn: Today's breaking news in AI",
+    "owner": "6937c5642c0f22a53c965fb5",
+    "admins": [
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "members": [
+      "6937c5642c0f22a53c965fb5",
+      "69389186e78edd0d15a4d6bb",
+      "69834b87d10428b644b89961"
+    ],
+    "blockedUsers": [],
+    "privacy": "public",
+    "allowedUsers": [],
+    "avatar": "/api/media/avatars/avatar-1773250632336-535128932.gif",
+    "banner": "/api/media/banners/banner-1773250612692-930125301.jpg",
+    "themeColor": "#3b82f6",
+    "isVerified": false,
+    "badges": [],
+    "status": "active",
+    "statusReason": "",
+    "suspendedUntil": null,
+    "channels": [
+      {
+        "name": "genel",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a490424f9874ba6d6dd7cf"
+      }
+    ],
+    "joinRequests": [],
+    "location": {
+      "lat": 37.2275859,
+      "lng": -115.8385093,
+      "label": "51. Bölge,  Lincoln County"
+    },
+    "showOnMap": true,
+    "warnings": [],
+    "createdAt": "2026-03-01T19:15:14.079Z",
+    "updatedAt": "2026-04-04T21:57:45.079Z",
+    "__v": 2
+  },
+  {
+    "_id": "69a759d96037a48980f5306c",
+    "name": "Kurdish Library",
+    "description": "A comprehensive library collecting general Kurdish content. / Pirtûkxaneyek berfireh ku naveroka Kurdî ya giştî berhev dike. / Genel Kürt içeriklerinin toplandığı kapsamlı bir kütüphane.",
+    "owner": "6937c5642c0f22a53c965fb5",
+    "admins": [
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "members": [
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "blockedUsers": [],
+    "privacy": "restricted",
+    "allowedUsers": [],
+    "avatar": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/avatars/avatar-1772582190408-963896906.jpg",
+    "banner": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/banners/banner-1772580397415-124512769.jpg",
+    "themeColor": "#3b82f6",
+    "isVerified": false,
+    "badges": [
+      "kurd"
+    ],
+    "status": "active",
+    "statusReason": "",
+    "suspendedUntil": null,
+    "channels": [
+      {
+        "name": "Kurdish History Documents",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a759d96037a48980f5306d"
+      },
+      {
+        "name": "Kurdish Tradition",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a75e496037a48980f530b0"
+      },
+      {
+        "name": "Kurdish Art",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a75e646037a48980f530bb"
+      },
+      {
+        "name": "Kurdish Music",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a75ea56037a48980f530e0"
+      },
+      {
+        "name": "Kurdish Greats",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a75fda6037a48980f530ef"
+      },
+      {
+        "name": "Kurdish News",
+        "type": "text",
+        "isPrivate": false,
+        "_id": "69a9d3775cb4f7f6d8187c8c"
+      }
+    ],
+    "joinRequests": [],
+    "location": {
+      "lat": 36.4239244,
+      "lng": 44.3283934,
+      "label": "Kürdistan Bölgesel Yönetimi,  Irak"
+    },
+    "showOnMap": true,
+    "warnings": [],
+    "createdAt": "2026-03-03T21:59:53.595Z",
+    "updatedAt": "2026-03-12T11:37:07.317Z",
+    "__v": 9
+  },
+  {
+    "_id": "69af3935fa27e94d44c517a3",
+    "name": "Kurtlar Konseyi",
+    "description": "Suskunluk Yasasi",
+    "owner": "6935ab3622c8aa0a82c0205f",
+    "admins": [
+      "6935ab3622c8aa0a82c0205f",
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "members": [
+      "6935ab3622c8aa0a82c0205f",
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "blockedUsers": [],
+    "privacy": "public",
+    "allowedUsers": [],
+    "avatar": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/avatars/avatar-1773091187489-542805862.jpg",
+    "banner": "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/banners/banner-1773091197114-475283568.jpg",
+    "themeColor": "#3b82f6",
+    "isVerified": false,
+    "badges": [
+      "konsey"
+    ],
+    "status": "active",
+    "statusReason": "",
+    "suspendedUntil": null,
+    "channels": [
+      {
+        "name": "Toplantı Sohbet",
+        "type": "text",
+        "roomMode": "free",
+        "maxParticipants": 25,
+        "isPrivate": false,
+        "_id": "69af3935fa27e94d44c517a4"
+      },
+      {
+        "name": "Toplantı Odası",
+        "type": "voice",
+        "roomMode": "free",
+        "maxParticipants": 25,
+        "isPrivate": false,
+        "_id": "69af39a8fa27e94d44c51906"
+      }
+    ],
+    "joinRequests": [],
+    "location": {
+      "lat": null,
+      "lng": null,
+      "label": ""
+    },
+    "showOnMap": false,
+    "warnings": [],
+    "createdAt": "2026-03-09T21:18:45.846Z",
+    "updatedAt": "2026-03-13T23:47:04.186Z",
+    "__v": 4
+  },
+  {
+    "_id": "69b2e19ee5a48fa87603a183",
+    "name": "ETÜ",
+    "description": "Sistem Dışı Alternatif",
+    "owner": "69389186e78edd0d15a4d6bb",
+    "admins": [
+      "69389186e78edd0d15a4d6bb"
+    ],
+    "members": [
+      "69389186e78edd0d15a4d6bb"
+    ],
+    "blockedUsers": [],
+    "privacy": "private",
+    "allowedUsers": [],
+    "avatar": "",
+    "banner": "",
+    "themeColor": "#3b82f6",
+    "isVerified": false,
+    "badges": [],
+    "status": "active",
+    "statusReason": "",
+    "suspendedUntil": null,
+    "channels": [
+      {
+        "name": "genel",
+        "type": "text",
+        "roomMode": "free",
+        "maxParticipants": 25,
+        "isPrivate": false,
+        "_id": "69b2e19ee5a48fa87603a184"
+      }
+    ],
+    "joinRequests": [
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "location": {
+      "lat": null,
+      "lng": null,
+      "label": ""
+    },
+    "showOnMap": false,
+    "warnings": [],
+    "createdAt": "2026-03-12T15:54:06.729Z",
+    "updatedAt": "2026-03-13T18:42:02.701Z",
+    "__v": 1
+  },
+  {
+    "_id": "69d1731c7bfba7599e161b99",
+    "name": "Space",
+    "description": "Her seferinde önüne bir engel koyan şu dünyada uçsuz bucaksız uzayın derinliklerine özgürce ulaşalım.\n",
+    "owner": "69d172757bfba7599e161b77",
+    "admins": [
+      "69d172757bfba7599e161b77"
+    ],
+    "members": [
+      "69d172757bfba7599e161b77",
+      "6937c5642c0f22a53c965fb5"
+    ],
+    "blockedUsers": [],
+    "privacy": "public",
+    "allowedUsers": [],
+    "avatar": "/api/media/avatars/avatar-1775334223470-336245923.gif",
+    "banner": "/api/media/banners/banner-1775334185648-457593951.gif",
+    "themeColor": "#3b82f6",
+    "isVerified": false,
+    "badges": [],
+    "status": "active",
+    "statusReason": "",
+    "suspendedUntil": null,
+    "channels": [
+      {
+        "name": "Gelişmeler, Bilgiler ve Eğlenmeler",
+        "type": "text",
+        "roomMode": "free",
+        "maxParticipants": 25,
+        "isPrivate": false,
+        "_id": "69d1731c7bfba7599e161b9a"
+      }
+    ],
+    "joinRequests": [],
+    "location": {
+      "lat": null,
+      "lng": null,
+      "label": ""
+    },
+    "showOnMap": false,
+    "warnings": [],
+    "createdAt": "2026-04-04T20:22:52.486Z",
+    "updatedAt": "2026-04-04T21:47:03.770Z",
+    "__v": 1
+  }
+]

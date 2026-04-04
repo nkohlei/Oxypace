@@ -53,7 +53,7 @@ const BOT_CONFIGS = [
     {
         botUsername: 'GamesNews',
         portalName: 'OXYᴳᴬᴹᴱ', 
-        channelName: 'Game News 🐦🔥', // Corrected channel name
+        channelName: 'Game News 🐦‍🔥', // Corrected channel name (Phoenix)
         feeds: [
             'https://feeds.feedburner.com/ign/news',
             'https://www.gamespot.com/feeds/news/'
@@ -133,15 +133,22 @@ export default async function startBotLoop() {
 const checkNewsForBot = async (bot) => {
     for (const url of bot.feeds) {
         try {
-            console.log(`📡 [${bot.user.username}] Scanning: ${url} -> Targeting Channel ID: ${bot.channel._id}`);
+            console.log(`📡 [${bot.user.username}] Scanning: ${url}`);
             const feed = await parser.parseURL(url);
+            
+            if (!feed.items || feed.items.length === 0) {
+                console.warn(`⚠️ [${bot.user.username}] Feed is empty or could not be parsed: ${url}`);
+                continue;
+            }
+
+            console.log(`🔍 [${bot.user.username}] Found ${feed.items.length} items. Checking top 5...`);
             const itemsToProcess = feed.items.slice(0, 5).reverse();
 
             for (const item of itemsToProcess) {
                 await processItem(item, bot);
             }
         } catch (error) {
-            console.error(`⚠️ [${bot.user.username}] Failed fetching feed:`, error.message);
+            console.error(`⚠️ [${bot.user.username}] Failed fetching feed (${url}):`, error.message);
         }
     }
 };
@@ -204,31 +211,34 @@ const processItem = async (item, bot) => {
     try {
         // 1. Precise History Check (Database Index level)
         const isShared = await BotHistory.findOne({ guid, botName: bot.user.username });
-        if (isShared) return;
+        if (isShared) {
+            // console.log(`⏭️ [${bot.user.username}] Skipped: Already shared (GUID: ${guid.substring(0, 20)}...)`);
+            return;
+        }
 
         // 2. Fuzzy Deduplication (Title check within last 24h)
-        // This prevents the same news from being posted if the link/guid changed slightly
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const titleSnippet = item.title.substring(0, 20).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const existingSimilarPost = await Post.findOne({
             portal: bot.portal._id,
             author: bot.user._id,
             createdAt: { $gte: oneDayAgo },
-            content: { $regex: new RegExp(item.title.substring(0, 20).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
+            content: { $regex: new RegExp(titleSnippet, 'i') }
         });
 
         if (existingSimilarPost) {
-            console.log(`🛡️ [${bot.user.username}] Fuzzy match triggered for: "${item.title.substring(0, 30)}..."`);
+            console.log(`🛡️ [${bot.user.username}] Fuzzy match triggered (Title: "${item.title.substring(0, 30)}..."). Marking as shared.`);
             await BotHistory.create({ guid, botName: bot.user.username });
             return;
         }
 
         const { mediaUrl, mediaType } = await extractRichMedia(item);
 
-        // MANDATORY IMAGE POLICY
+        // SOFT IMAGE POLICY: We prefer images, but we won't block the news if they are missing
         if (!mediaUrl || mediaType === 'none') {
-            console.warn(`⏭️ [${bot.user.username}] Skipping post: No HD visual found for "${item.title}"`);
-            await BotHistory.create({ guid, botName: bot.user.username });
-            return;
+            console.log(`ℹ️ [${bot.user.username}] Posting without visual: "${item.title.substring(0, 30)}..."`);
+        } else {
+            console.log(`🖼️ [${bot.user.username}] Visual found (${mediaType}): "${item.title.substring(0, 30)}..."`);
         }
 
         console.log(`🆕 [${bot.user.username}] Processing Elite Payload (TR/HD): ${item.title}`);
