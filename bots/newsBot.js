@@ -164,6 +164,15 @@ const extractRichMedia = (item) => {
         }
     }
 
+    // 2.5 Scan <media:thumbnail> (Common in BBC/ESPN)
+    if (!mediaUrl && item.mediaThumbnail && Array.isArray(item.mediaThumbnail) && item.mediaThumbnail.length > 0) {
+        const thumbRes = item.mediaThumbnail[0];
+        if (thumbRes && thumbRes.$.url) {
+            mediaUrl = thumbRes.$.url;
+            mediaType = 'image';
+        }
+    }
+
     // 3. Regex Deep-Scan inside CDATA Content (HTML Payloads)
     const rawContent = item.contentEncoded || item.content || '';
     
