@@ -1,7 +1,7 @@
 import Parser from 'rss-parser';
 import mongoose from 'mongoose';
 import axios from 'axios';
-import { translate } from 'google-translate-api-x';
+import { translateText } from '../utils/translate.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Portal from '../models/Portal.js';
@@ -21,18 +21,7 @@ const parser = new Parser({
 
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 
-// Translation helper
-const translateText = async (text) => {
-    if (!text) return "";
-    try {
-        const res = await translate(text, { to: 'tr' });
-        console.log(`🌐 Translated: ${text.substring(0, 30)}... -> ${res.text.substring(0, 30)}...`);
-        return res.text;
-    } catch (error) {
-        console.error("❌ Translation failed:", error.message);
-        return text; // Fallback to original
-    }
-};
+// (Removed local translate helper - now using centralized utils/translate.js)
 
 // HD Metadata Scraper (OpenGraph)
 const fetchHDMetadata = async (url) => {

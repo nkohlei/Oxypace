@@ -105,20 +105,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
         setIsTranslating(true);
         try {
-            // Google Translate unofficial API endpoint
-            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(post.content)}`;
-            const response = await fetch(url);
-            const data = await response.json();
+            // Call our new high-accuracy backend translation service
+            const response = await axios.post('/api/translate', { 
+                text: post.content,
+                target: 'tr'
+            });
 
-            if (data && data[0]) {
-                // Google returns array of translated segments
-                const translated = data[0].map((segment) => segment[0]).join('');
-                setTranslatedText(translated);
+            if (response.data && response.data.translated) {
+                setTranslatedText(response.data.translated);
                 setIsTranslated(true);
             }
         } catch (error) {
             console.error('Translation failed:', error);
-            alert('Çeviri yapılamadı.');
+            alert('Çeviri şu an yapılamıyor, lütfen daha sonra tekrar dene.');
         } finally {
             setIsTranslating(false);
         }
