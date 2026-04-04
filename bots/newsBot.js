@@ -23,7 +23,8 @@ const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 const BOT_CONFIGS = [
     {
         botUsername: 'GamesNews',
-        portalName: 'OXYᴳᴬᴹᴱ',
+        portalName: 'OXYᴳᴬＭＥ', // Using the exact name
+        channelName: 'genel', 
         feeds: [
             'https://feeds.feedburner.com/ign/news',
             'https://www.gamespot.com/feeds/news/'
@@ -31,7 +32,8 @@ const BOT_CONFIGS = [
     },
     {
         botUsername: 'TechNews',
-        portalName: 'AI World',
+        portalName: 'Oxypace Global',
+        channelName: 'Tech News 🚀 (EN)',
         feeds: [
             'https://techcrunch.com/feed/',
             'https://www.theverge.com/rss/index.xml'
@@ -40,6 +42,7 @@ const BOT_CONFIGS = [
     {
         botUsername: 'SportNews',
         portalName: 'Oxypace Global',
+        channelName: 'Sports News 🏆 (EN)',
         feeds: [
             'https://www.espn.com/espn/rss/news',
             'https://feeds.bbci.co.uk/sport/rss.xml'
@@ -77,7 +80,17 @@ export default async function startBotLoop() {
                 continue;
             }
 
-            const channel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
+            let channel;
+            // Find specific channel if provided
+            if (config.channelName) {
+                channel = portal.channels.find(c => c.name === config.channelName);
+            }
+            
+            // Fallback strategy
+            if (!channel) {
+                channel = portal.channels.find(c => ['genel', 'general', 'GENEL'].includes(c.name)) || portal.channels[0];
+            }
+
             if (!channel) {
                 console.warn(`⚠️ Skipping ${config.botUsername}: No suitable channel found in portal ${portal.name}.`);
                 continue;
