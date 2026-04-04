@@ -35,6 +35,29 @@ const Portal = () => {
     const setPosts = useGlobalStore((state) => state.setPosts);
     const [loading, setLoading] = useState(true);
 
+    const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
+    const [error, setError] = useState('');
+    const [suspensionInfo, setSuspensionInfo] = useState(null);
+    const [countdown, setCountdown] = useState(null); // { days, hours, minutes, seconds }
+    const [isMember, setIsMember] = useState(false);
+
+    // Channel State
+    const [currentChannel, setCurrentChannel] = useState(null);
+    const [hasScrolledToPost, setHasScrolledToPost] = useState(false);
+    const [messageText, setMessageText] = useState('');
+
+    // UI Toggles
+    const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
+    const [showLoginWarning, setShowLoginWarning] = useState(false); // Guest warning state
+
+    const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const [youtubeUrl, setYoutubeUrl] = useState('');
+    const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+    const fileInputRef = useRef(null);
+    const videoInputRef = useRef(null);
+    const gifInputRef = useRef(null);
+    const [mediaFile, setMediaFile] = useState(null);
+
     // --- SOCKET ROOM MANAGEMENT ---
     useEffect(() => {
         if (!socket || !connected || !id) return;
@@ -59,28 +82,6 @@ const Portal = () => {
             }
         };
     }, [socket, connected, id, currentChannel]);
-    const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
-    const [error, setError] = useState('');
-    const [suspensionInfo, setSuspensionInfo] = useState(null);
-    const [countdown, setCountdown] = useState(null); // { days, hours, minutes, seconds }
-    const [isMember, setIsMember] = useState(false);
-
-    // Channel State
-    const [currentChannel, setCurrentChannel] = useState(null);
-    const [hasScrolledToPost, setHasScrolledToPost] = useState(false);
-    const [messageText, setMessageText] = useState('');
-
-    // UI Toggles
-    const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
-    const [showLoginWarning, setShowLoginWarning] = useState(false); // Guest warning state
-
-    const [showPlusMenu, setShowPlusMenu] = useState(false);
-    const [youtubeUrl, setYoutubeUrl] = useState('');
-    const [showYoutubeInput, setShowYoutubeInput] = useState(false);
-    const fileInputRef = useRef(null);
-    const videoInputRef = useRef(null);
-    const gifInputRef = useRef(null);
-    const [mediaFile, setMediaFile] = useState(null);
 
     // Helper to extract YouTube ID
     const getYoutubeId = (url) => {
