@@ -39,6 +39,30 @@ export const initializeSocket = (io) => {
                 io.to(recipientSocketId).emit('userTyping', { isTyping });
             }
         });
+
+        // --- ROOM MANAGEMENT (For Feed Isolation) ---
+        
+        // Portal Rooms
+        socket.on('join_portal', (portalId) => {
+            socket.join(`portal:${portalId}`);
+            console.log(`📡 Socket ${socket.id} joined portal room: ${portalId}`);
+        });
+
+        socket.on('leave_portal', (portalId) => {
+            socket.leave(`portal:${portalId}`);
+            console.log(`📡 Socket ${socket.id} left portal room: ${portalId}`);
+        });
+
+        // Channel Rooms
+        socket.on('join_channel', (channelId) => {
+            socket.join(`channel:${channelId}`);
+            console.log(`📡 Socket ${socket.id} joined channel room: ${channelId}`);
+        });
+
+        socket.on('leave_channel', (channelId) => {
+            socket.leave(`channel:${channelId}`);
+            console.log(`📡 Socket ${socket.id} left channel room: ${channelId}`);
+        });
     });
 
     // Initialize voice channel handler

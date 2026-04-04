@@ -25,14 +25,30 @@ export const setupChangeStreams = (io) => {
                         // We must populate it so clients don't crash expecting an author object.
                         const newPost = await Post.findById(change.documentKey._id).populate('author', 'username profile verificationBadge');
                         if (newPost) {
+                            // 1. Emit to the specific portal room
+                            if (newPost.portal) {
+                                io.to(`portal:${newPost.portal.toString()}`).emit('post:created', newPost);
+                            }
+                            // 2. Emit to the specific channel room
+                            if (newPost.channel) {
+                                io.to(`channel:${newPost.channel.toString()}`).emit('post:created', newPost);
+                            }
+                            // 3. Keep global for things that listen to everything (like an admin or global feed)
                             io.emit('global:post_created', newPost);
                         }
                     } else if (change.operationType === 'update') {
                         const updatedPost = await Post.findById(change.documentKey._id).populate('author', 'username profile verificationBadge');
                         if (updatedPost) {
+                            if (updatedPost.portal) {
+                                io.to(`portal:${updatedPost.portal.toString()}`).emit('post:updated', updatedPost);
+                            }
+                            if (updatedPost.channel) {
+                                io.to(`channel:${updatedPost.channel.toString()}`).emit('post:updated', updatedPost);
+                            }
                             io.emit('global:post_updated', updatedPost);
                         }
                     } else if (change.operationType === 'delete') {
+                        // Deletions are sent globally to ensure cleanup everywhere
                         io.emit('global:post_deleted', { _id: change.documentKey._id });
                     }
                 } catch (err) {

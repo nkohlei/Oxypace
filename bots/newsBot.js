@@ -198,10 +198,29 @@ const extractRichMedia = async (item) => {
 
 const processItem = async (item, bot) => {
     const guid = item.guid || item.link;
-    const isShared = await BotHistory.findOne({ guid, botName: bot.user.username });
-    if (isShared) return;
+    if (!guid) return;
 
     try {
+        // 1. Precise History Check (Database Index level)
+        const isShared = await BotHistory.findOne({ guid, botName: bot.user.username });
+        if (isShared) return;
+
+        // 2. Fuzzy Deduplication (Title check within last 24h)
+        // This prevents the same news from being posted if the link/guid changed slightly
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const existingSimilarPost = await Post.findOne({
+            portal: bot.portal._id,
+            author: bot.user._id,
+            createdAt: { $gte: oneDayAgo },
+            content: { $regex: new RegExp(item.title.substring(0, 20).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
+        });
+
+        if (existingSimilarPost) {
+            console.log(`🛡️ [${bot.user.username}] Fuzzy match triggered for: "${item.title.substring(0, 30)}..."`);
+            await BotHistory.create({ guid, botName: bot.user.username });
+            return;
+        }
+
         const { mediaUrl, mediaType } = await extractRichMedia(item);
 
         // MANDATORY IMAGE POLICY
@@ -212,8 +231,7 @@ const processItem = async (item, bot) => {
         }
 
         console.log(`🆕 [${bot.user.username}] Processing Elite Payload (TR/HD): ${item.title}`);
-        console.log(`📸 Using Media: ${mediaUrl.substring(0, 50)}... (${mediaType})`);
-
+        
         // Translate Title & Description
         const translatedTitle = await translateText(item.title);
         let description = item.contentSnippet || item.content || '';
@@ -223,6 +241,12 @@ const processItem = async (item, bot) => {
         const translatedDesc = await translateText(description);
 
         const formattedContent = `📢 **${translatedTitle}**\n\n${translatedDesc ? `📝 ${translatedDesc}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
+
+        // --- ATOMICITY FIX ---
+        // We create the history record FIRST. 
+        // If it succeeds, it means no other bot has taken this yet (or this bot hasn't).
+        // If it fails (rare race condition), the try-catch will handle it.
+        await BotHistory.create({ guid, botName: bot.user.username });
 
         const newPost = new Post({
             content: formattedContent,
@@ -235,10 +259,13 @@ const processItem = async (item, bot) => {
         });
 
         await newPost.save();
-        await BotHistory.create({ guid, botName: bot.user.username });
-        console.log(`✅ [${bot.user.username}] Elite Post Deployed: ${translatedTitle.substring(0, 30)}... (Type: ${mediaType})`);
+        console.log(`✅ [${bot.user.username}] Elite Post Deployed: ${translatedTitle.substring(0, 30)}...`);
 
     } catch (error) {
+        if (error.code === 11000) {
+            // Duplicate detected at the moment of creation (Race condition handled)
+            return;
+        }
         console.error(`❌ [${bot.user.username}] Failed elite publish:`, error.message);
     }
 };

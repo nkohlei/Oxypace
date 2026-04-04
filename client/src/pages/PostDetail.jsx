@@ -12,12 +12,14 @@ import Footer from '../components/Footer';
 import ShareModal from '../components/ShareModal';
 import AdUnit from '../components/AdUnit';
 import SEO from '../components/SEO';
+import { useSocket } from '../context/SocketContext';
 import './PostDetail.css';
 
 const PostDetail = () => {
     const { postId } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { socket, connected } = useSocket();
     const [post, setPost] = useState(null);
     const [loading, setLoading] = useState(true);
     const [liked, setLiked] = useState(false);
@@ -64,6 +66,24 @@ const PostDetail = () => {
     useEffect(() => {
         fetchPost();
     }, [postId]);
+
+    // --- SOCKET ROOM MANAGEMENT ---
+    useEffect(() => {
+        if (!socket || !connected || !post) return;
+
+        const portalId = post.portal?._id || post.portal;
+        const channelId = post.channel?._id || post.channel;
+
+        // Join rooms
+        if (portalId) socket.emit('join_portal', portalId.toString());
+        if (channelId) socket.emit('join_channel', channelId.toString());
+
+        return () => {
+            // Leave rooms
+            if (portalId) socket.emit('leave_portal', portalId.toString());
+            if (channelId) socket.emit('leave_channel', channelId.toString());
+        };
+    }, [socket, connected, post]);
 
     const fetchPost = async () => {
         try {

@@ -16,6 +16,7 @@ import SEO from '../components/SEO';
 import VoiceChannel from '../components/VoiceChannel';
 import ConferenceChannel from '../components/ConferenceChannel';
 import { useGlobalStore } from '../store/useGlobalStore';
+import { useSocket } from '../context/SocketContext';
 import './Portal.css';
 
 
@@ -25,6 +26,7 @@ const Portal = () => {
     const urlChannel = searchParams.get('channel');
     const urlPost = searchParams.get('post');
     const { user, updateUser, loading: authLoading } = useAuth();
+    const { socket, connected } = useSocket();
     const navigate = useNavigate();
     const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = useUI();
 
@@ -32,6 +34,31 @@ const Portal = () => {
     const posts = useGlobalStore((state) => state.posts);
     const setPosts = useGlobalStore((state) => state.setPosts);
     const [loading, setLoading] = useState(true);
+
+    // --- SOCKET ROOM MANAGEMENT ---
+    useEffect(() => {
+        if (!socket || !connected || !id) return;
+
+        // Join Portal Room
+        socket.emit('join_portal', id);
+        console.log(`🔌 Joining portal room: ${id}`);
+
+        // Join Channel Room if present
+        if (urlChannel) {
+            socket.emit('join_channel', urlChannel);
+            console.log(`🔌 Joining channel room: ${urlChannel}`);
+        }
+
+        return () => {
+            // Leave Portal Room
+            socket.emit('leave_portal', id);
+            
+            // Leave Channel Room if was joined
+            if (urlChannel) {
+                socket.emit('leave_channel', urlChannel);
+            }
+        };
+    }, [socket, connected, id, urlChannel]);
     const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
     const [error, setError] = useState('');
     const [suspensionInfo, setSuspensionInfo] = useState(null);
