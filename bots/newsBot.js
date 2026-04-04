@@ -103,14 +103,17 @@ export default async function startBotLoop() {
             let channel;
             if (config.channelName) {
                 channel = portal.channels.find(c => c.name === config.channelName);
-            }
-            if (!channel) {
+                if (!channel) {
+                    console.error(`❌ [${config.botUsername}] Specific channel "${config.channelName}" not found in portal "${config.portalName}". Skipping bot.`);
+                    continue;
+                }
+            } else {
+                // If no channelName specified, fallback to a sensible default, but we'll keep it strict for these news bots
                 channel = portal.channels.find(c => ['genel', 'general', 'GENEL'].includes(c.name)) || portal.channels[0];
             }
-            if (!channel) continue;
 
             activeBots.push({ user, portal, channel, feeds: config.feeds });
-            console.log(`✅ [${config.botUsername}] Online -> Turkish/HD Mode Active`);
+            console.log(`✅ [${config.botUsername}] Online -> Target Room: ${config.portalName} / ${channel.name}`);
         }
 
         if (activeBots.length === 0) return;

@@ -34,7 +34,10 @@ export const setupChangeStreams = (io) => {
                                 io.to(`channel:${newPost.channel.toString()}`).emit('post:created', newPost);
                             }
                             // 3. Keep global for things that listen to everything (like an admin or global feed)
-                            io.emit('global:post_created', newPost);
+                            // ONLY emit if it's NOT a portal post to ensure strict isolation
+                            if (!newPost.portal) {
+                                io.emit('global:post_created', newPost);
+                            }
                         }
                     } else if (change.operationType === 'update') {
                         const updatedPost = await Post.findById(change.documentKey._id).populate('author', 'username profile verificationBadge');
@@ -45,7 +48,9 @@ export const setupChangeStreams = (io) => {
                             if (updatedPost.channel) {
                                 io.to(`channel:${updatedPost.channel.toString()}`).emit('post:updated', updatedPost);
                             }
-                            io.emit('global:post_updated', updatedPost);
+                            if (!updatedPost.portal) {
+                                io.emit('global:post_updated', updatedPost);
+                            }
                         }
                     } else if (change.operationType === 'delete') {
                         // Deletions are sent globally to ensure cleanup everywhere

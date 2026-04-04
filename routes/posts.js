@@ -116,8 +116,10 @@ router.post(
             // Increment post count
             await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
 
-            // Emit socket event for real-time update (handled in server.js)
-            req.app.get('io').emit('newPost', post);
+            // Only emit global socket event for non-portal posts
+            if (!postData.portal) {
+                req.app.get('io').emit('newPost', post);
+            }
 
             res.status(201).json(post);
         } catch (error) {
@@ -136,7 +138,11 @@ router.get('/', optionalProtect, async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const posts = await Post.find()
+        // Only show posts that are NOT assigned to a portal in the global feed
+        // Unless the user explicitly asks for portal posts (not implemented yet for global)
+        const query = { portal: { $exists: false } };
+
+        const posts = await Post.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit + 10)
