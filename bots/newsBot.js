@@ -76,6 +76,17 @@ const BOT_CONFIGS = [
             'https://www.espn.com/espn/rss/news',
             'https://feeds.bbci.co.uk/sport/rss.xml'
         ]
+    },
+    {
+        botUsername: 'Space',
+        portalName: 'Space',
+        channelName: 'Gelişmeler, Bilgiler ve Eğlenmeler',
+        feeds: [
+            'https://www.nasa.gov/rss/dyn/breaking_news.rss',
+            'https://www.space.com/feeds/all',
+            'https://www.universetoday.com/feed',
+            'https://earthsky.org/feed/'
+        ]
     }
 ];
 
@@ -247,7 +258,9 @@ const processItem = async (item, bot) => {
         const translatedTitle = await translateText(item.title);
         let description = item.contentSnippet || item.content || '';
         description = description.replace(/<[^>]+>/g, '').trim();
-        if (description.length > 300) description = description.substring(0, 300) + '...';
+        
+        // Increased character limit for "bolca yazı açıklamalı" (rich text)
+        if (description.length > 1000) description = description.substring(0, 1000) + '...';
         
         const translatedDesc = await translateText(description);
 
