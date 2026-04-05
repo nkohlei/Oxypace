@@ -36,6 +36,16 @@ const VerifyEmail = () => {
         verifyEmail();
     }, [searchParams, navigate]);
 
+    // Disable body scroll when component mounts
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        };
+    }, []);
+
     return (
         <div className="auth-container">
             <div className="auth-card card glass fade-in text-center">

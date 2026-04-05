@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -75,6 +75,16 @@ const Login = () => {
                 setError('Giriş başarısız. Lütfen tekrar deneyin.');
             }
         }
+    }, []);
+
+    // Disable body scroll when component mounts
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        };
     }, []);
 
     return (
