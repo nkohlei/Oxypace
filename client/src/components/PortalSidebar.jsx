@@ -16,10 +16,21 @@ const PortalSidebar = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     
     // Reorder State
-    const [orderedPortals, setOrderedPortals] = useState([]);
-    const [isReordering, setIsReordering] = useState(false);
-    const [draggedIndex, setDraggedIndex] = useState(null);
+    const [activeTooltip, setActiveTooltip] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+
+    const handleMouseEnter = (e, text) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setActiveTooltip({
+            text,
+            top: rect.top + rect.height / 2,
+            left: rect.right + 12
+        });
+    };
+
+    const handleMouseLeave = () => {
+        setActiveTooltip(null);
+    };
 
     useEffect(() => {
         if (user?.joinedPortals) {
@@ -89,15 +100,13 @@ const PortalSidebar = () => {
                 <div
                     className={`sidebar-item ${isActive('/inbox') ? 'active' : ''}`}
                     onClick={() => handleNavigation('/inbox')}
+                    onMouseEnter={(e) => handleMouseEnter(e, 'Mesajlar')}
+                    onMouseLeave={handleMouseLeave}
                 >
                     <div className="portal-icon">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
-                    </div>
-                    <div className="portal-tooltip">
-                        <span className="tooltip-text">Mesajlar</span>
-                        <div className="tooltip-arrow"></div>
                     </div>
                 </div>
 
@@ -105,7 +114,6 @@ const PortalSidebar = () => {
 
                 {/* User's Portals (Scrollable Area) */}
                 <div className="portals-scroll-area">
-                    {orderedPortals.map((portal, index) => (
                         <div
                             key={portal._id}
                             className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''}`}
@@ -114,6 +122,8 @@ const PortalSidebar = () => {
                             onDragStart={(e) => handleDragStart(e, index)}
                             onDragOver={(e) => handleDragOver(e, index)}
                             onDragEnd={handleDragEnd}
+                            onMouseEnter={(e) => handleMouseEnter(e, portal.name)}
+                            onMouseLeave={handleMouseLeave}
                         >
                             <div className="portal-icon">
                                 {portal.avatar ? (
@@ -122,14 +132,7 @@ const PortalSidebar = () => {
                                     <span>{portal.name.substring(0, 2).toUpperCase()}</span>
                                 )}
                             </div>
-
-                            {/* Hover Tooltip (Simple Bubble Style) */}
-                            <div className="portal-tooltip">
-                                <span className="tooltip-text">{portal.name}</span>
-                                <div className="tooltip-arrow"></div>
-                            </div>
                         </div>
-                    ))}
                 </div>
 
                 <div className="sidebar-separator"></div>
@@ -140,6 +143,8 @@ const PortalSidebar = () => {
                         className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
                         onClick={() => handleNavigation('/search')}
                         style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}
+                        onMouseEnter={(e) => handleMouseEnter(e, 'Keşfet')}
+                        onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
@@ -147,26 +152,20 @@ const PortalSidebar = () => {
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             </svg>
                         </div>
-                        <div className="portal-tooltip">
-                            <span className="tooltip-text">Keşfet</span>
-                            <div className="tooltip-arrow"></div>
-                        </div>
                     </div>
 
                     <div
                         className="sidebar-item create-action"
                         onClick={() => setShowCreateModal(true)}
                         style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}
+                        onMouseEnter={(e) => handleMouseEnter(e, 'Portal Oluştur')}
+                        onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
-                        </div>
-                        <div className="portal-tooltip">
-                            <span className="tooltip-text">Portal Oluştur</span>
-                            <div className="tooltip-arrow"></div>
                         </div>
                     </div>
 
@@ -176,6 +175,8 @@ const PortalSidebar = () => {
                         className={`sidebar-item ${isReordering ? 'active' : ''}`}
                         onClick={toggleReorderMode}
                         style={isSaving ? { opacity: 0.5, pointerEvents: 'none' } : {}}
+                        onMouseEnter={(e) => handleMouseEnter(e, isReordering ? 'Kaydet' : 'Sırayı Düzenle')}
+                        onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon" style={{ background: isReordering ? 'var(--primary-color)' : 'transparent', color: isReordering ? '#fff' : 'inherit' }}>
                             {isReordering ? (
@@ -184,52 +185,37 @@ const PortalSidebar = () => {
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                             )}
                         </div>
-                        <div className="portal-tooltip">
-                            <span className="tooltip-text">{isReordering ? 'Kaydet' : 'Sırayı Düzenle'}</span>
-                            <div className="tooltip-arrow"></div>
-                        </div>
                     </div>
                 </div>
 
                 <style>{`
-                .portal-tooltip {
-                    position: absolute;
-                    left: calc(100% + 12px); /* Back to the right side */
-                    top: 50%;
-                    transform: translateY(-50%) translateX(-5px);
-                    background-color: rgba(10, 15, 32, 0.9); /* More minimal/subtle */
-                    color: var(--text-primary);
-                    padding: 4px 10px; /* Minimal padding */
+                .portal-floating-tooltip {
+                    position: fixed;
+                    transform: translateY(-50%);
+                    background-color: rgba(10, 15, 32, 0.95);
+                    color: white;
+                    padding: 5px 12px;
                     border-radius: 6px;
-                    font-size: 12px; /* Minimal font size */
+                    font-size: 13px;
                     font-weight: 600;
                     white-space: nowrap;
-                    opacity: 0;
-                    visibility: hidden;
-                    transition: all 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-                    z-index: 1000;
+                    z-index: 100000;
                     pointer-events: none;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-                    border: 1px solid var(--border-subtle);
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    animation: tooltipFadeIn 0.15s ease-out;
+                }
+
+                @keyframes tooltipFadeIn {
+                    from { opacity: 0; transform: translateY(-50%) translateX(-5px); }
+                    to { opacity: 1; transform: translateY(-50%) translateX(0); }
                 }
 
                 @media (max-width: 768px) {
-                    .portal-tooltip {
-                        left: 56px; /* Positioned relative to mobile rail width */
+                    .portal-floating-tooltip {
                         font-size: 11px;
                         padding: 3px 8px;
                     }
-                }
-
-                /* Arrow removed for minimal look */
-                .portal-tooltip .tooltip-arrow {
-                    display: none;
-                }
-
-                .sidebar-item:hover .portal-tooltip {
-                    opacity: 1;
-                    visibility: visible;
-                    transform: translateY(-50%) translateX(0);
                 }
 
                 .sidebar-item.reordering {
@@ -248,6 +234,17 @@ const PortalSidebar = () => {
             `}</style>
 
             </div>
+
+            {/* Floating Tooltip via Portal */}
+            {activeTooltip && createPortal(
+                <div 
+                    className="portal-floating-tooltip"
+                    style={{ top: `${activeTooltip.top}px`, left: `${activeTooltip.left}px` }}
+                >
+                    {activeTooltip.text}
+                </div>,
+                document.body
+            )}
 
             {/* Create Portal Modal - Rendered at root level to bypass sidebar transforms */}
             {showCreateModal && createPortal(
