@@ -954,19 +954,19 @@ router.put('/portals/reorder', protect, async (req, res) => {
 
         const user = await User.findById(req.user._id);
 
-        // Calculate arrays to ensure integrity
-        const currentJoinedStrings = user.joinedPortals.map(id => id.toString());
-        const providedStrings = orderedPortalIds.map(id => id.toString());
+        // Check integrity without demanding strict length equality (frontend might map out deleted/null portals)
+        const currentJoinedStrings = user.joinedPortals.map(id => id ? id.toString() : null).filter(Boolean);
+        const providedStrings = orderedPortalIds.map(id => id ? id.toString() : null).filter(Boolean);
         
-        const isValid = 
-            currentJoinedStrings.length === providedStrings.length && 
-            currentJoinedStrings.every(id => providedStrings.includes(id));
+        const isValid = providedStrings.every(id => currentJoinedStrings.includes(id));
 
         if (!isValid) {
             return res.status(400).json({ message: 'Geçersiz sıralama: Veri tutarsızlığı saptandı.' });
         }
 
-        user.joinedPortals = orderedPortalIds;
+        // Keep any IDs that the frontend omitted (e.g. deleted portals or parsing errors) at the end
+        const missingIds = currentJoinedStrings.filter(id => !providedStrings.includes(id));
+        user.joinedPortals = [...providedStrings, ...missingIds];
         await user.save();
 
         res.json({ message: 'Sıralama güncellendi', joinedPortals: user.joinedPortals });
