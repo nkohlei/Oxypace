@@ -27,8 +27,10 @@ export const useRealtimeSync = () => {
         });
 
         socket.on('global:portal_activity', ({ portalId }) => {
+            console.log('📡 Portal activity detected:', portalId);
             // Only mark unread if not currently in that portal
             if (!window.location.pathname.includes(`/portal/${portalId}`)) {
+                console.log('🔔 Marking portal unread:', portalId);
                 markPortalUnread(portalId);
             }
         });

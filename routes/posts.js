@@ -119,6 +119,9 @@ router.post(
             // Only emit global socket event for non-portal posts
             if (!postData.portal) {
                 req.app.get('io').emit('newPost', post);
+            } else {
+                // For portal posts, emit a lightweight activity signal globally for sidebar unread indicators
+                req.app.get('io').emit('global:portal_activity', { portalId: postData.portal.toString() });
             }
 
             res.status(201).json(post);
