@@ -253,13 +253,22 @@ const PortalSidebar = () => {
                 .sidebar-item.dragging {
                     opacity: 0.5;
                 }
+                .sidebar-item {
+                    width: 72px !important; /* Full sidebar width */
+                    height: 52px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    position: relative;
+                }
+
                 .sidebar-item.dragging .portal-icon {
                     border: 2px dashed var(--primary-color);
                 }
 
                 /* --- Discord-style Sidebar Enhancements --- */
 
-                /* Left Indicator Bar */
+                /* Left Indicator Bar - Fixed to very left edge */
                 .sidebar-indicator {
                     position: absolute;
                     left: 0;
@@ -270,6 +279,7 @@ const PortalSidebar = () => {
                     transform: scaleY(0);
                     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                     opacity: 0;
+                    z-index: 100 !important; /* Always on top */
                 }
 
                 .sidebar-item.active .sidebar-indicator {
@@ -309,20 +319,47 @@ const PortalSidebar = () => {
                     z-index: 20;
                 }
 
-                /* Pulse animation for the badge to make it feel alive */
-                .sidebar-item.has-unread:not(.active) .portal-icon-wrapper {
+                /* Blue Pulsing Frame ("Çerçeve") - Restored */
+                .sidebar-item.has-unread:not(.active) .portal-icon::after {
+                    content: '';
+                    position: absolute;
+                    inset: -2px;
+                    border: 2px solid #00d2ff;
+                    border-radius: 50%;
+                    animation: portalUnreadPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                    pointer-events: none;
+                    box-shadow: 0 0 10px rgba(0, 210, 255, 0.6);
+                    z-index: 15;
+                }
+
+                @keyframes portalUnreadPulse {
+                    0% {
+                        opacity: 0.7;
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7);
+                    }
+                    50% {
+                        opacity: 1;
+                        transform: scale(1.04);
+                        box-shadow: 0 0 0 6px rgba(0, 210, 255, 0);
+                    }
+                    100% {
+                        opacity: 0.7;
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
+                    }
+                }
+
+                /* Pulse animation for the whole icon wrapper to make it feel alive */
+                .sidebar-item.has-unread:not(.active) .portal-icon {
                     animation: subtlePulse 2s infinite ease-in-out;
+                    position: relative; /* For the ::after frame */
                 }
 
                 @keyframes subtlePulse {
                     0% { transform: scale(1); }
                     50% { transform: scale(1.02); }
                     100% { transform: scale(1); }
-                }
-
-                /* Keep the activity pulse as a background glow if preferred, or remove if strictly following image */
-                .sidebar-item.has-unread:not(.active) .portal-icon {
-                    box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
                 }
             `}</style>
 
