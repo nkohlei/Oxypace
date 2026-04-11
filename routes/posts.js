@@ -121,9 +121,10 @@ router.post(
                 req.app.get('io').emit('newPost', post);
             } else {
                 // For portal posts, emit a lightweight activity signal globally for sidebar unread indicators
-                // We include the postId so the client can track unique unread messages and handle deletions
+                // We include the postId and channelId so the client can track unique unread messages per channel
                 req.app.get('io').emit('global:portal_activity', { 
                     portalId: postData.portal.toString(),
+                    channelId: postData.channel.toString(),
                     postId: post._id.toString()
                 });
             }

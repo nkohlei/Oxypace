@@ -4,7 +4,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 export const useGlobalStore = create(
     persist(
         (set, get) => ({
+            posts: [],
             unreadPostsByPortal: {}, // { [portalId]: [postId1, postId2, ...] }
+            unreadPostsByChannel: {}, // { [channelId]: [postId1, postId2, ...] }
             isMuted: true, // Default to muted for better initial experience
             usersCache: {},
 
@@ -21,27 +23,59 @@ export const useGlobalStore = create(
                 };
             }),
 
+            addUnreadChannelPost: (channelId, postId) => set((state) => {
+                const currentUnread = state.unreadPostsByChannel[channelId] || [];
+                if (currentUnread.includes(postId)) return state;
+                return {
+                    unreadPostsByChannel: {
+                        ...state.unreadPostsByChannel,
+                        [channelId]: [...currentUnread, postId]
+                    }
+                };
+            }),
+
             removeUnreadPost: (postId) => set((state) => {
-                const newUnread = { ...state.unreadPostsByPortal };
+                const newState = {
+                    unreadPostsByPortal: { ...state.unreadPostsByPortal },
+                    unreadPostsByChannel: { ...state.unreadPostsByChannel }
+                };
                 let modified = false;
                 
-                Object.keys(newUnread).forEach(portalId => {
-                    if (newUnread[portalId].includes(postId)) {
-                        newUnread[portalId] = newUnread[portalId].filter(id => id !== postId);
-                        if (newUnread[portalId].length === 0) {
-                            delete newUnread[portalId];
+                // Clear from portals
+                Object.keys(newState.unreadPostsByPortal).forEach(portalId => {
+                    if (newState.unreadPostsByPortal[portalId].includes(postId)) {
+                        newState.unreadPostsByPortal[portalId] = newState.unreadPostsByPortal[portalId].filter(id => id !== postId);
+                        if (newState.unreadPostsByPortal[portalId].length === 0) {
+                            delete newState.unreadPostsByPortal[portalId];
                         }
                         modified = true;
                     }
                 });
 
-                return modified ? { unreadPostsByPortal: newUnread } : state;
+                // Clear from channels
+                Object.keys(newState.unreadPostsByChannel).forEach(channelId => {
+                    if (newState.unreadPostsByChannel[channelId].includes(postId)) {
+                        newState.unreadPostsByChannel[channelId] = newState.unreadPostsByChannel[channelId].filter(id => id !== postId);
+                        if (newState.unreadPostsByChannel[channelId].length === 0) {
+                            delete newState.unreadPostsByChannel[channelId];
+                        }
+                        modified = true;
+                    }
+                });
+
+                return modified ? newState : state;
             }),
 
             clearUnreadForPortal: (portalId) => set((state) => {
                 const newUnread = { ...state.unreadPostsByPortal };
                 delete newUnread[portalId];
                 return { unreadPostsByPortal: newUnread };
+            }),
+
+            clearUnreadForChannel: (channelId) => set((state) => {
+                const newUnread = { ...state.unreadPostsByChannel };
+                delete newUnread[channelId];
+                return { unreadPostsByChannel: newUnread };
             }),
 
             // Auth State
@@ -80,8 +114,9 @@ export const useGlobalStore = create(
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({ 
                 unreadPostsByPortal: state.unreadPostsByPortal,
+                unreadPostsByChannel: state.unreadPostsByChannel,
                 isMuted: state.isMuted
-            }), // Only persist notifications and mute preference
+            }), // Persist all unread lists and mute preference
         }
     )
 );

@@ -4,6 +4,8 @@ import { useUI } from '../context/UIContext';
 import InviteUserModal from './InviteUserModal';
 import Badge from './Badge';
 import UserBar from './UserBar';
+import { useGlobalStore } from '../store/useGlobalStore';
+import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
 
@@ -19,6 +21,14 @@ const ChannelSidebar = ({
     const [showInviteModal, setShowInviteModal] = useState(false);
     const navigate = useNavigate();
     const { isMobileView } = useUI();
+    const { unreadPostsByChannel, clearUnreadForChannel } = useGlobalStore();
+
+    // Clear unread count for the active channel
+    useEffect(() => {
+        if (currentChannel) {
+            clearUnreadForChannel(currentChannel);
+        }
+    }, [currentChannel, clearUnreadForChannel]);
 
     if (!portal) return null;
 
@@ -341,8 +351,8 @@ const ChannelSidebar = ({
                                 </svg>
                             )}
 
-                            {/* Notification Badge (For announcements) */}
-                            {isAnnouncement && !isActive && (
+                            {/* Notification Badge */}
+                            {!isActive && unreadPostsByChannel[channel.id]?.length > 0 && (
                                 <div
                                     style={{
                                         backgroundColor: '#f23f43',
@@ -356,9 +366,10 @@ const ChannelSidebar = ({
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
                                     }}
                                 >
-                                    1
+                                    {unreadPostsByChannel[channel.id].length > 9 ? '9+' : unreadPostsByChannel[channel.id].length}
                                 </div>
                             )}
                         </div>
