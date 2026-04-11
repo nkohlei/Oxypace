@@ -1,14 +1,13 @@
 .portal-sidebar {
-    width: 100%;
+    width: 72px; /* Fixed width to prevent "wide bar" feeling */
     height: 100%;
     background-color: var(--bg-darker);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px 8px;
-    /* overflow-x must be visible for flyout to render correctly */
+    padding: 20px 0;
     overflow-y: auto;
-    overflow-x: visible;
+    overflow-x: hidden; /* Strictly prevent horizontal scroll/swipe */
     scrollbar-width: none;
     -ms-overflow-style: none;
     border-radius: 0;
@@ -19,6 +18,7 @@
     position: relative;
     z-index: 99995;
     /* High enough to sit above the global backdrop (99990) */
+    touch-action: pan-y; /* Allow vertical scroll but disable horizontal swipes */
 }
 
 .portal-sidebar::-webkit-scrollbar {
@@ -101,6 +101,7 @@
 
 @media (max-width: 768px) {
     .portal-sidebar {
+        width: 64px; /* Fixed mobile width */
         padding: 50px 0 20px 0; /* Add top padding for fixed navbar if needed, or safe area */
     }
 

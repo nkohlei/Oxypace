@@ -194,9 +194,9 @@ const PortalSidebar = () => {
                 <style>{`
                 .portal-tooltip {
                     position: absolute;
-                    left: 78px; /* Default Desktop (72px + gap) */
-                    top: 50%;
-                    transform: translateY(-50%);
+                    left: 50%;
+                    bottom: calc(100% + 12px); /* Positioned above the icon */
+                    transform: translateX(-50%) translateY(5px);
                     background-color: var(--bg-card);
                     color: var(--text-primary);
                     padding: 8px 12px;
@@ -206,7 +206,7 @@ const PortalSidebar = () => {
                     white-space: nowrap;
                     opacity: 0;
                     visibility: hidden;
-                    transition: all 0.1s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+                    transition: all 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
                     z-index: 1000;
                     pointer-events: none;
                     box-shadow: var(--shadow-popover);
@@ -215,25 +215,28 @@ const PortalSidebar = () => {
 
                 @media (max-width: 768px) {
                     .portal-tooltip {
-                        left: 48px; /* Mobile (42px + gap) */
+                        bottom: calc(100% + 10px);
+                        font-size: 12px;
+                        padding: 6px 10px;
                     }
                 }
 
                 .portal-tooltip .tooltip-arrow {
                     position: absolute;
-                    left: -6px;
-                    top: 50%;
-                    transform: translateY(-50%);
+                    bottom: -6px; /* Arrow at bottom pointing down */
+                    left: 50%;
+                    transform: translateX(-50%);
                     width: 0;
                     height: 0;
-                    border-top: 6px solid transparent;
-                    border-bottom: 6px solid transparent;
-                    border-right: 6px solid var(--bg-card);
+                    border-left: 6px solid transparent;
+                    border-right: 6px solid transparent;
+                    border-top: 6px solid var(--bg-card);
                 }
 
                 .sidebar-item:hover .portal-tooltip {
                     opacity: 1;
                     visibility: visible;
+                    transform: translateX(-50%) translateY(0);
                 }
 
                 .sidebar-item.reordering {
