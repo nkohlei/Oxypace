@@ -4,6 +4,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
+import { useGlobalStore } from '../store/useGlobalStore';
 import CreatePortalModal from './CreatePortalModal';
 import { getImageUrl } from '../utils/imageUtils';
 import './PortalSidebar.css';
@@ -11,6 +12,7 @@ import './PortalSidebar.css';
 const PortalSidebar = () => {
     const { user, isAuthenticated } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
+    const { unreadPortals, markPortalRead } = useGlobalStore();
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -40,6 +42,14 @@ const PortalSidebar = () => {
             setOrderedPortals(user.joinedPortals.filter((p) => p && p._id && p.name));
         }
     }, [user?.joinedPortals]);
+
+    useEffect(() => {
+        // Clear unread status when entering a portal
+        const match = location.pathname.match(/\/portal\/([a-f\d]{24})/i);
+        if (match && match[1]) {
+            markPortalRead(match[1]);
+        }
+    }, [location.pathname, markPortalRead]);
 
     const handleDragStart = (e, index) => {
         setDraggedIndex(index);
@@ -120,7 +130,7 @@ const PortalSidebar = () => {
                     {orderedPortals.map((portal, index) => (
                         <div
                             key={portal._id}
-                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''}`}
+                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadPortals.includes(portal._id) ? 'has-activity' : ''}`}
                             onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
                             draggable={isReordering}
                             onDragStart={(e) => handleDragStart(e, index)}
@@ -235,6 +245,43 @@ const PortalSidebar = () => {
                 }
                 .sidebar-item.dragging .portal-icon {
                     border: 2px dashed var(--primary-color);
+                }
+
+                /* Activity Notification - Pulsing Blue Border */
+                .sidebar-item.has-activity:not(.active) .portal-icon {
+                    position: relative;
+                }
+                
+                .sidebar-item.has-activity:not(.active) .portal-icon::after {
+                    content: '';
+                    position: absolute;
+                    inset: -3px;
+                    border: 1px solid #00d2ff;
+                    border-radius: 50%;
+                    animation: portalActivityPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                    pointer-events: none;
+                    box-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+                }
+
+                @keyframes portalActivityPulse {
+                    0% {
+                        opacity: 0.8;
+                        transform: scale(1);
+                        border-color: #00d2ff;
+                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7);
+                    }
+                    50% {
+                        opacity: 1;
+                        transform: scale(1.05);
+                        border-color: #3a7bd5;
+                        box-shadow: 0 0 0 6px rgba(58, 123, 213, 0);
+                    }
+                    100% {
+                        opacity: 0.8;
+                        transform: scale(1);
+                        border-color: #00d2ff;
+                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
+                    }
                 }
             `}</style>
 

@@ -28,6 +28,8 @@ export const setupChangeStreams = (io) => {
                             // 1. Emit to the specific portal room
                             if (newPost.portal) {
                                 io.to(`portal:${newPost.portal.toString()}`).emit('post:created', newPost);
+                                // Emit global activity notification for sidebar unread indicators
+                                io.emit('global:portal_activity', { portalId: newPost.portal.toString() });
                             }
                             // 2. Emit to the specific channel room
                             if (newPost.channel) {
