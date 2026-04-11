@@ -4,9 +4,11 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 export const useGlobalStore = create(
     persist(
         (set, get) => ({
-            posts: [],
             unreadPostsByPortal: {}, // { [portalId]: [postId1, postId2, ...] }
+            isMuted: true, // Default to muted for better initial experience
             usersCache: {},
+
+            setIsMuted: (val) => set({ isMuted: val }),
 
             addUnreadPost: (portalId, postId) => set((state) => {
                 const currentUnread = state.unreadPostsByPortal[portalId] || [];
@@ -77,8 +79,9 @@ export const useGlobalStore = create(
             name: 'global-storage', // unique name for localStorage
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({ 
-                unreadPostsByPortal: state.unreadPostsByPortal 
-            }), // Only persist notifications
+                unreadPostsByPortal: state.unreadPostsByPortal,
+                isMuted: state.isMuted
+            }), // Only persist notifications and mute preference
         }
     )
 );

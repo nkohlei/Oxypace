@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
+import { useGlobalStore } from '../store/useGlobalStore';
 import './VideoPlayer.css';
 
 const VideoPlayer = ({ src, poster, className }) => {
   const videoRef = useRef(null);
+  const { isMuted, setIsMuted } = useGlobalStore();
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -15,8 +18,8 @@ const VideoPlayer = ({ src, poster, className }) => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Kesinlikle ses açık ve özellikleri sabit
-    video.muted = false;
+    // Kesinlikle ses ayarlarını global store'a göre yap
+    video.muted = isMuted;
     video.volume = 1;
 
     const observer = new IntersectionObserver((entries) => {
@@ -24,7 +27,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         if (entry.isIntersecting) {
             // Ekrana girdiğinde direkt oynamasını emret! (Sadece kullanıcı KENDİ DURDURMADIYSA)
             if (video.dataset.userPaused !== "true") {
-                video.muted = false;
+                video.muted = isMuted;
                 video.play().catch(() => {});
             }
         } else {
@@ -42,7 +45,7 @@ const VideoPlayer = ({ src, poster, className }) => {
     return () => {
       observer.disconnect();
     };
-  }, [src]);
+  }, [src, isMuted]);
 
   // Zaman İlerleyişini Yakalama (Bar için)
   const handleTimeUpdate = () => {
@@ -81,6 +84,11 @@ const VideoPlayer = ({ src, poster, className }) => {
     }
   };
 
+  const toggleMute = (e) => {
+    e.stopPropagation();
+    setIsMuted(!isMuted);
+  };
+
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
@@ -108,6 +116,15 @@ const VideoPlayer = ({ src, poster, className }) => {
         onCanPlay={() => setIsLoading(false)}
         onCanPlayThrough={() => setIsLoading(false)}
       />
+
+      {/* Global Mute/Unmute Toggle Button */}
+      <button 
+        className="native-mute-toggle" 
+        onClick={toggleMute}
+        title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
+      >
+        {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+      </button>
 
       {/* GERÇEK YÜKLENİYOR ANİMASYONU */}
       {isLoading && (
