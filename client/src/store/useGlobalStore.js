@@ -2,17 +2,21 @@ import { create } from 'zustand';
 
 export const useGlobalStore = create((set) => ({
     posts: [],
-    unreadPortals: [],
+    unreadCounts: {}, // { [portalId]: number }
     usersCache: {},
 
-    markPortalUnread: (portalId) => set((state) => {
-        if (state.unreadPortals.includes(portalId)) return state;
-        return { unreadPortals: [...state.unreadPortals, portalId] };
-    }),
-
-    markPortalRead: (portalId) => set((state) => ({
-        unreadPortals: state.unreadPortals.filter(id => id !== portalId)
+    incrementUnreadCount: (portalId) => set((state) => ({
+        unreadCounts: {
+            ...state.unreadCounts,
+            [portalId]: (state.unreadCounts[portalId] || 0) + 1
+        }
     })),
+
+    clearUnreadCount: (portalId) => set((state) => {
+        const newCounts = { ...state.unreadCounts };
+        delete newCounts[portalId];
+        return { unreadCounts: newCounts };
+    }),
 
     // Auth State (if we need to sync it later, optional but good for context)
     currentUser: null,

@@ -5,7 +5,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 export const useRealtimeSync = () => {
     // Rely on the existing authenticated socket from SocketContext
     const { socket, connected } = useSocket();
-    const { addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, markPortalUnread } = useGlobalStore();
+    const { addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, incrementUnreadCount } = useGlobalStore();
 
     useEffect(() => {
         if (!socket || !connected) return;
@@ -30,8 +30,8 @@ export const useRealtimeSync = () => {
             console.log('📡 Portal activity detected:', portalId);
             // Only mark unread if not currently in that portal
             if (!window.location.pathname.includes(`/portal/${portalId}`)) {
-                console.log('🔔 Marking portal unread:', portalId);
-                markPortalUnread(portalId);
+                console.log('🔔 Incrementing unread count for portal:', portalId);
+                incrementUnreadCount(portalId);
             }
         });
 

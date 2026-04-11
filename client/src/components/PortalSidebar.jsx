@@ -12,7 +12,7 @@ import './PortalSidebar.css';
 const PortalSidebar = () => {
     const { user, isAuthenticated } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
-    const { unreadPortals, markPortalRead } = useGlobalStore();
+    const { unreadCounts, clearUnreadCount } = useGlobalStore();
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -47,9 +47,9 @@ const PortalSidebar = () => {
         // Clear unread status when entering a portal
         const match = location.pathname.match(/\/portal\/([a-f\d]{24})/i);
         if (match && match[1]) {
-            markPortalRead(match[1]);
+            clearUnreadCount(match[1]);
         }
-    }, [location.pathname, markPortalRead]);
+    }, [location.pathname, clearUnreadCount]);
 
     const handleDragStart = (e, index) => {
         setDraggedIndex(index);
@@ -130,7 +130,7 @@ const PortalSidebar = () => {
                     {orderedPortals.map((portal, index) => (
                         <div
                             key={portal._id}
-                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadPortals.includes(portal._id) ? 'has-activity' : ''}`}
+                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadCounts[portal._id?.toString()] > 0 ? 'has-unread' : ''}`}
                             onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
                             draggable={isReordering}
                             onDragStart={(e) => handleDragStart(e, index)}
@@ -139,11 +139,21 @@ const PortalSidebar = () => {
                             onMouseEnter={(e) => handleMouseEnter(e, portal.name)}
                             onMouseLeave={handleMouseLeave}
                         >
+                            {/* Discord-style left indicator bar */}
+                            <div className="sidebar-indicator" />
+
                             <div className="portal-icon">
                                 {portal.avatar ? (
                                     <img src={getImageUrl(portal.avatar)} alt={portal.name} draggable="false" />
                                 ) : (
                                     <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                )}
+
+                                {/* Red Notification Badge */}
+                                {unreadCounts[portal._id?.toString()] > 0 && (
+                                    <div className="unread-badge">
+                                        {unreadCounts[portal._id.toString()] > 9 ? '9+' : unreadCounts[portal._id.toString()]}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -247,42 +257,72 @@ const PortalSidebar = () => {
                     border: 2px dashed var(--primary-color);
                 }
 
-                /* Activity Notification - Pulsing Blue Border */
-                .sidebar-item.has-activity:not(.active) {
-                    position: relative;
-                }
-                
-                .sidebar-item.has-activity:not(.active)::after {
-                    content: '';
+                /* --- Discord-style Sidebar Enhancements --- */
+
+                /* Left Indicator Bar */
+                .sidebar-indicator {
                     position: absolute;
-                    inset: 0;
-                    border: 2px solid #00d2ff;
-                    border-radius: 50%;
-                    animation: portalActivityPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-                    pointer-events: none;
-                    box-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
-                    z-index: 10;
+                    left: 0;
+                    width: 4px;
+                    height: 8px;
+                    background-color: white;
+                    border-radius: 0 4px 4px 0;
+                    transform: scaleY(0);
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    opacity: 0;
                 }
 
-                @keyframes portalActivityPulse {
-                    0% {
-                        opacity: 0.6;
-                        transform: scale(1);
-                        border-color: #00d2ff;
-                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.8);
-                    }
-                    50% {
-                        opacity: 1;
-                        transform: scale(1.1);
-                        border-color: #3a7bd5;
-                        box-shadow: 0 0 0 8px rgba(58, 123, 213, 0);
-                    }
-                    100% {
-                        opacity: 0.6;
-                        transform: scale(1);
-                        border-color: #00d2ff;
-                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
-                    }
+                .sidebar-item.active .sidebar-indicator {
+                    transform: scaleY(5); /* ~40px */
+                    opacity: 1;
+                }
+
+                .sidebar-item:hover .sidebar-indicator {
+                    transform: scaleY(2.5); /* ~20px */
+                    opacity: 1;
+                }
+
+                .sidebar-item.has-unread:not(.active):not(:hover) .sidebar-indicator {
+                    transform: scaleY(1); /* 8px small dot */
+                    opacity: 1;
+                }
+
+                /* Red Notification Badge */
+                .unread-badge {
+                    position: absolute;
+                    bottom: -2px;
+                    right: -2px;
+                    background-color: #f23f43; /* Discord-red */
+                    color: white;
+                    font-size: 11px;
+                    font-weight: 800;
+                    min-width: 18px;
+                    height: 18px;
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0 4px;
+                    border: 3px solid var(--bg-darker);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    pointer-events: none;
+                    z-index: 20;
+                }
+
+                /* Pulse animation for the badge to make it feel alive */
+                .sidebar-item.has-unread:not(.active) .portal-icon-wrapper {
+                    animation: subtlePulse 2s infinite ease-in-out;
+                }
+
+                @keyframes subtlePulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.02); }
+                    100% { transform: scale(1); }
+                }
+
+                /* Keep the activity pulse as a background glow if preferred, or remove if strictly following image */
+                .sidebar-item.has-unread:not(.active) .portal-icon {
+                    box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
                 }
             `}</style>
 
