@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import CreatePortalModal from './CreatePortalModal';
@@ -13,6 +14,56 @@ const PortalSidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
+    
+    // Reorder State
+    const [orderedPortals, setOrderedPortals] = useState([]);
+    const [isReordering, setIsReordering] = useState(false);
+    const [draggedIndex, setDraggedIndex] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (user?.joinedPortals) {
+            setOrderedPortals(user.joinedPortals.filter((p) => p && p._id && p.name));
+        }
+    }, [user?.joinedPortals]);
+
+    const handleDragStart = (e, index) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e, index) => {
+        e.preventDefault();
+        if (draggedIndex === null || draggedIndex === index) return;
+        const newOrder = [...orderedPortals];
+        const draggedItem = newOrder[draggedIndex];
+        newOrder.splice(draggedIndex, 1);
+        newOrder.splice(index, 0, draggedItem);
+        setDraggedIndex(index);
+        setOrderedPortals(newOrder);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+    };
+
+    const toggleReorderMode = async () => {
+        if (isReordering) {
+            setIsSaving(true);
+            try {
+                const orderedIds = orderedPortals.map(p => p._id);
+                await axios.put('/api/users/portals/reorder', { orderedPortalIds: orderedIds });
+                setIsReordering(false);
+            } catch (err) {
+                console.error(err);
+                alert('Sıralama güncellenemedi.');
+            } finally {
+                setIsSaving(false);
+            }
+        } else {
+            setIsReordering(true);
+        }
+    };
 
 
     // If not authenticated, don't show sidebar (or show limited version)
@@ -44,25 +95,8 @@ const PortalSidebar = () => {
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
                     </div>
-                    {/* Hover Tooltip */}
                     <div className="portal-tooltip">
                         <span className="tooltip-text">Mesajlar</span>
-                        <div className="tooltip-arrow"></div>
-                    </div>
-                </div>
-
-                <div
-                    className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
-                    onClick={() => handleNavigation('/search')}
-                >
-                    <div className="portal-icon">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </div>
-                    <div className="portal-tooltip">
-                        <span className="tooltip-text">Keşfet</span>
                         <div className="tooltip-arrow"></div>
                     </div>
                 </div>
@@ -71,30 +105,31 @@ const PortalSidebar = () => {
 
                 {/* User's Portals (Scrollable Area) */}
                 <div className="portals-scroll-area">
-                    {user?.joinedPortals &&
-                        user.joinedPortals
-                            .filter((p) => p && p._id && p.name) // Strict filter
-                            .map((portal) => (
-                                <div
-                                    key={portal._id}
-                                    className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''}`}
-                                    onClick={() => handleNavigation(`/portal/${portal._id}`)}
-                                >
-                                    <div className="portal-icon">
-                                        {portal.avatar ? (
-                                            <img src={getImageUrl(portal.avatar)} alt={portal.name} />
-                                        ) : (
-                                            <span>{portal.name.substring(0, 2).toUpperCase()}</span>
-                                        )}
-                                    </div>
+                    {orderedPortals.map((portal, index) => (
+                        <div
+                            key={portal._id}
+                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''}`}
+                            onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
+                            draggable={isReordering}
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <div className="portal-icon">
+                                {portal.avatar ? (
+                                    <img src={getImageUrl(portal.avatar)} alt={portal.name} draggable="false" />
+                                ) : (
+                                    <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                )}
+                            </div>
 
-                                    {/* Hover Tooltip (Simple Bubble Style) */}
-                                    <div className="portal-tooltip">
-                                        <span className="tooltip-text">{portal.name}</span>
-                                        <div className="tooltip-arrow"></div>
-                                    </div>
-                                </div>
-                            ))}
+                            {/* Hover Tooltip (Simple Bubble Style) */}
+                            <div className="portal-tooltip">
+                                <span className="tooltip-text">{portal.name}</span>
+                                <div className="tooltip-arrow"></div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="sidebar-separator"></div>
@@ -102,8 +137,26 @@ const PortalSidebar = () => {
                 {/* Bottom Actions: Create Portal and Sidebar Toggle */}
                 <div className="sidebar-bottom-actions">
                     <div
+                        className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
+                        onClick={() => handleNavigation('/search')}
+                        style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}
+                    >
+                        <div className="portal-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+                        <div className="portal-tooltip">
+                            <span className="tooltip-text">Keşfet</span>
+                            <div className="tooltip-arrow"></div>
+                        </div>
+                    </div>
+
+                    <div
                         className="sidebar-item create-action"
                         onClick={() => setShowCreateModal(true)}
+                        style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}
                     >
                         <div className="portal-icon">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
@@ -113,6 +166,26 @@ const PortalSidebar = () => {
                         </div>
                         <div className="portal-tooltip">
                             <span className="tooltip-text">Portal Oluştur</span>
+                            <div className="tooltip-arrow"></div>
+                        </div>
+                    </div>
+
+                    <div className="sidebar-separator" style={{ margin: '4px auto' }}></div>
+                    
+                    <div
+                        className={`sidebar-item ${isReordering ? 'active' : ''}`}
+                        onClick={toggleReorderMode}
+                        style={isSaving ? { opacity: 0.5, pointerEvents: 'none' } : {}}
+                    >
+                        <div className="portal-icon" style={{ background: isReordering ? 'var(--primary-color)' : 'transparent', color: isReordering ? '#fff' : 'inherit' }}>
+                            {isReordering ? (
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                            )}
+                        </div>
+                        <div className="portal-tooltip">
+                            <span className="tooltip-text">{isReordering ? 'Kaydet' : 'Sırayı Düzenle'}</span>
                             <div className="tooltip-arrow"></div>
                         </div>
                     </div>
@@ -161,6 +234,20 @@ const PortalSidebar = () => {
                 .sidebar-item:hover .portal-tooltip {
                     opacity: 1;
                     visibility: visible;
+                }
+
+                .sidebar-item.reordering {
+                    cursor: grab;
+                }
+                .sidebar-item.reordering:active {
+                    cursor: grabbing;
+                    transform: scale(0.95);
+                }
+                .sidebar-item.dragging {
+                    opacity: 0.5;
+                }
+                .sidebar-item.dragging .portal-icon {
+                    border: 2px dashed var(--primary-color);
                 }
             `}</style>
 

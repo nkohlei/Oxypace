@@ -941,4 +941,39 @@ router.delete('/me', protect, async (req, res) => {
     }
 });
 
+// @route   PUT /api/users/portals/reorder
+// @desc    Reorder joined portals
+// @access  Private
+router.put('/portals/reorder', protect, async (req, res) => {
+    try {
+        const { orderedPortalIds } = req.body;
+        
+        if (!orderedPortalIds || !Array.isArray(orderedPortalIds)) {
+            return res.status(400).json({ message: 'Lütfen geçerli bir sıralama dizisi gönderin.' });
+        }
+
+        const user = await User.findById(req.user._id);
+
+        // Calculate arrays to ensure integrity
+        const currentJoinedStrings = user.joinedPortals.map(id => id.toString());
+        const providedStrings = orderedPortalIds.map(id => id.toString());
+        
+        const isValid = 
+            currentJoinedStrings.length === providedStrings.length && 
+            currentJoinedStrings.every(id => providedStrings.includes(id));
+
+        if (!isValid) {
+            return res.status(400).json({ message: 'Geçersiz sıralama: Veri tutarsızlığı saptandı.' });
+        }
+
+        user.joinedPortals = orderedPortalIds;
+        await user.save();
+
+        res.json({ message: 'Sıralama güncellendi', joinedPortals: user.joinedPortals });
+    } catch (error) {
+        console.error('Reorder portals error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
 export default router;
