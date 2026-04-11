@@ -994,9 +994,7 @@ const Portal = () => {
                                                             )}
 
                                                             {/* Message Area */}
-                                                            {user && isMember ? (
-                                                                <>
-                                                                    <div
+                                                            <div
                                                                         className="portal-feed-container discord-feed"
                                                                         onScroll={handleScroll}
                                                                         ref={feedRef}
@@ -1059,7 +1057,8 @@ const Portal = () => {
                                                                         );
                                                                     })()}
 
-                                                                    <div className="channel-input-area">
+                                                                    {user && isMember ? (
+                                                                        <div className="channel-input-area">
                                                                         {/* Plus Menu Popover */}
                                                                         {showPlusMenu && (
                                                                             <>
@@ -1379,20 +1378,41 @@ const Portal = () => {
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                </>
-                                                            ) : user ? (
-                                                                <div
-                                                                    style={{
-                                                                        padding: '20px',
-                                                                        textAlign: 'center',
-                                                                        color: '#b9bbbe',
-                                                                        backgroundColor: 'var(--bg-card)',
-                                                                        borderTop: '1px solid var(--border-subtle)',
-                                                                    }}
-                                                                >
-                                                                    Bu kanala mesaj göndermek için üye olmalısın.
-                                                                </div>
-                                                            ) : null}
+                                                                ) : (
+                                                                    <div className="channel-input-area" style={{ padding: '0 20px 24px 20px', backgroundColor: 'var(--bg-secondary)', borderTop: 'none' }}>
+                                                                        <div style={{
+                                                                            display: 'flex', 
+                                                                            justifyContent: 'space-between', 
+                                                                            alignItems: 'center', 
+                                                                            background: 'var(--bg-card)', 
+                                                                            padding: '12px 20px', 
+                                                                            borderRadius: '8px',
+                                                                            border: '1px solid var(--border-subtle)'
+                                                                        }}>
+                                                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '14px' }}>
+                                                                                Bu kanalda mesaj göndermek için {user ? 'portala katılmalısın.' : 'giriş yapmalısın.'}
+                                                                            </span>
+                                                                            {user ? (
+                                                                                <button 
+                                                                                    className="privacy-join-btn" 
+                                                                                    onClick={handleJoin} 
+                                                                                    disabled={portal.isRequested}
+                                                                                    style={{ margin: 0, padding: '8px 16px', borderRadius: '4px', fontSize: '13px', minWidth: 'auto', width: 'auto' }}
+                                                                                >
+                                                                                    {portal.isRequested ? 'İstek Gönderildi' : 'Portala Katıl'}
+                                                                                </button>
+                                                                            ) : (
+                                                                                <button 
+                                                                                    className="privacy-join-btn" 
+                                                                                    onClick={() => navigate('/login')}
+                                                                                    style={{ margin: 0, padding: '8px 16px', borderRadius: '4px', fontSize: '13px', minWidth: 'auto', width: 'auto' }}
+                                                                                >
+                                                                                    Giriş Yap
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                         </>
                                                     )}
                                                 </>
