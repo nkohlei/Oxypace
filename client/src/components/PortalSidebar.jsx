@@ -248,36 +248,37 @@ const PortalSidebar = () => {
                 }
 
                 /* Activity Notification - Pulsing Blue Border */
-                .sidebar-item.has-activity:not(.active) .portal-icon {
+                .sidebar-item.has-activity:not(.active) {
                     position: relative;
                 }
                 
-                .sidebar-item.has-activity:not(.active) .portal-icon::after {
+                .sidebar-item.has-activity:not(.active)::after {
                     content: '';
                     position: absolute;
-                    inset: -3px;
-                    border: 1px solid #00d2ff;
+                    inset: 0;
+                    border: 2px solid #00d2ff;
                     border-radius: 50%;
                     animation: portalActivityPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
                     pointer-events: none;
-                    box-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+                    box-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
+                    z-index: 10;
                 }
 
                 @keyframes portalActivityPulse {
                     0% {
-                        opacity: 0.8;
+                        opacity: 0.6;
                         transform: scale(1);
                         border-color: #00d2ff;
-                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7);
+                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.8);
                     }
                     50% {
                         opacity: 1;
-                        transform: scale(1.05);
+                        transform: scale(1.1);
                         border-color: #3a7bd5;
-                        box-shadow: 0 0 0 6px rgba(58, 123, 213, 0);
+                        box-shadow: 0 0 0 8px rgba(58, 123, 213, 0);
                     }
                     100% {
-                        opacity: 0.8;
+                        opacity: 0.6;
                         transform: scale(1);
                         border-color: #00d2ff;
                         box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
