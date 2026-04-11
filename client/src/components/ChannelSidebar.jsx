@@ -331,27 +331,17 @@ const ChannelSidebar = ({
                                 style={{
                                     fontWeight: isActive ? 600 : 500,
                                     fontSize: '16px',
-                                    flex: 1,
                                     whiteSpace: 'nowrap',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     color: isActive ? 'white' : 'var(--text-primary)',
+                                    maxWidth: 'fit-content'
                                 }}
                             >
                                 {channel.name}
                             </span>
 
-                            {/* Active Icon (Person+) */}
-                            {isActive && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="8.5" cy="7" r="4"></circle>
-                                    <line x1="20" y1="8" x2="20" y2="14"></line>
-                                    <line x1="23" y1="11" x2="17" y2="11"></line>
-                                </svg>
-                            )}
-
-                            {/* Notification Badge */}
+                            {/* Notification Badge - Positioned strictly next to the title */}
                             {!isActive && unreadPostsByChannel[channel.id]?.length > 0 && (
                                 <div
                                     style={{
@@ -367,10 +357,27 @@ const ChannelSidebar = ({
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                                        marginLeft: '-4px', // Bring it even closer if needed
+                                        flexShrink: 0
                                     }}
                                 >
                                     {unreadPostsByChannel[channel.id].length > 9 ? '9+' : unreadPostsByChannel[channel.id].length}
                                 </div>
+                            )}
+
+                            {/* Padding element to maintain hover background filling the width if needed, 
+                                but flex-container handles this automatically usually. 
+                                We just want the badge to NOT push to the right. */}
+                            <div style={{ flex: 1 }} />
+
+                            {/* Active Icon (Person+) */}
+                            {isActive && (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="white" style={{ flexShrink: 0 }}>
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="8.5" cy="7" r="4"></circle>
+                                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                                </svg>
                             )}
                         </div>
                     );
