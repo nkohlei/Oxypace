@@ -72,7 +72,7 @@
     letter-spacing: 0.5px;
 }
 
-.close-btn {
+.share-header .close-btn {
     position: absolute;
     left: 20px;
     /* Left aligned functionality like Image */
@@ -89,7 +89,7 @@
     justify-content: center;
 }
 
-.close-btn:hover {
+.share-header .close-btn:hover {
     color: var(--text-primary);
 }
 

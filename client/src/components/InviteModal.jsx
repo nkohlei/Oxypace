@@ -132,7 +132,7 @@ const InviteModal = ({ portal, onClose }) => {
                 .invite-subtitle {
                     font-size: 12px;
                 }
-                .close-btn {
+                .invite-modal-container .close-btn {
                     position: absolute;
                     top: 16px;
                     right: 16px;
