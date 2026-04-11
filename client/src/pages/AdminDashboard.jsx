@@ -908,15 +908,18 @@ const AdminDashboard = () => {
                         {loading && <div className="admin-loading">Yükleniyor...</div>}
 
                         <div className="users-list">
-                            {portals.map((portal) => (
-                                <div key={portal._id} className="user-list-item">
-                                    <div className="user-item-left">
-                                        <img
-                                            src={portal.avatar || 'https://via.placeholder.com/150'}
-                                            alt={portal.name}
-                                            className="user-list-avatar"
-                                            style={{ borderRadius: '12px' }}
-                                        />
+                            {portals.map((portal) => {
+                                const activeAlerts = portal.alerts ? portal.alerts.filter(a => new Date(a.expiresAt) > new Date() && a.isActive !== false) : [];
+                                return (
+                                <div key={portal._id} className="user-list-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div className="user-item-left">
+                                            <img
+                                                src={portal.avatar || 'https://via.placeholder.com/150'}
+                                                alt={portal.name}
+                                                className="user-list-avatar"
+                                                style={{ borderRadius: '12px' }}
+                                            />
                                         <div className="user-item-info">
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <h4>{portal.name}</h4>
@@ -959,8 +962,7 @@ const AdminDashboard = () => {
                                         <select
                                             className="action-select"
                                             onChange={(e) => {
-                                                if (e.target.value === 'warning') handlePortalWarning(portal._id);
-                                                else if (e.target.value === 'alert') openAlertModal(portal._id, portal.name);
+                                                if (e.target.value === 'alert') openAlertModal(portal._id, portal.name);
                                                 else if (e.target.value === 'suspend') initiatePortalStatusChange(portal._id, 'suspend');
                                                 else if (e.target.value === 'close') initiatePortalStatusChange(portal._id, 'close');
                                                 else if (e.target.value === 'activate') initiatePortalStatusChange(portal._id, 'activate');
@@ -976,15 +978,41 @@ const AdminDashboard = () => {
                                             }}
                                         >
                                             <option value="">İşlemler...</option>
-                                            <option value="warning">⚠️ Uyarı Gönder</option>
                                             <option value="alert">📢 Uyarı Yayınla (Banner)</option>
                                             {portal.status !== 'suspended' && <option value="suspend">⛔ Askıya Al</option>}
                                             {portal.status !== 'active' && <option value="activate">✅ Aktifleştir</option>}
                                             {portal.status !== 'closed' && <option value="close">❌ Kapat (Hukuki)</option>}
                                         </select>
                                     </div>
+                                    </div>
+
+                                    {activeAlerts.length > 0 && (
+                                        <div style={{ padding: '10px', background: 'rgba(255, 87, 34, 0.05)', border: '1px solid rgba(255, 87, 34, 0.2)', borderRadius: '8px', marginTop: '4px' }}>
+                                            <h5 style={{ margin: '0 0 10px 0', color: '#ff5722', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                Aktif Portal Uyarıları (Banner)
+                                            </h5>
+                                            {activeAlerts.map(alert => (
+                                                <div key={alert._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', padding: '10px 14px', borderRadius: '6px', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        <span style={{ fontSize: '13px', color: '#e0e0e0', lineHeight: '1.4' }}>{alert.message}</span>
+                                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Bitiş: {new Date(alert.expiresAt).toLocaleString()}</span>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleRemoveAlert(portal._id, alert._id)}
+                                                        style={{ background: 'transparent', color: '#ff4b4b', border: '1px solid #ff4b4b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', minWidth: '70px', transition: '0.2s' }}
+                                                        onMouseOver={(e) => e.target.style.background = 'rgba(255,75,75,0.1)'}
+                                                        onMouseOut={(e) => e.target.style.background = 'transparent'}
+                                                    >
+                                                        Kaldır
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </div>
                 )}

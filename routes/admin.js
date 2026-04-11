@@ -209,7 +209,7 @@ router.get('/portals', protect, admin, async (req, res) => {
         }
 
         const portals = await import('../models/Portal.js').then(m => m.default.find(query)
-            .select('name description owner avatar banner themeColor isVerified badges status statusReason suspendedUntil warnings createdAt members')
+            .select('name description owner avatar banner themeColor isVerified badges status statusReason suspendedUntil warnings alerts createdAt members')
             .populate('owner', 'username profile.displayName')
             .sort({ createdAt: -1 })
             .limit(50));
