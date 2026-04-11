@@ -277,7 +277,7 @@ const AppLayout = () => {
                                 <Route path="/contact" element={<Contact />} />
 
                                 {/* Private routes */}
-                                <Route path="/" element={<Home />} />
+                                <Route path="/" element={<Navigate to="/inbox" replace />} />
 
                                 {/* Portal Route */}
                                 <Route path="/portal/:id" element={<Portal />} />
@@ -358,7 +358,7 @@ const AppLayout = () => {
                                     }
                                 />
 
-                                <Route path="*" element={<Navigate to="/" />} />
+                                <Route path="*" element={<Navigate to="/inbox" replace />} />
                             </Routes>
                         </Suspense>
                     </div>
