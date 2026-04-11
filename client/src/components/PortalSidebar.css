@@ -1,5 +1,5 @@
 .portal-sidebar {
-    width: 72px; /* Fixed width to prevent "wide bar" feeling */
+    width: 72px !important; /* Fixed width to prevent "wide bar" feeling */
     height: 100%;
     background-color: var(--bg-darker);
     display: flex;
@@ -7,7 +7,7 @@
     align-items: center;
     padding: 20px 0;
     overflow-y: auto;
-    overflow-x: hidden; /* Strictly prevent horizontal scroll/swipe */
+    overflow-x: hidden !important; /* Strictly prevent horizontal scroll/swipe */
     scrollbar-width: none;
     -ms-overflow-style: none;
     border-radius: 0;
@@ -17,6 +17,7 @@
     border-bottom: none;
     position: relative;
     z-index: 99995;
+    flex-shrink: 0; /* Never shrink */
     /* High enough to sit above the global backdrop (99990) */
     touch-action: pan-y; /* Allow vertical scroll but disable horizontal swipes */
 }
@@ -101,7 +102,7 @@
 
 @media (max-width: 768px) {
     .portal-sidebar {
-        width: 64px; /* Fixed mobile width */
+        width: 64px !important; /* Fixed mobile width */
         padding: 50px 0 20px 0; /* Add top padding for fixed navbar if needed, or safe area */
     }
 
