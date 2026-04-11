@@ -114,6 +114,7 @@ const PortalSidebar = () => {
 
                 {/* User's Portals (Scrollable Area) */}
                 <div className="portals-scroll-area">
+                    {orderedPortals.map((portal, index) => (
                         <div
                             key={portal._id}
                             className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''}`}
@@ -133,6 +134,7 @@ const PortalSidebar = () => {
                                 )}
                             </div>
                         </div>
+                    ))}
                 </div>
 
                 <div className="sidebar-separator"></div>
