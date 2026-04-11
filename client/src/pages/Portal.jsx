@@ -17,6 +17,7 @@ import VoiceChannel from '../components/VoiceChannel';
 import ConferenceChannel from '../components/ConferenceChannel';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useSocket } from '../context/SocketContext';
+import PortalAlertBanner from '../components/PortalAlertBanner';
 import './Portal.css';
 
 
@@ -987,6 +988,11 @@ const Portal = () => {
                                                         </div>
                                                     ) : (
                                                         <>
+                                                            {/* Admin Alert Banner */}
+                                                            {portal?.alerts && portal.alerts.length > 0 && (
+                                                                <PortalAlertBanner alerts={portal.alerts} />
+                                                            )}
+
                                                             {/* Message Area */}
                                                             {user && isMember ? (
                                                                 <>

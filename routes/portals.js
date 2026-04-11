@@ -217,6 +217,33 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
             portalObj.channels = portalObj.channels.filter((ch) => !ch.isPrivate);
         }
 
+        // --- Alert Auto-Cleanup & Filtering ---
+        const now = new Date();
+        let alertsDirty = false;
+
+        // Deactivate expired alerts
+        if (portal.alerts && portal.alerts.length > 0) {
+            portal.alerts.forEach(alert => {
+                if (alert.isActive && alert.expiresAt && new Date(alert.expiresAt) <= now) {
+                    alert.isActive = false;
+                    alertsDirty = true;
+                }
+            });
+            if (alertsDirty) {
+                await portal.save();
+            }
+        }
+
+        // Return only active, non-expired alerts
+        // Public portal → show to everyone; Private portal → show only to members
+        if (portal.privacy === 'private' && !portalObj.isMember) {
+            portalObj.alerts = [];
+        } else {
+            portalObj.alerts = (portalObj.alerts || []).filter(
+                a => a.isActive && new Date(a.expiresAt) > now
+            );
+        }
+
         res.json(portalObj);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -884,9 +911,16 @@ router.get('/:id/notifications', protect, async (req, res) => {
                 joinedAt: member.createdAt,
             }));
 
+        // Get active alerts (non-expired, isActive)
+        const now = new Date();
+        const activeAlerts = (portal.alerts || []).filter(
+            a => a.isActive && new Date(a.expiresAt) > now
+        );
+
         res.json({
             joinRequests: portal.joinRequests,
             recentMembers,
+            alerts: activeAlerts,
         });
     } catch (error) {
         console.error('Get notifications error:', error);

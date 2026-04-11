@@ -306,4 +306,85 @@ router.post('/portals/:id/warning', protect, admin, async (req, res) => {
     }
 });
 
+// @route   POST /api/admin/portals/:id/alert
+// @desc    Create a portal alert (timed announcement)
+// @access  Private/Admin
+router.post('/portals/:id/alert', protect, admin, async (req, res) => {
+    try {
+        const { message, expiresAt } = req.body;
+
+        if (!message || !expiresAt) {
+            return res.status(400).json({ message: 'Mesaj ve bitiş tarihi zorunludur.' });
+        }
+
+        if (String(message).length > 500) {
+            return res.status(400).json({ message: 'Mesaj 500 karakteri geçemez.' });
+        }
+
+        const expDate = new Date(expiresAt);
+        if (isNaN(expDate.getTime()) || expDate <= new Date()) {
+            return res.status(400).json({ message: 'Geçerli bir bitiş tarihi belirleyin.' });
+        }
+
+        const Portal = await import('../models/Portal.js').then(m => m.default);
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+
+        const alert = {
+            message: String(message).slice(0, 500),
+            expiresAt: expDate,
+            issuedBy: req.user._id,
+            isActive: true,
+            createdAt: new Date()
+        };
+
+        portal.alerts.push(alert);
+        await portal.save();
+
+        // Notify Portal Owner
+        await Notification.create({
+            recipient: portal.owner,
+            type: 'system',
+            content: `Portalınız "${portal.name}" için bir yönetici uyarısı yayınlandı: ${String(message).slice(0, 100)}${message.length > 100 ? '...' : ''}`,
+            link: `/portal/${portal._id}`
+        });
+
+        const createdAlert = portal.alerts[portal.alerts.length - 1];
+        res.json({ message: 'Uyarı yayınlandı', alert: createdAlert });
+    } catch (error) {
+        console.error('Create portal alert error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   DELETE /api/admin/portals/:id/alert/:alertId
+// @desc    Deactivate a portal alert before expiry
+// @access  Private/Admin
+router.delete('/portals/:id/alert/:alertId', protect, admin, async (req, res) => {
+    try {
+        const Portal = await import('../models/Portal.js').then(m => m.default);
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+
+        const alert = portal.alerts.id(req.params.alertId);
+        if (!alert) {
+            return res.status(404).json({ message: 'Uyarı bulunamadı' });
+        }
+
+        alert.isActive = false;
+        await portal.save();
+
+        res.json({ message: 'Uyarı kaldırıldı' });
+    } catch (error) {
+        console.error('Deactivate portal alert error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 export default router;

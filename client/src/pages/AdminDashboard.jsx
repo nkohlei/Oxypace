@@ -146,6 +146,140 @@ const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
     );
 };
 
+// Alert Modal Component — Similar to ReasonModal but for portal alerts
+const AlertModal = ({ isOpen, onClose, onSubmit, portalName }) => {
+    const [message, setMessage] = useState('');
+    const [durationType, setDurationType] = useState('preset');
+    const [selectedPreset, setSelectedPreset] = useState(null);
+    const [customDate, setCustomDate] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    if (!isOpen) return null;
+
+    const presets = [
+        { label: '1 Saat', hours: 1 },
+        { label: '6 Saat', hours: 6 },
+        { label: '12 Saat', hours: 12 },
+        { label: '1 Gün', hours: 24 },
+        { label: '3 Gün', hours: 72 },
+        { label: '7 Gün', hours: 168 },
+        { label: '30 Gün', hours: 720 },
+    ];
+
+    const calculateExpiresAt = () => {
+        if (durationType === 'preset' && selectedPreset) {
+            return new Date(Date.now() + selectedPreset * 60 * 60 * 1000).toISOString();
+        }
+        if (durationType === 'custom' && customDate) {
+            return new Date(customDate).toISOString();
+        }
+        return null;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const expiresAt = calculateExpiresAt();
+        if (!expiresAt) {
+            alert('Lütfen uyarı süresi belirleyin.');
+            return;
+        }
+        if (!message.trim()) {
+            alert('Lütfen uyarı mesajı yazın.');
+            return;
+        }
+        setSubmitting(true);
+        await onSubmit(message.trim(), expiresAt);
+        setSubmitting(false);
+        setMessage('');
+        setSelectedPreset(null);
+        setCustomDate('');
+    };
+
+    const minDate = new Date().toISOString().slice(0, 16);
+
+    return (
+        <div className="modal-overlay-modern">
+            <div className="modal-content-modern">
+                <div className="modal-header-modern">
+                    <h2>📢 Uyarı Yayınla</h2>
+                    <button className="close-btn-modern" onClick={onClose}>&times;</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="modal-body-modern">
+                        <p className="modal-description-modern">
+                            <strong>{portalName}</strong> portalına bir yönetici uyarısı yayınlayın. Bu uyarı portal anasayfasında tüm kullanıcılara banner olarak gösterilecektir.
+                        </p>
+                        <textarea
+                            className="reason-input-modern"
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            placeholder="Uyarı mesajınızı yazın... (maks. 500 karakter)"
+                            rows="4"
+                            maxLength={500}
+                            required
+                        />
+                        <div style={{ textAlign: 'right', fontSize: '11px', color: '#666', marginTop: '-8px' }}>
+                            {message.length}/500
+                        </div>
+
+                        <div className="duration-picker-section">
+                            <h4 className="duration-title">⏱ Uyarı Süresi</h4>
+                            <div className="duration-type-toggle">
+                                <button
+                                    type="button"
+                                    className={`duration-type-btn ${durationType === 'preset' ? 'active' : ''}`}
+                                    onClick={() => setDurationType('preset')}
+                                >
+                                    Hazır Süre
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`duration-type-btn ${durationType === 'custom' ? 'active' : ''}`}
+                                    onClick={() => setDurationType('custom')}
+                                >
+                                    Özel Tarih
+                                </button>
+                            </div>
+
+                            {durationType === 'preset' ? (
+                                <div className="preset-grid">
+                                    {presets.map((p) => (
+                                        <button
+                                            key={p.hours}
+                                            type="button"
+                                            className={`preset-btn ${selectedPreset === p.hours ? 'active' : ''}`}
+                                            onClick={() => setSelectedPreset(p.hours)}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <input
+                                    type="datetime-local"
+                                    className="custom-date-input"
+                                    value={customDate}
+                                    onChange={(e) => setCustomDate(e.target.value)}
+                                    min={minDate}
+                                    required={durationType === 'custom'}
+                                />
+                            )}
+                        </div>
+                    </div>
+                    <div className="modal-footer-modern">
+                        <button type="button" className="btn-modern-ghost" onClick={onClose}>
+                            İptal
+                        </button>
+                        <button type="submit" className="btn-modern-primary" disabled={submitting} style={{ background: 'linear-gradient(135deg, #ff9800, #ff5722)' }}>
+                            {submitting ? 'GÖNDERİLİYOR...' : '📢 UYARIYI YAYINLA'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
     const navigate = useNavigate();
@@ -194,6 +328,11 @@ const AdminDashboard = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPortalId, setSelectedPortalId] = useState(null);
     const [modalAction, setModalAction] = useState('');
+
+    // Alert Modal State
+    const [alertModalOpen, setAlertModalOpen] = useState(false);
+    const [alertPortalId, setAlertPortalId] = useState(null);
+    const [alertPortalName, setAlertPortalName] = useState('');
 
     // Badge Creator State
     const { badges: contextBadges, refreshBadges } = useBadges();
@@ -403,6 +542,35 @@ const AdminDashboard = () => {
             alert('Uyarı gönderildi.');
         } catch (err) {
             alert('Uyarı gönderilemedi.');
+        }
+    };
+
+    // --- Portal Alert System ---
+    const openAlertModal = (portalId, portalName) => {
+        setAlertPortalId(portalId);
+        setAlertPortalName(portalName);
+        setAlertModalOpen(true);
+    };
+
+    const handleAlertSubmit = async (message, expiresAt) => {
+        try {
+            await axios.post(`/api/admin/portals/${alertPortalId}/alert`, { message, expiresAt });
+            setAlertModalOpen(false);
+            alert('Uyarı başarıyla yayınlandı!');
+            fetchPortals(searchTermPortal);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Uyarı gönderilemedi.');
+        }
+    };
+
+    const handleRemoveAlert = async (portalId, alertId) => {
+        if (!window.confirm('Bu uyarıyı kaldırmak istediğinize emin misiniz?')) return;
+        try {
+            await axios.delete(`/api/admin/portals/${portalId}/alert/${alertId}`);
+            alert('Uyarı kaldırıldı.');
+            fetchPortals(searchTermPortal);
+        } catch (err) {
+            alert('Uyarı kaldırılamadı.');
         }
     };
 
@@ -792,6 +960,7 @@ const AdminDashboard = () => {
                                             className="action-select"
                                             onChange={(e) => {
                                                 if (e.target.value === 'warning') handlePortalWarning(portal._id);
+                                                else if (e.target.value === 'alert') openAlertModal(portal._id, portal.name);
                                                 else if (e.target.value === 'suspend') initiatePortalStatusChange(portal._id, 'suspend');
                                                 else if (e.target.value === 'close') initiatePortalStatusChange(portal._id, 'close');
                                                 else if (e.target.value === 'activate') initiatePortalStatusChange(portal._id, 'activate');
@@ -808,6 +977,7 @@ const AdminDashboard = () => {
                                         >
                                             <option value="">İşlemler...</option>
                                             <option value="warning">⚠️ Uyarı Gönder</option>
+                                            <option value="alert">📢 Uyarı Yayınla (Banner)</option>
                                             {portal.status !== 'suspended' && <option value="suspend">⛔ Askıya Al</option>}
                                             {portal.status !== 'active' && <option value="activate">✅ Aktifleştir</option>}
                                             {portal.status !== 'closed' && <option value="close">❌ Kapat (Hukuki)</option>}
@@ -1009,6 +1179,14 @@ const AdminDashboard = () => {
                 onClose={() => setModalOpen(false)}
                 onSubmit={handleModalSubmit}
                 actionType={modalAction}
+            />
+
+            {/* Alert Modal */}
+            <AlertModal
+                isOpen={alertModalOpen}
+                onClose={() => setAlertModalOpen(false)}
+                onSubmit={handleAlertSubmit}
+                portalName={alertPortalName}
             />
 
             {/* Badge Creator/Editor Modal */}

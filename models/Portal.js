@@ -91,6 +91,15 @@ const portalSchema = new mongoose.Schema(
                 issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
             }
         ],
+        alerts: [
+            {
+                message: { type: String, required: true, maxlength: 500 },
+                createdAt: { type: Date, default: Date.now },
+                expiresAt: { type: Date, required: true },
+                issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+                isActive: { type: Boolean, default: true }
+            }
+        ],
         channels: [
             {
                 name: {
