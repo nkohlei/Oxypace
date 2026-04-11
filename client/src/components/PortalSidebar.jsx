@@ -139,17 +139,19 @@ const PortalSidebar = () => {
                             onMouseEnter={(e) => handleMouseEnter(e, portal.name)}
                             onMouseLeave={handleMouseLeave}
                         >
-                            {/* Discord-style left indicator bar */}
+                            {/* Discord-style left indicator bar - Edge Aligned */}
                             <div className="sidebar-indicator" />
 
-                            <div className="portal-icon">
-                                {portal.avatar ? (
-                                    <img src={getImageUrl(portal.avatar)} alt={portal.name} draggable="false" />
-                                ) : (
-                                    <span>{portal.name.substring(0, 2).toUpperCase()}</span>
-                                )}
+                            <div className="portal-icon-container">
+                                <div className="portal-icon">
+                                    {portal.avatar ? (
+                                        <img src={getImageUrl(portal.avatar)} alt={portal.name} draggable="false" />
+                                    ) : (
+                                        <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                    )}
+                                </div>
 
-                                {/* Red Notification Badge */}
+                                {/* Red Notification Badge - Moved outside .portal-icon to avoid clipping */}
                                 {unreadCounts[portal._id?.toString()] > 0 && (
                                     <div className="unread-badge">
                                         {unreadCounts[portal._id.toString()] > 9 ? '9+' : unreadCounts[portal._id.toString()]}
@@ -297,11 +299,22 @@ const PortalSidebar = () => {
                     opacity: 1;
                 }
 
-                /* Red Notification Badge */
+                /* New container for icon + badge + pulse */
+                .portal-icon-container {
+                    position: relative;
+                    width: 48px;
+                    height: 48px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 5;
+                }
+
+                /* Red Notification Badge - Outside the clipped circle */
                 .unread-badge {
                     position: absolute;
-                    bottom: -2px;
-                    right: -2px;
+                    bottom: -4px;
+                    right: -4px;
                     background-color: #f23f43; /* Discord-red */
                     color: white;
                     font-size: 11px;
@@ -313,23 +326,23 @@ const PortalSidebar = () => {
                     align-items: center;
                     justify-content: center;
                     padding: 0 4px;
-                    border: 3px solid var(--bg-darker);
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    border: 3.5px solid var(--bg-darker);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
                     pointer-events: none;
-                    z-index: 20;
+                    z-index: 80; /* Above the icon and pulse */
                 }
 
-                /* Blue Pulsing Frame ("Çerçeve") - Restored */
-                .sidebar-item.has-unread:not(.active) .portal-icon::after {
+                /* Blue Pulsing Frame ("Çerçeve") - Now on the container to avoid clipping */
+                .sidebar-item.has-unread:not(.active) .portal-icon-container::after {
                     content: '';
                     position: absolute;
-                    inset: -2px;
+                    inset: -3px;
                     border: 2px solid #00d2ff;
                     border-radius: 50%;
                     animation: portalUnreadPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
                     pointer-events: none;
-                    box-shadow: 0 0 10px rgba(0, 210, 255, 0.6);
-                    z-index: 15;
+                    box-shadow: 0 0 12px rgba(0, 210, 255, 0.7);
+                    z-index: 60; /* Below badge, above icon */
                 }
 
                 @keyframes portalUnreadPulse {
@@ -340,8 +353,8 @@ const PortalSidebar = () => {
                     }
                     50% {
                         opacity: 1;
-                        transform: scale(1.04);
-                        box-shadow: 0 0 0 6px rgba(0, 210, 255, 0);
+                        transform: scale(1.05);
+                        box-shadow: 0 0 0 8px rgba(0, 210, 255, 0);
                     }
                     100% {
                         opacity: 0.7;
@@ -350,16 +363,23 @@ const PortalSidebar = () => {
                     }
                 }
 
-                /* Pulse animation for the whole icon wrapper to make it feel alive */
-                .sidebar-item.has-unread:not(.active) .portal-icon {
+                /* Subtle pulse for the whole icon area */
+                .sidebar-item.has-unread:not(.active) .portal-icon-container {
                     animation: subtlePulse 2s infinite ease-in-out;
-                    position: relative; /* For the ::after frame */
                 }
 
                 @keyframes subtlePulse {
                     0% { transform: scale(1); }
                     50% { transform: scale(1.02); }
                     100% { transform: scale(1); }
+                }
+
+                .portal-icon {
+                    /* Original styles from PortalSidebar.css are preserved, 
+                       but we ensure it stays exactly 48x48 here */
+                    width: 48px;
+                    height: 48px;
+                    z-index: 10;
                 }
             `}</style>
 
