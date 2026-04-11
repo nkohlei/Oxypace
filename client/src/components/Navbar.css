@@ -4,7 +4,6 @@
     left: 0;
     width: 100%;
     max-width: 100vw; /* Strict constraint */
-    overflow: hidden; /* Hide anything pushing sideways */
     height: var(--global-header-height); /* Dynamic height including safe area */
     min-height: 56px;
     background: var(--glass-bg);
