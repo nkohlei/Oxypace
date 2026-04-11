@@ -77,7 +77,7 @@ router.get('/', optionalProtect, async (req, res) => {
 
         const portals = await Portal.find(keyword)
             .select('name description avatar banner privacy members joinRequests themeColor badges isVerified status statusReason')
-            .limit(20);
+            .limit(100);
 
         const userId = req.user?._id?.toString();
         const formattedPortals = portals.map((portal) => {
@@ -95,6 +95,12 @@ router.get('/', optionalProtect, async (req, res) => {
 
             return portalObj;
         });
+
+        // Randomize the order (Fisher-Yates Shuffle)
+        for (let i = formattedPortals.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [formattedPortals[i], formattedPortals[j]] = [formattedPortals[j], formattedPortals[i]];
+        }
 
         res.json(formattedPortals);
     } catch (error) {
