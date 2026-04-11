@@ -15,7 +15,10 @@ const PortalSidebar = () => {
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
     
-    // Reorder State
+    // Reorder & Tooltip State
+    const [orderedPortals, setOrderedPortals] = useState([]);
+    const [isReordering, setIsReordering] = useState(false);
+    const [draggedIndex, setDraggedIndex] = useState(null);
     const [activeTooltip, setActiveTooltip] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
 
