@@ -12,7 +12,7 @@ import './PortalSidebar.css';
 const PortalSidebar = () => {
     const { user, isAuthenticated } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
-    const { unreadCounts, clearUnreadCount } = useGlobalStore();
+    const { unreadPostsByPortal, clearUnreadForPortal } = useGlobalStore();
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -47,9 +47,9 @@ const PortalSidebar = () => {
         // Clear unread status when entering a portal
         const match = location.pathname.match(/\/portal\/([a-f\d]{24})/i);
         if (match && match[1]) {
-            clearUnreadCount(match[1]);
+            clearUnreadForPortal(match[1]);
         }
-    }, [location.pathname, clearUnreadCount]);
+    }, [location.pathname, clearUnreadForPortal]);
 
     const handleDragStart = (e, index) => {
         setDraggedIndex(index);
@@ -130,7 +130,7 @@ const PortalSidebar = () => {
                     {orderedPortals.map((portal, index) => (
                         <div
                             key={portal._id}
-                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadCounts[portal._id?.toString()] > 0 ? 'has-unread' : ''}`}
+                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadPostsByPortal[portal._id?.toString()]?.length > 0 ? 'has-unread' : ''}`}
                             onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
                             draggable={isReordering}
                             onDragStart={(e) => handleDragStart(e, index)}
@@ -152,9 +152,9 @@ const PortalSidebar = () => {
                                 </div>
 
                                 {/* Red Notification Badge - Moved outside .portal-icon to avoid clipping */}
-                                {unreadCounts[portal._id?.toString()] > 0 && (
+                                {unreadPostsByPortal[portal._id?.toString()]?.length > 0 && (
                                     <div className="unread-badge">
-                                        {unreadCounts[portal._id.toString()] > 9 ? '9+' : unreadCounts[portal._id.toString()]}
+                                        {unreadPostsByPortal[portal._id.toString()].length > 9 ? '9+' : unreadPostsByPortal[portal._id.toString()].length}
                                     </div>
                                 )}
                             </div>

@@ -5,20 +5,14 @@ import { useGlobalStore } from '../store/useGlobalStore';
 export const useRealtimeSync = () => {
     // Rely on the existing authenticated socket from SocketContext
     const { socket, connected } = useSocket();
-    const { addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, incrementUnreadCount } = useGlobalStore();
+    const { addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, addUnreadPost } = useGlobalStore();
 
     useEffect(() => {
         if (!socket || !connected) return;
 
-        // Scoped events (Portal/Channel specific) are now handled inside the specific page components
-        // (e.g., Portal.jsx) to ensure strict context isolation and avoid "leakage" between rooms.
-
-        // Global events that still apply everywhere
+        // Global deletion sync
         socket.on('global:post_deleted', ({ _id }) => {
-            deletePostEvent(_id);
-        });
-
-        socket.on('global:post_deleted', ({ _id }) => {
+            console.log('📡 Post deleted globally:', _id);
             deletePostEvent(_id);
         });
 
@@ -26,25 +20,22 @@ export const useRealtimeSync = () => {
             updateUserEvent(data._id, data.fullDocument);
         });
 
-        socket.on('global:portal_activity', ({ portalId }) => {
-            console.log('📡 Portal activity detected:', portalId);
+        socket.on('global:portal_activity', ({ portalId, postId }) => {
+            console.log('📡 Portal activity detected:', portalId, 'Post:', postId);
             // Only mark unread if not currently in that portal
             if (!window.location.pathname.includes(`/portal/${portalId}`)) {
-                console.log('🔔 Incrementing unread count for portal:', portalId);
-                incrementUnreadCount(portalId);
+                if (postId) {
+                    addUnreadPost(portalId, postId);
+                }
             }
         });
 
         return () => {
-            socket.off('post:created');
-            socket.off('post:updated');
-            socket.off('global:post_created');
-            socket.off('global:post_updated');
             socket.off('global:post_deleted');
             socket.off('global:user_updated');
             socket.off('global:portal_activity');
         };
-    }, [socket, connected, addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent]);
+    }, [socket, connected, addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, addUnreadPost]);
 
     return socket;
 };
