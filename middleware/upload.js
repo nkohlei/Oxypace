@@ -21,6 +21,8 @@ const upload = multer({
                 folder = 'banners';
             } else if (file.fieldname === 'media') {
                 folder = `posts/${req.body.portalId || 'general'}`;
+            } else if (file.fieldname === 'files') {
+                folder = 'feedback';
             }
 
             const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);

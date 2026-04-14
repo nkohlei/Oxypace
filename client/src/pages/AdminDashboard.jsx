@@ -311,15 +311,19 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
                     {/* Left Side: Request Info & Gallery */}
                     <div className="ticket-request-side">
                         <div className="sender-meta-box">
-                            <img src={feedback.user?.profile?.avatar} alt="" className="sender-avatar-large" />
+                            <img 
+                                src={feedback.user?.profile?.avatar || '/system/deleted-user.png'} 
+                                alt="" 
+                                className="sender-avatar-large" 
+                            />
                             <div className="sender-details">
-                                <strong>@{feedback.user?.username}</strong>
+                                <strong>{feedback.user ? `@${feedback.user.username}` : 'Silinmiş Kullanıcı'}</strong>
                                 <span>{new Date(feedback.createdAt).toLocaleString('tr-TR')}</span>
                             </div>
                         </div>
 
                         <div className="request-content-scroller">
-                            <div className="category-chip">{feedback.category}</div>
+                            <div className={`category-chip ${feedback.category?.toLowerCase().replace(/\s+/g, '-')}`}>{feedback.category}</div>
                             <h3 className="ticket-subject">{feedback.subject}</h3>
                             <div className="ticket-message-block">
                                 {feedback.message}
@@ -1426,7 +1430,7 @@ const AdminDashboard = () => {
                                     >
                                         <div className="card-v2-header">
                                             <div className={`status-dot ${fb.status}`}></div>
-                                            <span className={`category-tag-v2 ${fb.category?.toLowerCase()}`}>{fb.category}</span>
+                                            <span className={`category-tag-v2 ${fb.category?.toLowerCase().replace(/\s+/g, '-')}`}>{fb.category}</span>
                                             <span className="date-text-v2">{new Date(fb.createdAt).toLocaleDateString('tr-TR')}</span>
                                         </div>
 
@@ -1434,8 +1438,12 @@ const AdminDashboard = () => {
                                             <div className="card-v2-text">
                                                 <h3 className="fb-v2-subject">{fb.subject}</h3>
                                                 <div className="fb-v2-sender">
-                                                    <img src={fb.user?.profile?.avatar} alt="" className="v2-avatar-tiny" />
-                                                    <span>@{fb.user?.username}</span>
+                                                    <img 
+                                                        src={fb.user?.profile?.avatar || '/system/deleted-user.png'} 
+                                                        alt="" 
+                                                        className="v2-avatar-tiny" 
+                                                    />
+                                                    <span>{fb.user ? `@${fb.user.username}` : 'Silinmiş Kullanıcı'}</span>
                                                 </div>
                                                 <p className="fb-v2-message-snippet">{fb.message.substring(0, 70)}...</p>
                                             </div>

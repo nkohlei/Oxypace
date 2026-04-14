@@ -1015,6 +1015,7 @@
 .category-tag-v2.hata { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 .category-tag-v2.öneri { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
 .category-tag-v2.genel { background: rgba(255, 255, 255, 0.1); color: #ccc; }
+.category-tag-v2.genel-iletişim { background: rgba(147, 51, 234, 0.15); color: #c084fc; } /* Migrated color */
 
 .date-text-v2 {
     margin-left: auto;

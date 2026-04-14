@@ -5,7 +5,7 @@ import Feedback from '../models/Feedback.js';
 import User from '../models/User.js';
 import Message from '../models/Message.js';
 import ContactMessage from '../models/ContactMessage.js';
-import localUpload from '../middleware/localUpload.js';
+import upload from '../middleware/upload.js';
 import mongoose from 'mongoose';
 
 const router = express.Router();
@@ -46,7 +46,7 @@ const getSystemSupportAccount = async () => {
 // @route   POST /api/feedback/submit
 // @desc    Submit new feedback
 // @access  Private
-router.post('/submit', protect, localUpload.array('files', 5), async (req, res) => {
+router.post('/submit', protect, upload.array('files', 5), async (req, res) => {
     try {
         const { category, subject, message } = req.body;
 
@@ -54,7 +54,7 @@ router.post('/submit', protect, localUpload.array('files', 5), async (req, res) 
             return res.status(400).json({ message: 'Lütfen tüm zorunlu alanları doldurun.' });
         }
 
-        const fileUrls = req.files ? req.files.map(file => `/uploads/feedback/${file.filename}`) : [];
+        const fileUrls = req.files ? req.files.map(file => file.location) : [];
 
         const feedback = await Feedback.create({
             user: req.user._id,
@@ -110,26 +110,28 @@ router.post('/admin/reply/:id', protect, admin, async (req, res) => {
         feedback.repliedBy = req.user._id;
         await feedback.save();
 
-        // 2. Send System Message
-        const supportAccount = await getSystemSupportAccount();
-        
-        const systemMessage = await Message.create({
-            sender: supportAccount._id,
-            recipient: feedback.user._id,
-            content: `Merhaba ${feedback.user.username},\n\n"${feedback.subject}" konulu geri bildiriminiz için teşekkür ederiz. Ekibimizin yanıtı şu şekildedir:\n\n---\n${response}\n---\n\nHerhangi başka bir sorunuz olursa buradan yazabilirsiniz.`,
-        });
-
-        // Emit socket if available
-        const io = req.app.get('io');
-        if (io) {
-            const populatedMsg = await Message.findById(systemMessage._id)
-                .populate('sender', 'username profile.displayName profile.avatar createdAt isSystemAccount')
-                .populate('recipient', 'username profile.displayName profile.avatar createdAt');
+        // 2. Send System Message (only if user exists)
+        if (feedback.user) {
+            const supportAccount = await getSystemSupportAccount();
             
-            io.to(feedback.user._id.toString()).emit('newMessage', populatedMsg);
+            const systemMessage = await Message.create({
+                sender: supportAccount._id,
+                recipient: feedback.user._id,
+                content: `Merhaba ${feedback.user.username || 'Kullanıcı'},\n\n"${feedback.subject}" konulu geri bildiriminiz için teşekkür ederiz. Ekibimizin yanıtı şu şekildedir:\n\n---\n${response}\n---\n\nHerhangi başka bir sorunuz olursa buradan yazabilirsiniz.`,
+            });
+
+            // Emit socket if available
+            const io = req.app.get('io');
+            if (io) {
+                const populatedMsg = await Message.findById(systemMessage._id)
+                    .populate('sender', 'username profile.displayName profile.avatar createdAt isSystemAccount')
+                    .populate('recipient', 'username profile.displayName profile.avatar createdAt');
+                
+                io.to(feedback.user._id.toString()).emit('newMessage', populatedMsg);
+            }
         }
 
-        res.json({ message: 'Yanıt gönderildi.', feedback });
+        res.json({ message: 'Yanıt kaydedildi.', feedback });
     } catch (error) {
         console.error('Feedback reply error:', error);
         res.status(500).json({ message: 'Yanıt gönderilirken hata oluştu.' });
@@ -150,7 +152,7 @@ router.post('/admin/migrate', protect, admin, async (req, res) => {
         };
 
         for (const msg of oldMessages) {
-            // Check if already migrated (optional check)
+            // Check if already migrated
             const exists = await Feedback.findOne({
                 user: msg.user,
                 message: msg.message,
@@ -158,9 +160,15 @@ router.post('/admin/migrate', protect, admin, async (req, res) => {
             });
 
             if (!exists) {
+                // Determine category mapping
+                let category = 'Genel İletişim';
+                if (msg.subject === 'Geribildirim') category = 'Öneri';
+                if (msg.subject === 'Sikayet') category = 'Şikayet';
+                if (msg.subject === 'Destek') category = 'Hata Bildirimi';
+
                 await Feedback.create({
-                    user: msg.user,
-                    category: 'Genel İletişim',
+                    user: msg.user || null, // Allow legacy orphans
+                    category,
                     subject: msg.subject || 'Eski İletişim Formu',
                     message: msg.message,
                     status: msg.status === 'unread' ? 'new' : 'reviewed',
