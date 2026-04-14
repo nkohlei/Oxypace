@@ -1,5 +1,6 @@
 import express from 'express';
-import { protect, admin } from '../middleware/auth.js';
+import { protect } from '../middleware/auth.js';
+import { admin } from '../middleware/admin.js';
 import Feedback from '../models/Feedback.js';
 import User from '../models/User.js';
 import Message from '../models/Message.js';
