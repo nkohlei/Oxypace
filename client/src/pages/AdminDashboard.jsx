@@ -280,10 +280,11 @@ const AlertModal = ({ isOpen, onClose, onSubmit, portalName }) => {
     );
 };
 
-// Professional Feedback Response Modal
+// Professional Feedback Response Modal v2
 const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
     const [response, setResponse] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [activeImage, setActiveImage] = useState(null);
 
     if (!isOpen || !feedback) return null;
 
@@ -297,58 +298,107 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
 
     return (
         <div className="modal-overlay-modern">
-            <div className="modal-content-modern feedback-modal-content">
+            <div className="modal-content-modern feedback-ticket-modal">
                 <div className="modal-header-modern">
-                    <h2>Talep Yanıtla</h2>
+                    <div className="ticket-header-info">
+                        <h2>#{feedback._id.substring(feedback._id.length - 6)} Talep Detayı</h2>
+                        <span className={`status-badge-neon ${feedback.status}`}>{feedback.status === 'new' ? 'Bekliyor' : 'Yanıtlandı'}</span>
+                    </div>
                     <button className="close-btn-modern" onClick={onClose}>&times;</button>
                 </div>
-                <form onSubmit={handleSubmit}>
-                    <div className="modal-body-modern">
-                        <div className="feedback-preview-box">
-                            <div className="preview-header">
-                                <span className="category-tag">{feedback.category}</span>
-                                <span className="user-tag">@{feedback.user.username}</span>
+
+                <div className="ticket-split-body">
+                    {/* Left Side: Request Info & Gallery */}
+                    <div className="ticket-request-side">
+                        <div className="sender-meta-box">
+                            <img src={feedback.user?.profile?.avatar} alt="" className="sender-avatar-large" />
+                            <div className="sender-details">
+                                <strong>@{feedback.user?.username}</strong>
+                                <span>{new Date(feedback.createdAt).toLocaleString('tr-TR')}</span>
                             </div>
-                            <h3>{feedback.subject}</h3>
-                            <p className="preview-msg">{feedback.message}</p>
-                            
+                        </div>
+
+                        <div className="request-content-scroller">
+                            <div className="category-chip">{feedback.category}</div>
+                            <h3 className="ticket-subject">{feedback.subject}</h3>
+                            <div className="ticket-message-block">
+                                {feedback.message}
+                            </div>
+
                             {feedback.files && feedback.files.length > 0 && (
-                                <div className="preview-attachments">
-                                    <label>Ekler:</label>
-                                    <div className="attachment-links">
+                                <div className="ticket-gallery-section">
+                                    <label>Ekli Görseller ({feedback.files.length})</label>
+                                    <div className="ticket-gallery-grid">
                                         {feedback.files.map((file, i) => (
-                                            <a key={i} href={file} target="_blank" rel="noreferrer">
-                                                Dosya {i + 1}
-                                            </a>
+                                            <div 
+                                                key={i} 
+                                                className="gallery-thumb-wrap"
+                                                onClick={() => setActiveImage(file)}
+                                            >
+                                                <img src={file} alt="" className="gallery-thumb" />
+                                                <div className="thumb-overlay">
+                                                    <span>BÜYÜT</span>
+                                                </div>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
                         </div>
+                    </div>
 
-                        <div className="reply-input-section">
-                            <label>Yanıtınız (Inbox üzerinden iletilecektir)</label>
+                    {/* Right Side: Admin Response */}
+                    <div className="ticket-reply-side">
+                        <form onSubmit={handleSubmit} className="reply-form-full">
+                            <div className="reply-header-mini">
+                                <h3>Hızlı Yanıt</h3>
+                                <p>Kullanıcının Inbox'ına anlık bildirim gider.</p>
+                            </div>
+                            
                             <textarea
-                                className="reason-input-modern"
+                                className="ticket-reply-area"
                                 value={response}
                                 onChange={(e) => setResponse(e.target.value)}
-                                placeholder="Kullanıcıya yardımcı olacak detaylı bir yanıt yazın..."
-                                rows="6"
+                                placeholder="Kullanıcıya iletilecek profesyonel yanıtı buraya yazın..."
                                 required
+                                disabled={feedback.status === 'replied'}
                             />
-                        </div>
+
+                            {feedback.status === 'replied' && feedback.adminResponse && (
+                                <div className="sent-response-preview">
+                                    <label>Gönderilen Yanıt:</label>
+                                    <p>{feedback.adminResponse}</p>
+                                </div>
+                            )}
+
+                            <div className="reply-actions">
+                                <button type="button" className="btn-modern-ghost" onClick={onClose}>İPTAL</button>
+                                <button 
+                                    type="submit" 
+                                    className="btn-modern-primary btn-glow-cyan" 
+                                    disabled={submitting || !response.trim() || feedback.status === 'replied'}
+                                >
+                                    {submitting ? 'İLETİLİYOR...' : 'YANITI GÖNDER'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <div className="modal-footer-modern">
-                        <button type="button" className="btn-modern-ghost" onClick={onClose}>İptal</button>
-                        <button type="submit" className="btn-modern-primary" disabled={submitting || !response.trim()}>
-                            {submitting ? 'GÖNDERİLİYOR...' : 'YANITI İLET'}
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
+
+            {/* Lightbox for Images */}
+            {activeImage && (
+                <div className="lightbox-overlay" onClick={() => setActiveImage(null)}>
+                    <div className="lightbox-content" onClick={e => e.stopPropagation()}>
+                        <img src={activeImage} alt="" className="lightbox-img" />
+                        <button className="lightbox-close" onClick={() => setActiveImage(null)}>&times;</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
 
 const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
@@ -1371,33 +1421,50 @@ const AdminDashboard = () => {
                                     .map(fb => (
                                     <div 
                                         key={fb._id} 
-                                        className={`feedback-dashboard-card ${fb.status}`}
+                                        className={`feedback-dashboard-card-v2 ${fb.status}`}
                                         onClick={() => { setSelectedFeedback(fb); setFeedbackModalOpen(true); }}
                                     >
-                                        <div className="card-top">
-                                            <span className={`cat-badge ${fb.category?.toLowerCase()}`}>{fb.category}</span>
-                                            <span className="date-tag">{new Date(fb.createdAt).toLocaleDateString()}</span>
+                                        <div className="card-v2-header">
+                                            <div className={`status-dot ${fb.status}`}></div>
+                                            <span className={`category-tag-v2 ${fb.category?.toLowerCase()}`}>{fb.category}</span>
+                                            <span className="date-text-v2">{new Date(fb.createdAt).toLocaleDateString('tr-TR')}</span>
                                         </div>
-                                        <h3 className="fb-subject">{fb.subject}</h3>
-                                        <div className="fb-sender">
-                                            <img src={fb.user?.profile?.avatar} alt="" className="mini-avatar" />
-                                            <span>@{fb.user?.username}</span>
-                                        </div>
-                                        <p className="fb-preview">{fb.message.substring(0, 80)}...</p>
-                                        <div className="card-footer">
-                                            {fb.status === 'replied' ? (
-                                                <span className="status-indicator success">✓ Yanıtlandı</span>
-                                            ) : (
-                                                <span className="status-indicator pending">● Bekliyor</span>
-                                            )}
+
+                                        <div className="card-v2-content">
+                                            <div className="card-v2-text">
+                                                <h3 className="fb-v2-subject">{fb.subject}</h3>
+                                                <div className="fb-v2-sender">
+                                                    <img src={fb.user?.profile?.avatar} alt="" className="v2-avatar-tiny" />
+                                                    <span>@{fb.user?.username}</span>
+                                                </div>
+                                                <p className="fb-v2-message-snippet">{fb.message.substring(0, 70)}...</p>
+                                            </div>
+
                                             {fb.files && fb.files.length > 0 && (
-                                                <span className="file-count-tag">📎 {fb.files.length} Dosya</span>
+                                                <div className="card-v2-visual">
+                                                    <div className="thumb-stack">
+                                                        <img src={fb.files[0]} alt="" className="fb-v2-thumb" />
+                                                        {fb.files.length > 1 && (
+                                                            <div className="thumb-count-overlay">+{fb.files.length - 1}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="card-v2-footer">
+                                            <div className="action-hint">DETAYLARI GÖR</div>
+                                            {fb.status === 'replied' && (
+                                                <div className="replied-marker">✓ Yanıtlandı</div>
                                             )}
                                         </div>
                                     </div>
                                 ))}
                                 {feedbacks.filter(f => feedbackFilter === 'all' || f.status === feedbackFilter).length === 0 && (
-                                    <div className="no-feedback-state">Gösterilecek talep bulunmuyor.</div>
+                                    <div className="no-feedback-state-v2">
+                                        <div className="empty-icon-box">📬</div>
+                                        <p>Gösterilecek talep bulunmuyor.</p>
+                                    </div>
                                 )}
                             </div>
                         )}
