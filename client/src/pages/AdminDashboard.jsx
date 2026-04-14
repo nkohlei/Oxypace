@@ -301,7 +301,7 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
             <div className="modal-content-modern feedback-ticket-modal">
                 <div className="modal-header-modern">
                     <div className="ticket-header-info">
-                        <h2>#{feedback._id.substring(feedback._id.length - 6)} Talep Detayı</h2>
+                        <h2>#{feedback._id?.substring(feedback._id.length - 6) || '000000'} Talep Detayı</h2>
                         <span className={`status-badge-neon ${feedback.status}`}>{feedback.status === 'new' ? 'Bekliyor' : 'Yanıtlandı'}</span>
                     </div>
                     <button className="close-btn-modern" onClick={onClose}>&times;</button>
@@ -1445,7 +1445,7 @@ const AdminDashboard = () => {
                                                     />
                                                     <span>{fb.user ? `@${fb.user.username}` : 'Silinmiş Kullanıcı'}</span>
                                                 </div>
-                                                <p className="fb-v2-message-snippet">{fb.message.substring(0, 70)}...</p>
+                                                <p className="fb-v2-message-snippet">{fb.message ? fb.message.substring(0, 70) : 'Mesaj içeriği yok'}...</p>
                                             </div>
 
                                             {fb.files && fb.files.length > 0 && (
