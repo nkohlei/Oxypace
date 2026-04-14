@@ -54,7 +54,9 @@ router.post('/submit', protect, upload.array('files', 5), async (req, res) => {
             return res.status(400).json({ message: 'Lütfen tüm zorunlu alanları doldurun.' });
         }
 
-        const fileUrls = req.files ? req.files.map(file => file.location) : [];
+        const backendUrl = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+        const fileUrls = req.files ? req.files.map(file => `${backendUrl}/api/media/${file.key}`) : [];
+        console.log('📬 Feedback attachment URLs:', fileUrls);
 
         const feedback = await Feedback.create({
             user: req.user._id,
