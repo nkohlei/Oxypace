@@ -280,6 +280,76 @@ const AlertModal = ({ isOpen, onClose, onSubmit, portalName }) => {
     );
 };
 
+// Professional Feedback Response Modal
+const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
+    const [response, setResponse] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    if (!isOpen || !feedback) return null;
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        await onSubmit(feedback._id, response);
+        setSubmitting(false);
+        setResponse('');
+    };
+
+    return (
+        <div className="modal-overlay-modern">
+            <div className="modal-content-modern feedback-modal-content">
+                <div className="modal-header-modern">
+                    <h2>Talep Yanıtla</h2>
+                    <button className="close-btn-modern" onClick={onClose}>&times;</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="modal-body-modern">
+                        <div className="feedback-preview-box">
+                            <div className="preview-header">
+                                <span className="category-tag">{feedback.category}</span>
+                                <span className="user-tag">@{feedback.user.username}</span>
+                            </div>
+                            <h3>{feedback.subject}</h3>
+                            <p className="preview-msg">{feedback.message}</p>
+                            
+                            {feedback.files && feedback.files.length > 0 && (
+                                <div className="preview-attachments">
+                                    <label>Ekler:</label>
+                                    <div className="attachment-links">
+                                        {feedback.files.map((file, i) => (
+                                            <a key={i} href={file} target="_blank" rel="noreferrer">
+                                                Dosya {i + 1}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="reply-input-section">
+                            <label>Yanıtınız (Inbox üzerinden iletilecektir)</label>
+                            <textarea
+                                className="reason-input-modern"
+                                value={response}
+                                onChange={(e) => setResponse(e.target.value)}
+                                placeholder="Kullanıcıya yardımcı olacak detaylı bir yanıt yazın..."
+                                rows="6"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div className="modal-footer-modern">
+                        <button type="button" className="btn-modern-ghost" onClick={onClose}>İptal</button>
+                        <button type="submit" className="btn-modern-primary" disabled={submitting || !response.trim()}>
+                            {submitting ? 'GÖNDERİLİYOR...' : 'YANITI İLET'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
     const navigate = useNavigate();
@@ -354,6 +424,16 @@ const AdminDashboard = () => {
         },
     });
 
+    // Feedback Modal State
+    const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+    const [selectedFeedback, setSelectedFeedback] = useState(null);
+    const [feedbackFilter, setFeedbackFilter] = useState('new'); // 'new', 'replied', 'all'
+
+
+    // Feedbacks State
+    const [feedbacks, setFeedbacks] = useState([]);
+    const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
+
     useEffect(() => {
         if (activeTab === 'requests') {
             fetchRequests();
@@ -365,8 +445,35 @@ const AdminDashboard = () => {
             fetchContactMessages();
         } else if (activeTab === 'badges') {
             fetchAllBadges();
+        } else if (activeTab === 'feedback') {
+            fetchFeedbacks();
         }
     }, [activeTab, isOxypace]);
+
+    // Fetch Feedbacks for the dedicated tab
+    const fetchFeedbacks = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/feedback/admin/list');
+            setFeedbacks(data);
+            setUnreadFeedbackCount(data.filter(f => f.status === 'new').length);
+        } catch (err) {
+            setError('Geri bildirimler yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Auto-update unread count on mount
+    useEffect(() => {
+        const checkUnread = async () => {
+            try {
+                const { data } = await axios.get('/api/feedback/admin/list');
+                setUnreadFeedbackCount(data.filter(f => f.status === 'new').length);
+            } catch (err) {}
+        };
+        checkUnread();
+    }, []);
 
     const fetchContactMessages = async () => {
         setLoading(true);
@@ -388,6 +495,31 @@ const AdminDashboard = () => {
             ));
         } catch (err) {
             alert('Mesaj durumu güncellenemedi.');
+        }
+    };
+
+    const handleFeedbackReply = async (feedbackId, response) => {
+        try {
+            await axios.post(`/api/feedback/admin/reply/${feedbackId}`, { response });
+            setFeedbackModalOpen(false);
+            fetchFeedbacks();
+            alert('Yanıt iletildi!');
+        } catch (err) {
+            alert('Yanıt gönderilemedi.');
+        }
+    };
+
+    const handleFeedbackMigration = async () => {
+        if (!window.confirm('Eski iletişim verilerini yeni sisteme taşımak istiyor musunuz?')) return;
+        setLoading(true);
+        try {
+            const { data } = await axios.post('/api/feedback/admin/migrate');
+            alert(`${data.results.migrated} mesaj taşındı.`);
+            fetchFeedbacks();
+        } catch (err) {
+            alert('Taşıma hatası.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -746,6 +878,13 @@ const AdminDashboard = () => {
                     onClick={() => setActiveTab('portals')}
                 >
                     Portallar
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'feedback' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('feedback')}
+                >
+                    Talepler
+                    {unreadFeedbackCount > 0 && <span className="tab-badge">{unreadFeedbackCount}</span>}
                 </button>
                 <button
                     className={`admin-tab ${activeTab === 'badges' ? 'active' : ''}`}
@@ -1199,7 +1338,73 @@ const AdminDashboard = () => {
                         </div>
                     );
                 })()}
+
+                {activeTab === 'feedback' && (
+                    <div className="feedback-section fade-in">
+                        <div className="section-header-modern">
+                            <div className="header-left">
+                                <h2>Community Feedback / Talepler</h2>
+                                <p>Kullanıcılardan gelen öneri, şikayet ve hata bildirimlerini yönetin.</p>
+                            </div>
+                            <div className="header-right">
+                                <button onClick={handleFeedbackMigration} className="btn-modern-ghost migration-btn">
+                                    Eski Verileri Taşı
+                                </button>
+                                <select 
+                                    className="filter-select-modern"
+                                    value={feedbackFilter}
+                                    onChange={(e) => setFeedbackFilter(e.target.value)}
+                                >
+                                    <option value="all">Tüm Talepler</option>
+                                    <option value="new">Sadece Yeniler</option>
+                                    <option value="replied">Yanıtlananlar</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {loading ? (
+                            <div className="admin-loading">Veriler Çekiliyor...</div>
+                        ) : (
+                            <div className="feedback-list-grid">
+                                {feedbacks
+                                    .filter(f => feedbackFilter === 'all' || f.status === feedbackFilter)
+                                    .map(fb => (
+                                    <div 
+                                        key={fb._id} 
+                                        className={`feedback-dashboard-card ${fb.status}`}
+                                        onClick={() => { setSelectedFeedback(fb); setFeedbackModalOpen(true); }}
+                                    >
+                                        <div className="card-top">
+                                            <span className={`cat-badge ${fb.category?.toLowerCase()}`}>{fb.category}</span>
+                                            <span className="date-tag">{new Date(fb.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                        <h3 className="fb-subject">{fb.subject}</h3>
+                                        <div className="fb-sender">
+                                            <img src={fb.user?.profile?.avatar} alt="" className="mini-avatar" />
+                                            <span>@{fb.user?.username}</span>
+                                        </div>
+                                        <p className="fb-preview">{fb.message.substring(0, 80)}...</p>
+                                        <div className="card-footer">
+                                            {fb.status === 'replied' ? (
+                                                <span className="status-indicator success">✓ Yanıtlandı</span>
+                                            ) : (
+                                                <span className="status-indicator pending">● Bekliyor</span>
+                                            )}
+                                            {fb.files && fb.files.length > 0 && (
+                                                <span className="file-count-tag">📎 {fb.files.length} Dosya</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {feedbacks.filter(f => feedbackFilter === 'all' || f.status === feedbackFilter).length === 0 && (
+                                    <div className="no-feedback-state">Gösterilecek talep bulunmuyor.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
 
             {/* Reason Modal */}
             <ReasonModal
@@ -1216,6 +1421,15 @@ const AdminDashboard = () => {
                 onSubmit={handleAlertSubmit}
                 portalName={alertPortalName}
             />
+
+            {/* Feedback Response Modal */}
+            <FeedbackResponseModal 
+                isOpen={feedbackModalOpen} 
+                onClose={() => setFeedbackModalOpen(false)}
+                feedback={selectedFeedback}
+                onSubmit={handleFeedbackReply}
+            />
+
 
             {/* Badge Creator/Editor Modal */}
             {badgeModalOpen && (
