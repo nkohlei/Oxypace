@@ -113,11 +113,12 @@ router.post('/admin/reply/:id', protect, admin, async (req, res) => {
         // 2. Send System Message (only if user exists)
         if (feedback.user) {
             const supportAccount = await getSystemSupportAccount();
+            const ticketIdSnippet = feedback._id.toString().substring(feedback._id.toString().length - 6);
             
             const systemMessage = await Message.create({
                 sender: supportAccount._id,
                 recipient: feedback.user._id,
-                content: `Merhaba ${feedback.user.username || 'Kullanıcı'},\n\n"${feedback.subject}" konulu geri bildiriminiz için teşekkür ederiz. Ekibimizin yanıtı şu şekildedir:\n\n---\n${response}\n---\n\nHerhangi başka bir sorunuz olursa buradan yazabilirsiniz.`,
+                content: `Geri bildiriminiz (#${ticketIdSnippet}) hakkında yanıt aldınız:\n\n${response}\n\nDetaylar için geri bildirim sayfasını kontrol edebilirsiniz.`,
             });
 
             // Emit socket if available
