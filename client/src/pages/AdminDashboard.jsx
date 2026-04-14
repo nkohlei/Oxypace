@@ -323,7 +323,7 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
                         </div>
 
                         <div className="request-content-scroller">
-                            <div className={`category-chip ${feedback.category?.toLowerCase().replace(/\s+/g, '-')}`}>{feedback.category}</div>
+                            <div className={`category-chip ${(feedback.category?.toLowerCase() || 'genel').replace(/\s+/g, '-')}`}>{feedback.category || 'Genel'}</div>
                             <h3 className="ticket-subject">{feedback.subject}</h3>
                             <div className="ticket-message-block">
                                 {feedback.message}
@@ -1429,9 +1429,9 @@ const AdminDashboard = () => {
                                         onClick={() => { setSelectedFeedback(fb); setFeedbackModalOpen(true); }}
                                     >
                                         <div className="card-v2-header">
-                                            <div className={`status-dot ${fb.status}`}></div>
-                                            <span className={`category-tag-v2 ${fb.category?.toLowerCase().replace(/\s+/g, '-')}`}>{fb.category}</span>
-                                            <span className="date-text-v2">{new Date(fb.createdAt).toLocaleDateString('tr-TR')}</span>
+                                            <div className={`status-dot ${fb.status || 'new'}`}></div>
+                                            <span className={`category-tag-v2 ${(fb.category?.toLowerCase() || 'genel').replace(/\s+/g, '-')}`}>{fb.category || 'Genel'}</span>
+                                            <span className="date-text-v2">{fb.createdAt ? new Date(fb.createdAt).toLocaleDateString('tr-TR') : '-'}</span>
                                         </div>
 
                                         <div className="card-v2-content">
