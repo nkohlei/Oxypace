@@ -60,7 +60,7 @@ const Portal = lazyWithRetry(() => import('./pages/Portal'));
 const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
 const EarthSimulation = lazyWithRetry(() => import('./pages/MapDirectory/EarthSimulation'));
 const Feedback = lazyWithRetry(() => import('./pages/Feedback'));
-const AdminFeedback = lazyWithRetry(() => import('./pages/AdminFeedback'));
+
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Device } from '@capacitor/device';
@@ -339,14 +339,6 @@ const AppLayout = () => {
                                     element={
                                         <PrivateRoute>
                                             <AdminDashboard />
-                                        </PrivateRoute>
-                                    }
-                                />
-                                <Route
-                                    path="/admin/feedback"
-                                    element={
-                                        <PrivateRoute>
-                                            <AdminFeedback />
                                         </PrivateRoute>
                                     }
                                 />
