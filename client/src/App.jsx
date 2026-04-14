@@ -59,6 +59,8 @@ const Contact = lazyWithRetry(() => import('./pages/Contact'));
 const Portal = lazyWithRetry(() => import('./pages/Portal'));
 const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
 const EarthSimulation = lazyWithRetry(() => import('./pages/MapDirectory/EarthSimulation'));
+const Feedback = lazyWithRetry(() => import('./pages/Feedback'));
+const AdminFeedback = lazyWithRetry(() => import('./pages/AdminFeedback'));
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Device } from '@capacitor/device';
@@ -167,7 +169,7 @@ const AppLayout = () => {
 
     // Map and admin pages get a clean full-screen layout — no sidebar, no footer
     const isMapPage = location.pathname === '/map';
-    const isAdminPage = location.pathname === '/admin';
+    const isAdminPage = location.pathname.startsWith('/admin');
     const isCleanLayout = isMapPage || isAdminPage;
 
     // Route-based sidebar visibility for mobile (Discord-style)
@@ -337,6 +339,22 @@ const AppLayout = () => {
                                     element={
                                         <PrivateRoute>
                                             <AdminDashboard />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/admin/feedback"
+                                    element={
+                                        <PrivateRoute>
+                                            <AdminFeedback />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/feedback"
+                                    element={
+                                        <PrivateRoute>
+                                            <Feedback />
                                         </PrivateRoute>
                                     }
                                 />

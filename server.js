@@ -206,9 +206,11 @@ app.use('/api/voice', voiceRoutes);
 app.use('/api/translate', translateRoutes);
 
 import contactRoutes from './routes/contact.js';
+import feedbackRoutes from './routes/feedback.js';
 
 // ...
 app.use('/api/contact', contactRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // DIRECT SITEMAP ROUTE
 app.get(['/sitemap.xml', '/api/sitemap.xml'], async (req, res) => {

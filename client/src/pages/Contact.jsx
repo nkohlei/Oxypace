@@ -7,39 +7,14 @@ import axios from 'axios';
 import '../AppLayout.css';
 
 const Contact = () => {
+    const navigate = useNavigate();
     const { user, loading: authLoading } = useAuth();
-    const [formData, setFormData] = useState({
-        subject: 'Genel',
-        message: ''
-    });
-    const [status, setStatus] = useState('idle'); // idle, loading, success, error
-    const [errorMessage, setErrorMessage] = useState('');
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!user) {
-            setErrorMessage('Mesaj göndermek için giriş yapmalısınız.');
-            return;
+    // Redirect logged in users to the new feedback system
+    useEffect(() => {
+        if (user && !authLoading) {
+            navigate('/feedback');
         }
-
-        setStatus('loading');
-        setErrorMessage('');
-
-        try {
-            await axios.post('/api/contact', formData);
-            setStatus('success');
-            setFormData({ subject: 'Genel', message: '' });
-        } catch (err) {
-            console.error(err);
-            setStatus('error');
-            setErrorMessage(err.response?.data?.message || 'Bir hata oluştu, lütfen tekrar deneyin.');
-        }
-    };
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+    }, [user, authLoading, navigate]);
 
     // Giriş yapmamış kullanıcılar için gösterilecek uyarı componenti
     const GuestsNotice = () => (
@@ -53,7 +28,7 @@ const Contact = () => {
         }}>
             <h3 style={{ color: 'var(--text-primary)', marginBottom: '15px' }}>Bize Ulaşmak İçin Giriş Yapın</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '25px' }}>
-                Güvenlik ve spam önleme politikalarımız gereği, sadece kayıtlı kullanıcılarımız destek formu üzerinden mesaj gönderebilir.
+                Güvenlik ve spam önleme politikalarımız gereği, sadece kayıtlı kullanıcılarımız geri bildirim/destek formu üzerinden mesaj gönderebilir.
             </p>
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                 <Link to="/login" className="btn btn-primary" style={{ padding: '10px 25px', textDecoration: 'none' }}>
