@@ -1,13 +1,9 @@
-/**
- * Constructs a full URL for an image path.
- * If the path is a local upload (starts with /uploads), it prepends the API root URL.
- * If the path is already absolute (http...), it returns it as is.
- */
 export const getImageUrl = (path) => {
     if (!path) return null;
 
-    // Fix legacy URLs stored with 'undefined' prefix from missing BACKEND_URL env var
     let cleanPath = path;
+
+    // Fix legacy URLs stored with 'undefined' prefix
     if (cleanPath.startsWith('undefined/')) {
         cleanPath = cleanPath.replace('undefined/', '/');
     }
@@ -15,23 +11,41 @@ export const getImageUrl = (path) => {
         cleanPath = cleanPath.replace('undefined', '');
     }
 
-    if (cleanPath.startsWith('http') || cleanPath.startsWith('blob:')) return cleanPath;
+    const r2Domain = import.meta.env.VITE_R2_PUBLIC_DOMAIN;
 
-    // Get Base URL (e.g., https://api.com/api)
+    // 1. If it's an absolute URL
+    if (cleanPath.startsWith('http')) {
+        // Fix: If it's an R2 URL but contains legacy /uploads/ prefix, strip it
+        if (r2Domain && cleanPath.includes(r2Domain)) {
+            cleanPath = cleanPath.replace('/uploads/', '/');
+        }
+        return cleanPath;
+    }
+
+    if (cleanPath.startsWith('blob:')) return cleanPath;
+
+    // 2. If it's a relative path, resolve it
     let baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-    // We need the ROOT URL, not the API URL.
-    // Usually API URL ends with '/api', so we strip it.
+    // If R2 domain is available, we use it for all relative paths
+    if (r2Domain) {
+        // Strip leading prefixes often found in the DB
+        let r2Path = cleanPath;
+        if (r2Path.startsWith('/uploads/')) r2Path = r2Path.substring(9);
+        else if (r2Path.startsWith('uploads/')) r2Path = r2Path.substring(8);
+        else if (r2Path.startsWith('/')) r2Path = r2Path.substring(1);
+        
+        return `${r2Domain.endsWith('/') ? r2Domain : r2Domain + '/'}${r2Path}`;
+    }
+
+    // Fallback to API Proxy (legacy behavior)
     if (baseUrl.endsWith('/api')) {
         baseUrl = baseUrl.slice(0, -4);
     }
-    // Remove trailing slash if present
     if (baseUrl.endsWith('/')) {
         baseUrl = baseUrl.slice(0, -1);
     }
 
-    // Ensure path starts with /
     const safePath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
-
     return `${baseUrl}${safePath}`;
 };
