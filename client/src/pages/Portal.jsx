@@ -84,7 +84,10 @@ const Portal = () => {
 
             if (isTargetPortal && isTargetChannel) {
                 console.log('✅ Realtime Post Accepted for this view');
-                setPosts([newPost, ...postsRef.current]);
+                setPosts((prev) => {
+                    if (prev.some(p => p._id === newPost._id)) return prev;
+                    return [newPost, ...prev];
+                });
             } else {
                 console.log('🚫 Realtime Post Rejected: Wrong context', {
                     postPortal: newPost.portal,
@@ -98,9 +101,7 @@ const Portal = () => {
         const handleUpdatePost = (updatedPost) => {
             const isTargetPortal = String(updatedPost.portal) === String(id);
             if (isTargetPortal) {
-                const addPostEvent = useGlobalStore.getState().addPostEvent; // Fallback to store method
-                // Actually, since we have setPosts, we can just update the local state correctly
-                setPosts(postsRef.current.map(p => p._id === updatedPost._id ? updatedPost : p));
+                setPosts((prev) => prev.map(p => p._id === updatedPost._id ? updatedPost : p));
             }
         };
 
@@ -223,7 +224,7 @@ const Portal = () => {
         };
 
         // Add to feed immediately
-        setPosts([optimisticPost, ...posts]);
+        setPosts((current) => [optimisticPost, ...current]);
 
         // Clear input immediately
         setMessageText('');
@@ -268,14 +269,24 @@ const Portal = () => {
             const res = await axios.post('/api/posts', formData, config);
 
             // 2. Success: Replace temp post with real data
-            setPosts((currentPosts) => currentPosts.map((p) => (p._id === tempId ? res.data : p)));
+            const tempStrId = String(tempId);
+            setPosts((currentPosts) => {
+                const responseId = String(res.data._id);
+                const alreadyExists = currentPosts.some(p => String(p._id) === responseId);
+                
+                if (alreadyExists) {
+                    // Socket already added it, just remove the optimistic temp
+                    return currentPosts.filter(p => String(p._id) !== tempStrId);
+                }
+                return currentPosts.map((p) => (String(p._id) === tempStrId ? res.data : p));
+            });
         } catch (err) {
             console.error('Send message failed', err);
             alert(`Mesaj gönderilemedi: ${err.response?.data?.message || err.message}`);
             // console.error(err);
 
             // 3. Failure: Remove optimistic post and restore input (optional)
-            setPosts((currentPosts) => currentPosts.filter((p) => p._id !== tempId));
+            setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
             setMessageText(currentData.content);
             setMediaFile(currentData.media);
         }
@@ -515,7 +526,7 @@ const Portal = () => {
     }, [id]);
 
     const handleDeletePost = (postId) => {
-        setPosts((prevPosts) => prevPosts.filter((p) => p._id !== postId));
+        setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
     };
 
     const handlePin = async (postId) => {

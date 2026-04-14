@@ -44,13 +44,17 @@ const Inbox = () => {
     useEffect(() => {
         if (socket) {
             const handleNewMessage = (message) => {
+                const messageSenderId = String(message.sender._id || message.sender);
+                const messageRecipientId = String(message.recipient._id || message.recipient);
+                const currentUserId = String(user._id);
+                const selectedUserId = selectedUser ? String(selectedUser._id) : null;
+
                 if (
-                    (message.sender._id === selectedUser?._id &&
-                        message.recipient._id === user._id) ||
-                    (message.sender._id === user._id && message.recipient._id === selectedUser?._id)
+                    (messageSenderId === selectedUserId && messageRecipientId === currentUserId) ||
+                    (messageSenderId === currentUserId && messageRecipientId === selectedUserId)
                 ) {
                     setMessages((prev) => {
-                        if (prev.some((m) => m._id === message._id)) return prev;
+                        if (prev.some((m) => String(m._id) === String(message._id))) return prev;
                         return [...prev, message];
                     });
                 }
@@ -204,13 +208,15 @@ const Inbox = () => {
             const response = await axios.post('/api/messages', formData);
 
             setMessages((prev) => {
-                const alreadyExists = prev.some((m) => m._id === response.data._id);
+                const responseId = String(response.data._id);
+                const alreadyExists = prev.some((m) => String(m._id) === responseId);
+                
                 if (alreadyExists) {
                     // Socket already added the real message, just remove the optimistic one
-                    return prev.filter((msg) => msg._id !== optimisticMessage._id);
+                    return prev.filter((msg) => String(msg._id) !== String(optimisticMessage._id));
                 } else {
                     // Replace optimistic message with the real one
-                    return prev.map((msg) => (msg._id === optimisticMessage._id ? response.data : msg));
+                    return prev.map((msg) => (String(msg._id) === String(optimisticMessage._id) ? response.data : msg));
                 }
             });
         } catch (err) {
@@ -225,7 +231,7 @@ const Inbox = () => {
 
     const handleDeleteMessage = async (messageId) => {
         const previousMessages = [...messages];
-        setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+        setMessages((prev) => prev.filter((msg) => String(msg._id) !== String(messageId)));
 
         try {
             await axios.delete(`/api/messages/${messageId}`);
