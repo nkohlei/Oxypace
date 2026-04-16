@@ -101,7 +101,7 @@ const io = new Server(httpServer, {
     cors: corsOptions,
 });
 
-// Make io accessible in routes
+// Push Trigger: efee3de
 app.set('io', io);
 
 // Connect to MongoDB
