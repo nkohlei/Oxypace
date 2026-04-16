@@ -508,8 +508,9 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            // Store relative path - client's getImageUrl will construct full URL
-            const publicUrl = `/api/media/${req.file.key}`;
+            const publicUrl = process.env.R2_PUBLIC_DOMAIN 
+                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
+                : `/api/media/${req.file.key}`;
             user.profile.avatar = publicUrl;
             await user.save();
 
@@ -551,8 +552,9 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            // Store relative path - client's getImageUrl will construct full URL
-            const publicUrl = `/api/media/${req.file.key}`;
+            const publicUrl = process.env.R2_PUBLIC_DOMAIN 
+                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
+                : `/api/media/${req.file.key}`;
             user.profile.coverImage = publicUrl;
             await user.save();
 

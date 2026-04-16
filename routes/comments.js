@@ -99,8 +99,9 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
         let mediaType = 'none';
 
         if (req.file) {
-            // Store relative path - client's getImageUrl will construct full URL
-            media = `/api/media/${req.file.key}`;
+            media = process.env.R2_PUBLIC_DOMAIN 
+                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
+                : `/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -170,8 +171,9 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
         let mediaType = 'none';
 
         if (req.file) {
-            // Store relative path - client's getImageUrl will construct full URL
-            media = `/api/media/${req.file.key}`;
+            media = process.env.R2_PUBLIC_DOMAIN 
+                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
+                : `/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 

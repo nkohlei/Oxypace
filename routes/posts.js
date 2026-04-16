@@ -84,9 +84,10 @@ router.post(
             }
 
             if (req.file) {
-                // Use Koyeb backend proxy - more reliable than R2.dev or workers.dev
-                const backendUrl = 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-                postData.media = `${backendUrl}/api/media/${req.file.key}`;
+                const publicUrl = process.env.R2_PUBLIC_DOMAIN 
+                    ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
+                    : `/api/media/${req.file.key}`;
+                postData.media = publicUrl;
                 console.log('📤 Media URL:', postData.media);
 
                 if (req.file.mimetype.includes('video')) {

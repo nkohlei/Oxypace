@@ -16,27 +16,13 @@ export const getImageUrl = (path) => {
 
     // 1. Handle Absolute URLs
     if (cleanPath.startsWith('http')) {
-        // If it's an R2 URL, convert to Absolute Koyeb Proxy (Fixes CORS/Mobile Hotlinking)
-        if (r2Domain && cleanPath.includes(r2Domain)) {
-            try {
-                const url = new URL(cleanPath);
-                // Extract everything after the domain (e.g., uploads/file.jpg)
-                const pathPart = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-                
-                // Return full absolute Koyeb proxy URL
-                return `${baseUrl}/api/media/${pathPart}`;
-            } catch (err) {
-                console.error('URL Parsing Error:', err);
-            }
-        }
-        // If it's already a Koyeb or other absolute URL, return it
+        // Return absolute URLs as is (this preserves Cloudflare, S3, or external links)
         return cleanPath;
     }
 
     if (cleanPath.startsWith('blob:')) return cleanPath;
 
-    // 2. Handle Relative Paths (Legacy or Proxy)
-    // Normalize path (ensure no leading slash)
+    // 2. Handle Relative Paths
     let relativePath = cleanPath;
 
     if (relativePath.startsWith('/api/media/')) {
@@ -47,6 +33,10 @@ export const getImageUrl = (path) => {
         relativePath = relativePath.substring(1);
     }
 
-    // Always resolve relative paths through the ABSOLUTE Koyeb proxy
+    // Resolve relative paths through the Cloudflare direct URL if available, otherwise proxy
+    if (r2Domain) {
+        return `${r2Domain}/${relativePath}`;
+    }
+
     return `${baseUrl}/api/media/${relativePath}`;
 };
