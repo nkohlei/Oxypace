@@ -701,6 +701,11 @@ const PortalSettingsModal = ({
                                             src={getImageUrl(portal.banner)}
                                             alt=""
                                             className="banner-img"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = 'https://placehold.co/1200x300/222/555?text=Banner+Bulunamadı';
+                                                e.target.style.opacity = '0.5';
+                                            }}
                                         />
                                     ) : (
                                         <div style={{ color: '#72767d' }}>Banner Yok</div>
@@ -718,6 +723,10 @@ const PortalSettingsModal = ({
                                             src={getImageUrl(portal.avatar)}
                                             alt=""
                                             className="avatar-img"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(portal.name)}&background=2b2d31&color=fff`;
+                                            }}
                                         />
                                     ) : (
                                         <div

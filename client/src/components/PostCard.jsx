@@ -340,6 +340,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             decoding="async"
                             width="40"
                             height="40"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(author.username)}&background=2b2d31&color=fff`;
+                            }}
                         />
                     ) : (
                         <div className="author-placeholder">
@@ -631,7 +635,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 loading="lazy"
                                 decoding="async"
                                 onError={(e) => {
-                                    e.target.style.display = 'none';
+                                    // Instead of hiding, show a professional placeholder for broken images
+                                    e.target.onerror = null; // Prevent infinite loop
+                                    e.target.src = 'https://placehold.co/600x400/222/555?text=Görsel+Bulunamadı';
+                                    e.target.style.opacity = '0.5';
                                 }}
                             />
                         )}

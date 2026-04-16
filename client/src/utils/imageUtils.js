@@ -37,9 +37,12 @@ export const getImageUrl = (path) => {
         let relativePath = cleanPath;
         if (relativePath.startsWith('/api/media/')) relativePath = relativePath.substring(11);
         else if (relativePath.startsWith('api/media/')) relativePath = relativePath.substring(10);
+        
+        // Remove leading slash if any
         if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
 
-        // Resolve through the backend proxy
+        // Case C: Standard relative paths stored in DB (uploads/..., avatars/...)
+        // We route these through the backend proxy for consistency and to handle both local/R2
         return `${baseUrl}/api/media/${relativePath}`;
     } catch (err) {
         console.error('getImageUrl Error:', err);

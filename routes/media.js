@@ -2,6 +2,12 @@ import express from 'express';
 import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import r2 from '../config/r2.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -57,7 +63,17 @@ router.get('/*', async (req, res) => {
             }
         }
 
-        // --- CASE 2: INTERNAL R2 BUCKET LOGIC ---
+        // --- CASE 2: LOCAL STORAGE FALLBACK (Koyeb Persistent Volume / Local Dev) ---
+        const localPath = path.join(__dirname, '..', filePath);
+        if (fs.existsSync(localPath) && fs.lstatSync(localPath).isFile()) {
+            console.log('📂 Serving Local Media:', filePath);
+            res.set('Cache-Control', 'public, max-age=31536000, immutable');
+            res.set('Access-Control-Allow-Origin', '*');
+            res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+            return res.sendFile(localPath);
+        }
+
+        // --- CASE 3: INTERNAL R2 BUCKET LOGIC ---
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
         const r2Domain = process.env.R2_PUBLIC_DOMAIN;
 
