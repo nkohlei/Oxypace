@@ -17,19 +17,26 @@ export const getImageUrl = (path) => {
     try {
         // 1. Handle Absolute URLs
         if (cleanPath.startsWith('http')) {
-            // Case A: Cloudflare R2 URLs (Optimize for direct redirect)
-            if (r2Domain && cleanPath.includes(r2Domain)) {
-                try {
-                    const url = new URL(cleanPath);
-                    const pathPart = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-                    return `${baseUrl}/api/media/${pathPart}`;
-                } catch (urlErr) {
-                    console.error('R2 URL Parsing Error:', urlErr);
+            const url = new URL(cleanPath);
+            const isR2Domain = r2Domain && cleanPath.includes(r2Domain);
+            const pathSegments = url.pathname.split('/').filter(Boolean);
+            const isR2Folder = ['posts', 'avatars', 'banners', 'feedback', 'uploads'].some(f => pathSegments.includes(f));
+
+            // Case A: Cloudflare R2 URLs (Return DIRECT for branding)
+            if (isR2Domain || isR2Folder) {
+                // If it's already an absolute R2-looking URL, return it as is (or normalize to r2Domain if available)
+                if (isR2Domain) return cleanPath;
+                
+                // If it has an R2 folder but wrong domain, normalize to our R2 domain
+                if (isR2Folder && r2Domain) {
+                    const folderIndex = pathSegments.findIndex(s => ['posts', 'avatars', 'banners', 'feedback', 'uploads'].includes(s));
+                    const key = pathSegments.slice(folderIndex).join('/');
+                    return `${r2Domain}/${key}`;
                 }
+                return cleanPath;
             }
 
-            // Case B: External Absolute URLs (NASA, Gamespot, etc.)
-            // We PROXY these to avoid Hotlinking/CORS issues
+            // Case B: External Absolute URLs (NASA, Gamespot, etc. - Proxy to bypass CORS)
             return `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
@@ -37,23 +44,14 @@ export const getImageUrl = (path) => {
 
         // 2. Handle Relative Paths (uploads/..., avatars/...)
         let relativePath = cleanPath;
+        if (relativePath.startsWith('/api/media/')) relativePath = relativePath.substring(11);
+        else if (relativePath.startsWith('api/media/')) relativePath = relativePath.substring(10);
+        if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
 
-        // Normalize the path by removing potential prefixes
-        if (relativePath.startsWith('/api/media/')) {
-            relativePath = relativePath.substring(11);
-        } else if (relativePath.startsWith('api/media/')) {
-            relativePath = relativePath.substring(10);
-        }
-
-        // Ensure no leading slash in relativePath for consistent joining
-        if (relativePath.startsWith('/')) {
-            relativePath = relativePath.substring(1);
-        }
-
-        // Resolve through the backend proxy
+        // Resolve through the backend proxy for safety
         return `${baseUrl}/api/media/${relativePath}`;
     } catch (err) {
         console.error('getImageUrl Error:', err);
-        return cleanPath; // Safety fallback
+        return cleanPath;
     }
 };
