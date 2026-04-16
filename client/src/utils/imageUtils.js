@@ -17,24 +17,25 @@ export const getImageUrl = (path) => {
     try {
         // 1. Handle Absolute URLs
         if (cleanPath.startsWith('http')) {
-            // Normalize path to backend proxy for R2-hosted images (ensures performance & consistency)
+            // Case A: Cloudflare R2 URLs (Optimize for direct redirect)
             if (r2Domain && cleanPath.includes(r2Domain)) {
                 try {
                     const url = new URL(cleanPath);
-                    // Extract everything after the domain (e.g., avatars/my-file.png)
                     const pathPart = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
                     return `${baseUrl}/api/media/${pathPart}`;
                 } catch (urlErr) {
-                    console.error('URL Parsing Error:', urlErr);
+                    console.error('R2 URL Parsing Error:', urlErr);
                 }
             }
-            // Return other absolute URLs as is
-            return cleanPath;
+
+            // Case B: External Absolute URLs (NASA, Gamespot, etc.)
+            // We PROXY these to avoid Hotlinking/CORS issues
+            return `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
         if (cleanPath.startsWith('blob:')) return cleanPath;
 
-        // 2. Handle Relative Paths
+        // 2. Handle Relative Paths (uploads/..., avatars/...)
         let relativePath = cleanPath;
 
         // Normalize the path by removing potential prefixes
@@ -49,7 +50,7 @@ export const getImageUrl = (path) => {
             relativePath = relativePath.substring(1);
         }
 
-        // Resolve through the backend proxy for optimal streaming and redirection
+        // Resolve through the backend proxy
         return `${baseUrl}/api/media/${relativePath}`;
     } catch (err) {
         console.error('getImageUrl Error:', err);

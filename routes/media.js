@@ -1,59 +1,83 @@
 import express from 'express';
 import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import axios from 'axios';
 import r2 from '../config/r2.js';
 
 const router = express.Router();
 
 /**
  * @route   GET /api/media/*
- * @desc    Proxy R2 media files through backend. FULL HTTP 206 RANGE SUPPORT ENFORCED.
+ * @desc    Smart Media Resolver. 
+ *          1. External URLs: Proxies them to bypass Hotlinking/CORS.
+ *          2. R2 Keys (Images): Redirects to Cloudflare Edge for speed.
+ *          3. R2 Keys (Video/Audio): Proxies with Range support for decoding.
  * @access  Public
  */
 router.get('/*', async (req, res) => {
     try {
-        const filePath = req.params[0];
+        let filePath = req.params[0];
 
         if (!filePath) {
             return res.status(400).json({ message: 'File path required' });
         }
 
+        // Decode URL if it was encoded (especially for absolute external URLs)
+        try {
+            filePath = decodeURIComponent(filePath);
+        } catch (e) {
+            // If decoding fails, continue with original
+        }
+
+        // --- CASE 1: EXTERNAL URL PROXYING (News Images, External GIFs) ---
+        if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+            console.log('🌐 Proxying External Media:', filePath);
+            
+            try {
+                const response = await axios({
+                    method: 'get',
+                    url: filePath,
+                    responseType: 'stream',
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        'Referer': new URL(filePath).origin // Mimic self-origin referer to bypass simple hotlink checks
+                    }
+                });
+
+                // Forward essential headers
+                res.set('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+                res.set('Cache-Control', 'public, max-age=31536000');
+                res.set('Access-Control-Allow-Origin', '*');
+                res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+
+                return response.data.pipe(res);
+            } catch (proxyError) {
+                console.error('❌ External Proxy Failed:', filePath, proxyError.message);
+                // If external fails, try to redirect as a last resort or return 404
+                return res.status(404).json({ message: 'External media not found' });
+            }
+        }
+
+        // --- CASE 2: INTERNAL R2 BUCKET LOGIC ---
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
         const range = req.headers.range;
 
-        // --- HTTP 206 PARTIAL CONTENT SUPPORT FOR VIDEO AUDIO DECODING ---
+        // A. Video/Audio or Range Requests (Must be proxied for HTTP 206)
         if (range) {
             try {
-                // 1. Get the total file size from R2
-                const headCommand = new HeadObjectCommand({
-                    Bucket: bucketName,
-                    Key: filePath
-                });
+                const headCommand = new HeadObjectCommand({ Bucket: bucketName, Key: filePath });
                 const headResponse = await r2.send(headCommand);
                 const totalSize = headResponse.ContentLength;
 
-                // 2. Parse the Range header provided by Chrome/Safari
                 const parts = range.replace(/bytes=/, "").split("-");
                 let start = parseInt(parts[0], 10);
-                
-                // Chrome usually sends 'bytes=0-', meaning "give me an appropriate chunk"
-                // We default to a generous ~5MB chunk, or end of file
                 let end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + (5 * 1024 * 1024), totalSize - 1);
 
                 if (isNaN(start)) start = 0;
-                
-                // Bounds enforcement
-                if (start >= totalSize || end >= totalSize) {
-                    end = totalSize - 1;
-                }
-                if (start > end) {
-                     return res.status(416).send(`Requested range not satisfiable\n${start} >= ${totalSize}`);
-                }
+                if (start >= totalSize || end >= totalSize) end = totalSize - 1;
+                if (start > end) return res.status(416).send(`Requested range not satisfiable`);
 
                 const chunksize = (end - start) + 1;
-
-                console.log(`🎥 Stream Request: ${filePath} | ${start}-${end}/${totalSize} (${(chunksize/1024).toFixed(1)} KB)`);
-
-                // 3. Request the precise byte range from R2
                 const getCommand = new GetObjectCommand({
                     Bucket: bucketName,
                     Key: filePath,
@@ -61,54 +85,37 @@ router.get('/*', async (req, res) => {
                 });
 
                 const response = await r2.send(getCommand);
-
-                // 4. Send the required HTTP 206 headers so the browser unblocks Audio decoding
                 res.writeHead(206, {
                     'Content-Range': `bytes ${start}-${end}/${totalSize}`,
                     'Accept-Ranges': 'bytes',
                     'Content-Length': chunksize,
-                    'Content-Type': response.ContentType || 'video/mp4', // Help browser infer mp4
+                    'Content-Type': response.ContentType || 'video/mp4',
                     'Access-Control-Allow-Origin': '*',
                     'Cross-Origin-Resource-Policy': 'cross-origin'
                 });
 
-                response.Body.pipe(res);
-                return;
-
+                return response.Body.pipe(res);
             } catch (headError) {
-                 if (headError.name === 'NotFound' || headError.name === 'NoSuchKey') {
-                     return res.status(404).json({ message: 'File not found' });
-                 }
-                 console.error('🎥 Head Error in Range Request:', headError);
-                 throw headError;
+                if (headError.name === 'NotFound' || headError.name === 'NoSuchKey') return res.status(404).json({ message: 'File not found' });
+                throw headError;
             }
         }
 
-        // --- HTTP 200/302 INTELLIGENT ROUTING (Images, initial GIF loads) ---
+        // B. Standard R2 Images/Assets (Redirect to Cloudflare Edge for speed)
         const r2PublicDomain = process.env.R2_PUBLIC_DOMAIN;
-
-        // If we have a public domain and it's not a range request, REDIRECT to Cloudflare directly.
-        // This offloads traffic from Koyeb and uses Cloudflare's global CDN/Edge Caching.
-        if (r2PublicDomain && !range) {
-            console.log('🚀 Redirecting IMAGE/ASSET to Cloudflare:', filePath);
-            // Construct the direct URL
-            const directUrl = `${r2PublicDomain}/${filePath}`;
-            return res.redirect(302, directUrl);
+        if (r2PublicDomain) {
+            console.log('🚀 Redirecting internal asset to Cloudflare:', filePath);
+            return res.redirect(302, `${r2PublicDomain}/${filePath}`);
         }
 
-        // Fallback: Standard Proxy (If no public domain or redirection is disabled)
-        console.log('📷 Standard Proxy Request:', filePath);
-
-        const command = new GetObjectCommand({
-            Bucket: bucketName,
-            Key: filePath,
-        });
-
+        // Fallback: Full Proxy from S3 (If no domain or other issues)
+        console.log('📷 Standard R2 Proxy:', filePath);
+        const command = new GetObjectCommand({ Bucket: bucketName, Key: filePath });
         const response = await r2.send(command);
 
         res.set('Content-Type', response.ContentType || 'application/octet-stream');
         res.set('Content-Length', response.ContentLength);
-        res.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        res.set('Cache-Control', 'public, max-age=31536000');
         res.set('Accept-Ranges', 'bytes');
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -116,13 +123,9 @@ router.get('/*', async (req, res) => {
         response.Body.pipe(res);
 
     } catch (error) {
-        console.error('Media proxy error:', error.message);
-
-        if (error.name === 'NoSuchKey' || error.name === 'NotFound') {
-            return res.status(404).json({ message: 'File not found' });
-        }
-
-        res.status(500).json({ message: 'Failed to fetch media' });
+        console.error('Media Resolver Error:', error.message);
+        if (error.name === 'NoSuchKey' || error.name === 'NotFound') return res.status(404).json({ message: 'File not found' });
+        res.status(500).json({ message: 'Failed to resolve media' });
     }
 });
 
