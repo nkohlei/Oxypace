@@ -17,17 +17,8 @@ export const getImageUrl = (path) => {
     try {
         // 1. Handle Absolute URLs
         if (cleanPath.startsWith('http')) {
-            const url = new URL(cleanPath);
-            const isR2Domain = r2Domain && cleanPath.includes(r2Domain);
-
-            // Case A: Cloudflare R2 Asset (Route through proxy for SSL/Browser stability)
-            if (isR2Domain) {
-                const pathPart = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-                return `${baseUrl}/api/media/${pathPart}`;
-            }
-
-            // Case B: External Absolute URLs (NASA, Gamespot, etc.)
-            // Proxy these through the backend to bypass CORS/Hotlinking
+            // Reverted to the consistent encoded proxy format for ALL absolute URLs
+            // This ensures stability for both R2 and external media providers
             return `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
