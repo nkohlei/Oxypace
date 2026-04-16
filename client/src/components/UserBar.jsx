@@ -176,8 +176,7 @@ const UserBar = ({ currentChannelId }) => {
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         alt="Avatar"
                                         onError={(e) => {
-                                            e.target.onerror = null;
-                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=2b2d31&color=fff`;
+                                            e.target.style.display = 'none';
                                         }}
                                     />
                                 ) : (
@@ -315,8 +314,7 @@ const UserBar = ({ currentChannelId }) => {
                                     objectFit: 'cover',
                                 }}
                                 onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=2b2d31&color=fff`;
+                                    e.target.style.display = 'none';
                                 }}
                             />
                         ) : (

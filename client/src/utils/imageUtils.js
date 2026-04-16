@@ -17,8 +17,7 @@ export const getImageUrl = (path) => {
     try {
         // 1. Handle Absolute URLs
         if (cleanPath.startsWith('http')) {
-            // Reverted to the consistent encoded proxy format for ALL absolute URLs
-            // This ensures stability for both R2 and external media providers
+            // BACK TO STABLE: Entire absolute URL is encoded for the /api/media/ proxy
             return `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 

@@ -702,9 +702,7 @@ const PortalSettingsModal = ({
                                             alt=""
                                             className="banner-img"
                                             onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = 'https://placehold.co/1200x300/222/555?text=Banner+Bulunamadı';
-                                                e.target.style.opacity = '0.5';
+                                                e.target.style.display = 'none';
                                             }}
                                         />
                                     ) : (
@@ -724,8 +722,7 @@ const PortalSettingsModal = ({
                                             alt=""
                                             className="avatar-img"
                                             onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(portal.name)}&background=2b2d31&color=fff`;
+                                                e.target.style.display = 'none';
                                             }}
                                         />
                                     ) : (
