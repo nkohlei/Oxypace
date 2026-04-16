@@ -340,9 +340,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             decoding="async"
                             width="40"
                             height="40"
-                            onError={(e) => {
-                                e.target.style.display = 'none';
-                            }}
                         />
                     ) : (
                         <div className="author-placeholder">
@@ -633,11 +630,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 alt="Post media"
                                 loading="lazy"
                                 decoding="async"
-                                onError={(e) => {
-                                    // Removed aggressive placeholder override. 
-                                    // Just hide if broken, or let the user see the original attempted link.
-                                    e.target.style.display = 'none';
-                                }}
                             />
                         )}
                     </div>

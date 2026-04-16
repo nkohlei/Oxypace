@@ -701,9 +701,6 @@ const PortalSettingsModal = ({
                                             src={getImageUrl(portal.banner)}
                                             alt=""
                                             className="banner-img"
-                                            onError={(e) => {
-                                                e.target.style.display = 'none';
-                                            }}
                                         />
                                     ) : (
                                         <div style={{ color: '#72767d' }}>Banner Yok</div>
@@ -721,9 +718,6 @@ const PortalSettingsModal = ({
                                             src={getImageUrl(portal.avatar)}
                                             alt=""
                                             className="avatar-img"
-                                            onError={(e) => {
-                                                e.target.style.display = 'none';
-                                            }}
                                         />
                                     ) : (
                                         <div

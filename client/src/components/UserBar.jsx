@@ -175,9 +175,6 @@ const UserBar = ({ currentChannelId }) => {
                                         src={getImageUrl(user.profile.avatar)}
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         alt="Avatar"
-                                        onError={(e) => {
-                                            e.target.style.display = 'none';
-                                        }}
                                     />
                                 ) : (
                                     <div
@@ -312,9 +309,6 @@ const UserBar = ({ currentChannelId }) => {
                                     height: '32px',
                                     borderRadius: '50%',
                                     objectFit: 'cover',
-                                }}
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
                                 }}
                             />
                         ) : (
