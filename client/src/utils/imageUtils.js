@@ -19,24 +19,15 @@ export const getImageUrl = (path) => {
         if (cleanPath.startsWith('http')) {
             const url = new URL(cleanPath);
             const isR2Domain = r2Domain && cleanPath.includes(r2Domain);
-            const pathSegments = url.pathname.split('/').filter(Boolean);
-            const isR2Folder = ['posts', 'avatars', 'banners', 'feedback', 'uploads'].some(f => pathSegments.includes(f));
 
-            // Case A: Cloudflare R2 URLs (Proxy through backend to bypass R2 SSL errors)
-            if (isR2Domain || isR2Folder) {
-                // Determine the key from the pathname
-                let key;
-                if (isR2Folder) {
-                    const folderIndex = pathSegments.findIndex(s => ['posts', 'avatars', 'banners', 'feedback', 'uploads'].includes(s));
-                    key = pathSegments.slice(folderIndex).join('/');
-                } else {
-                    key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-                }
-                
-                return `${baseUrl}/api/media/${key}`;
+            // Case A: Cloudflare R2 Asset (Route through proxy for SSL/Browser stability)
+            if (isR2Domain) {
+                const pathPart = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                return `${baseUrl}/api/media/${pathPart}`;
             }
 
-            // Case B: External Absolute URLs (NASA, Gamespot, etc. - Proxy to bypass CORS)
+            // Case B: External Absolute URLs (NASA, Gamespot, etc.)
+            // Proxy these through the backend to bypass CORS/Hotlinking
             return `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
