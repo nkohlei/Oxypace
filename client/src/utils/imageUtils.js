@@ -16,7 +16,18 @@ export const getImageUrl = (path) => {
 
     // 1. Handle Absolute URLs
     if (cleanPath.startsWith('http')) {
-        // Return absolute URLs as is (this preserves Cloudflare, S3, or external links)
+        // If it's an R2 URL, convert it to the backend proxy for better performance/reliability
+        if (r2Domain && cleanPath.includes(r2Domain)) {
+            try {
+                const url = new URL(cleanPath);
+                // Extract everything after the domain (e.g., avatars/my-file.png)
+                const pathPart = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                return `${baseUrl}/api/media/${pathPart}`;
+            } catch (err) {
+                console.error('URL Parsing Error:', err);
+            }
+        }
+        // Return other absolute URLs as is
         return cleanPath;
     }
 
@@ -33,10 +44,6 @@ export const getImageUrl = (path) => {
         relativePath = relativePath.substring(1);
     }
 
-    // Resolve relative paths through the Cloudflare direct URL if available, otherwise proxy
-    if (r2Domain) {
-        return `${r2Domain}/${relativePath}`;
-    }
-
+    // Always resolve relative paths through the backend proxy
     return `${baseUrl}/api/media/${relativePath}`;
 };
