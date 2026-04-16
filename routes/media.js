@@ -59,6 +59,18 @@ router.get('/*', async (req, res) => {
 
         // --- CASE 2: INTERNAL R2 BUCKET LOGIC ---
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+        const r2Domain = process.env.R2_PUBLIC_DOMAIN;
+
+        // SANITIZE: If filePath accidentally includes the domain (legacy/error), strip it
+        if (r2Domain && filePath.includes(r2Domain)) {
+            try {
+                const url = new URL(filePath);
+                filePath = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+            } catch (e) {
+                filePath = filePath.replace(r2Domain, '').replace(/^\/+/, '');
+            }
+        }
+
         const range = req.headers.range;
 
         // A. Video/Audio or Range Requests (Must be proxied for HTTP 206)

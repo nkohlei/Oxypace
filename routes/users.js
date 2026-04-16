@@ -508,9 +508,8 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            const publicUrl = process.env.R2_PUBLIC_DOMAIN 
-                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                : `/api/media/${req.file.key}`;
+            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
             user.profile.avatar = publicUrl;
             await user.save();
 
@@ -552,9 +551,8 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            const publicUrl = process.env.R2_PUBLIC_DOMAIN 
-                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                : `/api/media/${req.file.key}`;
+            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
             user.profile.coverImage = publicUrl;
             await user.save();
 

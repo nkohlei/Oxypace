@@ -86,9 +86,8 @@ router.post(
             const { recipientId, content, postId, portalId, replyToId } = req.body;
             let media = undefined;
             if (req.file) {
-                media = process.env.R2_PUBLIC_DOMAIN 
-                    ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                    : `/api/media/${req.file.key}`;
+                const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+                media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
             }
 
             if (!recipientId || (!content && !media && !postId && !portalId)) {

@@ -99,9 +99,8 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
         let mediaType = 'none';
 
         if (req.file) {
-            media = process.env.R2_PUBLIC_DOMAIN 
-                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                : `/api/media/${req.file.key}`;
+            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+            media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -171,9 +170,8 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
         let mediaType = 'none';
 
         if (req.file) {
-            media = process.env.R2_PUBLIC_DOMAIN 
-                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                : `/api/media/${req.file.key}`;
+            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+            media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 

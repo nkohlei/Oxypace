@@ -512,9 +512,8 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
         }
 
         if (req.file) {
-            const publicUrl = process.env.R2_PUBLIC_DOMAIN 
-                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                : `/api/media/${req.file.key}`;
+            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
             portal.avatar = publicUrl;
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');
@@ -543,9 +542,8 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
         }
 
         if (req.file) {
-            const publicUrl = process.env.R2_PUBLIC_DOMAIN 
-                ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                : `/api/media/${req.file.key}`;
+            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');

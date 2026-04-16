@@ -84,10 +84,8 @@ router.post(
             }
 
             if (req.file) {
-                const publicUrl = process.env.R2_PUBLIC_DOMAIN 
-                    ? `${process.env.R2_PUBLIC_DOMAIN}/${req.file.key}`
-                    : `/api/media/${req.file.key}`;
-                postData.media = publicUrl;
+                const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+                postData.media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
                 console.log('📤 Media URL:', postData.media);
 
                 if (req.file.mimetype.includes('video')) {
