@@ -84,8 +84,20 @@ router.get('/*', async (req, res) => {
             }
         }
 
-        // --- HTTP 200 FULL FILE FALLBACK (Images, initial GIF loads) ---
-        console.log('📷 Standard Request (No-Range):', filePath);
+        // --- HTTP 200/302 INTELLIGENT ROUTING (Images, initial GIF loads) ---
+        const r2PublicDomain = process.env.R2_PUBLIC_DOMAIN;
+
+        // If we have a public domain and it's not a range request, REDIRECT to Cloudflare directly.
+        // This offloads traffic from Koyeb and uses Cloudflare's global CDN/Edge Caching.
+        if (r2PublicDomain && !range) {
+            console.log('🚀 Redirecting IMAGE/ASSET to Cloudflare:', filePath);
+            // Construct the direct URL
+            const directUrl = `${r2PublicDomain}/${filePath}`;
+            return res.redirect(302, directUrl);
+        }
+
+        // Fallback: Standard Proxy (If no public domain or redirection is disabled)
+        console.log('📷 Standard Proxy Request:', filePath);
 
         const command = new GetObjectCommand({
             Bucket: bucketName,
@@ -97,7 +109,7 @@ router.get('/*', async (req, res) => {
         res.set('Content-Type', response.ContentType || 'application/octet-stream');
         res.set('Content-Length', response.ContentLength);
         res.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-        res.set('Accept-Ranges', 'bytes'); // Inform browser it CAN ask for segments
+        res.set('Accept-Ranges', 'bytes');
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
