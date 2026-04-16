@@ -101,19 +101,8 @@ router.get('/*', async (req, res) => {
             }
         }
 
-        // B. Standard R2 Images/Assets (Redirect to Cloudflare Edge for speed)
-        const r2PublicDomain = process.env.R2_PUBLIC_DOMAIN;
-        if (r2PublicDomain) {
-            console.log('🚀 Redirecting internal asset to Cloudflare:', filePath);
-            
-            // CRITICAL: Cache the redirect itself for 24 hours (86400s) 
-            // This prevents mobile browsers from re-verifying the redirect on every page load.
-            res.set('Cache-Control', 'public, max-age=86400'); 
-            return res.redirect(302, `${r2PublicDomain}/${filePath}`);
-        }
-
-        // Fallback: Full Proxy from S3
-        console.log('📷 Standard R2 Proxy:', filePath);
+        // B. Standard R2 Images/Assets (Full Proxy to avoid Client-side SSL Errors)
+        console.log('📷 Full R2 Proxy (SSL Fix):', filePath);
         const command = new GetObjectCommand({ Bucket: bucketName, Key: filePath });
         const response = await r2.send(command);
 
@@ -124,7 +113,7 @@ router.get('/*', async (req, res) => {
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
-        response.Body.pipe(res);
+        return response.Body.pipe(res);
 
     } catch (error) {
         console.error('Media Resolver Error:', error.message);

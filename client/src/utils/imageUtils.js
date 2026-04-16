@@ -22,18 +22,18 @@ export const getImageUrl = (path) => {
             const pathSegments = url.pathname.split('/').filter(Boolean);
             const isR2Folder = ['posts', 'avatars', 'banners', 'feedback', 'uploads'].some(f => pathSegments.includes(f));
 
-            // Case A: Cloudflare R2 URLs (Return DIRECT for branding)
+            // Case A: Cloudflare R2 URLs (Proxy through backend to bypass R2 SSL errors)
             if (isR2Domain || isR2Folder) {
-                // If it's already an absolute R2-looking URL, return it as is (or normalize to r2Domain if available)
-                if (isR2Domain) return cleanPath;
-                
-                // If it has an R2 folder but wrong domain, normalize to our R2 domain
-                if (isR2Folder && r2Domain) {
+                // Determine the key from the pathname
+                let key;
+                if (isR2Folder) {
                     const folderIndex = pathSegments.findIndex(s => ['posts', 'avatars', 'banners', 'feedback', 'uploads'].includes(s));
-                    const key = pathSegments.slice(folderIndex).join('/');
-                    return `${r2Domain}/${key}`;
+                    key = pathSegments.slice(folderIndex).join('/');
+                } else {
+                    key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
                 }
-                return cleanPath;
+                
+                return `${baseUrl}/api/media/${key}`;
             }
 
             // Case B: External Absolute URLs (NASA, Gamespot, etc. - Proxy to bypass CORS)
@@ -48,7 +48,7 @@ export const getImageUrl = (path) => {
         else if (relativePath.startsWith('api/media/')) relativePath = relativePath.substring(10);
         if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
 
-        // Resolve through the backend proxy for safety
+        // Resolve through the backend proxy
         return `${baseUrl}/api/media/${relativePath}`;
     } catch (err) {
         console.error('getImageUrl Error:', err);
