@@ -40,20 +40,19 @@ router.get('/*', async (req, res) => {
                     timeout: 10000,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                        'Referer': new URL(filePath).origin // Mimic self-origin referer to bypass simple hotlink checks
+                        'Referer': new URL(filePath).origin
                     }
                 });
 
-                // Forward essential headers
+                // Forward essential headers with aggressive caching for mobile stability
                 res.set('Content-Type', response.headers['content-type'] || 'application/octet-stream');
-                res.set('Cache-Control', 'public, max-age=31536000');
+                res.set('Cache-Control', 'public, max-age=31536000, immutable'); // Cache for 1 year
                 res.set('Access-Control-Allow-Origin', '*');
                 res.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
                 return response.data.pipe(res);
             } catch (proxyError) {
                 console.error('❌ External Proxy Failed:', filePath, proxyError.message);
-                // If external fails, try to redirect as a last resort or return 404
                 return res.status(404).json({ message: 'External media not found' });
             }
         }
@@ -91,7 +90,8 @@ router.get('/*', async (req, res) => {
                     'Content-Length': chunksize,
                     'Content-Type': response.ContentType || 'video/mp4',
                     'Access-Control-Allow-Origin': '*',
-                    'Cross-Origin-Resource-Policy': 'cross-origin'
+                    'Cross-Origin-Resource-Policy': 'cross-origin',
+                    'Cache-Control': 'public, max-age=31536000, immutable'
                 });
 
                 return response.Body.pipe(res);
@@ -105,17 +105,21 @@ router.get('/*', async (req, res) => {
         const r2PublicDomain = process.env.R2_PUBLIC_DOMAIN;
         if (r2PublicDomain) {
             console.log('🚀 Redirecting internal asset to Cloudflare:', filePath);
+            
+            // CRITICAL: Cache the redirect itself for 24 hours (86400s) 
+            // This prevents mobile browsers from re-verifying the redirect on every page load.
+            res.set('Cache-Control', 'public, max-age=86400'); 
             return res.redirect(302, `${r2PublicDomain}/${filePath}`);
         }
 
-        // Fallback: Full Proxy from S3 (If no domain or other issues)
+        // Fallback: Full Proxy from S3
         console.log('📷 Standard R2 Proxy:', filePath);
         const command = new GetObjectCommand({ Bucket: bucketName, Key: filePath });
         const response = await r2.send(command);
 
         res.set('Content-Type', response.ContentType || 'application/octet-stream');
         res.set('Content-Length', response.ContentLength);
-        res.set('Cache-Control', 'public, max-age=31536000');
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
         res.set('Accept-Ranges', 'bytes');
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
