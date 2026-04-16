@@ -17,31 +17,19 @@ export const getImageUrl = (path) => {
     try {
         // 1. Handle Absolute URLs
         if (cleanPath.startsWith('http')) {
-            const url = new URL(cleanPath);
-            const pathSegments = url.pathname.split('/').filter(Boolean);
-            
-            // Define known R2 directories
-            const r2Directories = ['posts', 'avatars', 'banners', 'feedback', 'uploads'];
-            
-            // Check if any segment of the path matches a known R2 directory
-            const folderSegmentIndex = pathSegments.findIndex(segment => r2Directories.includes(segment));
-            const isR2Domain = r2Domain && cleanPath.includes(r2Domain);
-
-            if (isR2Domain || folderSegmentIndex !== -1) {
-                // Extract the R2 Key (starting from the recognized folder segment)
-                // This strips any incorrect domains or prefixes like 'r2-media'
-                let key;
-                if (folderSegmentIndex !== -1) {
-                    key = pathSegments.slice(folderSegmentIndex).join('/');
-                } else {
-                    key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+            // Case A: Cloudflare R2 URLs (Optimize for direct redirect)
+            if (r2Domain && cleanPath.includes(r2Domain)) {
+                try {
+                    const url = new URL(cleanPath);
+                    const pathPart = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                    return `${baseUrl}/api/media/${pathPart}`;
+                } catch (urlErr) {
+                    console.error('R2 URL Parsing Error:', urlErr);
                 }
-                
-                // Route through our smart proxy
-                return `${baseUrl}/api/media/${key}`;
             }
 
-            // Case B: External Absolute URLs (NASA, Gamespot, etc. - Proxy to bypass CORS)
+            // Case B: External Absolute URLs (NASA, Gamespot, etc.)
+            // We PROXY these to avoid Hotlinking/CORS issues
             return `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
