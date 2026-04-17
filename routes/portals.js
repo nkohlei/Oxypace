@@ -512,6 +512,7 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
             return res.status(403).json({ message: 'Not authorized' });
         }
 
+        if (req.file) {
             portal.avatar = constructProxiedUrl(req.file.key);
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');
@@ -539,6 +540,7 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
             return res.status(403).json({ message: 'Not authorized' });
         }
 
+        if (req.file) {
             portal.banner = constructProxiedUrl(req.file.key);
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');
