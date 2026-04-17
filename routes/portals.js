@@ -3,6 +3,7 @@ import Portal from '../models/Portal.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import { mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
@@ -511,12 +512,7 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        if (req.file) {
-            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
-            const rawR2Url = `${domain}/${req.file.key}`;
-            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
-            portal.avatar = publicUrl;
+            portal.avatar = constructProxiedUrl(req.file.key);
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');
             res.json(portal);
@@ -543,12 +539,7 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        if (req.file) {
-            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
-            const rawR2Url = `${domain}/${req.file.key}`;
-            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
-            portal.banner = publicUrl; // Make sure Portal model has banner field
+            portal.banner = constructProxiedUrl(req.file.key);
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');
             res.json(portal);

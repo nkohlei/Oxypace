@@ -4,6 +4,7 @@ import { protect, optionalProtect } from '../middleware/auth.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
 import { postValidation, mongoIdValidation } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -85,11 +86,8 @@ router.post(
             }
 
             if (req.file) {
-                const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-                const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
-                const rawR2Url = `${domain}/${req.file.key}`;
-                postData.media = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
-                console.log('📤 Media Proxied URL:', postData.media);
+                postData.media = constructProxiedUrl(req.file.key);
+                console.log('📤 Media Proxied URL (from utility):', postData.media);
 
                 if (req.file.mimetype.includes('video')) {
                     postData.mediaType = 'video';

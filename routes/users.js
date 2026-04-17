@@ -6,6 +6,7 @@ import { profileValidation, mongoIdValidation } from '../middleware/validation.j
 import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
 import Comment from '../models/Comment.js';
 import Portal from '../models/Portal.js';
 
@@ -508,12 +509,8 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
-            const rawR2Url = `${domain}/${req.file.key}`;
-            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
-            user.profile.avatar = publicUrl;
-            await user.save();
+            user.profile.avatar = constructProxiedUrl(req.file.key);
+             await user.save();
 
             res.json({
                 message: 'Avatar uploaded successfully',
@@ -553,11 +550,7 @@ router.post(
 
             const user = await User.findById(req.user._id);
 
-            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
-            const rawR2Url = `${domain}/${req.file.key}`;
-            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
-            user.profile.coverImage = publicUrl;
+            user.profile.coverImage = constructProxiedUrl(req.file.key);
             await user.save();
 
             res.json({
