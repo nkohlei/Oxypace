@@ -79,7 +79,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
     const navigate = useNavigate();
 
-    const [liked, setLiked] = useState(post.likes?.includes(user?._id) || false);
     const [saved, setSaved] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -168,8 +167,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     };
 
 
-    // Like feature removed from UI but kept logic if needed later? No, removing unused code.
-    // If handleLike is not used in JSX, remove it.
+
 
     const handleSave = async () => {
         if (!user) {
@@ -279,7 +277,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
     // Placeholder handlers for new menu items
     const handleMenuAction = (action) => {
-        console.log(`Action triggered: ${action}`);
         setShowMenu(false);
     };
 

@@ -12,7 +12,6 @@ export const useRealtimeSync = () => {
 
         // Global deletion sync
         socket.on('global:post_deleted', ({ _id }) => {
-            console.log('📡 Post deleted globally:', _id);
             deletePostEvent(_id);
         });
 
@@ -21,7 +20,6 @@ export const useRealtimeSync = () => {
         });
 
         socket.on('global:portal_activity', ({ portalId, channelId, postId }) => {
-            console.log('📡 Portal activity detected:', portalId, 'Channel:', channelId, 'Post:', postId);
             
             // 1. Portal Level Notification: Only if not currently in that portal
             if (!window.location.pathname.includes(`/portal/${portalId}`)) {

@@ -42,7 +42,6 @@ const VerifyEmail = lazyWithRetry(() => import('./pages/VerifyEmail'));
 const GoogleCallback = lazyWithRetry(() => import('./pages/GoogleCallback'));
 const AuthProcess = lazyWithRetry(() => import('./pages/AuthProcess'));
 const Onboarding = lazyWithRetry(() => import('./pages/Onboarding'));
-const Home = lazyWithRetry(() => import('./pages/Home'));
 const CreatePost = lazyWithRetry(() => import('./pages/CreatePost'));
 const Profile = lazyWithRetry(() => import('./pages/Profile'));
 const Search = lazyWithRetry(() => import('./pages/Search'));
@@ -111,7 +110,6 @@ const requestNativePermissions = async () => {
             
             // Listeners
             await PushNotifications.addListener('registration', (token) => {
-                console.log('Push registration success, token: ' + token.value);
                 // TODO: Send token to backend via API
             });
 
@@ -120,7 +118,6 @@ const requestNativePermissions = async () => {
             });
 
             await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                console.log('Push received: ' + JSON.stringify(notification));
             });
         }
 
@@ -173,12 +170,8 @@ const AppLayout = () => {
     const isCleanLayout = isMapPage || isAdminPage;
 
     // Route-based sidebar visibility for mobile (Discord-style)
-    const isHomePage = location.pathname === '/';
-    const isPortalPage = location.pathname.startsWith('/portal/');
-    const { mobileChannelOpen } = useUI();
-
-    // Sidebar visible on Home OR Portal Selection screen (when channel feed is NOT open)
-    const showSidebarOnMobile = isLoggedIn && (isHomePage || isPortalPage) && !mobileChannelOpen;
+    // Sidebar visible on Portal Selection screen (when channel feed is NOT open)
+    const showSidebarOnMobile = isLoggedIn && isPortalPage && !mobileChannelOpen;
 
     useLayoutEffect(() => {
         const root = document.getElementById('root');

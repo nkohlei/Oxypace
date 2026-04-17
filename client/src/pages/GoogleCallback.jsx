@@ -13,17 +13,8 @@ const GoogleCallback = () => {
         const token = query.get('token');
         const isNewUser = query.get('isNewUser') === 'true';
 
-        console.log('📥 GoogleCallback Mounted');
-        console.log('Search:', location.search);
-        console.log('Token exists:', !!token);
-
         if (token) {
-            console.log('✅ Token found on URL, attempting login...');
             login(token, null); // Pass null for user, AuthContext will fetch /me
-
-            // Wait a bit before redirect to ensure state is set (though login triggers fetchUser)
-            // But login is async if we wait for fetch? No, login is usually sync state update initiation.
-            // Let's assume login() handles it.
 
             if (isNewUser) {
                 navigate('/onboarding');
@@ -31,7 +22,6 @@ const GoogleCallback = () => {
                 window.location.href = '/'; // Full reload for clean layout
             }
         } else {
-            console.warn('⚠️ No token found, redirecting to login');
             navigate('/login');
         }
     }, [location, login, navigate]);

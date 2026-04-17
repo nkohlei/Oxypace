@@ -31,7 +31,7 @@ export const SocketProvider = ({ children }) => {
                 socketUrl = socketUrl.slice(0, -1);
             }
 
-            console.log('Connecting to socket:', socketUrl);
+
 
             const newSocket = io(socketUrl, {
                 transports: ['websocket'],
@@ -40,7 +40,6 @@ export const SocketProvider = ({ children }) => {
             });
 
             newSocket.on('connect', () => {
-                console.log('✅ Socket connected');
                 setConnected(true);
                 newSocket.emit('join', user._id);
             });
@@ -50,7 +49,6 @@ export const SocketProvider = ({ children }) => {
             });
 
             newSocket.on('disconnect', () => {
-                console.log('❌ Socket disconnected');
                 setConnected(false);
             });
 

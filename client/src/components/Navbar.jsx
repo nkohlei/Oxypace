@@ -15,7 +15,6 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const { toggleSidebar, isMobileView } = useUI();
     const location = useLocation();
     const navigate = useNavigate();
-    const isHomePage = location.pathname === '/';
     const [showMenu, setShowMenu] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const menuRef = useRef(null);
