@@ -101,6 +101,13 @@ router.post(
                 return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
             }
 
+            // Block messages to system accounts
+            if (recipient.isSystemAccount) {
+                return res.status(403).json({ 
+                    message: 'Bu hesap doğrudan mesaj kabul etmemektedir. Sorularınız için Geri Bildirim sayfasını kullanabilirsiniz.' 
+                });
+            }
+
             const messageData = {
                 sender: req.user._id,
                 recipient: recipientId,

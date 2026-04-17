@@ -490,200 +490,211 @@ const Inbox = () => {
                                 </div>
                             )}
 
-                            <form onSubmit={handleSendMessage} className="message-form">
-                                <div className="message-input-wrapper">
-                                    {media && (
-                                        <div className="selected-media-pill">
-                                            <div className="media-pill-icon">
-                                                {media.type.startsWith('image') ? '🖼️' : '🎥'}
+                            {selectedUser.isSystemAccount ? (
+                                <div className="system-no-reply-notice">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                        <line x1="12" y1="9" x2="12" y2="13" />
+                                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                                    </svg>
+                                    <span>Bu hesap doğrudan mesaj kabul etmemektedir.</span>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSendMessage} className="message-form">
+                                    <div className="message-input-wrapper">
+                                        {media && (
+                                            <div className="selected-media-pill">
+                                                <div className="media-pill-icon">
+                                                    {media.type.startsWith('image') ? '🖼️' : '🎥'}
+                                                </div>
+                                                <span className="media-pill-name">{media.name}</span>
+                                                <button 
+                                                    type="button" 
+                                                    className="remove-media-btn"
+                                                    onClick={() => {
+                                                        setMedia(null);
+                                                        if (fileInputRef.current) fileInputRef.current.value = '';
+                                                        if (videoInputRef.current) videoInputRef.current.value = '';
+                                                        if (gifInputRef.current) gifInputRef.current.value = '';
+                                                    }}
+                                                >
+                                                    ×
+                                                </button>
                                             </div>
-                                            <span className="media-pill-name">{media.name}</span>
-                                            <button 
-                                                type="button" 
-                                                className="remove-media-btn"
-                                                onClick={() => {
-                                                    setMedia(null);
-                                                    if (fileInputRef.current) fileInputRef.current.value = '';
-                                                    if (videoInputRef.current) videoInputRef.current.value = '';
-                                                    if (gifInputRef.current) gifInputRef.current.value = '';
-                                                }}
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                    )}
-                                    {/* Plus / Upload Button */}
-                                    <button
-                                        type="button"
-                                        className={`upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                        onClick={() => setShowPlusMenu(!showPlusMenu)}
-                                        title="Yükle"
-                                    >
-                                        <svg
-                                            width="20"
-                                            height="20"
-                                            viewBox="0 0 24 24"
-                                            fill="currentColor"
-                                        >
-                                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
-                                        </svg>
-                                    </button>
-
-                                    {/* Plus Menu Popover */}
-                                    {showPlusMenu && (
-                                        <>
-                                            <div
-                                                style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                                                onClick={() => setShowPlusMenu(false)}
-                                            />
-                                            <div
-                                                className="plus-menu"
-                                            >
-                                                <div
-                                                    className="plus-menu-item"
-                                                    onClick={() => {
-                                                        fileInputRef.current.click();
-                                                        setShowPlusMenu(false);
-                                                    }}
-                                                >
-                                                    <div className="plus-menu-icon">
-                                                        <svg
-                                                            width="20"
-                                                            height="20"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <rect
-                                                                x="3"
-                                                                y="3"
-                                                                width="18"
-                                                                height="18"
-                                                                rx="2"
-                                                                ry="2"
-                                                            ></rect>
-                                                            <circle
-                                                                cx="8.5"
-                                                                cy="8.5"
-                                                                r="1.5"
-                                                            ></circle>
-                                                            <polyline points="21 15 16 10 5 21"></polyline>
-                                                        </svg>
-                                                    </div>
-                                                    Görsel Yükle
-                                                </div>
-                                                <div
-                                                    className="plus-menu-item"
-                                                    onClick={() => {
-                                                        videoInputRef.current.click();
-                                                        setShowPlusMenu(false);
-                                                    }}
-                                                >
-                                                    <div className="plus-menu-icon">
-                                                        <svg
-                                                            width="20"
-                                                            height="20"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                                                            <rect
-                                                                x="1"
-                                                                y="5"
-                                                                width="15"
-                                                                height="14"
-                                                                rx="2"
-                                                                ry="2"
-                                                            ></rect>
-                                                        </svg>
-                                                    </div>
-                                                    Video Yükle
-                                                </div>
-                                                <div
-                                                    className="plus-menu-item"
-                                                    onClick={() => {
-                                                        gifInputRef.current.click();
-                                                        setShowPlusMenu(false);
-                                                    }}
-                                                >
-                                                    <div
-                                                        className="plus-menu-icon"
-                                                        style={{
-                                                            fontWeight: 800,
-                                                            fontSize: '10px',
-                                                        }}
-                                                    >
-                                                        GIF
-                                                    </div>
-                                                    GIF Yükle
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        style={{ display: 'none' }}
-                                        accept="image/png, image/jpeg, image/jpg"
-                                        onChange={handleFileSelect}
-                                    />
-                                    <input
-                                        type="file"
-                                        ref={videoInputRef}
-                                        style={{ display: 'none' }}
-                                        accept="video/mp4, video/webm, video/quicktime"
-                                        onChange={handleFileSelect}
-                                    />
-                                    <input
-                                        type="file"
-                                        ref={gifInputRef}
-                                        style={{ display: 'none' }}
-                                        accept="image/gif"
-                                        onChange={handleFileSelect}
-                                    />
-
-                                    <input
-                                        type="text"
-                                        placeholder={`@${selectedUser.username} kullanıcısına mesaj gönder`}
-                                        value={newMessage}
-                                        onChange={(e) => setNewMessage(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleSendMessage(e);
-                                            }
-                                        }}
-                                    />
-
-                                    {/* Right Side Icons */}
-                                    <div className="input-right-actions">
+                                        )}
+                                        {/* Plus / Upload Button */}
                                         <button
                                             type="button"
-                                            className="input-action-btn"
-                                            title="Emoji (Yakında)"
+                                            className={`upload-btn ${showPlusMenu ? 'active' : ''}`}
+                                            onClick={() => setShowPlusMenu(!showPlusMenu)}
+                                            title="Yükle"
                                         >
                                             <svg
-                                                width="24"
-                                                height="24"
+                                                width="20"
+                                                height="20"
                                                 viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
+                                                fill="currentColor"
                                             >
-                                                <smile cx="12" cy="12" r="10"></smile>
-                                                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                                                <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                                                <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
                                             </svg>
                                         </button>
+
+                                        {/* Plus Menu Popover */}
+                                        {showPlusMenu && (
+                                            <>
+                                                <div
+                                                    style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                                                    onClick={() => setShowPlusMenu(false)}
+                                                />
+                                                <div
+                                                    className="plus-menu"
+                                                >
+                                                    <div
+                                                        className="plus-menu-item"
+                                                        onClick={() => {
+                                                            fileInputRef.current.click();
+                                                            setShowPlusMenu(false);
+                                                        }}
+                                                    >
+                                                        <div className="plus-menu-icon">
+                                                            <svg
+                                                                width="20"
+                                                                height="20"
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2"
+                                                            >
+                                                                <rect
+                                                                    x="3"
+                                                                    y="3"
+                                                                    width="18"
+                                                                    height="18"
+                                                                    rx="2"
+                                                                    ry="2"
+                                                                ></rect>
+                                                                <circle
+                                                                    cx="8.5"
+                                                                    cy="8.5"
+                                                                    r="1.5"
+                                                                ></circle>
+                                                                <polyline points="21 15 16 10 5 21"></polyline>
+                                                            </svg>
+                                                        </div>
+                                                        Görsel Yükle
+                                                    </div>
+                                                    <div
+                                                        className="plus-menu-item"
+                                                        onClick={() => {
+                                                            videoInputRef.current.click();
+                                                            setShowPlusMenu(false);
+                                                        }}
+                                                    >
+                                                        <div className="plus-menu-icon">
+                                                            <svg
+                                                                width="20"
+                                                                height="20"
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2"
+                                                            >
+                                                                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                                                <rect
+                                                                    x="1"
+                                                                    y="5"
+                                                                    width="15"
+                                                                    height="14"
+                                                                    rx="2"
+                                                                    ry="2"
+                                                                ></rect>
+                                                            </svg>
+                                                        </div>
+                                                        Video Yükle
+                                                    </div>
+                                                    <div
+                                                        className="plus-menu-item"
+                                                        onClick={() => {
+                                                            gifInputRef.current.click();
+                                                            setShowPlusMenu(false);
+                                                        }}
+                                                    >
+                                                        <div
+                                                            className="plus-menu-icon"
+                                                            style={{
+                                                                fontWeight: 800,
+                                                                fontSize: '10px',
+                                                            }}
+                                                        >
+                                                            GIF
+                                                        </div>
+                                                        GIF Yükle
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            style={{ display: 'none' }}
+                                            accept="image/png, image/jpeg, image/jpg"
+                                            onChange={handleFileSelect}
+                                        />
+                                        <input
+                                            type="file"
+                                            ref={videoInputRef}
+                                            style={{ display: 'none' }}
+                                            accept="video/mp4, video/webm, video/quicktime"
+                                            onChange={handleFileSelect}
+                                        />
+                                        <input
+                                            type="file"
+                                            ref={gifInputRef}
+                                            style={{ display: 'none' }}
+                                            accept="image/gif"
+                                            onChange={handleFileSelect}
+                                        />
+
+                                        <input
+                                            type="text"
+                                            placeholder={`@${selectedUser.username} kullanıcısına mesaj gönder`}
+                                            value={newMessage}
+                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleSendMessage(e);
+                                                }
+                                            }}
+                                        />
+
+                                        {/* Right Side Icons */}
+                                        <div className="input-right-actions">
+                                            <button
+                                                type="button"
+                                                className="input-action-btn"
+                                                title="Emoji (Yakında)"
+                                            >
+                                                <svg
+                                                    width="24"
+                                                    height="24"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                >
+                                                    <smile cx="12" cy="12" r="10"></smile>
+                                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            </form>
+                                </form>
+                            )}
                         </div>
                     ) : (
                         <div

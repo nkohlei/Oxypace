@@ -644,7 +644,39 @@
     color: var(--primary-cyan);
 }
 
+/* System No-Reply Notice */
+.system-no-reply-notice {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(255, 230, 0, 0.05);
+    border: 1px solid rgba(255, 230, 0, 0.15);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    margin: 16px 20px 20px 20px;
+    padding: 0 16px;
+    user-select: none;
+}
+
+.system-no-reply-notice svg {
+    color: #ffcc00; /* Warning Yellow */
+    flex-shrink: 0;
+}
+
 /* Mobile Responsive */
+@media (max-width: 768px) {
+    .system-no-reply-notice {
+        margin: 10px 10px 100px 10px;
+        font-size: 13px;
+        padding: 0 10px;
+        gap: 8px;
+    }
+}
+
 @media (max-width: 768px) {
     .conversations-view {
         width: 100%;

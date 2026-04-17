@@ -15,32 +15,23 @@ const router = express.Router();
  * Helper: Get or Create System Support Account
  */
 const getSystemSupportAccount = async () => {
-    let supportAccount = await User.findOne({ username: 'oxypace', isSystemAccount: true });
+    let supportAccount = await User.findOne({ username: 'oxypace_support', isSystemAccount: true });
     
     if (!supportAccount) {
-        // Try finding by username only and updating to system if needed
-        supportAccount = await User.findOne({ username: 'oxypace' });
-        if (supportAccount) {
-            supportAccount.isSystemAccount = true;
-            supportAccount.profile.displayName = 'Oxypace Destek';
-            supportAccount.profile.avatar = '/system/support_avatar.png';
-            await supportAccount.save();
-        } else {
-            // Create new
-            supportAccount = await User.create({
-                username: 'oxypace',
-                email: 'support@oxypace.com',
-                password: new mongoose.Types.ObjectId().toString(), // Random password
-                isSystemAccount: true,
-                isVerified: true,
-                verificationBadge: 'special',
-                profile: {
-                    displayName: 'Oxypace Destek',
-                    bio: 'Oxypace Resmi Destek ve Geri Bildirim Hesabı',
-                    avatar: '/system/support_avatar.png'
-                }
-            });
-        }
+        // Create new
+        supportAccount = await User.create({
+            username: 'oxypace_support',
+            email: 'support@oxypace.com',
+            password: new mongoose.Types.ObjectId().toString(), // Random password
+            isSystemAccount: true,
+            isVerified: true,
+            verificationBadge: 'special',
+            profile: {
+                displayName: 'Oxypace Destek',
+                bio: 'Oxypace Resmi Destek ve Geri Bildirim Hesabı',
+                avatar: '/system/support_avatar.png'
+            }
+        });
     } else {
         // Ensure properties are up to date even if account exists
         if (supportAccount.profile.displayName !== 'Oxypace Destek' || supportAccount.profile.avatar !== '/system/support_avatar.png') {
