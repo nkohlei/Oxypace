@@ -575,7 +575,7 @@ const Profile = () => {
 
                                 <div className="profile-top-right-actions">
                                     {/* Action Buttons: Tanış/Mesaj for other profiles, Düzenle for own */}
-                                    {!isOwnProfile && (
+                                    {!isOwnProfile && !profileUser?.isSystemAccount && (
                                         <div className="profile-header-actions">
                                             <div className="action-row">
                                                 {getFollowButton()}

@@ -8,6 +8,7 @@ import ContactMessage from '../models/ContactMessage.js';
 import upload from '../middleware/upload.js';
 import mongoose from 'mongoose';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
+import Notification from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -137,6 +138,23 @@ router.post('/admin/reply/:id', protect, admin, async (req, res) => {
                     .populate('recipient', 'username profile.displayName profile.avatar createdAt');
                 
                 io.to(feedback.user._id.toString()).emit('newMessage', populatedMsg);
+
+                // 3. Create Notification from Support Account
+                try {
+                    const notification = await Notification.create({
+                        recipient: feedback.user._id,
+                        sender: supportAccount._id,
+                        type: 'message',
+                    });
+
+                    const populatedNotif = await notification.populate(
+                        'sender',
+                        'username profile.displayName profile.avatar'
+                    );
+                    io.to(feedback.user._id.toString()).emit('newNotification', populatedNotif);
+                } catch (notifErr) {
+                    console.error('Feedback reply notification failed:', notifErr);
+                }
             }
         }
 
