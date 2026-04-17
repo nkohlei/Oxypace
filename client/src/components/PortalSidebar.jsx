@@ -257,11 +257,12 @@ const PortalSidebar = () => {
                 }
                 .sidebar-item {
                     width: 72px !important; /* Full sidebar width */
-                    height: 52px;
+                    height: 56px; /* Slightly taller for padding */
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     position: relative;
+                    overflow: visible !important; /* CRITICAL: Allow badges to overflow */
                 }
 
                 .sidebar-item.dragging .portal-icon {
@@ -313,23 +314,23 @@ const PortalSidebar = () => {
                 /* Red Notification Badge - Outside the clipped circle */
                 .unread-badge {
                     position: absolute;
-                    bottom: -4px;
-                    right: -4px;
+                    top: -2px; /* Moved to top-right for better visibility */
+                    right: -2px;
                     background-color: #f23f43; /* Discord-red */
                     color: white;
                     font-size: 11px;
                     font-weight: 800;
                     min-width: 18px;
                     height: 18px;
-                    border-radius: 10px;
+                    border-radius: 9px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     padding: 0 4px;
-                    border: 3.5px solid var(--bg-darker);
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    border: 3px solid var(--bg-darker);
+                    box-shadow: 0 0 0 2px rgba(0,0,0,0.2);
                     pointer-events: none;
-                    z-index: 80; /* Above the icon and pulse */
+                    z-index: 100; /* Ensure it stays above everything */
                 }
 
                 /* Blue Pulsing Frame ("Çerçeve") - Now on the container to avoid clipping */

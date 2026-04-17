@@ -29,9 +29,19 @@ export const setupChangeStreams = (io) => {
                             if (newPost.portal) {
                                 io.to(`portal:${newPost.portal.toString()}`).emit('post:created', newPost);
                             }
+
                             // 2. Emit to the specific channel room
                             if (newPost.channel) {
                                 io.to(`channel:${newPost.channel.toString()}`).emit('post:created', newPost);
+                            }
+
+                            // 2.1 BROADCAST GLOBAL PORTAL ACTIVITY (For Sidebar Badges)
+                            if (newPost.portal) {
+                                io.emit('global:portal_activity', {
+                                    portalId: newPost.portal.toString(),
+                                    channelId: newPost.channel?.toString(),
+                                    postId: newPost._id.toString()
+                                });
                             }
                             // 3. Keep global for things that listen to everything (like an admin or global feed)
                             // ONLY emit if it's NOT a portal post to ensure strict isolation
