@@ -155,7 +155,7 @@ const PageLoader = () => (
 // Separate layout component to use useUI hook
 const AppLayout = () => {
     useRealtimeSync(); // Global websocket synchronization
-    const { isSidebarOpen, toggleSidebar, closeSidebar } = useUI();
+    const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen } = useUI();
     const { user, token } = useAuth();
     const location = useLocation();
 
@@ -167,6 +167,7 @@ const AppLayout = () => {
     // Map and admin pages get a clean full-screen layout — no sidebar, no footer
     const isMapPage = location.pathname === '/map';
     const isAdminPage = location.pathname.startsWith('/admin');
+    const isPortalPage = location.pathname.startsWith('/portal/');
     const isCleanLayout = isMapPage || isAdminPage;
 
     // Route-based sidebar visibility for mobile (Discord-style)
