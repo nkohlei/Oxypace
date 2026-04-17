@@ -594,7 +594,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             );
                         })()}
                     </p>
-                    {post.content && (
+                    {post.content && shouldShowTranslation(post.content) && (
                         <button
                             className="translation-toggle"
                             onClick={(e) => {
