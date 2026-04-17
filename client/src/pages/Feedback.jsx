@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +19,29 @@ const Feedback = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    // History state
+    const [history, setHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
     const categories = ['Hata Bildirimi', 'Öneri', 'Şikayet', 'Genel'];
+
+    useEffect(() => {
+        if (user) {
+            fetchHistory();
+        }
+    }, [user]);
+
+    const fetchHistory = async () => {
+        setLoadingHistory(true);
+        try {
+            const res = await axios.get('/api/feedback/me');
+            setHistory(res.data);
+        } catch (err) {
+            console.error('Failed to fetch feedback history:', err);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
 
     const handleFileChange = (e) => {
         const selectedFiles = Array.from(e.target.files);
@@ -43,14 +65,31 @@ const Feedback = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            setSuccess('Geri bildiriminiz başarıyla iletildi. En kısa sürede Inbox üzerinden dönüş yapacağız!');
-            setTimeout(() => navigate('/'), 3000);
+            setSuccess('Geri bildiriminiz başarıyla iletildi. Listeden takip edebilirsiniz.');
+            setFormData({ category: 'Hata Bildirimi', subject: '', message: '' });
+            setFiles([]);
+            fetchHistory(); // Refresh history
+            
+            // Clear success after 5s
+            setTimeout(() => setSuccess(''), 5000);
         } catch (err) {
             setError(err.response?.data?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
         } finally {
             setLoading(false);
         }
     };
+
+    const getStatusText = (status) => {
+        switch (status) {
+            case 'new': return 'İletildi';
+            case 'reviewed': return 'İnceleniyor';
+            case 'replied': return 'Yanıtlandı';
+            case 'resolved': return 'Çözüldü';
+            default: return status;
+        }
+    };
+
+    const getTicketId = (id) => `#${id.substring(id.length - 6)}`;
 
     return (
         <div className="feedback-page-root">
@@ -64,11 +103,11 @@ const Feedback = () => {
             <main className="feedback-main-wrapper">
                 <div className="feedback-header-section">
                     <div className="back-nav">
-                        <Link to="/settings" className="back-btn-pill">
+                        <Link to="/" className="back-btn-pill">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M15 18l-6-6 6-6" />
                             </svg>
-                            <span>Ayarlar</span>
+                            <span>Ana Sayfa</span>
                         </Link>
                     </div>
                     <h1 className="gradient-title">Geri Bildirim & Destek</h1>
@@ -76,45 +115,10 @@ const Feedback = () => {
                 </div>
 
                 <div className="feedback-layout-grid">
-                    {/* Left Section: Info */}
-                    <div className="feedback-info-column">
-                        <div className="info-card-premium">
-                            <h2>Size Nasıl Yardımcı Olabiliriz?</h2>
-                            <p>
-                                Oxypace topluluğu olarak, platformu sizlerin ihtiyaçları doğrultusunda şekillendiriyoruz. 
-                                Geri bildirimleriniz doğrudan geliştirici ekibimiz tarafından incelenir.
-                            </p>
-                            
-                            <div className="info-item">
-                                <div className="icon-box cyan">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-                                </div>
-                                <div>
-                                    <h3>Hata Bildirimi</h3>
-                                    <p>Bir sorun mu yaşıyorsunuz? Ekran görüntüsüyle birlikte bize iletin.</p>
-                                </div>
-                            </div>
-
-                            <div className="info-item">
-                                <div className="icon-box orange">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                                </div>
-                                <div>
-                                    <h3>Yeni Özellik Önerisi</h3>
-                                    <p>Görmek istediğiniz bir özellik mi var? Hemen paylaşın.</p>
-                                </div>
-                            </div>
-
-                            <div className="external-contact">
-                                <p>Kurumsal iş birlikleri için:</p>
-                                <a href="mailto:support@oxypace.com" className="email-link">support@oxypace.com</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Section: Form */}
+                    {/* Left Section: Form */}
                     <div className="feedback-form-column">
                         <div className="form-glass-card">
+                            <h2 className="section-subtitle">Yeni Talep Oluştur</h2>
                             {error && <div className="alert-message error">{error}</div>}
                             {success && <div className="alert-message success">{success}</div>}
 
@@ -177,7 +181,6 @@ const Feedback = () => {
                                             </span>
                                         </label>
                                     </div>
-                                    <p className="file-hint">JPG, PNG, PDF veya MP4 formatlarını destekliyoruz.</p>
                                 </div>
 
                                 <button type="submit" className="feedback-submit-btn" disabled={loading}>
@@ -188,6 +191,47 @@ const Feedback = () => {
                                     ) : 'Geri Bildirimi İlet'}
                                 </button>
                             </form>
+                        </div>
+                    </div>
+
+                    {/* Right Section: History */}
+                    <div className="feedback-history-column">
+                        <div className="history-glass-card">
+                            <h2 className="section-subtitle">Geçmiş Taleplerim</h2>
+                            
+                            <div className="history-list-container">
+                                {loadingHistory ? (
+                                    <div className="history-loader">Talepler yükleniyor...</div>
+                                ) : history.length === 0 ? (
+                                    <div className="no-history-msg">
+                                        Henüz bir geri bildirim talebiniz bulunmuyor.
+                                    </div>
+                                ) : (
+                                    history.map(item => (
+                                        <div key={item._id} className={`history-ticket-card ${item.status}`}>
+                                            <div className="ticket-header">
+                                                <span className="ticket-id">{getTicketId(item._id)}</span>
+                                                <span className={`status-badge ${item.status}`}>
+                                                    {getStatusText(item.status)}
+                                                </span>
+                                            </div>
+                                            <div className="ticket-body">
+                                                <div className="ticket-meta">{item.category}</div>
+                                                <div className="ticket-subject">{item.subject}</div>
+                                                <div className="ticket-date">
+                                                    {new Date(item.createdAt).toLocaleDateString('tr-TR')}
+                                                </div>
+                                            </div>
+                                            {item.adminResponse && (
+                                                <div className="ticket-response">
+                                                    <div className="response-label">Yanıt:</div>
+                                                    <p>{item.adminResponse}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

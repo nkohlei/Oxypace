@@ -76,6 +76,20 @@ router.post('/submit', protect, upload.array('files', 5), async (req, res) => {
     }
 });
 
+// @route   GET /api/feedback/me
+// @desc    Get user's own feedback history
+// @access  Private
+router.get('/me', protect, async (req, res) => {
+    try {
+        const feedbacks = await Feedback.find({ user: req.user._id })
+            .sort({ createdAt: -1 });
+        res.json(feedbacks);
+    } catch (error) {
+        console.error('Fetch my feedback error:', error);
+        res.status(500).json({ message: 'Geri bildirimleriniz alınamadı.' });
+    }
+});
+
 // @route   GET /api/feedback/admin/list
 // @desc    Get all feedback for admins
 // @access  Private/Admin
@@ -127,7 +141,7 @@ router.post('/admin/reply/:id', protect, admin, async (req, res) => {
             const systemMessage = await Message.create({
                 sender: supportAccount._id,
                 recipient: feedback.user._id,
-                content: `Geri bildiriminiz (#${ticketIdSnippet}) hakkında yanıt aldınız:\n\n${response}\n\nDetaylar için geri bildirim sayfasını kontrol edebilirsiniz.`,
+                content: `Geri bildiriminiz (#${ticketIdSnippet}) hakkında bir yanıt paylaşıldı:\n\n---\n${response}\n---\n\nBu mesaj sistem tarafından otomatik gönderilmiştir, lütfen doğrudan yanıt vermeyiniz.`,
             });
 
             // Emit socket if available
