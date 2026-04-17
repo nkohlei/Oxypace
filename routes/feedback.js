@@ -23,6 +23,7 @@ const getSystemSupportAccount = async () => {
         if (supportAccount) {
             supportAccount.isSystemAccount = true;
             supportAccount.profile.displayName = 'Oxypace Destek';
+            supportAccount.profile.avatar = '/system/support-avatar.png';
             await supportAccount.save();
         } else {
             // Create new
@@ -36,9 +37,16 @@ const getSystemSupportAccount = async () => {
                 profile: {
                     displayName: 'Oxypace Destek',
                     bio: 'Oxypace Resmi Destek ve Geri Bildirim Hesabı',
-                    avatar: '/system/support-avatar.png' // Needs to exist or be served
+                    avatar: '/system/support-avatar.png'
                 }
             });
+        }
+    } else {
+        // Ensure properties are up to date even if account exists
+        if (supportAccount.profile.displayName !== 'Oxypace Destek' || supportAccount.profile.avatar !== '/system/support-avatar.png') {
+            supportAccount.profile.displayName = 'Oxypace Destek';
+            supportAccount.profile.avatar = '/system/support-avatar.png';
+            await supportAccount.save();
         }
     }
     return supportAccount;
@@ -98,6 +106,11 @@ router.get('/admin/list', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/admin/reply/:id', protect, admin, async (req, res) => {
     try {
+        // Only the main 'oxypace' admin can reply
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu işlem için sadece ana yönetici hesabı yetkilidir.' });
+        }
+
         const { response } = req.body;
         if (!response) {
             return res.status(400).json({ message: 'Lütfen bir yanıt yazın.' });
