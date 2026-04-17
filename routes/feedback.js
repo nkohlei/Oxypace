@@ -23,7 +23,7 @@ const getSystemSupportAccount = async () => {
         if (supportAccount) {
             supportAccount.isSystemAccount = true;
             supportAccount.profile.displayName = 'Oxypace Destek';
-            supportAccount.profile.avatar = '/system/support-avatar.png';
+            supportAccount.profile.avatar = '/system/support_avatar.png';
             await supportAccount.save();
         } else {
             // Create new
@@ -37,15 +37,15 @@ const getSystemSupportAccount = async () => {
                 profile: {
                     displayName: 'Oxypace Destek',
                     bio: 'Oxypace Resmi Destek ve Geri Bildirim Hesabı',
-                    avatar: '/system/support-avatar.png'
+                    avatar: '/system/support_avatar.png'
                 }
             });
         }
     } else {
         // Ensure properties are up to date even if account exists
-        if (supportAccount.profile.displayName !== 'Oxypace Destek' || supportAccount.profile.avatar !== '/system/support-avatar.png') {
+        if (supportAccount.profile.displayName !== 'Oxypace Destek' || supportAccount.profile.avatar !== '/system/support_avatar.png') {
             supportAccount.profile.displayName = 'Oxypace Destek';
-            supportAccount.profile.avatar = '/system/support-avatar.png';
+            supportAccount.profile.avatar = '/system/support_avatar.png';
             await supportAccount.save();
         }
     }
