@@ -3,6 +3,7 @@ import multer from 'multer';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import { postValidation, mongoIdValidation } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -85,8 +86,10 @@ router.post(
 
             if (req.file) {
                 const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-                postData.media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
-                console.log('📤 Media URL:', postData.media);
+                const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
+                const rawR2Url = `${domain}/${req.file.key}`;
+                postData.media = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
+                console.log('📤 Media Proxied URL:', postData.media);
 
                 if (req.file.mimetype.includes('video')) {
                     postData.mediaType = 'video';
@@ -126,6 +129,32 @@ router.post(
                     channelId: postData.channel.toString(),
                     postId: post._id.toString()
                 });
+
+                // --- PERSISTENT NOTIFICATIONS FOR OFFLINE USERS ---
+                // Create a 'portal_post' notification for all portal members (except the author)
+                // This ensures that when they login, they see the unread count in the sidebar.
+                (async () => {
+                    try {
+                        const Portal = (await import('../models/Portal.js')).default;
+                        const portal = await Portal.findById(postData.portal);
+                        if (portal) {
+                            const memberIds = portal.members.filter(m => m.toString() !== req.user._id.toString());
+                            if (memberIds.length > 0) {
+                                const notificationDocs = memberIds.map(userId => ({
+                                    recipient: userId,
+                                    sender: req.user._id,
+                                    type: 'portal_post',
+                                    portal: postData.portal,
+                                    post: post._id,
+                                    read: false
+                                }));
+                                await Notification.insertMany(notificationDocs);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error creating portal notifications:', err);
+                    }
+                })();
             }
 
             res.status(201).json(post);

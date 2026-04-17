@@ -12,7 +12,7 @@ import './PortalSidebar.css';
 const PortalSidebar = () => {
     const { user, isAuthenticated } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
-    const { unreadPostsByPortal, clearUnreadForPortal } = useGlobalStore();
+    const { unreadPostsByPortal, clearUnreadForPortal, syncUnreadCounts } = useGlobalStore();
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -40,8 +40,10 @@ const PortalSidebar = () => {
     useEffect(() => {
         if (user?.joinedPortals) {
             setOrderedPortals(user.joinedPortals.filter((p) => p && p._id && p.name));
+            // Sync unread counts from server to ensure offline accuracy
+            syncUnreadCounts();
         }
-    }, [user?.joinedPortals]);
+    }, [user?.joinedPortals, syncUnreadCounts]);
 
     useEffect(() => {
         // Clear unread status when entering a portal

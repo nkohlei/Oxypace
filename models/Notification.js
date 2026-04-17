@@ -23,6 +23,7 @@ const notificationSchema = new mongoose.Schema(
                 'portal_invite',
                 'message',
                 'friend_connected',
+                'portal_post',
             ],
             required: true,
         },

@@ -509,7 +509,9 @@ router.post(
             const user = await User.findById(req.user._id);
 
             const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
+            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
+            const rawR2Url = `${domain}/${req.file.key}`;
+            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
             user.profile.avatar = publicUrl;
             await user.save();
 
@@ -552,7 +554,9 @@ router.post(
             const user = await User.findById(req.user._id);
 
             const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
+            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
+            const rawR2Url = `${domain}/${req.file.key}`;
+            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
             user.profile.coverImage = publicUrl;
             await user.save();
 

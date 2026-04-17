@@ -96,10 +96,8 @@ const CreatePost = () => {
                 formData.append('portalId', portalId);
             }
 
-            // Force direct connection to backend to bypass Vercel 4.5MB limit
-            const backendUrl = import.meta.env.DEV
-                ? '/api/posts'
-                : 'https://globalmessage-backend.koyeb.app/api/posts';
+            // Use relative path for posts API to ensure consistency
+            const backendUrl = '/api/posts';
 
             await axios.post(backendUrl, formData);
 

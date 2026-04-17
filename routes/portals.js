@@ -513,7 +513,9 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
 
         if (req.file) {
             const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
+            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
+            const rawR2Url = `${domain}/${req.file.key}`;
+            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
             portal.avatar = publicUrl;
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');
@@ -543,7 +545,9 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
 
         if (req.file) {
             const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            const publicUrl = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
+            const backendUrl = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '');
+            const rawR2Url = `${domain}/${req.file.key}`;
+            const publicUrl = `${backendUrl}/api/media/${encodeURIComponent(rawR2Url)}`;
             portal.banner = publicUrl; // Make sure Portal model has banner field
             await portal.save();
             await portal.populate('owner', 'username profile.displayName profile.avatar');

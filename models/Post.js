@@ -61,6 +61,16 @@ const postSchema = new mongoose.Schema(
     }
 );
 
+// Cleanup associated notifications when post is deleted
+postSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+    try {
+        await mongoose.model('Notification').deleteMany({ post: this._id });
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
+
 // Indexes for performance
 postSchema.index({ author: 1, createdAt: -1 });
 postSchema.index({ portal: 1, channel: 1, createdAt: -1 }); // Optimized feed query

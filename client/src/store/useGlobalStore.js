@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import axios from 'axios';
 
 export const useGlobalStore = create(
     persist(
@@ -66,11 +67,29 @@ export const useGlobalStore = create(
                 return modified ? newState : state;
             }),
 
-            clearUnreadForPortal: (portalId) => set((state) => {
-                const newUnread = { ...state.unreadPostsByPortal };
-                delete newUnread[portalId];
-                return { unreadPostsByPortal: newUnread };
-            }),
+            clearUnreadForPortal: async (portalId) => {
+                set((state) => {
+                    const newUnread = { ...state.unreadPostsByPortal };
+                    delete newUnread[portalId];
+                    return { unreadPostsByPortal: newUnread };
+                });
+
+                // Sync with backend: Mark these notifications as read
+                try {
+                    await axios.put(`/api/notifications/portal/${portalId}/read`);
+                } catch (err) {
+                    console.error('Failed to clear portal notifications on server:', err);
+                }
+            },
+
+            syncUnreadCounts: async () => {
+                try {
+                    const response = await axios.get('/api/notifications/portal-unreads');
+                    set({ unreadPostsByPortal: response.data || {} });
+                } catch (err) {
+                    console.error('Failed to sync unread counts:', err);
+                }
+            },
 
             clearUnreadForChannel: (channelId) => set((state) => {
                 const newUnread = { ...state.unreadPostsByChannel };

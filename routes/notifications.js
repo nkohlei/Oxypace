@@ -40,6 +40,41 @@ router.get('/', protect, async (req, res) => {
     }
 });
 
+// @route   GET /api/notifications/portal-unreads
+// @desc    Get unread counts grouped by portal
+// @access  Private
+router.get('/portal-unreads', protect, async (req, res) => {
+    try {
+        const counts = await Notification.aggregate([
+            {
+                $match: {
+                    recipient: req.user._id,
+                    type: 'portal_post',
+                    read: false
+                }
+            },
+            {
+                $group: {
+                    _id: '$portal',
+                    postIds: { $push: '$post' }
+                }
+            }
+        ]);
+        
+        const result = {};
+        counts.forEach(c => {
+           if (c._id) {
+               result[c._id.toString()] = c.postIds;
+           }
+        });
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Portal unreads error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // @route   PUT /api/notifications/read
 // @desc    Mark all notifications as read
 // @access  Private
@@ -52,6 +87,22 @@ router.put('/read', protect, async (req, res) => {
         res.json({ message: 'Notifications marked as read' });
     } catch (error) {
         console.error('Mark read error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/notifications/portal/:portalId/read
+// @desc    Mark all portal notifications as read
+// @access  Private
+router.put('/portal/:portalId/read', protect, async (req, res) => {
+    try {
+        await Notification.updateMany(
+            { recipient: req.user._id, portal: req.params.portalId, read: false },
+            { $set: { read: true } }
+        );
+        res.json({ message: 'Portal notifications marked as read' });
+    } catch (error) {
+        console.error('Mark portal read error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
