@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
+import { getImageUrl } from '../utils/imageUtils';
 import './Feedback.css';
 
 const Feedback = () => {
@@ -122,10 +123,10 @@ const Feedback = () => {
                             {error && <div className="alert-message error">{error}</div>}
                             {success && <div className="alert-message success">{success}</div>}
 
-                            <form onSubmit={handleSubmit}>
-                                <div className="form-row">
-                                    <div className="form-field">
-                                        <label>Kategori</label>
+                            <form onSubmit={handleSubmit} className="modern-feedback-form">
+                                <div className="form-field">
+                                    <label>Kategori</label>
+                                    <div className="select-wrapper">
                                         <select 
                                             value={formData.category} 
                                             onChange={(e) => setFormData({...formData, category: e.target.value})}
@@ -154,7 +155,7 @@ const Feedback = () => {
                                         value={formData.message}
                                         onChange={(e) => setFormData({...formData, message: e.target.value})}
                                         required
-                                        rows={6}
+                                        rows={5}
                                     />
                                 </div>
 
@@ -170,25 +171,32 @@ const Feedback = () => {
                                         />
                                         <label htmlFor="f-files" className="upload-btn-creative">
                                             <div className="pulse-icon">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                                     <polyline points="17 8 12 3 7 8" />
                                                     <line x1="12" y1="3" x2="12" y2="15" />
                                                 </svg>
                                             </div>
-                                            <span>
-                                                {files.length > 0 ? `${files.length} Dosya Seçildi` : 'Görsel veya dosya yüklemek için tıklayın'}
+                                            <span className="upload-text">
+                                                {files.length > 0 ? `${files.length} Dosya Seçildi` : 'Görsel veya dosya yükleyin'}
                                             </span>
                                         </label>
                                     </div>
                                 </div>
 
-                                <button type="submit" className="feedback-submit-btn" disabled={loading}>
+                                <button type="submit" className="feedback-submit-btn-premium" disabled={loading}>
                                     {loading ? (
                                         <div className="loader-dots">
                                             <span></span><span></span><span></span>
                                         </div>
-                                    ) : 'Geri Bildirimi İlet'}
+                                    ) : (
+                                        <>
+                                            <span>Geri Bildirimi İlet</span>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <path d="M5 12h14M12 5l7 7-7 7" />
+                                            </svg>
+                                        </>
+                                    )}
                                 </button>
                             </form>
                         </div>
@@ -218,10 +226,23 @@ const Feedback = () => {
                                             <div className="ticket-body">
                                                 <div className="ticket-meta">{item.category}</div>
                                                 <div className="ticket-subject">{item.subject}</div>
+                                                
+                                                {/* Files Display */}
+                                                {item.files && item.files.length > 0 && (
+                                                    <div className="ticket-attachments-preview">
+                                                        {item.files.map((file, idx) => (
+                                                            <div key={idx} className="attachment-thumb">
+                                                                <img src={getImageUrl(file)} alt="attachment" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
                                                 <div className="ticket-date">
                                                     {new Date(item.createdAt).toLocaleDateString('tr-TR')}
                                                 </div>
                                             </div>
+
                                             {item.adminResponse && (
                                                 <div className="ticket-response">
                                                     <div className="response-label">Yanıt:</div>
