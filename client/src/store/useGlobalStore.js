@@ -126,7 +126,14 @@ export const useGlobalStore = create(
 
             updateUserEvent: (userId, fullDocument) => set((state) => ({
                 usersCache: { ...state.usersCache, [userId]: { ...state.usersCache[userId], ...fullDocument } }
-            }))
+            })),
+
+            resetStore: () => set({
+                unreadPostsByPortal: {},
+                unreadPostsByChannel: {},
+                posts: [],
+                currentUser: null
+            })
         }),
         {
             name: 'global-storage', // unique name for localStorage

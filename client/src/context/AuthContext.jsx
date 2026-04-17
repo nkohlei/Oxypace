@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import useGlobalStore from '../store/useGlobalStore';
 
 const AuthContext = createContext();
 
@@ -62,6 +63,8 @@ export const AuthProvider = ({ children }) => {
         setToken(null);
         setUser(null);
         delete axios.defaults.headers.common['Authorization'];
+        // Reset unread counts and other portal state
+        useGlobalStore.getState().resetStore();
     };
 
     const updateUser = (userData) => {

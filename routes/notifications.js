@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Notification from '../models/Notification.js';
 import { protect } from '../middleware/auth.js';
 
@@ -48,7 +49,7 @@ router.get('/portal-unreads', protect, async (req, res) => {
         const counts = await Notification.aggregate([
             {
                 $match: {
-                    recipient: req.user._id,
+                    recipient: new mongoose.Types.ObjectId(req.user.id),
                     type: 'portal_post',
                     read: false
                 }
