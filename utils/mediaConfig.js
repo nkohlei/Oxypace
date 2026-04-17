@@ -1,18 +1,15 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 /**
  * Centralized Media Configuration
  * 
  * Enforces the correct Cloudflare R2 domain and Koyeb Proxy Base.
- * Hardcoded fallbacks ensure operational stability even if environment variables are misconfigured.
+ * Hardcoded strings ensure operational stability even if environment variables are misconfigured.
  */
 
-// Cloudflare R2 Public Domain (The 'ham' URL)
-export const R2_DOMAIN = (process.env.R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
+// Cloudflare R2 Public Domain (The 'ham' URL) - HARDCODED as per instructions
+export const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
 
-// Koyeb API Proxy Base URL
-export const PROXY_BASE = (process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '') + '/api/media/';
+// Koyeb API Proxy Base URL - HARDCODED as per instructions
+export const PROXY_BASE = 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/';
 
 /**
  * Constructs a full proxied URL for a given R2 key.
@@ -22,7 +19,7 @@ export const PROXY_BASE = (process.env.BACKEND_URL || 'https://unlikely-rosamond
 export const constructProxiedUrl = (key) => {
     if (!key) return null;
     
-    // Ensure key doesn't start with a slash
+    // Ensure key doesn't start with a slash and handle absolute paths correctly
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
     
     // 1. Build the Raw R2 URL

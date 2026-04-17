@@ -7,6 +7,7 @@ import Message from '../models/Message.js';
 import ContactMessage from '../models/ContactMessage.js';
 import upload from '../middleware/upload.js';
 import mongoose from 'mongoose';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
 const router = express.Router();
 
@@ -54,9 +55,8 @@ router.post('/submit', protect, upload.array('files', 5), async (req, res) => {
             return res.status(400).json({ message: 'Lütfen tüm zorunlu alanları doldurun.' });
         }
 
-        const r2PublicDomain = process.env.R2_PUBLIC_DOMAIN;
         const fileUrls = req.files ? req.files.map(file => {
-            return r2PublicDomain ? `${r2PublicDomain}/${file.key}` : `/api/media/${file.key}`;
+            return constructProxiedUrl(file.key);
         }) : [];
         console.log('📬 Feedback attachment URLs:', fileUrls);
 
