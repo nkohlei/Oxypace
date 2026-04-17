@@ -11,6 +11,11 @@ export const getImageUrl = (path) => {
         cleanPath = cleanPath.replace('undefined', '');
     }
 
+    // 0. STATIC ASSETS: Don't proxy or transform local system assets
+    if (cleanPath.startsWith('/system/') || cleanPath.startsWith('system/')) {
+        return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    }
+
     const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
     const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
