@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import PostCard from '../components/PostCard';
@@ -7,6 +8,7 @@ import './Saved.css';
 const Saved = () => {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchSavedPosts();
@@ -32,7 +34,15 @@ const Saved = () => {
             <Navbar />
             <main className="app-content">
                 <div className="saved-container">
-                    <h1 className="saved-title">Kaydedilenler</h1>
+                    <div className="saved-header">
+                        <button className="saved-back-btn" onClick={() => navigate(-1)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                        </button>
+                        <h1 className="saved-title">Kaydedilenler</h1>
+                    </div>
 
                     {loading ? (
                         <div className="loading-container">
