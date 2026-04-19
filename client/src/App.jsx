@@ -59,6 +59,7 @@ const Portal = lazyWithRetry(() => import('./pages/Portal'));
 const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
 const EarthSimulation = lazyWithRetry(() => import('./pages/MapDirectory/EarthSimulation'));
 const Feedback = lazyWithRetry(() => import('./pages/Feedback'));
+const Home = lazyWithRetry(() => import('./pages/Home'));
 
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -273,7 +274,7 @@ const AppLayout = () => {
                                 <Route path="/contact" element={<Contact />} />
 
                                 {/* Private routes */}
-                                <Route path="/" element={isLoggedIn ? <Inbox /> : <Login />} />
+                                <Route path="/" element={isLoggedIn ? <Inbox /> : <Home />} />
 
                                 {/* Portal Route */}
                                 <Route path="/portal/:id" element={<Portal />} />
