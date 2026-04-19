@@ -20,10 +20,10 @@ const MembersSidebar = ({ members = [], onClose }) => {
         if (diffHours < 24) return `${diffHours}h`;
         
         const diffDays = Math.floor(diffHours / 24);
-        if (diffDays < 30) return `${diffDays}g`;
+        if (diffDays < 30) return `${diffDays}d`;
         
         const diffMonths = Math.floor(diffDays / 30);
-        if (diffMonths < 12) return `${diffMonths}a`;
+        if (diffMonths < 12) return `${diffMonths}mo`;
         
         return `${Math.floor(diffMonths / 12)}y`;
     };
