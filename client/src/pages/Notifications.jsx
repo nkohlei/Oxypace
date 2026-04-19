@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
@@ -9,6 +9,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import './Notifications.css';
 
 const Notifications = () => {
+    const navigate = useNavigate();
     const { user: currentUser, updateUser } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
