@@ -199,14 +199,19 @@ const Home = () => {
                     <div className="gradient-sphere sphere-3"></div>
                 </div>
 
-                {/* HERO TITLE - Logo image with Gradient/Glassmorphism background glow */}
+                {/* HERO TITLE - User's Logo Image masked with an actual CSS Gradient overlay */}
                 <div className="hero-title-container" style={{
                     transform: `scale(${logoScale})`,
                     opacity: logoOpacity,
                     filter: `blur(${logoBlur}px)`
                 }}>
                     <div className="hero-gradient-glow"></div>
-                    <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-img" />
+                    
+                    <div className="hero-logo-mask-container">
+                        <img src="/oxypace-text-logo.png" alt="OXYPACE Layout Reference" className="hero-logo-layout-reference" />
+                        <div className="hero-logo-gradient-overlay" />
+                    </div>
+
                     <div className="hero-subtitle-typing-container">
                         <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
                     </div>
