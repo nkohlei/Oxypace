@@ -273,7 +273,7 @@ const AppLayout = () => {
                                 <Route path="/contact" element={<Contact />} />
 
                                 {/* Private routes */}
-                                <Route path="/" element={<Navigate to="/inbox" replace />} />
+                                <Route path="/" element={isLoggedIn ? <Inbox /> : <Login />} />
 
                                 {/* Portal Route */}
                                 <Route path="/portal/:id" element={<Portal />} />
@@ -306,11 +306,7 @@ const AppLayout = () => {
                                 <Route path="/profile/:username" element={<Profile />} />
                                 <Route
                                     path="/inbox"
-                                    element={
-                                        <PrivateRoute>
-                                            <Inbox />
-                                        </PrivateRoute>
-                                    }
+                                    element={<Navigate to="/" replace />}
                                 />
                                 <Route
                                     path="/settings"
@@ -362,7 +358,7 @@ const AppLayout = () => {
                                     }
                                 />
 
-                                <Route path="*" element={<Navigate to="/inbox" replace />} />
+                                <Route path="*" element={<Navigate to="/" replace />} />
                             </Routes>
                         </Suspense>
                     </div>
