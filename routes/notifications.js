@@ -14,7 +14,7 @@ router.get('/', protect, async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const notifications = await Notification.find({ recipient: req.user.id })
+        const notifications = await Notification.find({ recipient: req.user.id, type: 'message' })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -22,10 +22,11 @@ router.get('/', protect, async (req, res) => {
             .populate('post', 'content media')
             .populate('comment', 'content');
 
-        const total = await Notification.countDocuments({ recipient: req.user.id });
+        const total = await Notification.countDocuments({ recipient: req.user.id, type: 'message' });
         const unreadCount = await Notification.countDocuments({
             recipient: req.user.id,
             read: false,
+            type: 'message'
         });
 
         res.json({
@@ -81,12 +82,12 @@ router.get('/portal-unreads', protect, async (req, res) => {
 // @access  Private
 router.put('/read', protect, async (req, res) => {
     try {
-        // Exclude 'portal_post' so portal unread badges persist until user enters the portal
+        // RESTRICTION: Only mark message notifications as read
         await Notification.updateMany(
             { 
                 recipient: req.user.id, 
                 read: false,
-                type: { $ne: 'portal_post' } 
+                type: 'message' 
             },
             { $set: { read: true } }
         );
