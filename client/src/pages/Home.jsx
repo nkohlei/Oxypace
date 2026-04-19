@@ -1,100 +1,178 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
 import AdUnit from '../components/AdUnit';
 import SEO from '../components/SEO';
+import axios from 'axios';
+import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import FloatingScrollTop from '../components/FloatingScrollTop';
-import { getImageUrl } from '../utils/imageUtils';
-import axios from 'axios';
 import './Home.css';
 
 const Home = () => {
+    const { user, loading } = useAuth();
     const navigate = useNavigate();
-    const [scrollY, setScrollY] = useState(0);
     const [publicPortals, setPublicPortals] = useState([]);
-    const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+    const [scrollY, setScrollY] = useState(0);
 
+    // Auto-redirect logged-in users to their first joined portal
     useEffect(() => {
-        const handleScroll = () => {
-            setScrollY(window.scrollY);
-        };
-        const handleResize = () => {
-            setWindowHeight(window.innerHeight);
-        };
+        if (!loading && user) {
+            if (user.joinedPortals && user.joinedPortals.length > 0) {
+                const firstPortalId =
+                    typeof user.joinedPortals[0] === 'string'
+                        ? user.joinedPortals[0]
+                        : user.joinedPortals[0]._id;
 
-        window.addEventListener('scroll', handleScroll);
-        window.addEventListener('resize', handleResize);
+                navigate(`/portal/${firstPortalId}`);
+            }
+        }
+    }, [user, loading, navigate]);
 
-        return () => {
-            window.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('resize', handleResize);
-        };
-    }, []);
-
+    // Fetch popular/public portals for the background marquee
     useEffect(() => {
         const fetchPortals = async () => {
             try {
-                const res = await axios.get('/api/portals/public?limit=12');
-                setPublicPortals(res.data);
+                const res = await axios.get('/api/portals?keyword=');
+                if (res.data && res.data.length > 0) {
+                    setPublicPortals(res.data.slice(0, 15)); // Take up to 15
+                }
             } catch (err) {
-                console.error('Portal fetch error:', err);
+                console.error("Failed to fetch portals for marquee", err);
             }
         };
         fetchPortals();
     }, []);
 
-    // Split progress logic (User's design in 30a1983)
-    const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
-    const leftX = -(splitProgress * 25); // Moves 25vw left
-    const rightX = (splitProgress * 25); // Moves 25vw right
-    const logoOpacity = 1 - (splitProgress * 0.7); // Fade to background
-    const logoScale = 1 - (splitProgress * 0.1); 
+    // Track scroll position for animations
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrollY(window.scrollY);
+        };
 
-    // Sections visibility (User's design in 30a1983)
-    const sectionsOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.4)) / (windowHeight * 0.4), 0), 1);
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        // Initial check
+        handleScroll();
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="app-wrapper">
+                <Navbar />
+                <div className="spinner-container">
+                    <div className="spinner"></div>
+                </div>
+            </div>
+        );
+    }
+
+    // Mathematical calculations for hero scroll animation
+    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+
+    // --- LOGO ALIGNMENT LOGIC 3.6 (Definitive Fog) ---
+    // progress 0.0 -> 1.0 (over 80vh)
+    const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
+
+    // Logos stay centered - NO dynamic X translation
+    const textTranslateX = 0;
+
+    // Both scale down and retreat
+    const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
+    // Always keep logos BEHIND cards. Cards are z-index 20.
+    const logoZIndex = 4;
+    const logoOpacity = 1 - (splitProgress * 0.7); // Fade to background
+    const logoTranslateY = splitProgress * -50; // Move up slightly
+    // DIRECT BLUR on logos as they pass behind cards (3.6 definitive fix)
+    const logoBlur = splitProgress > 0.3 ? Math.min((splitProgress - 0.3) * 35, 20) : 0;
+
+    // Feature sections fade in much later
+    const contentOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.5)) / (windowHeight * 0.4), 0), 1);
+    const contentTranslateY = (1 - contentOpacity) * 50;
+
+    // The background should have scattered items
+    // We clone the arr and give them random positions
+    const scatteredItems = [...publicPortals, ...publicPortals];
 
     return (
-        <div className="advanced-home">
-            <SEO 
-                title="Oxypace | Global İletişim Platformu" 
-                description="Oxypace ile portallar oluşturun, topluluklara katılın ve dünyayla kesintisiz iletişim kurun."
+        <div className="app-wrapper advanced-home">
+            <SEO
+                title="Ana Sayfa | Global Message & Portallar"
+                description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu. Kendi portalınızı oluşturun, arkadaşlarınızla sohbet edin ve global mesajlaşmanın keyfini çıkarın."
+                schema={{
+                    "@context": "https://schema.org",
+                    "@type": "WebSite",
+                    "name": "Oxypace",
+                    "url": window.location.origin,
+                    "potentialAction": {
+                        "@type": "SearchAction",
+                        "target": `${window.location.origin}/search?q={search_term_string}`,
+                        "query-input": "required name=search_term_string"
+                    }
+                }}
             />
-            
-            <Navbar />
+
+            <Navbar hideThemeToggle />
 
             <main className="advanced-home-content">
-                {/* Hero Section with Split Animation */}
+
+                {/* VIDEO BACKGROUND */}
+                <video className="home-bg-video" autoPlay muted loop playsInline>
+                    <source src="/auth-bg.mp4" type="video/mp4" />
+                    <source src="/auth-bg.webm" type="video/webm" />
+                </video>
+                <div className="home-bg-overlay"></div>
+
+                {/* ATMOSPHERIC BACKGROUND */}
+                <div className="atmospheric-bg">
+                    <div className="gradient-sphere sphere-1"></div>
+                    <div className="gradient-sphere sphere-2"></div>
+                    <div className="gradient-sphere sphere-3"></div>
+                    <div className="gradient-sphere sphere-4"></div>
+                    <div className="gradient-sphere sphere-5"></div>
+                    <div className="fixed-bg-overlay-3"></div>
+                </div>
+
+                {/* HERO LOGO - SINGLE TEXT LOGO (3.7) */}
                 <div className="split-logo-container">
-                    <div className="logo-wrapper left-part" style={{ 
-                        transform: `translateX(${leftX}vw) scale(${logoScale})`,
-                        opacity: logoOpacity
-                    }}>
-                        <img src="/oxypace-logo-icon.png" alt="" className="hero-logo-icon" />
-                    </div>
-                    <div className="logo-wrapper right-part" style={{ 
-                        transform: `translateX(${rightX}vw) scale(${logoScale})`,
-                        opacity: logoOpacity
-                    }}>
+                    <div
+                        className="logo-wrapper text-wrapper"
+                        style={{
+                            transform: `translateX(${textTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
+                            opacity: logoOpacity,
+                            zIndex: logoZIndex,
+                            filter: `blur(${logoBlur}px)`,
+                            flexDirection: 'column'
+                        }}
+                    >
                         <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
+                        <div className="hero-subtitle-typing-container">
+                            <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
+                        </div>
                     </div>
                 </div>
 
-                {/* Animated Sections */}
-                <div className="content-scroll-layer" style={{ opacity: sectionsOpacity }}>
-                    
-                    <div className="hero-intro-section">
-                        <div className="hero-intro-text">
-                            <h2>Sınırları Kaldırın.</h2>
-                            <p>Global topluluğunuzu bulun, portallar oluşturun ve dünyayla kesintisiz iletişim kurun.</p>
-                            <div className="hero-actions">
-                                <button className="hero-cta-btn primary" onClick={() => navigate('/search')}>Portalları Keşfet</button>
-                                <button className="hero-cta-btn" onClick={() => navigate('/register')}>Aramıza Katıl</button>
-                            </div>
-                        </div>
-                    </div>
+                {/* SCROLLABLE CONTENT */}
+                <div className="content-scroll-layer">
 
-                    <div className="content-sections-wrapper">
+                    {/* HERO EMPTY SPACER */}
+                    <section className="hero-empty-section"></section>
+
+                    {/* CONTENT SECTIONS */}
+                    <div
+                        className="content-sections-wrapper"
+                        style={{
+                            opacity: contentOpacity,
+                            transform: `translateY(${contentTranslateY}px)`
+                        }}
+                    >
+
                         {/* Feature 01 */}
                         <section className="info-section">
                             <div className="info-text">
@@ -102,9 +180,10 @@ const Home = () => {
                                 <p>
                                     Oxypace, ilgi alanlarına odaklanan modern <strong>portallardan</strong> oluşur.
                                     Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün.
+                                    Kaliteli tartışmalar ve paylaşımlar için özel bir alan yaratın.
                                 </p>
                                 <button className="section-cta-btn" onClick={() => navigate('/search')}>
-                                    Göz At <span className="arrow">→</span>
+                                    Portallara Göz At <span className="arrow">→</span>
                                 </button>
                             </div>
                             <div className="info-visual">
@@ -115,7 +194,7 @@ const Home = () => {
                                         <span className="dot green"></span>
                                     </div>
                                     <div className="mockup-body mockup-01">
-                                        <div className="skeleton-line" style={{ width: '40%' }}></div>
+                                        <div className="skeleton-line sm"></div>
                                         <div className="skeleton-box"></div>
                                         <div className="skeleton-box"></div>
                                     </div>
@@ -124,15 +203,16 @@ const Home = () => {
                         </section>
 
                         {/* Feature 02 */}
-                        <section className="info-section reverse">
+                        <section className="info-section">
                             <div className="info-text">
-                                <h3><span className="accent">02.</span><br />Global Mesajlaşma</h3>
+                                <h3><span className="accent">02.</span><br />Sınırları Kaldıran Küresel İletişim</h3>
                                 <p>
-                                    <strong>Global message</strong> sayesinde farklı portallardan arkadaşlarınızla
-                                    gerçek zamanlı ve güvenli bir şekilde sohbet edin. Oxypace hızı hissettirir.
+                                    <strong>Global message</strong> özelliği sayesinde farklı portallardaki arkadaşlarınızla
+                                    tek bir arayüzden gerçek zamanlı sohbet edin.
+                                    Kesintisiz etkileşim ve güvenli altyapı her an yanınızda.
                                 </p>
                                 <button className="section-cta-btn" onClick={() => navigate('/register')}>
-                                    Keşfet <span className="arrow">→</span>
+                                    Aramıza Katıl <span className="arrow">→</span>
                                 </button>
                             </div>
                             <div className="info-visual">
@@ -143,7 +223,6 @@ const Home = () => {
                                         <span className="dot green"></span>
                                     </div>
                                     <div className="mockup-body mockup-02">
-                                        <div className="skeleton-line sm"></div>
                                         <div className="skeleton-chat-left"></div>
                                         <div className="skeleton-chat-right accent"></div>
                                         <div className="skeleton-chat-left sm"></div>
