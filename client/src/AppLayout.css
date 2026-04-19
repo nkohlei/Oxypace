@@ -44,6 +44,11 @@
     overflow: visible;
 }
 
+.app-container.guest-mode .horizontal-layout-container {
+    overflow: visible;
+    padding-top: 0;
+}
+
 /* Sidebar Wrapper - Fixed Left Rail */
 .portal-sidebar-wrapper {
     width: 72px;
