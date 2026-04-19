@@ -13,17 +13,23 @@ const Home = () => {
     const navigate = useNavigate();
     const [scrollY, setScrollY] = useState(0);
     const [publicPortals, setPublicPortals] = useState([]);
+    const [windowHeight, setWindowHeight] = useState(window.innerHeight);
 
     useEffect(() => {
         const handleScroll = () => setScrollY(window.scrollY);
+        const handleResize = () => setWindowHeight(window.innerHeight);
         window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('resize', handleResize);
+        };
     }, []);
 
     useEffect(() => {
         const fetchPortals = async () => {
             try {
-                const res = await axios.get('/api/portals/public?limit=8');
+                const res = await axios.get('/api/portals/public?limit=12');
                 setPublicPortals(res.data);
             } catch (err) {
                 console.error('Portal fetch error:', err);
@@ -32,17 +38,15 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // 3D Scroll Animations Logic (Commit 6cba844 Peak)
-    const heroScale = 1 + (scrollY / 500);
-    const heroRotate = scrollY / 10;
-    const heroTranslateY = scrollY * 1.5;
-    const heroOpacity = Math.max(1 - scrollY / 600, 0);
-    const descOpacity = Math.max(1 - scrollY / 400, 0);
+    // Scroll progress for the "Split Logo" animation (User's Design)
+    const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
+    const leftX = -(splitProgress * 25);
+    const rightX = (splitProgress * 25);
+    const logoOpacity = 1 - (splitProgress * 0.7); // Fade slightly to background
+    const logoScale = 1 - (splitProgress * 0.1);
 
-    const marqueeItems = publicPortals.length > 0 ? publicPortals : [
-        { name: 'O', _id: '1' }, { name: 'X', _id: '2' }, { name: 'Y', _id: '3' }, 
-        { name: 'P', _id: '4' }, { name: 'A', _id: '5' }, { name: 'C', _id: '6' }
-    ];
+    // Feature sections fade in scroll logic
+    const sectionsOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.4)) / (windowHeight * 0.4), 0), 1);
 
     return (
         <div className="advanced-home">
@@ -53,181 +57,151 @@ const Home = () => {
             
             <Navbar />
 
+            {/* Video Background (Static but atmospheric) */}
+            <video autoPlay loop muted playsInline className="home-bg-video">
+                <source src="/auth-bg.mp4" type="video/mp4" />
+            </video>
+            <div className="home-bg-overlay"></div>
+
             <main className="advanced-home-content">
-                {/* HERO SECTION WITH 3D INTERACTIONS */}
-                <div className="hero-scroll-wrapper">
-                    <div className="hero-sticky-container">
-                        {/* Marquee Background System */}
-                        <div className="hero-marquee-system">
-                            {marqueeItems.length > 0 && (
-                                <>
-                                    <div className="marquee-track track-1">
-                                        {[...marqueeItems, ...marqueeItems].map((p, i) => (
-                                            <div key={`t1-${i}`} className="marquee-card">
-                                                {p.avatar ? (
-                                                    <img src={getImageUrl(p.avatar)} alt="" />
-                                                ) : (
-                                                    <div className="p-placeholder">{p.name?.charAt(0)}</div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="marquee-track track-2">
-                                        {[...marqueeItems, ...marqueeItems].reverse().map((p, i) => (
-                                            <div key={`t2-${i}`} className="marquee-card">
-                                                {p.avatar ? (
-                                                    <img src={getImageUrl(p.avatar)} alt="" />
-                                                ) : (
-                                                    <div className="p-placeholder">{p.name?.charAt(0)}</div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                {/* ATMOSPHERIC BACKGROUND (Spheres) */}
+                <div className="atmospheric-bg">
+                    <div className="gradient-sphere sphere-1"></div>
+                    <div className="gradient-sphere sphere-2"></div>
+                    <div className="gradient-sphere sphere-3"></div>
+                    <div className="gradient-sphere sphere-4"></div>
+                </div>
 
-                        <div className="hero-overlay"></div>
-
-                        {/* Animated Hero Title (Massive 3D) */}
-                        <h1
-                            className="hero-massive-title"
-                            style={{
-                                transform: `translate(-50%, -50%) scale(${heroScale}) rotate(${heroRotate}deg) translateY(${heroTranslateY}px)`,
-                                opacity: heroOpacity
-                            }}
-                        >
-                            OXYPACE
-                        </h1>
-
-                        <div
-                            className="hero-intro-text"
-                            style={{
-                                opacity: descOpacity,
-                                transform: `translateY(${scrollY * 0.3}px)`
-                            }}
-                        >
-                            <div className="home-emoji bounce">🌍</div>
-                            <h2>Yeni Nesil Global Sosyal Medya</h2>
-                            <p>Sıradan platformları unutun. Topluluğunuzu bulun, sınırları kaldırın.</p>
-                            <div className="hero-actions">
-                                <button
-                                    className="hero-cta-btn pulse-glow"
-                                    onClick={() => navigate('/search')}
-                                >
-                                    Portalları Keşfet
-                                </button>
-                                <button
-                                    className="hero-cta-btn secondary"
-                                    onClick={() => navigate('/register')}
-                                >
-                                    Bize Katıl
-                                </button>
-                            </div>
+                {/* USER'S DESIGN: SPLIT LOGO HERO */}
+                <div className="split-logo-container">
+                    <div className="logo-wrapper" style={{ 
+                        transform: `translateX(${leftX}vw) scale(${logoScale})`,
+                        opacity: logoOpacity
+                    }}>
+                        <img src="/oxypace-logo-icon.png" alt="" className="hero-logo-icon gradient-glow" />
+                    </div>
+                    <div className="logo-wrapper" style={{ 
+                        transform: `translateX(${rightX}vw) scale(${logoScale})`,
+                        opacity: logoOpacity
+                    }}>
+                        <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
+                        <div className="hero-subtitle-typing-container">
+                            <p className="hero-subtitle-typing">Yeni nesil küresel iletişim platformu.</p>
                         </div>
                     </div>
                 </div>
 
-                {/* CONTENT SECTIONS - ENRICHED MOCKUPS */}
-                <div className="content-sections-wrapper">
-
-                    <section className="info-section">
-                        <div className="info-text">
-                            <h3><span className="accent">01.</span> Topluluğunu İnşa Et</h3>
-                            <p>
-                                Oxypace, ilgi alanlarına odaklanan modern <strong>portallardan</strong> oluşur.
-                                Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün.
-                                Kaliteli tartışmalar ve paylaşımlar için özel bir alan yaratın.
-                            </p>
-                            <button className="section-cta-btn" onClick={() => navigate('/search')}>
-                                Portallara Göz At <span className="arrow">→</span>
-                            </button>
-                        </div>
-                        <div className="info-visual floating">
-                            <div className="mockup-window">
-                                <div className="mockup-header">
-                                    <span className="dot red"></span>
-                                    <span className="dot yellow"></span>
-                                    <span className="dot green"></span>
-                                </div>
-                                <div className="mockup-body portals-mockup">
-                                    <div className="skeleton-line" style={{ width: '40%' }}></div>
-                                    <div className="skeleton-box"></div>
-                                    <div className="skeleton-box"></div>
-                                    <div className="skeleton-line sm"></div>
-                                </div>
+                {/* SCROLL TRIGGERED CONTENT */}
+                <div className="content-scroll-layer" style={{ opacity: sectionsOpacity }}>
+                    
+                    <div className="hero-intro-section">
+                        <div className="hero-intro-text">
+                            <h2>Sınırları Kaldırın.</h2>
+                            <p>Global topluluğunuzu bulun, portallar oluşturun ve dünyayla kesintisiz iletişim kurun.</p>
+                            <div className="hero-actions">
+                                <button className="hero-cta-btn primary" onClick={() => navigate('/search')}>Portalları Keşfet</button>
+                                <button className="hero-cta-btn" onClick={() => navigate('/register')}>Aramıza Katıl</button>
                             </div>
                         </div>
-                    </section>
+                    </div>
 
-                    <section className="info-section reverse">
-                        <div className="info-text">
-                            <h3><span className="accent">02.</span> Sınırları Kaldıran İletişim</h3>
-                            <p>
-                                <strong>Global message</strong> özelliği sayesinde farklı portallardaki arkadaşlarınızla
-                                tek bir arayüzden gerçek zamanlı sohbet edin.
-                                Kesintisiz etkileşim ve güvenli altyapı her an yanınızda.
-                            </p>
-                            <button className="section-cta-btn" onClick={() => navigate('/register')}>
-                                Aramıza Katıl <span className="arrow">→</span>
-                            </button>
-                        </div>
-                        <div className="info-visual floating delay-alt">
-                            <div className="mockup-window">
-                                <div className="mockup-header">
-                                    <span className="dot red"></span>
-                                    <span className="dot yellow"></span>
-                                    <span className="dot green"></span>
-                                </div>
-                                <div className="mockup-body chat-mockup">
-                                    <div className="chat-bubble left"></div>
-                                    <div className="chat-bubble right"></div>
-                                    <div className="chat-bubble left short"></div>
-                                </div>
+                    <div className="content-sections-wrapper">
+                        {/* Feature 01 - Enhanced with Floating */}
+                        <section className="info-section">
+                            <div className="info-text">
+                                <h3><span className="accent">01.</span><br />Topluluğunu İnşa Et</h3>
+                                <p>
+                                    Oxypace, ilgi alanlarına odaklanan modern <strong>portallardan</strong> oluşur.
+                                    Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün.
+                                </p>
+                                <button className="section-cta-btn" onClick={() => navigate('/search')}>
+                                    Göz At <span className="arrow">→</span>
+                                </button>
                             </div>
-                        </div>
-                    </section>
-
-                    <section className="info-section">
-                        <div className="info-text">
-                            <h3><span className="accent">03.</span> Kişiselleştirilebilir Deneyim</h3>
-                            <p>
-                                Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler...
-                                Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.
-                            </p>
-                            <button className="section-cta-btn pulse-glow primary" onClick={() => navigate('/register')}>
-                                Hemen Şimdi Başla
-                            </button>
-                        </div>
-                        <div className="info-visual floating">
-                            <div className="mockup-window">
-                                <div className="mockup-header">
-                                    <span className="dot red"></span>
-                                    <span className="dot yellow"></span>
-                                    <span className="dot green"></span>
-                                </div>
-                                <div className="mockup-body profile-mockup">
-                                    <div className="profile-banner"></div>
-                                    <div className="profile-avatar"></div>
-                                    <div className="profile-name-skeleton"></div>
-                                    <div className="profile-btns-skeleton">
-                                        <div className="btn-skel"></div>
-                                        <div className="btn-skel"></div>
+                            <div className="info-visual floating">
+                                <div className="mockup-window">
+                                    <div className="mockup-header">
+                                        <span className="dot red"></span>
+                                        <span className="dot yellow"></span>
+                                        <span className="dot green"></span>
+                                    </div>
+                                    <div className="mockup-body mockup-01">
+                                        <div className="skeleton-line" style={{ width: '40%' }}></div>
+                                        <div className="skeleton-box"></div>
+                                        <div className="skeleton-box"></div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </section>
+                        </section>
+
+                        {/* Feature 02 - Enhanced with Floating */}
+                        <section className="info-section reverse">
+                            <div className="info-text">
+                                <h3><span className="accent">02.</span><br />Global Mesajlaşma</h3>
+                                <p>
+                                    <strong>Global message</strong> sayesinde farklı portallardan arkadaşlarınızla
+                                    gerçek zamanlı ve güvenli bir şekilde sohbet edin.
+                                </p>
+                                <button className="section-cta-btn" onClick={() => navigate('/register')}>
+                                    Keşfet <span className="arrow">→</span>
+                                </button>
+                            </div>
+                            <div className="info-visual floating delay-alt">
+                                <div className="mockup-window">
+                                    <div className="mockup-header">
+                                        <span className="dot red"></span>
+                                        <span className="dot yellow"></span>
+                                        <span className="dot green"></span>
+                                    </div>
+                                    <div className="mockup-body mockup-02">
+                                        <div className="skeleton-line sm"></div>
+                                        <div className="skeleton-chat-left"></div>
+                                        <div className="skeleton-chat-right accent"></div>
+                                        <div className="skeleton-chat-left sm"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Feature 03 - Enhanced with Floating */}
+                        <section className="info-section">
+                            <div className="info-text">
+                                <h3><span className="accent">03.</span><br />Özelleştirilebilir Yapı</h3>
+                                <p>
+                                    Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler...
+                                    Tamamen sizi yansıtan bir dijital alan yaratın.
+                                </p>
+                                <button className="section-cta-btn primary" onClick={() => navigate('/register')}>
+                                    Hemen Başla
+                                </button>
+                            </div>
+                            <div className="info-visual floating">
+                                <div className="mockup-window">
+                                    <div className="mockup-header">
+                                        <span className="dot red"></span>
+                                        <span className="dot yellow"></span>
+                                        <span className="dot green"></span>
+                                    </div>
+                                    <div className="mockup-body mockup-03">
+                                        <div className="skeleton-box large">
+                                            <div className="profile-circle"></div>
+                                        </div>
+                                        <div className="skeleton-line center w-50 mt-default"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
 
                     {/* PORTAL DISCOVERY SECTION (MODERN SLIDER) */}
                     <section className="portal-discovery-section slider-mode">
                         <div className="discovery-header">
-                            <h2 className="discovery-title">Popüler Portalları Keşfet</h2>
-                            <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun topluluklara katılın.</p>
+                            <h2 className="discovery-title">Popüler Toplulukları Keşfet</h2>
+                            <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun portallara katılın.</p>
                         </div>
                         <div className="discovery-slider-container">
                             <div className="discovery-slider-track">
-                                {[...publicPortals, ...publicPortals].map((portal, idx) => (
+                                {[...publicPortals, ...publicPortals, ...publicPortals].map((portal, idx) => (
                                     <div
                                         key={`${portal._id}-${idx}`}
                                         className="modern-portal-card frosted-discovery"
@@ -283,7 +257,7 @@ const Home = () => {
                         <div className="footer-content">
                             <div className="footer-brand">
                                 <img src="/oxypace-text-logo.png" alt="OXYPACE" className="footer-logo" />
-                                <p>Sınırları kaldıran dijital iletişim ve özgür topluluk deneyimi sunan küresel platform.</p>
+                                <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
                             </div>
                             <div className="footer-links-grid">
                                 <div className="footer-col">
@@ -299,7 +273,7 @@ const Home = () => {
                                 </div>
                                 <div className="footer-col">
                                     <h4>İletişim</h4>
-                                    <span onClick={() => navigate('/feedback')}>Geri Bildirim</span>
+                                    <span onClick={() => navigate('/contact')}>Bize Ulaşın</span>
                                     <a href="mailto:nqohlei@gmail.com">Destek</a>
                                 </div>
                             </div>
@@ -310,6 +284,7 @@ const Home = () => {
                     </footer>
                 </div>
             </main>
+
             <FloatingScrollTop />
         </div>
     );
