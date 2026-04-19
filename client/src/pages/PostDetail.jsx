@@ -11,6 +11,7 @@ import Footer from '../components/Footer';
 import ShareModal from '../components/ShareModal';
 import SEO from '../components/SEO';
 import { useSocket } from '../context/SocketContext';
+import VideoPlayer from '../components/VideoPlayer';
 import { 
     MoreVertical, 
     Share2, 
@@ -260,7 +261,7 @@ const PostDetail = () => {
                                     {(Array.isArray(post.media) ? post.media : [post.media]).map((m, i) => (
                                         <div key={i} className="pd-media-item">
                                             {post.mediaType === 'video' ? (
-                                                <video src={getImageUrl(m)} controls />
+                                                <VideoPlayer src={getImageUrl(m)} />
                                             ) : (
                                                 <img src={getImageUrl(m)} alt="" />
                                             )}

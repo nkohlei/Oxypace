@@ -173,7 +173,7 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
         const portal = await Portal.findById(req.params.id)
             .populate('owner', 'username profile.displayName profile.avatar')
             .populate('admins', 'username profile.displayName profile.avatar')
-            .populate('members', 'username profile.displayName profile.avatar')
+            .populate('members', 'username profile.displayName profile.avatar lastActive')
             .populate('allowedUsers', 'username profile.displayName profile.avatar');
 
         if (!portal) {
@@ -889,7 +889,7 @@ router.get('/:id/notifications', protect, async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
             .populate('joinRequests', 'username profile.avatar profile.displayName createdAt')
-            .populate('members', 'username profile.avatar profile.displayName createdAt');
+            .populate('members', 'username profile.avatar profile.displayName createdAt lastActive');
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal bulunamadı' });
