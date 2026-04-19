@@ -16,10 +16,16 @@ const Home = () => {
     const [windowHeight, setWindowHeight] = useState(window.innerHeight);
 
     useEffect(() => {
-        const handleScroll = () => setScrollY(window.scrollY);
-        const handleResize = () => setWindowHeight(window.innerHeight);
+        const handleScroll = () => {
+            setScrollY(window.scrollY);
+        };
+        const handleResize = () => {
+            setWindowHeight(window.innerHeight);
+        };
+
         window.addEventListener('scroll', handleScroll);
         window.addEventListener('resize', handleResize);
+
         return () => {
             window.removeEventListener('scroll', handleScroll);
             window.removeEventListener('resize', handleResize);
@@ -38,60 +44,43 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Scroll progress for the "Split Logo" animation (User's Design)
+    // Split progress logic (User's design in 30a1983)
     const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
-    const leftX = -(splitProgress * 25);
-    const rightX = (splitProgress * 25);
-    const logoOpacity = 1 - (splitProgress * 0.7); // Fade slightly to background
-    const logoScale = 1 - (splitProgress * 0.1);
+    const leftX = -(splitProgress * 25); // Moves 25vw left
+    const rightX = (splitProgress * 25); // Moves 25vw right
+    const logoOpacity = 1 - (splitProgress * 0.7); // Fade to background
+    const logoScale = 1 - (splitProgress * 0.1); 
 
-    // Feature sections fade in scroll logic
+    // Sections visibility (User's design in 30a1983)
     const sectionsOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.4)) / (windowHeight * 0.4), 0), 1);
 
     return (
         <div className="advanced-home">
             <SEO 
-                title="Oxypace | Yeni Nesil Global Sosyal Medya" 
-                description="Sınırları kaldıran, özgür ve güvenli yeni nesil sosyal medya platformu. Kendi portalını oluştur, dünyayla paylaş."
+                title="Oxypace | Global İletişim Platformu" 
+                description="Oxypace ile portallar oluşturun, topluluklara katılın ve dünyayla kesintisiz iletişim kurun."
             />
             
             <Navbar />
 
-            {/* Video Background (Static but atmospheric) */}
-            <video autoPlay loop muted playsInline className="home-bg-video">
-                <source src="/auth-bg.mp4" type="video/mp4" />
-            </video>
-            <div className="home-bg-overlay"></div>
-
             <main className="advanced-home-content">
-                {/* ATMOSPHERIC BACKGROUND (Spheres) */}
-                <div className="atmospheric-bg">
-                    <div className="gradient-sphere sphere-1"></div>
-                    <div className="gradient-sphere sphere-2"></div>
-                    <div className="gradient-sphere sphere-3"></div>
-                    <div className="gradient-sphere sphere-4"></div>
-                </div>
-
-                {/* USER'S DESIGN: SPLIT LOGO HERO */}
+                {/* Hero Section with Split Animation */}
                 <div className="split-logo-container">
-                    <div className="logo-wrapper" style={{ 
+                    <div className="logo-wrapper left-part" style={{ 
                         transform: `translateX(${leftX}vw) scale(${logoScale})`,
                         opacity: logoOpacity
                     }}>
-                        <img src="/oxypace-logo-icon.png" alt="" className="hero-logo-icon gradient-glow" />
+                        <img src="/oxypace-logo-icon.png" alt="" className="hero-logo-icon" />
                     </div>
-                    <div className="logo-wrapper" style={{ 
+                    <div className="logo-wrapper right-part" style={{ 
                         transform: `translateX(${rightX}vw) scale(${logoScale})`,
                         opacity: logoOpacity
                     }}>
                         <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
-                        <div className="hero-subtitle-typing-container">
-                            <p className="hero-subtitle-typing">Yeni nesil küresel iletişim platformu.</p>
-                        </div>
                     </div>
                 </div>
 
-                {/* SCROLL TRIGGERED CONTENT */}
+                {/* Animated Sections */}
                 <div className="content-scroll-layer" style={{ opacity: sectionsOpacity }}>
                     
                     <div className="hero-intro-section">
@@ -106,7 +95,7 @@ const Home = () => {
                     </div>
 
                     <div className="content-sections-wrapper">
-                        {/* Feature 01 - Enhanced with Floating */}
+                        {/* Feature 01 */}
                         <section className="info-section">
                             <div className="info-text">
                                 <h3><span className="accent">01.</span><br />Topluluğunu İnşa Et</h3>
@@ -118,7 +107,7 @@ const Home = () => {
                                     Göz At <span className="arrow">→</span>
                                 </button>
                             </div>
-                            <div className="info-visual floating">
+                            <div className="info-visual">
                                 <div className="mockup-window">
                                     <div className="mockup-header">
                                         <span className="dot red"></span>
@@ -134,19 +123,19 @@ const Home = () => {
                             </div>
                         </section>
 
-                        {/* Feature 02 - Enhanced with Floating */}
+                        {/* Feature 02 */}
                         <section className="info-section reverse">
                             <div className="info-text">
                                 <h3><span className="accent">02.</span><br />Global Mesajlaşma</h3>
                                 <p>
                                     <strong>Global message</strong> sayesinde farklı portallardan arkadaşlarınızla
-                                    gerçek zamanlı ve güvenli bir şekilde sohbet edin.
+                                    gerçek zamanlı ve güvenli bir şekilde sohbet edin. Oxypace hızı hissettirir.
                                 </p>
                                 <button className="section-cta-btn" onClick={() => navigate('/register')}>
                                     Keşfet <span className="arrow">→</span>
                                 </button>
                             </div>
-                            <div className="info-visual floating delay-alt">
+                            <div className="info-visual">
                                 <div className="mockup-window">
                                     <div className="mockup-header">
                                         <span className="dot red"></span>
@@ -163,19 +152,19 @@ const Home = () => {
                             </div>
                         </section>
 
-                        {/* Feature 03 - Enhanced with Floating */}
+                        {/* Feature 03 */}
                         <section className="info-section">
                             <div className="info-text">
-                                <h3><span className="accent">03.</span><br />Özelleştirilebilir Yapı</h3>
+                                <h3><span className="accent">03.</span><br />Sizi Yansıtan Özelleştirilebilir Yapı</h3>
                                 <p>
                                     Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler...
-                                    Tamamen sizi yansıtan bir dijital alan yaratın.
+                                    Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.
                                 </p>
                                 <button className="section-cta-btn primary" onClick={() => navigate('/register')}>
-                                    Hemen Başla
+                                    Hemen Şimdi Başla
                                 </button>
                             </div>
-                            <div className="info-visual floating">
+                            <div className="info-visual">
                                 <div className="mockup-window">
                                     <div className="mockup-header">
                                         <span className="dot red"></span>
@@ -193,7 +182,7 @@ const Home = () => {
                         </section>
                     </div>
 
-                    {/* PORTAL DISCOVERY SECTION (MODERN SLIDER) */}
+                    {/* PORTAL DISCOVERY SECTION (3.4) - SLIDER LOOP */}
                     <section className="portal-discovery-section slider-mode">
                         <div className="discovery-header">
                             <h2 className="discovery-title">Popüler Toplulukları Keşfet</h2>
@@ -201,6 +190,7 @@ const Home = () => {
                         </div>
                         <div className="discovery-slider-container">
                             <div className="discovery-slider-track">
+                                {/* Double the list for infinite loop effect */}
                                 {[...publicPortals, ...publicPortals, ...publicPortals].map((portal, idx) => (
                                     <div
                                         key={`${portal._id}-${idx}`}
@@ -252,7 +242,7 @@ const Home = () => {
                         <AdUnit slot="1234567890" />
                     </div>
 
-                    {/* PROFESSIONAL FOOTER */}
+                    {/* PROFESSIONAL FOOTER (Links only, no bottom bar) */}
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
@@ -277,9 +267,6 @@ const Home = () => {
                                     <a href="mailto:nqohlei@gmail.com">Destek</a>
                                 </div>
                             </div>
-                        </div>
-                        <div className="footer-bottom">
-                            <p>&copy; {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
                         </div>
                     </footer>
                 </div>
