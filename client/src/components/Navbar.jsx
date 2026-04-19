@@ -28,8 +28,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
         return location.pathname === path;
     };
 
-    // Smart Navbar scroll behavior (hide on scroll down, show on scroll up)
+    // Smart Navbar scroll behavior (hide on scroll down, show on scroll up) - ONLY ON HOME PAGE
     useEffect(() => {
+        if (location.pathname !== '/') {
+            setHidden(false);
+            return;
+        }
+
         const handleScroll = (e) => {
             const target = e.target;
             let currentScrollY = 0;
@@ -50,7 +55,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
 
         window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
         return () => window.removeEventListener('scroll', handleScroll, { capture: true });
-    }, []);
+    }, [location.pathname]);
 
     // Fetch initial unread count
     useEffect(() => {
