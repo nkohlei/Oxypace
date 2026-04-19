@@ -77,12 +77,17 @@ router.get('/portal-unreads', protect, async (req, res) => {
 });
 
 // @route   PUT /api/notifications/read
-// @desc    Mark all notifications as read
+// @desc    Mark all generic notifications as read
 // @access  Private
 router.put('/read', protect, async (req, res) => {
     try {
+        // Exclude 'portal_post' so portal unread badges persist until user enters the portal
         await Notification.updateMany(
-            { recipient: req.user.id, read: false },
+            { 
+                recipient: req.user.id, 
+                read: false,
+                type: { $ne: 'portal_post' } 
+            },
             { $set: { read: true } }
         );
         res.json({ message: 'Notifications marked as read' });
