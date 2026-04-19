@@ -52,8 +52,12 @@ const Home = () => {
     useEffect(() => {
         const fetchPortals = async () => {
             try {
-                const res = await axios.get('/api/portals/public?limit=30');
-                setPublicPortals(shuffleArray(res.data));
+                const res = await axios.get('/api/portals?keyword='); // Fix: Old endpoint /api/portals/public didn't exist
+                if (res.data && res.data.length > 0) {
+                    // Limit to 30 and shuffle
+                    const selected = res.data.slice(0, 30);
+                    setPublicPortals(shuffleArray(selected));
+                }
             } catch (err) {
                 console.error("Failed to fetch portals", err);
             }
@@ -61,19 +65,16 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Scroll tracking
+    // Scroll tracking - strictly track window to ensure guest mode scrolling is captured
     useEffect(() => {
         const handleScroll = () => {
-            const scrollContainer = document.querySelector('.content-scroll-area');
-            const y = scrollContainer ? scrollContainer.scrollTop : window.scrollY;
-            setScrollY(y);
+             // In guest mode, the scrolling happens on the window, so we must track window.scrollY.
+            setScrollY(window.scrollY);
         };
 
-        const scrollContainer = document.querySelector('.content-scroll-area');
-        const target = scrollContainer || window;
-        target.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('scroll', handleScroll, { passive: true });
         handleScroll();
-        return () => target.removeEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     // Intersection Observer for scroll-reveal
