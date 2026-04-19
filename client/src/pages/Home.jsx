@@ -1,276 +1,233 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { useAuth } from '../context/AuthContext';
 import AdUnit from '../components/AdUnit';
 import SEO from '../components/SEO';
-import axios from 'axios';
-import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import FloatingScrollTop from '../components/FloatingScrollTop';
+import { getImageUrl } from '../utils/imageUtils';
+import axios from 'axios';
 import './Home.css';
 
 const Home = () => {
-    const { user, loading } = useAuth();
     const navigate = useNavigate();
-    const [publicPortals, setPublicPortals] = useState([]);
     const [scrollY, setScrollY] = useState(0);
+    const [publicPortals, setPublicPortals] = useState([]);
 
-    // Auto-redirect logged-in users to their first joined portal
     useEffect(() => {
-        if (!loading && user) {
-            if (user.joinedPortals && user.joinedPortals.length > 0) {
-                const firstPortalId =
-                    typeof user.joinedPortals[0] === 'string'
-                        ? user.joinedPortals[0]
-                        : user.joinedPortals[0]._id;
+        const handleScroll = () => setScrollY(window.scrollY);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
-                navigate(`/portal/${firstPortalId}`);
-            }
-        }
-    }, [user, loading, navigate]);
-
-    // Fetch popular/public portals for the background marquee
     useEffect(() => {
         const fetchPortals = async () => {
             try {
-                const res = await axios.get('/api/portals?keyword=');
-                if (res.data && res.data.length > 0) {
-                    setPublicPortals(res.data.slice(0, 15)); // Take up to 15
-                }
+                const res = await axios.get('/api/portals/public?limit=8');
+                setPublicPortals(res.data);
             } catch (err) {
-                console.error("Failed to fetch portals for marquee", err);
+                console.error('Portal fetch error:', err);
             }
         };
         fetchPortals();
     }, []);
 
-    // Track scroll position for animations
-    useEffect(() => {
-        const handleScroll = () => {
-            setScrollY(window.scrollY);
-        };
+    // 3D Scroll Animations Logic (Commit 6cba844 Peak)
+    const heroScale = 1 + (scrollY / 500);
+    const heroRotate = scrollY / 10;
+    const heroTranslateY = scrollY * 1.5;
+    const heroOpacity = Math.max(1 - scrollY / 600, 0);
+    const descOpacity = Math.max(1 - scrollY / 400, 0);
 
-        window.addEventListener('scroll', handleScroll, { passive: true });
-
-        // Initial check
-        handleScroll();
-
-        return () => {
-            window.removeEventListener('scroll', handleScroll);
-        };
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="app-wrapper">
-                <Navbar />
-                <div className="spinner-container">
-                    <div className="spinner"></div>
-                </div>
-            </div>
-        );
-    }
-
-    // Mathematical calculations for hero scroll animation
-    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
-
-    // --- LOGO ALIGNMENT LOGIC 3.6 (Definitive Fog) ---
-    // progress 0.0 -> 1.0 (over 80vh)
-    const splitProgress = Math.min(scrollY / (windowHeight * 0.8), 1);
-
-    // Logos stay centered - NO dynamic X translation
-    const textTranslateX = 0;
-
-    // Both scale down and retreat
-    const logoScale = 1 - (splitProgress * 0.5); // 1.0 -> 0.5
-    // Always keep logos BEHIND cards. Cards are z-index 20.
-    const logoZIndex = 4;
-    const logoOpacity = 1 - (splitProgress * 0.7); // Fade to background
-    const logoTranslateY = splitProgress * -50; // Move up slightly
-    // DIRECT BLUR on logos as they pass behind cards (3.6 definitive fix)
-    const logoBlur = splitProgress > 0.3 ? Math.min((splitProgress - 0.3) * 35, 20) : 0;
-
-    // Feature sections fade in much later
-    const contentOpacity = Math.min(Math.max((scrollY - (windowHeight * 0.5)) / (windowHeight * 0.4), 0), 1);
-    const contentTranslateY = (1 - contentOpacity) * 50;
-
-    // The background should have scattered items
-    // We clone the arr and give them random positions
-    const scatteredItems = [...publicPortals, ...publicPortals];
+    const marqueeItems = publicPortals.length > 0 ? publicPortals : [
+        { name: 'O', _id: '1' }, { name: 'X', _id: '2' }, { name: 'Y', _id: '3' }, 
+        { name: 'P', _id: '4' }, { name: 'A', _id: '5' }, { name: 'C', _id: '6' }
+    ];
 
     return (
-        <div className="app-wrapper advanced-home">
-            <SEO
-                title="Ana Sayfa | Global Message & Portallar"
-                description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu. Kendi portalınızı oluşturun, arkadaşlarınızla sohbet edin ve global mesajlaşmanın keyfini çıkarın."
-                schema={{
-                    "@context": "https://schema.org",
-                    "@type": "WebSite",
-                    "name": "Oxypace",
-                    "url": window.location.origin,
-                    "potentialAction": {
-                        "@type": "SearchAction",
-                        "target": `${window.location.origin}/search?q={search_term_string}`,
-                        "query-input": "required name=search_term_string"
-                    }
-                }}
+        <div className="advanced-home">
+            <SEO 
+                title="Oxypace | Yeni Nesil Global Sosyal Medya" 
+                description="Sınırları kaldıran, özgür ve güvenli yeni nesil sosyal medya platformu. Kendi portalını oluştur, dünyayla paylaş."
             />
-
-            <Navbar hideThemeToggle />
+            
+            <Navbar />
 
             <main className="advanced-home-content">
+                {/* HERO SECTION WITH 3D INTERACTIONS */}
+                <div className="hero-scroll-wrapper">
+                    <div className="hero-sticky-container">
+                        {/* Marquee Background System */}
+                        <div className="hero-marquee-system">
+                            {marqueeItems.length > 0 && (
+                                <>
+                                    <div className="marquee-track track-1">
+                                        {[...marqueeItems, ...marqueeItems].map((p, i) => (
+                                            <div key={`t1-${i}`} className="marquee-card">
+                                                {p.avatar ? (
+                                                    <img src={getImageUrl(p.avatar)} alt="" />
+                                                ) : (
+                                                    <div className="p-placeholder">{p.name?.charAt(0)}</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="marquee-track track-2">
+                                        {[...marqueeItems, ...marqueeItems].reverse().map((p, i) => (
+                                            <div key={`t2-${i}`} className="marquee-card">
+                                                {p.avatar ? (
+                                                    <img src={getImageUrl(p.avatar)} alt="" />
+                                                ) : (
+                                                    <div className="p-placeholder">{p.name?.charAt(0)}</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
-                {/* VIDEO BACKGROUND */}
-                <video className="home-bg-video" autoPlay muted loop playsInline>
-                    <source src="/auth-bg.mp4" type="video/mp4" />
-                    <source src="/auth-bg.webm" type="video/webm" />
-                </video>
-                <div className="home-bg-overlay"></div>
+                        <div className="hero-overlay"></div>
 
-                {/* ATMOSPHERIC BACKGROUND */}
-                <div className="atmospheric-bg">
-                    <div className="gradient-sphere sphere-1"></div>
-                    <div className="gradient-sphere sphere-2"></div>
-                    <div className="gradient-sphere sphere-3"></div>
-                    <div className="gradient-sphere sphere-4"></div>
-                    <div className="gradient-sphere sphere-5"></div>
-                    <div className="fixed-bg-overlay-3"></div>
-                </div>
+                        {/* Animated Hero Title (Massive 3D) */}
+                        <h1
+                            className="hero-massive-title"
+                            style={{
+                                transform: `translate(-50%, -50%) scale(${heroScale}) rotate(${heroRotate}deg) translateY(${heroTranslateY}px)`,
+                                opacity: heroOpacity
+                            }}
+                        >
+                            OXYPACE
+                        </h1>
 
-                {/* HERO LOGO - SINGLE TEXT LOGO (3.7) */}
-                <div className="split-logo-container">
-                    <div
-                        className="logo-wrapper text-wrapper"
-                        style={{
-                            transform: `translateX(${textTranslateX}px) translateY(${logoTranslateY}px) scale(${logoScale})`,
-                            opacity: logoOpacity,
-                            zIndex: logoZIndex,
-                            filter: `blur(${logoBlur}px)`,
-                            flexDirection: 'column'
-                        }}
-                    >
-                        <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
-                        <div className="hero-subtitle-typing-container">
-                            <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
+                        <div
+                            className="hero-intro-text"
+                            style={{
+                                opacity: descOpacity,
+                                transform: `translateY(${scrollY * 0.3}px)`
+                            }}
+                        >
+                            <div className="home-emoji bounce">🌍</div>
+                            <h2>Yeni Nesil Global Sosyal Medya</h2>
+                            <p>Sıradan platformları unutun. Topluluğunuzu bulun, sınırları kaldırın.</p>
+                            <div className="hero-actions">
+                                <button
+                                    className="hero-cta-btn pulse-glow"
+                                    onClick={() => navigate('/search')}
+                                >
+                                    Portalları Keşfet
+                                </button>
+                                <button
+                                    className="hero-cta-btn secondary"
+                                    onClick={() => navigate('/register')}
+                                >
+                                    Bize Katıl
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* SCROLLABLE CONTENT */}
-                <div className="content-scroll-layer">
+                {/* CONTENT SECTIONS - ENRICHED MOCKUPS */}
+                <div className="content-sections-wrapper">
 
-                    {/* HERO EMPTY SPACER */}
-                    <section className="hero-empty-section"></section>
-
-                    {/* CONTENT SECTIONS */}
-                    <div
-                        className="content-sections-wrapper"
-                        style={{
-                            opacity: contentOpacity,
-                            transform: `translateY(${contentTranslateY}px)`
-                        }}
-                    >
-
-                        {/* Feature 01 */}
-                        <section className="info-section">
-                            <div className="info-text">
-                                <h3><span className="accent">01.</span><br />Topluluğunu İnşa Et</h3>
-                                <p>
-                                    Oxypace, ilgi alanlarına odaklanan modern <strong>portallardan</strong> oluşur.
-                                    Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün.
-                                    Kaliteli tartışmalar ve paylaşımlar için özel bir alan yaratın.
-                                </p>
-                                <button className="section-cta-btn" onClick={() => navigate('/search')}>
-                                    Portallara Göz At <span className="arrow">→</span>
-                                </button>
+                    <section className="info-section">
+                        <div className="info-text">
+                            <h3><span className="accent">01.</span> Topluluğunu İnşa Et</h3>
+                            <p>
+                                Oxypace, ilgi alanlarına odaklanan modern <strong>portallardan</strong> oluşur.
+                                Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün.
+                                Kaliteli tartışmalar ve paylaşımlar için özel bir alan yaratın.
+                            </p>
+                            <button className="section-cta-btn" onClick={() => navigate('/search')}>
+                                Portallara Göz At <span className="arrow">→</span>
+                            </button>
+                        </div>
+                        <div className="info-visual floating">
+                            <div className="mockup-window">
+                                <div className="mockup-header">
+                                    <span className="dot red"></span>
+                                    <span className="dot yellow"></span>
+                                    <span className="dot green"></span>
+                                </div>
+                                <div className="mockup-body portals-mockup">
+                                    <div className="skeleton-line" style={{ width: '40%' }}></div>
+                                    <div className="skeleton-box"></div>
+                                    <div className="skeleton-box"></div>
+                                    <div className="skeleton-line sm"></div>
+                                </div>
                             </div>
-                            <div className="info-visual">
-                                <div className="mockup-window">
-                                    <div className="mockup-header">
-                                        <span className="dot red"></span>
-                                        <span className="dot yellow"></span>
-                                        <span className="dot green"></span>
-                                    </div>
-                                    <div className="mockup-body mockup-01">
-                                        <div className="skeleton-line sm"></div>
-                                        <div className="skeleton-box"></div>
-                                        <div className="skeleton-box"></div>
+                        </div>
+                    </section>
+
+                    <section className="info-section reverse">
+                        <div className="info-text">
+                            <h3><span className="accent">02.</span> Sınırları Kaldıran İletişim</h3>
+                            <p>
+                                <strong>Global message</strong> özelliği sayesinde farklı portallardaki arkadaşlarınızla
+                                tek bir arayüzden gerçek zamanlı sohbet edin.
+                                Kesintisiz etkileşim ve güvenli altyapı her an yanınızda.
+                            </p>
+                            <button className="section-cta-btn" onClick={() => navigate('/register')}>
+                                Aramıza Katıl <span className="arrow">→</span>
+                            </button>
+                        </div>
+                        <div className="info-visual floating delay-alt">
+                            <div className="mockup-window">
+                                <div className="mockup-header">
+                                    <span className="dot red"></span>
+                                    <span className="dot yellow"></span>
+                                    <span className="dot green"></span>
+                                </div>
+                                <div className="mockup-body chat-mockup">
+                                    <div className="chat-bubble left"></div>
+                                    <div className="chat-bubble right"></div>
+                                    <div className="chat-bubble left short"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="info-section">
+                        <div className="info-text">
+                            <h3><span className="accent">03.</span> Kişiselleştirilebilir Deneyim</h3>
+                            <p>
+                                Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler...
+                                Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.
+                            </p>
+                            <button className="section-cta-btn pulse-glow primary" onClick={() => navigate('/register')}>
+                                Hemen Şimdi Başla
+                            </button>
+                        </div>
+                        <div className="info-visual floating">
+                            <div className="mockup-window">
+                                <div className="mockup-header">
+                                    <span className="dot red"></span>
+                                    <span className="dot yellow"></span>
+                                    <span className="dot green"></span>
+                                </div>
+                                <div className="mockup-body profile-mockup">
+                                    <div className="profile-banner"></div>
+                                    <div className="profile-avatar"></div>
+                                    <div className="profile-name-skeleton"></div>
+                                    <div className="profile-btns-skeleton">
+                                        <div className="btn-skel"></div>
+                                        <div className="btn-skel"></div>
                                     </div>
                                 </div>
                             </div>
-                        </section>
+                        </div>
+                    </section>
 
-                        {/* Feature 02 */}
-                        <section className="info-section">
-                            <div className="info-text">
-                                <h3><span className="accent">02.</span><br />Sınırları Kaldıran Küresel İletişim</h3>
-                                <p>
-                                    <strong>Global message</strong> özelliği sayesinde farklı portallardaki arkadaşlarınızla
-                                    tek bir arayüzden gerçek zamanlı sohbet edin.
-                                    Kesintisiz etkileşim ve güvenli altyapı her an yanınızda.
-                                </p>
-                                <button className="section-cta-btn" onClick={() => navigate('/register')}>
-                                    Aramıza Katıl <span className="arrow">→</span>
-                                </button>
-                            </div>
-                            <div className="info-visual">
-                                <div className="mockup-window">
-                                    <div className="mockup-header">
-                                        <span className="dot red"></span>
-                                        <span className="dot yellow"></span>
-                                        <span className="dot green"></span>
-                                    </div>
-                                    <div className="mockup-body mockup-02">
-                                        <div className="skeleton-chat-left"></div>
-                                        <div className="skeleton-chat-right accent"></div>
-                                        <div className="skeleton-chat-left sm"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* Feature 03 */}
-                        <section className="info-section">
-                            <div className="info-text">
-                                <h3><span className="accent">03.</span><br />Sizi Yansıtan Özelleştirilebilir Yapı</h3>
-                                <p>
-                                    Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler...
-                                    Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.
-                                </p>
-                                <button className="section-cta-btn primary" onClick={() => navigate('/register')}>
-                                    Hemen Şimdi Başla
-                                </button>
-                            </div>
-                            <div className="info-visual">
-                                <div className="mockup-window">
-                                    <div className="mockup-header">
-                                        <span className="dot red"></span>
-                                        <span className="dot yellow"></span>
-                                        <span className="dot green"></span>
-                                    </div>
-                                    <div className="mockup-body mockup-03">
-                                        <div className="skeleton-box large">
-                                            <div className="profile-circle"></div>
-                                        </div>
-                                        <div className="skeleton-line center w-50 mt-default"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    </div>
-
-                    {/* PORTAL DISCOVERY SECTION (3.4) - SLIDER LOOP */}
+                    {/* PORTAL DISCOVERY SECTION (MODERN SLIDER) */}
                     <section className="portal-discovery-section slider-mode">
                         <div className="discovery-header">
-                            <h2 className="discovery-title">Popüler Toplulukları Keşfet</h2>
-                            <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun portallara katılın.</p>
+                            <h2 className="discovery-title">Popüler Portalları Keşfet</h2>
+                            <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun topluluklara katılın.</p>
                         </div>
                         <div className="discovery-slider-container">
                             <div className="discovery-slider-track">
-                                {/* Double the list for infinite loop effect */}
-                                {[...publicPortals, ...publicPortals, ...publicPortals].map((portal, idx) => (
+                                {[...publicPortals, ...publicPortals].map((portal, idx) => (
                                     <div
                                         key={`${portal._id}-${idx}`}
                                         className="modern-portal-card frosted-discovery"
@@ -321,12 +278,12 @@ const Home = () => {
                         <AdUnit slot="1234567890" />
                     </div>
 
-                    {/* PROFESSIONAL FOOTER (Links only, no bottom bar) */}
+                    {/* PROFESSIONAL FOOTER */}
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
                                 <img src="/oxypace-text-logo.png" alt="OXYPACE" className="footer-logo" />
-                                <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
+                                <p>Sınırları kaldıran dijital iletişim ve özgür topluluk deneyimi sunan küresel platform.</p>
                             </div>
                             <div className="footer-links-grid">
                                 <div className="footer-col">
@@ -342,15 +299,17 @@ const Home = () => {
                                 </div>
                                 <div className="footer-col">
                                     <h4>İletişim</h4>
-                                    <span onClick={() => navigate('/contact')}>Bize Ulaşın</span>
+                                    <span onClick={() => navigate('/feedback')}>Geri Bildirim</span>
                                     <a href="mailto:nqohlei@gmail.com">Destek</a>
                                 </div>
                             </div>
                         </div>
+                        <div className="footer-bottom">
+                            <p>&copy; {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
+                        </div>
                     </footer>
                 </div>
             </main>
-
             <FloatingScrollTop />
         </div>
     );
