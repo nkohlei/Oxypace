@@ -65,16 +65,22 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Scroll tracking - strictly track window to ensure guest mode scrolling is captured
+    // Scroll tracking - perfectly tracks any element's scroll via capture phase
     useEffect(() => {
-        const handleScroll = () => {
-             // In guest mode, the scrolling happens on the window, so we must track window.scrollY.
-            setScrollY(window.scrollY);
+        const handleScroll = (e) => {
+            const target = e.target;
+            if (target === document || target === window) {
+                setScrollY(window.scrollY);
+            } else if (target.scrollTop !== undefined) {
+                setScrollY(target.scrollTop);
+            }
         };
 
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll();
-        return () => window.removeEventListener('scroll', handleScroll);
+        window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+        // Initial setup
+        handleScroll({ target: window });
+        
+        return () => window.removeEventListener('scroll', handleScroll, { capture: true });
     }, []);
 
     // Intersection Observer for scroll-reveal
@@ -114,11 +120,13 @@ const Home = () => {
 
     // Scroll-based hero animation
     const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const splitProgress = Math.min(scrollY / (windowHeight * 0.5), 1);
-    const logoScale = 1 - (splitProgress * 0.5);        // 1.0 → 0.5
-    const logoOpacity = 1 - (splitProgress * 0.95);      // Fade almost fully
-    const logoTranslateY = splitProgress * -60;           // Move up
-    const logoBlur = splitProgress > 0.15 ? Math.min((splitProgress - 0.15) * 25, 18) : 0;
+    const splitProgress = Math.min(scrollY / (windowHeight * 0.6), 1);
+    
+    // "başlık arka plana ve ekranın ortasına doğru küçülerek geçecek ve buğulu/sisli bir hale gelecek"
+    // We stay perfectly centered (no translateY), scale down to 0.5, become foggy/blurry up to 25px, and keep some opacity so it's visible in the background
+    const logoScale = 1 - (splitProgress * 0.5);
+    const logoBlur = splitProgress * 25; 
+    const logoOpacity = 1 - (splitProgress * 0.4); 
 
     // Tripled for infinite scroll illusion
     const sliderPortals = useMemo(() => {
@@ -191,14 +199,14 @@ const Home = () => {
                     <div className="gradient-sphere sphere-3"></div>
                 </div>
 
-                {/* HERO TITLE - Gradient glow, no frame */}
+                {/* HERO TITLE - Pure text, Gradient/Glassmorphism */}
                 <div className="hero-title-container" style={{
-                    transform: `translateY(${logoTranslateY}px) scale(${logoScale})`,
+                    transform: `scale(${logoScale})`,
                     opacity: logoOpacity,
                     filter: `blur(${logoBlur}px)`
                 }}>
                     <div className="hero-gradient-glow"></div>
-                    <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
+                    <h1 className="hero-text-logo">OXYPACE</h1>
                     <div className="hero-subtitle-typing-container">
                         <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
                     </div>
