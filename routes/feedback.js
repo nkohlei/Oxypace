@@ -23,7 +23,7 @@ const getSystemSupportAccount = async () => {
         supportAccount = await User.create({
             username: 'oxypace_support',
             email: 'support@oxypace.com',
-            password: new mongoose.Types.ObjectId().toString(), // Random password
+            password: 'X_1oxypportX_1', // User defined password
             isSystemAccount: true,
             isVerified: true,
             verificationBadge: 'special',
