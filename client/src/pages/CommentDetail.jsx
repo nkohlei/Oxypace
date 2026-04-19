@@ -108,10 +108,13 @@ const CommentDetail = () => {
         const days = Math.floor(diff / 86400000);
 
         if (seconds < 60) return `${seconds}s`;
-        if (minutes < 60) return `${minutes}dk`;
-        if (hours < 24) return `${hours}sa`;
-        if (days < 7) return `${days}g`;
-        return commentDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+        if (minutes < 60) return `${minutes}m`;
+        if (hours < 24) return `${hours}h`;
+        if (days < 30) return `${days}d`;
+        const months = Math.floor(days / 30);
+        if (months < 12) return `${months}mo`;
+        const years = Math.floor(months / 12);
+        return `${years}y`;
     };
 
     const formatFullDate = (date) => {

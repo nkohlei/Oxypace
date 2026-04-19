@@ -207,10 +207,13 @@ const Profile = () => {
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
         if (minutes < 1) return 'şimdi';
-        if (minutes < 60) return `${minutes}d`;
-        if (hours < 24) return `${hours}s`;
-        if (days < 7) return `${days}g`;
-        return postDate.toLocaleDateString('tr-TR');
+        if (minutes < 60) return `${minutes}m`;
+        if (hours < 24) return `${hours}h`;
+        if (days < 30) return `${days}d`;
+        const months = Math.floor(days / 30);
+        if (months < 12) return `${months}mo`;
+        const years = Math.floor(months / 12);
+        return `${years}y`;
     };
 
     const fetchUserProfile = async (username) => {
