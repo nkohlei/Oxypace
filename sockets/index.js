@@ -1,4 +1,5 @@
 import { initializeVoiceHandler } from './voiceHandler.js';
+import User from '../models/User.js';
 
 export const initializeSocket = (io) => {
     // Store user socket connections
@@ -8,22 +9,35 @@ export const initializeSocket = (io) => {
         console.log(`✅ Socket connected: ${socket.id}`);
 
         // User joins with their ID
-        socket.on('join', (userId) => {
+        socket.on('join', async (userId) => {
             userSockets.set(userId, socket.id);
             socket.join(userId);
             console.log(`👤 User ${userId} joined`);
 
-            // Broadcast online users
+            // Update user's last active to now and broadcast
+            try {
+                await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+            } catch (err) {
+                console.error('Error updating lastActive on join:', err);
+            }
+
             io.emit('getOnlineUsers', Array.from(userSockets.keys()));
         });
 
         // Handle disconnect
-        socket.on('disconnect', () => {
+        socket.on('disconnect', async () => {
             // Remove user from map
             for (const [userId, socketId] of userSockets.entries()) {
                 if (socketId === socket.id) {
                     userSockets.delete(userId);
                     console.log(`👋 User ${userId} disconnected`);
+
+                    // Update the user's lastActive time in the database
+                    try {
+                        await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+                    } catch (err) {
+                        console.error('Error updating status on disconnect:', err);
+                    }
 
                     // Broadcast online users
                     io.emit('getOnlineUsers', Array.from(userSockets.keys()));

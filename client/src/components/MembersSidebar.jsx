@@ -1,8 +1,32 @@
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
+import { Link } from 'react-router-dom';
 
 const MembersSidebar = ({ members = [], onClose }) => {
     const { onlineUsers } = useSocket();
+
+    // Helper to format last active time
+    const formatTimeAgo = (date) => {
+        if (!date) return '';
+        const now = new Date();
+        const past = new Date(date);
+        const diffMs = Math.max(0, now - past); // Ensure no negative time
+        
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'şimdi';
+        if (diffMins < 60) return `${diffMins}m`;
+        
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h`;
+        
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 30) return `${diffDays}g`;
+        
+        const diffMonths = Math.floor(diffDays / 30);
+        if (diffMonths < 12) return `${diffMonths}a`;
+        
+        return `${Math.floor(diffMonths / 12)}y`;
+    };
 
     // Filter members based on socket status
     const online = members.filter((m) => {
@@ -35,12 +59,12 @@ const MembersSidebar = ({ members = [], onClose }) => {
             <div className="members-category">Çevrim içi — {online.length}</div>
             {online.map((user, index) => {
                 // Safeguard against malformed data
-                if (!user) return null;
+                if (!user || typeof user === 'string') return null;
                 const username = user.username || 'Unknown';
                 const avatar = user.avatar || user.profile?.avatar;
 
                 return (
-                    <div key={user._id || user.id || index} className="member-item">
+                    <Link to={`/profile/${username}`} key={user._id || user.id || index} className="member-item member-link">
                         <div className="member-avatar-wrapper">
                             {avatar ? (
                                 <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
@@ -65,7 +89,7 @@ const MembersSidebar = ({ members = [], onClose }) => {
                                 </span>
                             </div>
                         </div>
-                    </div>
+                    </Link>
                 );
             })}
 
@@ -80,7 +104,7 @@ const MembersSidebar = ({ members = [], onClose }) => {
                 const avatar = user.avatar || user.profile?.avatar;
 
                 return (
-                    <div key={user._id || user.id || `offline-${index}`} className="member-item offline">
+                    <Link to={`/profile/${username}`} key={user._id || user.id || `offline-${index}`} className="member-item offline member-link">
                         <div className="member-avatar-wrapper">
                             {avatar ? (
                                 <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
@@ -93,12 +117,19 @@ const MembersSidebar = ({ members = [], onClose }) => {
                                 </div>
                             )}
                         </div>
-                        <div className="member-info">
-                            <span className="member-name">
-                                {user.profile?.displayName || username}
-                            </span>
+                        <div className="member-info" style={{ flex: 1 }}>
+                            <div className="member-name-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span className="member-name">
+                                    {user.profile?.displayName || username}
+                                </span>
+                                {user.lastActive && (
+                                    <span className="last-active-time" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                        {formatTimeAgo(user.lastActive)}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    </Link>
                 );
             })}
 
@@ -164,6 +195,11 @@ const MembersSidebar = ({ members = [], onClose }) => {
                     cursor: pointer;
                     margin-bottom: 2px;
                     color: var(--text-secondary);
+                    text-decoration: none;
+                }
+                .member-link {
+                    text-decoration: none;
+                    color: inherit;
                 }
                 .member-item:hover {
                     background-color: var(--bg-hover);
