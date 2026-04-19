@@ -128,13 +128,10 @@ const Notifications = () => {
         const days = Math.floor(diff / 86400000);
 
         if (minutes < 1) return 'Az önce';
-        if (minutes < 60) return `${minutes}m`;
-        if (hours < 24) return `${hours}h`;
-        if (days < 30) return `${days}d`;
-        const months = Math.floor(days / 30);
-        if (months < 12) return `${months}mo`;
-        const years = Math.floor(months / 12);
-        return `${years}y`;
+        if (minutes < 60) return `${minutes}d`;
+        if (hours < 24) return `${hours}s`;
+        if (days < 7) return `${days}g`;
+        return notifDate.toLocaleDateString('tr-TR');
     };
 
     if (loading) {
