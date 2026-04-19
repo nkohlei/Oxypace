@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,16 @@ import Badge from '../components/Badge';
 import FloatingScrollTop from '../components/FloatingScrollTop';
 import './Home.css';
 
+// Fisher-Yates shuffle
+const shuffleArray = (arr) => {
+    const shuffled = [...arr];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+};
+
 const Home = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
@@ -17,11 +27,17 @@ const Home = () => {
     const [scrollY, setScrollY] = useState(0);
     const [revealedSections, setRevealedSections] = useState(new Set());
     const sectionRefs = useRef([]);
-    const homeRef = useRef(null);
 
     // Auto-redirect logged-in users
     useEffect(() => {
         if (!loading && user) {
+            // Check if user clicked a portal before logging in
+            const pendingPortal = localStorage.getItem('oxypace_pending_portal');
+            if (pendingPortal) {
+                localStorage.removeItem('oxypace_pending_portal');
+                navigate(`/portal/${pendingPortal}`);
+                return;
+            }
             if (user.joinedPortals && user.joinedPortals.length > 0) {
                 const firstPortalId =
                     typeof user.joinedPortals[0] === 'string'
@@ -32,12 +48,12 @@ const Home = () => {
         }
     }, [user, loading, navigate]);
 
-    // Fetch portals
+    // Fetch portals and shuffle for randomized display
     useEffect(() => {
         const fetchPortals = async () => {
             try {
-                const res = await axios.get('/api/portals/public?limit=12');
-                setPublicPortals(res.data);
+                const res = await axios.get('/api/portals/public?limit=30');
+                setPublicPortals(shuffleArray(res.data));
             } catch (err) {
                 console.error("Failed to fetch portals", err);
             }
@@ -45,7 +61,7 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Scroll tracking - works with both window scroll and scroll container
+    // Scroll tracking
     useEffect(() => {
         const handleScroll = () => {
             const scrollContainer = document.querySelector('.content-scroll-area');
@@ -57,11 +73,10 @@ const Home = () => {
         const target = scrollContainer || window;
         target.addEventListener('scroll', handleScroll, { passive: true });
         handleScroll();
-
         return () => target.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Intersection Observer for scroll-reveal animations
+    // Intersection Observer for scroll-reveal
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -71,13 +86,9 @@ const Home = () => {
                     }
                 });
             },
-            { threshold: 0.15, rootMargin: '0px 0px -50px 0px' }
+            { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
         );
-
-        sectionRefs.current.forEach(ref => {
-            if (ref) observer.observe(ref);
-        });
-
+        sectionRefs.current.forEach(ref => { if (ref) observer.observe(ref); });
         return () => observer.disconnect();
     }, []);
 
@@ -85,30 +96,40 @@ const Home = () => {
         sectionRefs.current[index] = el;
     }, []);
 
+    // Handle portal card click - save portal ID and redirect to login
+    const handlePortalClick = useCallback((portalId) => {
+        localStorage.setItem('oxypace_pending_portal', portalId);
+        navigate('/login');
+    }, [navigate]);
+
     if (loading) {
         return (
             <div className="app-wrapper advanced-home">
                 <Navbar />
-                <div className="spinner-container">
-                    <div className="spinner"></div>
-                </div>
+                <div className="spinner-container"><div className="spinner"></div></div>
             </div>
         );
     }
 
     // Scroll-based hero animation
     const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const splitProgress = Math.min(scrollY / (windowHeight * 0.6), 1);
-    const logoScale = 1 - (splitProgress * 0.4);
-    const logoOpacity = 1 - (splitProgress * 0.9);
-    const logoTranslateY = splitProgress * -80;
-    const logoBlur = splitProgress > 0.2 ? Math.min((splitProgress - 0.2) * 30, 15) : 0;
+    const splitProgress = Math.min(scrollY / (windowHeight * 0.5), 1);
+    const logoScale = 1 - (splitProgress * 0.5);        // 1.0 → 0.5
+    const logoOpacity = 1 - (splitProgress * 0.95);      // Fade almost fully
+    const logoTranslateY = splitProgress * -60;           // Move up
+    const logoBlur = splitProgress > 0.15 ? Math.min((splitProgress - 0.15) * 25, 18) : 0;
+
+    // Tripled for infinite scroll illusion
+    const sliderPortals = useMemo(() => {
+        if (publicPortals.length === 0) return [];
+        return [...publicPortals, ...publicPortals, ...publicPortals];
+    }, [publicPortals]);
 
     const features = [
         {
             num: '01',
             title: 'Topluluğunu İnşa Et',
-            desc: 'Oxypace, ilgi alanlarına odaklanan modern portallardan oluşur. Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün.',
+            desc: 'Oxypace, ilgi alanlarına odaklanan modern portallardan oluşur. Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün. Kaliteli tartışmalar ve paylaşımlar için özel bir alan yaratın.',
             cta: 'Portallara Göz At',
             ctaAction: () => navigate('/search'),
             icon: '🌐',
@@ -117,7 +138,7 @@ const Home = () => {
         {
             num: '02',
             title: 'Küresel İletişim',
-            desc: 'Global message özelliği sayesinde farklı portallardaki arkadaşlarınızla tek bir arayüzden gerçek zamanlı sohbet edin.',
+            desc: 'Global message özelliği sayesinde farklı portallardaki arkadaşlarınızla tek bir arayüzden gerçek zamanlı sohbet edin. Kesintisiz etkileşim ve güvenli altyapı her an yanınızda.',
             cta: 'Aramıza Katıl',
             ctaAction: () => navigate('/register'),
             icon: '💬',
@@ -126,7 +147,7 @@ const Home = () => {
         {
             num: '03',
             title: 'Sizi Yansıtan Yapı',
-            desc: 'Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler... Platformu tamamen kendi tarzınıza göre özelleştirin.',
+            desc: 'Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler... Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.',
             cta: 'Hemen Başla',
             ctaAction: () => navigate('/register'),
             icon: '✨',
@@ -136,7 +157,7 @@ const Home = () => {
     ];
 
     return (
-        <div className="app-wrapper advanced-home" ref={homeRef}>
+        <div className="app-wrapper advanced-home">
             <SEO
                 title="Ana Sayfa | Global Message & Portallar"
                 description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu. Kendi portalınızı oluşturun, arkadaşlarınızla sohbet edin ve global mesajlaşmanın keyfini çıkarın."
@@ -169,23 +190,20 @@ const Home = () => {
                     <div className="gradient-sphere sphere-3"></div>
                 </div>
 
-                {/* HERO LOGO - Gradient Glassmorphism */}
-                <div className="split-logo-container" style={{
+                {/* HERO TITLE - Gradient glow, no frame */}
+                <div className="hero-title-container" style={{
                     transform: `translateY(${logoTranslateY}px) scale(${logoScale})`,
                     opacity: logoOpacity,
                     filter: `blur(${logoBlur}px)`
                 }}>
-                    <div className="hero-glass-frame">
-                        <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
-                        <div className="hero-subtitle-typing-container">
-                            <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
-                        </div>
-                        <div className="hero-scroll-hint">
-                            <div className="scroll-mouse">
-                                <div className="scroll-dot"></div>
-                            </div>
-                            <span>Keşfetmek için kaydır</span>
-                        </div>
+                    <div className="hero-gradient-glow"></div>
+                    <img src="/oxypace-text-logo.png" alt="OXYPACE" className="hero-logo-text" />
+                    <div className="hero-subtitle-typing-container">
+                        <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
+                    </div>
+                    <div className="hero-scroll-hint">
+                        <div className="scroll-mouse"><div className="scroll-dot"></div></div>
+                        <span>Keşfetmek için kaydır</span>
                     </div>
                 </div>
 
@@ -265,7 +283,7 @@ const Home = () => {
                         ))}
                     </div>
 
-                    {/* PORTAL DISCOVERY SLIDER */}
+                    {/* PORTAL DISCOVERY - Randomized, clickable, no content */}
                     <section
                         className={`portal-discovery-section slider-mode ${revealedSections.has('discovery') ? 'revealed' : ''}`}
                         data-section="discovery"
@@ -277,11 +295,11 @@ const Home = () => {
                         </div>
                         <div className="discovery-slider-container">
                             <div className="discovery-slider-track">
-                                {[...publicPortals, ...publicPortals, ...publicPortals].map((portal, idx) => (
+                                {sliderPortals.map((portal, idx) => (
                                     <div
                                         key={`${portal._id}-${idx}`}
                                         className="modern-portal-card frosted-discovery"
-                                        onClick={() => navigate(`/portal/${portal._id}`)}
+                                        onClick={() => handlePortalClick(portal._id)}
                                     >
                                         <div
                                             className="card-banner"
@@ -316,11 +334,6 @@ const Home = () => {
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                        <div className="discovery-cta">
-                            <button className="section-cta-btn" onClick={() => navigate('/search')}>
-                                Tümünü Keşfet <span className="arrow">→</span>
-                            </button>
                         </div>
                     </section>
 
