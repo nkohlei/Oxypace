@@ -17,7 +17,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [hidden, setHidden] = useState(false);
     const menuRef = useRef(null);
+    const lastScrollY = useRef(0);
 
     const isActive = (path) => {
         if (path === '/profile') {
@@ -25,6 +27,30 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
         }
         return location.pathname === path;
     };
+
+    // Smart Navbar scroll behavior (hide on scroll down, show on scroll up)
+    useEffect(() => {
+        const handleScroll = (e) => {
+            const target = e.target;
+            let currentScrollY = 0;
+            
+            if (target === document || target === window) {
+                currentScrollY = window.scrollY;
+            } else if (target.scrollTop !== undefined) {
+                currentScrollY = target.scrollTop;
+            }
+            
+            if (currentScrollY > lastScrollY.current && currentScrollY > 120) {
+                setHidden(true); // Hide when scrolling down
+            } else if (currentScrollY < lastScrollY.current) {
+                setHidden(false); // Show when scrolling up
+            }
+            lastScrollY.current = currentScrollY <= 0 ? 0 : currentScrollY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+        return () => window.removeEventListener('scroll', handleScroll, { capture: true });
+    }, []);
 
     // Fetch initial unread count
     useEffect(() => {
@@ -93,7 +119,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     return (
         <>
             {/* Top Header */}
-            <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}`}>
+            <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}${hidden ? ' navbar-hidden' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
                         <Link to="/" className="brand-logo">
