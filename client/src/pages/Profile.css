@@ -33,6 +33,12 @@
     background: var(--bg-hover, #3f4147);
 }
 
+@media (max-width: 768px) {
+    .profile-desktop-back {
+        display: none !important;
+    }
+}
+
 .profile-card-horizontal {
     background-color: var(--neu-bg);
     border-radius: 20px;
