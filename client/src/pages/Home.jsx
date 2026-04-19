@@ -134,13 +134,21 @@ const Home = () => {
         return [...publicPortals, ...publicPortals, ...publicPortals];
     }, [publicPortals]);
 
+    // Smooth scroll to discovery section
+    const scrollToDiscovery = () => {
+        const el = document.getElementById('discovery-section');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
     const features = [
         {
             num: '01',
             title: 'Topluluğunu İnşa Et',
             desc: 'Oxypace, ilgi alanlarına odaklanan modern portallardan oluşur. Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün. Kaliteli tartışmalar ve paylaşımlar için özel bir alan yaratın.',
             cta: 'Portallara Göz At',
-            ctaAction: () => navigate('/search'),
+            ctaAction: scrollToDiscovery,
             icon: '🌐',
             mockup: 'portal'
         },
@@ -299,6 +307,7 @@ const Home = () => {
 
                     {/* PORTAL DISCOVERY - Randomized, clickable, no content */}
                     <section
+                        id="discovery-section"
                         className={`portal-discovery-section slider-mode ${revealedSections.has('discovery') ? 'revealed' : ''}`}
                         data-section="discovery"
                         ref={setSectionRef(3)}
@@ -365,7 +374,7 @@ const Home = () => {
                             <div className="footer-links-grid">
                                 <div className="footer-col">
                                     <h4>Platform</h4>
-                                    <span onClick={() => navigate('/search')}>Portalları Keşfet</span>
+                                    <span onClick={scrollToDiscovery}>Portalları Keşfet</span>
                                     <span onClick={() => navigate('/login')}>Giriş Yap</span>
                                     <span onClick={() => navigate('/register')}>Kayıt Ol</span>
                                 </div>
