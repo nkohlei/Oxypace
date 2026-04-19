@@ -101,16 +101,11 @@
   100% { opacity: 0.7; transform: translate(-50%, -55%) scale(1); }
 }
 
-.advanced-home .hero-text-logo {
-  font-size: 6rem;
-  font-weight: 800;
-  letter-spacing: -2px;
-  margin: 0;
-  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 40%, #60A5FA 70%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 30px rgba(96, 165, 250, 0.3));
+.advanced-home .hero-logo-img {
+  width: 45vw; max-width: 550px;
+  filter: 
+    drop-shadow(0 0 40px rgba(96, 165, 250, 0.25))
+    drop-shadow(0 0 80px rgba(129, 140, 248, 0.15));
   user-select: none;
   position: relative; 
   z-index: 1;
@@ -467,7 +462,7 @@
    RESPONSIVE
    ======================================== */
 @media (max-width: 900px) {
-  .advanced-home .hero-text-logo { font-size: 4rem; width: auto; max-width: 100%; text-align: center; }
+  .advanced-home .hero-logo-img { width: 70vw; }
   .advanced-home .hero-subtitle-typing { font-size: 1rem; text-align: center; }
   .advanced-home .hero-gradient-glow { width: 90vw; }
 
