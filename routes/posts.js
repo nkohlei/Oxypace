@@ -143,6 +143,7 @@ router.post(
                                     sender: req.user._id,
                                     type: 'portal_post',
                                     portal: postData.portal,
+                                    channel: postData.channel,
                                     post: post._id,
                                     read: false
                                 }));

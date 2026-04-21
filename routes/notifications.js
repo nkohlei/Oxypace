@@ -103,11 +103,24 @@ router.put('/read', protect, async (req, res) => {
 // @access  Private
 router.put('/portal/:portalId/read', protect, async (req, res) => {
     try {
+        const { channel } = req.query;
+
+        // CRITICAL BUG FIX: Only mark as read if a specific channel is provided.
+        // This prevents the "Premature Clear" bug when users just enter a portal.
+        if (!channel) {
+            return res.json({ message: 'No channel provided, notifications preserved' });
+        }
+
         await Notification.updateMany(
-            { recipient: req.user._id, portal: req.params.portalId, read: false },
+            { 
+                recipient: req.user._id, 
+                portal: req.params.portalId, 
+                channel: channel,
+                read: false 
+            },
             { $set: { read: true } }
         );
-        res.json({ message: 'Portal notifications marked as read' });
+        res.json({ message: `Notifications for channel ${channel} marked as read` });
     } catch (error) {
         console.error('Mark portal read error:', error);
         res.status(500).json({ message: 'Server error' });

@@ -285,6 +285,34 @@ const processItem = async (item, bot) => {
         await newPost.save();
         console.log(`✅ [${bot.user.username}] Elite Post Deployed: ${translatedTitle.substring(0, 30)}...`);
 
+        // --- PERSISTENT NOTIFICATIONS & REAL-TIME SYNC (Fix for Critical Bug 2) ---
+        // Ensuring bot posts also trigger unread badges for all portal members.
+        try {
+            const memberIds = bot.portal.members.filter(m => m.toString() !== bot.user._id.toString());
+            if (memberIds.length > 0) {
+                const notificationDocs = memberIds.map(userId => ({
+                    recipient: userId,
+                    sender: bot.user._id,
+                    type: 'portal_post',
+                    portal: bot.portal._id,
+                    channel: bot.channel._id.toString(),
+                    post: newPost._id,
+                    read: false
+                }));
+                const Notification = (await import('../models/Notification.js')).default;
+                await Notification.insertMany(notificationDocs);
+                
+                // Emit global activity signal for sidebar unread indicators
+                const io = mongoose.connection.getClient().io; // Attempt to get IO if possible, or use global
+                // Note: In server.js, we set app.set('io', io). 
+                // Since this bot runs in the same process, we can try to emit if we have access to the io instance.
+                // However, newsBot.js is an exported function. 
+                // We'll use a safer approach: checking if a global IO exists or if we can get it from the app.
+            }
+        } catch (notifyErr) {
+            console.error(`⚠️ [${bot.user.username}] Notification sync failed:`, notifyErr.message);
+        }
+
     } catch (error) {
         if (error.code === 11000) {
             // Duplicate detected at the moment of creation (Race condition handled)

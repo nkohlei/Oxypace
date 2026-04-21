@@ -39,6 +39,9 @@ const notificationSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Portal',
         },
+        channel: {
+            type: String, // 'general' or Channel ObjectId
+        },
         read: {
             type: Boolean,
             default: false,

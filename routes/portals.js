@@ -357,6 +357,23 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             .sort({ createdAt: -1 })
             .limit(limit);
 
+        // --- PERSISTENT NOTIFICATION SYNC (Fix for Critical Bug 1) ---
+        // When a user successfully fetches posts for a specific channel, mark those notifications as read.
+        // This ensures the blue badge disappears in the DB only when the content is actually viewed.
+        if (userId && targetChannel) {
+            const channelId = targetChannel._id.toString();
+            // Fire and forget (async) to avoid delaying the response
+            Notification.updateMany(
+                { 
+                    recipient: userId, 
+                    portal: portalId, 
+                    channel: channelId, 
+                    read: false 
+                },
+                { $set: { read: true } }
+            ).catch(err => console.error('Error marking notifications as read on GET:', err));
+        }
+
         res.json(posts);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
