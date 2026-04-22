@@ -8,6 +8,7 @@ import { VoiceProvider } from './context/VoiceContext';
 import { useNavigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import { ChevronLeft } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 // Advanced lazy loading wrapper to forcefully reload the page (once) 
 // if a chunk fails to load due to a new Vercel deployment.
@@ -401,6 +402,7 @@ function App() {
                     </BadgeProvider>
                 </AuthProvider>
             </Router>
+            <Analytics />
         </ThemeProvider>
     );
 }

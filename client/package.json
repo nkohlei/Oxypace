@@ -10,10 +10,17 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@capacitor/camera": "^8.1.0",
+        "@capacitor/core": "^8.3.1",
+        "@capacitor/device": "^8.0.2",
+        "@capacitor/filesystem": "^8.1.2",
+        "@capacitor/push-notifications": "^8.0.3",
+        "@capacitor/status-bar": "^8.0.2",
         "@capgo/capacitor-updater": "^8.43.10",
         "@livekit/components-react": "^2.9.20",
         "@livekit/components-styles": "^1.2.0",
         "@react-oauth/google": "^0.12.1",
+        "@vercel/analytics": "^2.0.1",
         "@vidstack/react": "^1.12.12",
         "axios": "^1.6.2",
         "globalmessage-backend": "file:..",
