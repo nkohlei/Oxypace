@@ -50,6 +50,13 @@ export const initializeVoiceHandler = (io) => {
                 startedAt: roomData.startedAt
             });
 
+            // Emit explicit join event for notifications
+            io.to(`voice:${roomName}`).emit('voice:user-joined', {
+                userId,
+                username,
+                avatar: avatar || '',
+            });
+
             console.log(`🎙️ User ${username} joined voice room ${roomName} (${participants.length} participants)`);
         });
 
@@ -138,6 +145,14 @@ function removeParticipant(io, roomName, userId) {
             participants,
             startedAt: roomData.startedAt
         });
+
+        // Emit explicit leave event for notifications
+        if (participant) {
+            io.to(`voice:${roomName}`).emit('voice:user-left', {
+                userId,
+                username: participant.username,
+            });
+        }
     }
 
     if (participant) {

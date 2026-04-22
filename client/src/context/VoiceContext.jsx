@@ -47,10 +47,22 @@ export const VoiceProvider = ({ children }) => {
     // Local Sound Helper
     const playInteractionSound = useCallback((type) => {
         try {
-            const audio = new Audio(`/sounds/${type}.mp3`);
-            audio.volume = type === 'message' ? 0.3 : 0.5;
-            audio.play().catch(() => { });
-        } catch (e) { }
+            // Mapping specific types to the provided loginnotification.mp3 file
+            let soundFile = `/sounds/${type}.mp3`;
+            if (type === 'join' || type === 'leave') {
+                soundFile = '/sounds/loginnotification.mp3';
+            }
+
+            const audio = new Audio(soundFile);
+            audio.volume = type === 'message' ? 0.3 : 0.6; // Slightly higher volume for join/leave
+            audio.play().catch((err) => {
+                // Autoplay might be blocked if no user interaction yet, 
+                // but usually voice join involves a click.
+                console.warn(`Audio play blocked: ${soundFile}`, err);
+            });
+        } catch (e) {
+            console.error("Sound play error", e);
+        }
     }, []);
 
     // Handle participant list updates
@@ -167,8 +179,8 @@ export const VoiceProvider = ({ children }) => {
             });
 
             const updateList = () => updateParticipantList(newRoom);
-            newRoom.on(RoomEvent.ParticipantConnected, (p) => { playInteractionSound('join'); updateList(); });
-            newRoom.on(RoomEvent.ParticipantDisconnected, (p) => { playInteractionSound('leave'); updateList(); });
+            newRoom.on(RoomEvent.ParticipantConnected, (p) => { updateList(); });
+            newRoom.on(RoomEvent.ParticipantDisconnected, (p) => { updateList(); });
             newRoom.on(RoomEvent.TrackSubscribed, updateList);
             newRoom.on(RoomEvent.TrackUnsubscribed, updateList);
             newRoom.on(RoomEvent.TrackMuted, updateList);
@@ -218,6 +230,18 @@ export const VoiceProvider = ({ children }) => {
                 socket.on('voice:participants', (data) => {
                     if (data.startedAt) {
                         setRoomStartTime(data.startedAt);
+                    }
+                });
+
+                socket.on('voice:user-joined', (data) => {
+                    if (data.userId !== user?._id?.toString()) {
+                        playInteractionSound('join');
+                    }
+                });
+
+                socket.on('voice:user-left', (data) => {
+                    if (data.userId !== user?._id?.toString()) {
+                        playInteractionSound('leave');
                     }
                 });
             }
