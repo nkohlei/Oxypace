@@ -49,7 +49,7 @@ export const VoiceProvider = ({ children }) => {
         try {
             const soundFile = `/sounds/${type}.mp3`;
             const audio = new Audio(soundFile);
-            audio.volume = type === 'message' ? 0.3 : 0.6; // Slightly higher volume for join/leave
+            audio.volume = type === 'message' ? 0.2 : 0.4; // Reduced from 0.6 to 0.4 for better balance
             audio.play().catch((err) => {
                 // Autoplay might be blocked if no user interaction yet
                 console.warn(`Audio play blocked: ${soundFile}`, err);
