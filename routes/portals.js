@@ -350,11 +350,12 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
 
         if (before) {
             query.createdAt = { $lt: new Date(before) };
+            query.isPinned = { $ne: true };
         }
 
         const posts = await Post.find(query)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
-            .sort({ createdAt: -1 })
+            .sort({ isPinned: -1, pinnedAt: -1, createdAt: -1 })
             .limit(limit);
 
         // --- PERSISTENT NOTIFICATION SYNC (Fix for Critical Bug 1) ---
