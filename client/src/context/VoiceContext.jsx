@@ -47,17 +47,11 @@ export const VoiceProvider = ({ children }) => {
     // Local Sound Helper
     const playInteractionSound = useCallback((type) => {
         try {
-            // Mapping specific types to the provided loginnotification.mp3 file
-            let soundFile = `/sounds/${type}.mp3`;
-            if (type === 'join' || type === 'leave') {
-                soundFile = '/sounds/loginnotification.mp3';
-            }
-
+            const soundFile = `/sounds/${type}.mp3`;
             const audio = new Audio(soundFile);
             audio.volume = type === 'message' ? 0.3 : 0.6; // Slightly higher volume for join/leave
             audio.play().catch((err) => {
-                // Autoplay might be blocked if no user interaction yet, 
-                // but usually voice join involves a click.
+                // Autoplay might be blocked if no user interaction yet
                 console.warn(`Audio play blocked: ${soundFile}`, err);
             });
         } catch (e) {
