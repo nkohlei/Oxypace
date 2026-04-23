@@ -1,7 +1,7 @@
 import express from 'express';
 import { GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import auth from '../middleware/auth.js';
+import { protect as auth } from '../middleware/auth.js';
 
 import axios from 'axios';
 import r2 from '../config/r2.js';
@@ -76,7 +76,7 @@ router.post('/presigned-url', auth, async (req, res) => {
 
 /**
  * @route   GET /api/media/*
-
+ */
 router.get('/*', async (req, res) => {
     try {
         let filePath = req.params[0];
