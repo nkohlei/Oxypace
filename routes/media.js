@@ -154,12 +154,13 @@ router.get('/*', async (req, res) => {
                 const totalSize = headResponse.ContentLength;
 
                 const parts = range.replace(/bytes=/, "").split("-");
-                let start = parseInt(parts[0], 10);
-                let end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+                const start = parseInt(parts[0], 10);
+                const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
 
-                if (isNaN(start)) start = 0;
-                if (start >= totalSize || end >= totalSize) end = totalSize - 1;
-                if (start > end) return res.status(416).send(`Requested range not satisfiable`);
+                if (start >= totalSize) {
+                    res.status(416).set('Content-Range', `bytes */${totalSize}`).send();
+                    return;
+                }
 
                 const chunksize = (end - start) + 1;
                 const getCommand = new GetObjectCommand({
@@ -169,11 +170,19 @@ router.get('/*', async (req, res) => {
                 });
 
                 const response = await r2.send(getCommand);
+                
+                // Determine the correct Content-Type
+                let contentType = response.ContentType || 'video/mp4';
+                const ext = filePath.split('.').pop().toLowerCase();
+                if (['mp4', 'mov', 'm4v'].includes(ext)) contentType = 'video/mp4';
+                else if (ext === 'webm') contentType = 'video/webm';
+                else if (ext === 'ogg') contentType = 'video/ogg';
+
                 res.writeHead(206, {
                     'Content-Range': `bytes ${start}-${end}/${totalSize}`,
                     'Accept-Ranges': 'bytes',
                     'Content-Length': chunksize,
-                    'Content-Type': response.ContentType || 'video/mp4',
+                    'Content-Type': contentType,
                     'Access-Control-Allow-Origin': '*',
                     'Cross-Origin-Resource-Policy': 'cross-origin',
                     'Cache-Control': 'public, max-age=31536000, immutable'
