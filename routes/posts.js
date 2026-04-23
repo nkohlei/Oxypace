@@ -48,9 +48,9 @@ router.post(
             console.log('📤 Handler started. Body keys:', Object.keys(req.body));
             const { content, portalId, media, mediaType } = req.body;
 
-            // If no file and no content and no external media, reject
-            if (!content && !req.file && !media) {
-                console.log('📤 Rejected: No content, no file, and no external media');
+            // If no file and no content and no external media and no direct upload, reject
+            if (!content && !req.file && !media && !req.body.mediaKey) {
+                console.log('📤 Rejected: No content, no file, no mediaKey, and no external media');
                 return res.status(400).json({ message: 'Post must have content or media' });
             }
 
