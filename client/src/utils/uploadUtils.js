@@ -21,15 +21,22 @@ export const uploadFile = async (file, purpose = 'post', portalId = null) => {
     });
 
     // 2. Upload directly to R2 using PUT
-    await axios.put(uploadUrl, file, {
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
       headers: {
         'Content-Type': file.type
-      }
+      },
+      mode: 'cors'
     });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed with status: ${response.status}`);
+    }
 
     return mediaKey;
   } catch (error) {
     console.error('Direct Upload Error:', error);
-    throw new Error(error.response?.data?.message || 'Dosya yüklenemedi. Lütfen tekrar deneyin.');
+    throw new Error(error.message || 'Dosya yüklenemedi. Lütfen tekrar deneyin.');
   }
 };
