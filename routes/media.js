@@ -155,7 +155,7 @@ router.get('/*', async (req, res) => {
 
                 const parts = range.replace(/bytes=/, "").split("-");
                 let start = parseInt(parts[0], 10);
-                let end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + (5 * 1024 * 1024), totalSize - 1);
+                let end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
 
                 if (isNaN(start)) start = 0;
                 if (start >= totalSize || end >= totalSize) end = totalSize - 1;
