@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { uploadFile } from '../utils/uploadUtils';
+
 import PostCard from '../components/PostCard';
 import ChannelSidebar from '../components/ChannelSidebar';
 import MembersSidebar from '../components/MembersSidebar';
@@ -191,8 +193,8 @@ const Portal = () => {
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 25 * 1024 * 1024) {
-                alert("Dosya boyutu 25MB'dan büyük olamaz.");
+            if (file.size > 1024 * 1024 * 1024) {
+                alert("Dosya boyutu 1 GB'dan büyük olamaz.");
                 return;
             }
             setMediaFile(file);
@@ -232,41 +234,33 @@ const Portal = () => {
         setShowPlusMenu(false);
 
         try {
-            const formData = new FormData();
-            formData.append('title', 'Message');
-            if (currentData.content) formData.append('content', currentData.content);
-            formData.append('portalId', id);
-            formData.append('channel', currentChannel);
+            let mediaKey = null;
+            let youtubeMedia = null;
+            let youtubeMediaType = null;
 
             if (isYoutube) {
-                // For YouTube, we send URL string and type manually
-                formData.append('media', currentData.media.url);
-                formData.append('mediaType', 'youtube');
-                // We don't send 'file' because it's not a real file
+                youtubeMedia = currentData.media.url;
+                youtubeMediaType = 'youtube';
             } else if (currentData.media) {
-                formData.append('media', currentData.media);
-                formData.append('type', 'text'); // Default type logic might need override or let backend handle
-                // Backend logic: if file present, it infers type.
+                // Direct upload to R2
+                mediaKey = await uploadFile(currentData.media, 'post', id);
             }
 
-            // Note: The backend logic I saw earlier uses `req.file` to detect file. 
-            // If `media` is sent as string, it uses that.
-
-            const token = localStorage.getItem('token');
-            const config = {
-                headers: {
-                    // Content-Type for FormData is automatic, but we might need JSON if no file?
-                    // actually axios handles it.
-                    'Content-Type': 'multipart/form-data',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
+            const postData = {
+                content: currentData.content,
+                portalId: id,
+                channel: currentChannel,
             };
 
-            // If sending JSON (YouTube only), we might want to switch to JSON? 
-            // The backend accepts FormData fields. 
-            // `media` and `mediaType` fields in FormData should work.
+            if (mediaKey) {
+                postData.mediaKey = mediaKey;
+            } else if (youtubeMedia) {
+                postData.media = youtubeMedia;
+                postData.mediaType = youtubeMediaType;
+            }
 
-            const res = await axios.post('/api/posts', formData, config);
+            const res = await axios.post('/api/posts', postData);
+
 
             // 2. Success: Replace temp post with real data
             const tempStrId = String(tempId);

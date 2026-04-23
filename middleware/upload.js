@@ -30,7 +30,7 @@ const upload = multer({
             cb(null, `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`);
         },
     }),
-    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
+    limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB limit
     fileFilter: (req, file, cb) => {
         // Accept images and videos
         if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {

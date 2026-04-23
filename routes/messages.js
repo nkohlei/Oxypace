@@ -6,6 +6,8 @@ import Notification from '../models/Notification.js';
 import { messageValidation, mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
 import upload from '../middleware/upload.js';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
+
 
 const router = express.Router();
 
@@ -85,10 +87,12 @@ router.post(
         try {
             const { recipientId, content, postId, portalId, replyToId } = req.body;
             let media = undefined;
-            if (req.file) {
-                const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-                media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
+            if (req.body.mediaKey) {
+                media = constructProxiedUrl(req.body.mediaKey);
+            } else if (req.file) {
+                media = constructProxiedUrl(req.file.key);
             }
+
 
             if (!recipientId || (!content && !media && !postId && !portalId)) {
                 return res

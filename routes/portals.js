@@ -530,14 +530,18 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        if (req.file) {
+        if (req.body.mediaKey) {
+            portal.avatar = constructProxiedUrl(req.body.mediaKey);
+        } else if (req.file) {
             portal.avatar = constructProxiedUrl(req.file.key);
-            await portal.save();
-            await portal.populate('owner', 'username profile.displayName profile.avatar');
-            res.json(portal);
         } else {
-            res.status(400).json({ message: 'No file uploaded' });
+            return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
         }
+
+        await portal.save();
+        await portal.populate('owner', 'username profile.displayName profile.avatar');
+        res.json(portal);
+
     } catch (error) {
         console.error('Avatar upload error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -558,14 +562,18 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        if (req.file) {
+        if (req.body.mediaKey) {
+            portal.banner = constructProxiedUrl(req.body.mediaKey);
+        } else if (req.file) {
             portal.banner = constructProxiedUrl(req.file.key);
-            await portal.save();
-            await portal.populate('owner', 'username profile.displayName profile.avatar');
-            res.json(portal);
         } else {
-            res.status(400).json({ message: 'No file uploaded' });
+            return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
         }
+
+        await portal.save();
+        await portal.populate('owner', 'username profile.displayName profile.avatar');
+        res.json(portal);
+
     } catch (error) {
         console.error('Banner upload error:', error);
         res.status(500).json({ message: 'Server error' });

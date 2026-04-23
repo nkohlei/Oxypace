@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { uploadFile } from '../utils/uploadUtils';
+
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import './CreatePost.css';
@@ -43,8 +45,8 @@ const CreatePost = () => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 25 * 1024 * 1024) {
-                setError("Dosya boyutu 25MB'dan büyük olamaz.");
+            if (file.size > 1024 * 1024 * 1024) {
+                setError("Dosya boyutu 1 GB'dan büyük olamaz.");
                 return;
             }
             setMediaFile(file);
@@ -72,19 +74,22 @@ const CreatePost = () => {
         setLoading(true);
 
         try {
-            const formData = new FormData();
             let finalContent = content;
             if (externalUrl) {
                 finalContent = content ? content + '\n\n' + externalUrl : externalUrl;
             }
-            formData.append('content', finalContent);
+
+            let mediaKey = null;
+            let youtubeMedia = null;
+            let youtubeMediaType = null;
+
             if (mediaFile) {
-                formData.append('media', mediaFile);
+                mediaKey = await uploadFile(mediaFile, 'post', portalId);
             } else if (youtubeUrl) {
                 const videoId = getYoutubeId(youtubeUrl);
                 if (videoId) {
-                    formData.append('media', `https://www.youtube.com/watch?v=${videoId}`);
-                    formData.append('mediaType', 'youtube');
+                    youtubeMedia = `https://www.youtube.com/watch?v=${videoId}`;
+                    youtubeMediaType = 'youtube';
                 } else {
                     setError('Geçersiz YouTube bağlantısı');
                     setLoading(false);
@@ -92,14 +97,20 @@ const CreatePost = () => {
                 }
             }
 
-            if (portalId) {
-                formData.append('portalId', portalId);
+            const postData = {
+                content: finalContent,
+                portalId: portalId,
+            };
+
+            if (mediaKey) {
+                postData.mediaKey = mediaKey;
+            } else if (youtubeMedia) {
+                postData.media = youtubeMedia;
+                postData.mediaType = youtubeMediaType;
             }
 
-            // Use relative path for posts API to ensure consistency
-            const backendUrl = '/api/posts';
+            await axios.post('/api/posts', postData);
 
-            await axios.post(backendUrl, formData);
 
             // Redirect back to portal if from portal, else home
             if (portalId) {
@@ -195,10 +206,11 @@ const CreatePost = () => {
                             <label className="media-btn">
                                 <input
                                     type="file"
-                                    accept="image/*,.gif"
+                                    accept="image/*,video/*,.gif"
                                     onChange={handleFileChange}
                                     style={{ display: 'none' }}
                                 />
+
                                 <svg
                                     viewBox="0 0 24 24"
                                     fill="none"

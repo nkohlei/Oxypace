@@ -4,6 +4,8 @@ import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
 import { protect } from '../middleware/auth.js';
 import { commentValidation, mongoIdValidation } from '../middleware/validation.js';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
+
 
 const router = express.Router();
 
@@ -78,12 +80,9 @@ import upload from '../middleware/upload.js';
 // @access  Private
 router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValidation, upload.single('media'), async (req, res) => {
     try {
-        const { content } = req.body;
-        // Content might be optional if media exists, but usually text is required?
-        // Let's make content optional if media is present, or just allow both.
-        // User request didn't specify, but typical is mix.
+        const { content, mediaKey } = req.body;
 
-        if ((!content || content.trim().length === 0) && !req.file) {
+        if ((!content || content.trim().length === 0) && !req.file && !mediaKey) {
             return res.status(400).json({ message: 'Comment content or media is required' });
         }
 
@@ -98,9 +97,11 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
         let media = null;
         let mediaType = 'none';
 
-        if (req.file) {
-            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
+        if (mediaKey) {
+            media = constructProxiedUrl(mediaKey);
+            mediaType = mediaKey.match(/\.(mp4|webm|mov|m4v|quicktime)$/i) ? 'video' : 'image';
+        } else if (req.file) {
+            media = constructProxiedUrl(req.file.key);
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -112,6 +113,7 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
             mediaType,
             mentions: [],
         });
+
 
         // Update post comment count
         post.commentCount += 1;
@@ -154,9 +156,9 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
 // @access  Private
 router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), commentValidation, upload.single('media'), async (req, res) => {
     try {
-        const { content } = req.body;
+        const { content, mediaKey } = req.body;
 
-        if ((!content || content.trim().length === 0) && !req.file) {
+        if ((!content || content.trim().length === 0) && !req.file && !mediaKey) {
             return res.status(400).json({ message: 'Reply content or media is required' });
         }
 
@@ -169,9 +171,11 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
         let media = null;
         let mediaType = 'none';
 
-        if (req.file) {
-            const domain = (process.env.R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-            media = domain ? `${domain}/${req.file.key}` : `/api/media/${req.file.key}`;
+        if (mediaKey) {
+            media = constructProxiedUrl(mediaKey);
+            mediaType = mediaKey.match(/\.(mp4|webm|mov|m4v|quicktime)$/i) ? 'video' : 'image';
+        } else if (req.file) {
+            media = constructProxiedUrl(req.file.key);
             mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
         }
 
@@ -183,6 +187,7 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
             media,
             mediaType,
         });
+
 
         parentComment.replyCount += 1;
         await parentComment.save();

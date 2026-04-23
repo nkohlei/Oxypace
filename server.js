@@ -157,8 +157,8 @@ app.use('/api', (req, res, next) => {
     return generalLimiter(req, res, next);
 });
 
-app.use(express.json({ limit: '10mb' })); // Limit payload size
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '100mb' })); // Increased limit for large metadata
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(cookieParser()); // Add cookie-parser middleware
 
 // Session middleware (required for Passport)

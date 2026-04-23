@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { uploadFile } from '../utils/uploadUtils';
+
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import Navbar from '../components/Navbar';
@@ -158,7 +160,12 @@ const Inbox = () => {
 
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
-            setMedia(e.target.files[0]);
+            const file = e.target.files[0];
+            if (file.size > 1024 * 1024 * 1024) {
+                alert("Dosya boyutu 1 GB'dan büyük olamaz.");
+                return;
+            }
+            setMedia(file);
         }
     };
 
@@ -199,13 +206,24 @@ const Inbox = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
 
         try {
-            const formData = new FormData();
-            formData.append('recipientId', selectedUser._id);
-            if (tempContent) formData.append('content', tempContent);
-            if (tempMedia) formData.append('media', tempMedia);
-            if (tempReplyTo) formData.append('replyToId', tempReplyTo._id);
+            let mediaKey = null;
+            if (tempMedia) {
+                // Direct upload to R2
+                mediaKey = await uploadFile(tempMedia, 'message', selectedUser._id);
+            }
 
-            const response = await axios.post('/api/messages', formData);
+            const messageData = {
+                recipientId: selectedUser._id,
+                content: tempContent,
+                replyToId: tempReplyTo ? tempReplyTo._id : undefined,
+            };
+
+            if (mediaKey) {
+                messageData.mediaKey = mediaKey;
+            }
+
+            const response = await axios.post('/api/messages', messageData);
+
 
             setMessages((prev) => {
                 const responseId = String(response.data._id);
@@ -645,16 +663,18 @@ const Inbox = () => {
                                             type="file"
                                             ref={fileInputRef}
                                             style={{ display: 'none' }}
-                                            accept="image/png, image/jpeg, image/jpg"
+                                            accept="image/*,video/*,.gif"
                                             onChange={handleFileSelect}
                                         />
+
                                         <input
                                             type="file"
                                             ref={videoInputRef}
                                             style={{ display: 'none' }}
-                                            accept="video/mp4, video/webm, video/quicktime"
+                                            accept="video/*"
                                             onChange={handleFileSelect}
                                         />
+
                                         <input
                                             type="file"
                                             ref={gifInputRef}

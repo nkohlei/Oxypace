@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
+import { uploadFile } from '../utils/uploadUtils';
+
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -132,15 +134,22 @@ const Profile = () => {
         if (!composeText.trim() && !composeMedia) return;
         setComposeLoading(true);
         try {
-            const formDataObj = new FormData();
-            formDataObj.append('content', composeText);
+            let mediaKey = null;
             if (composeMedia) {
-                formDataObj.append('media', composeMedia);
+                // Direct upload to R2
+                mediaKey = await uploadFile(composeMedia, 'post', currentUser._id);
             }
-            
-            // Standard relative path; Vite proxy will forward to koyeb in dev, 
-            // and Vercel will rewrite to koyeb in prod
-            const res = await axios.post('/api/posts', formDataObj);
+
+            const postData = {
+                content: composeText,
+            };
+
+            if (mediaKey) {
+                postData.mediaKey = mediaKey;
+            }
+
+            const res = await axios.post('/api/posts', postData);
+
             
             // Prepend optimistically
             setUserPosts(prev => [{
@@ -168,8 +177,8 @@ const Profile = () => {
     const handleComposeMediaSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (file.size > 25 * 1024 * 1024) {
-            setError("Dosya boyutu 25MB'dan büyük olamaz.");
+        if (file.size > 1024 * 1024 * 1024) {
+            setError("Dosya boyutu 1 GB'dan büyük olamaz.");
             return;
         }
         setComposeMedia(file);
@@ -228,19 +237,16 @@ const Profile = () => {
     };
 
     const uploadImage = async (fileOrBlob, mode) => {
-        const formDataObj = new FormData();
         const endpoint = mode === 'avatar' ? '/api/users/me/avatar' : '/api/users/me/cover';
-        const fieldName = mode === 'avatar' ? 'avatar' : 'cover';
-
-        // Use original name if File (GIF), otherwise default to .jpg for Blobs
-        const fileName = fileOrBlob.name || `${fieldName}.jpg`;
-        formDataObj.append(fieldName, fileOrBlob, fileName);
 
         try {
             setLoading(true);
-            const response = await axios.post(endpoint, formDataObj, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            
+            // Direct upload to R2
+            const mediaKey = await uploadFile(fileOrBlob, mode === 'avatar' ? 'avatar' : 'cover', currentUser._id);
+
+            const response = await axios.post(endpoint, { mediaKey });
+
 
             // Deep copy to ensure React detects the state change
             const updatedUser = {

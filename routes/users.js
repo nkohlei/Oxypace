@@ -503,19 +503,23 @@ router.post(
     },
     async (req, res) => {
         try {
-            if (!req.file) {
-                return res.status(400).json({ message: 'No file uploaded' });
-            }
-
             const user = await User.findById(req.user._id);
 
-            user.profile.avatar = constructProxiedUrl(req.file.key);
+            if (req.body.mediaKey) {
+                user.profile.avatar = constructProxiedUrl(req.body.mediaKey);
+            } else if (req.file) {
+                user.profile.avatar = constructProxiedUrl(req.file.key);
+            } else {
+                return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
+            }
+
              await user.save();
 
             res.json({
                 message: 'Avatar uploaded successfully',
                 avatar: user.profile.avatar,
             });
+
         } catch (error) {
             console.error('Upload avatar error:', error);
             res.status(500).json({ message: 'Server error' });
@@ -544,19 +548,23 @@ router.post(
     },
     async (req, res) => {
         try {
-            if (!req.file) {
-                return res.status(400).json({ message: 'No file uploaded' });
-            }
-
             const user = await User.findById(req.user._id);
 
-            user.profile.coverImage = constructProxiedUrl(req.file.key);
+            if (req.body.mediaKey) {
+                user.profile.coverImage = constructProxiedUrl(req.body.mediaKey);
+            } else if (req.file) {
+                user.profile.coverImage = constructProxiedUrl(req.file.key);
+            } else {
+                return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
+            }
+
             await user.save();
 
             res.json({
                 message: 'Cover image uploaded successfully',
                 coverImage: user.profile.coverImage,
             });
+
         } catch (error) {
             console.error('Upload cover error:', error);
             res.status(500).json({ message: 'Server error' });

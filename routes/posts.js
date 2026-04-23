@@ -85,7 +85,18 @@ router.post(
                 postData.channel = req.body.channel || 'general';
             }
 
-            if (req.file) {
+            // Direct Cloud Upload support (Presigned URL)
+            if (req.body.mediaKey) {
+                postData.media = constructProxiedUrl(req.body.mediaKey);
+                // If mediaType isn't provided, try to infer it from extension
+                if (req.body.mediaType) {
+                    postData.mediaType = req.body.mediaType;
+                } else {
+                    const ext = req.body.mediaKey.split('.').pop().toLowerCase();
+                    const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'm4v'];
+                    postData.mediaType = videoExts.includes(ext) ? 'video' : 'image';
+                }
+            } else if (req.file) {
                 postData.media = constructProxiedUrl(req.file.key);
                 console.log('📤 Media Proxied URL (from utility):', postData.media);
 

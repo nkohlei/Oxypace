@@ -1,5 +1,8 @@
 import express from 'express';
-import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import auth from '../middleware/auth.js';
+
 import axios from 'axios';
 import r2 from '../config/r2.js';
 import fs from 'fs';
@@ -19,6 +22,61 @@ const router = express.Router();
  *          3. R2 Keys (Video/Audio): Proxies with Range support for decoding.
  * @access  Public
  */
+router.post('/presigned-url', auth, async (req, res) => {
+    try {
+        const { fileName, fileType, fileSize, purpose } = req.body;
+
+        if (!fileName || !fileType) {
+            return res.status(400).json({ message: 'File name and type are required' });
+        }
+
+        // Validate file size (1GB max)
+        const MAX_SIZE = 1024 * 1024 * 1024;
+        if (fileSize && fileSize > MAX_SIZE) {
+            return res.status(400).json({ message: "Dosya boyutu 1 GB'dan büyük olamaz." });
+        }
+
+        // Generate unique key
+        let folder = 'uploads';
+        if (purpose === 'avatar') {
+            folder = 'avatars';
+        } else if (purpose === 'banner' || purpose === 'cover') {
+            folder = 'banners';
+        } else if (purpose === 'post' || purpose === 'message' || purpose === 'comment') {
+            folder = req.body.portalId ? `posts/${req.body.portalId}` : 'posts/general';
+        } else if (purpose === 'feedback') {
+            folder = 'feedback';
+        }
+
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(fileName) || (fileType.split('/')[1] ? `.${fileType.split('/')[1]}` : '');
+        const fieldName = purpose || 'media';
+        const key = `${folder}/${fieldName}-${uniqueSuffix}${ext}`;
+
+        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+
+        const command = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+            ContentType: fileType,
+        });
+
+        // Generate the presigned URL for PUT
+        const uploadUrl = await getSignedUrl(r2, command, { expiresIn: 3600 }); // Valid for 1 hour
+
+        res.json({
+            uploadUrl,
+            mediaKey: key,
+        });
+    } catch (error) {
+        console.error('Presigned URL Generation Error:', error);
+        res.status(500).json({ message: 'Failed to generate upload URL' });
+    }
+});
+
+/**
+ * @route   GET /api/media/*
+
 router.get('/*', async (req, res) => {
     try {
         let filePath = req.params[0];

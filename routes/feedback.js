@@ -49,15 +49,19 @@ const getSystemSupportAccount = async () => {
 // @access  Private
 router.post('/submit', protect, upload.array('files', 5), async (req, res) => {
     try {
-        const { category, subject, message } = req.body;
+        const { category, subject, message, mediaKeys } = req.body;
 
         if (!category || !subject || !message) {
             return res.status(400).json({ message: 'Lütfen tüm zorunlu alanları doldurun.' });
         }
 
-        const fileUrls = req.files ? req.files.map(file => {
-            return constructProxiedUrl(file.key);
-        }) : [];
+        let fileUrls = [];
+        if (mediaKeys && Array.isArray(mediaKeys)) {
+            fileUrls = mediaKeys.map(key => constructProxiedUrl(key));
+        } else if (req.files) {
+            fileUrls = req.files.map(file => constructProxiedUrl(file.key));
+        }
+
         console.log('📬 Feedback attachment URLs:', fileUrls);
 
         const feedback = await Feedback.create({
@@ -68,6 +72,7 @@ router.post('/submit', protect, upload.array('files', 5), async (req, res) => {
             files: fileUrls,
             status: 'new'
         });
+
 
         res.status(201).json({ message: 'Geri bildiriminiz başarıyla iletildi.', feedback });
     } catch (error) {

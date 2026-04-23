@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { uploadFile } from '../utils/uploadUtils';
+
 import { useAuth } from '../context/AuthContext';
 import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
@@ -56,15 +58,22 @@ const Feedback = () => {
         setSuccess('');
 
         try {
-            const data = new FormData();
-            data.append('category', formData.category);
-            data.append('subject', formData.subject);
-            data.append('message', formData.message);
-            files.forEach(file => data.append('files', file));
+            const mediaKeys = [];
+            for (const file of files) {
+                // Direct upload to R2
+                const key = await uploadFile(file, 'feedback', user._id);
+                mediaKeys.push(key);
+            }
 
-            await axios.post('/api/feedback/submit', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const feedbackData = {
+                category: formData.category,
+                subject: formData.subject,
+                message: formData.message,
+                mediaKeys
+            };
+
+            await axios.post('/api/feedback/submit', feedbackData);
+
 
             setSuccess('Geri bildiriminiz başarıyla iletildi. Listeden takip edebilirsiniz.');
             setFormData({ category: 'Hata Bildirimi', subject: '', message: '' });

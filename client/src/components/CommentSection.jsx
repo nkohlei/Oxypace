@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { uploadFile } from '../utils/uploadUtils';
+
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
@@ -67,9 +69,9 @@ const CommentSection = ({ postId }) => {
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                // 5MB limit
-                alert("Dosya boyutu 5MB'dan küçük olmalı.");
+            if (file.size > 1024 * 1024 * 1024) {
+                // 1GB limit
+                alert("Dosya boyutu 1 GB'dan küçük olmalı.");
                 return;
             }
             setSelectedFile(file);
@@ -114,16 +116,24 @@ const CommentSection = ({ postId }) => {
         if (!newComment.trim() && !selectedFile) return;
 
         try {
-            const formData = new FormData();
-            formData.append('content', newComment);
+            let mediaKey = null;
             if (selectedFile) {
-                formData.append('media', selectedFile);
+                // Direct upload to R2
+                mediaKey = await uploadFile(selectedFile, 'comment', postId);
+            }
+
+            const commentData = {
+                content: newComment,
+            };
+
+            if (mediaKey) {
+                commentData.mediaKey = mediaKey;
             }
 
             let response;
             if (replyingTo) {
                 // Reply
-                response = await axios.post(`/api/comments/comment/${replyingTo.id}`, formData);
+                response = await axios.post(`/api/comments/comment/${replyingTo.id}`, commentData);
 
                 const parentId = replyingTo.id;
                 setExpandedComments((prev) => ({
@@ -140,9 +150,10 @@ const CommentSection = ({ postId }) => {
                 setReplyingTo(null);
             } else {
                 // Top-level comment
-                response = await axios.post(`/api/comments/post/${postId}`, formData);
+                response = await axios.post(`/api/comments/post/${postId}`, commentData);
                 setComments([{ ...response.data, isLiked: false }, ...comments]);
             }
+
 
             setNewComment('');
             clearFile();

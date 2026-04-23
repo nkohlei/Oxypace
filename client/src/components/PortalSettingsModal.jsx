@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
+import { uploadFile } from '../utils/uploadUtils';
 import ImageCropper from './ImageCropper';
+
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({
@@ -344,16 +346,12 @@ const PortalSettingsModal = ({
     };
 
     const uploadImage = async (fileOrBlob, mode) => {
-        const form = new FormData();
-        // Use original name if File (GIF), otherwise default to .jpg for Blobs
-        const fileName = fileOrBlob.name || `${mode}.jpg`;
-        form.append(mode, fileOrBlob, fileName);
-
         try {
             setLoading(true);
-            const res = await axios.post(`/api/portals/${portal._id}/${mode}`, form, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            // Direct upload to R2
+            const mediaKey = await uploadFile(fileOrBlob, mode, portal._id);
+
+            const res = await axios.post(`/api/portals/${portal._id}/${mode}`, { mediaKey });
             onUpdate(res.data);
         } catch (err) {
             alert(`${mode} yüklenemedi`);
@@ -361,6 +359,7 @@ const PortalSettingsModal = ({
             setLoading(false);
         }
     };
+
 
     const handleFileSelect = (e, target) => {
         if (!isOwner) return;
