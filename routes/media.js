@@ -146,32 +146,12 @@ router.get('/*', async (req, res) => {
 
         const range = req.headers.range;
 
-        // --- COMMON CONTENT-TYPE LOGIC ---
-        // Ensure consistency between 200 and 206 responses
-        const ext = filePath.split('.').pop().toLowerCase();
-        let contentType = 'application/octet-stream';
-        if (['mp4', 'mov', 'm4v'].includes(ext)) contentType = 'video/mp4';
-        else if (ext === 'webm') contentType = 'video/webm';
-        else if (ext === 'ogg') contentType = 'video/ogg';
-        else if (['jpg', 'jpeg'].includes(ext)) contentType = 'image/jpeg';
-        else if (ext === 'png') contentType = 'image/png';
-        else if (ext === 'gif') contentType = 'image/gif';
-        else if (ext === 'webp') contentType = 'image/webp';
-        else if (ext === 'svg') contentType = 'image/svg+xml';
-        else if (ext === 'mp3') contentType = 'audio/mpeg';
-        else if (ext === 'wav') contentType = 'audio/wav';
-
         // A. Video/Audio or Range Requests (Must be proxied for HTTP 206)
         if (range) {
             try {
                 const headCommand = new HeadObjectCommand({ Bucket: bucketName, Key: filePath });
                 const headResponse = await r2.send(headCommand);
                 const totalSize = headResponse.ContentLength;
-
-                // Fallback to R2 content type if detection failed
-                if (contentType === 'application/octet-stream' && headResponse.ContentType) {
-                    contentType = headResponse.ContentType;
-                }
 
                 const parts = range.replace(/bytes=/, "").split("-");
                 const start = parseInt(parts[0], 10);
@@ -191,16 +171,21 @@ router.get('/*', async (req, res) => {
 
                 const response = await r2.send(getCommand);
                 
+                // Determine the correct Content-Type
+                let contentType = response.ContentType || 'video/mp4';
+                const ext = filePath.split('.').pop().toLowerCase();
+                if (['mp4', 'mov', 'm4v'].includes(ext)) contentType = 'video/mp4';
+                else if (ext === 'webm') contentType = 'video/webm';
+                else if (ext === 'ogg') contentType = 'video/ogg';
+
                 res.writeHead(206, {
                     'Content-Range': `bytes ${start}-${end}/${totalSize}`,
                     'Accept-Ranges': 'bytes',
                     'Content-Length': chunksize,
                     'Content-Type': contentType,
                     'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges, Content-Length',
                     'Cross-Origin-Resource-Policy': 'cross-origin',
-                    'Cache-Control': 'public, max-age=31536000, immutable',
-                    'Vary': 'Range'
+                    'Cache-Control': 'public, max-age=31536000, immutable'
                 });
 
                 return response.Body.pipe(res);
@@ -215,21 +200,12 @@ router.get('/*', async (req, res) => {
         const command = new GetObjectCommand({ Bucket: bucketName, Key: filePath });
         const response = await r2.send(command);
 
-        // Fallback to R2 content type if detection failed
-        if (contentType === 'application/octet-stream' && response.ContentType) {
-            contentType = response.ContentType;
-        }
-
-        res.writeHead(200, {
-            'Content-Type': contentType,
-            'Content-Length': response.ContentLength,
-            'Cache-Control': 'public, max-age=31536000, immutable',
-            'Accept-Ranges': 'bytes',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges, Content-Length',
-            'Cross-Origin-Resource-Policy': 'cross-origin',
-            'Vary': 'Range'
-        });
+        res.set('Content-Type', response.ContentType || 'application/octet-stream');
+        res.set('Content-Length', response.ContentLength);
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        res.set('Accept-Ranges', 'bytes');
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
         return response.Body.pipe(res);
 
