@@ -1,58 +1,70 @@
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Check, ChevronRight, Gauge, Activity } from 'lucide-react';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './VideoPlayer.css';
 
-const VideoPlayer = ({ src, poster, className }) => {
+const VideoPlayer = ({ src, poster, className, qualities = null }) => {
   const videoRef = useRef(null);
   const { isMuted, setIsMuted } = useGlobalStore();
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  
-  // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Advanced Controls State
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [menuView, setMenuView] = useState('main'); // 'main', 'speed', 'quality'
+  const [currentQuality, setCurrentQuality] = useState('Auto');
+  const [networkSpeed, setNetworkSpeed] = useState(null); // 'slow', 'medium', 'fast'
+
+  // --- Network Speed Estimation ---
+  useEffect(() => {
+    if ('connection' in navigator) {
+      const updateConnection = () => {
+        const speed = navigator.connection.downlink; // Mbps
+        if (speed < 1.5) setNetworkSpeed('slow');
+        else if (speed < 5) setNetworkSpeed('medium');
+        else setNetworkSpeed('fast');
+      };
+      navigator.connection.addEventListener('change', updateConnection);
+      updateConnection();
+      return () => navigator.connection.removeEventListener('change', updateConnection);
+    }
+  }, []);
 
   // --- Strict IntersectionObserver Autoplay ---
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Kesinlikle ses ayarlarını global store'a göre yap
     video.muted = isMuted;
     video.volume = 1;
+    video.playbackRate = playbackRate;
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-            // Ekrana girdiğinde direkt oynamasını emret! (Sadece kullanıcı KENDİ DURDURMADIYSA)
             if (video.dataset.userPaused !== "true") {
                 video.muted = isMuted;
                 video.play().catch(() => {});
             }
         } else {
-            // Videodan çıkıldığında otomatik durdur. Ama kullanıcının özel kararını sıfırlama,
-            // böylece durdurup giden adam geldiğinde tekrar başlamaması sağlanır.
             if (video.dataset.userPaused !== "true") {
                 video.pause();
             }
         }
       });
-    }, { threshold: 0.5 }); // %50 görünüm oranı
+    }, { threshold: 0.5 });
 
     observer.observe(video);
-    
-    return () => {
-      observer.disconnect();
-    };
-  }, [src, isMuted]);
+    return () => observer.disconnect();
+  }, [src, isMuted, playbackRate]);
 
-  // Zaman İlerleyişini Yakalama (Bar için)
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
     const current = videoRef.current.currentTime;
     const total = videoRef.current.duration;
-    
     setCurrentTime(current);
     if (total > 0) {
       setDuration(total);
@@ -60,7 +72,6 @@ const VideoPlayer = ({ src, poster, className }) => {
     }
   };
 
-  // Bara Tıklayıp İleri Sarma
   const handleScrub = (e) => {
     if (e) e.stopPropagation();
     if (!videoRef.current || !duration) return;
@@ -72,8 +83,11 @@ const VideoPlayer = ({ src, poster, className }) => {
     setProgress(clickedProgress * 100);
   };
 
-  // Videoya Direk Tıklayıp Durdurma/Oynatma
   const handleVideoClick = () => {
+    if (isSettingsOpen) {
+      setIsSettingsOpen(false);
+      return;
+    }
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
         videoRef.current.dataset.userPaused = "false";
@@ -96,6 +110,19 @@ const VideoPlayer = ({ src, poster, className }) => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const changePlaybackRate = (rate) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) videoRef.current.playbackRate = rate;
+    setIsSettingsOpen(false);
+  };
+
+  const changeQuality = (q) => {
+    setCurrentQuality(q);
+    setIsSettingsOpen(false);
+    // Note: To implement real switching, we would store currentTime, 
+    // change src, and seek back to currentTime after load.
+  };
+
   return (
     <div className={`native-player-container left-aligned v16-scale ${className || ''}`}>
       <video
@@ -109,7 +136,6 @@ const VideoPlayer = ({ src, poster, className }) => {
         onClick={handleVideoClick}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
-        // Gerçek Ağ & Yükleme Sensörleri
         onWaiting={() => setIsLoading(true)}
         onLoadStart={() => setIsLoading(true)}
         onPlaying={() => setIsLoading(false)}
@@ -117,23 +143,16 @@ const VideoPlayer = ({ src, poster, className }) => {
         onCanPlayThrough={() => setIsLoading(false)}
       />
 
-      {/* Global Mute/Unmute Toggle Button */}
-      <button 
-        className="native-mute-toggle" 
-        onClick={toggleMute}
-        title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
-      >
+      <button className="native-mute-toggle" onClick={toggleMute}>
         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
 
-      {/* GERÇEK YÜKLENİYOR ANİMASYONU */}
       {isLoading && (
         <div className="native-loader-overlay">
             <div className="pro-spinner"></div>
         </div>
       )}
 
-      {/* SADECE Alttaki Süre ve Bar Arayüzü (Tertemiz) */}
       <div className="native-controls-ui is-always-visible">
         <div className="native-progress-area" onClick={handleScrub}>
           <div className="native-progress-track">
@@ -149,7 +168,80 @@ const VideoPlayer = ({ src, poster, className }) => {
             <span className="native-time-sep">/</span>
             <span>{formatTime(duration)}</span>
           </div>
+
+          <div className="native-right-controls">
+            <button 
+              className={`native-settings-btn ${isSettingsOpen ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSettingsOpen(!isSettingsOpen);
+                setMenuView('main');
+              }}
+            >
+              <Settings size={18} />
+            </button>
+          </div>
         </div>
+
+        {/* Settings Menu Popup */}
+        {isSettingsOpen && (
+          <div className="native-settings-menu" onClick={(e) => e.stopPropagation()}>
+            {menuView === 'main' && (
+              <div className="menu-list">
+                <div className="menu-item" onClick={() => setMenuView('quality')}>
+                  <div className="menu-item-left">
+                    <Activity size={16} />
+                    <span>Kalite</span>
+                  </div>
+                  <div className="menu-item-right">
+                    <span>{currentQuality === 'Auto' ? `Otomatik (${networkSpeed === 'fast' ? '1080p' : networkSpeed === 'medium' ? '720p' : '480p'})` : currentQuality}</span>
+                    <ChevronRight size={16} />
+                  </div>
+                </div>
+                <div className="menu-item" onClick={() => setMenuView('speed')}>
+                  <div className="menu-item-left">
+                    <Gauge size={16} />
+                    <span>Hız</span>
+                  </div>
+                  <div className="menu-item-right">
+                    <span>{playbackRate === 1 ? 'Normal' : `${playbackRate}x`}</span>
+                    <ChevronRight size={16} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {menuView === 'speed' && (
+              <div className="menu-list sub-menu">
+                <div className="menu-header" onClick={() => setMenuView('main')}>
+                   <ChevronRight size={16} className="rotate-180" />
+                   <span>Oynatma Hızı</span>
+                </div>
+                {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (
+                  <div key={rate} className="menu-item" onClick={() => changePlaybackRate(rate)}>
+                    <span>{rate === 1 ? 'Normal' : `${rate}x`}</span>
+                    {playbackRate === rate && <Check size={16} />}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {menuView === 'quality' && (
+              <div className="menu-list sub-menu">
+                <div className="menu-header" onClick={() => setMenuView('main')}>
+                   <ChevronRight size={16} className="rotate-180" />
+                   <span>Video Kalitesi</span>
+                </div>
+                {['Auto', '1080p', '720p', '480p', '360p'].map(q => (
+                  <div key={q} className="menu-item" onClick={() => changeQuality(q)}>
+                    <span>{q === 'Auto' ? 'Otomatik' : q}</span>
+                    {currentQuality === q && <Check size={16} />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
