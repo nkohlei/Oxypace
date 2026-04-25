@@ -94,7 +94,6 @@ const corsOptions = {
         }
     },
     credentials: true,
-    exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 };
 
 // Initialize Socket.IO

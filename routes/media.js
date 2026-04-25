@@ -95,7 +95,6 @@ router.get('/*', async (req, res) => {
         // --- CASE 1: EXTERNAL URL PROXYING (News Images, External GIFs) ---
         if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
             console.log('🌐 Proxying External Media:', filePath);
-            const range = req.headers.range;
             
             try {
                 const response = await axios({
@@ -104,23 +103,15 @@ router.get('/*', async (req, res) => {
                     responseType: 'stream',
                     timeout: 15000,
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                        ...(range ? { 'Range': range } : {})
-                    },
-                    validateStatus: (status) => status < 500
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    }
                 });
 
-                // Forward status and essential headers
-                res.status(response.status);
+                // Forward essential headers with aggressive caching for mobile stability
                 res.set('Content-Type', response.headers['content-type'] || 'application/octet-stream');
-                res.set('Content-Length', response.headers['content-length']);
-                res.set('Content-Range', response.headers['content-range']);
-                res.set('Accept-Ranges', response.headers['accept-ranges'] || 'bytes');
+                res.set('Cache-Control', 'public, max-age=31536000, immutable'); // Cache for 1 year
                 res.set('Access-Control-Allow-Origin', '*');
-                res.set('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
                 res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-                res.set('Cache-Control', 'public, max-age=31536000, immutable');
-                res.set('Vary', 'Range');
 
                 return response.data.pipe(res);
             } catch (proxyError) {
@@ -193,10 +184,8 @@ router.get('/*', async (req, res) => {
                     'Content-Length': chunksize,
                     'Content-Type': contentType,
                     'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges, Content-Length',
                     'Cross-Origin-Resource-Policy': 'cross-origin',
-                    'Cache-Control': 'public, max-age=31536000, immutable',
-                    'Vary': 'Range'
+                    'Cache-Control': 'public, max-age=31536000, immutable'
                 });
 
                 return response.Body.pipe(res);
