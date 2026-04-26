@@ -15,9 +15,10 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        // Special handling for Twitter/X
-        if (url.includes('x.com/') || url.includes('twitter.com/')) {
-            url = url.replace('x.com/', 'vxtwitter.com/').replace('twitter.com/', 'vxtwitter.com/');
+        // Special handling for Twitter/X to avoid being blocked
+        // Use regex to avoid recursive replacements (bug that caused vxvxtwitter)
+        if (url.includes('x.com') || url.includes('twitter.com')) {
+            url = url.replace(/https?:\/\/(www\.)?(x|twitter)\.com/, 'https://fixvx.com');
         }
 
         // Check cache
@@ -56,26 +57,19 @@ router.get('/', async (req, res) => {
         }
 
         const { result, error } = ogsResponse;
+        const originalUrl = req.query.url;
 
-        if (error && !result?.ogTitle) {
-            const domain = new URL(url).hostname;
-            return res.json({
-                title: domain,
-                description: '',
-                image: '',
-                url: url,
-                siteName: domain
-            });
+        let fallbackTitle = new URL(originalUrl).hostname;
+        if (fallbackTitle.includes('x.com') || fallbackTitle.includes('twitter.com')) {
+            fallbackTitle = 'Twitter / X';
         }
 
-        const originalUrl = req.query.url; // Keep the original URL for the response
-
         const previewData = {
-            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || new URL(originalUrl).hostname,
+            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || fallbackTitle,
             description: result?.ogDescription || result?.twitterDescription || '',
             image: result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || '',
-            url: originalUrl, // Always return the original URL to the frontend
-            siteName: result?.ogSiteName || result?.twitterSiteName || '',
+            url: originalUrl,
+            siteName: result?.ogSiteName || result?.twitterSiteName || (fallbackTitle.includes('Twitter') ? 'Twitter' : ''),
             favicon: result?.favicon || '',
         };
 
