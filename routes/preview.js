@@ -16,9 +16,9 @@ router.get('/', async (req, res) => {
 
     try {
         // Special handling for Twitter/X to avoid being blocked
-        // Use regex to avoid recursive replacements (bug that caused vxvxtwitter)
+        // fxtwitter.com is the most reliable service for providing OG metadata for tweets
         if (url.includes('x.com') || url.includes('twitter.com')) {
-            url = url.replace(/https?:\/\/(www\.)?(x|twitter)\.com/, 'https://fixvx.com');
+            url = url.replace(/https?:\/\/(www\.)?(x|twitter)\.com/, 'https://fxtwitter.com');
         }
 
         // Check cache
