@@ -27,7 +27,8 @@ router.get('/', async (req, res) => {
 
         const options = {
             url,
-            timeout: 5000,
+            timeout: 8000, // Increased timeout for redirects
+            followRedirect: true,
             headers: {
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
             },
@@ -35,19 +36,33 @@ router.get('/', async (req, res) => {
 
         const { result, error } = await ogs(options);
 
-        if (error) {
+        // Even if ogs returns an error, we might have some results
+        if (error && !result?.ogTitle && !result?.requestUrl) {
             console.error(`OGS Error for ${url}:`, result);
             return res.status(422).json({ message: 'Could not fetch metadata' });
         }
 
         const previewData = {
-            title: result.ogTitle || result.twitterTitle || '',
-            description: result.ogDescription || result.twitterDescription || '',
-            image: result.ogImage?.[0]?.url || result.twitterImage?.[0]?.url || '',
-            url: result.ogUrl || url,
+            title: result.ogTitle || result.twitterTitle || result.dcTitle || result.alIosAppName || '',
+            description: result.ogDescription || result.twitterDescription || result.dcDescription || '',
+            image: result.ogImage?.[0]?.url || result.twitterImage?.[0]?.url || result.ogImageURL || '',
+            url: result.ogUrl || result.requestUrl || url,
             siteName: result.ogSiteName || result.twitterSiteName || '',
             favicon: result.favicon || '',
         };
+
+        // Fallback to page title if ogTitle is missing
+        if (!previewData.title && result.requestUrl) {
+            // Some sites don't have OG tags but have a title
+            // ogs-lite might not catch it as ogTitle
+            // We can try to extract domain as title if all else fails
+            try {
+                const domain = new URL(url).hostname;
+                previewData.title = domain;
+            } catch (e) {
+                previewData.title = 'Link Önizleme';
+            }
+        }
 
         // Cache the result
         cache.set(url, {

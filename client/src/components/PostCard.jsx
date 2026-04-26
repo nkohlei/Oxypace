@@ -8,7 +8,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
 import Badge from './Badge';
-import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
+import { linkifyText, truncateAndLinkifyText, extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
@@ -614,8 +614,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                 {/* Link Preview (Isolated from media) */}
                 {(() => {
-                    const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
-                    const firstUrl = post.content?.match(urlRegex)?.[0];
+                    const firstUrl = extractFirstUrl(post.content);
                     if (firstUrl) {
                         return <LinkPreview url={firstUrl} />;
                     }

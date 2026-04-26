@@ -6,7 +6,7 @@ import { uploadFile } from '../utils/uploadUtils';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
-import { linkifyText } from '../utils/linkify';
+import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
 import './CommentSection.css';
 
@@ -496,8 +496,7 @@ const CommentSection = ({ postId }) => {
 
                         {/* Link Preview (Isolated) */}
                         {(() => {
-                            const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
-                            const firstUrl = comment.content?.match(urlRegex)?.[0];
+                            const firstUrl = extractFirstUrl(comment.content);
                             if (firstUrl) {
                                 return <LinkPreview url={firstUrl} />;
                             }

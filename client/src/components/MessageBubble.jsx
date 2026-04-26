@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import { linkifyText } from '../utils/linkify';
+import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
 import './MessageBubble.css';
 
@@ -356,8 +356,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                             <>
                                 <div className="message-content">{linkifyText(message.content)}</div>
                                 {(() => {
-                                    const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
-                                    const firstUrl = message.content?.match(urlRegex)?.[0];
+                                    const firstUrl = extractFirstUrl(message.content);
                                     if (firstUrl) {
                                         return <LinkPreview url={firstUrl} />;
                                     }

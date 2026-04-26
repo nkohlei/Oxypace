@@ -101,3 +101,20 @@ export const truncateAndLinkifyText = (text, maxLength) => {
 
     return { elements, isTruncated };
 };
+
+/**
+ * Extracts the first URL from a text string, cleaning it of trailing punctuation.
+ */
+export const extractFirstUrl = (text) => {
+    if (!text || typeof text !== 'string') return null;
+    const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+    const match = text.match(urlRegex);
+    if (!match) return null;
+
+    let url = match[0];
+    // Strip trailing punctuation that might be included by the regex but aren't part of the URL
+    // (e.g., commas, periods at the end of a sentence)
+    url = url.replace(/[.,!?;:]+$/, '');
+    
+    return url;
+};

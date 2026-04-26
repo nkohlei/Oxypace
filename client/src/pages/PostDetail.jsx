@@ -22,7 +22,7 @@ import {
     Globe
 } from 'lucide-react';
 import './PostDetail.css';
-import { linkifyText } from '../utils/linkify';
+import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from '../components/LinkPreview';
 
 const PostDetail = () => {
@@ -260,8 +260,7 @@ const PostDetail = () => {
 
                             {/* Link Preview (Isolated from media) */}
                             {(() => {
-                                const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
-                                const firstUrl = post.content?.match(urlRegex)?.[0];
+                                const firstUrl = extractFirstUrl(post.content);
                                 if (firstUrl) {
                                     return <LinkPreview url={firstUrl} />;
                                 }
