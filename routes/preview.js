@@ -41,23 +41,23 @@ router.get('/', async (req, res) => {
 
         const { result, error } = await ogs(options);
 
-        // Even if ogs returns an error, we might have some results
+        // More robust error handling - if we have no title and ogs says error, we can't show a preview
         if (error && !result?.ogTitle && !result?.requestUrl) {
             console.error(`OGS Error for ${url}:`, result);
             return res.status(422).json({ message: 'Could not fetch metadata' });
         }
 
         const previewData = {
-            title: result.ogTitle || result.twitterTitle || result.dcTitle || result.alIosAppName || '',
-            description: result.ogDescription || result.twitterDescription || result.dcDescription || '',
-            image: result.ogImage?.[0]?.url || result.twitterImage?.[0]?.url || result.ogImageURL || '',
-            url: result.ogUrl || result.requestUrl || url,
-            siteName: result.ogSiteName || result.twitterSiteName || '',
-            favicon: result.favicon || '',
+            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || result?.alIosAppName || '',
+            description: result?.ogDescription || result?.twitterDescription || result?.dcDescription || '',
+            image: result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || result?.ogImageURL || '',
+            url: result?.ogUrl || result?.requestUrl || url,
+            siteName: result?.ogSiteName || result?.twitterSiteName || '',
+            favicon: result?.favicon || '',
         };
 
         // Fallback to page title if ogTitle is missing
-        if (!previewData.title && result.requestUrl) {
+        if (!previewData.title && result?.requestUrl) {
             // Some sites don't have OG tags but have a title
             // ogs-lite might not catch it as ogTitle
             // We can try to extract domain as title if all else fails
