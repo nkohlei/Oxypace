@@ -85,9 +85,6 @@ const processVideo = (input, output, size, bitrate) => {
         ffmpeg(input)
             .size(size)
             .videoBitrate(bitrate)
-            .videoCodec('libx264')
-            .addOption('-threads', '1') // Use only 1 thread to keep CPU free for web server
-            .addOption('-preset', 'superfast') // Faster encoding, less CPU stress
             .format('mp4')
             .on('end', resolve)
             .on('error', reject)
