@@ -110,7 +110,7 @@ const LinkPreview = ({ url }) => {
                         {data.tweetVideos.map((vid, i) => (
                             <video
                                 key={i}
-                                src={vid.url}
+                                src={`/api/preview/video?url=${encodeURIComponent(vid.url)}`}
                                 poster={vid.thumbnail}
                                 controls
                                 playsInline

@@ -181,4 +181,43 @@ router.get('/', async (req, res) => {
     }
 });
 
+/**
+ * Video proxy — streams Twitter videos through our server
+ * to bypass Twitter CDN's 403 hotlink protection
+ */
+router.get('/video', async (req, res) => {
+    const videoUrl = req.query.url;
+
+    if (!videoUrl || !videoUrl.includes('video.twimg.com')) {
+        return res.status(400).json({ message: 'Invalid video URL' });
+    }
+
+    try {
+        const response = await axios.get(videoUrl, {
+            responseType: 'stream',
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+                'Referer': 'https://twitter.com/',
+                'Origin': 'https://twitter.com',
+            },
+        });
+
+        // Forward content headers
+        if (response.headers['content-type']) {
+            res.set('Content-Type', response.headers['content-type']);
+        }
+        if (response.headers['content-length']) {
+            res.set('Content-Length', response.headers['content-length']);
+        }
+        res.set('Accept-Ranges', 'bytes');
+        res.set('Cache-Control', 'public, max-age=3600');
+
+        response.data.pipe(res);
+    } catch (err) {
+        console.error('Video proxy error:', err.message);
+        res.status(500).json({ message: 'Failed to load video' });
+    }
+});
+
 export default router;
