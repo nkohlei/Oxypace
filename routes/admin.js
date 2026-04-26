@@ -7,6 +7,23 @@ import ContactMessage from '../models/ContactMessage.js';
 
 const router = express.Router();
 
+// @route   GET /api/admin/pending-count
+// @desc    Get total count of items requiring admin attention
+// @access  Private/Admin
+router.get('/pending-count', protect, admin, async (req, res) => {
+    try {
+        const [pendingVerifications, unreadMessages] = await Promise.all([
+            User.countDocuments({ 'verificationRequest.status': 'pending' }),
+            req.user.username === 'oxypace' ? ContactMessage.countDocuments({ status: 'unread' }) : 0
+        ]);
+        
+        res.json({ count: pendingVerifications + unreadMessages });
+    } catch (error) {
+        console.error('Fetch pending count error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // @route   GET /api/admin/verification-requests
 // @desc    Get all pending verification requests
 // @access  Private/Admin

@@ -17,6 +17,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [adminPendingCount, setAdminPendingCount] = useState(0);
     const [hidden, setHidden] = useState(false);
     const menuRef = useRef(null);
     const lastScrollY = useRef(0);
@@ -70,6 +71,19 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                 }
             };
             fetchUnreadCount();
+
+            // Fetch admin pending items if admin
+            if (user.isAdmin) {
+                const fetchAdminCount = async () => {
+                    try {
+                        const response = await axios.get('/api/admin/pending-count');
+                        setAdminPendingCount(response.data.count || 0);
+                    } catch (error) {
+                        console.error('Fetch admin pending count error:', error);
+                    }
+                };
+                fetchAdminCount();
+            }
         }
     }, [user]);
 
@@ -185,7 +199,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                         <div className="header-menu-wrapper" ref={menuRef}>
                             {user ? (
                                 <button
-                                    className={`header-icon profile-unified-btn ${showMenu ? 'active' : ''} ${unreadCount > 0 ? 'has-unread' : ''}`}
+                                    className={`header-icon profile-unified-btn ${showMenu ? 'active' : ''} ${unreadCount > 0 ? 'has-unread' : ''} ${adminPendingCount > 0 ? 'has-admin-unread' : ''}`}
                                     onClick={() => setShowMenu(!showMenu)}
                                     title="Profilim ve Menü"
                                     aria-expanded={showMenu}
@@ -328,7 +342,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                     {user?.isAdmin && (
                                         <Link
                                             to="/admin"
-                                            className="dropdown-item admin-link"
+                                            className={`dropdown-item admin-link ${adminPendingCount > 0 ? 'has-admin-notification' : ''}`}
                                             onClick={() => setShowMenu(false)}
                                         >
                                             <svg
@@ -339,7 +353,8 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             >
                                                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                                             </svg>
-                                            Yönetici Paneli
+                                            <span>Yönetici Paneli</span>
+                                            {adminPendingCount > 0 && <span className="admin-notification-dot"></span>}
                                         </Link>
                                     )}
                                     <Link

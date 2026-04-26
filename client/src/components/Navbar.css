@@ -653,3 +653,41 @@ body.dark-mode .logo-text {
     padding: 0 6px;
     box-shadow: 0 2px 4px rgba(242, 63, 67, 0.3);
 }
+
+/* Admin Dashboard Notification */
+.dropdown-item.admin-link.has-admin-notification {
+    background: rgba(29, 155, 240, 0.08) !important;
+    position: relative;
+}
+
+.admin-notification-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #f23f43;
+    border-radius: 50%;
+    margin-left: auto;
+    box-shadow: 0 0 8px rgba(242, 63, 67, 0.6);
+    border: 1px solid var(--bg-darker);
+}
+
+.profile-unified-btn.has-admin-unread {
+    border-color: rgba(0, 210, 255, 0.6) !important;
+}
+
+/* Optional: Cyan glow for admin notifications on the main button */
+.profile-unified-btn.has-admin-unread::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border: 1px solid #00d2ff;
+    border-radius: 50%;
+    opacity: 0.5;
+    animation: adminPulse 2s infinite;
+    pointer-events: none;
+}
+
+@keyframes adminPulse {
+    0% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.2; }
+    100% { transform: scale(1); opacity: 0.5; }
+}
