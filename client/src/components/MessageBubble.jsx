@@ -354,13 +354,14 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
 
                         {message.content && (
                             <>
-                                <div className="message-content">{linkifyText(message.content)}</div>
                                 {(() => {
                                     const firstUrl = extractFirstUrl(message.content);
-                                    if (firstUrl) {
-                                        return <LinkPreview url={firstUrl} />;
-                                    }
-                                    return null;
+                                    return (
+                                        <>
+                                            <div className="message-content">{linkifyText(message.content, firstUrl)}</div>
+                                            {firstUrl && <LinkPreview url={firstUrl} />}
+                                        </>
+                                    );
                                 })()}
                             </>
                         )}

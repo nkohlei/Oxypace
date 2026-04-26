@@ -436,15 +436,16 @@ const CommentSection = ({ postId }) => {
                         <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                             {(() => {
                                 if (!comment.content) return null;
+                                const firstUrl = extractFirstUrl(comment.content);
                                 const isTextExpanded = expandedTexts[comment._id];
                                 if (comment.content.length <= MAX_COMMENT_LENGTH) {
-                                    return linkifyText(comment.content);
+                                    return linkifyText(comment.content, firstUrl);
                                 }
 
                                 if (isTextExpanded) {
                                     return (
                                         <>
-                                            {linkifyText(comment.content)}
+                                            {linkifyText(comment.content, firstUrl)}
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -473,7 +474,7 @@ const CommentSection = ({ postId }) => {
                                 }
                                 return (
                                     <>
-                                        {linkifyText(truncated + '...')}
+                                        {linkifyText(truncated + '...', firstUrl)}
                                         <button
                                             onClick={(e) => toggleTextExpand(comment._id, e)}
                                             style={{

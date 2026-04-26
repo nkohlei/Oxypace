@@ -2,7 +2,7 @@
  * Converts URLs in text to clickable links.
  * Returns an array of React elements (strings and <a> tags).
  */
-export const linkifyText = (text) => {
+export const linkifyText = (text, urlToHide = null) => {
     if (!text || typeof text !== 'string') return text;
 
     // Regex to match URLs (http, https, or starting with www.)
@@ -12,6 +12,10 @@ export const linkifyText = (text) => {
 
     return parts.map((part, index) => {
         if (urlRegex.test(part)) {
+            // If this URL is the one we want to hide, return null
+            if (urlToHide && part.trim().replace(/[.,!?;:]+$/, '') === urlToHide.replace(/[.,!?;:]+$/, '')) {
+                return null;
+            }
             // Reset regex lastIndex
             urlRegex.lastIndex = 0;
             const href = part.toLowerCase().startsWith('www.') ? `http://${part}` : part;
@@ -36,13 +40,16 @@ export const linkifyText = (text) => {
  * Truncates text while preserving full URLs.
  * Returns an object: { elements: ReactNode[], isTruncated: boolean }
  */
-export const truncateAndLinkifyText = (text, maxLength) => {
+export const truncateAndLinkifyText = (text, maxLength, urlToHide = null) => {
     if (!text || typeof text !== 'string') {
         return { elements: text, isTruncated: false };
     }
 
+    // Clean the urlToHide to match our internal URL extraction
+    const cleanUrlToHide = urlToHide ? urlToHide.trim() : null;
+
     if (text.length <= maxLength) {
-        return { elements: linkifyText(text), isTruncated: false };
+        return { elements: linkifyText(text, cleanUrlToHide), isTruncated: false };
     }
 
     const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;

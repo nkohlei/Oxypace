@@ -539,15 +539,16 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         {(() => {
                             const contentStr = isTranslated && translatedText ? translatedText : post.content;
                             if (!contentStr) return null;
+                            const firstUrl = extractFirstUrl(post.content);
 
                             if (contentStr.length <= MAX_LENGTH) {
-                                return linkifyText(contentStr);
+                                return linkifyText(contentStr, firstUrl);
                             }
 
                             if (isExpanded) {
                                 return (
                                     <>
-                                        {linkifyText(contentStr)}
+                                        {linkifyText(contentStr, firstUrl)}
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
                                             className="read-more-btn"
@@ -568,7 +569,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 );
                             }
 
-                            const { elements, isTruncated } = truncateAndLinkifyText(contentStr, MAX_LENGTH);
+                            const { elements, isTruncated } = truncateAndLinkifyText(contentStr, MAX_LENGTH, firstUrl);
 
                             return (
                                 <>

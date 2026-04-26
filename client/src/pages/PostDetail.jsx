@@ -247,7 +247,11 @@ const PostDetail = () => {
                         <div className="pd-card-body">
                             {post.content && (
                                 <div className="pd-content-text">
-                                    <p>{linkifyText(isTranslated ? translatedText : post.content)}</p>
+                                    {(() => {
+                                        const firstUrl = extractFirstUrl(post.content);
+                                        const contentToShow = isTranslated ? translatedText : post.content;
+                                        return <p>{linkifyText(contentToShow, firstUrl)}</p>;
+                                    })()}
                                     
                                     {shouldShowTranslation(post.content) && (
                                         <button className="pd-translate-btn" onClick={handleTranslate}>

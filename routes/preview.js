@@ -68,11 +68,13 @@ router.get('/', async (req, res) => {
             });
         }
 
+        const originalUrl = req.query.url; // Keep the original URL for the response
+
         const previewData = {
-            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || new URL(url).hostname,
+            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || new URL(originalUrl).hostname,
             description: result?.ogDescription || result?.twitterDescription || '',
             image: result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || '',
-            url: result?.ogUrl || result?.requestUrl || url,
+            url: originalUrl, // Always return the original URL to the frontend
             siteName: result?.ogSiteName || result?.twitterSiteName || '',
             favicon: result?.favicon || '',
         };
