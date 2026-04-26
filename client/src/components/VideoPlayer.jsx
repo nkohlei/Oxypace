@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, Check } from 'lucide-react';
+import { Volume2, VolumeX, Check, Maximize } from 'lucide-react';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './VideoPlayer.css';
 
@@ -102,6 +102,22 @@ const VideoPlayer = ({ src, poster, className }) => {
     setIsSettingsOpen(false);
   };
 
+  const toggleFullscreen = (e) => {
+    e.stopPropagation();
+    if (!videoRef.current) return;
+    
+    const container = videoRef.current.closest('.native-player-container');
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) container.requestFullscreen();
+      else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+      else if (container.msRequestFullscreen) container.msRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  };
+
   return (
     <div className={`native-player-container left-aligned v16-scale ${className || ''}`}>
       <video
@@ -150,14 +166,22 @@ const VideoPlayer = ({ src, poster, className }) => {
 
           <div className="native-right-controls">
              <button 
-              className={`native-speed-btn ${isSettingsOpen ? 'active' : ''}`}
+              className={`native-speed-text-btn ${isSettingsOpen ? 'active' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsSettingsOpen(!isSettingsOpen);
               }}
               title="Oynatma Hızı"
             >
-              <span>{playbackRate === 1 ? '1x' : `${playbackRate}x`}</span>
+              {playbackRate === 1 ? '1x' : `${playbackRate}x`}
+            </button>
+
+            <button 
+              className="native-fullscreen-btn"
+              onClick={toggleFullscreen}
+              title="Tam Ekran"
+            >
+              <Maximize size={18} />
             </button>
 
             {isSettingsOpen && (

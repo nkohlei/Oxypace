@@ -145,39 +145,59 @@
 .native-right-controls {
     display: flex;
     align-items: center;
+    gap: 15px; /* More space between buttons */
     position: relative;
 }
 
-.native-speed-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+/* Minimalist Speed Text Button */
+.native-speed-text-btn {
+    background: transparent;
+    border: none;
     color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    min-width: 32px;
+    opacity: 0.7;
+    padding: 4px;
 }
 
-.native-speed-btn:hover, .native-speed-btn.active {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
+.native-speed-text-btn:hover, .native-speed-text-btn.active {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Fullscreen Button */
+.native-fullscreen-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: all 0.2s;
+    padding: 4px;
+}
+
+.native-fullscreen-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
 }
 
 .native-speed-menu {
     position: absolute;
     bottom: 40px;
-    right: 0;
-    background: rgba(20, 20, 20, 0.9);
-    backdrop-filter: blur(10px);
+    right: 25px; /* Adjust based on fullscreen btn presence */
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(15px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    width: 100px;
+    width: 110px;
     padding: 6px 0;
     z-index: 120;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
     animation: speedFadeIn 0.2s ease-out;
 }
 
