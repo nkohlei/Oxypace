@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Check } from 'lucide-react';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './VideoPlayer.css';
 
@@ -11,41 +11,36 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [duration, setDuration] = useState(0);
   
   // Gerçek zamanlı donma/yüklenme sensörü
-  const [isLoading, setIsLoading] = useState(true);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // --- Strict IntersectionObserver Autoplay ---
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Kesinlikle ses ayarlarını global store'a göre yap
     video.muted = isMuted;
     video.volume = 1;
+    video.playbackRate = playbackRate;
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-            // Ekrana girdiğinde direkt oynamasını emret! (Sadece kullanıcı KENDİ DURDURMADIYSA)
             if (video.dataset.userPaused !== "true") {
                 video.muted = isMuted;
                 video.play().catch(() => {});
             }
         } else {
-            // Videodan çıkıldığında otomatik durdur. Ama kullanıcının özel kararını sıfırlama,
-            // böylece durdurup giden adam geldiğinde tekrar başlamaması sağlanır.
             if (video.dataset.userPaused !== "true") {
                 video.pause();
             }
         }
       });
-    }, { threshold: 0.5 }); // %50 görünüm oranı
+    }, { threshold: 0.5 });
 
     observer.observe(video);
-    
-    return () => {
-      observer.disconnect();
-    };
-  }, [src, isMuted]);
+    return () => observer.disconnect();
+  }, [src, isMuted, playbackRate]);
 
   // Zaman İlerleyişini Yakalama (Bar için)
   const handleTimeUpdate = () => {
@@ -74,6 +69,10 @@ const VideoPlayer = ({ src, poster, className }) => {
 
   // Videoya Direk Tıklayıp Durdurma/Oynatma
   const handleVideoClick = () => {
+    if (isSettingsOpen) {
+      setIsSettingsOpen(false);
+      return;
+    }
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
         videoRef.current.dataset.userPaused = "false";
@@ -96,6 +95,12 @@ const VideoPlayer = ({ src, poster, className }) => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const changePlaybackRate = (rate) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) videoRef.current.playbackRate = rate;
+    setIsSettingsOpen(false);
+  };
+
   return (
     <div className={`native-player-container left-aligned v16-scale ${className || ''}`}>
       <video
@@ -109,7 +114,6 @@ const VideoPlayer = ({ src, poster, className }) => {
         onClick={handleVideoClick}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
-        // Gerçek Ağ & Yükleme Sensörleri
         onWaiting={() => setIsLoading(true)}
         onLoadStart={() => setIsLoading(true)}
         onPlaying={() => setIsLoading(false)}
@@ -117,23 +121,16 @@ const VideoPlayer = ({ src, poster, className }) => {
         onCanPlayThrough={() => setIsLoading(false)}
       />
 
-      {/* Global Mute/Unmute Toggle Button */}
-      <button 
-        className="native-mute-toggle" 
-        onClick={toggleMute}
-        title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
-      >
+      <button className="native-mute-toggle" onClick={toggleMute}>
         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
 
-      {/* GERÇEK YÜKLENİYOR ANİMASYONU */}
       {isLoading && (
         <div className="native-loader-overlay">
             <div className="pro-spinner"></div>
         </div>
       )}
 
-      {/* SADECE Alttaki Süre ve Bar Arayüzü (Tertemiz) */}
       <div className="native-controls-ui is-always-visible">
         <div className="native-progress-area" onClick={handleScrub}>
           <div className="native-progress-track">
@@ -148,6 +145,34 @@ const VideoPlayer = ({ src, poster, className }) => {
             <span>{formatTime(currentTime)}</span>
             <span className="native-time-sep">/</span>
             <span>{formatTime(duration)}</span>
+          </div>
+
+          <div className="native-right-controls">
+             <button 
+              className={`native-speed-btn ${isSettingsOpen ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSettingsOpen(!isSettingsOpen);
+              }}
+              title="Oynatma Hızı"
+            >
+              <span>{playbackRate === 1 ? '1x' : `${playbackRate}x`}</span>
+            </button>
+
+            {isSettingsOpen && (
+              <div className="native-speed-menu" onClick={(e) => e.stopPropagation()}>
+                {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (
+                  <div 
+                    key={rate} 
+                    className={`speed-item ${playbackRate === rate ? 'active' : ''}`}
+                    onClick={() => changePlaybackRate(rate)}
+                  >
+                    <span>{rate === 1 ? 'Normal' : `${rate}x`}</span>
+                    {playbackRate === rate && <Check size={14} />}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
