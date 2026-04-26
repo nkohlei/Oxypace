@@ -1,83 +1,143 @@
 import express from 'express';
+import axios from 'axios';
 import ogs from 'open-graph-scraper-lite';
 
 const router = express.Router();
 
-// Simple in-memory cache to avoid redundant fetches
+// Simple in-memory cache
 const cache = new Map();
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
-router.get('/', async (req, res) => {
-    let url = req.query.url;
+/**
+ * Extract Twitter/X status info from URL
+ * Returns { username, statusId } or null
+ */
+function parseTwitterUrl(url) {
+    const match = url.match(/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)/i);
+    if (match) {
+        return { username: match[1], statusId: match[2] };
+    }
+    return null;
+}
 
-    if (!url) {
+/**
+ * Fetch Twitter/X preview using fxtwitter JSON API
+ * This returns structured data directly — no HTML scraping needed
+ */
+async function fetchTwitterPreview(originalUrl) {
+    const parsed = parseTwitterUrl(originalUrl);
+    if (!parsed) return null;
+
+    try {
+        const apiUrl = `https://api.fxtwitter.com/${parsed.username}/status/${parsed.statusId}`;
+        const { data } = await axios.get(apiUrl, { timeout: 8000 });
+
+        if (!data?.tweet) return null;
+
+        const tweet = data.tweet;
+        return {
+            title: tweet.author?.name || parsed.username,
+            description: tweet.text || '',
+            image: tweet.media?.photos?.[0]?.url || tweet.author?.avatar_url || '',
+            url: originalUrl,
+            siteName: 'Twitter / X',
+            favicon: '',
+        };
+    } catch (err) {
+        console.error('Twitter API error:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Fetch generic preview by downloading HTML and parsing OG tags
+ */
+async function fetchGenericPreview(originalUrl) {
+    try {
+        const { data: html } = await axios.get(originalUrl, {
+            timeout: 8000,
+            maxRedirects: 5,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            // Only accept text responses (don't download binary files)
+            responseType: 'text',
+            validateStatus: (status) => status < 400,
+        });
+
+        if (!html || typeof html !== 'string') return null;
+
+        // Limit HTML size to prevent memory issues
+        const trimmedHtml = html.substring(0, 50000);
+
+        const { result } = await ogs({ html: trimmedHtml });
+
+        const hostname = new URL(originalUrl).hostname.replace('www.', '');
+
+        return {
+            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || hostname,
+            description: result?.ogDescription || result?.twitterDescription || '',
+            image: result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || '',
+            url: originalUrl,
+            siteName: result?.ogSiteName || hostname,
+            favicon: result?.favicon || '',
+        };
+    } catch (err) {
+        console.error('Generic preview error:', err.message);
+        return null;
+    }
+}
+
+router.get('/', async (req, res) => {
+    const originalUrl = req.query.url;
+
+    if (!originalUrl) {
         return res.status(400).json({ message: 'URL is required' });
     }
 
     try {
-        // Special handling for Twitter/X to avoid being blocked
-        // fxtwitter.com is the most reliable service for providing OG metadata for tweets
-        if (url.includes('x.com') || url.includes('twitter.com')) {
-            url = url.replace(/https?:\/\/(www\.)?(x|twitter)\.com/, 'https://fxtwitter.com');
-        }
-
-        // Check cache
-        if (cache.has(url)) {
-            const cachedData = cache.get(url);
-            if (Date.now() - cachedData.timestamp < CACHE_TTL) {
-                return res.json(cachedData.data);
+        // Check cache first
+        if (cache.has(originalUrl)) {
+            const cached = cache.get(originalUrl);
+            if (Date.now() - cached.timestamp < CACHE_TTL) {
+                return res.json(cached.data);
             }
-            cache.delete(url);
+            cache.delete(originalUrl);
         }
 
-        const options = {
-            url,
-            timeout: 10000,
-            followRedirect: true,
-            headers: {
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-            },
-        };
+        let previewData = null;
 
-        // Wrap OGS in its own try-catch to prevent parent crash
-        let ogsResponse;
-        try {
-            ogsResponse = await ogs(options);
-        } catch (ogsErr) {
-            console.error('OGS Fetch Error:', ogsErr.message);
-            // Fallback: If OGS fails, try to return at least the domain as title
-            const domain = new URL(url).hostname;
-            return res.json({
-                title: domain,
-                description: '',
-                image: '',
-                url: url,
-                siteName: domain
-            });
+        // Twitter/X gets special treatment via JSON API
+        if (originalUrl.includes('x.com/') || originalUrl.includes('twitter.com/')) {
+            previewData = await fetchTwitterPreview(originalUrl);
         }
 
-        const { result, error } = ogsResponse;
-        const originalUrl = req.query.url;
-
-        let fallbackTitle = new URL(originalUrl).hostname;
-        if (fallbackTitle.includes('x.com') || fallbackTitle.includes('twitter.com')) {
-            fallbackTitle = 'Twitter / X';
+        // Generic OG scraping for everything else (or if Twitter API failed)
+        if (!previewData) {
+            previewData = await fetchGenericPreview(originalUrl);
         }
 
-        const previewData = {
-            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || fallbackTitle,
-            description: result?.ogDescription || result?.twitterDescription || '',
-            image: result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || '',
-            url: originalUrl,
-            siteName: result?.ogSiteName || result?.twitterSiteName || (fallbackTitle.includes('Twitter') ? 'Twitter' : ''),
-            favicon: result?.favicon || '',
-        };
+        // If we still have nothing, return minimal data
+        if (!previewData) {
+            try {
+                const hostname = new URL(originalUrl).hostname.replace('www.', '');
+                previewData = {
+                    title: hostname,
+                    description: '',
+                    image: '',
+                    url: originalUrl,
+                    siteName: hostname,
+                    favicon: '',
+                };
+            } catch {
+                return res.status(422).json({ message: 'Invalid URL' });
+            }
+        }
 
-        // Cache the result
-        cache.set(url, {
-            data: previewData,
-            timestamp: Date.now(),
-        });
+        // Cache it
+        cache.set(originalUrl, { data: previewData, timestamp: Date.now() });
 
         // Limit cache size
         if (cache.size > 500) {
@@ -88,20 +148,8 @@ router.get('/', async (req, res) => {
         return res.json(previewData);
 
     } catch (err) {
-        console.error('General Preview Error:', err.message);
-        // ABSOLUTE FALLBACK: Never return 500
-        try {
-            const domain = new URL(url).hostname;
-            return res.json({
-                title: domain,
-                description: '',
-                image: '',
-                url: url,
-                siteName: domain
-            });
-        } catch (e) {
-            return res.status(422).json({ message: 'Invalid URL' });
-        }
+        console.error('Preview route error:', err.message);
+        return res.status(500).json({ message: 'Could not fetch preview' });
     }
 });
 
