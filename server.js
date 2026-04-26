@@ -30,6 +30,7 @@ import mediaRoutes from './routes/media.js';
 import badgeRoutes from './routes/badges.js';
 import voiceRoutes from './routes/voice.js';
 import translateRoutes from './routes/translate.js';
+import previewRoutes from './routes/preview.js';
 
 // Models for Sitemap
 import Portal from './models/Portal.js';
@@ -205,6 +206,7 @@ app.use('/api/media', mediaRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/translate', translateRoutes);
+app.use('/api/preview', previewRoutes);
 
 import contactRoutes from './routes/contact.js';
 import feedbackRoutes from './routes/feedback.js';

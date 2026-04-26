@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
 import { linkifyText } from '../utils/linkify';
+import LinkPreview from './LinkPreview';
 import './CommentSection.css';
 
 const CommentSection = ({ postId }) => {
@@ -492,6 +493,16 @@ const CommentSection = ({ postId }) => {
                                 );
                             })()}
                         </p>
+
+                        {/* Link Preview (Isolated) */}
+                        {(() => {
+                            const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+                            const firstUrl = comment.content?.match(urlRegex)?.[0];
+                            if (firstUrl) {
+                                return <LinkPreview url={firstUrl} />;
+                            }
+                            return null;
+                        })()}
                     </div>
 
                     {comment.media && (

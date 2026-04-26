@@ -12,7 +12,8 @@ import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
-import './MessageBubble.css'; // Reusing download logic styles if needed, or ensuring consistency
+import './MessageBubble.css';
+import LinkPreview from './LinkPreview';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -610,6 +611,16 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         </button>
                     )}
                 </div>
+
+                {/* Link Preview (Isolated from media) */}
+                {(() => {
+                    const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+                    const firstUrl = post.content?.match(urlRegex)?.[0];
+                    if (firstUrl) {
+                        return <LinkPreview url={firstUrl} />;
+                    }
+                    return null;
+                })()}
 
                 {/* Media */}
                 {post.media && (

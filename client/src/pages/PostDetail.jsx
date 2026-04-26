@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import './PostDetail.css';
 import { linkifyText } from '../utils/linkify';
+import LinkPreview from '../components/LinkPreview';
 
 const PostDetail = () => {
     const { postId } = useParams();
@@ -256,6 +257,16 @@ const PostDetail = () => {
                                     )}
                                 </div>
                             )}
+
+                            {/* Link Preview (Isolated from media) */}
+                            {(() => {
+                                const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+                                const firstUrl = post.content?.match(urlRegex)?.[0];
+                                if (firstUrl) {
+                                    return <LinkPreview url={firstUrl} />;
+                                }
+                                return null;
+                            })()}
 
                             {post.media && post.media.length > 0 && (
                                 <div className="pd-media-showcase">

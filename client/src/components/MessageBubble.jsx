@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { linkifyText } from '../utils/linkify';
+import LinkPreview from './LinkPreview';
 import './MessageBubble.css';
 
 const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
@@ -352,7 +353,17 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                         ) : null}
 
                         {message.content && (
-                            <div className="message-content">{linkifyText(message.content)}</div>
+                            <>
+                                <div className="message-content">{linkifyText(message.content)}</div>
+                                {(() => {
+                                    const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+                                    const firstUrl = message.content?.match(urlRegex)?.[0];
+                                    if (firstUrl) {
+                                        return <LinkPreview url={firstUrl} />;
+                                    }
+                                    return null;
+                                })()}
+                            </>
                         )}
                         <div className="message-time">
                             {formatTime(message.createdAt)}
