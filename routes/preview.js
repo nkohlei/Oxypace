@@ -35,10 +35,31 @@ async function fetchTwitterPreview(originalUrl) {
         if (!data?.tweet) return null;
 
         const tweet = data.tweet;
+
+        // Collect all media (photos and videos)
+        const mediaImages = [];
+        if (tweet.media?.photos) {
+            tweet.media.photos.forEach(p => mediaImages.push(p.url));
+        }
+        if (tweet.media?.videos) {
+            tweet.media.videos.forEach(v => {
+                if (v.thumbnail_url) mediaImages.push(v.thumbnail_url);
+            });
+        }
+
         return {
+            type: 'tweet',
             title: tweet.author?.name || parsed.username,
             description: tweet.text || '',
-            image: tweet.media?.photos?.[0]?.url || tweet.author?.avatar_url || '',
+            image: mediaImages[0] || '',
+            tweetMedia: mediaImages,
+            authorAvatar: tweet.author?.avatar_url || '',
+            authorName: tweet.author?.name || parsed.username,
+            authorHandle: tweet.author?.screen_name || parsed.username,
+            likes: tweet.likes || 0,
+            retweets: tweet.retweets || 0,
+            replies: tweet.replies || 0,
+            createdAt: tweet.created_at || '',
             url: originalUrl,
             siteName: 'Twitter / X',
             favicon: '',
