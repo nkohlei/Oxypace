@@ -173,10 +173,14 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
 // @access  Public
 router.get(
     '/google',
-    passport.authenticate('google', {
-        scope: ['profile', 'email'],
-        prompt: 'select_account',
-    })
+    (req, res, next) => {
+        const state = req.query.mobile === 'true' ? 'mobile' : 'web';
+        passport.authenticate('google', {
+            scope: ['profile', 'email'],
+            prompt: 'select_account',
+            state: state,
+        })(req, res, next);
+    }
 );
 
 // Aliases for compatibility (Client will set intent before calling these)
@@ -213,8 +217,15 @@ router.get(
 
         const processToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '5m' });
 
-        // Redirect to Frontend "Auth Process" page
-        res.redirect(`${process.env.CLIENT_URL}/auth/process?token=${processToken}`);
+        const state = req.query.state;
+        
+        if (state === 'mobile') {
+            // Redirect to Deep Link for Capacitor app
+            res.redirect(`oxypace://auth/process?token=${processToken}`);
+        } else {
+            // Redirect to Frontend "Auth Process" page for Web
+            res.redirect(`${process.env.CLIENT_URL}/auth/process?token=${processToken}`);
+        }
     }
 );
 

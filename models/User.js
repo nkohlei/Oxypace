@@ -162,6 +162,11 @@ const userSchema = new mongoose.Schema(
         lastActive: {
             type: Date,
         },
+        fcmTokens: [
+            {
+                type: String,
+            },
+        ],
     },
     {
         timestamps: true,

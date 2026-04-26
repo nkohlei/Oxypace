@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import './Auth.css';
 
 const Login = () => {
@@ -42,24 +44,27 @@ const Login = () => {
         }
     };
 
-    const handleGoogleLogin = () => {
+    const handleGoogleLogin = async () => {
         sessionStorage.setItem('auth_intent', 'login');
         let apiBase =
             import.meta.env.VITE_API_BASE_URL ||
             'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
 
-        // Ensure apiBase doesn't end with /
         if (apiBase.endsWith('/')) {
             apiBase = apiBase.slice(0, -1);
         }
 
-        // Check if apiBase already contains /api, if not add it
-        // The backend expects /api/auth/google
         if (!apiBase.endsWith('/api')) {
             apiBase += '/api';
         }
 
-        window.location.href = `${apiBase}/auth/google`;
+        const authUrl = `${apiBase}/auth/google?mobile=true`;
+
+        if (Capacitor.isNativePlatform()) {
+            await Browser.open({ url: authUrl });
+        } else {
+            window.location.href = authUrl;
+        }
     };
 
     // Check for errors in URL (e.g. from Google Login)

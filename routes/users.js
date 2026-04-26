@@ -791,6 +791,30 @@ router.put('/settings', protect, async (req, res) => {
     }
 });
 
+// @route   POST /api/users/fcm-token
+// @desc    Save FCM device token for push notifications
+// @access  Private
+router.post('/fcm-token', protect, async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: 'Token is required' });
+
+        const user = await User.findById(req.user._id);
+        if (!user.fcmTokens) user.fcmTokens = [];
+
+        // Add token if not already in the array
+        if (!user.fcmTokens.includes(token)) {
+            user.fcmTokens.push(token);
+            await user.save();
+        }
+
+        res.json({ message: 'Token saved successfully' });
+    } catch (error) {
+        console.error('Save FCM token error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // @route   PUT /api/users/password
 // @desc    Change password
 // @access  Private

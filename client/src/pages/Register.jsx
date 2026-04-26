@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import './Auth.css';
 
 const Register = () => {
@@ -84,12 +86,25 @@ const Register = () => {
         }
     };
 
-    const handleGoogleLogin = () => {
+    const handleGoogleLogin = async () => {
         sessionStorage.setItem('auth_intent', 'register');
-        // Use absolute URL for production (frontend and backend on different domains)
-        const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-        // VITE_API_BASE_URL already includes /api, so just add /auth/google
-        window.location.href = `${apiBase}/auth/google`;
+        let apiBase = import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+        
+        if (apiBase.endsWith('/')) {
+            apiBase = apiBase.slice(0, -1);
+        }
+
+        if (!apiBase.endsWith('/api')) {
+            apiBase += '/api';
+        }
+
+        const authUrl = `${apiBase}/auth/google?mobile=true`;
+
+        if (Capacitor.isNativePlatform()) {
+            await Browser.open({ url: authUrl });
+        } else {
+            window.location.href = authUrl;
+        }
     };
 
     const PasswordToggleIcon = ({ show }) =>

@@ -112,7 +112,8 @@ const requestNativePermissions = async () => {
             
             // Listeners
             await PushNotifications.addListener('registration', (token) => {
-                // TODO: Send token to backend via API
+                // Save token locally to be sent when user logs in
+                localStorage.setItem('fcm_token', token.value);
             });
 
             await PushNotifications.addListener('registrationError', (error) => {
@@ -382,8 +383,21 @@ const AppContent = () => {
         const timer = setTimeout(() => {
             setMinTimeElapsed(true);
         }, 3000);
+
+        // Send FCM Token to Backend if available and logged in
+        if (token && Capacitor.isNativePlatform()) {
+            const fcmToken = localStorage.getItem('fcm_token');
+            if (fcmToken) {
+                import('axios').then(({ default: axios }) => {
+                    axios.post('/api/users/fcm-token', { token: fcmToken }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }).catch(err => console.error('FCM Token sync error:', err));
+                });
+            }
+        }
+
         return () => clearTimeout(timer);
-    }, []);
+    }, [token]);
 
     useEffect(() => {
         // Only hide splash when:
@@ -402,11 +416,33 @@ const AppContent = () => {
     );
 };
 
+import { App as CapacitorApp } from '@capacitor/app';
+
 function App() {
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
             requestNativePermissions();
             CapacitorUpdater.notifyAppReady();
+
+            // Handle Deep Linking for Google Auth
+            CapacitorApp.addListener('appUrlOpen', (event) => {
+                const url = event.url;
+                if (url.includes('oxypace://auth/process')) {
+                    try {
+                        // In Capacitor, custom scheme URLs might not parse cleanly with standard URL API
+                        // Fallback to string splitting if URL parsing fails
+                        let token = null;
+                        if (url.includes('?token=')) {
+                            token = url.split('?token=')[1];
+                        }
+                        if (token) {
+                            window.location.href = `/auth/process?token=${token}`;
+                        }
+                    } catch (e) {
+                        console.error('Deep link error:', e);
+                    }
+                }
+            });
         }
 
         // Global protection for images and videos - Disable Right Click
