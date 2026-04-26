@@ -123,18 +123,41 @@
 .native-bottom-row {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between; /* This pushes controls to both ends */
+    width: 100%;
 }
 
 .native-time-display {
-    font-size: 13px;
-    font-weight: 800;
-    font-family: 'Inter', sans-serif;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    font-family: 'Inter', sans-serif;
     opacity: 0.9;
-    color: #fff;
+}
+
+/* Fullscreen special styles */
+.native-player-container:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.native-player-container:fullscreen .native-video-element {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    object-fit: contain;
+}
+
+.native-player-container:fullscreen .native-controls-ui {
+    bottom: 20px;
+    padding: 0 30px;
 }
 
 .native-time-sep {
