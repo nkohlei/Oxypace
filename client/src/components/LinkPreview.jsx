@@ -35,7 +35,20 @@ const LinkPreview = ({ url }) => {
         }
     }, [url]);
 
-    if (loading || error || !data) {
+    if (loading) {
+        return (
+            <div className="link-preview-container loading">
+                <div className="link-preview-skeleton-image"></div>
+                <div className="link-preview-skeleton-text">
+                    <div className="skeleton-line short"></div>
+                    <div className="skeleton-line"></div>
+                    <div className="skeleton-line"></div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !data || !data.title) {
         return null;
     }
 

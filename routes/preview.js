@@ -10,10 +10,15 @@ const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 router.get('/', async (req, res) => {
     try {
-        const { url } = req.query;
+        let url = req.query.url;
 
         if (!url) {
             return res.status(400).json({ message: 'URL is required' });
+        }
+
+        // Special handling for Twitter/X to avoid being blocked
+        if (url.includes('x.com/') || url.includes('twitter.com/')) {
+            url = url.replace('x.com/', 'fixvx.com/').replace('twitter.com/', 'fixvx.com/');
         }
 
         // Check cache
