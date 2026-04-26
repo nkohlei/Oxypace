@@ -136,7 +136,7 @@ const CreatePost = () => {
                     <button
                         className="share-btn"
                         onClick={handleSubmit}
-                        disabled={loading || (!content && !mediaFile)}
+                        disabled={loading || (!content.trim() && !mediaFile && !externalUrl.trim() && !youtubeUrl.trim())}
                     >
                         {loading ? 'Paylaşılıyor...' : 'Paylaş'}
                     </button>
@@ -160,7 +160,7 @@ const CreatePost = () => {
                         <button
                             className="share-btn"
                             onClick={handleSubmit}
-                            disabled={loading || (!content && !mediaFile)}
+                            disabled={loading || (!content.trim() && !mediaFile && !externalUrl.trim() && !youtubeUrl.trim())}
                         >
                             {loading ? 'Paylaşılıyor...' : 'Paylaş'}
                         </button>

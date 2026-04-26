@@ -6,6 +6,7 @@ import { uploadFile } from '../utils/uploadUtils';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
+import { linkifyText } from '../utils/linkify';
 import './CommentSection.css';
 
 const CommentSection = ({ postId }) => {
@@ -436,13 +437,13 @@ const CommentSection = ({ postId }) => {
                                 if (!comment.content) return null;
                                 const isTextExpanded = expandedTexts[comment._id];
                                 if (comment.content.length <= MAX_COMMENT_LENGTH) {
-                                    return comment.content;
+                                    return linkifyText(comment.content);
                                 }
 
                                 if (isTextExpanded) {
                                     return (
                                         <>
-                                            {comment.content}
+                                            {linkifyText(comment.content)}
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -471,7 +472,7 @@ const CommentSection = ({ postId }) => {
                                 }
                                 return (
                                     <>
-                                        {truncated + '...'}
+                                        {linkifyText(truncated + '...')}
                                         <button
                                             onClick={(e) => toggleTextExpand(comment._id, e)}
                                             style={{

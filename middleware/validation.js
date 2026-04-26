@@ -54,8 +54,7 @@ export const postValidation = [
         .optional()
         .isLength({ max: 5000 })
         .withMessage('İçerik en fazla 5000 karakter olabilir')
-        .trim()
-        .escape(),
+        .trim(),
     body('portalId').optional().isMongoId().withMessage('Geçersiz portal ID'),
     validate,
 ];
@@ -67,8 +66,7 @@ export const commentValidation = [
         .withMessage('Yorum içeriği gerekli')
         .isLength({ max: 2000 })
         .withMessage('Yorum en fazla 2000 karakter olabilir')
-        .trim()
-        .escape(),
+        .trim(),
     validate,
 ];
 
@@ -78,8 +76,7 @@ export const messageValidation = [
         .optional()
         .isLength({ max: 5000 })
         .withMessage('Mesaj en fazla 5000 karakter olabilir')
-        .trim()
-        .escape(),
+        .trim(),
     validate,
 ];
 
@@ -95,8 +92,7 @@ export const profileValidation = [
         .optional()
         .isLength({ max: 500 })
         .withMessage('Bio en fazla 500 karakter olabilir')
-        .trim()
-        .escape(),
+        .trim(),
     validate,
 ];
 

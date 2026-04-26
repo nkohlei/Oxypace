@@ -22,6 +22,7 @@ import {
     Globe
 } from 'lucide-react';
 import './PostDetail.css';
+import { linkifyText } from '../utils/linkify';
 
 const PostDetail = () => {
     const { postId } = useParams();
@@ -245,7 +246,7 @@ const PostDetail = () => {
                         <div className="pd-card-body">
                             {post.content && (
                                 <div className="pd-content-text">
-                                    <p>{isTranslated ? translatedText : post.content}</p>
+                                    <p>{linkifyText(isTranslated ? translatedText : post.content)}</p>
                                     
                                     {shouldShowTranslation(post.content) && (
                                         <button className="pd-translate-btn" onClick={handleTranslate}>
