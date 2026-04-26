@@ -678,6 +678,17 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleNSFWToggle = async (portalId, currentValue) => {
+        try {
+            await axios.put(`/api/admin/portals/${portalId}`, { isNSFW: !currentValue });
+            setPortals(portals.map(p =>
+                p._id === portalId ? { ...p, isNSFW: !currentValue } : p
+            ));
+        } catch (err) {
+            alert('+18 durumu güncellenemedi.');
+        }
+    };
+
     // Open Modal for Status Change
     const initiatePortalStatusChange = (portalId, action) => {
         if (action === 'activate') {
@@ -1116,6 +1127,7 @@ const AdminDashboard = () => {
                                         <div className="user-item-info">
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <h4>{portal.name}</h4>
+                                                {portal.isNSFW && <span className="nsfw-badge-admin">+18</span>}
                                                 {portal.status === 'suspended' && <span style={{ color: 'orange', fontSize: '10px' }}>(ASKIDA)</span>}
                                                 {portal.status === 'closed' && <span style={{ color: 'red', fontSize: '10px' }}>(KAPALI)</span>}
                                             </div>
@@ -1150,6 +1162,18 @@ const AdminDashboard = () => {
                                                 return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
                                             })()}
                                         </select>
+
+                                        {/* +18 NSFW Toggle */}
+                                        <label className="nsfw-toggle-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={portal.isNSFW || false}
+                                                onChange={() => handleNSFWToggle(portal._id, portal.isNSFW)}
+                                                className="nsfw-toggle-input"
+                                            />
+                                            <span className="nsfw-toggle-slider"></span>
+                                            <span className="nsfw-toggle-text">+18</span>
+                                        </label>
 
                                         {/* Action Dropdown */}
                                         <select

@@ -52,6 +52,7 @@ const Portal = () => {
     // UI Toggles
     const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
     const [showLoginWarning, setShowLoginWarning] = useState(false); // Guest warning state
+    const [nsfwConfirmed, setNsfwConfirmed] = useState(false); // +18 age gate state
 
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -764,6 +765,53 @@ const Portal = () => {
                     }}
                 >
                     <div className="spinner"></div>
+                </div>
+            </div>
+        );
+    }
+
+    // +18 Age Gate
+    if (portal.isNSFW && !nsfwConfirmed && !sessionStorage.getItem(`nsfw_confirmed_${id}`)) {
+        return (
+            <div className="app-wrapper full-height">
+                <Navbar />
+                <div className="nsfw-gate-overlay">
+                    <div className="nsfw-gate-card">
+                        <div className="nsfw-gate-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <div className="nsfw-gate-badge">+18</div>
+                        <h1 className="nsfw-gate-title">Yaş Kısıtlaması</h1>
+                        <p className="nsfw-gate-desc">
+                            <strong>{portal.name}</strong> portalı yetişkin içerik barındırabilir.
+                            Bu portala erişmek için 18 yaşından büyük olmanız gerekmektedir.
+                        </p>
+                        <div className="nsfw-gate-actions">
+                            <button
+                                className="nsfw-gate-confirm"
+                                onClick={() => {
+                                    sessionStorage.setItem(`nsfw_confirmed_${id}`, 'true');
+                                    setNsfwConfirmed(true);
+                                }}
+                            >
+                                18 yaşından büyüğüm, devam et
+                            </button>
+                            <button
+                                className="nsfw-gate-cancel"
+                                onClick={() => navigate(-1)}
+                            >
+                                Geri Dön
+                            </button>
+                        </div>
+                        <p className="nsfw-gate-legal">
+                            Devam ederek, yaşınızın 18'den büyük olduğunu ve yetişkin içerikle
+                            ilgili yasal sorumluluğu kabul ettiğinizi onaylarsınız.
+                        </p>
+                    </div>
                 </div>
             </div>
         );

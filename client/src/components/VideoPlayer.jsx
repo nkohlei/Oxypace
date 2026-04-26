@@ -110,6 +110,15 @@ const VideoPlayer = ({ src, poster, className }) => {
     if (!container) return;
 
     if (!document.fullscreenElement) {
+      // Entering fullscreen — pause all other videos on the page
+      const allVideos = document.querySelectorAll('video');
+      allVideos.forEach(v => {
+        if (v !== videoRef.current) {
+          v.pause();
+          v.dataset.pausedByFullscreen = 'true';
+        }
+      });
+
       if (container.requestFullscreen) container.requestFullscreen();
       else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
       else if (container.msRequestFullscreen) container.msRequestFullscreen();
@@ -117,6 +126,30 @@ const VideoPlayer = ({ src, poster, className }) => {
       if (document.exitFullscreen) document.exitFullscreen();
     }
   };
+
+  // Fullscreen exit handler — resume videos paused by fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // Exiting fullscreen — IntersectionObserver will resume visible videos
+        // Just clear the flag
+        const allVideos = document.querySelectorAll('video');
+        allVideos.forEach(v => {
+          if (v.dataset.pausedByFullscreen === 'true') {
+            delete v.dataset.pausedByFullscreen;
+          }
+        });
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   return (
     <div className={`native-player-container left-aligned v16-scale ${className || ''}`}>

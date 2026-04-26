@@ -231,7 +231,11 @@ const Search = () => {
                                                             ? `url(${getImageUrl(portal.banner)}) center/cover`
                                                             : getDefaultBanner(portal),
                                                     }}
-                                                ></div>
+                                                >
+                                                    {portal.isNSFW && (
+                                                        <span className="nsfw-badge-search">+18</span>
+                                                    )}
+                                                </div>
 
                                                 {/* Icon (overlapping) */}
                                                 <div className="card-icon-wrapper">
@@ -255,6 +259,9 @@ const Search = () => {
                                                     <h3 className="card-title">
                                                         {portal.name}
                                                         <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
+                                                        {portal.isNSFW && (
+                                                            <span className="nsfw-tag-inline">+18</span>
+                                                        )}
                                                         {portal.privacy === 'private' && (
                                                             <span className="private-badge">
                                                                 🔒
