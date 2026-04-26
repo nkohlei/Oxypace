@@ -13,6 +13,7 @@ export const helmetConfig = helmet({
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
             imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:', 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            mediaSrc: ["'self'", 'blob:', 'data:', 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev'],
             connectSrc: [
                 "'self'",
                 'https://accounts.google.com',
