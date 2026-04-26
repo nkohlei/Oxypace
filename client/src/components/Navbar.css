@@ -569,3 +569,87 @@ body.dark-mode .logo-text {
     width: 14px;
     height: 14px;
 }
+
+/* --- Notification Enhancements (Discord/Portal Style) --- */
+
+/* Blue Pulse Effect for Profile Button */
+.profile-unified-btn.has-unread {
+    position: relative;
+    animation: profileSubtlePulse 2s infinite ease-in-out;
+    border-color: rgba(0, 210, 255, 0.5) !important;
+}
+
+.profile-unified-btn.has-unread::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 2px solid #00d2ff;
+    border-radius: 50%;
+    animation: profileUnreadPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    pointer-events: none;
+    box-shadow: 0 0 12px rgba(0, 210, 255, 0.7);
+    z-index: 1;
+}
+
+@keyframes profileUnreadPulse {
+    0% {
+        opacity: 0.7;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.08);
+        box-shadow: 0 0 0 8px rgba(0, 210, 255, 0);
+    }
+    100% {
+        opacity: 0.7;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
+    }
+}
+
+@keyframes profileSubtlePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
+/* Red Numeric Badge for Profile Button */
+.nav-badge.count-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background-color: #f23f43; /* Discord Red */
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid var(--bg-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* Dropdown Notification Badge */
+.dropdown-item .badge-pill {
+    margin-left: auto;
+    background-color: #f23f43;
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    box-shadow: 0 2px 4px rgba(242, 63, 67, 0.3);
+}

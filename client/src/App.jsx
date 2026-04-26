@@ -408,6 +408,15 @@ function App() {
             requestNativePermissions();
             CapacitorUpdater.notifyAppReady();
         }
+
+        // Global protection for images and videos - Disable Right Click
+        const handleContextMenu = (e) => {
+            if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') {
+                e.preventDefault();
+            }
+        };
+        document.addEventListener('contextmenu', handleContextMenu);
+        return () => document.removeEventListener('contextmenu', handleContextMenu);
     }, []);
 
     // If maintenance mode is on, show maintenance page

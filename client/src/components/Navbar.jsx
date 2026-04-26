@@ -185,7 +185,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                         <div className="header-menu-wrapper" ref={menuRef}>
                             {user ? (
                                 <button
-                                    className={`header-icon profile-unified-btn ${showMenu ? 'active' : ''}`}
+                                    className={`header-icon profile-unified-btn ${showMenu ? 'active' : ''} ${unreadCount > 0 ? 'has-unread' : ''}`}
                                     onClick={() => setShowMenu(!showMenu)}
                                     title="Profilim ve Menü"
                                     aria-expanded={showMenu}
@@ -212,7 +212,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             </div>
                                         )}
                                         {unreadCount > 0 && (
-                                            <span className="nav-badge top-badge" style={{ transform: 'translate(25%, -25%)' }}></span>
+                                            <span className="nav-badge count-badge">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
                                         )}
                                     </div>
                                 </button>
@@ -380,30 +382,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                                                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                                             </svg>
-                                            {unreadCount > 0 && (
-                                                <span 
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: '-4px',
-                                                        right: '-4px',
-                                                        background: 'var(--primary-cyan)',
-                                                        color: '#000',
-                                                        fontSize: '10px',
-                                                        fontWeight: 'bold',
-                                                        borderRadius: '50%',
-                                                        width: '14px',
-                                                        height: '14px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        boxShadow: '0 0 8px var(--primary-cyan)'
-                                                    }}
-                                                >
-                                                    {unreadCount}
-                                                </span>
-                                            )}
                                         </div>
                                         <span style={{ marginLeft: '12px' }}>Bildirimler</span>
+                                        {unreadCount > 0 && (
+                                            <span className="badge-pill">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
                                     </Link>
                                     <Link
                                         to="/settings"
