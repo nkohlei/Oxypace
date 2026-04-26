@@ -175,24 +175,37 @@
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 12px;
+    background: #000;
 }
 
 .tweet-card-media-img {
     width: 100%;
     display: block;
-    object-fit: cover;
-    max-height: 400px;
+    object-fit: contain;
+    max-height: 280px;
+    background: #000;
 }
 
 .tweet-card-media-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2px;
+    background: #000;
 }
 
 .tweet-card-media-grid .tweet-card-media-img {
     aspect-ratio: 1;
-    max-height: none;
+    max-height: 200px;
+    object-fit: cover;
+}
+
+/* Tweet video */
+.tweet-card-video {
+    width: 100%;
+    display: block;
+    max-height: 320px;
+    background: #000;
+    border-radius: 0;
 }
 
 /* Tweet stats (replies, retweets, likes) */

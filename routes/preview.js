@@ -36,14 +36,20 @@ async function fetchTwitterPreview(originalUrl) {
 
         const tweet = data.tweet;
 
-        // Collect all media (photos and videos)
-        const mediaImages = [];
+        // Collect photos
+        const photos = [];
         if (tweet.media?.photos) {
-            tweet.media.photos.forEach(p => mediaImages.push(p.url));
+            tweet.media.photos.forEach(p => photos.push(p.url));
         }
+
+        // Collect videos with their playable URLs
+        const videos = [];
         if (tweet.media?.videos) {
             tweet.media.videos.forEach(v => {
-                if (v.thumbnail_url) mediaImages.push(v.thumbnail_url);
+                videos.push({
+                    url: v.url || '',
+                    thumbnail: v.thumbnail_url || '',
+                });
             });
         }
 
@@ -51,8 +57,9 @@ async function fetchTwitterPreview(originalUrl) {
             type: 'tweet',
             title: tweet.author?.name || parsed.username,
             description: tweet.text || '',
-            image: mediaImages[0] || '',
-            tweetMedia: mediaImages,
+            image: photos[0] || videos[0]?.thumbnail || '',
+            tweetPhotos: photos,
+            tweetVideos: videos,
             authorAvatar: tweet.author?.avatar_url || '',
             authorName: tweet.author?.name || parsed.username,
             authorHandle: tweet.author?.screen_name || parsed.username,

@@ -88,16 +88,35 @@ const LinkPreview = ({ url }) => {
                     <p className="tweet-card-text">{data.description}</p>
                 )}
 
-                {/* Tweet Media */}
-                {data.tweetMedia && data.tweetMedia.length > 0 && (
-                    <div className={`tweet-card-media ${data.tweetMedia.length > 1 ? 'tweet-card-media-grid' : ''}`}>
-                        {data.tweetMedia.slice(0, 4).map((src, i) => (
+
+                {/* Tweet Photos */}
+                {data.tweetPhotos && data.tweetPhotos.length > 0 && (
+                    <div className={`tweet-card-media ${data.tweetPhotos.length > 1 ? 'tweet-card-media-grid' : ''}`}>
+                        {data.tweetPhotos.slice(0, 4).map((src, i) => (
                             <img
                                 key={i}
                                 src={src}
                                 alt={`Tweet media ${i + 1}`}
                                 className="tweet-card-media-img"
                                 onError={(e) => e.target.style.display = 'none'}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Tweet Videos */}
+                {data.tweetVideos && data.tweetVideos.length > 0 && (
+                    <div className="tweet-card-media">
+                        {data.tweetVideos.map((vid, i) => (
+                            <video
+                                key={i}
+                                src={vid.url}
+                                poster={vid.thumbnail}
+                                controls
+                                playsInline
+                                preload="metadata"
+                                className="tweet-card-video"
+                                onClick={(e) => e.stopPropagation()}
                             />
                         ))}
                     </div>
