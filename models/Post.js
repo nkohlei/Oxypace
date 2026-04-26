@@ -25,8 +25,13 @@ const postSchema = new mongoose.Schema(
             default: 'none',
         },
         media: {
-            type: String, // URL to uploaded image/gif
+            type: String, // URL to uploaded image/gif/video
             default: '',
+        },
+        mediaQualities: {
+            low: String,    // 360p URL
+            medium: String, // 720p URL
+            high: String    // Original URL
         },
         likes: [
             {

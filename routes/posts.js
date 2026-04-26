@@ -119,6 +119,16 @@ router.post(
             console.log('✅ Post created successfully! ID:', post._id);
             console.log('✅ Post media in DB:', post.media);
 
+            // Trigger background transcoding for videos
+            if (postData.mediaType === 'video') {
+                const mediaKey = req.body.mediaKey || (req.file ? req.file.key : null);
+                if (mediaKey) {
+                    import('../services/videoService.js').then(m => {
+                        m.transcodeVideo(post._id, mediaKey);
+                    }).catch(err => console.error('Failed to trigger transcoding:', err));
+                }
+            }
+
             await post.populate(
                 'author',
                 'username profile.displayName profile.avatar verificationBadge'

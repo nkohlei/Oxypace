@@ -6,6 +6,7 @@ import './VideoPlayer.css';
 const VideoPlayer = ({ src, poster, className, qualities = null }) => {
   const videoRef = useRef(null);
   const { isMuted, setIsMuted } = useGlobalStore();
+  const [activeSrc, setActiveSrc] = useState(src);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -117,17 +118,39 @@ const VideoPlayer = ({ src, poster, className, qualities = null }) => {
   };
 
   const changeQuality = (q) => {
+    if (q === currentQuality) return;
+    
+    const savedTime = videoRef.current ? videoRef.current.currentTime : currentTime;
     setCurrentQuality(q);
     setIsSettingsOpen(false);
-    // Note: To implement real switching, we would store currentTime, 
-    // change src, and seek back to currentTime after load.
+
+    let newSrc = src; // Default to original
+    if (q === 'low' && qualities?.low) newSrc = qualities.low;
+    else if (q === 'medium' && qualities?.medium) newSrc = qualities.medium;
+    else if (q === 'high' && qualities?.high) newSrc = qualities.high;
+    else if (q === 'Auto') {
+        // Auto logic based on networkSpeed
+        if (networkSpeed === 'slow' && qualities?.low) newSrc = qualities.low;
+        else if (networkSpeed === 'medium' && qualities?.medium) newSrc = qualities.medium;
+        else newSrc = src;
+    }
+
+    setActiveSrc(newSrc);
+    
+    // Seek back after load
+    setTimeout(() => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = savedTime;
+            videoRef.current.play().catch(() => {});
+        }
+    }, 100);
   };
 
   return (
     <div className={`native-player-container left-aligned v16-scale ${className || ''}`}>
       <video
         ref={videoRef}
-        src={src}
+        src={activeSrc}
         poster={poster}
         className="native-video-element"
         playsInline
@@ -232,10 +255,15 @@ const VideoPlayer = ({ src, poster, className, qualities = null }) => {
                    <ChevronRight size={16} className="rotate-180" />
                    <span>Video Kalitesi</span>
                 </div>
-                {['Auto', '1080p', '720p', '480p', '360p'].map(q => (
-                  <div key={q} className="menu-item" onClick={() => changeQuality(q)}>
-                    <span>{q === 'Auto' ? 'Otomatik' : q}</span>
-                    {currentQuality === q && <Check size={16} />}
+                {[
+                  { id: 'Auto', label: 'Otomatik' },
+                  { id: 'high', label: '1080p (Yüksek)' },
+                  { id: 'medium', label: '720p (Orta)' },
+                  { id: 'low', label: '360p (Düşük)' }
+                ].map(q => (
+                  <div key={q.id} className="menu-item" onClick={() => changeQuality(q.id)}>
+                    <span>{q.label}</span>
+                    {currentQuality === q.id && <Check size={16} />}
                   </div>
                 ))}
               </div>
