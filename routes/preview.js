@@ -183,7 +183,8 @@ router.get('/', async (req, res) => {
 
 /**
  * Video proxy — streams Twitter videos through our server
- * to bypass Twitter CDN's 403 hotlink protection
+ * to bypass Twitter CDN's 403 hotlink protection.
+ * Supports HTTP Range requests for proper video playback.
  */
 router.get('/video', async (req, res) => {
     const videoUrl = req.query.url;
@@ -193,30 +194,54 @@ router.get('/video', async (req, res) => {
     }
 
     try {
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Referer': 'https://twitter.com/',
+            'Origin': 'https://twitter.com',
+        };
+
+        // Forward the Range header from the browser
+        if (req.headers.range) {
+            headers['Range'] = req.headers.range;
+        }
+
         const response = await axios.get(videoUrl, {
             responseType: 'stream',
-            timeout: 15000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-                'Referer': 'https://twitter.com/',
-                'Origin': 'https://twitter.com',
-            },
+            timeout: 30000,
+            headers,
+            // Accept 206 Partial Content as valid
+            validateStatus: (status) => status === 200 || status === 206,
         });
 
-        // Forward content headers
-        if (response.headers['content-type']) {
-            res.set('Content-Type', response.headers['content-type']);
-        }
-        if (response.headers['content-length']) {
-            res.set('Content-Length', response.headers['content-length']);
-        }
-        res.set('Accept-Ranges', 'bytes');
+        // Mirror the status code (200 or 206)
+        res.status(response.status);
+
+        // Forward all relevant headers
+        const forwardHeaders = [
+            'content-type',
+            'content-length',
+            'content-range',
+            'accept-ranges',
+        ];
+        forwardHeaders.forEach((h) => {
+            if (response.headers[h]) {
+                res.set(h, response.headers[h]);
+            }
+        });
+
         res.set('Cache-Control', 'public, max-age=3600');
 
         response.data.pipe(res);
+
+        // Clean up on client disconnect
+        req.on('close', () => {
+            response.data.destroy();
+        });
     } catch (err) {
         console.error('Video proxy error:', err.message);
-        res.status(500).json({ message: 'Failed to load video' });
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Failed to load video' });
+        }
     }
 });
 
