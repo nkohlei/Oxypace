@@ -15,6 +15,25 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const [isFullscreenActive, setIsFullscreenActive] = useState(false);
+
+  // Track global fullscreen state to re-trigger observers
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreenActive(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    
+    // Initial check
+    handleFsChange();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
+
   // --- Strict IntersectionObserver Autoplay ---
   useEffect(() => {
     const video = videoRef.current;
@@ -26,10 +45,16 @@ const VideoPlayer = ({ src, poster, className }) => {
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
+        const isFs = !!document.fullscreenElement;
+        const amIFs = isFs && document.fullscreenElement.contains(video);
+
         if (entry.isIntersecting) {
-            if (video.dataset.userPaused !== "true") {
+            if (video.dataset.userPaused !== "true" && (!isFs || amIFs)) {
                 video.muted = isMuted;
                 video.play().catch(() => {});
+            } else if (isFs && !amIFs) {
+                // Another video is fullscreen, pause this one
+                video.pause();
             }
         } else {
             if (video.dataset.userPaused !== "true") {
@@ -41,7 +66,7 @@ const VideoPlayer = ({ src, poster, className }) => {
 
     observer.observe(video);
     return () => observer.disconnect();
-  }, [src, isMuted, playbackRate]);
+  }, [src, isMuted, playbackRate, isFullscreenActive]);
 
   // Zaman İlerleyişini Yakalama (Bar için)
   const handleTimeUpdate = () => {
@@ -110,15 +135,6 @@ const VideoPlayer = ({ src, poster, className }) => {
     if (!container) return;
 
     if (!document.fullscreenElement) {
-      // Entering fullscreen — pause all other videos on the page
-      const allVideos = document.querySelectorAll('video');
-      allVideos.forEach(v => {
-        if (v !== videoRef.current) {
-          v.pause();
-          v.dataset.pausedByFullscreen = 'true';
-        }
-      });
-
       if (container.requestFullscreen) container.requestFullscreen();
       else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
       else if (container.msRequestFullscreen) container.msRequestFullscreen();
@@ -126,30 +142,6 @@ const VideoPlayer = ({ src, poster, className }) => {
       if (document.exitFullscreen) document.exitFullscreen();
     }
   };
-
-  // Fullscreen exit handler — resume videos paused by fullscreen
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        // Exiting fullscreen — IntersectionObserver will resume visible videos
-        // Just clear the flag
-        const allVideos = document.querySelectorAll('video');
-        allVideos.forEach(v => {
-          if (v.dataset.pausedByFullscreen === 'true') {
-            delete v.dataset.pausedByFullscreen;
-          }
-        });
-      }
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-    };
-  }, []);
 
   return (
     <div className={`native-player-container left-aligned v16-scale ${className || ''}`}>
