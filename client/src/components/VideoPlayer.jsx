@@ -11,6 +11,7 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [duration, setDuration] = useState(0);
   
   // Gerçek zamanlı donma/yüklenme sensörü
+  const [isLoading, setIsLoading] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
