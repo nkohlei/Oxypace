@@ -51,12 +51,25 @@ const Home = () => {
     // Fetch portals and shuffle for randomized display
     useEffect(() => {
         const fetchPortals = async () => {
+            // Check cache first
+            const cached = sessionStorage.getItem('oxypace_public_portals');
+            if (cached) {
+                try {
+                    setPublicPortals(JSON.parse(cached));
+                    // Still fetch in background to keep it fresh, but don't block
+                } catch (e) {
+                    console.error("Cache parse error", e);
+                }
+            }
+
             try {
-                const res = await axios.get('/api/portals?keyword='); // Fix: Old endpoint /api/portals/public didn't exist
+                const res = await axios.get('/api/portals?keyword=');
                 if (res.data && res.data.length > 0) {
                     // Limit to 30 and shuffle
                     const selected = res.data.slice(0, 30);
-                    setPublicPortals(shuffleArray(selected));
+                    const shuffled = shuffleArray(selected);
+                    setPublicPortals(shuffled);
+                    sessionStorage.setItem('oxypace_public_portals', JSON.stringify(shuffled));
                 }
             } catch (err) {
                 console.error("Failed to fetch portals", err);
@@ -195,7 +208,7 @@ const Home = () => {
 
             <main className="advanced-home-content">
                 {/* VIDEO BACKGROUND */}
-                <video className="home-bg-video" autoPlay muted loop playsInline>
+                <video className="home-bg-video" autoPlay muted loop playsInline poster="/space-bg.png">
                     <source src="/auth-bg.mp4" type="video/mp4" />
                 </video>
                 <div className="home-bg-overlay"></div>
@@ -334,7 +347,7 @@ const Home = () => {
                                         ></div>
                                         <div className="card-icon-wrapper">
                                             {portal.avatar ? (
-                                                <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" />
+                                                <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" loading="lazy" />
                                             ) : (
                                                 <div className="card-icon-placeholder">{portal.name?.substring(0, 2).toUpperCase()}</div>
                                             )}

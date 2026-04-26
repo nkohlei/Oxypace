@@ -9,7 +9,7 @@ import { useUI } from '../context/UIContext';
 import './Navbar.css';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
-    const { user, logout } = useAuth();
+    const { user, token, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
     const { toggleSidebar, isMobileView } = useUI();
@@ -180,11 +180,6 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                 </div>
                             </div>
                         )}
-                        {user ? (
-                            <>
-                                {/* Notification logic integrated into Profile Button below */}
-                            </>
-                        ) : null}
 
                         {/* Unified Profile Button (Toggles Dropdown) */}
                         <div className="header-menu-wrapper" ref={menuRef}>
@@ -221,6 +216,11 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         )}
                                     </div>
                                 </button>
+                            ) : token ? (
+                                // While we have a token but no user yet, show a subtle loading state instead of Guest buttons
+                                <div className="nav-right-loading" style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div className="nav-spinner-small" />
+                                </div>
                             ) : (
                                 <div className="guest-nav-actions">
                                     <Link

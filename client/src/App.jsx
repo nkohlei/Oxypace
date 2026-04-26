@@ -370,9 +370,39 @@ const AppLayout = () => {
     );
 };
 
-function App() {
+// Separate wrapper to access AuthContext
+const AppContent = () => {
+    const { loading, token } = useAuth();
     const [showSplash, setShowSplash] = useState(true);
+    const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
+    // Coordinate splash screen with auth loading
+    useEffect(() => {
+        // Minimum time for splash animation (3s total, matching SplashScreen.jsx)
+        const timer = setTimeout(() => {
+            setMinTimeElapsed(true);
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        // Only hide splash when:
+        // 1. Min animation time has passed
+        // 2. Auth is no longer loading (profile fetched or no token)
+        if (minTimeElapsed && !loading) {
+            setShowSplash(false);
+        }
+    }, [minTimeElapsed, loading]);
+
+    return (
+        <>
+            {showSplash && <SplashScreen onFinish={() => {}} />}
+            <AppLayout />
+        </>
+    );
+};
+
+function App() {
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
             requestNativePermissions();
@@ -387,7 +417,6 @@ function App() {
 
     return (
         <ThemeProvider>
-            {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
             <Router>
                 <ScrollToTop />
                 <AuthProvider>
@@ -395,7 +424,7 @@ function App() {
                         <SocketProvider>
                             <VoiceProvider>
                                 <UIProvider>
-                                    <AppLayout />
+                                    <AppContent />
                                 </UIProvider>
                             </VoiceProvider>
                         </SocketProvider>

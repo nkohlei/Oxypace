@@ -212,31 +212,25 @@ import upload from '../middleware/upload.js';
 // @access  Private
 router.get('/me', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id)
-            .select('-password -verificationToken')
-            .populate('joinedPortals', 'name avatar')
-            .populate('following', 'username profile.displayName profile.avatar');
+        const [user, postCount, outgoingUserRequests, outgoingPortalRequests, ownedPortals] = await Promise.all([
+            User.findById(req.user._id)
+                .select('-password -verificationToken')
+                .populate('joinedPortals', 'name avatar')
+                .populate('following', 'username profile.displayName profile.avatar'),
+            Post.countDocuments({ author: req.user._id }),
+            User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar'),
+            Portal.find({ joinRequests: req.user._id }).select('name avatar privacy'),
+            Portal.find({ owner: req.user._id }).select('name avatar')
+        ]);
 
-        // Calculate post count
-        const postCount = await Post.countDocuments({ author: req.user._id });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
         const userObj = user.toObject();
         userObj.postCount = postCount;
-
-        // Fetch Outgoing Friend Requests (Users I want to meet)
-        const outgoingUserRequests = await User.find({
-            followRequests: req.user._id,
-        }).select('username profile.displayName profile.avatar');
         userObj.outgoingUserRequests = outgoingUserRequests;
-
-        // Fetch Outgoing Portal Requests (Portals I want to join)
-        const outgoingPortalRequests = await Portal.find({
-            joinRequests: req.user._id,
-        }).select('name avatar privacy');
         userObj.outgoingPortalRequests = outgoingPortalRequests;
-
-        // Fetch portals owned by the user
-        const ownedPortals = await Portal.find({ owner: req.user._id }).select('name avatar');
 
         // Merge joined and owned portals to create unified 'portals' list
         const allPortals = [...(user.joinedPortals || [])].filter(Boolean);
