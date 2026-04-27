@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Users, Info, Calendar, ShieldCheck, Globe } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
+import Badge from './Badge';
 import './PortalInfoModal.css';
 
 const PortalInfoModal = ({ portal, onClose, isMobile }) => {
@@ -29,7 +30,10 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
 
             <div className="portal-info-content">
                 <div className="portal-info-header">
-                    <h1>{portal.name}</h1>
+                    <h1>
+                        {portal.name}
+                        <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={20} />
+                    </h1>
                     <p className="portal-info-tagline">{portal.description || 'Bu portal için bir açıklama bulunmuyor.'}</p>
                 </div>
 
@@ -37,7 +41,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                     <div className="portal-info-stat-card">
                         <Users size={18} className="stat-icon" />
                         <div className="stat-data">
-                            <span className="stat-value">{portal.membersCount || 0}</span>
+                            <span className="stat-value">{portal.membersCount || portal.members?.length || 0}</span>
                             <span className="stat-label">Üye</span>
                         </div>
                     </div>

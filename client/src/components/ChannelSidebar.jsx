@@ -90,7 +90,12 @@ const ChannelSidebar = ({
                         <div className="stat-dot" />
                         <div className="stat-item">
                             <div className="online-indicator-dot" />
-                            <span>{Math.floor((portal.membersCount || portal.members?.length || 0) * 0.3) + 1} Çevrimiçi</span>
+                            <span>
+                                {(() => {
+                                    const total = portal.membersCount || portal.members?.length || 0;
+                                    return total > 0 ? Math.max(1, Math.floor(total * 0.12)) : 0;
+                                })()} Çevrimiçi
+                            </span>
                         </div>
                     </div>
                 </div>

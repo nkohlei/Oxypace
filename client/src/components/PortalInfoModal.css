@@ -81,6 +81,9 @@
     font-weight: 800;
     margin: 0 0 8px 0;
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .portal-info-tagline {
