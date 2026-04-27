@@ -1005,6 +1005,7 @@ const PortalSettingsModal = ({
                                                             border: 'none',
                                                             cursor: 'pointer',
                                                         }}
+                                                    >
                                                         <X size={18} strokeWidth={2} />
                                                     </button>
                                                 </div>
@@ -1022,6 +1023,7 @@ const PortalSettingsModal = ({
                                                             {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : '#'}
                                                         </span>
                                                         {ch.name}
+                                                        {ch.isPrivate && (
                                                             <Lock size={14} strokeWidth={2} style={{ color: '#faa61a' }} title="Gizli Kanal" />
                                                         )}
                                                     </div>
