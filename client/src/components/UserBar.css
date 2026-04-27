@@ -30,7 +30,7 @@
     bottom: 60px;
     /* Above the bar */
     left: 8px;
-    width: 280px;
+    width: 240px;
     background-color: var(--bg-card);
     border-radius: 12px;
     box-shadow: var(--shadow-popover);

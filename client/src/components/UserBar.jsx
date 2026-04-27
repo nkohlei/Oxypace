@@ -136,7 +136,7 @@ const UserBar = ({ currentChannelId }) => {
                         {/* Banner */}
                         <div
                             style={{
-                                height: '80px',
+                                height: '55px',
                                 backgroundColor: user.profile?.bannerColor || 'var(--bg-darker)',
                             }}
                         >
@@ -154,11 +154,11 @@ const UserBar = ({ currentChannelId }) => {
                             <div
                                 style={{
                                     position: 'absolute',
-                                    top: '-40px',
-                                    width: '80px',
-                                    height: '80px',
+                                    top: '-32px',
+                                    width: '64px',
+                                    height: '64px',
                                     borderRadius: '50%',
-                                    border: '6px solid var(--bg-card)',
+                                    border: '4px solid var(--bg-card)',
                                     backgroundColor: 'var(--bg-card)',
                                     overflow: 'hidden',
                                     cursor: 'pointer',
@@ -203,7 +203,7 @@ const UserBar = ({ currentChannelId }) => {
                         </div>
 
                         {/* Content */}
-                        <div style={{ padding: '50px 16px 16px 16px' }}>
+                        <div style={{ padding: '40px 12px 12px 12px' }}>
                             <div
                                 style={{
                                     display: 'flex',
@@ -215,7 +215,7 @@ const UserBar = ({ currentChannelId }) => {
                             >
                                 <h3
                                     style={{
-                                        fontSize: '20px',
+                                        fontSize: '16px',
                                         fontWeight: '700',
                                         color: 'var(--text-primary)',
                                         margin: 0,
@@ -231,8 +231,8 @@ const UserBar = ({ currentChannelId }) => {
                             {/* Status Message */}
                             <div
                                 style={{
-                                    marginTop: '16px',
-                                    fontSize: '14px',
+                                    marginTop: '12px',
+                                    fontSize: '13px',
                                     color: 'var(--text-tertiary)',
                                 }}
                             >
@@ -240,29 +240,6 @@ const UserBar = ({ currentChannelId }) => {
                                     'Evcil hayvanı olması için efsanevi bir yaratık seç'}
                             </div>
 
-                            {/* Edit Button */}
-                            <button
-                                style={{
-                                    width: '100%',
-                                    marginTop: '16px',
-                                    padding: '10px',
-                                    backgroundColor: 'var(--bg-input)',
-                                    color: 'var(--text-primary)',
-                                    border: '1px solid var(--border-subtle)',
-                                    borderRadius: '6px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                }}
-                                onClick={() => navigate('/settings')}
-                            >
-                                <Pencil size={16} strokeWidth={2} />
-                                Profili Düzenle
-                            </button>
                         </div>
                     </div>
                 )}
