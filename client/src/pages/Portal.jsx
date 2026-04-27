@@ -12,6 +12,7 @@ import { useUI } from '../context/UIContext';
 const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal'));
 const PortalNotifications = lazy(() => import('../components/PortalNotifications'));
 import AdUnit from '../components/AdUnit';
+import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import SEO from '../components/SEO';
 import PortalInfoModal from '../components/PortalInfoModal';
