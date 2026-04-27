@@ -1532,6 +1532,7 @@ const Portal = () => {
                             />
                         </Suspense>
                     </div>
+                </div>
             )}
 
             {showPortalInfo && (
