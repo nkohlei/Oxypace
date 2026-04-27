@@ -298,12 +298,12 @@
     position: absolute;
     right: 0;
     top: calc(100% + 8px);
-    min-width: 180px;
+    min-width: 150px;
     background: var(--glass-bg);
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    padding: 6px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    padding: 4px;
     z-index: 9999;
     animation: menuFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     backdrop-filter: var(--glass-blur);
@@ -328,9 +328,9 @@
 
 .menu-item {
     width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--text-secondary);
     background: transparent;
@@ -339,7 +339,7 @@
     align-items: center;
     justify-content: space-between;
     transition: all 0.2s ease;
-    gap: 12px;
+    gap: 8px;
     border: none;
     cursor: pointer;
     text-align: left;

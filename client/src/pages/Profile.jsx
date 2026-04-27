@@ -6,7 +6,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import SubHeader from '../components/SubHeader';
+// SubHeader removed
 import Badge from '../components/Badge';
 import ImageCropper from '../components/ImageCropper';
 import ProfileImageModal from '../components/ProfileImageModal';
@@ -506,23 +506,19 @@ const Profile = () => {
                 />
             )}
             <Navbar />
-            <SubHeader title="Profil" variant="frosted" showBack={true} desktopHidden={true} />
             <main className="app-content profile-page-content">
-                <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto 16px auto', display: 'flex' }}>
+                {/* Wide Profile Card */}
+                <div className="profile-card profile-card-horizontal">
                     <button 
-                        className="profile-desktop-back"
+                        className="profile-card-back-btn"
                         onClick={() => navigate(-1)}
+                        title="Geri"
                     >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                             <line x1="19" y1="12" x2="5" y2="12"></line>
                             <polyline points="12 19 5 12 12 5"></polyline>
                         </svg>
-                        <span>Geri</span>
                     </button>
-                </div>
-
-                {/* Wide Profile Card */}
-                <div className="profile-card profile-card-horizontal">
                     <div className="profile-horizontal-layout">
                         {/* LEFT SECTION: Banner + User Info */}
                         <aside className="profile-left-column">

@@ -443,13 +443,16 @@
     position: absolute;
     right: 0;
     top: 24px;
-    background: var(--bg-card);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border-subtle);
     border-radius: 8px;
-    box-shadow: var(--shadow-strong);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     z-index: 100;
     min-width: 120px;
     overflow: hidden;
+    padding: 4px;
     animation: fadeIn 0.1s ease;
 }
 
@@ -458,13 +461,15 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 8px;
     background: none;
     border: none;
     text-align: left;
     color: var(--text-primary);
     cursor: pointer;
     font-size: 0.85rem;
+    border-radius: 6px;
+    margin-bottom: 2px;
 }
 
 .comment-dropdown-item:hover {

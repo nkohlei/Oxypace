@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import SubHeader from '../components/SubHeader';
 import './Settings.css';
 
 const Settings = () => {
@@ -175,12 +174,13 @@ const Settings = () => {
                     padding: '16px',
                     height: '100%',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    gap: '12px'
                 }}>
                     {activeMenu === 'main' && (
                         <button 
                             className="mobile-back-btn-inline" 
-                            onClick={() => navigate('/')}
+                            onClick={() => navigate(-1)}
                             style={{
                                 background: 'rgba(255, 255, 255, 0.05)',
                                 border: 'none',
@@ -191,12 +191,12 @@ const Settings = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'var(--text-primary)',
-                                marginRight: '12px',
                                 cursor: 'pointer'
                             }}
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
                             </svg>
                         </button>
                     )}
@@ -214,12 +214,12 @@ const Settings = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'var(--text-primary)',
-                                marginRight: '12px',
                                 cursor: 'pointer'
                             }}
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
                             </svg>
                         </button>
                     )}
@@ -693,7 +693,7 @@ const Settings = () => {
     );
 
     return (
-        <div className="app-wrapper full-height discord-layout">
+        <div className="app-wrapper full-height settings-page-wrapper glass-redesign">
             <Navbar />
 
             <div className="discord-split-view">

@@ -8,7 +8,8 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
-import { UserPlus, Bell, ChevronRight, Volume2, Megaphone, Hash } from 'lucide-react';
+import { UserPlus, Bell, ChevronRight, Volume2, Megaphone, Hash, Info, UserCheck } from 'lucide-react';
+import PortalInfoModal from './PortalInfoModal';
 
 const ChannelSidebar = ({
     portal,
@@ -18,6 +19,7 @@ const ChannelSidebar = ({
     onChangeChannel,
     className,
     canManage,
+    onShowPortalInfo,
 }) => {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const navigate = useNavigate();
@@ -56,93 +58,55 @@ const ChannelSidebar = ({
                 borderRight: '1px solid var(--border-subtle)',
             }}
         >
-            {/* 1. Header with Full Image Banner */}
             <div
-                className="channel-header"
-                onClick={() => canManage && onEdit('overview')}
-                style={{ cursor: canManage ? 'pointer' : 'default' }}
+                className="channel-banner-container"
+                onClick={() => onShowPortalInfo && onShowPortalInfo()}
             >
-                {/* ... Banner content ... */}
                 <div
+                    className="channel-banner-image"
                     style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
                         backgroundImage: portal.coverImage
                             ? `url(${getImageUrl(portal.coverImage)})`
                             : portal.banner
                                 ? `url(${getImageUrl(portal.banner)})`
                                 : 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
                     }}
-                >
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            background:
-                                'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)',
-                        }}
-                    ></div>
-                </div>
+                />
+                <div className="channel-banner-overlay" />
+            </div>
 
-                <div
-                    style={{
-                        position: 'relative',
-                        zIndex: 2,
-                        padding: '12px 16px',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <h2
-                            style={{
-                                fontSize: '16px',
-                                fontWeight: '900',
-                                color: 'white',
-                                textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                margin: 0,
-                            }}
-                        >
-                            {portal.name}
-                            <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={16} />
-                        </h2>
-                        {isMember && (
-                            <div
-                                style={{
-                                    color: 'white',
-                                    cursor: 'pointer',
-                                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))',
-                                }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowInviteModal(true);
-                                }}
-                                title="Kullanıcı Davet Et"
-                            >
-                                <UserPlus size={22} strokeWidth={2} />
-                            </div>
-                        )}
+            {/* 2. Portal Quick Info (Title, Stats, Invite) */}
+            <div className="portal-quick-info">
+                <div className="portal-info-main" onClick={() => onShowPortalInfo && onShowPortalInfo()}>
+                    <h2 className="portal-title-text">
+                        {portal.name}
+                        <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={16} />
+                    </h2>
+                    <div className="portal-stats-row">
+                        <div className="stat-item">
+                            <UserCheck size={12} />
+                            <span>{portal.membersCount || 0} Üye</span>
+                        </div>
+                        <div className="stat-dot" />
+                        <div className="stat-item">
+                            <div className="online-indicator-dot" />
+                            <span>{Math.floor((portal.membersCount || 0) * 0.3) + 1} Çevrimiçi</span>
+                        </div>
                     </div>
                 </div>
+
+                {isMember && (
+                    <button 
+                        className="portal-invite-btn-minimal"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowInviteModal(true);
+                        }}
+                    >
+                        <UserPlus size={16} />
+                        <span>Davet Et</span>
+                    </button>
+                )}
             </div>
 
             {/* Scrollable Area */}
@@ -366,24 +330,122 @@ const ChannelSidebar = ({
                 overflow-x: hidden;
             }
             
-            .channel-header {
-                height: 135px;
+            .channel-banner-container {
+                height: 160px;
                 position: relative;
                 cursor: pointer;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-                background: var(--bg-card);
+                overflow: hidden;
                 flex-shrink: 0;
+                transition: height 0.3s ease;
             }
-            
+
+            .channel-banner-image {
+                width: 100%;
+                height: 100%;
+                background-size: cover;
+                background-position: center;
+                transition: transform 0.5s ease;
+            }
+
+            .channel-banner-container:hover .channel-banner-image {
+                transform: scale(1.05);
+            }
+
+            .channel-banner-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 100%);
+            }
+
+            .portal-quick-info {
+                padding: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 1px solid var(--border-subtle);
+                background: var(--bg-secondary);
+            }
+
+            .portal-info-main {
+                flex: 1;
+                cursor: pointer;
+                min-width: 0;
+            }
+
+            .portal-title-text {
+                font-size: 18px;
+                font-weight: 800;
+                color: var(--text-primary);
+                margin: 0 0 4px 0;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .portal-stats-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .stat-item {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 12px;
+                color: var(--text-secondary);
+                font-weight: 500;
+            }
+
+            .online-indicator-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #23a559;
+            }
+
+            .stat-dot {
+                width: 3px;
+                height: 3px;
+                border-radius: 50%;
+                background: var(--text-tertiary);
+                opacity: 0.5;
+            }
+
+            .portal-invite-btn-minimal {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                border-radius: 8px;
+                background: var(--primary-color);
+                color: white;
+                border: none;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                flex-shrink: 0;
+                margin-left: 12px;
+            }
+
+            .portal-invite-btn-minimal:hover {
+                filter: brightness(1.1);
+                transform: translateY(-1px);
+            }
+
             @media (max-width: 768px) {
-                .channel-header {
-                    height: 80px;
+                .channel-banner-container {
+                    height: 120px;
                 }
-            }
-            
-            @media (max-width: 480px) {
-                .channel-header {
-                    height: 60px;
+                .portal-title-text {
+                    font-size: 16px;
                 }
             }
 

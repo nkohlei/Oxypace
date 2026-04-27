@@ -12,9 +12,9 @@ import { useUI } from '../context/UIContext';
 const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal'));
 const PortalNotifications = lazy(() => import('../components/PortalNotifications'));
 import AdUnit from '../components/AdUnit';
-import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import SEO from '../components/SEO';
+import PortalInfoModal from '../components/PortalInfoModal';
 import VoiceChannel from '../components/VoiceChannel';
 import ConferenceChannel from '../components/ConferenceChannel';
 import { useGlobalStore } from '../store/useGlobalStore';
@@ -61,6 +61,7 @@ const Portal = () => {
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
+    const [showPortalInfo, setShowPortalInfo] = useState(false);
 
     // --- SOCKET ROOM MANAGEMENT ---
     useEffect(() => {
@@ -855,6 +856,7 @@ const Portal = () => {
                         currentChannel={currentChannel}
                         onChangeChannel={handleChannelSelect}
                         className={`${isSidebarOpen ? 'mobile-open' : ''} ${isMobileView && mobileChannelOpen ? 'mobile-hidden' : ''}`}
+                        onShowPortalInfo={() => setShowPortalInfo(true)}
                     />
                 )}
 
@@ -1530,7 +1532,14 @@ const Portal = () => {
                             />
                         </Suspense>
                     </div>
-                </div>
+            )}
+
+            {showPortalInfo && (
+                <PortalInfoModal
+                    portal={portal}
+                    onClose={() => setShowPortalInfo(false)}
+                    isMobile={isMobileView}
+                />
             )}
         </div>
     );

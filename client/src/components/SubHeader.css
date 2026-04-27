@@ -1,14 +1,12 @@
 .sub-header {
-    height: var(--sub-header-height, 44px);
     width: 100%;
-    background: var(--bg-primary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: transparent;
+    border-bottom: none;
     display: flex;
     align-items: center;
-    position: sticky;
-    top: 0; /* Sticky to its parent main-content-wrapper which has padding-top for global bar */
-    z-index: 1000;
-    padding: 0 16px;
+    position: relative; /* Not sticky, flows with content */
+    z-index: 10;
+    padding: 16px 16px 8px 16px;
 }
 
 .sub-header-container {
@@ -54,7 +52,7 @@
 }
 
 .sub-header-title {
-    font-size: 1.1rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
@@ -95,17 +93,15 @@
 
 /* When it has a container (title + back button) */
 .sub-header.frosted:has(.sub-header-container) {
-    background: rgba(15, 15, 15, 0.45);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    height: 56px;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
     display: flex;
     align-items: center;
-    padding: 0 16px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    padding: 16px;
+    position: relative;
+    z-index: 10;
 }
 
 .sub-header.frosted:hover:not(:has(.sub-header-container)) {

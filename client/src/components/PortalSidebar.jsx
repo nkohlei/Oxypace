@@ -22,21 +22,7 @@ const PortalSidebar = () => {
     const [orderedPortals, setOrderedPortals] = useState([]);
     const [isReordering, setIsReordering] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState(null);
-    const [activeTooltip, setActiveTooltip] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
-
-    const handleMouseEnter = (e, text) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        setActiveTooltip({
-            text,
-            top: rect.top + rect.height / 2,
-            left: rect.right + 12
-        });
-    };
-
-    const handleMouseLeave = () => {
-        setActiveTooltip(null);
-    };
 
     useEffect(() => {
         if (user?.joinedPortals) {
@@ -116,8 +102,6 @@ const PortalSidebar = () => {
                 <div
                     className={`sidebar-item ${isActive('/inbox') ? 'active' : ''}`}
                     onClick={() => handleNavigation('/inbox')}
-                    onMouseEnter={(e) => handleMouseEnter(e, 'Mesajlar')}
-                    onMouseLeave={handleMouseLeave}
                 >
                     <div className="portal-icon">
                         <MessageSquare size={20} strokeWidth={2} />
@@ -133,12 +117,9 @@ const PortalSidebar = () => {
                             key={portal._id}
                             className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadPostsByPortal[portal._id?.toString()]?.length > 0 ? 'has-unread' : ''}`}
                             onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
-                            draggable={isReordering}
                             onDragStart={(e) => handleDragStart(e, index)}
                             onDragOver={(e) => handleDragOver(e, index)}
                             onDragEnd={handleDragEnd}
-                            onMouseEnter={(e) => handleMouseEnter(e, portal.name)}
-                            onMouseLeave={handleMouseLeave}
                         >
                             {/* Discord-style left indicator bar - Edge Aligned */}
                             <div className="sidebar-indicator" />
@@ -171,8 +152,6 @@ const PortalSidebar = () => {
                         className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
                         onClick={() => handleNavigation('/search')}
                         style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}
-                        onMouseEnter={(e) => handleMouseEnter(e, 'Keşfet')}
-                        onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon">
                             <Compass size={20} strokeWidth={2} />
@@ -183,8 +162,6 @@ const PortalSidebar = () => {
                         className="sidebar-item create-action"
                         onClick={() => setShowCreateModal(true)}
                         style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}
-                        onMouseEnter={(e) => handleMouseEnter(e, 'Portal Oluştur')}
-                        onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon">
                             <Plus size={20} strokeWidth={2} />
@@ -197,8 +174,6 @@ const PortalSidebar = () => {
                         className={`sidebar-item ${isReordering ? 'active' : ''}`}
                         onClick={toggleReorderMode}
                         style={isSaving ? { opacity: 0.5, pointerEvents: 'none' } : {}}
-                        onMouseEnter={(e) => handleMouseEnter(e, isReordering ? 'Kaydet' : 'Sırayı Düzenle')}
-                        onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon" style={{ background: isReordering ? 'var(--primary-color)' : 'transparent', color: isReordering ? '#fff' : 'inherit' }}>
                             {isReordering ? (
@@ -251,7 +226,7 @@ const PortalSidebar = () => {
                     opacity: 0.5;
                 }
                 .sidebar-item {
-                    width: 72px !important; /* Full sidebar width */
+                    width: 100% !important; /* Full sidebar width to align indicator */
                     height: 56px; /* Slightly taller for padding */
                     display: flex;
                     align-items: center;
@@ -381,16 +356,7 @@ const PortalSidebar = () => {
 
             </div>
 
-            {/* Floating Tooltip via Portal */}
-            {activeTooltip && createPortal(
-                <div 
-                    className="portal-floating-tooltip"
-                    style={{ top: `${activeTooltip.top}px`, left: `${activeTooltip.left}px` }}
-                >
-                    {activeTooltip.text}
-                </div>,
-                document.body
-            )}
+            {/* Floating Tooltip via Portal removed */}
 
             {/* Create Portal Modal - Rendered at root level to bypass sidebar transforms */}
             {showCreateModal && createPortal(

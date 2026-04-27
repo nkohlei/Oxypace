@@ -1017,3 +1017,106 @@ input:checked+.slider::before {
         opacity: 1;
     }
 }
+
+/* --- Glassmorphism Redesign Overrides --- */
+.glass-redesign {
+    background-color: var(--bg-primary); /* Darker backdrop */
+}
+
+.glass-redesign .discord-split-view {
+    background: transparent;
+}
+
+.glass-redesign .channel-sidebar.settings-sidebar-global {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-right: 1px solid var(--border-subtle);
+    margin: 16px;
+    border-radius: 20px;
+    height: calc(100% - 32px);
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.glass-redesign .channel-header {
+    background: transparent;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.glass-redesign .channel-item {
+    border-radius: 12px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-redesign .channel-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(2px);
+}
+
+.glass-redesign .channel-item.active {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.glass-redesign .discord-main-content {
+    background: transparent;
+}
+
+.glass-redesign .settings-content-scrollable {
+    padding-top: 16px;
+}
+
+.glass-redesign .settings-section {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-subtle);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.glass-redesign .menu-item {
+    background: transparent;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 16px 0;
+}
+
+.glass-redesign .menu-item:last-child {
+    border-bottom: none;
+}
+
+.glass-redesign .menu-item:hover {
+    background: transparent;
+    transform: none;
+    opacity: 0.8;
+}
+
+.glass-redesign .setting-action-btn {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+}
+
+.glass-redesign .setting-action-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.glass-redesign .verification-status {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 768px) {
+    .glass-redesign .channel-sidebar.settings-sidebar-global {
+        margin: 0;
+        border-radius: 0;
+        height: 100%;
+        border-right: none;
+        width: 100%;
+    }
+}
