@@ -33,23 +33,16 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-neon: #60A5FA;
 
-  /* Shadows */
-  --shadow-card: 0 15px 35px rgba(0, 0, 0, 0.6);
-  --shadow-popover: 0 20px 40px rgba(0, 0, 0, 0.8);
-  --shadow-glow: 0 0 25px rgba(96, 165, 250, 0.4);
-
-  /* Neumorphism */
-  --neu-bg: var(--bg-dark);
-  --neu-shadow-dark: 6px 6px 12px rgba(0, 0, 0, 0.7);
-  --neu-shadow-light: -6px -6px 12px rgba(255, 255, 255, 0.05);
-  --neu-inset-dark: inset 4px 4px 8px rgba(0, 0, 0, 0.7);
-  --neu-inset-light: inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+  /* Shadows - Minimalist */
+  --shadow-card: none;
+  --shadow-popover: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-glow: none;
 
   /* Glassmorphism */
-  --glass-bg: rgba(6, 9, 19, 0.65);
-  --glass-blur: blur(16px);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-  --glass-reflection: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
+  --glass-bg: rgba(10, 15, 32, 0.65);
+  --glass-blur: blur(20px);
+  --glass-border: none;
+  --glass-reflection: none;
 
   /* Layout */
   --nav-top-height: 50px;
@@ -57,9 +50,9 @@
   /* Variable Mappings */
   --bg-primary: var(--bg-dark);
   --bg-secondary: var(--bg-darker);
-  --card-bg: var(--bg-card);
-  --border-color: var(--border-subtle);
-  --hover-bg: var(--bg-hover);
+  --card-bg: var(--glass-bg);
+  --border-color: transparent;
+  --hover-bg: rgba(96, 165, 250, 0.1);
   --primary-color: var(--primary-cyan);
 }
 
@@ -91,22 +84,15 @@
   --primary-glow-soft: rgba(30, 58, 95, 0.25);
   --gradient-neon: linear-gradient(135deg, #0F1F33 0%, #1E3A5F 100%);
 
-  /* Shadows - Subtle for depth */
-  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.08);
-  --shadow-popover: 0 5px 20px rgba(0, 0, 0, 0.12);
-
-  /* Neumorphism (light) */
-  --neu-bg: var(--bg-dark);
-  --neu-shadow-dark: 6px 6px 12px rgba(180, 180, 180, 0.4);
-  --neu-shadow-light: -6px -6px 12px rgba(255, 255, 255, 0.9);
-  --neu-inset-dark: inset 4px 4px 8px rgba(180, 180, 180, 0.4);
-  --neu-inset-light: inset -4px -4px 8px rgba(255, 255, 255, 0.9);
+  /* Shadows - Minimalist */
+  --shadow-card: none;
+  --shadow-popover: 0 8px 32px rgba(0, 0, 0, 0.1);
 
   /* Glassmorphism (light) */
   --glass-bg: rgba(255, 255, 255, 0.65);
-  --glass-blur: blur(16px);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.4);
-  --glass-reflection: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%);
+  --glass-blur: blur(20px);
+  --glass-border: none;
+  --glass-reflection: none;
 }
 
 html {
@@ -123,6 +109,9 @@ html {
 
 body {
   background: var(--bg-dark);
+  background-image: radial-gradient(circle at 15% 50%, rgba(96, 165, 250, 0.05), transparent 30%),
+                    radial-gradient(circle at 85% 30%, rgba(30, 58, 95, 0.15), transparent 30%);
+  background-attachment: fixed;
   color: var(--text-primary);
   height: 100%;
   min-height: 100dvh;
@@ -174,11 +163,13 @@ body.discord-layout-active #root {
 
 /* Reusable Classes */
 .card {
-  background: var(--neu-bg);
-  border: none;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: none !important;
   border-radius: 16px;
-  box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
-  transition: box-shadow 0.3s ease;
+  box-shadow: none !important;
+  transition: background 0.3s ease;
 }
 
 /* Buttons */
@@ -186,28 +177,30 @@ button,
 .btn {
   font-family: inherit;
   cursor: pointer;
-  border: none;
+  border: none !important;
   outline: none;
   transition: all 0.3s ease;
-  background: var(--neu-bg);
-  box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: none !important;
   color: var(--text-primary);
   border-radius: 9999px;
 }
 
 button:hover,
 .btn:hover {
-  box-shadow: var(--neu-inset-dark), var(--neu-inset-light);
+  background: var(--hover-bg);
 }
 
 button:active,
 .btn:active {
-  box-shadow: inset 6px 6px 10px rgba(0,0,0,0.8), inset -6px -6px 10px rgba(255,255,255,0.02);
+  transform: scale(0.98);
 }
 
 [data-theme='light'] button:active,
 [data-theme='light'] .btn:active {
-  box-shadow: inset 6px 6px 10px rgba(180,180,180,0.6), inset -6px -6px 10px rgba(255,255,255,1);
+  transform: scale(0.98);
 }
 
 .btn-primary {
@@ -218,37 +211,50 @@ button:active,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
-  border: none;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .btn-primary:active {
-  box-shadow: var(--neu-inset-dark), var(--neu-inset-light);
+  transform: scale(0.98);
 }
 
-/* Inputs — Neumorphic Inset */
+/* Inputs — Glassmorphic */
 input,
 textarea {
-  background: var(--neu-bg);
-  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: none !important;
   border-radius: 12px;
   padding: 12px;
   color: var(--text-primary);
   width: 100%;
   font-size: 1rem;
-  box-shadow: var(--neu-inset-dark), var(--neu-inset-light);
+  box-shadow: none !important;
   transition: all 0.3s ease;
+}
+
+[data-theme='light'] input,
+[data-theme='light'] textarea {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 input:focus,
 textarea:focus {
-  box-shadow: var(--neu-inset-dark), var(--neu-inset-light), 0 0 0 2px var(--primary-cyan);
+  background: rgba(255, 255, 255, 0.1);
   outline: none;
 }
 
-/* Scrollbar */
+[data-theme='light'] input:focus,
+[data-theme='light'] textarea:focus {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Scrollbar - Modern Minimal */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -256,12 +262,21 @@ textarea:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-subtle);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-cyan);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* App Structure */
@@ -337,18 +352,14 @@ select,
   border: none !important;
 }
 
-/* Keep layout bar borders */
+/* Ensure layout bars also have no borders for seamless integration */
 .navbar,
 .app-footer,
 .sidebar,
 .user-bar,
 .map-controls-bar {
-  border: none;
-  /* Reset first */
-}
-
-.app-footer {
-  border-top: 1px solid var(--border-color) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 button,
@@ -365,28 +376,18 @@ button,
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
-  box-shadow: var(--shadow-popover);
+  border: none;
+  box-shadow: none;
   border-radius: 16px;
   position: relative;
   overflow: hidden;
 }
 
 .glass-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40%;
-  background: var(--glass-reflection);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .glass-panel > * {
   position: relative;
   z-index: 1;
 }
-
-/* Glassmorphism utilities handled elsewhere */

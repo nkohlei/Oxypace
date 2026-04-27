@@ -10,7 +10,7 @@
     border-radius: 0;
     margin: 0;
     border-top: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: none;
     cursor: default;
     transition: background-color 0.1s ease;
     content-visibility: auto;
@@ -181,7 +181,7 @@
     object-fit: contain;
     display: block;
     border-radius: 16px;
-    border: 1px solid var(--border-subtle);
+    border: none;
 }
 
 /* Actions */
@@ -300,9 +300,9 @@
     top: calc(100% + 8px);
     min-width: 180px;
     background: var(--glass-bg);
-    border: var(--glass-border);
+    border: none;
     border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     padding: 6px;
     z-index: 9999;
     animation: menuFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -382,12 +382,12 @@
 .foggy-hidden {
     padding: 30px;
     text-align: center;
-    background: var(--neu-bg);
+    background: var(--glass-bg);
     border-radius: 16px;
     margin: 12px 16px;
     border: none;
     color: var(--text-tertiary);
-    box-shadow: var(--neu-inset-dark), var(--neu-inset-light);
+    box-shadow: none;
 }
 
 .foggy-hidden button {
@@ -422,8 +422,8 @@
     border-radius: 16px;
     text-align: center;
     width: 300px;
-    border: var(--glass-border);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .delete-confirm-modal h3 {
@@ -464,7 +464,7 @@
 /* Comment Section Wrapper */
 .post-comments-wrapper {
     margin-top: 12px;
-    border-top: 1px solid var(--border-subtle);
+    border-top: none;
     padding-top: 12px;
 }
 
@@ -498,7 +498,7 @@
     .post-card.twitter-layout {
         padding: 10px 12px;
         grid-template-columns: 38px 1fr;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: none;
     }
 
     .post-left {
@@ -623,7 +623,7 @@
     align-items: center;
     justify-content: center;
     color: #000;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
     transition: transform 0.2s ease, background 0.2s ease;
 }
 

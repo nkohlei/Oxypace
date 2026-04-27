@@ -1,6 +1,7 @@
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Link } from 'react-router-dom';
+import { X } from 'lucide-react';
 
 const MembersSidebar = ({ members = [], onClose }) => {
     const { onlineUsers } = useSocket();
@@ -47,10 +48,7 @@ const MembersSidebar = ({ members = [], onClose }) => {
                 <h3>ÜYELER</h3>
                 {onClose && (
                     <button onClick={onClose} className="close-members-btn" aria-label="Kapat">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
+                        <X size={20} strokeWidth={2} />
                     </button>
                 )}
             </div>

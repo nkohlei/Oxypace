@@ -5,6 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import RoomTimer from './RoomTimer';
 import { getImageUrl } from '../utils/imageUtils';
+import { MicOff, Maximize, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff } from 'lucide-react';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -131,10 +132,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <div className="vc-card-indicators">
                         {p.isMuted && (
                             <div className="vc-indicator muted" title="Mikrofon kapalı">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <line x1="1" y1="1" x2="23" y2="23" />
-                                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-                                </svg>
+                                <MicOff size={16} strokeWidth={2.5} />
                             </div>
                         )}
                         {!p.isLocal && p.connectionQuality !== undefined && (
@@ -151,9 +149,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
                 {/* Focus Overlay Icon */}
                 {isFocused && (
-                    <div className="vc-focus-badge">
-                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="white" strokeWidth="2" fill="none"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-                    </div>
+                        <Maximize size={20} stroke="white" strokeWidth={2} />
                 )}
             </div>
         );
@@ -201,11 +197,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     )}
 
                     <div className="vc-lobby-icon glass-icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" y1="19" x2="12" y2="23" />
-                        </svg>
+                        <Mic size={48} strokeWidth={1.5} />
                     </div>
                     <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
                     <p className="vc-lobby-subtitle">Sesli sohbete katılmak için aşağıdaki butona tıklayın</p>
@@ -246,7 +238,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <div className="vc-error-icon glass-icon error">⚠️</div>
                     <h2 className="vc-lobby-title" style={{ color: '#ef4444' }}>Bağlantı Hatası</h2>
                     <p className="vc-lobby-subtitle">{errorMsg}</p>
-                    <button className="vc-join-btn neumorphic-btn action-btn-large" onClick={handleJoin}>Tekrar Dene</button>
+                    <button className="vc-join-btn glass-btn action-btn-large" onClick={handleJoin}>Tekrar Dene</button>
                 </div>
             </div>
         );
@@ -283,9 +275,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     onClick={() => setIsChatOpen(!isChatOpen)}
                     title="Sohbeti Aç/Kapat"
                 >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                    </svg>
+                    <MessageCircle size={20} strokeWidth={2} />
                 </button>
             </div>
 
@@ -320,74 +310,47 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             {/* Bottom Controls (Centered Symmetrically) */}
             <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
                 <button
-                    className={`vc-ctrl-btn neumorphic-btn ${localState.isMuted ? 'inset muted danger' : 'active'}`}
+                    className={`vc-ctrl-btn glass-btn ${localState.isMuted ? 'inset muted danger' : 'active'}`}
                     onClick={toggleMicrophone}
                     title={localState.isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
                 >
                     {localState.isMuted ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                            <line x1="1" y1="1" x2="23" y2="23" />
-                            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-                            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .34-.03.67-.08 1" />
-                            <line x1="12" y1="19" x2="12" y2="23" />
-                        </svg>
+                        <MicOff size={24} strokeWidth={2} />
                     ) : (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" y1="19" x2="12" y2="23" />
-                        </svg>
+                        <Mic size={24} strokeWidth={2} />
                     )}
                 </button>
                 <button
-                    className={`vc-ctrl-btn neumorphic-btn ${localState.isCameraOn ? 'active' : 'inset'}`}
+                    className={`vc-ctrl-btn glass-btn ${localState.isCameraOn ? 'active' : 'inset'}`}
                     onClick={toggleCamera}
                     title={localState.isCameraOn ? 'Kamerayı Kapat' : 'Kamerayı Aç'}
                 >
                     {localState.isCameraOn ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                            <polygon points="23 7 16 12 23 17 23 7" />
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                        </svg>
+                        <Video size={24} strokeWidth={2} />
                     ) : (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                            <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34" />
-                            <line x1="1" y1="1" x2="23" y2="23" />
-                        </svg>
+                        <VideoOff size={24} strokeWidth={2} />
                     )}
                 </button>
 
                 <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
 
                 <button
-                    className={`vc-ctrl-btn neumorphic-btn ${localState.isScreenSharing ? 'active' : 'inset'}`}
+                    className={`vc-ctrl-btn glass-btn ${localState.isScreenSharing ? 'active' : 'inset'}`}
                     onClick={toggleScreenShare}
                     title={localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}
                     style={localState.isScreenSharing ? { background: '#22c55e', color: 'white', borderColor: '#22c55e' } : {}}
                 >
                     {localState.isScreenSharing ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                            <line x1="8" y1="21" x2="16" y2="21" />
-                            <line x1="12" y1="17" x2="12" y2="21" />
-                        </svg>
+                        <MonitorUp size={22} strokeWidth={2} />
                     ) : (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                            <line x1="8" y1="21" x2="16" y2="21" />
-                            <line x1="12" y1="17" x2="12" y2="21" />
-                        </svg>
+                        <MonitorUp size={22} strokeWidth={2} />
                     )}
                 </button>
 
                 <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
 
-                <button className="vc-ctrl-btn neumorphic-btn leave action-btn-red danger" onClick={handleLeave} title="Aramadan Ayrıl">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-                        <line x1="23" y1="1" x2="17" y2="7" />
-                        <line x1="17" y1="1" x2="23" y2="7" />
-                    </svg>
+                <button className="vc-ctrl-btn glass-btn leave action-btn-red danger" onClick={handleLeave} title="Aramadan Ayrıl">
+                    <PhoneOff size={24} strokeWidth={2} />
                 </button>
             </div>
 

@@ -7,6 +7,7 @@ import { useUI } from '../context/UIContext';
 import { useGlobalStore } from '../store/useGlobalStore';
 import CreatePortalModal from './CreatePortalModal';
 import { getImageUrl } from '../utils/imageUtils';
+import { MessageSquare, Compass, Plus, Save, ArrowUpDown } from 'lucide-react';
 import './PortalSidebar.css';
 
 const PortalSidebar = () => {
@@ -119,9 +120,7 @@ const PortalSidebar = () => {
                     onMouseLeave={handleMouseLeave}
                 >
                     <div className="portal-icon">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
+                        <MessageSquare size={20} strokeWidth={2} />
                     </div>
                 </div>
 
@@ -176,10 +175,7 @@ const PortalSidebar = () => {
                         onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
+                            <Compass size={20} strokeWidth={2} />
                         </div>
                     </div>
 
@@ -191,10 +187,7 @@ const PortalSidebar = () => {
                         onMouseLeave={handleMouseLeave}
                     >
                         <div className="portal-icon">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
+                            <Plus size={20} strokeWidth={2} />
                         </div>
                     </div>
 
@@ -209,9 +202,9 @@ const PortalSidebar = () => {
                     >
                         <div className="portal-icon" style={{ background: isReordering ? 'var(--primary-color)' : 'transparent', color: isReordering ? '#fff' : 'inherit' }}>
                             {isReordering ? (
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <Save size={20} strokeWidth={2.5} />
                             ) : (
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                <ArrowUpDown size={20} strokeWidth={2} />
                             )}
                         </div>
                     </div>

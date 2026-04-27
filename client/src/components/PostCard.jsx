@@ -14,6 +14,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
+import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag } from 'lucide-react';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -64,10 +65,7 @@ const YouTubeFacade = ({ media }) => {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: 'rgba(0,0,0,0.3)'
                     }}>
-                        <svg viewBox="0 0 68 48" width="68" height="48">
-                            <path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="red" />
-                            <path d="M45 24L27 14v20" fill="white" />
-                        </svg>
+                        <Youtube color="white" fill="red" size={64} />
                     </div>
                 </div>
             )}
@@ -362,9 +360,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             gap: '4px',
                         }}
                     >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
-                        </svg>
+                        <Pin size={12} fill="currentColor" />
                         Sabitlendi
                     </div>
                 )}
@@ -398,11 +394,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 setShowMenu(!showMenu);
                             }}
                         >
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                                <circle cx="5" cy="12" r="2"></circle>
-                                <circle cx="12" cy="12" r="2"></circle>
-                                <circle cx="19" cy="12" r="2"></circle>
-                            </svg>
+                            <MoreHorizontal size={18} />
                         </button>
 
                         {/* Floating Context Menu */}
@@ -419,46 +411,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                     }}
                                 >
                                     {saved ? 'Kaydı Kaldır' : 'Kaydet'}
-                                    <svg
-                                        className="menu-icon-right"
-                                        viewBox="0 0 24 24"
-                                        fill={saved ? 'currentColor' : 'none'}
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                    </svg>
+                                    <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} className="menu-icon-right" />
                                 </button>
                                 
                                 {post.media && (
                                     <button className="menu-item" onClick={handleDownload}>
                                         İndir
-                                        <svg
-                                            className="menu-icon-right"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                        >
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                            <polyline points="7 10 12 15 17 10" />
-                                            <line x1="12" y1="15" x2="12" y2="3" />
-                                        </svg>
+                                        <Download size={18} className="menu-icon-right" />
                                     </button>
                                 )}
 
                                 <button className="menu-item" onClick={handleShare}>
                                     Gönder
-                                    <svg
-                                        className="menu-icon-right"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                    </svg>
+                                    <Send size={18} className="menu-icon-right" />
                                 </button>
 
                                 {isAdmin && (
@@ -472,19 +437,11 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                             }}
                                         >
                                             {post.isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}
-                                            <svg
-                                                className="menu-icon-right"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            >
-                                                {post.isPinned ? (
-                                                    <line x1="2" y1="2" x2="22" y2="22"></line>
-                                                ) : (
-                                                    <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
-                                                )}
-                                            </svg>
+                                            {post.isPinned ? (
+                                                <PinOff size={18} className="menu-icon-right" />
+                                            ) : (
+                                                <Pin size={18} className="menu-icon-right" />
+                                            )}
                                         </button>
                                     </>
                                 )}
@@ -501,16 +458,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                         }}
                                     >
                                         Sil
-                                        <svg
-                                            className="menu-icon-right"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                        >
-                                            <polyline points="3 6 5 6 21 6"></polyline>
-                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                        </svg>
+                                        <Trash2 size={18} className="menu-icon-right" />
                                     </button>
                                 )}
                                 <button
@@ -518,16 +466,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                     onClick={() => handleMenuAction('report')}
                                 >
                                     Bildir
-                                    <svg
-                                        className="menu-icon-right"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                                        <line x1="4" y1="22" x2="4" y2="15"></line>
-                                    </svg>
+                                    <Flag size={18} className="menu-icon-right" />
                                 </button>
                             </div>
                         )}

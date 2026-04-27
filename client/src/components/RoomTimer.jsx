@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Clock } from 'lucide-react';
 
 const RoomTimer = ({ startedAt }) => {
     const [elapsed, setElapsed] = useState('');
@@ -47,10 +48,7 @@ const RoomTimer = ({ startedAt }) => {
             color: '#fff',
             border: '1px solid rgba(255,255,255,0.1)'
         }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-            </svg>
+            <Clock size={16} strokeWidth={2} />
             {elapsed}
         </div>
     );

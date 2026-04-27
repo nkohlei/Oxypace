@@ -8,6 +8,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
+import { UserPlus, Bell, ChevronRight, Volume2, Megaphone, Hash } from 'lucide-react';
 
 const ChannelSidebar = ({
     portal,
@@ -137,7 +138,7 @@ const ChannelSidebar = ({
                                 }}
                                 title="Kullanıcı Davet Et"
                             >
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                                <UserPlus size={22} strokeWidth={2} />
                             </div>
                         )}
                     </div>
@@ -177,16 +178,7 @@ const ChannelSidebar = ({
                         }
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                style={{ color: '#fff' }}
-                            >
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                            </svg>
+                            <Bell size={18} fill="currentColor" color="#fff" />
                             <span style={{ fontSize: '13px', color: '#dbdee1', fontWeight: '700' }}>
                                 Bildirimler
                             </span>
@@ -211,17 +203,7 @@ const ChannelSidebar = ({
                                 </div>
                             )}
                         </div>
-                        <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            style={{ color: '#dbdee1' }}
-                        >
-                            <path d="M9 18l6-6-6-6" />
-                        </svg>
+                        <ChevronRight size={16} strokeWidth={3} color="#dbdee1" />
                     </div>
                 )}
 
@@ -296,33 +278,11 @@ const ChannelSidebar = ({
                                 }}
                             >
                                 {isVoice ? (
-                                    <svg
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                                        <line x1="12" y1="19" x2="12" y2="23"></line>
-                                    </svg>
+                                    <Volume2 size={20} strokeWidth={2} />
                                 ) : isAnnouncement ? (
-                                    <svg
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                                    </svg>
+                                    <Megaphone size={20} strokeWidth={2.5} />
                                 ) : (
-                                    <span
-                                        style={{ fontSize: '24px', fontWeight: 300, lineHeight: 1 }}
-                                    >
-                                        #
-                                    </span>
+                                    <Hash size={20} strokeWidth={2.5} />
                                 )}
                             </div>
 
@@ -372,12 +332,7 @@ const ChannelSidebar = ({
 
                             {/* Active Icon (Person+) */}
                             {isActive && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="white" style={{ flexShrink: 0 }}>
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="8.5" cy="7" r="4"></circle>
-                                    <line x1="20" y1="8" x2="20" y2="14"></line>
-                                    <line x1="23" y1="11" x2="17" y2="11"></line>
-                                </svg>
+                                <UserPlus size={16} color="white" style={{ flexShrink: 0 }} />
                             )}
                         </div>
                     );

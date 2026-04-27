@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
+import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
@@ -174,21 +175,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                     </span>
                                     <div className="theme-thumb">
                                         {isDark ? (
-                                            <svg className="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                                            </svg>
+                                            <Moon className="moon-icon" size={14} strokeWidth={2.5} />
                                         ) : (
-                                            <svg className="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <circle cx="12" cy="12" r="5" />
-                                                <line x1="12" y1="1" x2="12" y2="3" />
-                                                <line x1="12" y1="21" x2="12" y2="23" />
-                                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                                                <line x1="1" y1="12" x2="3" y2="12" />
-                                                <line x1="21" y1="12" x2="23" y2="12" />
-                                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                                            </svg>
+                                            <Sun className="sun-icon" size={14} strokeWidth={2.5} />
                                         )}
                                     </div>
                                 </div>
@@ -214,15 +203,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             />
                                         ) : (
                                             <div className="nav-profile-placeholder">
-                                                <svg
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.5"
-                                                >
-                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                                    <circle cx="12" cy="7" r="4"></circle>
-                                                </svg>
+                                                <User size={20} strokeWidth={1.5} />
                                             </div>
                                         )}
                                         {unreadCount > 0 && (
@@ -333,10 +314,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         className="dropdown-item"
                                         onClick={() => setShowMenu(false)}
                                     >
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="12" cy="7" r="4"></circle>
-                                        </svg>
+                                        <User size={20} strokeWidth={1.5} />
                                         Profilim
                                     </Link>
                                     {user?.isAdmin && (
@@ -345,14 +323,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             className={`dropdown-item admin-link ${adminPendingCount > 0 ? 'has-admin-notification' : ''}`}
                                             onClick={() => setShowMenu(false)}
                                         >
-                                            <svg
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                            >
-                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                                            </svg>
+                                            <Shield size={20} strokeWidth={1.5} />
                                             <span>Yönetici Paneli</span>
                                             {adminPendingCount > 0 && <span className="admin-notification-dot"></span>}
                                         </Link>
@@ -362,14 +333,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         className="dropdown-item"
                                         onClick={() => setShowMenu(false)}
                                     >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                        >
-                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                                        </svg>
+                                        <Bookmark size={20} strokeWidth={1.5} />
                                         Kaydedilenler
                                     </Link>
                                     <Link
@@ -377,14 +341,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         className="dropdown-item"
                                         onClick={() => setShowMenu(false)}
                                     >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                        >
-                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                        </svg>
+                                        <MessageSquare size={20} strokeWidth={1.5} />
                                         Geri Bildirim
                                     </Link>
                                     <Link
@@ -393,10 +350,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         onClick={() => setShowMenu(false)}
                                     >
                                         <div className="icon-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '20px', height: '20px' }}>
-                                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                                            </svg>
+                                            <Bell size={20} strokeWidth={1.5} />
                                         </div>
                                         <span style={{ marginLeft: '12px' }}>Bildirimler</span>
                                         {unreadCount > 0 && (
@@ -410,15 +364,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         className="dropdown-item"
                                         onClick={() => setShowMenu(false)}
                                     >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                        >
-                                            <circle cx="12" cy="12" r="3" />
-                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                                        </svg>
+                                        <Settings size={20} strokeWidth={1.5} />
                                         Ayarlar
                                     </Link>
                                     <div className="dropdown-divider" />
@@ -426,16 +372,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         className="dropdown-item logout"
                                         onClick={handleLogout}
                                     >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                        >
-                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                            <polyline points="16 17 21 12 16 7" />
-                                            <line x1="21" y1="12" x2="9" y2="12" />
-                                        </svg>
+                                        <LogOut size={20} strokeWidth={1.5} />
                                         Çıkış Yap
                                     </button>
                                 </div>
@@ -446,10 +383,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             </header>
             <Link to="/create" className="mobile-fab-create">
                 <div className="fab-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    <Plus size={24} strokeWidth={2} />
                 </div>
             </Link>
 

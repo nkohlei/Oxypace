@@ -4,6 +4,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import ImageCropper from './ImageCropper';
 
+import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus } from 'lucide-react';
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({
@@ -529,18 +530,7 @@ const PortalSettingsModal = ({
                         onClick={() => setActiveTab('overview')}
                         title="Genel Bakış"
                     >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            style={{ minWidth: '20px' }}
-                        >
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
+                        <Settings size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                         <span className="tab-label">Genel Bakış</span>
                     </div>
 
@@ -555,10 +545,7 @@ const PortalSettingsModal = ({
                         onClick={() => setActiveTab('access')}
                         title="Erişim"
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ minWidth: '20px' }}>
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
+                        <Lock size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                         <span className="tab-label">Erişim</span>
                     </div>
                     <div
@@ -566,22 +553,7 @@ const PortalSettingsModal = ({
                         onClick={() => setActiveTab('channels')}
                         title="Kanallar"
                     >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            style={{ minWidth: '20px' }}
-                        >
-                            <line x1="8" y1="6" x2="21" y2="6"></line>
-                            <line x1="8" y1="12" x2="21" y2="12"></line>
-                            <line x1="8" y1="18" x2="21" y2="18"></line>
-                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                        </svg>
+                        <List size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                         <span className="tab-label">Kanallar</span>
                     </div>
                     <div
@@ -589,20 +561,7 @@ const PortalSettingsModal = ({
                         onClick={() => setActiveTab('members')}
                         title="Üyeler"
                     >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            style={{ minWidth: '20px' }}
-                        >
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
+                        <Users size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                         <span className="tab-label">Üyeler</span>
                     </div>
                     <div
@@ -610,18 +569,7 @@ const PortalSettingsModal = ({
                         onClick={() => setActiveTab('banned')}
                         title="Engellenenler"
                     >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            style={{ minWidth: '20px' }}
-                        >
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                        </svg>
+                        <Ban size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                         <span className="tab-label">Engellenenler</span>
                     </div>
 
@@ -630,18 +578,7 @@ const PortalSettingsModal = ({
                         onClick={() => setActiveTab('location')}
                         title="Konum"
                     >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            style={{ minWidth: '20px' }}
-                        >
-                            <circle cx="12" cy="10" r="3"></circle>
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
-                        </svg>
+                        <MapPin size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                         <span className="tab-label">Konum</span>
                     </div>
 
@@ -652,19 +589,7 @@ const PortalSettingsModal = ({
                             title="Gelişmiş"
                             style={{ marginTop: 'auto', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}
                         >
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="#ef4444"
-                                strokeWidth="2"
-                                style={{ minWidth: '20px' }}
-                            >
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                                <line x1="12" y1="9" x2="12" y2="13"></line>
-                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                            </svg>
+                            <AlertTriangle size={20} strokeWidth={2} color="#ef4444" style={{ minWidth: '20px' }} />
                             <span className="tab-label" style={{ color: '#ef4444' }}>Gelişmiş</span>
                         </div>
                     )}
@@ -672,19 +597,7 @@ const PortalSettingsModal = ({
 
                 {/* Content */}
                 <div className="settings-content">
-                    <button className="close-settings-btn" onClick={onClose}>
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
+                    <button className="close-settings-btn" onClick={onClose}><X size={24} strokeWidth={2} /></button>
 
                     {activeTab === 'overview' && (
                         <div className="animate-fade-in">
@@ -813,11 +726,7 @@ const PortalSettingsModal = ({
                                         onClick={() => isOwner && setAccessData({ ...accessData, privacy: 'public' })}
                                     >
                                         <div className="privacy-row-icon-wrapper">
-                                            <svg className="privacy-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <circle cx="12" cy="12" r="10"></circle>
-                                                <line x1="2" y1="12" x2="22" y2="12"></line>
-                                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                                            </svg>
+                                            <Globe size={24} strokeWidth={2} className="privacy-row-icon" />
                                         </div>
                                         <div className="privacy-row-content">
                                             <div className="privacy-row-title">Herkese Açık</div>
@@ -834,12 +743,7 @@ const PortalSettingsModal = ({
                                         onClick={() => isOwner && setAccessData({ ...accessData, privacy: 'restricted' })}
                                     >
                                         <div className="privacy-row-icon-wrapper">
-                                            <svg className="privacy-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                                <circle cx="9" cy="7" r="4"></circle>
-                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                            </svg>
+                                            <Users size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                                         </div>
                                         <div className="privacy-row-content">
                                             <div className="privacy-row-title">Belirli Kişiler</div>
@@ -860,10 +764,7 @@ const PortalSettingsModal = ({
                                         }}
                                     >
                                         <div className="privacy-row-icon-wrapper">
-                                            <svg className="privacy-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                            </svg>
+                                            <Lock size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                                         </div>
                                         <div className="privacy-row-content">
                                             <div className="privacy-row-title">Gizli</div>
@@ -885,10 +786,7 @@ const PortalSettingsModal = ({
                                     </div>
 
                                     <div className="search-container">
-                                        <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                        </svg>
+                                        <Search size={18} strokeWidth={2} className="search-icon" />
                                         <input
                                             className="search-input-modern"
                                             placeholder="Kullanıcı adı ile ara ve ekle..."
@@ -936,10 +834,7 @@ const PortalSettingsModal = ({
                                                         onClick={() => handleRemoveAllowedUser(user._id || user)}
                                                         title="İzni Kaldır"
                                                     >
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                        </svg>
+                                                        <X size={18} strokeWidth={2} />
                                                     </button>
                                                 )}
                                             </div>
@@ -1100,16 +995,7 @@ const PortalSettingsModal = ({
                                                             cursor: 'pointer',
                                                         }}
                                                     >
-                                                        <svg
-                                                            width="18"
-                                                            height="18"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                                        </svg>
+                                                        <Check size={18} strokeWidth={2} />
                                                     </button>
                                                     <button
                                                         onClick={() => setEditingChannel(null)}
@@ -1119,28 +1005,7 @@ const PortalSettingsModal = ({
                                                             border: 'none',
                                                             cursor: 'pointer',
                                                         }}
-                                                    >
-                                                        <svg
-                                                            width="18"
-                                                            height="18"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                        >
-                                                            <line
-                                                                x1="18"
-                                                                y1="6"
-                                                                x2="6"
-                                                                y2="18"
-                                                            ></line>
-                                                            <line
-                                                                x1="6"
-                                                                y1="6"
-                                                                x2="18"
-                                                                y2="18"
-                                                            ></line>
-                                                        </svg>
+                                                        <X size={18} strokeWidth={2} />
                                                     </button>
                                                 </div>
                                             ) : (
@@ -1157,27 +1022,7 @@ const PortalSettingsModal = ({
                                                             {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : '#'}
                                                         </span>
                                                         {ch.name}
-                                                        {ch.isPrivate && (
-                                                            <svg
-                                                                width="14"
-                                                                height="14"
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth="2"
-                                                                style={{ color: '#faa61a' }}
-                                                                title="Gizli Kanal"
-                                                            >
-                                                                <rect
-                                                                    x="3"
-                                                                    y="11"
-                                                                    width="18"
-                                                                    height="11"
-                                                                    rx="2"
-                                                                    ry="2"
-                                                                ></rect>
-                                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                                            </svg>
+                                                            <Lock size={14} strokeWidth={2} style={{ color: '#faa61a' }} title="Gizli Kanal" />
                                                         )}
                                                     </div>
                                                     {isAdmin && (
@@ -1194,17 +1039,7 @@ const PortalSettingsModal = ({
                                                                 title="Düzenle"
                                                                 style={{ marginRight: '4px' }}
                                                             >
-                                                                <svg
-                                                                    width="18"
-                                                                    height="18"
-                                                                    viewBox="0 0 24 24"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    strokeWidth="2"
-                                                                >
-                                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                                </svg>
+                                                                <Pencil size={18} strokeWidth={2} />
                                                             </button>
                                                             <button
                                                                 onClick={() =>
@@ -1212,17 +1047,7 @@ const PortalSettingsModal = ({
                                                                 }
                                                                 title="Kanalı Sil"
                                                             >
-                                                                <svg
-                                                                    width="18"
-                                                                    height="18"
-                                                                    viewBox="0 0 24 24"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    strokeWidth="2"
-                                                                >
-                                                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                                </svg>
+                                                                <Trash2 size={18} strokeWidth={2} />
                                                             </button>
                                                         </div>
                                                     )}
@@ -1314,16 +1139,7 @@ const PortalSettingsModal = ({
                                                                     title="Er Yönetici Yap"
                                                                     style={{ color: '#5865f2' }}
                                                                 >
-                                                                    <svg
-                                                                        width="18"
-                                                                        height="18"
-                                                                        viewBox="0 0 24 24"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        strokeWidth="2"
-                                                                    >
-                                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                                                                    </svg>
+                                                                    <ArrowUp size={18} strokeWidth={2} />
                                                                 </button>
                                                             ) : (
                                                                 <button
@@ -1336,26 +1152,7 @@ const PortalSettingsModal = ({
                                                                     title="Yöneticiliği Al"
                                                                     style={{ color: '#faa61a' }}
                                                                 >
-                                                                    <svg
-                                                                        width="18"
-                                                                        height="18"
-                                                                        viewBox="0 0 24 24"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        strokeWidth="2"
-                                                                    >
-                                                                        <circle
-                                                                            cx="12"
-                                                                            cy="12"
-                                                                            r="10"
-                                                                        ></circle>
-                                                                        <line
-                                                                            x1="8"
-                                                                            y1="12"
-                                                                            x2="16"
-                                                                            y2="12"
-                                                                        ></line>
-                                                                    </svg>
+                                                                    <ArrowDown size={18} strokeWidth={2} />
                                                                 </button>
                                                             ))}
 
@@ -1364,27 +1161,7 @@ const PortalSettingsModal = ({
                                                             title="Portaldan At"
                                                             style={{ color: '#ed4245' }}
                                                         >
-                                                            <svg
-                                                                width="18"
-                                                                height="18"
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth="2"
-                                                            >
-                                                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                                                <circle
-                                                                    cx="8.5"
-                                                                    cy="7"
-                                                                    r="4"
-                                                                ></circle>
-                                                                <line
-                                                                    x1="23"
-                                                                    y1="11"
-                                                                    x2="17"
-                                                                    y2="11"
-                                                                ></line>
-                                                            </svg>
+                                                            <UserMinus size={18} strokeWidth={2} />
                                                         </button>
 
                                                         <button
@@ -1392,26 +1169,7 @@ const PortalSettingsModal = ({
                                                             title="Engelle"
                                                             style={{ color: '#ed4245' }}
                                                         >
-                                                            <svg
-                                                                width="18"
-                                                                height="18"
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth="2"
-                                                            >
-                                                                <circle
-                                                                    cx="12"
-                                                                    cy="12"
-                                                                    r="10"
-                                                                ></circle>
-                                                                <line
-                                                                    x1="4.93"
-                                                                    y1="4.93"
-                                                                    x2="19.07"
-                                                                    y2="19.07"
-                                                                ></line>
-                                                            </svg>
+                                                            <Ban size={18} strokeWidth={2} />
                                                         </button>
                                                     </div>
                                                 )}
@@ -1573,10 +1331,7 @@ const PortalSettingsModal = ({
                                 <div className="form-group">
                                     <label className="form-label">Konum Ara</label>
                                     <div className="search-container" style={{ position: 'relative' }}>
-                                        <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                        </svg>
+                                        <Search size={18} strokeWidth={2} className="search-icon" />
                                         <input
                                             className="search-input-modern"
                                             placeholder="Şehir, ülke veya adres ara... (örn: İstanbul, Türkiye)"

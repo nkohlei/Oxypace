@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { loadImage, cropImage, clampPosition } from '../utils/cropperUtils';
+import { X } from 'lucide-react';
 import './ImageCropper.css';
 
 /**
@@ -430,10 +431,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                 <div className="cropper-header">
                     <h3>{title || (mode === 'avatar' ? 'Profil Fotoğrafı' : 'Kapak Resmi')}</h3>
                     <button className="cropper-close-btn" onClick={onCancel} aria-label="Kapat">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
+                        <X size={24} strokeWidth={2} />
                     </button>
                 </div>
 

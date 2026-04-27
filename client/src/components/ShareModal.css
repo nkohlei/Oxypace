@@ -325,12 +325,11 @@
     width: 52px;
     height: 52px;
     border-radius: 18px;
-    background: var(--neu-bg);
+    background: rgba(255, 255, 255, 0.05);
     display: flex;
     justify-content: center;
     align-items: center;
-    border: none;
-    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
     overflow: hidden;
@@ -338,8 +337,8 @@
 
 /* Hover Effect */
 .share-app-item:hover .app-icon-circle {
-    box-shadow: var(--neu-inset-dark), var(--neu-inset-light);
-    background: var(--bg-hover);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .app-icon-circle svg {

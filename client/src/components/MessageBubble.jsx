@@ -5,6 +5,7 @@ import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
+import { Trash2, Play, Download, ArrowRight } from 'lucide-react';
 import './MessageBubble.css';
 
 const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
@@ -133,19 +134,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                             setConfirmDelete(true);
                         }}
                     >
-                        <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
+                        <Trash2 size={24} strokeWidth={2} />
                     </button>
                 </div>
 
@@ -195,9 +184,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                             className="bubble-video"
                                         />
                                         <div className="video-play-overlay">
-                                            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
+                                            <Play size={32} fill="currentColor" />
                                         </div>
                                     </div>
                                 ) : (
@@ -217,16 +204,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                             handleDownload(e, getImageUrl(message.media))
                                         }
                                     >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                        >
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                            <polyline points="7 10 12 15 17 10" />
-                                            <line x1="12" y1="15" x2="12" y2="3" />
-                                        </svg>
+                                        <Download size={24} strokeWidth={2} />
                                     </button>
                                 )}
                             </div>
@@ -323,16 +301,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                 </div>
                                 <div className="view-portal-footer">
                                     <span>Portalı Görüntüle</span>
-                                    <svg
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2.5"
-                                    >
-                                        <path d="M5 12h14M12 5l7 7-7 7" />
-                                    </svg>
+                                    <ArrowRight size={16} strokeWidth={2.5} />
                                 </div>
                             </Link>
                         ) : message.sharedPortal ? (
