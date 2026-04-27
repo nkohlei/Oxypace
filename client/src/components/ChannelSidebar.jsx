@@ -126,24 +126,7 @@ const ChannelSidebar = ({
                 className="custom-scrollbar"
                 style={{ flex: 1, padding: '0 8px 8px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
             >
-                                        fontWeight: 'bold',
-                                        padding: '0 6px',
-                                        borderRadius: '8px',
-                                        minWidth: '16px',
-                                        height: '16px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                                    }}
-                                >
-                                    {portal.joinRequests.length}
-                                </div>
-                            )}
-                        </div>
-                        <ChevronRight size={16} strokeWidth={3} color="#dbdee1" />
-                    </div>
-                )}
+
 
                 {/* 3. Browse Channels (Kanallara Göz At) replaced/augmented with Header */}
                 <div
