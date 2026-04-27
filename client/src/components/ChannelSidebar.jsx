@@ -85,73 +85,47 @@ const ChannelSidebar = ({
                     <div className="portal-stats-row">
                         <div className="stat-item">
                             <UserCheck size={12} />
-                            <span>{portal.membersCount || 0} Üye</span>
+                            <span>{(portal.membersCount || portal.members?.length || 0)} Üye</span>
                         </div>
                         <div className="stat-dot" />
                         <div className="stat-item">
                             <div className="online-indicator-dot" />
-                            <span>{Math.floor((portal.membersCount || 0) * 0.3) + 1} Çevrimiçi</span>
+                            <span>{Math.floor((portal.membersCount || portal.members?.length || 0) * 0.3) + 1} Çevrimiçi</span>
                         </div>
                     </div>
                 </div>
 
-                {isMember && (
-                    <button 
-                        className="portal-invite-btn-minimal"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowInviteModal(true);
-                        }}
-                    >
-                        <UserPlus size={16} />
-                        <span>Davet Et</span>
-                    </button>
-                )}
-            </div>
-
-            {/* Scrollable Area */}
+                <div className="portal-header-actions">
+                    {canManage && (
+                        <button 
+                            className="portal-action-btn-circle"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit && onEdit('notifications');
+                            }}
+                            title="Bildirimler"
+                        >
+                            <Bell size={18} />
+                        </button>
+                    )}
+                    {isMember && (
+                        <button 
+                            className="portal-action-btn-circle"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowInviteModal(true);
+                            }}
+                            title="Davet Et"
+                        >
+                            <UserPlus size={18} />
+                        </button>
+                    )}
+                </div>
+            </div>            {/* Scrollable Area */}
             <div
                 className="custom-scrollbar"
                 style={{ flex: 1, padding: '0 8px 8px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
             >
-                {/* 2. Bildirimler (Portal Notifications - Admin Only) */}
-                {canManage && (
-                    <div
-                        onClick={() => onEdit && onEdit('notifications')}
-                        style={{
-                            marginTop: '16px',
-                            marginBottom: '16px',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            background: 'linear-gradient(90deg, #48304c 0%, #38253a 100%)',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            cursor: 'pointer',
-                            userSelect: 'none',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) =>
-                        (e.currentTarget.style.background =
-                            'linear-gradient(90deg, #5a3c62 0%, #46304a 100%)')
-                        }
-                        onMouseLeave={(e) =>
-                        (e.currentTarget.style.background =
-                            'linear-gradient(90deg, #48304c 0%, #38253a 100%)')
-                        }
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Bell size={18} fill="currentColor" color="#fff" />
-                            <span style={{ fontSize: '13px', color: '#dbdee1', fontWeight: '700' }}>
-                                Bildirimler
-                            </span>
-                            {portal.joinRequests && portal.joinRequests.length > 0 && (
-                                <div
-                                    style={{
-                                        backgroundColor: '#ed4245',
-                                        color: 'white',
-                                        fontSize: '11px',
                                         fontWeight: 'bold',
                                         padding: '0 6px',
                                         borderRadius: '8px',
@@ -418,26 +392,33 @@ const ChannelSidebar = ({
                 opacity: 0.5;
             }
 
-            .portal-invite-btn-minimal {
+            .portal-header-actions {
                 display: flex;
                 align-items: center;
-                gap: 6px;
-                padding: 6px 12px;
-                border-radius: 8px;
-                background: var(--primary-color);
-                color: white;
-                border: none;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s;
-                flex-shrink: 0;
+                gap: 8px;
                 margin-left: 12px;
             }
 
-            .portal-invite-btn-minimal:hover {
-                filter: brightness(1.1);
-                transform: translateY(-1px);
+            .portal-action-btn-circle {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--bg-tertiary);
+                color: var(--text-secondary);
+                border: 1px solid var(--border-subtle);
+                cursor: pointer;
+                transition: all 0.2s;
+                flex-shrink: 0;
+            }
+
+            .portal-action-btn-circle:hover {
+                background: var(--primary-color);
+                color: white;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
             }
 
             @media (max-width: 768px) {

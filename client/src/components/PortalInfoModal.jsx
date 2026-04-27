@@ -19,6 +19,9 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                     src={portal.coverImage ? getImageUrl(portal.coverImage) : portal.banner ? getImageUrl(portal.banner) : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'} 
                     alt={portal.name} 
                 />
+                <div className="portal-info-avatar-wrapper">
+                    <img src={getImageUrl(portal.avatar)} alt={portal.name} className="portal-info-avatar-img" />
+                </div>
                 <button className="portal-info-close" onClick={onClose}>
                     <X size={20} />
                 </button>
