@@ -11,7 +11,7 @@
     margin: 0;
     border-top: none;
     border-bottom: none;
-    margin-bottom: 40px !important; /* Space between posts */
+    margin-bottom: 10px !important; /* Reduced since separator has its own margin */
     position: relative;
     cursor: default;
     transition: background-color 0.1s ease;
@@ -23,10 +23,9 @@
 .post-separator {
     grid-column: 1 / -1;
     height: 1px;
-    width: 150px;
-    background-color: rgba(255, 255, 255, 0.25) !important;
-    margin: 24px auto 0 auto;
-    opacity: 1 !important;
+    width: 90%;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    margin: 15px auto;
     display: block;
 }
 
