@@ -13,6 +13,7 @@ import ProfileImageModal from '../components/ProfileImageModal';
 import SEO from '../components/SEO';
 import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
 import VideoPlayer from '../components/VideoPlayer';
+import PostCard from '../components/PostCard';
 import LinkPreview from '../components/LinkPreview';
 import { extractFirstUrl } from '../utils/linkify';
 import './Profile.css';
