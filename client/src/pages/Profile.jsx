@@ -13,6 +13,8 @@ import ProfileImageModal from '../components/ProfileImageModal';
 import SEO from '../components/SEO';
 import { linkifyText, truncateAndLinkifyText } from '../utils/linkify';
 import VideoPlayer from '../components/VideoPlayer';
+import LinkPreview from '../components/LinkPreview';
+import { extractFirstUrl } from '../utils/linkify';
 import './Profile.css';
 
 
@@ -38,6 +40,8 @@ const Profile = () => {
     const [userPosts, setUserPosts] = useState([]);
     const [postsLoading, setPostsLoading] = useState(false);
     const [postsError, setPostsError] = useState('');
+    const [savedPosts, setSavedPosts] = useState([]);
+    const [savedLoading, setSavedLoading] = useState(false);
 
     // Profile Compose State
     const [composeText, setComposeText] = useState('');
@@ -127,7 +131,29 @@ const Profile = () => {
         if (profileUser?._id && activeTab === 'posts') {
             fetchUserPosts(profileUser._id);
         }
-    }, [profileUser?._id, activeTab, fetchUserPosts]);
+        if (activeTab === 'saved' && isOwnProfile) {
+            fetchSavedPosts();
+        }
+    }, [profileUser?._id, activeTab, fetchUserPosts, isOwnProfile]);
+
+    const fetchSavedPosts = async () => {
+        setSavedLoading(true);
+        try {
+            const response = await axios.get('/api/users/me/saved');
+            setSavedPosts(response.data.filter((post) => post !== null));
+        } catch (error) {
+            console.error('Failed to fetch saved posts:', error);
+        } finally {
+            setSavedLoading(false);
+        }
+    };
+
+    const handleUnsave = (postId) => {
+        setSavedPosts(prev => prev.filter(p => p._id !== postId));
+        // Also update user context if needed, but the save button in PostCard already does that.
+        // If we are using a custom post card here, we might need to handle it.
+        // Actually, I'll use PostCard for the saved tab for consistency.
+    };
 
     // Handle profile compose post
     const handleProfilePost = async () => {
@@ -716,6 +742,14 @@ const Profile = () => {
                                         Ortak Sunucular
                                     </div>
                                 )}
+                                {isOwnProfile && (
+                                    <div
+                                        className={`profile-tab-item ${activeTab === 'saved' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('saved')}
+                                    >
+                                        Kaydedilenler
+                                    </div>
+                                )}
                             </div>
 
                             <div className="profile-tab-view">
@@ -905,6 +939,7 @@ const Profile = () => {
                                                                     <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
                                                                 </Link>
                                                                 <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
+                                                    <span className="post-time-stamp">· {new Date(post.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
                                                                 {isOwnProfile && post.portal && (
                                                                     <button
                                                                         className="go-to-post-btn"
@@ -923,15 +958,30 @@ const Profile = () => {
                                                             {post.content && (
                                                                 <div className="profile-post-text">
                                                                     <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                                        {post.content.length > 280
-                                                                            ? <>{linkifyText(post.content.slice(0, 280))}...
-                                                                                <Link to={`/post/${post._id}`} className="read-more-link">devamını gör</Link>
-                                                                              </>
-                                                                            : linkifyText(post.content)
-                                                                        }
+                                                                        {(() => {
+                                                                            const firstUrl = extractFirstUrl(post.content);
+                                                                            if (post.content.length > 280) {
+                                                                                return (
+                                                                                    <>
+                                                                                        {linkifyText(post.content.slice(0, 280), firstUrl)}...
+                                                                                        <Link to={`/post/${post._id}`} className="read-more-link">devamını gör</Link>
+                                                                                    </>
+                                                                                );
+                                                                            }
+                                                                            return linkifyText(post.content, firstUrl);
+                                                                        })()}
                                                                     </p>
                                                                 </div>
                                                             )}
+
+                                                            {/* URL Box View (Link Preview) */}
+                                                            {(() => {
+                                                                const firstUrl = extractFirstUrl(post.content);
+                                                                if (firstUrl) {
+                                                                    return <div style={{ marginTop: '8px' }}><LinkPreview url={firstUrl} /></div>;
+                                                                }
+                                                                return null;
+                                                            })()}
 
                                                             {/* Media */}
                                                             {post.media && (
@@ -1206,6 +1256,34 @@ const Profile = () => {
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'saved' && (
+                                    <div className="tab-content fade-in">
+                                        <h4 className="section-header">KAYDEDİLEN GÖNDERİLER</h4>
+                                        {savedLoading ? (
+                                            <div className="profile-posts-loading">
+                                                <div className="spinner" />
+                                            </div>
+                                        ) : savedPosts.length === 0 ? (
+                                            <div className="empty-tab">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                                </svg>
+                                                <p>Henüz bir gönderi kaydetmedin.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="profile-posts-feed">
+                                                {savedPosts.map((post) => (
+                                                    <PostCard 
+                                                        key={post._id} 
+                                                        post={post} 
+                                                        onUnsave={() => handleUnsave(post._id)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

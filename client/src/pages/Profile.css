@@ -1438,3 +1438,21 @@
     color: #00ba7c;
     font-size: 14px;
 }
+
+/* Extra styles for Profile Post Feed */
+.post-time-stamp {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-left: 2px;
+}
+
+.read-more-link {
+    color: var(--primary-cyan);
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+.read-more-link:hover {
+    text-decoration: underline;
+}

@@ -140,7 +140,8 @@
     margin-left: 4px;
 }
 
-.post-time {
+.post-time,
+.post-full-time {
     font-size: 14px;
     color: var(--text-tertiary);
     white-space: nowrap;
@@ -543,7 +544,8 @@
     }
 
     /* Zaman - minimum boşluk */
-    .post-time {
+    .post-time,
+    .post-full-time {
         font-size: 12px;
         margin-left: 0 !important;
         padding-left: 2px;
