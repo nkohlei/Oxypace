@@ -143,13 +143,11 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}${hidden ? ' navbar-hidden' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
-                        {/* Left slot — can be used for back buttons or other context-specific actions */}
+                        <Link to="/" className="brand-logo">
+                            <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
+                            <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
+                        </Link>
                     </div>
-
-                    <Link to="/" className="brand-logo">
-                        <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
-                        <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
-                    </Link>
 
                     {/* Optional center slot — used by map page for portal search */}
                     {centerContent && (

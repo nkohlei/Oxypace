@@ -92,13 +92,24 @@
     height: 24px;
 }
 
-/* Animated Logo Drop-in - Preserving absolute center */
-@keyframes logoDropIn {
+/* Desktop Logo Animation */
+@keyframes logoDropInDesktop {
+    0% {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Mobile/Centered Logo Animation */
+@keyframes logoDropInMobile {
     0% {
         transform: translate(-50%, calc(-50% - 20px));
         opacity: 0;
     }
-
     100% {
         transform: translate(-50%, -50%);
         opacity: 1;
@@ -113,13 +124,9 @@
     color: var(--text-primary);
     font-weight: 800;
     font-size: 1.35rem;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    animation: logoDropIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: logoDropInDesktop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     z-index: 10;
-    pointer-events: auto;
+    position: relative;
 }
 
 .logo-text {
@@ -472,7 +479,9 @@ body.dark-mode .logo-text {
     .brand-logo {
         position: absolute;
         left: 50%;
-        transform: translateX(-50%);
+        top: 50%;
+        transform: translate(-50%, -50%);
+        animation: logoDropInMobile 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         gap: 0;
     }
 
