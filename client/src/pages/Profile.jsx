@@ -141,7 +141,7 @@ const Profile = () => {
         setSavedLoading(true);
         try {
             const response = await axios.get('/api/users/me/saved');
-            setSavedPosts(response.data.filter((post) => post !== null));
+            setSavedPosts(response.data.filter((post) => post !== null).reverse());
         } catch (error) {
             console.error('Failed to fetch saved posts:', error);
         } finally {

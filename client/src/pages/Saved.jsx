@@ -17,7 +17,7 @@ const Saved = () => {
     const fetchSavedPosts = async () => {
         try {
             const response = await axios.get('/api/users/me/saved');
-            setPosts(response.data.filter((post) => post !== null));
+            setPosts(response.data.filter((post) => post !== null).reverse());
         } catch (error) {
             console.error('Failed to fetch saved posts:', error);
         } finally {
