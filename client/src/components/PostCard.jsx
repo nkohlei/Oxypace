@@ -378,9 +378,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             <span className="author-username">@{author.username}</span>
                         </Link>
                         <span className="post-time">· {formatDate(post.createdAt)}</span>
-                        <span className="post-full-time">
-                            · {new Date(post.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
                     </div>
 
                     {/* Post action buttons - top right */}

@@ -939,7 +939,6 @@ const Profile = () => {
                                                                     <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
                                                                 </Link>
                                                                 <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
-                                                    <span className="post-time-stamp">· {new Date(post.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
                                                                 {isOwnProfile && post.portal && (
                                                                     <button
                                                                         className="go-to-post-btn"
