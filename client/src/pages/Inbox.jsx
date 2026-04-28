@@ -606,7 +606,7 @@ const Inbox = () => {
                                                                 <polyline points="21 15 16 10 5 21"></polyline>
                                                             </svg>
                                                         </div>
-                                                        Görsel Yükle
+                                                        Görsel
                                                     </div>
                                                     <div
                                                         className="plus-menu-item"
@@ -635,7 +635,7 @@ const Inbox = () => {
                                                                 ></rect>
                                                             </svg>
                                                         </div>
-                                                        Video Yükle
+                                                        Video
                                                     </div>
                                                     <div
                                                         className="plus-menu-item"
@@ -653,7 +653,7 @@ const Inbox = () => {
                                                         >
                                                             GIF
                                                         </div>
-                                                        GIF Yükle
+                                                        GIF
                                                     </div>
                                                 </div>
                                             </>
