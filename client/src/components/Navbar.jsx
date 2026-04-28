@@ -329,14 +329,6 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         </Link>
                                     )}
                                     <Link
-                                        to="/saved"
-                                        className="dropdown-item"
-                                        onClick={() => setShowMenu(false)}
-                                    >
-                                        <Bookmark size={20} strokeWidth={1.5} />
-                                        Kaydedilenler
-                                    </Link>
-                                    <Link
                                         to="/feedback"
                                         className="dropdown-item"
                                         onClick={() => setShowMenu(false)}
