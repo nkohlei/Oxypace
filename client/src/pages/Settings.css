@@ -1120,4 +1120,62 @@ input:checked+.slider::before {
         border-right: none;
         width: 100%;
     }
+}
+
+/* Settings Content Header (Mobile/Compact) */
+.settings-content-header {
+    display: none; /* Hidden by default on desktop */
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.glass-redesign .settings-content-header {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.settings-content-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.settings-back-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.settings-back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+    .settings-content-header {
+        display: flex;
+    }
+    
+    /* When header is present, we adjust the content area padding */
+    .glass-redesign .settings-content-scrollable {
+        padding-top: 24px !important;
+    }
+    
+    /* Hide the top navbar offset on mobile if the content header is present */
+    /* Wait, the navbar is still there. The header should stay below it. */
 }
