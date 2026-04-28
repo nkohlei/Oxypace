@@ -903,8 +903,6 @@ const Profile = () => {
                                                                 <div className="badge-portal-avatar">
                                                                     {post.portal.avatar ? (
                                                                         <img src={getImageUrl(post.portal.avatar)} alt="" />
-                                                                        <img src={getImageUrl(post.portal.avatar)} alt=""     {index < userPosts.length - 1 && <div className="post-separator" />}
-                                                                        <img src={getImageUrl(post.portal.avatar)} alt="" </Fragment>
                                                                     ) : (
                                                                         <div className="badge-avatar-placeholder">
                                                                             {(post.portal.name || 'P')?.[0]}
@@ -1041,6 +1039,8 @@ const Profile = () => {
                                                             </div>
                                                         </div>
                                                     </article>
+                                                        {index < userPosts.length - 1 && <div className="post-separator" />}
+                                                    </Fragment>
                                                 ))}
                                             </div>
                                         )}

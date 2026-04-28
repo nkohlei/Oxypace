@@ -1081,9 +1081,9 @@ const Portal = () => {
                                                                                 onDelete={handleDeletePost}
                                                                                 onPin={handlePin}
                                                                                 isAdmin={isAdmin}
-                                                                            />
-                                                                                {index < posts.length - 1 && <div className="post-separator" />}
-                                                                            </Fragment>
+                                                                             />
+                                                                             {index < posts.length - 1 && <div className="post-separator" />}
+                                                                         </Fragment>
                                                                         ))}
 
                                                                         {/* Infinite Scroll Sentinel */}
