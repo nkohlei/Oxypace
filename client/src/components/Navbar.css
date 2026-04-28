@@ -341,11 +341,11 @@ body.dark-mode .logo-text {
 }
 
 .dropdown-user-status {
-    font-size: 0.75rem;
-    color: #38bdf8;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
 }
 
 @keyframes dropdownScale {
@@ -414,10 +414,11 @@ body.dark-mode .logo-text {
 }
 
 .dropdown-item.logout:hover {
-    background: transparent;
+    background: transparent !important; /* Force no background */
     color: #ff4d4d;
-    transform: scale(1.02);
+    transform: none;
     text-decoration: underline;
+    box-shadow: none !important;
 }
 
 .dropdown-item.admin-link {

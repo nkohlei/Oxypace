@@ -261,7 +261,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                          </div>
                                      </Link>
 
-                                    {user?.role === 'admin' && (
+                                    {user?.username === 'oxypace' && (
                                         <Link
                                             to="/admin"
                                             className="dropdown-item admin-link"
