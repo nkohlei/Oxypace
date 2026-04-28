@@ -143,11 +143,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}${hidden ? ' navbar-hidden' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
-                        <Link to="/" className="brand-logo">
-                            <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
-                            <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
-                        </Link>
+                        {/* Left slot — can be used for back buttons or other context-specific actions */}
                     </div>
+
+                    <Link to="/" className="brand-logo">
+                        <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
+                        <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
+                    </Link>
 
                     {/* Optional center slot — used by map page for portal search */}
                     {centerContent && (
@@ -157,32 +159,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     )}
 
                     <div className="nav-right">
-                        {/* Modern Neumorphic Theme Toggle */}
-                        {!hideThemeToggle && (
-                            <div 
-                                className={`neumorphic-theme-toggle ${isDark ? 'dark' : 'light'}`} 
-                                onClick={toggleTheme} 
-                                title={isDark ? 'Açık Tema' : 'Koyu Tema'}
-                                style={{ transform: 'scale(0.7)', transformOrigin: 'right center' }}
-                            >
-                                <div className="theme-track">
-                                    <span className="theme-text">
-                                        {isDark ? (
-                                            <>DARK<br />MODE</>
-                                        ) : (
-                                            <>LIGHT<br />MODE</>
-                                        )}
-                                    </span>
-                                    <div className="theme-thumb">
-                                        {isDark ? (
-                                            <Moon className="moon-icon" size={14} strokeWidth={2.5} />
-                                        ) : (
-                                            <Sun className="sun-icon" size={14} strokeWidth={2.5} />
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+
 
                         {/* Unified Profile Button (Toggles Dropdown) */}
                         <div className="header-menu-wrapper" ref={menuRef}>
@@ -279,6 +256,16 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         <MessageSquare size={20} strokeWidth={1.5} />
                                         Destek
                                     </Link>
+                                    <button
+                                        className="dropdown-item"
+                                        onClick={() => {
+                                            toggleTheme();
+                                            // Optional: Don't close menu if they want to toggle multiple times
+                                        }}
+                                    >
+                                        {isDark ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
+                                        <span>{isDark ? 'Açık Tema' : 'Koyu Tema'}</span>
+                                    </button>
                                     <Link
                                         to="/notifications"
                                         className="dropdown-item"
