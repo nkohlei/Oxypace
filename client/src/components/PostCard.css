@@ -11,7 +11,7 @@
     margin: 0;
     border-top: none;
     border-bottom: none;
-    margin-bottom: 10px !important; /* Reduced since separator has its own margin */
+    margin-bottom: 0 !important; /* Minimized for tight look */
     position: relative;
     cursor: default;
     transition: background-color 0.1s ease;
@@ -23,7 +23,7 @@
 .post-separator {
     height: 1px;
     width: 90%;
-    margin: 15px auto;
+    margin: 4px auto;
     display: block;
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
