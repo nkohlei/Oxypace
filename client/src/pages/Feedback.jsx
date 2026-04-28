@@ -174,18 +174,7 @@ const Feedback = () => {
 
             <Navbar />
 
-            <main className="feedback-main-wrapper">
-                <div className="feedback-header-section">
-                    <div className="title-with-back">
-                        <Link to="/" className="minimal-back-btn" title="Ana Sayfa">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                <path d="M15 18l-6-6 6-6" />
-                            </svg>
-                        </Link>
-                        <h1 className="gradient-title">Destek</h1>
-                    </div>
-                </div>
-
+            <InfoPage title="Destek">
                 <div className="feedback-content-area">
                     {showForm ? (
                         /* NEW REQUEST FORM */
@@ -348,7 +337,7 @@ const Feedback = () => {
                         </div>
                     )}
                 </div>
-            </main>
+            </InfoPage>
 
             <TicketDetailModal 
                 ticket={selectedTicket} 

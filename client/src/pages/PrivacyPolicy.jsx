@@ -1,11 +1,9 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
-import '../AppLayout.css'; // Stil değişkenleri için
-import { Link } from 'react-router-dom';
+import InfoPage from '../components/InfoPage';
 
 const PrivacyPolicy = () => {
-    // Son güncelleme tarihi (Manuel veya dinamik)
     const effectiveDate = "9 Şubat 2026";
 
     return (
@@ -17,35 +15,10 @@ const PrivacyPolicy = () => {
 
             <Navbar />
 
-            <main className="legal-content-wrapper" style={{
-                maxWidth: '900px',
-                margin: '40px auto',
-                padding: '40px',
-                backgroundColor: 'var(--bg-secondary)',
-                borderRadius: '16px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-                color: 'var(--text-primary)',
-                lineHeight: '1.7'
-            }}>
-                <div className="legal-header" style={{ marginBottom: '40px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
-                        <Link to="/settings" style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: '40px', height: '40px', borderRadius: '50%',
-                            background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                            textDecoration: 'none', transition: '0.2s',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                        }} className="back-btn-hover">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                <path d="M15 18l-6-6 6-6" />
-                            </svg>
-                        </Link>
-                        <h1 style={{ fontSize: '2.5rem', margin: 0, background: 'linear-gradient(45deg, #FF5F1F, #FF8C00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Gizlilik Politikası</h1>
-                    </div>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Son Güncelleme: {effectiveDate}</p>
-                </div>
-
+            <InfoPage title="Gizlilik Politikası">
                 <div className="legal-body">
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '30px' }}>Son Güncelleme: {effectiveDate}</p>
+
                     <section style={{ marginBottom: '30px' }}>
                         <p>
                             Oxypace ("biz", "bizim" veya "Şirket") olarak gizliliğinize derin bir saygı duyuyoruz.
@@ -58,7 +31,7 @@ const PrivacyPolicy = () => {
                     </section>
 
                     <section style={{ marginBottom: '30px' }}>
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '15px' }}>1. Topladığımız Bilgiler</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>1. Topladığımız Bilgiler</h2>
                         <p>Hizmetlerimizi sunabilmek için aşağıdaki veri türlerini topluyoruz:</p>
 
                         <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginTop: '15px' }}>A. Bize Doğrudan Sağladığınız Bilgiler</h3>
@@ -78,7 +51,7 @@ const PrivacyPolicy = () => {
                     </section>
 
                     <section style={{ marginBottom: '30px' }}>
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '15px' }}>2. Verilerinizi Nasıl Kullanıyoruz?</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>2. Verilerinizi Nasıl Kullanıyoruz?</h2>
                         <p>Topladığımız bilgileri aşağıdaki amaçlarla işliyoruz:</p>
                         <ul style={{ listStyleType: 'disc', paddingLeft: '20px', color: 'var(--text-secondary)' }}>
                             <li><strong>Hizmet Sunumu:</strong> Hesabınızı oluşturmak, giriş yapmanızı sağlamak ve platformu çalıştırmak.</li>
@@ -90,7 +63,7 @@ const PrivacyPolicy = () => {
                     </section>
 
                     <section style={{ marginBottom: '30px' }}>
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '15px' }}>3. Verilerin Paylaşımı ve Üçüncü Taraflar</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>3. Verilerin Paylaşımı ve Üçüncü Taraflar</h2>
                         <p>Kişisel verilerinizi asla üçüncü taraflara satmayız. Verilerinizi yalnızca aşağıdaki durumlarda paylaşırız:</p>
                         <ul style={{ listStyleType: 'disc', paddingLeft: '20px', color: 'var(--text-secondary)' }}>
                             <li><strong>Hizmet Sağlayıcılar:</strong> Hosting (Vercel), veritabanı (MongoDB Atlas), depolama (Cloudflare R2) ve analiz (Google Analytics) hizmeti aldğimiz güvenilir ortaklar.</li>
@@ -100,7 +73,7 @@ const PrivacyPolicy = () => {
                     </section>
 
                     <section style={{ marginBottom: '30px' }}>
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '15px' }}>4. Çerez Politikası</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>4. Çerez Politikası</h2>
                         <p>
                             Çerezler, tarayıcınızda saklanan küçük metin dosyalarıdır. Oxypace'de çerezleri şu amaçlarla kullanırız:
                         </p>
@@ -109,13 +82,13 @@ const PrivacyPolicy = () => {
                             <li><strong>Tercih Çerezleri:</strong> Dil, tema (Koyu/Açık mod) gibi tercihlerinizi hatırlar.</li>
                             <li><strong>Analitik Çerezler:</strong> Site trafiğini analiz ederek performansı iyileştirmemize yardımcı olur.</li>
                         </ul>
-                        <p style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        <p style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>
                             Tarayıcı ayarlarınızdan çerezleri istediğiniz zaman engelleyebilirsiniz, ancak bu durumda sitenin bazı özellikleri (giriş yapma gibi) çalışmayabilir.
                         </p>
                     </section>
 
                     <section style={{ marginBottom: '30px' }}>
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '15px' }}>5. Kullanıcı Haklarınız (KVKK & GDPR)</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>5. Kullanıcı Haklarınız (KVKK & GDPR)</h2>
                         <p>Kişisel verileriniz üzerinde aşağıdaki haklara sahipsiniz:</p>
                         <ul style={{ listStyleType: 'disc', paddingLeft: '20px', color: 'var(--text-secondary)' }}>
                             <li><strong>Erişim Hakkı:</strong> Hakkınızda tuttuğumuz verilerin bir kopyasını talep etme.</li>
@@ -127,7 +100,7 @@ const PrivacyPolicy = () => {
                     </section>
 
                     <section style={{ marginBottom: '30px' }}>
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '15px' }}>6. Veri Güvenliği</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>6. Veri Güvenliği</h2>
                         <p>
                             Verilerinizi korumak için endüstri standardı güvenlik önlemleri alıyoruz (SSL şifreleme, güvenli sunucular, erişim kısıtlamaları).
                             Ancak internet üzerinden yapılan hiçbir veri iletiminin %100 güvenli olduğunu garanti edemeyiz.
@@ -135,12 +108,12 @@ const PrivacyPolicy = () => {
                     </section>
 
                     <section style={{ marginBottom: '30px' }}>
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '15px' }}>7. İletişim</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>7. İletişim</h2>
                         <p>
                             Bu Gizlilik Politikası hakkında sorularınız, talepleriniz veya endişeleriniz varsa, bizimle istediğiniz zaman iletişime geçebilirsiniz:
                         </p>
-                        <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '8px', marginTop: '15px', borderLeft: '4px solid #FF5F1F' }}>
-                            <p><strong>E-posta:</strong> <a href="mailto:support@oxypace.com" style={{ color: '#FF5F1F', textDecoration: 'none' }}>support@oxypace.com</a></p>
+                        <div style={{ background: 'rgba(56, 189, 248, 0.05)', padding: '20px', borderRadius: '12px', marginTop: '15px', borderLeft: '4px solid #38bdf8' }}>
+                            <p><strong>E-posta:</strong> <a href="mailto:support@oxypace.com" style={{ color: '#38bdf8', textDecoration: 'none' }}>support@oxypace.com</a></p>
                         </div>
                     </section>
 
@@ -148,15 +121,8 @@ const PrivacyPolicy = () => {
                         &copy; {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.
                     </p>
                 </div>
-            </main>
-
-            <style>{`
-                .back-btn-hover:hover {
-                    background: var(--bg-hover) !important;
-                    transform: translateX(-2px);
-                }
-            `}</style>
-        </div >
+            </InfoPage>
+        </div>
     );
 };
 

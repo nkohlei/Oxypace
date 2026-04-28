@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import InfoPage from '../components/InfoPage';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-import '../AppLayout.css';
 
 const Contact = () => {
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAuth();
+    
     // Redirect logged in users to the new feedback system
     useEffect(() => {
         if (user && !authLoading) {
@@ -19,11 +19,11 @@ const Contact = () => {
     // Giriş yapmamış kullanıcılar için gösterilecek uyarı componenti
     const GuestsNotice = () => (
         <div style={{
-            background: 'var(--bg-primary)',
+            background: 'rgba(56, 189, 248, 0.05)',
             padding: '40px',
-            borderRadius: '12px',
+            borderRadius: '24px',
             textAlign: 'center',
-            border: '2px dashed var(--border-color)',
+            border: '1px dashed rgba(56, 189, 248, 0.2)',
             marginTop: '20px'
         }}>
             <h3 style={{ color: 'var(--text-primary)', marginBottom: '15px' }}>Bize Ulaşmak İçin Giriş Yapın</h3>
@@ -31,10 +31,10 @@ const Contact = () => {
                 Güvenlik ve spam önleme politikalarımız gereği, sadece kayıtlı kullanıcılarımız geri bildirim/destek formu üzerinden mesaj gönderebilir.
             </p>
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
-                <Link to="/login" className="btn btn-primary" style={{ padding: '10px 25px', textDecoration: 'none' }}>
+                <Link to="/login" className="btn btn-primary">
                     Giriş Yap
                 </Link>
-                <Link to="/register" className="btn btn-secondary" style={{ padding: '10px 25px', textDecoration: 'none', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+                <Link to="/register" className="btn" style={{ background: 'rgba(255, 255, 255, 0.05)' }}>
                     Kayıt Ol
                 </Link>
             </div>
@@ -50,162 +50,44 @@ const Contact = () => {
 
             <Navbar />
 
-            <main className="legal-content-wrapper" style={{
-                maxWidth: '900px',
-                margin: '40px auto',
-                padding: '40px',
-                backgroundColor: 'var(--bg-secondary)',
-                borderRadius: '16px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-                color: 'var(--text-primary)',
-                lineHeight: '1.7'
-            }}>
-                <div className="legal-header" style={{ marginBottom: '40px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
-                        <Link to="/settings" style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: '40px', height: '40px', borderRadius: '50%',
-                            background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                            textDecoration: 'none', transition: '0.2s',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                        }} className="back-btn-hover">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                <path d="M15 18l-6-6 6-6" />
-                            </svg>
-                        </Link>
-                        <h1 style={{ fontSize: '2.5rem', margin: 0, background: 'linear-gradient(45deg, #FF5F1F, #FF8C00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>İletişim</h1>
-                    </div>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Bize ulaşın, yardımcı olmaktan mutluluk duyarız.</p>
-                </div>
-
-                <div className="contact-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
-                    {/* Sol taraf: Bilgiler (Herkes görebilir) */}
+            <InfoPage title="İletişim">
+                <div className="contact-container">
                     <div className="contact-info">
-                        <h2 style={{ color: 'var(--text-highlight)', fontSize: '1.5rem', marginBottom: '20px' }}>İletişim Kanalları</h2>
+                        <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '20px' }}>İletişim Kanalları</h2>
                         <p style={{ marginBottom: '20px' }}>
-                            Aşağıdaki kanallar üzerinden bize (veya <code>nqohlei@gmail.com</code> adresine) her zaman ulaşabilirsiniz.
+                            Aşağıdaki kanallar üzerinden bize her zaman ulaşabilirsiniz.
                         </p>
 
                         <div style={{ marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '1.1rem', color: '#FF5F1F', marginBottom: '5px' }}>Doğrudan E-posta</h3>
-                            <p>nqohlei@gmail.com</p>
-                            <p>support@oxypace.com</p>
+                            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '5px' }}>E-posta Adreslerimiz</h3>
+                            <p style={{ color: '#38bdf8' }}>support@oxypace.com</p>
+                            <p style={{ color: '#38bdf8' }}>nqohlei@gmail.com</p>
                         </div>
 
-                        <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #FF5F1F', marginTop: '30px' }}>
+                        <div style={{ background: 'rgba(56, 189, 248, 0.05)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid #38bdf8', marginTop: '30px' }}>
                             <p style={{ fontSize: '0.9rem' }}>
                                 <strong>Not:</strong> Destek taleplerine genellikle 24-48 saat içinde yanıt veriyoruz.
                             </p>
                         </div>
                     </div>
 
-                    {/* Sağ taraf: Form (Sadece Üyeler) */}
-                    <div className="contact-form-wrapper">
+                    <div className="contact-form-wrapper" style={{ marginTop: '40px' }}>
                         {authLoading ? (
                             <div style={{ textAlign: 'center', padding: '20px' }}>Yükleniyor...</div>
-                        ) : !user ? (
-                            <GuestsNotice />
                         ) : (
-                            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                <h3 style={{ color: 'var(--text-primary)', marginBottom: '10px' }}>Hızlı Mesaj Gönder</h3>
-
-                                {status === 'success' && (
-                                    <div style={{ padding: '10px', background: 'rgba(76, 175, 80, 0.1)', color: '#4caf50', borderRadius: '4px', textAlign: 'center' }}>
-                                        Mesajınız başarıyla iletildi! En kısa sürede <strong>{user.email}</strong> adresine dönüş yapacağız.
-                                    </div>
-                                )}
-                                {status === 'error' && (
-                                    <div style={{ padding: '10px', background: 'rgba(255, 87, 34, 0.1)', color: '#ff5722', borderRadius: '4px', textAlign: 'center' }}>
-                                        {errorMessage}
-                                    </div>
-                                )}
-
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Kimden</label>
-                                    <input
-                                        type="text"
-                                        value={`${user.username} <${user.email}>`}
-                                        disabled
-                                        style={{
-                                            width: '100%',
-                                            padding: '10px',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: 'rgba(255, 255, 255, 0.05)',
-                                            color: 'var(--text-secondary)',
-                                            cursor: 'not-allowed'
-                                        }}
-                                    />
-                                    <small style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>E-posta adresiniz hesabınızdan otomatik çekilir.</small>
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Konu</label>
-                                    <select
-                                        name="subject"
-                                        value={formData.subject}
-                                        onChange={handleChange}
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                    >
-                                        <option value="Genel">Genel Soru</option>
-                                        <option value="Destek">Teknik Destek</option>
-                                        <option value="Geribildirim">Destek / Öneri</option>
-                                        <option value="Sikayet">Şikayet Bildirimi</option>
-                                        <option value="Isbirligi">İş Birliği</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Mesajınız</label>
-                                    <textarea
-                                        name="message"
-                                        rows="5"
-                                        value={formData.message}
-                                        onChange={handleChange}
-                                        required
-                                        placeholder="Size nasıl yardımcı olabiliriz?"
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
-                                    ></textarea>
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={status === 'loading'}
-                                    style={{
-                                        padding: '12px',
-                                        background: status === 'loading' ? '#ccc' : '#FF5F1F',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: status === 'loading' ? 'not-allowed' : 'pointer',
-                                        fontWeight: 'bold',
-                                        fontSize: '1rem',
-                                        marginTop: '10px',
-                                        transition: 'background 0.2s'
-                                    }}
-                                >
-                                    {status === 'loading' ? 'Gönderiliyor...' : 'Mesaj Gönder'}
-                                </button>
-                            </form>
+                            <GuestsNotice />
                         )}
                     </div>
                 </div>
-            </main>
+            </InfoPage>
 
-            {/* Mobil Responsive */}
             <style>{`
-                @media (max-width: 768px) {
+                @media (min-width: 769px) {
                     .contact-container {
-                        grid-template-columns: 1fr !important;
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 40px;
                     }
-                    .legal-content-wrapper {
-                        padding: 20px !important;
-                        margin: 20px auto !important;
-                    }
-                }
-                .back-btn-hover:hover {
-                    background: var(--bg-hover) !important;
-                    transform: translateX(-2px);
                 }
             `}</style>
         </div>

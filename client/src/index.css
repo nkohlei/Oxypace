@@ -172,6 +172,16 @@ body.discord-layout-active #root {
   transition: background 0.3s ease;
 }
 
+/* Scrollbar - Hidden globally */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
 /* Buttons */
 button,
 .btn {
@@ -179,44 +189,46 @@ button,
   cursor: pointer;
   border: none !important;
   outline: none;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: none !important;
   color: var(--text-primary);
   border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 button:hover,
 .btn:hover {
-  background: var(--hover-bg);
+  background: linear-gradient(135deg, #38bdf8 0%, #1e4ed8 100%);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3) !important;
 }
 
 button:active,
 .btn:active {
-  transform: scale(0.98);
-}
-
-[data-theme='light'] button:active,
-[data-theme='light'] .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
 }
 
 .btn-primary {
-  background: var(--primary-cyan);
+  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
   color: #fff;
   padding: 10px 24px;
   border-radius: 9999px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
   border: none !important;
 }
 
-.btn-primary:active {
-  transform: scale(0.98);
+.btn-primary:hover {
+  background: linear-gradient(135deg, #7dd3fc 0%, #1d4ed8 100%);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4) !important;
 }
 
 /* Inputs — Glassmorphic */
@@ -249,34 +261,6 @@ textarea:focus {
 [data-theme='light'] input:focus,
 [data-theme='light'] textarea:focus {
   background: rgba(0, 0, 0, 0.08);
-}
-
-/* Scrollbar - Modern Minimal */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  transition: background 0.3s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-[data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
 }
 
 /* App Structure */
