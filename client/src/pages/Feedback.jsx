@@ -279,7 +279,6 @@ const Feedback = () => {
                                 </button>
                             </form>
                         </div>
-                    </div>
                 ) : (
                     /* HISTORY LIST VIEW */
                     <div className="feedback-history-view animation-slide-in">
