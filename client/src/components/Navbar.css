@@ -92,15 +92,15 @@
     height: 24px;
 }
 
-/* Animated Logo Drop-in */
+/* Animated Logo Drop-in - Preserving absolute center */
 @keyframes logoDropIn {
     0% {
-        transform: translateY(-20px);
+        transform: translate(-50%, calc(-50% - 20px));
         opacity: 0;
     }
 
     100% {
-        transform: translateY(0);
+        transform: translate(-50%, -50%);
         opacity: 1;
     }
 }

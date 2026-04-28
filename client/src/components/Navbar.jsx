@@ -256,16 +256,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         <MessageSquare size={20} strokeWidth={1.5} />
                                         Destek
                                     </Link>
-                                    <button
-                                        className="dropdown-item"
-                                        onClick={() => {
-                                            toggleTheme();
-                                            // Optional: Don't close menu if they want to toggle multiple times
-                                        }}
-                                    >
-                                        {isDark ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
-                                        <span>{isDark ? 'Açık Tema' : 'Koyu Tema'}</span>
-                                    </button>
+
                                     <Link
                                         to="/notifications"
                                         className="dropdown-item"
@@ -275,6 +266,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         <span>Bildirimler</span>
                                         {unreadCount > 0 && <span className="badge-pill">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                                     </Link>
+                                    <button
+                                        className="dropdown-item"
+                                        onClick={() => toggleTheme()}
+                                    >
+                                        {isDark ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
+                                        <span>Tema</span>
+                                    </button>
                                     <Link
                                         to="/settings"
                                         className="dropdown-item"
