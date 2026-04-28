@@ -5,18 +5,18 @@
     display: grid;
     grid-template-columns: 52px 1fr;
     gap: 0;
-    padding: 12px 16px;
+    padding: 8px 16px 0 16px;
     background: transparent;
     border-radius: 0;
     margin: 0;
     border-top: none;
     border-bottom: none;
-    margin-bottom: 10px !important; /* Reduced since separator has its own margin */
+    margin-bottom: 0 !important;
     position: relative;
     cursor: default;
     transition: background-color 0.1s ease;
-    content-visibility: auto;
-    contain-intrinsic-size: auto 120px;
+    height: auto;
+    min-height: 0;
 }
 
 /* Guaranteed Visible Separator */
