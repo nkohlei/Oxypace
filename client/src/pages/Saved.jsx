@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
@@ -56,14 +56,12 @@ const Saved = () => {
                         </div>
                     ) : (
                         <div className="saved-posts">
-                            {posts.map((post, index) => (
-                                <Fragment key={post._id}>
-                                    <PostCard
-                                        post={post}
-                                        onUnsave={() => handlePostRemoved(post._id)}
-                                    />
-                                    {index < posts.length - 1 && <div className="post-separator" />}
-                                </Fragment>
+                            {posts.map((post) => (
+                                <PostCard
+                                    key={post._id}
+                                    post={post}
+                                    onUnsave={() => handlePostRemoved(post._id)}
+                                />
                             ))}
                         </div>
                     )}

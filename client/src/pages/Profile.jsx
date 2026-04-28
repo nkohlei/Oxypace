@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 
@@ -891,9 +891,8 @@ const Profile = () => {
                                             </div>
                                         ) : (
                                             <div className="profile-posts-feed">
-                                                {userPosts.map((post, index) => (
-                                                    <Fragment key={post._id}>
-                                                        <article className="profile-post-card">
+                                                {userPosts.map((post) => (
+                                                    <article key={post._id} className="profile-post-card">
                                                         {/* Portal/Channel Badge */}
                                                         {post.portal && (
                                                             <div
@@ -1039,8 +1038,6 @@ const Profile = () => {
                                                             </div>
                                                         </div>
                                                     </article>
-                                                        {index < userPosts.length - 1 && <div className="post-separator" />}
-                                                    </Fragment>
                                                 ))}
                                             </div>
                                         )}
@@ -1278,14 +1275,12 @@ const Profile = () => {
                                             </div>
                                         ) : (
                                             <div className="profile-posts-feed">
-                                                {savedPosts.map((post, index) => (
-                                                    <Fragment key={post._id}>
-                                                        <PostCard 
-                                                            post={post} 
-                                                            onUnsave={() => handleUnsave(post._id)}
-                                                        />
-                                                        {index < savedPosts.length - 1 && <div className="post-separator" />}
-                                                    </Fragment>
+                                                {savedPosts.map((post) => (
+                                                    <PostCard 
+                                                        key={post._id} 
+                                                        post={post} 
+                                                        onUnsave={() => handleUnsave(post._id)}
+                                                    />
                                                 ))}
                                             </div>
                                         )}
