@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense, Fragment } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
@@ -1073,14 +1073,17 @@ const Portal = () => {
                                                                         )}
 
                                                                         {/* Posts List */}
-                                                                        {Array.isArray(posts) && posts.map((post) => (
-                                                                            <PostCard
+                                                                        {Array.isArray(posts) && posts.map((post, index) => (
+                                                                            <Fragment key={post._id}>
+                                                                                 <PostCard
                                                                                 key={post._id}
                                                                                 post={post}
                                                                                 onDelete={handleDeletePost}
                                                                                 onPin={handlePin}
                                                                                 isAdmin={isAdmin}
                                                                             />
+                                                                                 {index < posts.length - 1 && <div className="post-separator" />}
+                                                                             </Fragment>
                                                                         ))}
 
                                                                         {/* Infinite Scroll Sentinel */}
