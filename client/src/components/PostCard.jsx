@@ -611,7 +611,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
             {showShareModal && (
                 <ShareModal postId={post._id} onClose={() => setShowShareModal(false)} />
             )}
-            <div className="post-separator" />
         </article>
     );
 };
