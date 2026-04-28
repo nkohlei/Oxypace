@@ -4,14 +4,14 @@
     left: 0;
     width: 100%;
     max-width: 100vw; /* Strict constraint */
-    height: 60px; /* Slightly taller for better alignment */
-    min-height: 60px;
-    background: rgba(13, 17, 28, 0.85) !important; /* Slightly lighter and more transparent as requested */
-    backdrop-filter: blur(30px) saturate(150%) !important;
-    -webkit-backdrop-filter: blur(30px) saturate(150%) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    height: 64px; /* Optimized for logo centering */
+    min-height: 64px;
+    background: rgba(18, 22, 33, 0.85) !important; /* Lighter, more open background */
+    backdrop-filter: blur(40px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     z-index: 9999;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: none !important; /* Strictly no shadows as per request */
     flex-shrink: 0;
     padding-top: env(safe-area-inset-top, 0px); /* Safe area support */
     display: flex;
@@ -120,8 +120,9 @@
 .brand-logo {
     display: flex;
     align-items: center;
-    height: 100%; /* Ensure logo uses full navbar height for centering */
+    height: 100%;
     gap: 12px;
+    padding-top: 3px; /* Optical adjustment to fix top-heavy appearance */
     text-decoration: none;
     color: var(--text-primary);
     font-weight: 800;
@@ -290,14 +291,14 @@ body.dark-mode .logo-text {
     top: calc(100% + 12px);
     right: 0;
     width: 220px; /* Minimal width */
-    /* Premium Misty Glassmorphism Redesign */
-    background: rgba(255, 255, 255, 0.04) !important; /* Light mist base */
-    backdrop-filter: blur(80px) saturate(180%) brightness(1.1) !important;
-    -webkit-backdrop-filter: blur(80px) saturate(180%) brightness(1.1) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    /* Premium Misty Glassmorphism - True Fog Effect */
+    background: rgba(255, 255, 255, 0.02) !important; /* Ultra-thin base */
+    backdrop-filter: blur(100px) saturate(210%) brightness(1.1) !important;
+    -webkit-backdrop-filter: blur(100px) saturate(210%) brightness(1.1) !important;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.02) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 28px !important;
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
-    background-image: radial-gradient(at top left, rgba(255, 255, 255, 0.08), transparent 70%) !important;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.03) !important;
     padding: 8px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
