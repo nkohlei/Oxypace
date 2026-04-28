@@ -53,11 +53,11 @@
     font-size: 0.9rem;
     cursor: pointer;
     transition: all var(--transition-normal);
-    box-shadow: var(--shadow-neon-soft);
+    box-shadow: none;
 }
 
 .share-btn:hover:not(:disabled) {
-    box-shadow: var(--shadow-neon);
+    box-shadow: none;
 }
 
 .share-btn:disabled {

@@ -69,7 +69,7 @@
 .comment-input:focus {
     outline: none;
     border-color: var(--primary-cyan);
-    box-shadow: 0 0 0 2px var(--primary-glow-soft);
+    box-shadow: none;
 }
 
 .comment-input::placeholder {
@@ -448,7 +448,7 @@
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border-subtle);
     border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: none;
     z-index: 100;
     min-width: 120px;
     overflow: hidden;

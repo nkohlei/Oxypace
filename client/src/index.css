@@ -14,8 +14,8 @@
   --primary-cyan-light: #93C5FD;
   --primary-cyan-dark: #1E3A5F;
 
-  --primary-glow: rgba(96, 165, 250, 0.5);
-  --primary-glow-soft: rgba(96, 165, 250, 0.25);
+  --primary-glow: transparent;
+  --primary-glow-soft: transparent;
 
   --primary-green: #32CD32;
   --primary-red: #FF0000;
@@ -35,7 +35,7 @@
 
   /* Shadows - Minimalist */
   --shadow-card: none;
-  --shadow-popover: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-popover: none;
   --shadow-glow: none;
 
   /* Glassmorphism */
@@ -86,7 +86,7 @@
 
   /* Shadows - Minimalist */
   --shadow-card: none;
-  --shadow-popover: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-popover: none;
 
   /* Glassmorphism (light) */
   --glass-bg: rgba(255, 255, 255, 0.65);
@@ -109,8 +109,6 @@ html {
 
 body {
   background: var(--bg-dark);
-  background-image: radial-gradient(circle at 15% 50%, rgba(96, 165, 250, 0.05), transparent 30%),
-                    radial-gradient(circle at 85% 30%, rgba(30, 58, 95, 0.15), transparent 30%);
   background-attachment: fixed;
   color: var(--text-primary);
   height: 100%;
@@ -206,7 +204,7 @@ button:hover,
   background: linear-gradient(135deg, #38bdf8 0%, #1e4ed8 100%);
   color: #ffffff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3) !important;
+  box-shadow: none !important;
 }
 
 button:active,
@@ -222,13 +220,13 @@ button:active,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+  box-shadow: none !important;
   border: none !important;
 }
 
 .btn-primary:hover {
   background: linear-gradient(135deg, #7dd3fc 0%, #1d4ed8 100%);
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4) !important;
+  box-shadow: none !important;
 }
 
 /* Inputs — Glassmorphic */

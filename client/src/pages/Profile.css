@@ -46,7 +46,7 @@
     border-radius: 20px;
     overflow: hidden;
     position: relative;
-    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
+    box-shadow: none;
     max-width: 1000px;
     width: 100%;
     margin: 0 auto; /* Removed vertical margin to let container align it */
@@ -106,7 +106,7 @@
 .edit-banner-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
 }
 
 /* User Info Sidebar (LEFT) */
@@ -169,7 +169,7 @@
     background-color: var(--bg-secondary);
     border: 6px solid var(--bg-card);
     position: relative;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: none;
     transition: transform 0.3s ease;
     flex-shrink: 0;
 }
@@ -203,7 +203,7 @@
     justify-content: center;
     z-index: 35;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
 }
 
 .edit-avatar-btn:hover {
@@ -290,7 +290,8 @@
     padding: 12px;
     border-radius: 12px;
     border: 1px solid var(--border-subtle);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
+}
 }
 
 .profile-date-text {
@@ -457,14 +458,14 @@
     align-items: center;
     gap: 10px;
     color: var(--text-primary);
-    box-shadow: var(--neu-shadow-dark), var(--neu-shadow-light);
+    box-shadow: none;
 }
 
 .portal-item-card:hover,
 .friend-item-card:hover {
     background: var(--bg-hover);
     transform: translateY(-2px);
-    box-shadow: 8px 8px 20px rgba(0, 0, 0, 0.5), -4px -4px 12px rgba(255, 255, 255, 0.04);
+    box-shadow: none;
 }
 
 
@@ -570,7 +571,7 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-color: var(--primary-cyan) !important;
-    box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.15), 0 12px 32px rgba(0, 0, 0, 0.35);
+    box-shadow: none;
     cursor: default;
     padding: 16px;
 }
@@ -741,13 +742,13 @@
     align-items: center;
     justify-content: center;
     transition: all 0.25s ease;
-    box-shadow: 0 2px 10px rgba(96, 165, 250, 0.25) !important;
+    box-shadow: none !important;
     gap: 2px;
 }
 
 .compose-submit-btn:hover {
     background: var(--primary-cyan-light) !important;
-    box-shadow: 0 4px 20px rgba(96, 165, 250, 0.4) !important;
+    box-shadow: none !important;
     transform: translateY(-1px);
 }
 
@@ -827,7 +828,7 @@
     border-color: var(--primary-cyan);
     color: var(--primary-cyan-light);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.15);
+    box-shadow: none;
 }
 
 .post-portal-badge.personal-badge {
@@ -1186,7 +1187,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    box-shadow: none;
     border: var(--glass-border);
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1401,7 +1402,7 @@
 
 .floating-label-group:focus-within {
     border-color: var(--primary-cyan);
-    box-shadow: 0 0 0 1px var(--primary-cyan);
+    box-shadow: none;
 }
 
 .floating-input {
