@@ -4,14 +4,14 @@
     left: 0;
     width: 100%;
     max-width: 100vw; /* Strict constraint */
-    height: 64px; /* Optimized for logo centering */
+    height: 64px; 
     min-height: 64px;
-    background: rgba(18, 22, 33, 0.85) !important; /* Lighter, more open background */
-    backdrop-filter: blur(40px) saturate(150%) !important;
-    -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+    background: rgba(13, 17, 28, 0.98) !important; /* Nearly solid to prevent visual clutter */
+    backdrop-filter: none !important; /* Removed to fix child blur rendering issues */
+    -webkit-backdrop-filter: none !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     z-index: 9999;
-    box-shadow: none !important; /* Strictly no shadows as per request */
+    box-shadow: none !important; 14:     box-shadow: none !important;
     flex-shrink: 0;
     padding-top: env(safe-area-inset-top, 0px); /* Safe area support */
     display: flex;
@@ -291,14 +291,14 @@ body.dark-mode .logo-text {
     top: calc(100% + 12px);
     right: 0;
     width: 220px; /* Minimal width */
-    /* Premium Misty Glassmorphism - True Fog Effect */
-    background: rgba(255, 255, 255, 0.02) !important; /* Ultra-thin base */
-    backdrop-filter: blur(100px) saturate(210%) brightness(1.1) !important;
-    -webkit-backdrop-filter: blur(100px) saturate(210%) brightness(1.1) !important;
-    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.02) 100%) !important;
+    /* Solid Misty Design - Non-transparent back */
+    background: rgba(15, 20, 32, 0.96) !important; /* High opacity to block background visuals */
+    backdrop-filter: blur(120px) saturate(200%) brightness(1.2) !important;
+    -webkit-backdrop-filter: blur(120px) saturate(200%) brightness(1.2) !important;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 60%) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 28px !important;
-    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.03) !important;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8) !important; /* Stronger shadow for floating feel */
     padding: 8px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
