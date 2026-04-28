@@ -149,7 +149,7 @@ const Contact = () => {
                                     >
                                         <option value="Genel">Genel Soru</option>
                                         <option value="Destek">Teknik Destek</option>
-                                        <option value="Geribildirim">Geri Bildirim / Öneri</option>
+                                        <option value="Geribildirim">Destek / Öneri</option>
                                         <option value="Sikayet">Şikayet Bildirimi</option>
                                         <option value="Isbirligi">İş Birliği</option>
                                     </select>

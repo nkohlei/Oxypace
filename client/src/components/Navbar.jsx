@@ -342,7 +342,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         onClick={() => setShowMenu(false)}
                                     >
                                         <MessageSquare size={20} strokeWidth={1.5} />
-                                        Geri Bildirim
+                                        Destek
                                     </Link>
                                     <Link
                                         to="/notifications"

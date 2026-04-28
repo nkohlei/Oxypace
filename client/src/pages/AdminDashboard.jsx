@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
+import { getImageUrl } from '../utils/imageUtils';
 import { Home, Pencil, Trash2 } from 'lucide-react';
 import Badge from '../components/Badge';
 import './AdminDashboard.css';
@@ -339,7 +340,7 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
                                                 className="gallery-thumb-wrap"
                                                 onClick={() => setActiveImage(file)}
                                             >
-                                                <img src={file} alt="" className="gallery-thumb" />
+                                                <img src={getImageUrl(file)} alt="" className="gallery-thumb" />
                                                 <div className="thumb-overlay">
                                                     <span>BÜYÜT</span>
                                                 </div>
@@ -394,7 +395,7 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
             {activeImage && (
                 <div className="lightbox-overlay" onClick={() => setActiveImage(null)}>
                     <div className="lightbox-content" onClick={e => e.stopPropagation()}>
-                        <img src={activeImage} alt="" className="lightbox-img" />
+                        <img src={getImageUrl(activeImage)} alt="" className="lightbox-img" />
                         <button className="lightbox-close" onClick={() => setActiveImage(null)}>&times;</button>
                     </div>
                 </div>

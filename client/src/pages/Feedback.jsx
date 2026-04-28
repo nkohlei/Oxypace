@@ -25,6 +25,8 @@ const Feedback = () => {
     // History state
     const [history, setHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
+    const [selectedTicket, setSelectedTicket] = useState(null);
+    const [showHistoryMobile, setShowHistoryMobile] = useState(false);
 
     const categories = ['Hata Bildirimi', 'Öneri', 'Şikayet', 'Genel'];
 
@@ -101,27 +103,87 @@ const Feedback = () => {
 
     const getTicketId = (id) => `#${id.substring(id.length - 6)}`;
 
+    // Detail Modal Component
+    const TicketDetailModal = ({ ticket, onClose }) => {
+        if (!ticket) return null;
+        return (
+            <div className="ticket-modal-overlay" onClick={onClose}>
+                <div className="ticket-modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="ticket-modal-header">
+                        <div className="header-id-group">
+                            <span className="modal-ticket-id">{getTicketId(ticket._id)}</span>
+                            <span className={`status-badge-mini ${ticket.status}`}>{getStatusText(ticket.status)}</span>
+                        </div>
+                        <button className="modal-close-btn" onClick={onClose}>&times;</button>
+                    </div>
+                    
+                    <div className="ticket-modal-scroll-body">
+                        <div className="modal-section">
+                            <label>Kategori</label>
+                            <div className="modal-value-chip">{ticket.category}</div>
+                        </div>
+
+                        <div className="modal-section">
+                            <label>Konu</label>
+                            <h3 className="modal-subject">{ticket.subject}</h3>
+                        </div>
+
+                        <div className="modal-section">
+                            <label>Mesajınız</label>
+                            <div className="modal-message-box">{ticket.message}</div>
+                        </div>
+
+                        {ticket.files && ticket.files.length > 0 && (
+                            <div className="modal-section">
+                                <label>Ekli Dosyalar ({ticket.files.length})</label>
+                                <div className="modal-gallery">
+                                    {ticket.files.map((file, idx) => (
+                                        <div key={idx} className="modal-gallery-item">
+                                            <img src={getImageUrl(file)} alt="attachment" onClick={() => window.open(getImageUrl(file), '_blank')} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {ticket.adminResponse && (
+                            <div className="modal-section admin-response-section">
+                                <label>Yönetici Yanıtı</label>
+                                <div className="modal-response-box">
+                                    {ticket.adminResponse}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="modal-footer-date">
+                            İletilme Tarihi: {new Date(ticket.createdAt).toLocaleString('tr-TR')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="feedback-page-root">
             <Helmet>
-                <title>Geri Bildirim | Oxypace</title>
-                <meta name="description" content="Oxypace deneyiminizi paylaşın, platformu birlikte geliştirelim." />
+                <title>Destek | Oxypace</title>
+                <meta name="description" content="Oxypace destek merkezi. Taleplerinizi iletin, platformu birlikte geliştirelim." />
             </Helmet>
 
             <Navbar />
 
             <main className="feedback-main-wrapper">
                 <div className="feedback-header-section">
-                    <div className="back-nav">
-                        <Link to="/" className="back-btn-pill">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <div className="title-with-back">
+                        <Link to="/" className="minimal-back-btn" title="Ana Sayfa">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                                 <path d="M15 18l-6-6 6-6" />
                             </svg>
-                            <span>Ana Sayfa</span>
                         </Link>
+                        <h1 className="gradient-title">Destek & Yardım</h1>
                     </div>
-                    <h1 className="gradient-title">Geri Bildirim & Destek</h1>
-                    <p className="subtitle">Platformumuzu daha iyi hale getirmek için fikirlerinize ihtiyacımız var.</p>
+                    <p className="subtitle">Platformumuzu daha iyi hale getirmek için fikirlerinize ve geri bildirimlerinize ihtiyacımız var.</p>
                 </div>
 
                 <div className="feedback-layout-grid">
@@ -200,21 +262,37 @@ const Feedback = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            <span>Geri Bildirimi İlet</span>
+                                            <span>Talep İlet</span>
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                 <path d="M5 12h14M12 5l7 7-7 7" />
                                             </svg>
                                         </>
                                     )}
                                 </button>
+                                
+                                {/* Mobile History Toggle */}
+                                <button 
+                                    type="button" 
+                                    className="mobile-history-trigger"
+                                    onClick={() => setShowHistoryMobile(true)}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Geçmiş Taleplerim</span>
+                                    {history.length > 0 && <span className="history-count-badge">{history.length}</span>}
+                                </button>
                             </form>
                         </div>
                     </div>
 
                     {/* Right Section: History */}
-                    <div className="feedback-history-column">
+                    <div className={`feedback-history-column ${showHistoryMobile ? 'show-mobile' : ''}`}>
                         <div className="history-glass-card">
-                            <h2 className="section-subtitle">Geçmiş Taleplerim</h2>
+                            <div className="history-card-header">
+                                <h2 className="section-subtitle">Geçmiş Taleplerim</h2>
+                                <button className="mobile-history-close" onClick={() => setShowHistoryMobile(false)}>&times;</button>
+                            </div>
                             
                             <div className="history-list-container">
                                 {loadingHistory ? (
@@ -225,7 +303,14 @@ const Feedback = () => {
                                     </div>
                                 ) : (
                                     history.map(item => (
-                                        <div key={item._id} className={`history-ticket-card ${item.status}`}>
+                                        <div 
+                                            key={item._id} 
+                                            className={`history-ticket-card ${item.status}`}
+                                            onClick={() => {
+                                                setSelectedTicket(item);
+                                                setShowHistoryMobile(false);
+                                            }}
+                                        >
                                             <div className="ticket-header">
                                                 <span className="ticket-id">{getTicketId(item._id)}</span>
                                                 <span className={`status-badge ${item.status}`}>
@@ -235,30 +320,31 @@ const Feedback = () => {
                                             <div className="ticket-body">
                                                 <div className="ticket-meta">{item.category}</div>
                                                 <div className="ticket-subject">{item.subject}</div>
+                                                <div className="ticket-excerpt">{item.message}</div>
                                                 
-                                                {/* Files Display */}
+                                                {/* Files Indicator */}
                                                 {item.files && item.files.length > 0 && (
-                                                    <div className="ticket-attachments-preview">
-                                                        {item.files.map((file, idx) => (
-                                                            <div key={idx} className="attachment-thumb">
-                                                                <img src={getImageUrl(file)} alt="attachment" />
-                                                            </div>
-                                                        ))}
+                                                    <div className="ticket-attachments-indicator">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                                                        </svg>
+                                                        <span>{item.files.length} Ek</span>
                                                     </div>
                                                 )}
-
+ 
                                                 <div className="ticket-date">
                                                     {new Date(item.createdAt).toLocaleDateString('tr-TR')}
                                                 </div>
                                             </div>
-
+ 
                                             {item.adminResponse && (
-                                                <div className="ticket-response">
-                                                    <div className="response-label">Yanıt:</div>
-                                                    <p>{item.adminResponse}</p>
+                                                <div className="ticket-response-preview">
+                                                    <div className="response-label">Yanıtlandı</div>
                                                 </div>
                                             )}
                                         </div>
+                                    ))
+
                                     ))
                                 )}
                             </div>
@@ -266,6 +352,11 @@ const Feedback = () => {
                     </div>
                 </div>
             </main>
+
+            <TicketDetailModal 
+                ticket={selectedTicket} 
+                onClose={() => setSelectedTicket(null)} 
+            />
         </div>
     );
 };
