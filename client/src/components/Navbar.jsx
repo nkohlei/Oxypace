@@ -239,76 +239,23 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             {showMenu && (
                                 <div className="header-dropdown">
                                     {/* Dropdown Header with User Info */}
-                                    <div
-                                        className="dropdown-user-info"
-                                        style={{
-                                            padding: '12px 16px',
-                                            borderBottom: '1px solid var(--border-subtle)',
-                                            marginBottom: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                        }}
-                                    >
-                                        {user?.profile?.avatar ? (
-                                            <img
-                                                src={getImageUrl(user.profile.avatar)}
-                                                alt="Avatar"
-                                                style={{
-                                                    width: '40px',
-                                                    height: '40px',
-                                                    borderRadius: '50%',
-                                                    objectFit: 'cover',
-                                                }}
-                                            />
-                                        ) : (
-                                            <div
-                                                style={{
-                                                    width: '40px',
-                                                    height: '40px',
-                                                    borderRadius: '50%',
-                                                    background: 'var(--bg-secondary)',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        fontSize: '18px',
-                                                        fontWeight: 'bold',
-                                                        color: 'var(--text-primary)',
-                                                    }}
-                                                >
-                                                    {user?.username?.[0]?.toUpperCase()}
-                                                </span>
-                                            </div>
-                                        )}
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                            }}
-                                        >
-                                            <span
-                                                style={{
-                                                    fontWeight: '700',
-                                                    color: 'var(--text-primary)',
-                                                    fontSize: '0.95rem',
-                                                }}
-                                            >
-                                                {user?.username}
-                                            </span>
-                                            <span
-                                                style={{
-                                                    fontSize: '0.8rem',
-                                                    color: 'var(--text-secondary)',
-                                                }}
-                                            >
-                                                Giriş Yapıldı
-                                            </span>
-                                        </div>
-                                    </div>
+                                    <div className="dropdown-user-info">
+                                         {user?.profile?.avatar ? (
+                                             <img
+                                                 src={getImageUrl(user.profile.avatar)}
+                                                 alt="Avatar"
+                                                 className="dropdown-avatar"
+                                             />
+                                         ) : (
+                                             <div className="dropdown-avatar-placeholder">
+                                                 <span>{user?.username?.[0]?.toUpperCase()}</span>
+                                             </div>
+                                         )}
+                                         <div className="dropdown-user-details">
+                                             <span className="dropdown-username">{user?.username}</span>
+                                             <span className="dropdown-user-status">Giriş Yapıldı</span>
+                                         </div>
+                                     </div>
                                     <Link
                                         to="/profile"
                                         className="dropdown-item"
