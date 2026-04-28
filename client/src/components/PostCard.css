@@ -15,6 +15,26 @@
     transition: background-color 0.1s ease;
     content-visibility: auto;
     contain-intrinsic-size: auto 120px;
+    position: relative;
+    margin-bottom: 24px; /* Space between posts */
+}
+
+/* Subtle medium-length separator between posts */
+.post-card.twitter-layout::after {
+    content: "";
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px; /* Medium length */
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08); /* Very thin/faint */
+    opacity: 0.6;
+}
+
+/* Remove separator for the last item in a list if possible, or just keep for all */
+.post-card.twitter-layout:last-of-type::after {
+    display: none;
 }
 
 .post-card.twitter-layout:hover {
