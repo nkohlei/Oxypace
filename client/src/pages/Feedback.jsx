@@ -26,7 +26,7 @@ const Feedback = () => {
     const [history, setHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState(null);
-    const [showHistoryMobile, setShowHistoryMobile] = useState(false);
+    const [showForm, setShowForm] = useState(false);
 
     const categories = ['Hata Bildirimi', 'Öneri', 'Şikayet', 'Genel'];
 
@@ -77,10 +77,11 @@ const Feedback = () => {
             await axios.post('/api/feedback/submit', feedbackData);
 
 
-            setSuccess('Geri bildiriminiz başarıyla iletildi. Listeden takip edebilirsiniz.');
+            setSuccess('Talebiniz başarıyla iletildi. Listeden takip edebilirsiniz.');
             setFormData({ category: 'Hata Bildirimi', subject: '', message: '' });
             setFiles([]);
             fetchHistory(); // Refresh history
+            setShowForm(false); // Go back to list
             
             // Clear success after 5s
             setTimeout(() => setSuccess(''), 5000);
@@ -181,16 +182,23 @@ const Feedback = () => {
                                 <path d="M15 18l-6-6 6-6" />
                             </svg>
                         </Link>
-                        <h1 className="gradient-title">Destek & Yardım</h1>
+                        <h1 className="gradient-title">Destek</h1>
                     </div>
-                    <p className="subtitle">Platformumuzu daha iyi hale getirmek için fikirlerinize ve geri bildirimlerinize ihtiyacımız var.</p>
                 </div>
 
-                <div className="feedback-layout-grid">
-                    {/* Left Section: Form */}
-                    <div className="feedback-form-column">
-                        <div className="form-glass-card">
-                            <h2 className="section-subtitle">Yeni Talep Oluştur</h2>
+                <div className="feedback-content-area">
+                    {showForm ? (
+                        /* NEW REQUEST FORM */
+                        <div className="feedback-form-view animation-slide-in">
+                            <div className="view-header">
+                                <button className="text-back-btn" onClick={() => setShowForm(false)}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                        <path d="M15 18l-6-6 6-6" />
+                                    </svg>
+                                    <span>Taleplerime Dön</span>
+                                </button>
+                                <h2 className="section-subtitle">Yeni Talep Oluştur</h2>
+                            </div>
                             {error && <div className="alert-message error">{error}</div>}
                             {success && <div className="alert-message success">{success}</div>}
 
@@ -269,32 +277,25 @@ const Feedback = () => {
                                         </>
                                     )}
                                 </button>
-                                
-                                {/* Mobile History Toggle */}
-                                <button 
-                                    type="button" 
-                                    className="mobile-history-trigger"
-                                    onClick={() => setShowHistoryMobile(true)}
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span>Geçmiş Taleplerim</span>
-                                    {history.length > 0 && <span className="history-count-badge">{history.length}</span>}
-                                </button>
                             </form>
                         </div>
                     </div>
+                ) : (
+                    /* HISTORY LIST VIEW */
+                    <div className="feedback-history-view animation-slide-in">
+                        <div className="history-top-actions">
+                            <h2 className="section-subtitle">Taleplerim</h2>
+                            <button className="create-ticket-trigger" onClick={() => setShowForm(true)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <path d="M12 5v14M5 12h14" />
+                                </svg>
+                                <span>Yeni Talep Oluştur</span>
+                            </button>
+                        </div>
 
-                    {/* Right Section: History */}
-                    <div className={`feedback-history-column ${showHistoryMobile ? 'show-mobile' : ''}`}>
-                        <div className="history-glass-card">
-                            <div className="history-card-header">
-                                <h2 className="section-subtitle">Geçmiş Taleplerim</h2>
-                                <button className="mobile-history-close" onClick={() => setShowHistoryMobile(false)}>&times;</button>
-                            </div>
-                            
-                            <div className="history-list-container">
+                        {success && <div className="alert-message success sticky-alert">{success}</div>}
+                        
+                        <div className="history-list-grid">
                                 {loadingHistory ? (
                                     <div className="history-loader">Talepler yükleniyor...</div>
                                 ) : history.length === 0 ? (
@@ -308,7 +309,6 @@ const Feedback = () => {
                                             className={`history-ticket-card ${item.status}`}
                                             onClick={() => {
                                                 setSelectedTicket(item);
-                                                setShowHistoryMobile(false);
                                             }}
                                         >
                                             <div className="ticket-header">
@@ -347,7 +347,7 @@ const Feedback = () => {
                                 )}
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </main>
 
