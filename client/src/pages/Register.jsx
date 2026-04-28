@@ -98,7 +98,8 @@ const Register = () => {
             apiBase += '/api';
         }
 
-        const authUrl = `${apiBase}/auth/google?mobile=true`;
+        const isNative = Capacitor.isNativePlatform();
+        const authUrl = `${apiBase}/auth/google${isNative ? '?mobile=true' : ''}`;
 
         if (Capacitor.isNativePlatform()) {
             await Browser.open({ url: authUrl });
