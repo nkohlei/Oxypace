@@ -232,7 +232,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                          )}
                                          <div className="dropdown-user-details">
                                              <span className="dropdown-username">{user?.username}</span>
-                                             <span className="dropdown-user-status">aktif</span>
+                                             <span className="dropdown-user-status">giriş yapıldı</span>
                                          </div>
                                      </Link>
 
