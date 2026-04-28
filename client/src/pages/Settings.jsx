@@ -388,22 +388,25 @@ const Settings = () => {
         return (
             <main className={`discord-main-content ${activeMenu === 'main' ? 'hidden-on-mobile' : ''}`}>
                 {activeMenu !== 'main' && (
-                    <div className="settings-content-header mobile-header-settings">
-                        <button 
-                            className="settings-back-btn" 
-                            onClick={() => setActiveMenu('main')}
-                            aria-label="Geri Dön"
-                        >
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <line x1="19" y1="12" x2="5" y2="12"></line>
-                                <polyline points="12 19 5 12 12 5"></polyline>
-                            </svg>
-                        </button>
-                        <h2>{title}</h2>
+                    <div className="info-page-header" style={{ padding: '40px 24px 0 24px', marginBottom: '20px' }}>
+                        <div className="title-group">
+                            <button 
+                                className="minimal-back-btn" 
+                                onClick={() => setActiveMenu('main')}
+                                aria-label="Geri Dön"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <path d="M15 18l-6-6 6-6" />
+                                </svg>
+                            </button>
+                            <h1 className="gradient-title" style={{ fontSize: '2rem' }}>{title}</h1>
+                        </div>
                     </div>
                 )}
-                <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 24px 24px 24px' }}>
-                    {content}
+                <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 24px 40px 24px' }}>
+                    <div className={activeMenu !== 'main' ? 'info-page-content' : ''} style={activeMenu !== 'main' ? { background: 'var(--glass-bg)', padding: '30px' } : {}}>
+                        {content}
+                    </div>
                 </div>
             </main>
         );

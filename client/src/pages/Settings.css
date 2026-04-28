@@ -1061,11 +1061,11 @@ input:checked+.slider::before {
 
 .glass-redesign .discord-main-content {
     background: transparent;
-    padding-top: 80px; /* Offset for fixed navbar */
+    padding-top: 64px; /* Reduced to align with navbar exactly */
 }
 
 .glass-redesign .settings-content-scrollable {
-    padding-top: 16px;
+    padding-top: 0;
 }
 
 .glass-redesign .settings-section {
@@ -1122,60 +1122,57 @@ input:checked+.slider::before {
     }
 }
 
-/* Settings Content Header (Mobile/Compact) */
-.settings-content-header {
-    display: none; /* Hidden by default on desktop */
-    align-items: center;
-    gap: 16px;
-    padding: 16px 24px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-subtle);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.glass-redesign .settings-content-header {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-}
-
-.settings-content-header h2 {
+/* InfoPage Style Replications for Settings */
+.settings-page-wrapper .gradient-title {
+    font-size: 2.2rem;
+    font-weight: 800;
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-primary);
+    background: linear-gradient(135deg, #38bdf8 0%, #1e4ed8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
 }
 
-.settings-back-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
+.settings-page-wrapper .minimal-back-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: background 0.2s;
+    width: 32px;
+    height: 32px;
+    color: #94a3b8;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    padding: 0;
+    border-radius: 50% !important;
 }
 
-.settings-back-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+.settings-page-wrapper .minimal-back-btn:hover {
+    color: #38bdf8 !important;
+    background: rgba(56, 189, 248, 0.1) !important;
+    transform: translateX(-3px);
+}
+
+.settings-page-wrapper .info-page-content {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-subtle);
+    border-radius: 24px;
+    padding: 30px;
+    line-height: 1.6;
 }
 
 @media (max-width: 768px) {
-    .settings-content-header {
-        display: flex;
+    .glass-redesign .discord-main-content {
+        padding-top: 64px;
     }
     
-    /* When header is present, we adjust the content area padding */
-    .glass-redesign .settings-content-scrollable {
-        padding-top: 24px !important;
+    .settings-page-wrapper .info-page-header {
+        padding: 20px 16px 0 16px !important;
     }
     
-    /* Hide the top navbar offset on mobile if the content header is present */
-    /* Wait, the navbar is still there. The header should stay below it. */
+    .settings-page-wrapper .gradient-title {
+        font-size: 1.5rem !important;
+    }
 }
