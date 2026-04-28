@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
 import { getImageUrl } from '../utils/imageUtils';
+import InfoPage from '../components/InfoPage';
 import './Feedback.css';
 
 const Feedback = () => {
