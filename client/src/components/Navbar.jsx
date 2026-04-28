@@ -238,8 +238,12 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             {/* Dropdown Menu (Existing logic wrapped here) */}
                             {showMenu && (
                                 <div className="header-dropdown">
-                                    {/* Dropdown Header with User Info */}
-                                    <div className="dropdown-user-info">
+                                    {/* Dropdown Header - Link to Profile */}
+                                    <Link 
+                                        to="/profile" 
+                                        className="dropdown-user-info"
+                                        onClick={() => setShowMenu(false)}
+                                    >
                                          {user?.profile?.avatar ? (
                                              <img
                                                  src={getImageUrl(user.profile.avatar)}
@@ -255,24 +259,16 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                              <span className="dropdown-username">{user?.username}</span>
                                              <span className="dropdown-user-status">Giriş Yapıldı</span>
                                          </div>
-                                     </div>
-                                    <Link
-                                        to="/profile"
-                                        className="dropdown-item"
-                                        onClick={() => setShowMenu(false)}
-                                    >
-                                        <User size={20} strokeWidth={1.5} />
-                                        Profilim
-                                    </Link>
-                                    {user?.isAdmin && (
+                                     </Link>
+
+                                    {user?.role === 'admin' && (
                                         <Link
                                             to="/admin"
-                                            className={`dropdown-item admin-link ${adminPendingCount > 0 ? 'has-admin-notification' : ''}`}
+                                            className="dropdown-item admin-link"
                                             onClick={() => setShowMenu(false)}
                                         >
                                             <Shield size={20} strokeWidth={1.5} />
-                                            <span>Yönetici Paneli</span>
-                                            {adminPendingCount > 0 && <span className="admin-notification-dot"></span>}
+                                            Yönetici Paneli
                                         </Link>
                                     )}
                                     <Link
@@ -288,15 +284,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         className="dropdown-item"
                                         onClick={() => setShowMenu(false)}
                                     >
-                                        <div className="icon-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                            <Bell size={20} strokeWidth={1.5} />
-                                        </div>
-                                        <span style={{ marginLeft: '12px' }}>Bildirimler</span>
-                                        {unreadCount > 0 && (
-                                            <span className="badge-pill">
-                                                {unreadCount > 9 ? '9+' : unreadCount}
-                                            </span>
-                                        )}
+                                        <Bell size={20} strokeWidth={1.5} />
+                                        <span>Bildirimler</span>
+                                        {unreadCount > 0 && <span className="badge-pill">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                                     </Link>
                                     <Link
                                         to="/settings"
