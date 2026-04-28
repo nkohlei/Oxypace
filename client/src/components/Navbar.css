@@ -291,14 +291,14 @@ body.dark-mode .logo-text {
     top: calc(100% + 12px);
     right: 0;
     width: 220px; /* Minimal width */
-    /* Solid Misty Design - Non-transparent back */
-    background: rgba(15, 20, 32, 0.96) !important; /* High opacity to block background visuals */
-    backdrop-filter: blur(120px) saturate(200%) brightness(1.2) !important;
-    -webkit-backdrop-filter: blur(120px) saturate(200%) brightness(1.2) !important;
-    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 60%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    /* Balanced Misty Design - Light permeable yet foggy */
+    background: rgba(15, 20, 32, 0.75) !important; /* Balanced opacity for light permeability */
+    backdrop-filter: blur(120px) saturate(220%) brightness(1.2) !important;
+    -webkit-backdrop-filter: blur(120px) saturate(220%) brightness(1.2) !important;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 28px !important;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8) !important; /* Stronger shadow for floating feel */
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7) !important;
     padding: 8px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
