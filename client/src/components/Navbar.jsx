@@ -232,7 +232,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                          )}
                                          <div className="dropdown-user-details">
                                              <span className="dropdown-username">{user?.username}</span>
-                                             <span className="dropdown-user-status">Giriş Yapıldı</span>
+                                             <span className="dropdown-user-status">aktif</span>
                                          </div>
                                      </Link>
 
@@ -264,13 +264,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         <span>Bildirimler</span>
                                         {unreadCount > 0 && <span className="badge-pill">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                                     </Link>
-                                    <button
-                                        className="dropdown-item"
-                                        onClick={() => toggleTheme()}
-                                    >
-                                        {isDark ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
-                                        <span>Tema</span>
-                                    </button>
+
                                     <Link
                                         to="/settings"
                                         className="dropdown-item"

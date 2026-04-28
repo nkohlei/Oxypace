@@ -288,12 +288,12 @@ body.dark-mode .logo-text {
     top: calc(100% + 12px);
     right: 0;
     width: 220px; /* Minimal width */
-    background: rgba(15, 23, 42, 0.7) !important; /* Balanced misty effect */
-    backdrop-filter: blur(40px) saturate(180%) brightness(1.2) !important;
-    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.2) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 20px !important;
-    box-shadow: none !important;
+    background: rgba(15, 23, 42, 0.4) !important; /* Lighter background for better mist effect */
+    backdrop-filter: blur(50px) saturate(200%) brightness(1.2) !important;
+    -webkit-backdrop-filter: blur(50px) saturate(200%) brightness(1.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
     padding: 8px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
@@ -353,11 +353,12 @@ body.dark-mode .logo-text {
 }
 
 .dropdown-user-status {
-    font-size: 0.65rem;
-    color: var(--text-tertiary);
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: 0;
+    font-size: 0.6rem;
+    color: var(--primary-color);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.8;
 }
 
 @keyframes dropdownScale {
@@ -427,9 +428,9 @@ body.dark-mode .logo-text {
 
 .dropdown-item.logout:hover {
     background: transparent !important; /* Force no background */
-    color: #ff4d4d;
-    transform: none;
-    text-decoration: underline;
+    color: #ff4d4d !important;
+    transform: none !important;
+    text-decoration: underline !important;
     box-shadow: none !important;
 }
 
