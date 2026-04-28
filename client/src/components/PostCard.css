@@ -11,29 +11,26 @@
     margin: 0;
     border-top: none;
     border-bottom: none;
+    margin-bottom: 40px !important; /* Space between posts */
+    position: relative;
     cursor: default;
     transition: background-color 0.1s ease;
     content-visibility: auto;
     contain-intrinsic-size: auto 120px;
-    position: relative;
-    margin-bottom: 32px !important; /* Increased space to ensure separator is visible */
 }
 
-/* More visible medium-length separator between posts */
-.post-card.twitter-layout::after {
-    content: "";
-    position: absolute;
-    bottom: -16px; /* Center of the margin */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 140px; /* Medium length */
+/* Guaranteed Visible Separator */
+.post-separator {
+    grid-column: 1 / -1;
     height: 1px;
-    background-color: rgba(255, 255, 255, 0.15); /* More visible */
-    pointer-events: none;
+    width: 150px;
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    margin: 24px auto 0 auto;
+    opacity: 1 !important;
+    display: block;
 }
 
-/* Remove separator for the last item in a list if possible, or just keep for all */
-.post-card.twitter-layout:last-of-type::after {
+.post-card:last-of-type .post-separator {
     display: none;
 }
 
