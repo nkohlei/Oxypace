@@ -1061,6 +1061,7 @@ input:checked+.slider::before {
 
 .glass-redesign .discord-main-content {
     background: transparent;
+    padding-top: 80px; /* Offset for fixed navbar */
 }
 
 .glass-redesign .settings-content-scrollable {
