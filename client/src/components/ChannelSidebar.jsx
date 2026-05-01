@@ -35,11 +35,11 @@ const ChannelSidebar = ({
 
     if (!portal) return null;
 
-    const channels = portal?.channels?.map((ch) => ({
+    const channels = portal?.channels ? [...portal.channels].sort((a, b) => (a.order || 0) - (b.order || 0)).map((ch) => ({
         id: ch._id,
         name: ch.name,
         type: ch.type || 'text',
-    })) || [];
+    })) : [];
 
     const isSelected = (id) => currentChannel === id;
 

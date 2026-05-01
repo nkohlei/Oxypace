@@ -649,12 +649,47 @@ router.delete('/:id/channels/:channelId', protect, mongoIdValidation('id'), mong
     }
 });
 
+// @desc    Reorder channels
+// @route   PUT /api/portals/:id/channels/reorder
+// @access  Private (Owner/Admin)
+router.put('/:id/channels/reorder', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const { orderedIds } = req.body;
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isAdmin = portal.admins.includes(req.user._id);
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        // Update order for each channel
+        if (Array.isArray(orderedIds)) {
+            orderedIds.forEach((id, index) => {
+                const channel = portal.channels.id(id);
+                if (channel) {
+                    channel.order = index;
+                }
+            });
+        }
+
+        await portal.save();
+        res.json(portal.channels);
+    } catch (error) {
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
 // @desc    Update a channel
 // @route   PUT /api/portals/:id/channels/:channelId
 // @access  Private (Owner/Admin)
 router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoIdValidation('channelId'), async (req, res) => {
     try {
-        const { name, isPrivate } = req.body;
+        const { name, isPrivate, type } = req.body;
         const portal = await Portal.findById(req.params.id);
         if (!portal) {
             return res.status(404).json({ message: 'Portal not found' });
@@ -677,6 +712,12 @@ router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoId
         }
         if (isPrivate !== undefined) {
             channel.isPrivate = isPrivate;
+        }
+        if (type && ['text', 'voice', 'conference', 'image'].includes(type)) {
+            channel.type = type;
+            // Defaults for specific types
+            if (type === 'conference') channel.roomMode = 'stage';
+            if (type === 'voice') channel.roomMode = 'free';
         }
 
         await portal.save();

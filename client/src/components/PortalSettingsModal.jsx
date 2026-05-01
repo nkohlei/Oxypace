@@ -53,7 +53,7 @@ const PortalSettingsModal = ({
     const [blockedUsers, setBlockedUsers] = useState([]);
 
     // Channel Editing State
-    const [editingChannel, setEditingChannel] = useState(null); // { id, name, isPrivate }
+    const [editingChannel, setEditingChannel] = useState(null); // { id, name, isPrivate, type }
 
     // --- Location State ---
     const [locationData, setLocationData] = useState({
@@ -430,20 +430,39 @@ const PortalSettingsModal = ({
         }
     };
 
+    const handleReorderChannels = async (newOrderedChannels) => {
+        try {
+            const orderedIds = newOrderedChannels.map(ch => ch._id);
+            const res = await axios.put(`/api/portals/${portal._id}/channels/reorder`, { orderedIds });
+            onUpdate({ ...portal, channels: res.data });
+        } catch (err) {
+            alert('Sıralama güncellenemedi');
+        }
+    };
+
+    const moveChannel = (index, direction) => {
+        const sortedChannels = [...portal.channels].sort((a, b) => (a.order || 0) - (b.order || 0));
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+        if (targetIndex < 0 || targetIndex >= sortedChannels.length) return;
+
+        // Swap
+        const temp = sortedChannels[index];
+        sortedChannels[index] = sortedChannels[targetIndex];
+        sortedChannels[targetIndex] = temp;
+
+        handleReorderChannels(sortedChannels);
+    };
+
     const handleUpdateChannel = async () => {
         if (!editingChannel || !editingChannel.name.trim()) return;
         try {
-            await axios.put(`/api/portals/${portal._id}/channels/${editingChannel.id}`, {
+            const res = await axios.put(`/api/portals/${portal._id}/channels/${editingChannel.id}`, {
                 name: editingChannel.name,
                 isPrivate: editingChannel.isPrivate,
+                type: editingChannel.type,
             });
-            // Optimistic update or refresh
-            const updatedChannels = portal.channels.map((ch) =>
-                ch._id === editingChannel.id
-                    ? { ...ch, name: editingChannel.name, isPrivate: editingChannel.isPrivate }
-                    : ch
-            );
-            onUpdate({ ...portal, channels: updatedChannels });
+            onUpdate({ ...portal, channels: res.data });
             setEditingChannel(null);
         } catch (err) {
             alert('Kanal güncellenemedi');
@@ -944,75 +963,110 @@ const PortalSettingsModal = ({
 
                             <div className="channel-list">
                                 {portal.channels &&
-                                    portal.channels.map((ch) => (
+                                    [...portal.channels].sort((a, b) => (a.order || 0) - (b.order || 0)).map((ch, index, allChannels) => (
                                         <div key={ch._id} className="channel-row">
                                             {editingChannel && editingChannel.id === ch._id ? (
                                                 <div
                                                     style={{
                                                         display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px',
+                                                        flexDirection: 'column',
+                                                        gap: '12px',
                                                         flex: 1,
+                                                        padding: '10px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        borderRadius: '12px',
+                                                        border: '1px solid rgba(255,255,255,0.06)'
                                                     }}
                                                 >
-                                                    <input
-                                                        className="form-input"
-                                                        value={editingChannel.name}
-                                                        onChange={(e) =>
-                                                            setEditingChannel({
-                                                                ...editingChannel,
-                                                                name: e.target.value,
-                                                            })
-                                                        }
-                                                        style={{
-                                                            padding: '4px 8px',
-                                                            height: '32px',
-                                                        }}
-                                                    />
-                                                    <label
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                            fontSize: '12px',
-                                                            color: '#b9bbbe',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                         <input
-                                                            type="checkbox"
-                                                            checked={editingChannel.isPrivate}
+                                                            className="form-input"
+                                                            value={editingChannel.name}
                                                             onChange={(e) =>
                                                                 setEditingChannel({
                                                                     ...editingChannel,
-                                                                    isPrivate: e.target.checked,
+                                                                    name: e.target.value,
                                                                 })
                                                             }
+                                                            style={{ flex: 1 }}
                                                         />
-                                                        Gizli
-                                                    </label>
-                                                    <button
-                                                        onClick={handleUpdateChannel}
-                                                        style={{
-                                                            color: '#2ecc71',
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        <Check size={18} strokeWidth={2} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setEditingChannel(null)}
-                                                        style={{
-                                                            color: '#ed4245',
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        <X size={18} strokeWidth={2} />
-                                                    </button>
+                                                        <select
+                                                            className="form-input"
+                                                            value={editingChannel.type}
+                                                            onChange={(e) => setEditingChannel({ ...editingChannel, type: e.target.value })}
+                                                            style={{
+                                                                width: '120px',
+                                                                padding: '8px',
+                                                                background: 'rgba(255,255,255,0.05)',
+                                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                                color: 'white',
+                                                                borderRadius: '8px'
+                                                            }}
+                                                        >
+                                                            <option value="text" style={{ background: '#2c2e33' }}># Metin</option>
+                                                            <option value="voice" style={{ background: '#2c2e33' }}>🎙️ Ses</option>
+                                                            <option value="conference" style={{ background: '#2c2e33' }}>🎤 Seminer</option>
+                                                            <option value="image" style={{ background: '#2c2e33' }}>🖼️ Görsel</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <label
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '8px',
+                                                                fontSize: '13px',
+                                                                color: '#94a3b8',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={editingChannel.isPrivate}
+                                                                onChange={(e) =>
+                                                                    setEditingChannel({
+                                                                        ...editingChannel,
+                                                                        isPrivate: e.target.checked,
+                                                                    })
+                                                                }
+                                                                style={{ width: '16px', height: '16px' }}
+                                                            />
+                                                            Gizli Kanal
+                                                        </label>
+                                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                                            <button
+                                                                onClick={() => setEditingChannel(null)}
+                                                                style={{
+                                                                    padding: '6px 16px',
+                                                                    background: 'rgba(237,66,69,0.1)',
+                                                                    color: '#ed4245',
+                                                                    border: '1px solid rgba(237,66,69,0.3)',
+                                                                    borderRadius: '8px',
+                                                                    fontSize: '13px',
+                                                                    fontWeight: '600',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                İptal
+                                                            </button>
+                                                            <button
+                                                                onClick={handleUpdateChannel}
+                                                                style={{
+                                                                    padding: '6px 16px',
+                                                                    background: '#5865f2',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    borderRadius: '8px',
+                                                                    fontSize: '13px',
+                                                                    fontWeight: '600',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                Kaydet
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <>
@@ -1021,40 +1075,83 @@ const PortalSettingsModal = ({
                                                         style={{
                                                             display: 'flex',
                                                             alignItems: 'center',
-                                                            gap: '6px',
+                                                            gap: '8px',
                                                         }}
                                                     >
-                                                        <span style={{ color: ch.type === 'voice' ? '#22c55e' : ch.type === 'conference' ? '#a855f7' : ch.type === 'image' ? '#f59e0b' : '#72767d' }}>
+                                                        <span style={{ 
+                                                            fontSize: '18px',
+                                                            color: ch.type === 'voice' ? '#22c55e' : ch.type === 'conference' ? '#a855f7' : ch.type === 'image' ? '#f59e0b' : '#94a3b8' 
+                                                        }}>
                                                             {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : ch.type === 'image' ? '🖼️' : '#'}
                                                         </span>
-                                                        {ch.name}
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{ch.name}</span>
+                                                            <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'capitalize' }}>
+                                                                {ch.type === 'image' ? 'Görsel Kanal' : ch.type === 'voice' ? 'Ses Kanalı' : ch.type === 'conference' ? 'Seminer Kanalı' : 'Metin Kanalı'}
+                                                            </span>
+                                                        </div>
                                                         {ch.isPrivate && (
-                                                            <Lock size={14} strokeWidth={2} style={{ color: '#faa61a' }} title="Gizli Kanal" />
+                                                            <Lock size={14} strokeWidth={2.5} style={{ color: '#faa61a', marginLeft: '4px' }} title="Gizli Kanal" />
                                                         )}
                                                     </div>
                                                     {isAdmin && (
-                                                        <div className="channel-actions">
+                                                        <div className="channel-actions" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                            {/* Reorder Buttons */}
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '8px' }}>
+                                                                <button
+                                                                    onClick={() => moveChannel(index, 'up')}
+                                                                    disabled={index === 0}
+                                                                    style={{ 
+                                                                        padding: '2px', 
+                                                                        opacity: index === 0 ? 0.3 : 1,
+                                                                        background: 'rgba(255,255,255,0.05)',
+                                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                                        borderRadius: '4px',
+                                                                        cursor: index === 0 ? 'default' : 'pointer',
+                                                                        color: 'var(--text-secondary)'
+                                                                    }}
+                                                                >
+                                                                    <ChevronRight size={14} style={{ transform: 'rotate(-90deg)' }} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => moveChannel(index, 'down')}
+                                                                    disabled={index === allChannels.length - 1}
+                                                                    style={{ 
+                                                                        padding: '2px', 
+                                                                        opacity: index === allChannels.length - 1 ? 0.3 : 1,
+                                                                        background: 'rgba(255,255,255,0.05)',
+                                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                                        borderRadius: '4px',
+                                                                        cursor: index === allChannels.length - 1 ? 'default' : 'pointer',
+                                                                        color: 'var(--text-secondary)'
+                                                                    }}
+                                                                >
+                                                                    <ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                                                </button>
+                                                            </div>
+
                                                             <button
+                                                                className="portal-action-btn-circle"
+                                                                style={{ width: '32px', height: '32px' }}
                                                                 onClick={() =>
                                                                     setEditingChannel({
                                                                         id: ch._id,
                                                                         name: ch.name,
-                                                                        isPrivate:
-                                                                            ch.isPrivate || false,
+                                                                        isPrivate: ch.isPrivate || false,
+                                                                        type: ch.type || 'text'
                                                                     })
                                                                 }
                                                                 title="Düzenle"
-                                                                style={{ marginRight: '4px' }}
                                                             >
-                                                                <Pencil size={18} strokeWidth={2} />
+                                                                <Pencil size={16} strokeWidth={2} />
                                                             </button>
                                                             <button
-                                                                onClick={() =>
-                                                                    handleDeleteChannel(ch._id)
-                                                                }
+                                                                className="portal-action-btn-circle"
+                                                                style={{ width: '32px', height: '32px', borderColor: 'rgba(237,66,69,0.2)' }}
+                                                                onClick={() => handleDeleteChannel(ch._id)}
                                                                 title="Kanalı Sil"
                                                             >
-                                                                <Trash2 size={18} strokeWidth={2} />
+                                                                <Trash2 size={16} strokeWidth={2} color="#ed4245" />
                                                             </button>
                                                         </div>
                                                     )}
