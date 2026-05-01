@@ -89,7 +89,7 @@ async function fetchTwitterPreview(originalUrl) {
 const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
 
 /**
- * Helper to ensure we have a full URL, trying to avoid SSL/ISP blocks
+ * Helper to ensure we have a full URL, routing through our own proxy to avoid ISP/SSL blocks
  */
 function ensureFullUrl(key) {
     if (!key) return '';
@@ -97,9 +97,10 @@ function ensureFullUrl(key) {
     if (key.startsWith('http')) return key;
     
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+    const r2Url = `${R2_DOMAIN}/${cleanKey}`;
     
-    // We append a small cache-buster even to the image URL itself to force a fresh pull from R2
-    return `${R2_DOMAIN}/${cleanKey}?v=${Date.now()}`;
+    // Route through our internal proxy to bypass ISP blocks on R2 domain
+    return `/api/preview/proxy-image?url=${encodeURIComponent(r2Url)}`;
 }
 
 async function fetchInternalPreview(urlStr) {
@@ -376,6 +377,41 @@ router.get('/video', async (req, res) => {
         console.error('Video proxy error:', err.message);
         if (!res.headersSent) {
             res.status(500).json({ message: 'Failed to load video' });
+        }
+    }
+/**
+ * Image Proxy to bypass ISP/SSL blocks on R2 domain
+ */
+router.get('/proxy-image', async (req, res) => {
+    const imageUrl = req.query.url;
+    if (!imageUrl) return res.status(400).send('URL is required');
+
+    try {
+        const response = await axios({
+            method: 'get',
+            url: imageUrl,
+            responseType: 'stream',
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0'
+            }
+        });
+
+        // Pass through content-type
+        if (response.headers['content-type']) {
+            res.set('Content-Type', response.headers['content-type']);
+        }
+        res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+        
+        response.data.pipe(res);
+
+        req.on('close', () => {
+            response.data.destroy();
+        });
+    } catch (err) {
+        console.error('Image proxy error:', err.message);
+        if (!res.headersSent) {
+            res.status(500).send('Failed to fetch image');
         }
     }
 });
