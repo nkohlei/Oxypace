@@ -91,7 +91,7 @@ const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
 /**
  * Helper to ensure we have a full URL, routing through our own proxy to avoid ISP/SSL blocks
  */
-function ensureFullUrl(key) {
+function ensureFullUrl(key, baseUrl = '') {
     if (!key) return '';
     if (typeof key !== 'string') return '';
     if (key.startsWith('http')) return key;
@@ -99,11 +99,11 @@ function ensureFullUrl(key) {
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
     const r2Url = `${R2_DOMAIN}/${cleanKey}`;
     
-    // Route through our internal proxy to bypass ISP blocks on R2 domain
-    return `/api/preview/proxy-image?url=${encodeURIComponent(r2Url)}`;
+    // Use absolute URL for the proxy if baseUrl is provided
+    return `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(r2Url)}`;
 }
 
-async function fetchInternalPreview(urlStr) {
+async function fetchInternalPreview(urlStr, baseUrl = '') {
     try {
         const url = new URL(urlStr);
         const path = url.pathname;
@@ -119,8 +119,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'portal',
                     title: portal.name,
                     description: portal.description || 'Oxypace portalını keşfedin.',
-                    image: ensureFullUrl(portal.banner),
-                    avatar: ensureFullUrl(portal.avatar),
+                    image: ensureFullUrl(portal.banner, baseUrl),
+                    avatar: ensureFullUrl(portal.avatar, baseUrl),
                     url: urlStr,
                     siteName: 'Oxypace Portal',
                     favicon: '/favicon.ico'
@@ -139,8 +139,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'profile',
                     title: user.profile?.displayName || user.username,
                     description: user.profile?.bio || `${user.username} profiline göz atın.`,
-                    image: ensureFullUrl(user.profile?.coverImage),
-                    avatar: ensureFullUrl(user.profile?.avatar),
+                    image: ensureFullUrl(user.profile?.coverImage, baseUrl),
+                    avatar: ensureFullUrl(user.profile?.avatar, baseUrl),
                     url: urlStr,
                     siteName: 'Oxypace Profil',
                     favicon: '/favicon.ico'
@@ -165,8 +165,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'post',
                     title: `${authorName} bir gönderi paylaştı`,
                     description: post.content ? (post.content.substring(0, 150) + (post.content.length > 150 ? '...' : '')) : 'Oxypace gönderisine göz atın.',
-                    image: ensureFullUrl(post.media?.[0]?.url || post.portal?.banner),
-                    avatar: ensureFullUrl(post.author?.profile?.avatar || post.portal?.avatar),
+                    image: ensureFullUrl(post.media?.[0]?.url || post.portal?.banner, baseUrl),
+                    avatar: ensureFullUrl(post.author?.profile?.avatar || post.portal?.avatar, baseUrl),
                     url: urlStr,
                     siteName: `Oxypace / ${portalName}`,
                     favicon: '/favicon.ico'
@@ -259,7 +259,12 @@ router.get('/', async (req, res) => {
 
         // 1. Try Internal Oxypace Logic (Path-based, domain agnostic)
         try {
-            previewData = await fetchInternalPreview(originalUrl);
+            // Pass the current base URL to ensure absolute proxy links
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+            const host = req.get('host');
+            const baseUrl = `${protocol}://${host}`;
+            
+            previewData = await fetchInternalPreview(originalUrl, baseUrl);
             if (previewData) {
                 mode = 'internal';
             }
