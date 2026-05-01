@@ -975,19 +975,26 @@ router.put('/portals/reorder', protect, async (req, res) => {
             return res.status(400).json({ message: 'Lütfen geçerli bir sıralama dizisi gönderin.' });
         }
 
-        const user = await User.findById(req.user._id);
+        const [user, ownedPortals] = await Promise.all([
+            User.findById(req.user._id),
+            Portal.find({ owner: req.user._id }).select('_id')
+        ]);
 
-        // Check integrity without demanding strict length equality (frontend might map out deleted/null portals)
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Check integrity: Allowed IDs are those user joined OR owns
         const currentJoinedStrings = user.joinedPortals.map(id => id ? id.toString() : null).filter(Boolean);
-        const providedStrings = orderedPortalIds.map(id => id ? id.toString() : null).filter(Boolean);
+        const ownedIds = ownedPortals.map(p => p._id.toString());
+        const allowedIds = [...new Set([...currentJoinedStrings, ...ownedIds])];
         
-        const isValid = providedStrings.every(id => currentJoinedStrings.includes(id));
+        const providedStrings = orderedPortalIds.map(id => id ? id.toString() : null).filter(Boolean);
+        const isValid = providedStrings.every(id => allowedIds.includes(id));
 
         if (!isValid) {
             return res.status(400).json({ message: 'Geçersiz sıralama: Veri tutarsızlığı saptandı.' });
         }
 
-        // Keep any IDs that the frontend omitted (e.g. deleted portals or parsing errors) at the end
+        // Keep any IDs that the frontend omitted (e.g. newly joined portals since last fetch) at the end
         const missingIds = currentJoinedStrings.filter(id => !providedStrings.includes(id));
         user.joinedPortals = [...providedStrings, ...missingIds];
         await user.save();

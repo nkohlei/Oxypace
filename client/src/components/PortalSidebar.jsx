@@ -11,7 +11,7 @@ import { MessageSquare, Compass, Plus, Save, ArrowUpDown } from 'lucide-react';
 import './PortalSidebar.css';
 
 const PortalSidebar = () => {
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, updateUser } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
     const { unreadPostsByPortal, clearUnreadForPortal, syncUnreadCounts } = useGlobalStore();
     const navigate = useNavigate();
@@ -25,12 +25,13 @@ const PortalSidebar = () => {
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        if (user?.joinedPortals) {
-            setOrderedPortals(user.joinedPortals.filter((p) => p && p._id && p.name));
+        const source = user?.portals || user?.joinedPortals;
+        if (source) {
+            setOrderedPortals(source.filter((p) => p && p._id && p.name));
             // Sync unread counts from server to ensure offline accuracy
             syncUnreadCounts();
         }
-    }, [user?.joinedPortals, syncUnreadCounts]);
+    }, [user?.portals, user?.joinedPortals, syncUnreadCounts]);
 
     useEffect(() => {
         // Clear unread status when entering a portal
@@ -66,6 +67,17 @@ const PortalSidebar = () => {
             try {
                 const orderedIds = orderedPortals.map(p => p._id);
                 await axios.put('/api/users/portals/reorder', { orderedPortalIds: orderedIds });
+                
+                // Update global user state locally to prevent UI revert before re-fetch
+                if (user) {
+                    const newPortals = [...orderedPortals];
+                    updateUser({ 
+                        ...user, 
+                        portals: newPortals,
+                        joinedPortals: newPortals 
+                    });
+                }
+                
                 setIsReordering(false);
             } catch (err) {
                 console.error(err);
