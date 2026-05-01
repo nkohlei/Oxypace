@@ -302,16 +302,32 @@ router.get('/', async (req, res) => {
             }
         }
 
+        // Final Safety Check: Force Proxy for ANY R2 URL (Internal or Generic)
+        if (previewData && previewData.image && previewData.image.includes('r2.dev')) {
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+            const host = req.get('host');
+            const baseUrl = `${protocol}://${host}`;
+            
+            // If it's already a full R2 URL, proxy it
+            if (previewData.image.includes(R2_DOMAIN)) {
+                previewData.image = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.image)}`;
+            }
+        }
+        
+        if (previewData && previewData.avatar && previewData.avatar.includes('r2.dev')) {
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+            const host = req.get('host');
+            const baseUrl = `${protocol}://${host}`;
+            
+            if (previewData.avatar.includes(R2_DOMAIN)) {
+                previewData.avatar = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.avatar)}`;
+            }
+        }
+
         // Cache it
         cache.set(originalUrl, { data: previewData, timestamp: Date.now() });
         res.set('X-Preview-Mode', mode);
         res.set('X-Preview-Cache', 'MISS');
-
-        // Limit cache size
-        if (cache.size > 500) {
-            const firstKey = cache.keys().next().value;
-            cache.delete(firstKey);
-        }
 
         return res.json(previewData);
 
