@@ -85,18 +85,21 @@ async function fetchTwitterPreview(originalUrl) {
 /**
  * Fetch internal preview from database
  */
-// Cloudflare R2 Public Domain - Hardcoded here to ensure absolute reliability in the preview route
+// Cloudflare R2 Public Domain
 const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
 
 /**
- * Helper to ensure we have a full R2 URL
+ * Helper to ensure we have a full URL, trying to avoid SSL/ISP blocks
  */
 function ensureFullUrl(key) {
     if (!key) return '';
     if (typeof key !== 'string') return '';
     if (key.startsWith('http')) return key;
+    
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
-    return `${R2_DOMAIN}/${cleanKey}`;
+    
+    // We append a small cache-buster even to the image URL itself to force a fresh pull from R2
+    return `${R2_DOMAIN}/${cleanKey}?v=${Date.now()}`;
 }
 
 async function fetchInternalPreview(urlStr) {
