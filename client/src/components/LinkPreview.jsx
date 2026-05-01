@@ -21,7 +21,7 @@ const LinkPreview = ({ url }) => {
                     targetUrl = `https://${targetUrl}`;
                 }
 
-                const response = await axios.get(`/api/preview?url=${encodeURIComponent(targetUrl)}`);
+                const response = await axios.get(`/api/preview?url=${encodeURIComponent(targetUrl)}&refresh=true&t=${Date.now()}`);
                 if (response.data && (response.data.title || response.data.type === 'tweet')) {
                     setData(response.data);
                 } else {
