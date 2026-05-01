@@ -127,6 +127,7 @@ const PortalSidebar = () => {
                     {orderedPortals.map((portal, index) => (
                         <div
                             key={portal._id}
+                            draggable={isReordering}
                             className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadPostsByPortal[portal._id?.toString()]?.length > 0 ? 'has-unread' : ''}`}
                             onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
                             onDragStart={(e) => handleDragStart(e, index)}
