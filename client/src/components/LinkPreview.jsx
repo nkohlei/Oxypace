@@ -157,7 +157,8 @@ const LinkPreview = ({ url }) => {
                             src={data.image} 
                             alt={data.title} 
                             className="internal-banner-img"
-                            onError={(e) => e.target.style.display = 'none'}
+                            onLoad={() => console.log('Image loaded successfully:', data.image)}
+                            onError={(e) => console.error('Image failed to load:', data.image)}
                         />
                     ) : (
                         <div className="internal-banner-placeholder" />
@@ -170,7 +171,8 @@ const LinkPreview = ({ url }) => {
                                 src={data.avatar} 
                                 alt="Avatar" 
                                 className="internal-avatar-img"
-                                onError={(e) => e.target.parentElement.style.display = 'none'}
+                                onLoad={() => console.log('Avatar loaded successfully:', data.avatar)}
+                                onError={(e) => console.error('Avatar failed to load:', data.avatar)}
                             />
                         </div>
                     )}
