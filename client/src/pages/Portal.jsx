@@ -63,6 +63,8 @@ const Portal = () => {
     const gifInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
     const [showPortalInfo, setShowPortalInfo] = useState(false);
+    const activeChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
+    const isImageChannel = activeChannelObj?.type === 'image';
 
     // --- SOCKET ROOM MANAGEMENT ---
     useEffect(() => {
@@ -901,6 +903,8 @@ const Portal = () => {
                                                         <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                                                         <line x1="12" y1="19" x2="12" y2="23" />
                                                     </svg>
+                                                ) : channelType === 'image' ? (
+                                                    '🖼️'
                                                 ) : '#'}
                                             </span>
                                             <h3 className="channel-name" style={{ color: 'var(--primary-color)' }}>
@@ -961,11 +965,15 @@ const Portal = () => {
                                                             </svg>
                                                         </button>
                                                         <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
-                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary-color)' }}>
-                                                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                                                <line x1="12" y1="19" x2="12" y2="23" />
-                                                            </svg>
+                                                            {channelType === 'voice' || channelType === 'conference' ? (
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary-color)' }}>
+                                                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                                                    <line x1="12" y1="19" x2="12" y2="23" />
+                                                                </svg>
+                                                            ) : channelType === 'image' ? (
+                                                                '🖼️'
+                                                            ) : '#'}
                                                         </span>
                                                         <h3 className="channel-name" style={{ color: 'var(--primary-color)' }}>
                                                             {channelName}
@@ -1060,7 +1068,9 @@ const Portal = () => {
                                                                             <div className="empty-portal">
                                                                                 <div className="empty-portal-icon">👋</div>
                                                                                 <h3>
-                                                                                    #
+                                                                                    {portal?.channels?.find((c) => c._id === currentChannel)?.type === 'voice' ? '🎙️' :
+                                                                                    portal?.channels?.find((c) => c._id === currentChannel)?.type === 'conference' ? '🎤' : 
+                                                                                    portal?.channels?.find((c) => c._id === currentChannel)?.type === 'image' ? '🖼️' : '#'}
                                                                                     {portal?.channels?.find(
                                                                                         (c) => String(c._id) === String(currentChannel)
                                                                                     )?.name || '...'}{' '}
@@ -1386,11 +1396,11 @@ const Portal = () => {
 
                                                                             <input
                                                                                 type="text"
-                                                                                placeholder={`#${portal?.channels?.find(
-                                                                                    (c) =>
-                                                                                        c._id === currentChannel
-                                                                                )?.name || '...'
-                                                                                    } kanalına mesaj gönder`}
+                                                                                placeholder={
+                                                                                    isImageChannel
+                                                                                        ? 'Gönderi paylaşmak için bir görsel ekleyin...'
+                                                                                        : `#${activeChannelObj?.name || '...'} kanalına mesaj gönder`
+                                                                                }
                                                                                 value={messageText}
                                                                                 onChange={(e) =>
                                                                                     setMessageText(e.target.value)
@@ -1407,7 +1417,9 @@ const Portal = () => {
                                                                                     className="input-action-btn send-btn"
                                                                                     onClick={handleSendMessage}
                                                                                     disabled={
-                                                                                        !messageText.trim() && !mediaFile
+                                                                                        isImageChannel
+                                                                                            ? !mediaFile
+                                                                                            : !messageText.trim() && !mediaFile
                                                                                     }
                                                                                     title="Gönder"
                                                                                     style={{

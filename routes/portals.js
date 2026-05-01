@@ -603,7 +603,7 @@ router.post('/:id/channels', protect, mongoIdValidation('id'), async (req, res) 
         }
 
         const channelData = { name };
-        if (type && ['text', 'voice', 'conference'].includes(type)) {
+        if (type && ['text', 'voice', 'conference', 'image'].includes(type)) {
             channelData.type = type;
         }
         if (roomMode && ['free', 'stage'].includes(roomMode)) {

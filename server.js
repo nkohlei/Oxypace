@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express from 'express';
+import express from 'express'; // v2.7 - Added Visual Channels
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';

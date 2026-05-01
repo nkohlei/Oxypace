@@ -873,6 +873,7 @@ const PortalSettingsModal = ({
                                             { value: 'text', label: '# Metin', icon: '#' },
                                             { value: 'voice', label: '🎙️ Ses', icon: '🎙️' },
                                             { value: 'conference', label: '🎤 Seminer', icon: '🎤' },
+                                            { value: 'image', label: '🖼️ Görsel', icon: '🖼️' },
                                         ].map((t) => (
                                             <button
                                                 key={t.value}
@@ -881,14 +882,14 @@ const PortalSettingsModal = ({
                                                     flex: 1,
                                                     padding: '8px 12px',
                                                     background: newChannelType === t.value
-                                                        ? (t.value === 'text' ? 'rgba(88, 101, 242, 0.2)' : t.value === 'voice' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(168, 85, 247, 0.2)')
+                                                        ? (t.value === 'text' ? 'rgba(88, 101, 242, 0.2)' : t.value === 'voice' ? 'rgba(34, 197, 94, 0.2)' : t.value === 'conference' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(245, 158, 11, 0.2)')
                                                         : 'rgba(255,255,255,0.04)',
                                                     border: newChannelType === t.value
-                                                        ? `1px solid ${t.value === 'text' ? '#5865f2' : t.value === 'voice' ? '#22c55e' : '#a855f7'}`
+                                                        ? `1px solid ${t.value === 'text' ? '#5865f2' : t.value === 'voice' ? '#22c55e' : t.value === 'conference' ? '#a855f7' : '#f59e0b'}`
                                                         : '1px solid rgba(255,255,255,0.08)',
                                                     borderRadius: '8px',
                                                     color: newChannelType === t.value
-                                                        ? (t.value === 'text' ? '#818cf8' : t.value === 'voice' ? '#4ade80' : '#c084fc')
+                                                        ? (t.value === 'text' ? '#818cf8' : t.value === 'voice' ? '#4ade80' : t.value === 'conference' ? '#c084fc' : '#fbbf24')
                                                         : '#94a3b8',
                                                     cursor: 'pointer',
                                                     fontSize: '13px',
@@ -909,7 +910,9 @@ const PortalSettingsModal = ({
                                                     ? 'Kanal adı (örn: oyun, müzik)'
                                                     : newChannelType === 'voice'
                                                         ? 'Ses kanalı adı (örn: genel-ses)'
-                                                        : 'Seminer adı (örn: egitim)'
+                                                        : newChannelType === 'conference'
+                                                            ? 'Seminer adı (örn: egitim)'
+                                                            : 'Görsel kanalı adı (örn: wallpaper)'
                                             }
                                             value={newChannelName}
                                             onChange={(e) => setNewChannelName(e.target.value)}
@@ -919,7 +922,7 @@ const PortalSettingsModal = ({
                                         <button
                                             className="btn-save"
                                             style={{
-                                                background: newChannelType === 'text' ? '#5865f2' : newChannelType === 'voice' ? '#22c55e' : '#a855f7',
+                                                background: newChannelType === 'text' ? '#5865f2' : newChannelType === 'voice' ? '#22c55e' : newChannelType === 'conference' ? '#a855f7' : '#f59e0b',
                                                 whiteSpace: 'nowrap',
                                             }}
                                             onClick={handleAddChannel}
@@ -931,7 +934,9 @@ const PortalSettingsModal = ({
                                         <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
                                             {newChannelType === 'voice'
                                                 ? '💡 Ses kanallarında tüm katılımcılar serbestçe konuşabilir (N-to-N).'
-                                                : '💡 Seminer kanallarında yalnızca yöneticiler yayın yapabilir, diğer üyeler dinleyicidir.'}
+                                                : newChannelType === 'conference'
+                                                    ? '💡 Seminer kanallarında yalnızca yöneticiler yayın yapabilir, diğer üyeler dinleyicidir.'
+                                                    : '💡 Görsel kanallarda her gönderide en az bir görsel bulunması zorunludur.'}
                                         </div>
                                     )}
                                 </div>
@@ -1019,8 +1024,8 @@ const PortalSettingsModal = ({
                                                             gap: '6px',
                                                         }}
                                                     >
-                                                        <span style={{ color: ch.type === 'voice' ? '#22c55e' : ch.type === 'conference' ? '#a855f7' : '#72767d' }}>
-                                                            {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : '#'}
+                                                        <span style={{ color: ch.type === 'voice' ? '#22c55e' : ch.type === 'conference' ? '#a855f7' : ch.type === 'image' ? '#f59e0b' : '#72767d' }}>
+                                                            {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : ch.type === 'image' ? '🖼️' : '#'}
                                                         </span>
                                                         {ch.name}
                                                         {ch.isPrivate && (

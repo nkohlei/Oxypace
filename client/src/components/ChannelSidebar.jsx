@@ -8,7 +8,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
-import { UserPlus, Bell, ChevronRight, Volume2, Megaphone, Hash, Info, UserCheck } from 'lucide-react';
+import { UserPlus, Bell, ChevronRight, Volume2, Megaphone, Hash, Info, UserCheck, Image } from 'lucide-react';
 import PortalInfoModal from './PortalInfoModal';
 
 const ChannelSidebar = ({
@@ -207,6 +207,8 @@ const ChannelSidebar = ({
                                     <Volume2 size={20} strokeWidth={2} />
                                 ) : isAnnouncement ? (
                                     <Megaphone size={20} strokeWidth={2.5} />
+                                ) : channel.type === 'image' ? (
+                                    <Image size={20} strokeWidth={2.5} style={{ color: '#f59e0b' }} />
                                 ) : (
                                     <Hash size={20} strokeWidth={2.5} />
                                 )}

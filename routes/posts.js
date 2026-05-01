@@ -82,7 +82,21 @@ router.post(
                 }
 
                 postData.portal = portalId;
-                postData.channel = req.body.channel || 'general';
+                const channelId = req.body.channel || 'general';
+                postData.channel = channelId;
+
+                // Visual Channel Validation
+                if (channelId !== 'general') {
+                    const channel = portal.channels.find((c) => c._id.toString() === channelId);
+                    if (channel && channel.type === 'image') {
+                        const hasMedia = req.file || req.body.mediaKey || (media && mediaType);
+                        if (!hasMedia) {
+                            return res.status(400).json({
+                                message: 'Bu kanalda en az 1 görsel paylaşılması zorunludur',
+                            });
+                        }
+                    }
+                }
             }
 
             // Direct Cloud Upload support (Presigned URL)

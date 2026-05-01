@@ -113,7 +113,7 @@ const portalSchema = new mongoose.Schema(
                 },
                 type: {
                     type: String,
-                    enum: ['text', 'voice', 'conference'],
+                    enum: ['text', 'voice', 'conference', 'image'],
                     default: 'text',
                 },
                 roomMode: {
