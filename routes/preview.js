@@ -2,6 +2,10 @@ import express from 'express';
 import axios from 'axios';
 import ogs from 'open-graph-scraper-lite';
 
+import Portal from '../models/Portal.js';
+import User from '../models/User.js';
+import Post from '../models/Post.js';
+
 const router = express.Router();
 
 // Simple in-memory cache
@@ -22,7 +26,6 @@ function parseTwitterUrl(url) {
 
 /**
  * Fetch Twitter/X preview using fxtwitter JSON API
- * This returns structured data directly — no HTML scraping needed
  */
 async function fetchTwitterPreview(originalUrl) {
     const parsed = parseTwitterUrl(originalUrl);
@@ -73,6 +76,87 @@ async function fetchTwitterPreview(originalUrl) {
         };
     } catch (err) {
         console.error('Twitter API error:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Fetch internal preview from database
+ */
+async function fetchInternalPreview(urlStr) {
+    try {
+        const url = new URL(urlStr);
+        const path = url.pathname;
+
+        // Portal: /portal/:id
+        const portalMatch = path.match(/^\/portal\/([a-f\d]{24})/i);
+        if (portalMatch) {
+            const portalId = portalMatch[1];
+            const portal = await Portal.findById(portalId).select('name description avatar banner');
+            if (portal) {
+                return {
+                    type: 'internal',
+                    subType: 'portal',
+                    title: portal.name,
+                    description: portal.description || 'Oxypace portalını keşfedin.',
+                    image: portal.banner || '',
+                    avatar: portal.avatar || '',
+                    url: urlStr,
+                    siteName: 'Oxypace Portal',
+                    favicon: '/favicon.ico'
+                };
+            }
+        }
+
+        // Profile: /profile/:username
+        const profileMatch = path.match(/^\/profile\/([a-zA-Z0-9_.]+)/i);
+        if (profileMatch) {
+            const username = profileMatch[1];
+            const user = await User.findOne({ username }).select('username profile');
+            if (user) {
+                return {
+                    type: 'internal',
+                    subType: 'profile',
+                    title: user.profile?.displayName || user.username,
+                    description: user.profile?.bio || `${user.username} profiline göz atın.`,
+                    image: user.profile?.coverImage || '',
+                    avatar: user.profile?.avatar || '',
+                    url: urlStr,
+                    siteName: 'Oxypace Profil',
+                    favicon: '/favicon.ico'
+                };
+            }
+        }
+
+        // Post: /post/:id
+        const postMatch = path.match(/^\/post\/([a-f\d]{24})/i);
+        if (postMatch) {
+            const postId = postMatch[1];
+            const post = await Post.findById(postId)
+                .populate('author', 'username profile.displayName profile.avatar')
+                .populate('portal', 'name avatar banner');
+            
+            if (post) {
+                const authorName = post.author?.profile?.displayName || post.author?.username || 'Bilinmeyen Kullanıcı';
+                const portalName = post.portal?.name || 'Kişisel Akış';
+                
+                return {
+                    type: 'internal',
+                    subType: 'post',
+                    title: `${authorName} bir gönderi paylaştı`,
+                    description: post.content ? (post.content.substring(0, 150) + (post.content.length > 150 ? '...' : '')) : 'Oxypace gönderisine göz atın.',
+                    image: post.media?.[0]?.url || post.portal?.banner || '',
+                    avatar: post.author?.profile?.avatar || post.portal?.avatar || '',
+                    url: urlStr,
+                    siteName: `Oxypace / ${portalName}`,
+                    favicon: '/favicon.ico'
+                };
+            }
+        }
+
+        return null;
+    } catch (err) {
+        console.error('Internal preview error:', err.message);
         return null;
     }
 }
@@ -137,12 +221,33 @@ router.get('/', async (req, res) => {
 
         let previewData = null;
 
+        // Determine if URL is internal
+        const internalDomains = [
+            'oxypace.com',
+            'oxypace.vercel.app',
+            'globalmessage2.vercel.app',
+            'localhost',
+            req.get('host')
+        ];
+        
+        try {
+            const urlObj = new URL(originalUrl);
+            const hostname = urlObj.hostname;
+            const isInternal = internalDomains.some(d => hostname.includes(d));
+            
+            if (isInternal) {
+                previewData = await fetchInternalPreview(originalUrl);
+            }
+        } catch (e) {
+            // Invalid URL skip internal check
+        }
+
         // Twitter/X gets special treatment via JSON API
-        if (originalUrl.includes('x.com/') || originalUrl.includes('twitter.com/')) {
+        if (!previewData && (originalUrl.includes('x.com/') || originalUrl.includes('twitter.com/'))) {
             previewData = await fetchTwitterPreview(originalUrl);
         }
 
-        // Generic OG scraping for everything else (or if Twitter API failed)
+        // Generic OG scraping for everything else (or if internal/Twitter failed)
         if (!previewData) {
             previewData = await fetchGenericPreview(originalUrl);
         }

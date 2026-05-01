@@ -320,3 +320,140 @@
         font-size: 14px;
     }
 }
+
+/* ==========================================
+   INTERNAL OXYPACE PREVIEW CARD
+   ========================================== */
+.internal-preview-card {
+    margin-top: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    text-decoration: none !important;
+    color: inherit;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.internal-preview-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.internal-card-banner {
+    width: 100%;
+    height: 140px;
+    position: relative;
+    background: #111;
+    overflow: visible; /* To allow avatar overlap */
+}
+
+.internal-banner-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.internal-preview-card:hover .internal-banner-img {
+    transform: scale(1.05);
+}
+
+.internal-banner-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+}
+
+.internal-avatar-wrapper {
+    position: absolute;
+    bottom: -20px;
+    left: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    padding: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 2;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.internal-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 11px;
+    object-fit: cover;
+    background: #000;
+}
+
+.internal-card-content {
+    padding: 28px 16px 16px; /* Extra top padding for avatar overlap */
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.internal-card-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.internal-site-tag {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--primary-cyan, #00f2ff);
+    opacity: 0.8;
+}
+
+.internal-card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.internal-card-description {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@media (max-width: 500px) {
+    .internal-card-banner {
+        height: 120px;
+    }
+    
+    .internal-avatar-wrapper {
+        width: 48px;
+        height: 48px;
+        bottom: -16px;
+        left: 12px;
+    }
+    
+    .internal-card-content {
+        padding: 24px 12px 14px;
+    }
+    
+    .internal-card-title {
+        font-size: 15px;
+    }
+}
+

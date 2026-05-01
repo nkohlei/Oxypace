@@ -142,6 +142,54 @@ const LinkPreview = ({ url }) => {
         );
     }
 
+    // Internal Oxypace card (Portal, Profile, Post)
+    if (data.type === 'internal') {
+        return (
+            <a
+                href={data.url}
+                className="internal-preview-card"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Banner/Cover Image */}
+                <div className="internal-card-banner">
+                    {data.image ? (
+                        <img 
+                            src={data.image} 
+                            alt={data.title} 
+                            className="internal-banner-img"
+                            onError={(e) => e.target.style.display = 'none'}
+                        />
+                    ) : (
+                        <div className="internal-banner-placeholder" />
+                    )}
+                    
+                    {/* Avatar Overlay */}
+                    {data.avatar && (
+                        <div className="internal-avatar-wrapper">
+                            <img 
+                                src={data.avatar} 
+                                alt="Avatar" 
+                                className="internal-avatar-img"
+                                onError={(e) => e.target.parentElement.style.display = 'none'}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* Content Section */}
+                <div className="internal-card-content">
+                    <div className="internal-card-header">
+                        <span className="internal-site-tag">{data.siteName}</span>
+                        <h4 className="internal-card-title">{data.title}</h4>
+                    </div>
+                    {data.description && (
+                        <p className="internal-card-description">{data.description}</p>
+                    )}
+                </div>
+            </a>
+        );
+    }
+
     // Generic OG preview card
     if (!data.title) return null;
 
