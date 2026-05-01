@@ -97,21 +97,13 @@ async function fetchInternalPreview(urlStr) {
             const portalId = portalMatch[1];
             const portal = await Portal.findById(portalId).select('name description avatar banner');
             if (portal) {
-                const finalImage = constructProxiedUrl(portal.banner);
-                const finalAvatar = constructProxiedUrl(portal.avatar);
-                console.log(`[Preview:Internal] Portal Found: ${portal.name}`, {
-                    rawBanner: portal.banner,
-                    rawAvatar: portal.avatar,
-                    finalImage,
-                    finalAvatar
-                });
                 return {
                     type: 'internal',
                     subType: 'portal',
                     title: portal.name,
                     description: portal.description || 'Oxypace portalını keşfedin.',
-                    image: finalImage || '',
-                    avatar: finalAvatar || '',
+                    image: constructProxiedUrl(portal.banner) || '',
+                    avatar: constructProxiedUrl(portal.avatar) || '',
                     url: urlStr,
                     siteName: 'Oxypace Portal',
                     favicon: '/favicon.ico'
@@ -125,21 +117,13 @@ async function fetchInternalPreview(urlStr) {
             const username = profileMatch[1];
             const user = await User.findOne({ username }).select('username profile');
             if (user) {
-                const finalImage = constructProxiedUrl(user.profile?.coverImage);
-                const finalAvatar = constructProxiedUrl(user.profile?.avatar);
-                console.log(`[Preview:Internal] User Found: ${user.username}`, {
-                    rawCover: user.profile?.coverImage,
-                    rawAvatar: user.profile?.avatar,
-                    finalImage,
-                    finalAvatar
-                });
                 return {
                     type: 'internal',
                     subType: 'profile',
                     title: user.profile?.displayName || user.username,
                     description: user.profile?.bio || `${user.username} profiline göz atın.`,
-                    image: finalImage || '',
-                    avatar: finalAvatar || '',
+                    image: constructProxiedUrl(user.profile?.coverImage) || '',
+                    avatar: constructProxiedUrl(user.profile?.avatar) || '',
                     url: urlStr,
                     siteName: 'Oxypace Profil',
                     favicon: '/favicon.ico'
@@ -159,21 +143,13 @@ async function fetchInternalPreview(urlStr) {
                 const authorName = post.author?.profile?.displayName || post.author?.username || 'Bilinmeyen Kullanıcı';
                 const portalName = post.portal?.name || 'Kişisel Akış';
                 
-                const finalImage = constructProxiedUrl(post.media?.[0]?.url || post.portal?.banner);
-                const finalAvatar = constructProxiedUrl(post.author?.profile?.avatar || post.portal?.avatar);
-
-                console.log(`[Preview:Internal] Post Found from ${authorName}`, {
-                    finalImage,
-                    finalAvatar
-                });
-
                 return {
                     type: 'internal',
                     subType: 'post',
                     title: `${authorName} bir gönderi paylaştı`,
                     description: post.content ? (post.content.substring(0, 150) + (post.content.length > 150 ? '...' : '')) : 'Oxypace gönderisine göz atın.',
-                    image: finalImage || '',
-                    avatar: finalAvatar || '',
+                    image: constructProxiedUrl(post.media?.[0]?.url || post.portal?.banner) || '',
+                    avatar: constructProxiedUrl(post.author?.profile?.avatar || post.portal?.avatar) || '',
                     url: urlStr,
                     siteName: `Oxypace / ${portalName}`,
                     favicon: '/favicon.ico'
@@ -221,7 +197,6 @@ async function fetchGenericPreview(originalUrl) {
             try {
                 const base = new URL(originalUrl);
                 imageUrl = new URL(imageUrl, base.origin).href;
-                console.log(`[Preview:Generic] Resolved relative image to: ${imageUrl}`);
             } catch (e) {
                 // Keep as is if parsing fails
             }
@@ -242,11 +217,10 @@ async function fetchGenericPreview(originalUrl) {
 }
 
 
+
 router.get('/', async (req, res) => {
     const originalUrl = req.query.url;
     const forceRefresh = req.query.refresh === 'true';
-
-    console.log(`[Preview] Incoming request for: ${originalUrl} (Refresh: ${forceRefresh})`);
 
     if (!originalUrl) {
         return res.status(400).json({ message: 'URL is required' });
@@ -258,7 +232,6 @@ router.get('/', async (req, res) => {
             const cached = cache.get(originalUrl);
             if (Date.now() - cached.timestamp < CACHE_TTL) {
                 res.set('X-Preview-Cache', 'HIT');
-                console.log(`[Preview] Cache HIT for: ${originalUrl}`);
                 return res.json(cached.data);
             }
             cache.delete(originalUrl);
@@ -267,50 +240,26 @@ router.get('/', async (req, res) => {
         let previewData = null;
         let mode = 'generic';
 
-        // Determine if URL is internal
-        const currentHost = req.get('host');
-        const internalDomains = [
-            'oxypace.com',
-            'oxypace.vercel.app',
-            'globalmessage2.vercel.app',
-            'localhost',
-            currentHost
-        ];
-        
+        // 1. Try Internal Oxypace Logic (Path-based, domain agnostic)
         try {
-            const urlObj = new URL(originalUrl);
-            const hostname = urlObj.hostname;
-            const isInternal = internalDomains.some(d => hostname === d || hostname.endsWith('.' + d));
-            
-            console.log(`[Preview] Hostname: ${hostname}, isInternal: ${isInternal}`);
-
-            if (isInternal) {
-                previewData = await fetchInternalPreview(originalUrl);
-                if (previewData) {
-                    mode = 'internal';
-                    console.log(`[Preview] Internal Match Found!`, {
-                        subType: previewData.subType,
-                        image: previewData.image,
-                        avatar: previewData.avatar
-                    });
-                }
+            previewData = await fetchInternalPreview(originalUrl);
+            if (previewData) {
+                mode = 'internal';
             }
         } catch (e) {
-            console.error(`[Preview] URL Parsing error:`, e.message);
+            // Silently fail and fall through
         }
 
-        // Twitter/X gets special treatment via JSON API
+        // 2. Twitter/X gets special treatment via JSON API
         if (!previewData && (originalUrl.includes('x.com/') || originalUrl.includes('twitter.com/'))) {
             previewData = await fetchTwitterPreview(originalUrl);
             if (previewData) {
                 mode = 'tweet';
-                console.log(`[Preview] Twitter Match Found!`);
             }
         }
 
-        // Generic OG scraping for everything else (or if internal/Twitter failed)
+        // 3. Generic OG scraping for everything else (or if internal/Twitter failed)
         if (!previewData) {
-            console.log(`[Preview] Falling back to generic scraping...`);
             previewData = await fetchGenericPreview(originalUrl);
         }
 
@@ -335,8 +284,6 @@ router.get('/', async (req, res) => {
         cache.set(originalUrl, { data: previewData, timestamp: Date.now() });
         res.set('X-Preview-Mode', mode);
         res.set('X-Preview-Cache', 'MISS');
-
-        console.log(`[Preview] Final Output Image: ${previewData.image}`);
 
         // Limit cache size
         if (cache.size > 500) {
