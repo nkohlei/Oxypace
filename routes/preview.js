@@ -13,9 +13,11 @@ const router = express.Router();
 const cache = new Map();
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
+// Clear cache on each server restart to ensure fresh data after fixes
+cache.clear();
+
 /**
  * Extract Twitter/X status info from URL
- * Returns { username, statusId } or null
  */
 function parseTwitterUrl(url) {
     const match = url.match(/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)/i);
@@ -216,39 +218,44 @@ async function fetchGenericPreview(originalUrl) {
 
 router.get('/', async (req, res) => {
     const originalUrl = req.query.url;
+    const forceRefresh = req.query.refresh === 'true';
 
     if (!originalUrl) {
         return res.status(400).json({ message: 'URL is required' });
     }
 
     try {
-        // Check cache first
-        if (cache.has(originalUrl)) {
+        // Check cache first (unless forceRefresh is true)
+        if (!forceRefresh && cache.has(originalUrl)) {
             const cached = cache.get(originalUrl);
             if (Date.now() - cached.timestamp < CACHE_TTL) {
+                res.set('X-Preview-Cache', 'HIT');
                 return res.json(cached.data);
             }
             cache.delete(originalUrl);
         }
 
         let previewData = null;
+        let mode = 'generic';
 
         // Determine if URL is internal
+        const currentHost = req.get('host');
         const internalDomains = [
             'oxypace.com',
             'oxypace.vercel.app',
             'globalmessage2.vercel.app',
             'localhost',
-            req.get('host')
+            currentHost
         ];
         
         try {
             const urlObj = new URL(originalUrl);
             const hostname = urlObj.hostname;
-            const isInternal = internalDomains.some(d => hostname.includes(d));
+            const isInternal = internalDomains.some(d => hostname === d || hostname.endsWith('.' + d));
             
             if (isInternal) {
                 previewData = await fetchInternalPreview(originalUrl);
+                if (previewData) mode = 'internal';
             }
         } catch (e) {
             // Invalid URL skip internal check
@@ -257,6 +264,7 @@ router.get('/', async (req, res) => {
         // Twitter/X gets special treatment via JSON API
         if (!previewData && (originalUrl.includes('x.com/') || originalUrl.includes('twitter.com/'))) {
             previewData = await fetchTwitterPreview(originalUrl);
+            if (previewData) mode = 'tweet';
         }
 
         // Generic OG scraping for everything else (or if internal/Twitter failed)
@@ -283,6 +291,8 @@ router.get('/', async (req, res) => {
 
         // Cache it
         cache.set(originalUrl, { data: previewData, timestamp: Date.now() });
+        res.set('X-Preview-Mode', mode);
+        res.set('X-Preview-Cache', 'MISS');
 
         // Limit cache size
         if (cache.size > 500) {
@@ -297,6 +307,7 @@ router.get('/', async (req, res) => {
         return res.status(500).json({ message: 'Could not fetch preview' });
     }
 });
+
 
 /**
  * Video proxy — streams Twitter videos through our server
