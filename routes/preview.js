@@ -379,6 +379,8 @@ router.get('/video', async (req, res) => {
             res.status(500).json({ message: 'Failed to load video' });
         }
     }
+});
+
 /**
  * Image Proxy to bypass ISP/SSL blocks on R2 domain
  */
