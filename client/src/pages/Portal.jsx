@@ -52,7 +52,7 @@ const Portal = () => {
 
     // UI Toggles
     const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
-    const [showLoginWarning, setShowLoginWarning] = useState(false); // Guest warning state
+    const [toast, setToast] = useState({ show: false, message: '', type: 'info' }); // { show, message, type }
     const [nsfwConfirmed, setNsfwConfirmed] = useState(false); // +18 age gate state
 
     const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -145,7 +145,7 @@ const Portal = () => {
     const handleAddYoutube = () => {
         const videoId = getYoutubeId(youtubeUrl);
         if (!videoId) {
-            alert("Geçersiz YouTube URL'si");
+            triggerToast("Geçersiz YouTube URL'si", 'error');
             return;
         }
         // We'll treat it as attached media but string
@@ -195,11 +195,16 @@ const Portal = () => {
         }
     };
 
+    const triggerToast = (message, type = 'info') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
+    };
+
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 1024 * 1024 * 1024) {
-                alert("Dosya boyutu 1 GB'dan büyük olamaz.");
+                triggerToast("Dosya boyutu 1 GB'dan büyük olamaz.", 'error');
                 return;
             }
             setMediaFile(file);
@@ -281,7 +286,8 @@ const Portal = () => {
             });
         } catch (err) {
             console.error('Send message failed', err);
-            alert(`Mesaj gönderilemedi: ${err.response?.data?.message || err.message}`);
+            const errorMsg = err.response?.data?.message || err.message;
+            triggerToast(errorMsg, 'error');
             // console.error(err);
 
             // 3. Failure: Remove optimistic post and restore input (optional)
@@ -545,15 +551,14 @@ const Portal = () => {
             });
         } catch (err) {
             console.error('Pin failed', err);
-            alert('Sabitleme işlemi başarısız');
+            triggerToast('Sabitleme işlemi başarısız', 'error');
         }
     };
 
     const handleJoin = async () => {
         if (!user) {
             // navigate('/login'); // Removed redirect
-            setShowLoginWarning(true);
-            setTimeout(() => setShowLoginWarning(false), 4000); // Wait for full animation (4s)
+            triggerToast('Lütfen giriş yapın veya kaydolun!', 'warning');
             return;
         }
         try {
@@ -571,13 +576,14 @@ const Portal = () => {
                 setPortal((prev) => ({ ...prev, members: [...(prev.members || []), user._id] }));
                 // Fetch posts now that we are a member
                 fetchChannelPosts();
+                triggerToast('Portala başarıyla katıldınız!', 'success');
             } else {
-                alert('Üyelik isteğiniz gönderildi!');
+                triggerToast('Üyelik isteğiniz gönderildi!', 'info');
                 setPortal((prev) => ({ ...prev, isRequested: true }));
             }
         } catch (err) {
             console.error('Join failed', err);
-            alert(err.response?.data?.message || 'Katılma başarısız');
+            triggerToast(err.response?.data?.message || 'Katılma başarısız', 'error');
         }
     };
 
@@ -594,7 +600,7 @@ const Portal = () => {
             navigate('/');
         } catch (err) {
             console.error('Leave failed', err);
-            alert(err.response?.data?.message || 'Ayrılma başarısız');
+            triggerToast(err.response?.data?.message || 'Ayrılma başarısız', 'error');
         }
     };
 
@@ -839,9 +845,14 @@ const Portal = () => {
             />
             {/* Global Navbar - Hide when editing settings */}
             {!editing && <Navbar />}
-            {/* Guest Login Warning Toast */}
-            {showLoginWarning && (
-                <div className="guest-warning-toast">Lütfen giriş yapın veya kaydolun!</div>
+            {/* App Toast System */}
+            {toast.show && (
+                <div className={`app-toast ${toast.type}`}>
+                    <span className="app-toast-icon">
+                        {toast.type === 'error' ? '🚫' : toast.type === 'success' ? '✅' : toast.type === 'warning' ? '⚠️' : 'ℹ️'}
+                    </span>
+                    {toast.message}
+                </div>
             )}
 
 
