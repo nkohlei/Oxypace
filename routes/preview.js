@@ -5,7 +5,6 @@ import ogs from 'open-graph-scraper-lite';
 import Portal from '../models/Portal.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
-import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
 const router = express.Router();
 
@@ -86,6 +85,20 @@ async function fetchTwitterPreview(originalUrl) {
 /**
  * Fetch internal preview from database
  */
+// Cloudflare R2 Public Domain - Hardcoded here to ensure absolute reliability in the preview route
+const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+
+/**
+ * Helper to ensure we have a full R2 URL
+ */
+function ensureFullUrl(key) {
+    if (!key) return '';
+    if (typeof key !== 'string') return '';
+    if (key.startsWith('http')) return key;
+    const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+    return `${R2_DOMAIN}/${cleanKey}`;
+}
+
 async function fetchInternalPreview(urlStr) {
     try {
         const url = new URL(urlStr);
@@ -102,8 +115,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'portal',
                     title: portal.name,
                     description: portal.description || 'Oxypace portalını keşfedin.',
-                    image: constructProxiedUrl(portal.banner) || '',
-                    avatar: constructProxiedUrl(portal.avatar) || '',
+                    image: ensureFullUrl(portal.banner),
+                    avatar: ensureFullUrl(portal.avatar),
                     url: urlStr,
                     siteName: 'Oxypace Portal',
                     favicon: '/favicon.ico'
@@ -122,8 +135,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'profile',
                     title: user.profile?.displayName || user.username,
                     description: user.profile?.bio || `${user.username} profiline göz atın.`,
-                    image: constructProxiedUrl(user.profile?.coverImage) || '',
-                    avatar: constructProxiedUrl(user.profile?.avatar) || '',
+                    image: ensureFullUrl(user.profile?.coverImage),
+                    avatar: ensureFullUrl(user.profile?.avatar),
                     url: urlStr,
                     siteName: 'Oxypace Profil',
                     favicon: '/favicon.ico'
@@ -148,8 +161,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'post',
                     title: `${authorName} bir gönderi paylaştı`,
                     description: post.content ? (post.content.substring(0, 150) + (post.content.length > 150 ? '...' : '')) : 'Oxypace gönderisine göz atın.',
-                    image: constructProxiedUrl(post.media?.[0]?.url || post.portal?.banner) || '',
-                    avatar: constructProxiedUrl(post.author?.profile?.avatar || post.portal?.avatar) || '',
+                    image: ensureFullUrl(post.media?.[0]?.url || post.portal?.banner),
+                    avatar: ensureFullUrl(post.author?.profile?.avatar || post.portal?.avatar),
                     url: urlStr,
                     siteName: `Oxypace / ${portalName}`,
                     favicon: '/favicon.ico'
