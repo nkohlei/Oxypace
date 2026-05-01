@@ -5,6 +5,7 @@ import ogs from 'open-graph-scraper-lite';
 import Portal from '../models/Portal.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
 const router = express.Router();
 
@@ -99,8 +100,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'portal',
                     title: portal.name,
                     description: portal.description || 'Oxypace portalını keşfedin.',
-                    image: portal.banner || '',
-                    avatar: portal.avatar || '',
+                    image: constructProxiedUrl(portal.banner) || '',
+                    avatar: constructProxiedUrl(portal.avatar) || '',
                     url: urlStr,
                     siteName: 'Oxypace Portal',
                     favicon: '/favicon.ico'
@@ -119,8 +120,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'profile',
                     title: user.profile?.displayName || user.username,
                     description: user.profile?.bio || `${user.username} profiline göz atın.`,
-                    image: user.profile?.coverImage || '',
-                    avatar: user.profile?.avatar || '',
+                    image: constructProxiedUrl(user.profile?.coverImage) || '',
+                    avatar: constructProxiedUrl(user.profile?.avatar) || '',
                     url: urlStr,
                     siteName: 'Oxypace Profil',
                     favicon: '/favicon.ico'
@@ -145,8 +146,8 @@ async function fetchInternalPreview(urlStr) {
                     subType: 'post',
                     title: `${authorName} bir gönderi paylaştı`,
                     description: post.content ? (post.content.substring(0, 150) + (post.content.length > 150 ? '...' : '')) : 'Oxypace gönderisine göz atın.',
-                    image: post.media?.[0]?.url || post.portal?.banner || '',
-                    avatar: post.author?.profile?.avatar || post.portal?.avatar || '',
+                    image: constructProxiedUrl(post.media?.[0]?.url || post.portal?.banner) || '',
+                    avatar: constructProxiedUrl(post.author?.profile?.avatar || post.portal?.avatar) || '',
                     url: urlStr,
                     siteName: `Oxypace / ${portalName}`,
                     favicon: '/favicon.ico'
@@ -187,11 +188,22 @@ async function fetchGenericPreview(originalUrl) {
         const { result } = await ogs({ html: trimmedHtml });
 
         const hostname = new URL(originalUrl).hostname.replace('www.', '');
+        let imageUrl = result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || '';
+
+        // Resolve relative image URLs for external links
+        if (imageUrl && !imageUrl.startsWith('http')) {
+            try {
+                const base = new URL(originalUrl);
+                imageUrl = new URL(imageUrl, base.origin).href;
+            } catch (e) {
+                // Keep as is if parsing fails
+            }
+        }
 
         return {
             title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || hostname,
             description: result?.ogDescription || result?.twitterDescription || '',
-            image: result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || '',
+            image: imageUrl,
             url: originalUrl,
             siteName: result?.ogSiteName || hostname,
             favicon: result?.favicon || '',
