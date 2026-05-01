@@ -4,7 +4,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import ImageCropper from './ImageCropper';
 
-import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus } from 'lucide-react';
+import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight } from 'lucide-react';
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({
