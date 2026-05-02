@@ -8,13 +8,13 @@
 .pd-main-content {
     max-width: 660px;
     margin: 0 auto;
-    padding: 70px 20px 60px;
+    padding: 66px 20px 40px;
 }
 
 .pd-card-container {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 12px;
     animation: pdFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -58,7 +58,7 @@
 }
 
 .pd-card-header {
-    padding: 20px;
+    padding: 14px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -185,7 +185,7 @@
 
 /* CARD BODY */
 .pd-card-body {
-    padding: 20px;
+    padding: 16px 20px;
 }
 
 .pd-content-text {
@@ -239,14 +239,14 @@
 
 /* FOOTER */
 .pd-card-footer {
-    padding: 20px;
+    padding: 10px 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     justify-content: flex-end;
 }
 
 .pd-timestamp {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: var(--text-tertiary);
     font-weight: 600;
 }
@@ -291,7 +291,7 @@
 /* RESPONSIVE */
 @media (max-width: 600px) {
     .pd-main-content {
-        padding: 80px 10px 40px;
+        padding: 55px 10px 30px;
     }
     .pd-modern-card {
         border-radius: 24px;
