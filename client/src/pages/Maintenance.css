@@ -1,246 +1,315 @@
-/* Maintenance.css - Cowboy Theme */
-@import url('https://fonts.googleapis.com/css2?family=Rye&family=Smokum&display=swap');
+/* Maintenance.css — Modern Glassmorphism Light-Blue Theme */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-.maintenance-container.western-theme {
+/* ── Container ─────────────────────────────────── */
+.maintenance-container {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100vw;
-    height: 100vh;
-    background: url('/assets/wanted_poster_bg.jpg') no-repeat center center/cover;
-    overflow: hidden;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    z-index: 99999;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Light-blue gradient background */
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 25%, #7dd3fc 50%, #93c5fd 75%, #c7d2fe 100%);
+    background-size: 300% 300%;
+    animation: gradientShift 12s ease infinite;
 }
 
-/* Audio Control */
-.audio-control {
+@keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ── Floating Particles ────────────────────────── */
+.maintenance-particles {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: #3e2723;
-    color: #ffecb3;
-    padding: 10px 20px;
-    border: 2px solid #8d6e63;
-    border-radius: 5px;
-    cursor: pointer;
-    font-family: 'Rye', serif;
-    z-index: 1000;
-    transition: all 0.3s ease;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
 }
 
-.audio-control:hover {
-    background: #5d4037;
-    transform: scale(1.05);
-}
-
-/* Wanted Poster Container */
-.wanted-poster {
-    background: #fdf5e6;
-    background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png');
-    width: 90%;
-    max-width: 500px;
-    padding: 2rem;
-    border: 10px solid #2c1a12;
-    /* Dark wood color */
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(139, 69, 19, 0.5);
-    text-align: center;
-    position: relative;
-    transform: rotate(-1deg);
-    animation: swing 3s infinite ease-in-out alternate;
-}
-
-/* Nail effect */
-.wanted-poster::after {
-    content: '';
+.maintenance-particle {
     position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 15px;
-    height: 15px;
-    background: #444;
     border-radius: 50%;
-    box-shadow: 1px 1px 2px black;
+    background: rgba(255, 255, 255, 0.45);
+    animation: particleFloat linear infinite;
 }
 
-@keyframes swing {
-    from {
-        transform: rotate(-1deg);
-    }
-
-    to {
-        transform: rotate(1deg);
-    }
+.maintenance-particle:nth-child(1) {
+    width: 18px; height: 18px;
+    left: 10%; bottom: -20px;
+    animation-duration: 14s; animation-delay: 0s;
+}
+.maintenance-particle:nth-child(2) {
+    width: 12px; height: 12px;
+    left: 25%; bottom: -20px;
+    animation-duration: 18s; animation-delay: 2s;
+}
+.maintenance-particle:nth-child(3) {
+    width: 22px; height: 22px;
+    left: 45%; bottom: -20px;
+    animation-duration: 12s; animation-delay: 4s;
+}
+.maintenance-particle:nth-child(4) {
+    width: 10px; height: 10px;
+    left: 60%; bottom: -20px;
+    animation-duration: 20s; animation-delay: 1s;
+}
+.maintenance-particle:nth-child(5) {
+    width: 16px; height: 16px;
+    left: 75%; bottom: -20px;
+    animation-duration: 16s; animation-delay: 3s;
+}
+.maintenance-particle:nth-child(6) {
+    width: 14px; height: 14px;
+    left: 88%; bottom: -20px;
+    animation-duration: 22s; animation-delay: 5s;
+}
+.maintenance-particle:nth-child(7) {
+    width: 20px; height: 20px;
+    left: 35%; bottom: -20px;
+    animation-duration: 15s; animation-delay: 7s;
+}
+.maintenance-particle:nth-child(8) {
+    width: 8px; height: 8px;
+    left: 55%; bottom: -20px;
+    animation-duration: 19s; animation-delay: 6s;
 }
 
-.poster-header {
-    font-family: 'Smokum', cursive;
-    font-size: 5rem;
-    color: #3e2723;
-    border-bottom: 3px solid #3e2723;
-    margin-bottom: 2rem;
-    line-height: 1;
+@keyframes particleFloat {
+    0%   { transform: translateY(0) scale(1);   opacity: 0; }
+    10%  { opacity: 0.7; }
+    90%  { opacity: 0.5; }
+    100% { transform: translateY(-110vh) scale(0.4); opacity: 0; }
 }
 
-.poster-image-area {
+/* ── Glassmorphism Card ────────────────────────── */
+.maintenance-card {
     position: relative;
-    width: 100%;
-    margin-bottom: 1.5rem;
-    border: 4px solid #3e2723;
-    padding: 10px;
+    z-index: 10;
+    width: 90%;
+    max-width: 540px;
+    padding: 3rem 2.5rem;
+    border-radius: 24px;
+
+    /* Glassmorphism */
+    background: rgba(255, 255, 255, 0.30);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+        0 8px 32px rgba(31, 38, 135, 0.12),
+        0 2px 8px rgba(255, 255, 255, 0.25) inset;
+
+    text-align: center;
+    animation: cardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
 }
 
-.poster-image-area img {
-    width: 100%;
-    height: auto;
-    display: block;
-    filter: sepia(100%) contrast(120%) brightness(0.9);
+@keyframes cardEntrance {
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.poster-stamp {
-    position: absolute;
-    bottom: 20px;
-    right: -10px;
-    font-family: 'Rye', serif;
-    font-size: 1.5rem;
-    color: #d32f2f;
-    border: 4px solid #d32f2f;
-    padding: 5px 10px;
-    transform: rotate(-15deg);
-    opacity: 0.8;
-    background: rgba(255, 248, 225, 0.7);
-}
-
-.poster-content {
-    margin-top: 1rem;
-}
-
-.western-font {
-    font-family: 'Rye', serif;
-    font-size: 2.5rem;
-    color: #2c1a12;
-    margin-bottom: 1rem;
-}
-
-.western-text {
-    font-family: 'Courier New', Courier, monospace;
-    font-weight: bold;
-    font-size: 1.2rem;
-    color: #4e342e;
-    margin-bottom: 0.5rem;
-}
-
-.western-subtext {
-    font-style: italic;
-    color: #6d4c41;
-}
-
-.poster-footer {
-    margin-top: 2rem;
-    border-top: 2px solid #3e2723;
-    padding-top: 1rem;
-    font-family: 'Smokum', cursive;
-    font-size: 1.5rem;
-    color: #3e2723;
-}
-
-/* Animations - Tumbleweed */
-.tumbleweed {
-    position: absolute;
-    bottom: 10%;
-    left: -100px;
+/* ── Icon Area ─────────────────────────────────── */
+.maintenance-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 80px;
     height: 80px;
-    background: url('https://www.svgrepo.com/show/395646/tumbleweed.svg') no-repeat center/contain;
-    /* Using external SVG or we could use local */
+    border-radius: 20px;
+    margin-bottom: 1.75rem;
+    background: linear-gradient(135deg, rgba(99,102,241,0.20), rgba(56,189,248,0.20));
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    animation: iconPulse 3s ease-in-out infinite;
+}
+
+.maintenance-icon-wrapper svg {
+    width: 40px;
+    height: 40px;
+    color: #4f46e5;
+    filter: drop-shadow(0 2px 4px rgba(79, 70, 229, 0.3));
+}
+
+@keyframes iconPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99,102,241,0.15); }
+    50%      { transform: scale(1.05); box-shadow: 0 0 20px 6px rgba(99,102,241,0.10); }
+}
+
+/* ── Typography ────────────────────────────────── */
+.maintenance-title {
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1.25;
+    margin-bottom: 1.25rem;
+    letter-spacing: -0.02em;
+
+    /* Shimmer gradient text */
+    background: linear-gradient(
+        90deg,
+        #1e3a5f 0%,
+        #4f46e5 40%,
+        #0ea5e9 60%,
+        #1e3a5f 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmerText 4s linear infinite;
+}
+
+@keyframes shimmerText {
+    to { background-position: -200% center; }
+}
+
+.maintenance-description {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.7;
+    color: #334155;
+    margin-bottom: 2.25rem;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ── Divider ───────────────────────────────────── */
+.maintenance-divider {
+    width: 60px;
+    height: 3px;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #6366f1, #38bdf8);
+    margin: 0 auto 2rem;
     opacity: 0.7;
-    animation: tumble 8s linear infinite;
-    z-index: 50;
-    pointer-events: none;
-    /* In case SVG is blocked, rudimentary shape */
-    border: 2px dashed #6d4c41;
-    border-radius: 50%;
 }
 
-.tumbleweed.two {
-    bottom: 25%;
-    width: 50px;
-    height: 50px;
-    animation-duration: 12s;
-    animation-delay: 4s;
+/* ── CTA Button ────────────────────────────────── */
+.maintenance-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 36px;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+    box-shadow:
+        0 4px 14px rgba(99, 102, 241, 0.35),
+        0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-@keyframes tumble {
-    0% {
-        transform: translateX(0) rotate(0deg);
-        left: -100px;
-    }
-
-    100% {
-        transform: translateX(120vw) rotate(1080deg);
-        left: 100vw;
-    }
-}
-
-/* Floating Elements */
-.western-element {
+.maintenance-cta::before {
+    content: '';
     position: absolute;
-    opacity: 0.3;
-    z-index: 10;
-    pointer-events: none;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0) 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
-.western-element.gun {
-    top: 50%;
-    left: 10%;
-    width: 150px;
-    height: 150px;
-    background: url('https://www.svgrepo.com/show/486665/revolver-gun.svg') no-repeat center/contain;
-    filter: sepia(100%);
+.maintenance-cta:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow:
+        0 8px 24px rgba(99, 102, 241, 0.45),
+        0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
-.western-element.hat {
-    top: 20%;
-    right: 15%;
-    width: 100px;
-    height: 100px;
-    background: url('https://www.svgrepo.com/show/381666/cowboy-hat.svg') no-repeat center/contain;
-    filter: sepia(100%);
-    animation: floatHat 6s ease-in-out infinite;
+.maintenance-cta:hover::before {
+    opacity: 1;
 }
 
-@keyframes floatHat {
-
-    0%,
-    100% {
-        transform: translateY(0) rotate(5deg);
-    }
-
-    50% {
-        transform: translateY(-20px) rotate(-5deg);
-    }
+.maintenance-cta:active {
+    transform: translateY(-1px) scale(1.01);
 }
 
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-    .wanted-poster {
-        width: 95%;
-        padding: 1.5rem;
+.maintenance-cta svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s ease;
+}
+
+.maintenance-cta:hover svg {
+    transform: translateX(3px);
+}
+
+/* ── Footer Note ───────────────────────────────── */
+.maintenance-footer {
+    margin-top: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+    opacity: 0.8;
+}
+
+.maintenance-footer .dot-pulse {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.maintenance-footer .dot-pulse span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #6366f1;
+    animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.maintenance-footer .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+.maintenance-footer .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotBounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40%           { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 600px) {
+    .maintenance-card {
+        padding: 2.25rem 1.5rem;
+        border-radius: 20px;
     }
 
-    .poster-header {
-        font-size: 3.5rem;
+    .maintenance-title {
+        font-size: 1.45rem;
     }
 
-    .western-font {
-        font-size: 1.8rem;
+    .maintenance-description {
+        font-size: 0.92rem;
     }
 
-    .tumbleweed {
-        width: 50px;
-        height: 50px;
+    .maintenance-icon-wrapper {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+    }
+
+    .maintenance-icon-wrapper svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    .maintenance-cta {
+        padding: 12px 28px;
+        font-size: 0.9rem;
     }
 }

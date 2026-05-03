@@ -76,7 +76,7 @@ import { useRealtimeSync } from './hooks/useRealtimeSync';
 import './AppLayout.css';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
-const MAINTENANCE_MODE = false;
+const MAINTENANCE_MODE = true;
 
 import { useUI, UIProvider } from './context/UIContext';
 
@@ -371,6 +371,32 @@ const AppLayout = () => {
     );
 };
 
+// Maintenance Gate — wraps AppLayout and shows maintenance page
+// when MAINTENANCE_MODE is active. Bypasses for @oxypace user and
+// allows auth-related routes so users can still log in.
+const MaintenanceGate = ({ children }) => {
+    const { user } = useAuth();
+    const location = useLocation();
+
+    // If maintenance mode is off, always render children
+    if (!MAINTENANCE_MODE) return children;
+
+    // Allow @oxypace to bypass maintenance entirely
+    if (user && user.username === 'oxypace') return children;
+
+    // Allow auth-related routes so users can log in
+    const authRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/auth/process', '/auth/google/success', '/onboarding'];
+    const isAuthRoute = authRoutes.some(r => location.pathname.startsWith(r));
+    if (isAuthRoute) return children;
+
+    // Everyone else sees the maintenance page
+    return (
+        <Suspense fallback={<PageLoader />}>
+            <Maintenance />
+        </Suspense>
+    );
+};
+
 // Separate wrapper to access AuthContext
 const AppContent = () => {
     const { loading, token } = useAuth();
@@ -411,7 +437,9 @@ const AppContent = () => {
     return (
         <>
             {showSplash && <SplashScreen onFinish={() => {}} />}
-            <AppLayout />
+            <MaintenanceGate>
+                <AppLayout />
+            </MaintenanceGate>
         </>
     );
 };
@@ -455,10 +483,7 @@ function App() {
         return () => document.removeEventListener('contextmenu', handleContextMenu);
     }, []);
 
-    // If maintenance mode is on, show maintenance page
-    if (MAINTENANCE_MODE) {
-        return <Maintenance />;
-    }
+
 
     return (
         <ThemeProvider>
