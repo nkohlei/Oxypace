@@ -22,7 +22,7 @@ const PrivacyPolicy = () => {
                     <section style={{ marginBottom: '30px' }}>
                         <p>
                             Oxypace ("biz", "bizim" veya "Şirket") olarak gizliliğinize derin bir saygı duyuyoruz.
-                            Bu Gizlilik Politikası, web sitemizi (https://oxypace.vercel.app) ve hizmetlerimizi kullandığınızda
+                            Bu Gizlilik Politikası, web sitemizi (https://oxypace.netlify.app) ve hizmetlerimizi kullandığınızda
                             kişisel verilerinizin nasıl toplandığını, işlendiğini, paylaşıldığını ve korunduğunu şeffaf bir şekilde açıklamaktadır.
                         </p>
                         <p>
@@ -66,7 +66,7 @@ const PrivacyPolicy = () => {
                         <h2 style={{ color: '#38bdf8', fontSize: '1.5rem', marginBottom: '15px' }}>3. Verilerin Paylaşımı ve Üçüncü Taraflar</h2>
                         <p>Kişisel verilerinizi asla üçüncü taraflara satmayız. Verilerinizi yalnızca aşağıdaki durumlarda paylaşırız:</p>
                         <ul style={{ listStyleType: 'disc', paddingLeft: '20px', color: 'var(--text-secondary)' }}>
-                            <li><strong>Hizmet Sağlayıcılar:</strong> Hosting (Vercel), veritabanı (MongoDB Atlas), depolama (Cloudflare R2) ve analiz (Google Analytics) hizmeti aldğimiz güvenilir ortaklar.</li>
+                            <li><strong>Hizmet Sağlayıcılar:</strong> Hosting (Netlify), veritabanı (MongoDB Atlas), depolama (Cloudflare R2) ve analiz (Google Analytics) hizmeti aldğimiz güvenilir ortaklar.</li>
                             <li><strong>Yasal Zorunluluklar:</strong> Mahkeme emri veya yasal bir talep olması durumunda resmi makamlarla paylaşılabilir.</li>
                             <li><strong>Rızanız Dahilinde:</strong> Açık izniniz olduğu durumlarda (örneğin Google ile giriş yaparken).</li>
                         </ul>

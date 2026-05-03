@@ -1,0 +1,42 @@
+# Netlify Configuration for Oxypace SPA
+# Replaces vercel.json — SPA fallback, security headers, build settings
+
+[build]
+  # Build command
+  command = "npm run build"
+  # Output directory (Vite default)
+  publish = "dist"
+
+# ── SPA Fallback ─────────────────────────────────
+# All routes that don't match a static file → serve index.html
+# This prevents 404 errors on client-side routes like /login, /portal/:id, etc.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ── Security Headers (ported from vercel.json) ───
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+    X-DNS-Prefetch-Control = "off"
+
+# ── Cache Control for Static Assets ──────────────
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

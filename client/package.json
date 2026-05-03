@@ -20,7 +20,6 @@
         "@livekit/components-react": "^2.9.20",
         "@livekit/components-styles": "^1.2.0",
         "@react-oauth/google": "^0.12.1",
-        "@vercel/analytics": "^2.0.1",
         "@vidstack/react": "^1.12.12",
         "axios": "^1.6.2",
         "globalmessage-backend": "file:..",

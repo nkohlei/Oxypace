@@ -73,6 +73,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
     'https://oxypace.vercel.app',
+    'https://oxypace.netlify.app',
     process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -86,6 +87,7 @@ const corsOptions = {
         if (
             allowedOrigins.includes(origin) ||
             origin.endsWith('.vercel.app') ||
+            origin.endsWith('.netlify.app') ||
             origin.includes('localhost')
         ) {
             callback(null, true);
@@ -129,8 +131,9 @@ app.use(async (req, res, next) => {
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
-// Only create directory if NOT in Vercel environment to avoid Read-Only Filesystem errors
-if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
+// Only create directory if NOT in a serverless/read-only environment
+const isServerless = process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME;
+if (!isServerless && !fs.existsSync(uploadDir)) {
     try {
         fs.mkdirSync(uploadDir, { recursive: true });
         console.log('Created uploads directory');
@@ -219,7 +222,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.get(['/sitemap.xml', '/api/sitemap.xml'], async (req, res) => {
     res.header('Content-Type', 'application/xml');
     try {
-        const baseUrl = 'https://oxypace.vercel.app';
+        const baseUrl = process.env.CLIENT_URL || 'https://oxypace.netlify.app';
         let xml = '<?xml version="1.0" encoding="UTF-8"?>';
         xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
 
