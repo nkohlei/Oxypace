@@ -76,7 +76,7 @@ import { useRealtimeSync } from './hooks/useRealtimeSync';
 import './AppLayout.css';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 import { useUI, UIProvider } from './context/UIContext';
 
