@@ -376,7 +376,6 @@ const AppLayout = () => {
 // allows auth-related routes so users can still log in.
 const MaintenanceGate = ({ children }) => {
     const { user } = useAuth();
-    const location = useLocation();
 
     // If maintenance mode is off, always render children
     if (!MAINTENANCE_MODE) return children;
@@ -384,12 +383,8 @@ const MaintenanceGate = ({ children }) => {
     // Allow @oxypace to bypass maintenance entirely
     if (user && user.username === 'oxypace') return children;
 
-    // Allow auth-related routes so users can log in
-    const authRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/auth/process', '/auth/google/success', '/onboarding'];
-    const isAuthRoute = authRoutes.some(r => location.pathname.startsWith(r));
-    if (isAuthRoute) return children;
-
     // Everyone else sees the maintenance page
+
     return (
         <Suspense fallback={<PageLoader />}>
             <Maintenance />

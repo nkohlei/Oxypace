@@ -313,3 +313,225 @@
         font-size: 0.9rem;
     }
 }
+
+/* ── Password Modal Overlay ────────────────────── */
+.maintenance-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: overlayFadeIn 0.25s ease forwards;
+}
+
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Modal Card ────────────────────────────────── */
+.maintenance-modal {
+    position: relative;
+    width: 90%;
+    max-width: 400px;
+    padding: 2.5rem 2rem 2rem;
+    border-radius: 20px;
+    text-align: center;
+
+    /* Glassmorphism */
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+        0 8px 32px rgba(31, 38, 135, 0.15),
+        0 2px 8px rgba(255, 255, 255, 0.2) inset;
+
+    animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+}
+
+@keyframes modalSlideUp {
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Close Button ──────────────────────────────── */
+.maintenance-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.06);
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.maintenance-modal-close:hover {
+    background: rgba(0, 0, 0, 0.12);
+    color: #1e293b;
+}
+
+/* ── Modal Icon ────────────────────────────────── */
+.maintenance-modal-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    margin-bottom: 1.25rem;
+    background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(56,189,248,0.15));
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.maintenance-modal-icon svg {
+    width: 26px;
+    height: 26px;
+    color: #4f46e5;
+}
+
+/* ── Modal Typography ──────────────────────────── */
+.maintenance-modal-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.4rem;
+}
+
+.maintenance-modal-desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.88rem;
+    color: #64748b;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+/* ── Modal Form ────────────────────────────────── */
+.maintenance-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.maintenance-modal-input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid rgba(148, 163, 184, 0.35);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.55);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.maintenance-modal-input::placeholder {
+    color: #94a3b8;
+}
+
+.maintenance-modal-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.maintenance-modal-input.has-error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.10);
+}
+
+/* ── Error Message ─────────────────────────────── */
+.maintenance-modal-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #ef4444;
+    animation: shakeError 0.4s ease;
+}
+
+@keyframes shakeError {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-6px); }
+    40%      { transform: translateX(6px); }
+    60%      { transform: translateX(-4px); }
+    80%      { transform: translateX(4px); }
+}
+
+/* ── Submit Button ─────────────────────────────── */
+.maintenance-modal-submit {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.30);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+}
+
+.maintenance-modal-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.40);
+}
+
+.maintenance-modal-submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.maintenance-modal-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* ── Spinner ───────────────────────────────────── */
+.maintenance-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2.5px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Modal Responsive ──────────────────────────── */
+@media (max-width: 600px) {
+    .maintenance-modal {
+        width: 92%;
+        padding: 2rem 1.5rem 1.75rem;
+    }
+
+    .maintenance-modal-title {
+        font-size: 1.15rem;
+    }
+}

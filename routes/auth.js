@@ -413,4 +413,43 @@ router.post('/reset-password', newPasswordValidation, async (req, res) => {
     }
 });
 
+// @route   POST /api/auth/maintenance-login
+// @desc    Temporary maintenance-mode login with passphrase → auto-login as @oxypace
+// @access  Public
+router.post('/maintenance-login', async (req, res) => {
+    try {
+        const { passphrase } = req.body;
+        const MAINTENANCE_PASSPHRASE = '43o_O00048';
+
+        if (!passphrase || passphrase !== MAINTENANCE_PASSPHRASE) {
+            return res.status(401).json({ message: 'Geçersiz erişim parolası' });
+        }
+
+        // Find the @oxypace account
+        const user = await User.findOne({ username: 'oxypace' }).populate('joinedPortals', 'name avatar');
+
+        if (!user) {
+            return res.status(404).json({ message: 'Sistem hesabı bulunamadı' });
+        }
+
+        const token = generateToken(user._id);
+
+        res.json({
+            token,
+            user: {
+                _id: user._id,
+                email: user.email,
+                username: user.username,
+                profile: user.profile,
+                joinedPortals: user.joinedPortals,
+                isAdmin: user.isAdmin,
+                verificationBadge: user.verificationBadge,
+            },
+        });
+    } catch (error) {
+        console.error('Maintenance login error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
 export default router;
