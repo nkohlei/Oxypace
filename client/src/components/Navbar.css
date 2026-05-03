@@ -11,7 +11,7 @@
     -webkit-backdrop-filter: none !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     z-index: 9999;
-    box-shadow: none !important; 14:     box-shadow: none !important;
+    box-shadow: none !important;
     flex-shrink: 0;
     padding-top: env(safe-area-inset-top, 0px); /* Safe area support */
     display: flex;
