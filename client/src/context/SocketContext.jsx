@@ -21,7 +21,7 @@ export const SocketProvider = ({ children }) => {
     useEffect(() => {
         if (isAuthenticated && user) {
             // Determine Socket URL
-            let socketUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+            let socketUrl = import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : 'http://localhost:5000');
 
             // Remove '/api' suffix if present, as Socket.io connects to root
             if (socketUrl.endsWith('/api')) {

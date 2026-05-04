@@ -16,8 +16,8 @@ export const getImageUrl = (path) => {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
-    const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
-    const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+    const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
+    const baseUrl = (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : '')).replace(/\/$/, '');
 
     try {
         let absoluteUrl = cleanPath;

@@ -10,7 +10,7 @@
 # ── Proxies (ported from vercel.json) ────────────
 [[redirects]]
   from = "/api/*"
-  to = "https://globalmessage-backend.koyeb.app/api/:splat"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/:splat"
   status = 200
   force = true
 
