@@ -127,8 +127,9 @@
         background: var(--bg-darker);
     }
 
-    /* Visible on Home/Portal pages - Side by Side */
-    .portal-sidebar-wrapper.mobile-show-sidebar {
+    /* Visible on Home/Portal pages OR manually opened */
+    .portal-sidebar-wrapper.mobile-show-sidebar,
+    .portal-sidebar-wrapper.sidebar-open {
         transform: translateX(0);
     }
 
@@ -148,7 +149,8 @@
                     width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Shift content only when sidebar is active (showSidebarOnMobile is true) */
+    /* Shift content only when sidebar is active (showSidebarOnMobile is true OR manually open) */
+    .main-content-wrapper.sidebar-open,
     .main-content-wrapper:not(.mobile-no-sidebar) {
         margin-left: 64px; 
         width: calc(100% - 64px);

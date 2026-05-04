@@ -257,7 +257,7 @@ const AppLayout = () => {
 
                 {/* Global User Bar Removed - Moved to Sidebars */}
 
-                <div className={`main-content-wrapper ${!showSidebarOnMobile ? 'mobile-no-sidebar' : ''}`}>
+                <div className={`main-content-wrapper ${isSidebarOpen ? 'sidebar-open' : ''} ${!showSidebarOnMobile ? 'mobile-no-sidebar' : ''}`}>
                     <div className="content-scroll-area">
                         <Suspense fallback={<PageLoader />}>
                             <Routes>

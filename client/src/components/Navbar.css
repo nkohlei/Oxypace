@@ -775,6 +775,7 @@ body.dark-mode .logo-text {
 /* Mobile Layout Alignment Fix */
 @media (max-width: 768px) {
     /* If Navbar is inside a shifted wrapper, shift it too since it is position:fixed */
+    .main-content-wrapper.sidebar-open .navbar,
     .main-content-wrapper:not(.mobile-no-sidebar) .navbar {
         left: 64px !important;
         width: calc(100% - 64px) !important;
