@@ -143,6 +143,18 @@ body {
   }
 }
 
+/* Global Hardware Acceleration for Page Transitions and Scrolling */
+.app-container,
+.main-content-wrapper,
+.content-scroll-area,
+.portal-sidebar-wrapper {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  -webkit-font-smoothing: antialiased;
+}
+
 #root {
   height: 100%;
   display: flex;

@@ -28,21 +28,39 @@ export const getImageUrl = (path) => {
         if (cleanPath.includes('/api/media/')) {
             // Strip any legacy domains (like oxypace.vercel.app) and enforce current baseUrl
             const proxyTarget = cleanPath.substring(cleanPath.indexOf('/api/media/') + 11);
+            
+            // If it's an internal R2 file (not an external URL) and we are on Web, use the fast CDN!
+            if (!proxyTarget.startsWith('http') && !isNative && !import.meta.env.DEV) {
+                return `/r2-media/${proxyTarget}`;
+            }
+            
+            // Otherwise, fallback to the external media proxy or native direct URL
+            if (!proxyTarget.startsWith('http') && (isNative || import.meta.env.DEV)) {
+                return `${r2Domain}/${proxyTarget}`;
+            }
+
             return `${baseUrl}/api/media/${proxyTarget}`;
         }
 
         if (absoluteUrl.startsWith('blob:')) return absoluteUrl;
 
-        // 1. Transform Relative Paths to Absolute R2 URLs
+        // 1. Transform Relative Paths to Absolute R2 URLs (or use CDN edge)
         if (!cleanPath.startsWith('http')) {
             let relativePath = cleanPath;
             if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
             
-            // Construct full R2 URL
+            // If on Web (Netlify), use the ultra-fast Edge Proxy for R2 directly! Bypasses Koyeb.
+            if (!isNative && !import.meta.env.DEV) {
+                return `/r2-media/${relativePath}`;
+            }
+            
+            // If Native or Dev, use the direct R2 domain (Capacitor doesn't need proxy)
             absoluteUrl = `${r2Domain}/${relativePath}`;
+            return absoluteUrl;
         }
 
-        // 2. Proxy the Absolute URL through the verified Encoded format
+        // 2. External Media Proxy (News thumbnails, external GIFs)
+        // Must go through Koyeb's /api/media to bypass CORS/Hotlinking protections
         return `${baseUrl}/api/media/${encodeURIComponent(absoluteUrl)}`;
     } catch (err) {
         console.error('getImageUrl Error:', err);
