@@ -22,7 +22,9 @@ export const SocketProvider = ({ children }) => {
         if (isAuthenticated && user) {
             // Determine Socket URL
             const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
-            let socketUrl = import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? (isNative ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : '') : 'http://localhost:5000');
+            let socketUrl = (!isNative && !import.meta.env.DEV) 
+                ? '' 
+                : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : 'http://localhost:5000'));
 
             // Remove '/api' suffix if present, as Socket.io connects to root
             if (socketUrl.endsWith('/api')) {

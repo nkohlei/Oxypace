@@ -4,8 +4,14 @@ import App from './App.jsx';
 import './index.css';
 import axios from 'axios';
 
-// Set default base URL for all axios requests
-if (import.meta.env.VITE_API_BASE_URL) {
+const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
+
+// For production web, ALWAYS force relative URL to utilize Netlify Proxy and bypass ISP blocks.
+// For native, use VITE_API_BASE_URL if available, otherwise fallback to Koyeb absolute URL.
+if (!isNative && !import.meta.env.DEV) {
+    console.log('🌐 Web Environment Detected: Forcing relative paths for ISP Bypass Proxy.');
+    axios.defaults.baseURL = '';
+} else if (import.meta.env.VITE_API_BASE_URL) {
     let baseUrl = import.meta.env.VITE_API_BASE_URL;
     // Remove trailing /api if present to avoid double /api/api in requests
     if (baseUrl.endsWith('/api')) {
@@ -17,7 +23,6 @@ if (import.meta.env.VITE_API_BASE_URL) {
     }
     axios.defaults.baseURL = baseUrl;
 } else if (!import.meta.env.DEV) {
-    const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
     console.warn('⚠️ VITE_API_BASE_URL not set! Defaulting to ' + (isNative ? 'production backend' : 'relative proxy') + '.');
     axios.defaults.baseURL = isNative ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : '';
 }
