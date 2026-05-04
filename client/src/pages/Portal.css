@@ -108,6 +108,8 @@
     border-top: 1px solid var(--border-subtle);
     /* Separator between input and feed */
     position: relative;
+    transform: translateZ(0); /* Isolate scroll layer to prevent backdrop-filter glitch */
+    will-change: transform;
 }
 
 /* Search Bar Mini */
@@ -207,6 +209,9 @@
     -webkit-backdrop-filter: blur(10px);
     transform: translateZ(0); /* Force hardware acceleration to fix Chromium blur edge flashing */
     will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden; /* Strictly prevent blur bleeding outside border-radius */
     border-radius: 16px;
     display: flex;
     align-items: center;
