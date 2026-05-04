@@ -99,7 +99,6 @@ const Register = () => {
             apiBase += '/api';
         }
 
-        const isNative = Capacitor.isNativePlatform();
         const authUrl = `${apiBase}/auth/google${isNative ? '?mobile=true' : ''}`;
 
         if (Capacitor.isNativePlatform()) {
