@@ -205,6 +205,8 @@
     background-color: var(--bg-input);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    transform: translateZ(0); /* Force hardware acceleration to fix Chromium blur edge flashing */
+    will-change: transform;
     border-radius: 16px;
     display: flex;
     align-items: center;
