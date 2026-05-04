@@ -119,7 +119,7 @@
         bottom: 0;
         width: 64px;
         height: 100dvh;
-        z-index: 1000;
+        z-index: 10000; /* Ensure it stays above everything */
         transform: translateX(-100%);
         border-right: none;
         box-shadow: none;
@@ -144,7 +144,14 @@
         width: 100%;
         flex: 1;
         min-width: 0;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Shift content only when sidebar is active (showSidebarOnMobile is true) */
+    .main-content-wrapper:not(.mobile-no-sidebar) {
+        margin-left: 64px; 
+        width: calc(100% - 64px);
     }
 }
 
