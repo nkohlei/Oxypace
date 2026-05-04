@@ -143,9 +143,7 @@ body {
   }
 }
 
-/* Global Hardware Acceleration for Page Transitions and Scrolling */
-.app-container,
-.main-content-wrapper,
+/* Global Hardware Acceleration for Scrolling */
 .content-scroll-area,
 .portal-sidebar-wrapper {
   will-change: transform, opacity;
