@@ -7,6 +7,19 @@
   # Output directory (Vite default)
   publish = "dist"
 
+# ── Proxies (ported from vercel.json) ────────────
+[[redirects]]
+  from = "/api/*"
+  to = "https://globalmessage-backend.koyeb.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/r2-media/*"
+  to = "https://pub-094a78010abf4ebf9726834268946cb8.r2.dev/:splat"
+  status = 200
+  force = true
+
 # ── SPA Fallback ─────────────────────────────────
 # All routes that don't match a static file → serve index.html
 # This prevents 404 errors on client-side routes like /login, /portal/:id, etc.
