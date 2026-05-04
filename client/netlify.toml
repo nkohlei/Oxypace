@@ -20,6 +20,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/socket.io/:splat"
+  status = 200
+  force = true
+
 # ── SPA Fallback ─────────────────────────────────
 # All routes that don't match a static file → serve index.html
 # This prevents 404 errors on client-side routes like /login, /portal/:id, etc.

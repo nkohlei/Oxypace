@@ -46,9 +46,10 @@ const Login = () => {
 
     const handleGoogleLogin = async () => {
         sessionStorage.setItem('auth_intent', 'login');
+        const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
         let apiBase =
             import.meta.env.VITE_API_BASE_URL ||
-            'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+            (!import.meta.env.DEV ? (isNative ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : '') : 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app');
 
         if (apiBase.endsWith('/')) {
             apiBase = apiBase.slice(0, -1);
