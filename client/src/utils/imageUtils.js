@@ -23,13 +23,12 @@ export const getImageUrl = (path) => {
     try {
         let absoluteUrl = cleanPath;
 
-        // 0. QUICK EXIT: If it's already a proxied URL, return it directly
-        // This handles cases where the backend already saved the full proxy URL
+        // 0. QUICK EXIT: If it's already a proxied URL, sanitize and return it
+        // This handles cases where the backend already saved the full proxy URL (e.g. from Vercel)
         if (cleanPath.includes('/api/media/')) {
-            if (cleanPath.startsWith('http')) return cleanPath;
-            // Handle relative proxy paths: /api/media/...
-            const finalBase = baseUrl || '';
-            return `${finalBase}${cleanPath.startsWith('/') ? '' : '/'}${cleanPath}`;
+            // Strip any legacy domains (like oxypace.vercel.app) and enforce current baseUrl
+            const proxyTarget = cleanPath.substring(cleanPath.indexOf('/api/media/') + 11);
+            return `${baseUrl}/api/media/${proxyTarget}`;
         }
 
         if (absoluteUrl.startsWith('blob:')) return absoluteUrl;
