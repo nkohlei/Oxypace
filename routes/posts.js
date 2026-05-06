@@ -3,6 +3,7 @@ import multer from 'multer';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
+import Portal from '../models/Portal.js';
 import Notification from '../models/Notification.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
 import { postValidation, mongoIdValidation } from '../middleware/validation.js';
@@ -66,7 +67,6 @@ router.post(
             }
 
             if (portalId) {
-                const Portal = (await import('../models/Portal.js')).default;
                 const portal = await Portal.findById(portalId);
                 if (!portal) {
                     return res.status(404).json({ message: 'Portal bulunamadı' });
@@ -158,7 +158,6 @@ router.post(
                 // This ensures that when they login, they see the unread count in the sidebar.
                 (async () => {
                     try {
-                        const Portal = (await import('../models/Portal.js')).default;
                         const portal = await Portal.findById(postData.portal);
                         if (portal) {
                             const memberIds = portal.members.filter(m => m.toString() !== req.user._id.toString());
@@ -260,16 +259,39 @@ router.get('/', optionalProtect, async (req, res) => {
 // @access  Public (Optional Auth)
 router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id).populate(
-            'author',
-            'username profile.displayName profile.avatar verificationBadge settings.privacy'
-        );
+        const post = await Post.findById(req.params.id)
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy')
+            .populate('portal', 'privacy members blockedUsers allowedUsers');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        // Privacy Check
+        // --- Portal Privacy Check ---
+        if (post.portal) {
+            const viewerId = req.user?._id;
+            const isAuthor = viewerId && viewerId.toString() === post.author._id.toString();
+            
+            if (!isAuthor) {
+                const portal = post.portal;
+                const isBlocked = viewerId && portal.blockedUsers?.some(id => id.toString() === viewerId.toString());
+                
+                if (isBlocked) {
+                    return res.status(403).json({ message: 'Access denied to this portal' });
+                }
+
+                if (portal.privacy === 'private' || portal.privacy === 'restricted') {
+                    const isMember = viewerId && portal.members?.some(id => id.toString() === viewerId.toString());
+                    const isAllowed = viewerId && portal.allowedUsers?.some(id => id.toString() === viewerId.toString());
+                    
+                    if (!isMember && !isAllowed) {
+                        return res.status(403).json({ message: 'This post is in a private portal' });
+                    }
+                }
+            }
+        }
+
+        // --- User Privacy Check ---
         if (post.author.settings?.privacy?.isPrivate) {
             // Not logged in -> cannot see private post
             if (!req.user) {
@@ -327,12 +349,46 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const posts = await Post.find({ author: req.params.userId })
+        // --- Portal Privacy Filter ---
+        // If the viewer is NOT the author, we must only show posts from portals they have access to
+        const viewerId = req.user?._id;
+        const targetUserId = req.params.userId;
+        const isAuthor = viewerId && viewerId.toString() === targetUserId;
+
+        let query = { author: targetUserId };
+
+        if (!isAuthor) {
+            // Find all portals where the target user has posted
+            const userPortalsIds = await Post.find({ author: targetUserId }).distinct('portal');
+            
+            // Filter these portals by visibility to the current viewer
+            const portalQuery = {
+                _id: { $in: userPortalsIds.filter(id => id != null) },
+                $or: [
+                    { privacy: 'public' }
+                ]
+            };
+
+            if (viewerId) {
+                portalQuery.blockedUsers = { $ne: viewerId };
+                portalQuery.$or.push({ members: viewerId });
+                portalQuery.$or.push({ allowedUsers: viewerId });
+            }
+            
+            const accessiblePortalIds = await Portal.find(portalQuery).distinct('_id');
+
+            query.$or = [
+                { portal: { $exists: false } },
+                { portal: { $in: accessiblePortalIds } }
+            ];
+        }
+
+        const posts = await Post.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
-            .populate('portal', 'name avatar channels');
+            .populate('portal', 'name avatar channels privacy'); // Include privacy for secondary checks if needed
 
         // Resolve channel names from portal.channels subdocuments
         const postsWithChannelNames = posts.map(post => {
@@ -356,7 +412,7 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
             return postObj;
         });
 
-        const total = await Post.countDocuments({ author: req.params.userId });
+        const total = await Post.countDocuments(query);
 
         res.json({
             posts: postsWithChannelNames,
@@ -410,7 +466,6 @@ router.put('/:id/pin', protect, mongoIdValidation('id'), async (req, res) => {
         }
 
         // Check permissions
-        const Portal = (await import('../models/Portal.js')).default;
         const portal = await Portal.findById(post.portal);
 
         if (!portal) {
