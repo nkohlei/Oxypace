@@ -61,7 +61,8 @@ router.get('/', optionalProtect, async (req, res) => {
             : {};
 
         // Exclude portals where user is blocked and filter by privacy
-        // Also exclude closed portals from search
+        // Also exclude closed and NSFW portals from discovery/search
+        keyword.isNSFW = { $ne: true };
         if (req.user) {
             keyword.blockedUsers = { $ne: req.user._id };
             keyword.status = { $ne: 'closed' }; // Hide closed portals
