@@ -334,7 +334,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
             .select(
                 'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers followRequests'
             )
-            .populate('joinedPortals', 'name avatar badges isVerified');
+            .populate('joinedPortals', 'name avatar badges isVerified privacy members allowedUsers owner admins');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -425,7 +425,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
         userObj.mutualPortalsCount = mutualPortals.length;
 
         // Fetch portals owned by the user
-        const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar');
+        const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar badges isVerified privacy members allowedUsers owner admins');
 
         // Privacy Check for Portals
         // Default to public if setting missing
@@ -444,18 +444,40 @@ router.get('/:username', optionalProtect, async (req, res) => {
             userObj.portals = []; // Hide
             userObj.portalsHidden = true;
         } else {
-            // Repopulate portals if needed or use what we have (we populated joinedPortals)
             // Merge joinedPortals and ownedPortals, distinct by _id
-            const allPortals = [...user.joinedPortals].filter(Boolean);
+            const rawPortals = [...user.joinedPortals].filter(Boolean);
 
             // Add owned portals if not already present
             ownedPortals.forEach((owned) => {
-                if (!allPortals.some((p) => p && p._id && p._id.toString() === owned._id.toString())) {
-                    allPortals.push(owned);
+                if (!rawPortals.some((p) => p && p._id && p._id.toString() === owned._id.toString())) {
+                    rawPortals.push(owned);
                 }
             });
 
-            userObj.portals = allPortals;
+            // Privacy Filter: Remove 'restricted' portals if viewer doesn't have access
+            const viewerId = req.user?._id?.toString();
+            const filteredPortals = rawPortals.filter(portal => {
+                if (!portal) return false;
+                if (portal.privacy !== 'restricted') return true;
+                
+                // Restricted portal: check if viewer is owner, member, admin, or allowed
+                if (!viewerId) return false;
+                const isOwner = portal.owner?.toString() === viewerId;
+                const isMember = portal.members?.some(m => m.toString() === viewerId);
+                const isAdmin = portal.admins?.some(a => a.toString() === viewerId);
+                const isAllowed = portal.allowedUsers?.some(u => u.toString() === viewerId);
+                
+                return isOwner || isMember || isAdmin || isAllowed;
+            });
+
+            // Clean up objects for client (remove internal membership lists)
+            userObj.portals = filteredPortals.map(p => {
+                const pObj = p.toObject ? p.toObject() : { ...p };
+                delete pObj.members;
+                delete pObj.allowedUsers;
+                delete pObj.admins;
+                return pObj;
+            });
             userObj.portalsHidden = false;
         }
 
