@@ -105,6 +105,17 @@ const Portal = () => {
                 console.log('✅ Realtime Post Accepted for this view');
                 setPosts((prev) => {
                     if (prev.some(p => p._id === newPost._id)) return prev;
+                    
+                    // Stitch deeply populated quotedPost from existing feed to avoid 'Yükleniyor...'
+                    if (newPost.quotedPost && typeof newPost.quotedPost === 'object') {
+                        const existingQuoted = prev.find(p => p._id === newPost.quotedPost._id);
+                        if (existingQuoted) {
+                            newPost.quotedPost = existingQuoted;
+                        } else if (quotedPost && newPost.quotedPost._id === quotedPost._id) {
+                            newPost.quotedPost = quotedPost;
+                        }
+                    }
+                    
                     return [newPost, ...prev];
                 });
             } else {
@@ -245,6 +256,7 @@ const Portal = () => {
             likes: [],
             likeCount: 0,
             isOptimistic: true, // Flag for styling
+            quotedPost: quotedPost, // Inject full deeply-populated quotedPost
         };
 
         // Add to feed immediately
@@ -297,7 +309,17 @@ const Portal = () => {
                     // Socket already added it, just remove the optimistic temp
                     return currentPosts.filter(p => String(p._id) !== tempStrId);
                 }
-                return currentPosts.map((p) => (String(p._id) === tempStrId ? res.data : p));
+                return currentPosts.map((p) => {
+                    if (String(p._id) === tempStrId) {
+                        const backendPost = res.data;
+                        // Inject deeply populated quotedPost if backend missed the 3rd level
+                        if (backendPost.quotedPost && p.quotedPost && backendPost.quotedPost._id === p.quotedPost._id) {
+                            backendPost.quotedPost = p.quotedPost;
+                        }
+                        return backendPost;
+                    }
+                    return p;
+                });
             });
         } catch (err) {
             console.error('Send message failed', err);
