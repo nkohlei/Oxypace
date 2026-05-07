@@ -19,6 +19,8 @@ const CreatePost = () => {
     const navigate = useNavigate();
     const location = useLocation(); // Add hook
     const portalId = location.state?.portalId; // Get portalId if exists
+    const quotedPostId = location.state?.quotedPostId;
+    const quotedPost = location.state?.quotedPost;
 
     // Helper to extract YouTube ID
     const getYoutubeId = (url) => {
@@ -100,6 +102,7 @@ const CreatePost = () => {
             const postData = {
                 content: finalContent,
                 portalId: portalId,
+                quotedPostId: quotedPostId,
             };
 
             if (mediaKey) {
@@ -182,6 +185,16 @@ const CreatePost = () => {
                                 className="url-input"
                             />
                         </div>
+
+                        {quotedPost && (
+                            <div className="quoted-preview">
+                                <div className="quoted-preview-header">
+                                    <span className="quoted-author">{quotedPost.author?.profile?.displayName || quotedPost.author?.username}</span>
+                                    <span className="quoted-username">@{quotedPost.author?.username}</span>
+                                </div>
+                                <p className="quoted-content-preview">{quotedPost.content?.substring(0, 100)}...</p>
+                            </div>
+                        )}
 
                         {mediaPreview && (
                             <div className="media-preview">

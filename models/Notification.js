@@ -24,6 +24,7 @@ const notificationSchema = new mongoose.Schema(
                 'message',
                 'friend_connected',
                 'portal_post',
+                'quote',
             ],
             required: true,
         },
@@ -96,6 +97,7 @@ notificationSchema.post('save', async function (doc) {
             case 'portal_post': body = `Portalında yeni bir paylaşım var.`; break;
             case 'message': body = `${senderName} sana bir mesaj gönderdi.`; break;
             case 'portal_invite': body = `${senderName} seni bir portala davet etti.`; break;
+            case 'quote': body = `${senderName} gönderini alıntıladı.`; break;
         }
 
         // Dynamically import push service to prevent circular dependencies

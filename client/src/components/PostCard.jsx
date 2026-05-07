@@ -14,7 +14,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
-import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag } from 'lucide-react';
+import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote } from 'lucide-react';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -69,6 +69,89 @@ const YouTubeFacade = ({ media }) => {
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+const QuotedPost = ({ quotedPost, viewer }) => {
+    const navigate = useNavigate();
+    if (!quotedPost) return null;
+
+    // Privacy Check for Quoted Post
+    const isAuthor = viewer?._id === (quotedPost.author?._id || quotedPost.author);
+    let isVisible = true;
+
+    if (!isAuthor) {
+        // Portal Privacy
+        if (quotedPost.portal) {
+            const portal = quotedPost.portal;
+            const isBlocked = viewer?._id && portal.blockedUsers?.some(id => String(id) === String(viewer._id));
+            if (isBlocked) isVisible = false;
+
+            if (portal.privacy === 'private' || portal.privacy === 'restricted') {
+                const isMember = viewer?._id && portal.members?.some(id => String(id) === String(viewer._id));
+                const isAllowed = viewer?._id && portal.allowedUsers?.some(id => String(id) === String(viewer._id));
+                if (!isMember && !isAllowed) isVisible = false;
+            }
+        }
+
+        // User Privacy
+        if (quotedPost.author?.settings?.privacy?.isPrivate) {
+            if (!viewer) {
+                isVisible = false;
+            } else {
+                const isFollowing = viewer.following?.some(id => String(id) === String(quotedPost.author._id));
+                if (!isAuthor && !isFollowing) isVisible = false;
+            }
+        }
+    }
+
+    if (!isVisible) {
+        return (
+            <div className="quoted-post-container private">
+                <div className="quoted-post-content">
+                    <p className="private-message">Bu gönderi gizli veya erişilemez.</p>
+                </div>
+            </div>
+        );
+    }
+
+    const handleQuoteClick = (e) => {
+        e.stopPropagation();
+        navigate(`/post/${quotedPost._id}`);
+    };
+
+    const author = quotedPost.author && typeof quotedPost.author === 'object' ? quotedPost.author : {
+        username: 'Kullanıcı',
+        profile: { displayName: 'Yükleniyor...', avatar: null }
+    };
+
+    return (
+        <div className="quoted-post-container" onClick={handleQuoteClick}>
+            <div className="quoted-post-header">
+                {author.profile?.avatar ? (
+                    <img src={getImageUrl(author.profile.avatar)} alt={author.username} className="quoted-author-avatar" />
+                ) : (
+                    <div className="quoted-author-placeholder">{author.username?.charAt(0)?.toUpperCase()}</div>
+                )}
+                <span className="quoted-author-name">{author.profile?.displayName || author.username}</span>
+                <Badge type={author.verificationBadge} size={14} />
+                <span className="quoted-author-username">@{author.username}</span>
+            </div>
+            <div className="quoted-post-content">
+                {quotedPost.content && (
+                    <p className="quoted-text">{quotedPost.content.substring(0, 200)}{quotedPost.content.length > 200 ? '...' : ''}</p>
+                )}
+                {quotedPost.media && (
+                    <div className="quoted-media-preview">
+                        {quotedPost.mediaType === 'video' ? (
+                            <div className="quoted-video-icon"><Youtube size={20} /> Video</div>
+                        ) : (
+                            <img src={getImageUrl(quotedPost.media)} alt="Quoted media" />
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -226,6 +309,12 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
     const handleShare = () => {
         setShowShareModal(true);
+    };
+
+    const handleQuote = (e) => {
+        if (e) e.stopPropagation();
+        setShowMenu(false);
+        navigate('/create-post', { state: { quotedPostId: post._id, quotedPost: post } });
     };
 
     const handleDownload = async (e) => {
@@ -405,6 +494,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             >
                                 <button
                                     className="menu-item"
+                                    onClick={handleQuote}
+                                >
+                                    Alıntıla
+                                    <Quote size={18} className="menu-icon-right" />
+                                </button>
+
+                                <button
+                                    className="menu-item"
                                     onClick={() => {
                                         handleSave();
                                         setShowMenu(false);
@@ -580,6 +677,11 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             />
                         )}
                     </div>
+                )}
+
+                {/* Quoted Post */}
+                {post.quotedPost && (
+                    <QuotedPost quotedPost={post.quotedPost} viewer={user} />
                 )}
 
                 {/* No Actions displayed below content */}

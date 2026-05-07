@@ -181,3 +181,36 @@
     background: var(--bg-hover);
     border-color: var(--border-neon);
 }
+
+.quoted-preview {
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+
+.quoted-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.quoted-author {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.quoted-username {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.quoted-content-preview {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    margin: 0;
+}

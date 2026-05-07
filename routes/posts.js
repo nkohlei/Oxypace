@@ -47,7 +47,7 @@ router.post(
     async (req, res) => {
         try {
             console.log('📤 Handler started. Body keys:', Object.keys(req.body));
-            const { content, portalId, media, mediaType } = req.body;
+            const { content, portalId, media, mediaType, quotedPostId } = req.body;
 
             // If no file and no content and no external media and no direct upload, reject
             if (!content && !req.file && !media && !req.body.mediaKey) {
@@ -58,6 +58,7 @@ router.post(
             const postData = {
                 author: req.user._id,
                 content: content || '',
+                quotedPost: quotedPostId || null,
             };
 
             // Handle external media (like YouTube)
@@ -141,6 +142,23 @@ router.post(
             // Increment post count
             await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
 
+            // Create notification for quoted post author
+            if (quotedPostId) {
+                try {
+                    const originalPost = await Post.findById(quotedPostId);
+                    if (originalPost && originalPost.author.toString() !== req.user._id.toString()) {
+                        await Notification.create({
+                            recipient: originalPost.author,
+                            sender: req.user._id,
+                            type: 'quote',
+                            post: post._id,
+                        });
+                    }
+                } catch (err) {
+                    console.error('Quote notification error:', err);
+                }
+            }
+
             // Only emit global socket event for non-portal posts
             if (!postData.portal) {
                 req.app.get('io').emit('newPost', post);
@@ -208,7 +226,14 @@ router.get('/', optionalProtect, async (req, res) => {
             .populate(
                 'author',
                 'username profile.displayName profile.avatar verificationBadge settings.privacy'
-            );
+            )
+            .populate({
+                path: 'quotedPost',
+                populate: [
+                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                ]
+            });
 
         if (req.user && !req.user.following) {
             req.user.following = [];
@@ -261,7 +286,14 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
     try {
         const post = await Post.findById(req.params.id)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy')
-            .populate('portal', 'privacy members blockedUsers allowedUsers');
+            .populate('portal', 'privacy members blockedUsers allowedUsers')
+            .populate({
+                path: 'quotedPost',
+                populate: [
+                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                ]
+            });
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -388,7 +420,14 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
             .skip(skip)
             .limit(limit)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
-            .populate('portal', 'name avatar channels privacy'); // Include privacy for secondary checks if needed
+            .populate('portal', 'name avatar channels privacy') // Include privacy for secondary checks if needed
+            .populate({
+                path: 'quotedPost',
+                populate: [
+                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                ]
+            });
 
         // Resolve channel names from portal.channels subdocuments
         const postsWithChannelNames = posts.map(post => {

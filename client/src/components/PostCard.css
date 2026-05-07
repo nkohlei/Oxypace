@@ -656,3 +656,107 @@
     margin-left: 4px;
     /* Optical adjustment for play icon */
 }
+
+/* Quoted Post Styles */
+.quoted-post-container {
+    margin-top: 10px;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.quoted-post-container:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.quoted-post-container.private {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-style: dashed;
+    cursor: default;
+}
+
+.private-message {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    font-style: italic;
+    text-align: center;
+    margin: 0;
+}
+
+.quoted-post-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+}
+
+.quoted-author-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.quoted-author-placeholder {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-darker);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.quoted-author-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.quoted-author-username {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.quoted-post-content {
+    padding: 0 12px 12px 12px;
+}
+
+.quoted-text {
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 0;
+    word-break: break-word;
+}
+
+.quoted-media-preview {
+    margin-top: 8px;
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 200px;
+}
+
+.quoted-media-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.quoted-video-icon {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    border-radius: 8px;
+}

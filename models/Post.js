@@ -55,6 +55,10 @@ const postSchema = new mongoose.Schema(
         pinnedAt: {
             type: Date,
         },
+        quotedPost: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Post',
+        },
     },
     {
         timestamps: true,
