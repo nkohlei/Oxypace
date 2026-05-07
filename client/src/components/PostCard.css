@@ -659,12 +659,12 @@
 
 /* Quoted Post Styles - Proportional Scaling System */
 .quoted-post-container {
-    --quote-font-main: 13px;
-    --quote-font-sub: 12px;
-    --quote-padding: 10px;
-    --quote-avatar: 20px;
-    --quote-gap: 6px;
-    --quote-max-h: 350px;
+    --quote-font-main: 12px;
+    --quote-font-sub: 11px;
+    --quote-padding: 8px;
+    --quote-avatar: 18px;
+    --quote-gap: 5px;
+    --quote-max-h: 250px;
     --quote-radius: 10px;
 
     margin-top: 8px;
@@ -675,7 +675,7 @@
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     background-color: rgba(255, 255, 255, 0.03);
-    max-width: 420px; /* Aggressively smaller */
+    max-width: 380px; /* Aggressively smaller */
     width: 100%;
 }
 
@@ -685,24 +685,24 @@
 }
 
 .quoted-post-container.depth-1 {
-    --quote-font-main: 12px;
-    --quote-font-sub: 11px;
-    --quote-padding: 8px;
-    --quote-avatar: 16px;
-    --quote-gap: 5px;
-    --quote-max-h: 280px;
-    --quote-radius: 8px;
-    max-width: 100%;
-    background: rgba(0, 0, 0, 0.2);
-}
-
-.quoted-post-container.depth-2 {
     --quote-font-main: 11px;
     --quote-font-sub: 10px;
     --quote-padding: 6px;
     --quote-avatar: 14px;
     --quote-gap: 4px;
     --quote-max-h: 200px;
+    --quote-radius: 8px;
+    max-width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.quoted-post-container.depth-2 {
+    --quote-font-main: 10px;
+    --quote-font-sub: 9px;
+    --quote-padding: 5px;
+    --quote-avatar: 12px;
+    --quote-gap: 3px;
+    --quote-max-h: 150px;
     --quote-radius: 6px;
     max-width: 100%;
     background: rgba(0, 0, 0, 0.3);
@@ -812,8 +812,14 @@
 .quoted-player .native-player-container.v16-scale {
     margin: 0 !important;
     box-shadow: none !important;
-    width: 100% !important;
+    max-width: 100% !important;
+    width: fit-content !important;
     background: transparent !important;
+}
+
+.quoted-player .native-video-element {
+    max-height: var(--quote-max-h) !important;
+    object-fit: contain !important;
 }
 
 .nested-quote-wrapper {

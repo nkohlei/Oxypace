@@ -90,8 +90,8 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                         className="quoted-portal-tag"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {quotedPost.portal.icon && (
-                            <img src={getImageUrl(quotedPost.portal.icon)} alt="" className="quoted-portal-icon" />
+                        {quotedPost.portal.avatar && (
+                            <img src={getImageUrl(quotedPost.portal.avatar)} alt="" className="quoted-portal-icon" />
                         )}
                         <span>{quotedPost.portal.name}</span>
                         <ExternalLink size={10} />
