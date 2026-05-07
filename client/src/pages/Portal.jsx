@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense, Fragment } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
 
@@ -20,12 +20,14 @@ import VoiceChannel from '../components/VoiceChannel';
 import ConferenceChannel from '../components/ConferenceChannel';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useSocket } from '../context/SocketContext';
+import { X } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
 import './Portal.css';
 
 
 const Portal = () => {
     const { id } = useParams();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const urlChannel = searchParams.get('channel');
     const urlPost = searchParams.get('post');
@@ -62,6 +64,7 @@ const Portal = () => {
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
+    const [quotedPost, setQuotedPost] = useState(location.state?.quotedPost || null);
     const [showPortalInfo, setShowPortalInfo] = useState(false);
     const activeChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
     const isImageChannel = activeChannelObj?.type === 'image';
@@ -260,6 +263,7 @@ const Portal = () => {
                 content: currentData.content,
                 portalId: id,
                 channel: currentChannel,
+                quotedPostId: quotedPost?._id,
             };
 
             if (mediaKey) {
@@ -270,6 +274,8 @@ const Portal = () => {
             }
 
             const res = await axios.post('/api/posts', postData);
+
+            setQuotedPost(null); // Clear after send
 
 
             // 2. Success: Replace temp post with real data
@@ -1314,6 +1320,24 @@ const Portal = () => {
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {quotedPost && (
+                                                                            <div className="input-quoted-preview">
+                                                                                <div className="input-quoted-preview-header">
+                                                                                    <span className="input-quoted-preview-author">{quotedPost.author?.profile?.displayName || quotedPost.author?.username}</span>
+                                                                                    <span className="input-quoted-preview-username">@{quotedPost.author?.username}</span>
+                                                                                </div>
+                                                                                <p className="input-quoted-preview-text">
+                                                                                    {quotedPost.content}
+                                                                                </p>
+                                                                                <button
+                                                                                    className="remove-quote-btn"
+                                                                                    onClick={() => setQuotedPost(null)}
+                                                                                >
+                                                                                    <X size={16} />
+                                                                                </button>
                                                                             </div>
                                                                         )}
 

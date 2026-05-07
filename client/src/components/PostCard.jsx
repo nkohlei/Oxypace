@@ -15,6 +15,7 @@ import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
 import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote } from 'lucide-react';
+import QuotePortalModal from './QuotePortalModal';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -164,6 +165,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const [saved, setSaved] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showQuoteModal, setShowQuoteModal] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const MAX_LENGTH = 150;
 
@@ -314,7 +316,16 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const handleQuote = (e) => {
         if (e) e.stopPropagation();
         setShowMenu(false);
-        navigate('/create-post', { state: { quotedPostId: post._id, quotedPost: post } });
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        setShowQuoteModal(true);
+    };
+
+    const handlePortalSelect = (portalId) => {
+        setShowQuoteModal(false);
+        navigate(`/portal/${portalId}`, { state: { quotedPostId: post._id, quotedPost: post } });
     };
 
     const handleDownload = async (e) => {
