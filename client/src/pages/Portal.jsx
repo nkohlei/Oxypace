@@ -106,12 +106,13 @@ const Portal = () => {
                 setPosts((prev) => {
                     if (prev.some(p => p._id === newPost._id)) return prev;
                     
-                    // Stitch deeply populated quotedPost from existing feed to avoid 'Yükleniyor...'
-                    if (newPost.quotedPost && typeof newPost.quotedPost === 'object') {
-                        const existingQuoted = prev.find(p => p._id === newPost.quotedPost._id);
-                        if (existingQuoted) {
+                    // Stitch deeply populated quotedPost from existing feed or state to avoid 'Yükleniyor...'
+                    const qId = newPost.quotedPost && (typeof newPost.quotedPost === 'string' ? newPost.quotedPost : newPost.quotedPost._id);
+                    if (qId) {
+                        const existingQuoted = prev.find(p => p._id === qId);
+                        if (existingQuoted && typeof existingQuoted === 'object' && existingQuoted.author) {
                             newPost.quotedPost = existingQuoted;
-                        } else if (quotedPost && newPost.quotedPost._id === quotedPost._id) {
+                        } else if (quotedPost && qId === quotedPost._id) {
                             newPost.quotedPost = quotedPost;
                         }
                     }
@@ -312,8 +313,9 @@ const Portal = () => {
                 return currentPosts.map((p) => {
                     if (String(p._id) === tempStrId) {
                         const backendPost = res.data;
-                        // Inject deeply populated quotedPost if backend missed the 3rd level
-                        if (backendPost.quotedPost && p.quotedPost && backendPost.quotedPost._id === p.quotedPost._id) {
+                        // Inject deeply populated quotedPost if backend missed it or returned just ID
+                        const bqId = backendPost.quotedPost && (typeof backendPost.quotedPost === 'string' ? backendPost.quotedPost : backendPost.quotedPost._id);
+                        if (bqId && p.quotedPost && bqId === p.quotedPost._id) {
                             backendPost.quotedPost = p.quotedPost;
                         }
                         return backendPost;

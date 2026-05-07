@@ -135,23 +135,40 @@ router.post(
             console.log('✅ Post media in DB:', post.media);
 
             // Re-fetch with deep population for nested quotes
+            // Using a separate query to ensure fresh data from DB with all relations
             const populatedPost = await Post.findById(post._id)
-                .populate({ path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' })
+                .populate({
+                    path: 'author',
+                    select: 'username profile.displayName profile.avatar verificationBadge settings.privacy'
+                })
                 .populate('portal')
                 .populate({
                     path: 'quotedPost',
                     populate: [
-                        { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                        { path: 'portal', select: 'name avatar icon privacy members blockedUsers allowedUsers' },
+                        { 
+                            path: 'author', 
+                            select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' 
+                        },
+                        { 
+                            path: 'portal', 
+                            select: 'name avatar icon privacy members blockedUsers allowedUsers' 
+                        },
                         {
                             path: 'quotedPost',
                             populate: [
-                                { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                                { path: 'portal', select: 'name avatar icon privacy members blockedUsers allowedUsers' }
+                                { 
+                                    path: 'author', 
+                                    select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' 
+                                },
+                                { 
+                                    path: 'portal', 
+                                    select: 'name avatar icon privacy members blockedUsers allowedUsers' 
+                                }
                             ]
                         }
                     ]
-                });
+                })
+                .exec();
 
 
             // Increment post count
