@@ -314,12 +314,17 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     };
 
     const handleQuote = (e) => {
-        if (e) e.stopPropagation();
-        setShowMenu(false);
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
         if (!user) {
             navigate('/login');
             return;
         }
+
+        setShowMenu(false);
         setShowQuoteModal(true);
     };
 
@@ -719,6 +724,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     </div>
                 </div>,
                 document.body
+            )}
+
+            {showQuoteModal && (
+                <QuotePortalModal
+                    portals={user?.portals || user?.joinedPortals || []}
+                    onSelect={handlePortalSelect}
+                    onClose={() => setShowQuoteModal(false)}
+                />
             )}
 
             {showShareModal && (

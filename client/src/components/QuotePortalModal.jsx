@@ -7,9 +7,10 @@ import './QuotePortalModal.css';
 const QuotePortalModal = ({ portals, onSelect, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
-    const filteredPortals = portals.filter(portal =>
-        portal.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredPortals = (portals || []).filter(portal => {
+        if (!portal || !portal.name) return false;
+        return portal.name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     return createPortal(
         <div className="quote-modal-overlay" onClick={onClose}>
