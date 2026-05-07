@@ -278,25 +278,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
 
 
-    const handleCardClick = (e) => {
-        // Prevent navigation if clicking on a button, link, or menu
-        if (
-            e.target.closest('button') ||
-            e.target.closest('a') ||
-            e.target.closest('.post-menu-dropdown') ||
-            e.target.closest('.post-header-menu') ||
-            e.target.closest('.video-container') ||
-            e.target.closest('.double-tap-zone') ||
-            e.target.closest('.video-controls-overlay')
-        ) {
-            return;
-        }
-        navigate(`/post/${post._id}`);
-    };
-
-    const handleProfileClick = (e) => {
-        e.stopPropagation();
-    };
+    // Placeholder handlers for new menu items
 
     // Placeholder handlers for new menu items
     const handleMenuAction = (action) => {
@@ -337,7 +319,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         <article
             id={`post-${post._id}`}
             className={`post-card twitter-layout ${post.isOptimistic ? 'optimistic' : ''}`}
-            onClick={handleCardClick}
             onMouseLeave={handleMouseLeave}
             style={{
                 zIndex: showMenu ? 100 : 1,
@@ -349,7 +330,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                 <Link
                     to={`/profile/${author.username}`}
                     className="avatar-link"
-                    onClick={handleProfileClick}
+                    onClick={(e) => e.stopPropagation()}
                 >
                     {author.profile?.avatar ? (
                         <img
@@ -393,7 +374,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         <Link
                             to={`/profile/${author.username}`}
                             className="header-info-link"
-                            onClick={handleProfileClick}
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <span className="author-name">
                                 {author.profile?.displayName || author.username}
