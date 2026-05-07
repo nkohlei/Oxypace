@@ -137,18 +137,35 @@ const QuotedPost = ({ quotedPost, viewer }) => {
                 ) : (
                     <div className="quoted-author-placeholder">{author.username?.charAt(0)?.toUpperCase()}</div>
                 )}
-                <span className="quoted-author-name">{author.profile?.displayName || author.username}</span>
-                <Badge type={author.verificationBadge} size={14} />
-                <span className="quoted-author-username">@{author.username}</span>
+                <div className="quoted-author-info">
+                    <span className="quoted-author-name">{author.profile?.displayName || author.username}</span>
+                    <Badge type={author.verificationBadge} size={14} />
+                    <span className="quoted-author-username">@{author.username}</span>
+                </div>
             </div>
             <div className="quoted-post-content">
                 {quotedPost.content && (
-                    <p className="quoted-text">{quotedPost.content.substring(0, 200)}{quotedPost.content.length > 200 ? '...' : ''}</p>
+                    <p className="quoted-text">{quotedPost.content.substring(0, 500)}{quotedPost.content.length > 500 ? '...' : ''}</p>
                 )}
                 {quotedPost.media && (
                     <div className="quoted-media-preview">
                         {quotedPost.mediaType === 'video' ? (
-                            <div className="quoted-video-icon"><Youtube size={20} /> Video</div>
+                            <div className="quoted-video-wrapper">
+                                <video 
+                                    src={getImageUrl(quotedPost.media)} 
+                                    muted 
+                                    loop 
+                                    playsInline 
+                                    onMouseOver={e => e.target.play()}
+                                    onMouseOut={e => { e.target.pause(); e.target.currentTime = 0; }}
+                                />
+                                <div className="video-badge"><Youtube size={12} /> Video</div>
+                            </div>
+                        ) : quotedPost.mediaType === 'youtube' ? (
+                            <div className="quoted-youtube-wrapper">
+                                <img src={`https://img.youtube.com/vi/${extractFirstUrl(quotedPost.media)}/hqdefault.jpg`} alt="" />
+                                <div className="video-badge"><Youtube size={12} /> YouTube</div>
+                            </div>
                         ) : (
                             <img src={getImageUrl(quotedPost.media)} alt="Quoted media" />
                         )}
