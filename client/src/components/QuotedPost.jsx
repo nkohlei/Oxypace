@@ -5,13 +5,15 @@ import Badge from './Badge';
 import { extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 
-const QuotedPost = ({ quotedPost, viewer }) => {
+const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
     const navigate = useNavigate();
 
-    if (!quotedPost) return null;
+    // Prevent infinite recursion (stop at level 2 like Twitter/X)
+    if (!quotedPost || depth > 2) return null;
 
     // Time Ago Helper
     const getTimeAgo = (date) => {
+        if (!date) return '';
         const seconds = Math.floor((new Date() - new Date(date)) / 1000);
         let interval = seconds / 31536000;
         if (interval > 1) return Math.floor(interval) + 'y';
@@ -54,13 +56,18 @@ const QuotedPost = ({ quotedPost, viewer }) => {
         }
     };
 
-    const author = (quotedPost.author && typeof quotedPost.author === 'object') ? quotedPost.author : {
+    // Improved author handling: check for both object structure and ID fallback
+    const isPopulated = quotedPost.author && typeof quotedPost.author === 'object';
+    const author = isPopulated ? quotedPost.author : {
         username: 'Kullanıcı',
-        profile: { displayName: typeof quotedPost === 'string' ? 'Görüntülenemiyor' : 'Yükleniyor...', avatar: null }
+        profile: { 
+            displayName: typeof quotedPost === 'string' ? 'Yükleniyor...' : (quotedPost.author ? 'Görüntülenemiyor' : 'Yükleniyor...'), 
+            avatar: null 
+        }
     };
 
     return (
-        <div className="quoted-post-container" onClick={handleQuoteClick}>
+        <div className={`quoted-post-container depth-${depth}`} onClick={handleQuoteClick}>
             <div className="quoted-post-header">
                 <div className="quoted-header-left">
                     {author.profile?.avatar ? (
@@ -114,10 +121,18 @@ const QuotedPost = ({ quotedPost, viewer }) => {
                         )}
                     </div>
                 )}
+
+                {/* Recursive QuotedPost - Only if depth is low and data exists */}
+                {quotedPost.quotedPost && (
+                    <div className="nested-quote-wrapper">
+                        <QuotedPost quotedPost={quotedPost.quotedPost} viewer={viewer} depth={depth + 1} />
+                    </div>
+                )}
             </div>
         </div>
     );
 };
+
 
 
 

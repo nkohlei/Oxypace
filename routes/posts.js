@@ -134,16 +134,25 @@ router.post(
             console.log('✅ Post created successfully! ID:', post._id);
             console.log('✅ Post media in DB:', post.media);
 
-            // Re-fetch with full population to ensure everything is correct
+            // Re-fetch with deep population for nested quotes
             const populatedPost = await Post.findById(post._id)
                 .populate({ path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' })
+                .populate('portal')
                 .populate({
                     path: 'quotedPost',
                     populate: [
                         { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                        { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                        { path: 'portal', select: 'name avatar icon privacy members blockedUsers allowedUsers' },
+                        {
+                            path: 'quotedPost',
+                            populate: [
+                                { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                                { path: 'portal', select: 'name avatar icon privacy members blockedUsers allowedUsers' }
+                            ]
+                        }
                     ]
                 });
+
 
             // Increment post count
             await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
