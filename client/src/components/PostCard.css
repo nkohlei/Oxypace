@@ -659,23 +659,23 @@
 
 /* Quoted Post Styles - Proportional Scaling System */
 .quoted-post-container {
-    --quote-font-main: 14px;
-    --quote-font-sub: 13px;
-    --quote-padding: 12px;
-    --quote-avatar: 22px;
-    --quote-gap: 8px;
-    --quote-max-h: 400px;
-    --quote-radius: 12px;
+    --quote-font-main: 13px;
+    --quote-font-sub: 12px;
+    --quote-padding: 10px;
+    --quote-avatar: 20px;
+    --quote-gap: 6px;
+    --quote-max-h: 350px;
+    --quote-radius: 10px;
 
-    margin-top: 10px;
+    margin-top: 8px;
     margin-bottom: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: var(--quote-radius);
     overflow: hidden;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background-color: rgba(255, 255, 255, 0.02);
-    max-width: 480px;
+    background-color: rgba(255, 255, 255, 0.03);
+    max-width: 420px; /* Aggressively smaller */
     width: 100%;
 }
 
@@ -685,27 +685,27 @@
 }
 
 .quoted-post-container.depth-1 {
-    --quote-font-main: 13px;
-    --quote-font-sub: 12px;
-    --quote-padding: 10px;
-    --quote-avatar: 18px;
-    --quote-gap: 6px;
-    --quote-max-h: 300px;
-    --quote-radius: 10px;
-    max-width: 100%;
-    background: rgba(0, 0, 0, 0.15);
-}
-
-.quoted-post-container.depth-2 {
     --quote-font-main: 12px;
     --quote-font-sub: 11px;
     --quote-padding: 8px;
     --quote-avatar: 16px;
-    --quote-gap: 4px;
-    --quote-max-h: 220px;
+    --quote-gap: 5px;
+    --quote-max-h: 280px;
     --quote-radius: 8px;
     max-width: 100%;
     background: rgba(0, 0, 0, 0.2);
+}
+
+.quoted-post-container.depth-2 {
+    --quote-font-main: 11px;
+    --quote-font-sub: 10px;
+    --quote-padding: 6px;
+    --quote-avatar: 14px;
+    --quote-gap: 4px;
+    --quote-max-h: 200px;
+    --quote-radius: 6px;
+    max-width: 100%;
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .quoted-post-header {
