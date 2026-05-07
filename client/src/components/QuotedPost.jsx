@@ -3,6 +3,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { Youtube, ExternalLink } from 'lucide-react';
 import Badge from './Badge';
 import { extractFirstUrl } from '../utils/linkify';
+import VideoPlayer from './VideoPlayer';
 
 const QuotedPost = ({ quotedPost, viewer }) => {
     const navigate = useNavigate();
@@ -42,8 +43,10 @@ const QuotedPost = ({ quotedPost, viewer }) => {
     }
 
     const handleQuoteClick = (e) => {
-        // Only navigate if we didn't click the portal link
+        // Only navigate if we didn't click the portal link or player controls
         if (e.target.closest('.quoted-portal-tag')) return;
+        if (e.target.closest('.native-controls-ui')) return;
+        if (e.target.closest('.native-mute-toggle')) return;
         
         e.stopPropagation();
         if (quotedPost._id) {
@@ -80,6 +83,9 @@ const QuotedPost = ({ quotedPost, viewer }) => {
                         className="quoted-portal-tag"
                         onClick={(e) => e.stopPropagation()}
                     >
+                        {quotedPost.portal.icon && (
+                            <img src={getImageUrl(quotedPost.portal.icon)} alt="" className="quoted-portal-icon" />
+                        )}
                         <span>{quotedPost.portal.name}</span>
                         <ExternalLink size={10} />
                     </Link>
@@ -93,13 +99,10 @@ const QuotedPost = ({ quotedPost, viewer }) => {
                     <div className="quoted-media-preview">
                         {quotedPost.mediaType === 'video' ? (
                             <div className="quoted-video-wrapper">
-                                <video 
+                                <VideoPlayer 
                                     src={getImageUrl(quotedPost.media)} 
-                                    controls
-                                    playsInline 
-                                    className="quoted-video-element"
+                                    className="quoted-player"
                                 />
-                                <div className="video-badge"><Youtube size={12} /> Video</div>
                             </div>
                         ) : quotedPost.mediaType === 'youtube' ? (
                             <div className="quoted-youtube-wrapper">
@@ -115,6 +118,7 @@ const QuotedPost = ({ quotedPost, viewer }) => {
         </div>
     );
 };
+
 
 
 export default QuotedPost;
