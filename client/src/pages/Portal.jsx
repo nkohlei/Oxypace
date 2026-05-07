@@ -64,8 +64,17 @@ const Portal = () => {
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
-    const [quotedPost, setQuotedPost] = useState(location.state?.quotedPost || null);
+    const [quotedPost, setQuotedPost] = useState(null);
     const [showPortalInfo, setShowPortalInfo] = useState(false);
+
+    useEffect(() => {
+        if (location.state?.quotedPost) {
+            setQuotedPost(location.state.quotedPost);
+            // Clean up state to prevent re-triggering on manual refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state, id]);
+
     const activeChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
     const isImageChannel = activeChannelObj?.type === 'image';
 
@@ -1326,18 +1335,41 @@ const Portal = () => {
                                                                         {quotedPost && (
                                                                             <div className="input-quoted-preview">
                                                                                 <div className="input-quoted-preview-header">
-                                                                                    <span className="input-quoted-preview-author">{quotedPost.author?.profile?.displayName || quotedPost.author?.username}</span>
-                                                                                    <span className="input-quoted-preview-username">@{quotedPost.author?.username}</span>
+                                                                                    {quotedPost.author?.profile?.avatar ? (
+                                                                                        <img src={getImageUrl(quotedPost.author.profile.avatar)} alt="" className="quoted-preview-avatar" />
+                                                                                    ) : (
+                                                                                        <div className="quoted-preview-avatar-placeholder">
+                                                                                            {quotedPost.author?.username?.charAt(0).toUpperCase()}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    <div className="quoted-preview-meta">
+                                                                                        <span className="quoted-preview-author">{quotedPost.author?.profile?.displayName || quotedPost.author?.username}</span>
+                                                                                        <span className="quoted-preview-username">@{quotedPost.author?.username}</span>
+                                                                                    </div>
+                                                                                    <button
+                                                                                        className="remove-quote-btn"
+                                                                                        onClick={() => setQuotedPost(null)}
+                                                                                    >
+                                                                                        <X size={16} />
+                                                                                    </button>
                                                                                 </div>
-                                                                                <p className="input-quoted-preview-text">
-                                                                                    {quotedPost.content}
-                                                                                </p>
-                                                                                <button
-                                                                                    className="remove-quote-btn"
-                                                                                    onClick={() => setQuotedPost(null)}
-                                                                                >
-                                                                                    <X size={16} />
-                                                                                </button>
+                                                                                <div className="input-quoted-preview-body">
+                                                                                    <p className="input-quoted-preview-text">
+                                                                                        {quotedPost.content}
+                                                                                    </p>
+                                                                                    {quotedPost.media && (
+                                                                                        <div className="input-quoted-preview-media">
+                                                                                            {quotedPost.mediaType === 'video' ? (
+                                                                                                <div className="media-placeholder">
+                                                                                                    <Youtube size={20} />
+                                                                                                    <span>Video Alıntısı</span>
+                                                                                                </div>
+                                                                                            ) : (
+                                                                                                <img src={getImageUrl(quotedPost.media)} alt="" />
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
                                                                         )}
 
