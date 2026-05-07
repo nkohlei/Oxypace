@@ -134,10 +134,16 @@ router.post(
             console.log('✅ Post created successfully! ID:', post._id);
             console.log('✅ Post media in DB:', post.media);
 
-            await post.populate(
-                'author',
-                'username profile.displayName profile.avatar verificationBadge'
-            );
+            await post.populate([
+                { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                {
+                    path: 'quotedPost',
+                    populate: [
+                        { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                        { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                    ]
+                }
+            ]);
 
             // Increment post count
             await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });

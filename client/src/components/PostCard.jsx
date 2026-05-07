@@ -119,12 +119,14 @@ const QuotedPost = ({ quotedPost, viewer }) => {
 
     const handleQuoteClick = (e) => {
         e.stopPropagation();
-        navigate(`/post/${quotedPost._id}`);
+        if (quotedPost._id) {
+            navigate(`/post/${quotedPost._id}`);
+        }
     };
 
-    const author = quotedPost.author && typeof quotedPost.author === 'object' ? quotedPost.author : {
+    const author = (quotedPost.author && typeof quotedPost.author === 'object') ? quotedPost.author : {
         username: 'Kullanıcı',
-        profile: { displayName: 'Yükleniyor...', avatar: null }
+        profile: { displayName: typeof quotedPost === 'string' ? 'Görüntülenemiyor' : 'Yükleniyor...', avatar: null }
     };
 
     return (
