@@ -24,6 +24,7 @@ import {
 import './PostDetail.css';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from '../components/LinkPreview';
+import QuotedPost from '../components/QuotedPost';
 
 const PostDetail = () => {
     const { postId } = useParams();
@@ -272,6 +273,10 @@ const PostDetail = () => {
                                 }
                                 return null;
                             })()}
+
+                            {post.quotedPost && (
+                                <QuotedPost quotedPost={post.quotedPost} viewer={user} />
+                            )}
 
                             {post.media && post.media.length > 0 && (
                                 <div className="pd-media-showcase">

@@ -14,8 +14,9 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
-import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote } from 'lucide-react';
+import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe } from 'lucide-react';
 import QuotePortalModal from './QuotePortalModal';
+import QuotedPost from './QuotedPost';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -74,107 +75,6 @@ const YouTubeFacade = ({ media }) => {
     );
 };
 
-const QuotedPost = ({ quotedPost, viewer }) => {
-    const navigate = useNavigate();
-    if (!quotedPost) return null;
-
-    // Privacy Check for Quoted Post
-    const isAuthor = viewer?._id === (quotedPost.author?._id || quotedPost.author);
-    let isVisible = true;
-
-    if (!isAuthor) {
-        // Portal Privacy
-        if (quotedPost.portal) {
-            const portal = quotedPost.portal;
-            const isBlocked = viewer?._id && portal.blockedUsers?.some(id => String(id) === String(viewer._id));
-            if (isBlocked) isVisible = false;
-
-            if (portal.privacy === 'private' || portal.privacy === 'restricted') {
-                const isMember = viewer?._id && portal.members?.some(id => String(id) === String(viewer._id));
-                const isAllowed = viewer?._id && portal.allowedUsers?.some(id => String(id) === String(viewer._id));
-                if (!isMember && !isAllowed) isVisible = false;
-            }
-        }
-
-        // User Privacy
-        if (quotedPost.author?.settings?.privacy?.isPrivate) {
-            if (!viewer) {
-                isVisible = false;
-            } else {
-                const isFollowing = viewer.following?.some(id => String(id) === String(quotedPost.author._id));
-                if (!isAuthor && !isFollowing) isVisible = false;
-            }
-        }
-    }
-
-    if (!isVisible) {
-        return (
-            <div className="quoted-post-container private">
-                <div className="quoted-post-content">
-                    <p className="private-message">Bu gönderi gizli veya erişilemez.</p>
-                </div>
-            </div>
-        );
-    }
-
-    const handleQuoteClick = (e) => {
-        e.stopPropagation();
-        if (quotedPost._id) {
-            navigate(`/post/${quotedPost._id}`);
-        }
-    };
-
-    const author = (quotedPost.author && typeof quotedPost.author === 'object') ? quotedPost.author : {
-        username: 'Kullanıcı',
-        profile: { displayName: typeof quotedPost === 'string' ? 'Görüntülenemiyor' : 'Yükleniyor...', avatar: null }
-    };
-
-    return (
-        <div className="quoted-post-container" onClick={handleQuoteClick}>
-            <div className="quoted-post-header">
-                {author.profile?.avatar ? (
-                    <img src={getImageUrl(author.profile.avatar)} alt={author.username} className="quoted-author-avatar" />
-                ) : (
-                    <div className="quoted-author-placeholder">{author.username?.charAt(0)?.toUpperCase()}</div>
-                )}
-                <div className="quoted-author-info">
-                    <span className="quoted-author-name">{author.profile?.displayName || author.username}</span>
-                    <Badge type={author.verificationBadge} size={14} />
-                    <span className="quoted-author-username">@{author.username}</span>
-                </div>
-            </div>
-            <div className="quoted-post-content">
-                {quotedPost.content && (
-                    <p className="quoted-text">{quotedPost.content.substring(0, 500)}{quotedPost.content.length > 500 ? '...' : ''}</p>
-                )}
-                {quotedPost.media && (
-                    <div className="quoted-media-preview">
-                        {quotedPost.mediaType === 'video' ? (
-                            <div className="quoted-video-wrapper">
-                                <video 
-                                    src={getImageUrl(quotedPost.media)} 
-                                    muted 
-                                    loop 
-                                    playsInline 
-                                    onMouseOver={e => e.target.play()}
-                                    onMouseOut={e => { e.target.pause(); e.target.currentTime = 0; }}
-                                />
-                                <div className="video-badge"><Youtube size={12} /> Video</div>
-                            </div>
-                        ) : quotedPost.mediaType === 'youtube' ? (
-                            <div className="quoted-youtube-wrapper">
-                                <img src={`https://img.youtube.com/vi/${extractFirstUrl(quotedPost.media)}/hqdefault.jpg`} alt="" />
-                                <div className="video-badge"><Youtube size={12} /> YouTube</div>
-                            </div>
-                        ) : (
-                            <img src={getImageUrl(quotedPost.media)} alt="Quoted media" />
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
 
 const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const { user, updateUser } = useAuth(); // Destructure updateUser

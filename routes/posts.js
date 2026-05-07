@@ -134,16 +134,16 @@ router.post(
             console.log('✅ Post created successfully! ID:', post._id);
             console.log('✅ Post media in DB:', post.media);
 
-            await post.populate([
-                { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                {
+            // Re-fetch with full population to ensure everything is correct
+            const populatedPost = await Post.findById(post._id)
+                .populate({ path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' })
+                .populate({
                     path: 'quotedPost',
                     populate: [
                         { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
                         { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                     ]
-                }
-            ]);
+                });
 
             // Increment post count
             await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
@@ -165,12 +165,10 @@ router.post(
                 }
             }
 
-            // Only emit global socket event for non-portal posts
+            // ... emit socket events ...
             if (!postData.portal) {
-                req.app.get('io').emit('newPost', post);
+                req.app.get('io').emit('newPost', populatedPost);
             } else {
-                // For portal posts, emit a lightweight activity signal globally for sidebar unread indicators
-                // We include the postId and channelId so the client can track unique unread messages per channel
                 req.app.get('io').emit('global:portal_activity', { 
                     portalId: postData.portal.toString(),
                     channelId: postData.channel.toString(),
@@ -178,36 +176,32 @@ router.post(
                 });
 
                 // --- PERSISTENT NOTIFICATIONS FOR OFFLINE USERS ---
-                // Create a 'portal_post' notification for all portal members (except the author)
-                // This ensures that when they login, they see the unread count in the sidebar.
-                (async () => {
-                    try {
-                        const portal = await Portal.findById(postData.portal);
-                        if (portal) {
-                            const memberIds = portal.members.filter(m => m.toString() !== req.user._id.toString());
-                            if (memberIds.length > 0) {
-                                const notificationDocs = memberIds.map(userId => ({
-                                    recipient: userId,
-                                    sender: req.user._id,
-                                    type: 'portal_post',
-                                    portal: postData.portal,
-                                    channel: postData.channel,
-                                    post: post._id,
-                                    read: false
-                                }));
-                                await Notification.insertMany(notificationDocs);
-                            }
+                try {
+                    const portal = await Portal.findById(postData.portal);
+                    if (portal) {
+                        const memberIds = portal.members.filter(m => m.toString() !== req.user._id.toString());
+                        if (memberIds.length > 0) {
+                            const notificationDocs = memberIds.map(userId => ({
+                                recipient: userId,
+                                sender: req.user._id,
+                                type: 'portal_post',
+                                portal: postData.portal,
+                                channel: postData.channel,
+                                post: post._id,
+                                read: false
+                            }));
+                            await Notification.insertMany(notificationDocs);
                         }
-                    } catch (err) {
-                        console.error('Error creating portal notifications:', err);
                     }
-                })();
+                } catch (err) {
+                    console.error('Error creating portal notifications:', err);
+                }
             }
 
-            res.status(201).json(post);
+            return res.status(201).json(populatedPost);
         } catch (error) {
             console.error('Create post error:', error);
-            res.status(500).json({ message: 'Server error' });
+            return res.status(500).json({ message: 'Server error' });
         }
     }
 );
