@@ -240,7 +240,14 @@ router.get('/', optionalProtect, async (req, res) => {
                 path: 'quotedPost',
                 populate: [
                     { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
+                    {
+                        path: 'quotedPost',
+                        populate: [
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                            { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                        ]
+                    }
                 ]
             });
 
@@ -300,7 +307,14 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
                 path: 'quotedPost',
                 populate: [
                     { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
+                    {
+                        path: 'quotedPost',
+                        populate: [
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                            { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                        ]
+                    }
                 ]
             });
 
@@ -434,7 +448,14 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
                 path: 'quotedPost',
                 populate: [
                     { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
+                    {
+                        path: 'quotedPost',
+                        populate: [
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                            { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                        ]
+                    }
                 ]
             });
 

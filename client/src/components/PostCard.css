@@ -659,13 +659,13 @@
 
 /* Quoted Post Styles - Proportional Scaling System */
 .quoted-post-container {
-    --quote-font-main: 12px;
-    --quote-font-sub: 11px;
-    --quote-padding: 8px;
-    --quote-avatar: 18px;
-    --quote-gap: 5px;
-    --quote-max-h: 250px;
-    --quote-radius: 10px;
+    --quote-font-main: 13px;
+    --quote-font-sub: 12px;
+    --quote-padding: 10px;
+    --quote-avatar: 22px;
+    --quote-gap: 6px;
+    --quote-max-h: 300px;
+    --quote-radius: 12px;
 
     margin-top: 8px;
     margin-bottom: 4px;
@@ -675,7 +675,7 @@
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     background-color: rgba(255, 255, 255, 0.03);
-    max-width: 380px; /* Aggressively smaller */
+    max-width: 460px;
     width: 100%;
 }
 
@@ -685,25 +685,25 @@
 }
 
 .quoted-post-container.depth-1 {
-    --quote-font-main: 11px;
-    --quote-font-sub: 10px;
-    --quote-padding: 6px;
-    --quote-avatar: 14px;
-    --quote-gap: 4px;
-    --quote-max-h: 200px;
-    --quote-radius: 8px;
+    --quote-font-main: 12px;
+    --quote-font-sub: 11px;
+    --quote-padding: 8px;
+    --quote-avatar: 18px;
+    --quote-gap: 5px;
+    --quote-max-h: 240px;
+    --quote-radius: 10px;
     max-width: 100%;
     background: rgba(0, 0, 0, 0.2);
 }
 
 .quoted-post-container.depth-2 {
-    --quote-font-main: 10px;
-    --quote-font-sub: 9px;
-    --quote-padding: 5px;
-    --quote-avatar: 12px;
-    --quote-gap: 3px;
-    --quote-max-h: 150px;
-    --quote-radius: 6px;
+    --quote-font-main: 11px;
+    --quote-font-sub: 10px;
+    --quote-padding: 6px;
+    --quote-avatar: 14px;
+    --quote-gap: 4px;
+    --quote-max-h: 180px;
+    --quote-radius: 8px;
     max-width: 100%;
     background: rgba(0, 0, 0, 0.3);
 }
@@ -793,8 +793,8 @@
     max-height: var(--quote-max-h);
     background: rgba(0, 0, 0, 0.1);
     display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
+    justify-content: center;
+    align-items: center;
 }
 
 .quoted-image-element {
@@ -810,7 +810,7 @@
 }
 
 .quoted-player .native-player-container.v16-scale {
-    margin: 0 !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
     max-width: 100% !important;
     width: fit-content !important;

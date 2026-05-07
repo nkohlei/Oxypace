@@ -360,7 +360,14 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
                 path: 'quotedPost',
                 populate: [
                     { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
-                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
+                    {
+                        path: 'quotedPost',
+                        populate: [
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                            { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                        ]
+                    }
                 ]
             })
             .sort({ isPinned: -1, pinnedAt: -1, createdAt: -1 })
