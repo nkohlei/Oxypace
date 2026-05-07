@@ -20,7 +20,7 @@ import VoiceChannel from '../components/VoiceChannel';
 import ConferenceChannel from '../components/ConferenceChannel';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useSocket } from '../context/SocketContext';
-import { X } from 'lucide-react';
+import { X, Youtube, Search } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
 import './Portal.css';
 
@@ -71,7 +71,7 @@ const Portal = () => {
         if (location.state?.quotedPost) {
             setQuotedPost(location.state.quotedPost);
             // Clean up state to prevent re-triggering on manual refresh
-            window.history.replaceState({}, document.title);
+            navigate(location.pathname + location.search, { replace: true, state: {} });
         }
     }, [location.state, id]);
 
