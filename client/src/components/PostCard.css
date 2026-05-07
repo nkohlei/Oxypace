@@ -277,7 +277,7 @@
 .post-action-buttons {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     flex-shrink: 0;
     position: relative;
     opacity: 0;
@@ -591,6 +591,10 @@
         width: 16px;
         height: 16px;
     }
+
+    .post-action-buttons {
+        opacity: 1 !important;
+    }
 }
 
 /* Video Player Styles */
@@ -740,10 +744,27 @@
     font-weight: 600;
 }
 
+.quoted-author-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
 .quoted-author-name {
     font-size: var(--quote-font-main);
     font-weight: 600;
     color: var(--text-primary);
+}
+
+.quoted-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    line-height: 1;
+    margin: 0 2px;
 }
 
 .quoted-author-username, .quoted-time {

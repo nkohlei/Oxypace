@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, Check, Maximize } from 'lucide-react';
+import { Volume2, VolumeX, Check, Maximize, Play, Pause } from 'lucide-react';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './VideoPlayer.css';
 
@@ -9,6 +9,7 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   
   // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(true);
@@ -16,6 +17,26 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [isFullscreenActive, setIsFullscreenActive] = useState(false);
+
+  // Sync isPaused state with video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onPlay = () => setIsPaused(false);
+    const onPause = () => setIsPaused(true);
+
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+
+    // Initial state
+    setIsPaused(video.paused);
+
+    return () => {
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
+    };
+  }, []);
 
   // Track global fullscreen state to re-trigger observers
   useEffect(() => {
@@ -183,10 +204,16 @@ const VideoPlayer = ({ src, poster, className }) => {
         </div>
 
         <div className="native-bottom-row">
-          <div className="native-time-display">
-            <span>{formatTime(currentTime)}</span>
-            <span className="native-time-sep">/</span>
-            <span>{formatTime(duration)}</span>
+          <div className="native-left-controls">
+            <button className="native-play-pause-btn" onClick={handleVideoClick}>
+              {isPaused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}
+            </button>
+            
+            <div className="native-time-display">
+              <span>{formatTime(currentTime)}</span>
+              <span className="native-time-sep">/</span>
+              <span>{formatTime(duration)}</span>
+            </div>
           </div>
 
           <div className="native-right-controls">

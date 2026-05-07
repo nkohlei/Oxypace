@@ -127,6 +127,30 @@
     width: 100%;
 }
 
+.native-left-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.native-play-pause-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: all 0.2s;
+    padding: 4px;
+}
+
+.native-play-pause-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
 .native-time-display {
     display: flex;
     align-items: center;

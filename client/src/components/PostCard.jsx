@@ -14,7 +14,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
-import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe } from 'lucide-react';
+import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2 } from 'lucide-react';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
 
@@ -406,6 +406,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                     {/* Post action buttons - top right */}
                     <div className="post-action-buttons">
+                        {/* Go to post page button */}
+                        <button
+                            className="post-action-btn"
+                            aria-label="Gnderiyi gster"
+                            title="Gnderiyi Gster"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/post/${post._id}`);
+                            }}
+                        >
+                            <Maximize2 size={16} />
+                        </button>
+
                         {/* Three-dot menu button (horizontal) */}
                         <button
                             className="post-action-btn"
