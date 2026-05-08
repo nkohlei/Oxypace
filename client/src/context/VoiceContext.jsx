@@ -102,6 +102,13 @@ export const VoiceProvider = ({ children }) => {
                 audioTrack: audioPub?.track || null,
                 screenShareTrack: screenPub?.track || null,
             });
+
+            setLocalState(prev => ({
+                ...prev,
+                isMuted: !p.isMicrophoneEnabled,
+                isCameraOn: p.isCameraEnabled,
+                isScreenSharing: p.isScreenShareEnabled
+            }));
         }
 
         // Add Remote Participants
@@ -345,18 +352,14 @@ export const VoiceProvider = ({ children }) => {
     // Media Controls with Optimistic Updates
     const toggleMicrophone = useCallback(async () => {
         if (!room || !room.localParticipant) return;
-        const willEnable = localState.isMuted;
-        
-        // Optimistic update
-        setLocalState(prev => ({ ...prev, isMuted: !willEnable }));
+        const willEnable = !room.localParticipant.isMicrophoneEnabled;
         
         try {
             await room.localParticipant.setMicrophoneEnabled(willEnable);
         } catch (err) {
             console.error("Mic toggle failed", err);
-            setLocalState(prev => ({ ...prev, isMuted: willEnable }));
         }
-    }, [room, localState.isMuted]);
+    }, [room]);
 
     const toggleDeafen = useCallback(() => {
         setLocalState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
@@ -364,21 +367,15 @@ export const VoiceProvider = ({ children }) => {
 
     const toggleCamera = useCallback(async () => {
         if (!room || !room.localParticipant) return;
-        const willEnable = !localState.isCameraOn;
-        
-        // Optimistic update
-        setLocalState(prev => ({ ...prev, isCameraOn: willEnable }));
+        const willEnable = !room.localParticipant.isCameraEnabled;
         
         try {
-            await room.localParticipant.setCameraEnabled(willEnable, { 
-                deviceId: selectedVideoInput || undefined,
-                facingMode 
-            });
+            await room.localParticipant.setCameraEnabled(willEnable);
+            // State will be updated via updateList through LiveKit events
         } catch (err) {
             console.error("Camera toggle failed", err);
-            setLocalState(prev => ({ ...prev, isCameraOn: !willEnable }));
         }
-    }, [room, localState.isCameraOn, facingMode, selectedVideoInput]);
+    }, [room]);
 
     const toggleFacingMode = useCallback(async () => {
         if (!room || !room.localParticipant) return;
