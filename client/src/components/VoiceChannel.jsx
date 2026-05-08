@@ -202,78 +202,82 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             {isConnected && (
-                <div className="vc-controls glass-controls">
-                    {/* Microphone */}
-                    <div className="vc-ctrl-group">
-                        <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : 'active'}`} onClick={toggleMicrophone}>
-                            {localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
-                        </button>
-                        <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
-                        {isMicMenuOpen && (
-                            <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>MİKROFON</div>
-                                {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map(d => (
-                                    <div key={d.deviceId} className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioInput(d.deviceId); setIsMicMenuOpen(false); }}>
-                                        <span>{d.label || 'Mikrofon'}</span>
-                                        {selectedAudioInput === d.deviceId && <Check size={12} />}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Camera */}
-                    <div className="vc-ctrl-group">
-                        <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : 'danger'}`} onClick={toggleCamera}>
-                            {localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}
-                        </button>
-                        <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={16} /></button>
-                        {isCameraMenuOpen && (
-                            <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>KAMERA</div>
-                                {Array.isArray(availableDevices?.videoInputs) && availableDevices.videoInputs.map(d => (
-                                    <div key={d.deviceId} className={`vc-device-option ${selectedVideoInput === d.deviceId ? 'active' : ''}`} onClick={() => { setVideoInput(d.deviceId); setIsCameraMenuOpen(false); }}>
-                                        <span>{d.label || 'Kamera'}</span>
-                                        {selectedVideoInput === d.deviceId && <Check size={12} />}
-                                    </div>
-                                ))}
-                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '8px 0' }} />
-                                <button className="vc-more-option" onClick={() => { toggleFacingMode(); setIsCameraMenuOpen(false); }}>
-                                    <RefreshCw size={14} /> <span>Kamerayı Çevir</span>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Desktop Specific Controls (Screen Share & Deafen) */}
-                    {!isMobile && (
-                        <>
-                            <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : 'danger'}`} onClick={toggleScreenShare} title="Ekran Paylaş">
-                                <MonitorUp size={22} />
+                <div className="vc-controls">
+                    <div className="vc-ctrl-section glass-controls">
+                        {/* Microphone */}
+                        <div className="vc-ctrl-group">
+                            <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : 'active'}`} onClick={toggleMicrophone}>
+                                {localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
                             </button>
-                            <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : 'active'}`} onClick={toggleDeafen}>
-                                    {localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}
-                                </button>
-                                <button className={`vc-device-arrow ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}><ChevronUp size={16} /></button>
-                                {isMoreMenuOpen && (
-                                    <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
-                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>HOPARLÖR</div>
-                                        {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
-                                            <div key={d.deviceId} className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                                <span>{d.label || 'Hoparlör'}</span>
-                                                {selectedAudioOutput === d.deviceId && <Check size={12} />}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
+                            <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
+                            {isMicMenuOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>MİKROFON</div>
+                                    {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map(d => (
+                                        <div key={d.deviceId} className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioInput(d.deviceId); setIsMicMenuOpen(false); }}>
+                                            <span>{d.label || 'Mikrofon'}</span>
+                                            {selectedAudioInput === d.deviceId && <Check size={12} />}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
-                    <button className="vc-ctrl-btn danger leave" onClick={handleLeave} title="Ayrıl">
-                        <PhoneOff size={22} />
-                    </button>
+                        {/* Camera */}
+                        <div className="vc-ctrl-group">
+                            <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : 'danger'}`} onClick={toggleCamera}>
+                                {localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}
+                            </button>
+                            <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={16} /></button>
+                            {isCameraMenuOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>KAMERA</div>
+                                    {Array.isArray(availableDevices?.videoInputs) && availableDevices.videoInputs.map(d => (
+                                        <div key={d.deviceId} className={`vc-device-option ${selectedVideoInput === d.deviceId ? 'active' : ''}`} onClick={() => { setVideoInput(d.deviceId); setIsCameraMenuOpen(false); }}>
+                                            <span>{d.label || 'Kamera'}</span>
+                                            {selectedVideoInput === d.deviceId && <Check size={12} />}
+                                        </div>
+                                    ))}
+                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '8px 0' }} />
+                                    <button className="vc-more-option" onClick={() => { toggleFacingMode(); setIsCameraMenuOpen(false); }}>
+                                        <RefreshCw size={14} /> <span>Kamerayı Çevir</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Desktop Specific Controls (Screen Share & Deafen) */}
+                        {!isMobile && (
+                            <>
+                                <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : 'danger'}`} onClick={toggleScreenShare} title="Ekran Paylaş">
+                                    <MonitorUp size={22} />
+                                </button>
+                                <div className="vc-ctrl-group">
+                                    <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : 'active'}`} onClick={toggleDeafen}>
+                                        {localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}
+                                    </button>
+                                    <button className={`vc-device-arrow ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}><ChevronUp size={16} /></button>
+                                    {isMoreMenuOpen && (
+                                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
+                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>HOPARLÖR</div>
+                                            {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
+                                                <div key={d.deviceId} className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
+                                                    <span>{d.label || 'Hoparlör'}</span>
+                                                    {selectedAudioOutput === d.deviceId && <Check size={12} />}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="vc-ctrl-section glass-controls leave-section">
+                        <button className="vc-ctrl-btn danger leave" onClick={handleLeave} title="Ayrıl">
+                            <PhoneOff size={22} />
+                        </button>
+                    </div>
                 </div>
             )}
 
