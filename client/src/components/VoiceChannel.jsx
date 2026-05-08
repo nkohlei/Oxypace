@@ -333,17 +333,21 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <ChevronUp size={16} />
                     </div>
                     {isMicMenuOpen && (
-                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '16px', minWidth: '220px', zIndex: 200 }}>
-                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
-                            <select 
-                                onChange={(e) => setAudioInput(e.target.value)}
-                                style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', padding: '6px', fontSize: '12px' }}
-                                value={availableDevices.audioInputs[0]?.deviceId}
-                            >
-                                {availableDevices.audioInputs.map(d => (
-                                    <option key={d.deviceId} value={d.deviceId}>{d.label || 'Varsayılan Mikrofon'}</option>
-                                ))}
-                            </select>
+                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
+                            {availableDevices.audioInputs.map(d => (
+                                <div 
+                                    key={d.deviceId} 
+                                    className={`vc-device-option ${room?.getActiveDevice('audioinput') === d.deviceId ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setAudioInput(d.deviceId);
+                                        setIsMicMenuOpen(false);
+                                    }}
+                                >
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Varsayılan Mikrofon'}</span>
+                                    {room?.getActiveDevice('audioinput') === d.deviceId && <Check size={14} />}
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -373,7 +377,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
                 <div className="vc-ctrl-group">
                     <button
-                        className={`vc-ctrl-btn glass-btn ${localState.isDeafened ? 'danger' : ''}`}
+                        className={`vc-ctrl-btn glass-btn ${localState.isDeafened ? 'danger action-btn-red' : 'action-btn-green'}`}
                         onClick={toggleDeafen}
                         title={localState.isDeafened ? "Sesi Duy" : "Sesi Kapat (Sağırlaştır)"}
                     >
@@ -389,22 +393,28 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <ChevronUp size={16} />
                     </div>
                     {isSpeakerMenuOpen && (
-                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '16px', minWidth: '220px', zIndex: 200 }}>
-                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
-                            <select 
-                                onChange={(e) => setAudioOutput(e.target.value)}
-                                style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', padding: '6px', fontSize: '12px' }}
-                                value={availableDevices.audioOutputs[0]?.deviceId}
-                            >
-                                {availableDevices.audioOutputs.map(d => (
-                                    <option key={d.deviceId} value={d.deviceId}>{d.label || 'Varsayılan Hoparlör'}</option>
-                                ))}
-                            </select>
+                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
+                            {availableDevices.audioOutputs.map(d => (
+                                <div 
+                                    key={d.deviceId} 
+                                    className={`vc-device-option ${room?.getActiveDevice('audiooutput') === d.deviceId ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setAudioOutput(d.deviceId);
+                                        setIsSpeakerMenuOpen(false);
+                                    }}
+                                >
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Varsayılan Hoparlör'}</span>
+                                    {room?.getActiveDevice('audiooutput') === d.deviceId && <Check size={14} />}
+                                </div>
+                            ))}
 
                             {localState.isCameraOn && (
                                 <button 
                                     onClick={toggleFacingMode}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', marginTop: '12px', width: '100%' }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', border: 'none', color: 'white', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', marginTop: '8px', width: '100%', transition: 'background 0.2s' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
                                 >
                                     <RefreshCw size={14} />
                                     Kamerayı Çevir
