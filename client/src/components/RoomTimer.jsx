@@ -43,14 +43,14 @@ const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
         padding: '6px 12px',
         borderRadius: '20px',
         fontSize: '14px',
-        fontWeight: '600',
-        color: '#fff',
-        border: '1px solid rgba(255,255,255,0.1)'
+        fontWeight: '700',
+        color: '#23a559',
+        border: '1px solid rgba(35, 165, 89, 0.2)'
     };
 
     return (
         <div style={{ ...defaultStyle, ...style }} className={className}>
-            <Clock size={16} strokeWidth={2} />
+            <Clock size={16} strokeWidth={2.5} color="#23a559" />
             {elapsed}
         </div>
     );
