@@ -265,7 +265,7 @@ const ChannelSidebar = ({
                             {/* Active Icon (Person+) and Timer */}
                             {isActive && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {isVoice && roomStartTime && (
+                                    {isVoice && activeRoom?.channelId === channel.id && roomStartTime && (
                                         <RoomTimer startedAt={roomStartTime} className="vc-sidebar-timer" />
                                     )}
                                     <UserPlus size={16} color="white" style={{ flexShrink: 0 }} />

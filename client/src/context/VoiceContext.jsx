@@ -271,20 +271,28 @@ export const VoiceProvider = ({ children }) => {
             await room.disconnect();
             setRoom(null);
         }
+        if (socket && activeRoom) {
+            socket.emit('voice:leave', {
+                roomName: activeRoom.roomName,
+                userId: user?._id?.toString()
+            });
+        }
+        
         setActiveRoom(null);
         setParticipants([]);
         setChatMessages([]);
         setPinnedParticipant(null);
         setRoomStartTime(null);
         setConnectionState(ConnectionState.Disconnected);
-    }, [room]);
+    }, [room, socket, activeRoom, user]);
 
     // Socket Event Handlers
     useEffect(() => {
         if (!socket) return;
 
         const handleParticipants = (data) => {
-            if (data.startedAt) {
+            // Only update timer if we are actually in a room and it matches the data
+            if (activeRoom && data.startedAt) {
                 setRoomStartTime(data.startedAt);
             }
         };

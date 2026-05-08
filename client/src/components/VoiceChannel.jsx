@@ -276,7 +276,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         <div className="vc-container glass-container">
             {/* Isolated Top Right Controls */}
             <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 50, display: 'flex', gap: '12px' }}>
-                {/* RoomTimer removed from here, now in sidebar */}
+                {isConnected && roomStartTime && <RoomTimer startedAt={roomStartTime} />}
                 <button
                     className={`vc-ctrl-btn neumorphic-btn ${isChatOpen ? 'active' : ''}`}
                     onClick={() => setIsChatOpen(!isChatOpen)}
