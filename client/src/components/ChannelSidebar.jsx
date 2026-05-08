@@ -232,12 +232,6 @@ const ChannelSidebar = ({
                                 {channel.name}
                             </span>
 
-                            {/* Room Timer for active voice channel */}
-                            {isVoice && isActive && roomStartTime && (
-                                <div style={{ marginLeft: 'auto', marginRight: '8px', opacity: 0.9, transform: 'scale(0.85)', transformOrigin: 'right' }}>
-                                    <RoomTimer startedAt={roomStartTime} />
-                                </div>
-                            )}
 
                             {/* Notification Badge - Positioned strictly next to the title */}
                             {!isActive && unreadPostsByChannel[channel.id]?.length > 0 && (
@@ -268,9 +262,14 @@ const ChannelSidebar = ({
                                 We just want the badge to NOT push to the right. */}
                             <div style={{ flex: 1 }} />
 
-                            {/* Active Icon (Person+) */}
+                            {/* Active Icon (Person+) and Timer */}
                             {isActive && (
-                                <UserPlus size={16} color="white" style={{ flexShrink: 0 }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {isVoice && roomStartTime && (
+                                        <RoomTimer startedAt={roomStartTime} className="vc-sidebar-timer" />
+                                    )}
+                                    <UserPlus size={16} color="white" style={{ flexShrink: 0 }} />
+                                </div>
                             )}
                         </div>
                     );

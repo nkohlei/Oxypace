@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import RoomTimer from './RoomTimer';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, ScreenShare, PhoneOff, Settings, Users, Maximize, MessageCircle, Check, Hand, Volume2, RefreshCw } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, ScreenShare, PhoneOff, Settings, Users, Maximize, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, VolumeX } from 'lucide-react';
 import './VoiceChannel.css';
 
 const ConferenceChannel = ({ portalId, channelId, channelName }) => {
@@ -30,10 +30,13 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         availableDevices,
         facingMode,
         toggleFacingMode,
-        setAudioOutput
+        setAudioOutput,
+        setAudioInput,
+        toggleDeafen
     } = useVoice();
 
-    const [isDevicesOpen, setIsDevicesOpen] = useState(false);
+    const [isMicMenuOpen, setIsMicMenuOpen] = useState(false);
+    const [isSpeakerMenuOpen, setIsSpeakerMenuOpen] = useState(false);
 
     const { socket } = useSocket();
     const { user } = useAuth();
@@ -548,27 +551,45 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
                 {canSpeak ? (
                     <>
-                        <button
-                            className={`vc-ctrl-btn neumorphic-btn ${localState.isMuted ? 'inset muted danger' : 'active'}`}
-                            onClick={toggleMicrophone}
-                            title={localState.isMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
-                        >
-                            {localState.isMuted ? (
-                                <MicOff size={24} strokeWidth={2} />
-                            ) : (
-                                <Mic size={24} strokeWidth={2} />
+                        <div className="vc-ctrl-group">
+                            <button
+                                className={`vc-ctrl-btn neumorphic-btn ${localState.isMuted ? 'danger' : ''}`}
+                                onClick={toggleMicrophone}
+                                title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                            >
+                                {localState.isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+                            </button>
+                            <div 
+                                className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`}
+                                onClick={() => {
+                                    setIsMicMenuOpen(!isMicMenuOpen);
+                                    setIsSpeakerMenuOpen(false);
+                                }}
+                            >
+                                <ChevronUp size={16} />
+                            </div>
+                            {isMicMenuOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '16px', minWidth: '220px', zIndex: 200 }}>
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
+                                    <select 
+                                        onChange={(e) => setAudioInput(e.target.value)}
+                                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', padding: '6px', fontSize: '12px' }}
+                                        value={availableDevices.audioInputs[0]?.deviceId}
+                                    >
+                                        {availableDevices.audioInputs.map(d => (
+                                            <option key={d.deviceId} value={d.deviceId}>{d.label || 'Varsayılan Mikrofon'}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             )}
-                        </button>
+                        </div>
+
                         <button
-                            className={`vc-ctrl-btn neumorphic-btn ${localState.isCameraOn ? 'active' : 'inset'}`}
+                            className={`vc-ctrl-btn neumorphic-btn ${!localState.isCameraOn ? 'danger' : ''}`}
                             onClick={toggleCamera}
-                            title={localState.isCameraOn ? 'Kamerayı Kapat' : 'Kamerayı Aç'}
+                            title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
                         >
-                            {localState.isCameraOn ? (
-                                <Video size={24} strokeWidth={2} />
-                            ) : (
-                                <VideoOff size={24} strokeWidth={2} />
-                            )}
+                            {localState.isCameraOn ? <Video size={24} /> : <VideoOff size={24} />}
                         </button>
 
                         <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
@@ -586,42 +607,43 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             )}
                         </button>
 
-                        <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
-
-                        <div style={{ position: 'relative' }}>
+                        <div className="vc-ctrl-group">
                             <button
-                                className={`vc-ctrl-btn neumorphic-btn ${isDevicesOpen ? 'active' : ''}`}
-                                onClick={() => setIsDevicesOpen(!isDevicesOpen)}
-                                title="Hoparlör & Cihaz Ayarları"
+                                className={`vc-ctrl-btn neumorphic-btn ${localState.isDeafened ? 'danger' : ''}`}
+                                onClick={toggleDeafen}
+                                title={localState.isDeafened ? "Sesi Duy" : "Sesi Kapat (Sağırlaştır)"}
                             >
-                                <Volume2 size={24} strokeWidth={2} />
+                                {localState.isDeafened ? <VolumeX size={24} /> : <Volume2 size={24} />}
                             </button>
-                            
-                            {isDevicesOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '16px', padding: '16px', minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 200 }}>
-                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase' }}>Cihaz Seçimi</div>
-                                    
-                                    {/* Audio Output */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <label style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Hoparlör</label>
-                                        <select 
-                                            onChange={(e) => setAudioOutput(e.target.value)}
-                                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', padding: '4px', fontSize: '12px' }}
-                                        >
-                                            {availableDevices.audioOutputs.map(d => (
-                                                <option key={d.deviceId} value={d.deviceId}>{d.label || 'Bilinmeyen Hoparlör'}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                            <div 
+                                className={`vc-device-arrow ${isSpeakerMenuOpen ? 'active' : ''}`}
+                                onClick={() => {
+                                    setIsSpeakerMenuOpen(!isSpeakerMenuOpen);
+                                    setIsMicMenuOpen(false);
+                                }}
+                            >
+                                <ChevronUp size={16} />
+                            </div>
+                            {isSpeakerMenuOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '16px', minWidth: '220px', zIndex: 200 }}>
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
+                                    <select 
+                                        onChange={(e) => setAudioOutput(e.target.value)}
+                                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', padding: '6px', fontSize: '12px' }}
+                                        value={availableDevices.audioOutputs[0]?.deviceId}
+                                    >
+                                        {availableDevices.audioOutputs.map(d => (
+                                            <option key={d.deviceId} value={d.deviceId}>{d.label || 'Varsayılan Hoparlör'}</option>
+                                        ))}
+                                    </select>
 
-                                    {/* Camera Flip (Conditional) */}
                                     {localState.isCameraOn && (
                                         <button 
                                             onClick={toggleFacingMode}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', marginTop: '12px', width: '100%' }}
                                         >
-                                            <RefreshCw size={16} />
-                                            Kamerayı Çevir ({facingMode === 'user' ? 'Ön' : 'Arka'})
+                                            <RefreshCw size={14} />
+                                            Kamerayı Çevir
                                         </button>
                                     )}
                                 </div>

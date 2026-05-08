@@ -24,7 +24,7 @@ export const VoiceProvider = ({ children }) => {
 
     // Derived UI states
     const [participants, setParticipants] = useState([]);
-    const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false });
+    const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
     const [pinnedParticipant, setPinnedParticipant] = useState(null);
 
     // Device management
@@ -301,6 +301,10 @@ export const VoiceProvider = ({ children }) => {
         setLocalState(prev => ({ ...prev, isMuted: !willEnable }));
     }, [room, localState.isMuted]);
 
+    const toggleDeafen = useCallback(() => {
+        setLocalState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
+    }, []);
+
     const toggleCamera = useCallback(async () => {
         if (!room || !room.localParticipant) return;
         const willEnable = !localState.isCameraOn;
@@ -419,28 +423,29 @@ export const VoiceProvider = ({ children }) => {
         setAudioOutput,
         setAudioInput,
         setVideoInput,
+        toggleDeafen,
     };
 
     return (
         <VoiceContext.Provider value={value}>
             {children}
-            <GlobalAudioRenderer participants={participants} />
+            <GlobalAudioRenderer participants={participants} isDeafened={localState.isDeafened} />
         </VoiceContext.Provider>
     );
 };
 
 // Global Audio Component for cross-navigation persistence
-const GlobalAudioRenderer = ({ participants }) => {
+const GlobalAudioRenderer = ({ participants, isDeafened }) => {
     return (
         <div style={{ display: 'none' }}>
             {participants.filter(p => !p.isLocal && p.audioTrack).map(p => (
-                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack} />
+                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack} muted={isDeafened} />
             ))}
         </div>
     );
 };
 
-const AudioTrackPlayer = ({ track }) => {
+const AudioTrackPlayer = ({ track, muted }) => {
     const audioEl = useRef(null);
     useEffect(() => {
         if (audioEl.current && track) {
@@ -450,5 +455,12 @@ const AudioTrackPlayer = ({ track }) => {
             if (track) track.detach();
         };
     }, [track]);
+
+    useEffect(() => {
+        if (audioEl.current) {
+            audioEl.current.muted = muted;
+        }
+    }, [muted]);
+
     return <audio ref={audioEl} autoPlay />;
 };
