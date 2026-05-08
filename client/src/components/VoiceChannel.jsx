@@ -315,7 +315,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             {/* Bottom Controls (Centered Symmetrically) */}
-            <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
+            {isConnected && (
+                <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
                 <div className="vc-ctrl-group">
                     <button
                         className="vc-ctrl-btn glass-btn"
@@ -441,6 +442,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <PhoneOff size={24} strokeWidth={2} />
                 </button>
             </div>
+            )}
 
             {/* Sliding Text Chat Sidebar */}
             {isChatOpen && (

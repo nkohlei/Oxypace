@@ -318,7 +318,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:user-joined', handleUserJoined);
             socket.off('voice:user-left', handleUserLeft);
         };
-    }, [socket, user, playInteractionSound]);
+    }, [socket, user, playInteractionSound, activeRoom]);
 
     // Media Controls with Optimistic Updates
     const toggleMicrophone = useCallback(async () => {

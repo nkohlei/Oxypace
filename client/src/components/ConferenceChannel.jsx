@@ -549,7 +549,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             {/* Bottom Controls (Centered Symmetrically) */}
-            <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
+            {isConnected && (
+                <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
                 {canSpeak ? (
                     <>
                         <div className="vc-ctrl-group">
@@ -596,7 +597,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
                         <button
                             className={`vc-ctrl-btn neumorphic-btn ${!localState.isCameraOn ? 'danger' : ''}`}
-                            onClick={toggleCamera}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCamera();
+                            }}
                             title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
                         >
                             {localState.isCameraOn ? <Video size={24} /> : <VideoOff size={24} />}
@@ -606,7 +610,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
                         <button
                             className={`vc-ctrl-btn neumorphic-btn ${localState.isScreenSharing ? 'active' : 'inset'}`}
-                            onClick={toggleScreenShare}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleScreenShare();
+                            }}
                             title={localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}
                             style={localState.isScreenSharing ? { background: '#22c55e', color: 'white', borderColor: '#22c55e' } : {}}
                         >
@@ -689,6 +696,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     <PhoneOff size={24} strokeWidth={2} />
                 </button>
             </div>
+            )}
         </div>
     );
 };
