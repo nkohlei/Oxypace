@@ -370,12 +370,15 @@ export const VoiceProvider = ({ children }) => {
         setLocalState(prev => ({ ...prev, isCameraOn: willEnable }));
         
         try {
-            await room.localParticipant.setCameraEnabled(willEnable, { facingMode });
+            await room.localParticipant.setCameraEnabled(willEnable, { 
+                deviceId: selectedVideoInput || undefined,
+                facingMode 
+            });
         } catch (err) {
             console.error("Camera toggle failed", err);
             setLocalState(prev => ({ ...prev, isCameraOn: !willEnable }));
         }
-    }, [room, localState.isCameraOn, facingMode]);
+    }, [room, localState.isCameraOn, facingMode, selectedVideoInput]);
 
     const toggleFacingMode = useCallback(async () => {
         if (!room || !room.localParticipant) return;
