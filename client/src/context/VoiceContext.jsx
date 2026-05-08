@@ -217,7 +217,7 @@ export const VoiceProvider = ({ children }) => {
             newRoom.on(RoomEvent.TrackUnsubscribed, updateList);
             newRoom.on(RoomEvent.TrackMuted, updateList);
             newRoom.on(RoomEvent.TrackUnmuted, updateList);
-            newRoom.on(RoomEvent.ActiveSpeakersChanged, updateList);
+            // newRoom.on(RoomEvent.ActiveSpeakersChanged, updateList); // Removed to prevent slow-down from high frequency events
             newRoom.on(RoomEvent.ConnectionQualityChanged, updateList);
             newRoom.on(RoomEvent.LocalTrackPublished, updateList);
             newRoom.on(RoomEvent.LocalTrackUnpublished, updateList);
@@ -270,16 +270,8 @@ export const VoiceProvider = ({ children }) => {
                 });
             }
 
-            // 6. Join with mic enabled by default as requested
-            if (newRoom.localParticipant) {
-                try {
-                    await newRoom.localParticipant.setMicrophoneEnabled(true);
-                    setLocalState({ isMuted: false, isCameraOn: false, isScreenSharing: false, isDeafened: false });
-                } catch (e) {
-                    console.warn("Could not enable mic on join", e);
-                    setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
-                }
-            }
+            // 6. Join muted by default to avoid immediate permission prompt (as requested)
+            setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
 
         } catch (err) {
             console.error('Failed to connect to LiveKit:', err);
@@ -355,11 +347,13 @@ export const VoiceProvider = ({ children }) => {
         const willEnable = !room.localParticipant.isMicrophoneEnabled;
         
         try {
-            await room.localParticipant.setMicrophoneEnabled(willEnable);
+            await room.localParticipant.setMicrophoneEnabled(willEnable, {
+                deviceId: selectedAudioInput || undefined
+            });
         } catch (err) {
             console.error("Mic toggle failed", err);
         }
-    }, [room]);
+    }, [room, selectedAudioInput]);
 
     const toggleDeafen = useCallback(() => {
         setLocalState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
