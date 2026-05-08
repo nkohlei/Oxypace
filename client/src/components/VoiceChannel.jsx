@@ -7,11 +7,29 @@ import { getImageUrl } from '../utils/imageUtils';
 import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX } from 'lucide-react';
 import './VoiceChannel.css';
 
+// Simple Timer Component
+const RoomTimer = ({ startTime }) => {
+    const [elapsed, setElapsed] = useState('00:00');
+    useEffect(() => {
+        if (!startTime) return;
+        const interval = setInterval(() => {
+            const seconds = Math.floor((Date.now() - startTime) / 1000);
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            setElapsed(h > 0 ? `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}` : `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [startTime]);
+    return <span className="vc-timer">{elapsed}</span>;
+};
+
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const {
         activeRoom,
         connectionState,
         participants,
+        roomStartTime,
         errorMsg,
         localState,
         chatMessages,
@@ -153,37 +171,44 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
     return (
         <div className="vc-container glass-container">
+            <div className="vc-header-info">
+                <div className="vc-channel-name-row">
+                    <Mic size={20} className="vc-channel-icon" />
+                    <span className="vc-channel-name">{channelName}</span>
+                    <RoomTimer startTime={roomStartTime} />
+                </div>
+            </div>
+
             <div className="vc-top-right-controls">
                 <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => setIsChatOpen(!isChatOpen)} title="Sohbet">
                     <MessageCircle size={18} />
+                    {participants.length > 0 && <span className="vc-participant-badge">{participants.length}</span>}
                 </button>
                 
                 {/* Mobile More Menu Trigger (Arrow) */}
-                {isMobile && (
-                    <div style={{ position: 'relative' }}>
-                        <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} title="Daha Fazla">
-                            <ChevronDown size={20} />
-                        </button>
-                        {isMoreMenuOpen && (
-                            <div className="vc-more-dropdown glass-panel">
-                                <button className="vc-more-option" onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
-                                    <MonitorUp size={16} /> <span>Ekran Paylaş</span>
+                <div style={{ position: 'relative' }}>
+                    <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} title="Daha Fazla">
+                        <ChevronDown size={20} />
+                    </button>
+                    {isMoreMenuOpen && (
+                        <div className="vc-more-dropdown glass-panel">
+                            <button className="vc-more-option" onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
+                                <MonitorUp size={16} /> <span>Ekran Paylaş</span>
+                            </button>
+                            <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
+                                {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
+                            </button>
+                            <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px' }}>HOPARLÖR</div>
+                            {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
+                                <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label || 'Hoparlör'}</span>
+                                    {selectedAudioOutput === d.deviceId && <Check size={14} />}
                                 </button>
-                                <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
-                                    {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
-                                </button>
-                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px' }}>HOPARLÖR</div>
-                                {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
-                                    <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label || 'Hoparlör'}</span>
-                                        {selectedAudioOutput === d.deviceId && <Check size={14} />}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px' }}>
@@ -201,9 +226,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
             {isConnected && (
                 <div className="vc-controls glass-controls">
-                    {/* Microphone */}
+                    {/* Microphone - Green when Muted as requested */}
                     <div className="vc-ctrl-group">
-                        <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : ''}`} onClick={toggleMicrophone}>
+                        <button className={`vc-ctrl-btn ${localState.isMuted ? 'active' : ''}`} onClick={toggleMicrophone}>
                             {localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
                         </button>
                         <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
@@ -220,9 +245,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         )}
                     </div>
 
-                    {/* Camera */}
+                    {/* Camera - Green when Off as requested */}
                     <div className="vc-ctrl-group">
-                        <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : ''}`} onClick={toggleCamera}>
+                        <button className={`vc-ctrl-btn ${!localState.isCameraOn ? 'active' : ''}`} onClick={toggleCamera}>
                             {localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}
                         </button>
                         <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={16} /></button>
@@ -250,7 +275,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 <MonitorUp size={22} />
                             </button>
                             <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : ''}`} onClick={toggleDeafen}>
+                                {/* Deafen - Green when Active as requested */}
+                                <button className={`vc-ctrl-btn ${localState.isDeafened ? 'active' : ''}`} onClick={toggleDeafen}>
                                     {localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}
                                 </button>
                                 <button className={`vc-device-arrow ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}><ChevronUp size={16} /></button>
