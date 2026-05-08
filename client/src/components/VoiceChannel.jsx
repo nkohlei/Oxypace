@@ -332,7 +332,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            enumerateDevices();
                             setIsMicMenuOpen(!isMicMenuOpen);
                             setIsSpeakerMenuOpen(false);
                         }}
@@ -340,9 +339,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <ChevronUp size={16} />
                     </button>
                     {isMicMenuOpen && (
-                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
-                            {availableDevices?.audioInputs?.map(d => (
+                            {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map(d => (
                                 <div 
                                     key={d.deviceId} 
                                     className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`}
@@ -397,7 +396,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         className={`vc-device-arrow ${isSpeakerMenuOpen ? 'active' : ''}`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            enumerateDevices();
                             setIsSpeakerMenuOpen(!isSpeakerMenuOpen);
                             setIsMicMenuOpen(false);
                         }}
@@ -405,9 +403,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <ChevronUp size={16} />
                     </button>
                     {isSpeakerMenuOpen && (
-                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
-                            {availableDevices?.audioOutputs?.map(d => (
+                            {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
                                 <div 
                                     key={d.deviceId} 
                                     className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`}
