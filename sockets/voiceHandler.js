@@ -47,7 +47,8 @@ export const initializeVoiceHandler = (io) => {
             io.to(`voice:${roomName}`).emit('voice:participants', {
                 roomName,
                 participants,
-                startedAt: roomData.startedAt
+                startedAt: roomData.startedAt,
+                serverNow: Date.now()
             });
 
             // Emit explicit join event for notifications
@@ -143,7 +144,8 @@ function removeParticipant(io, roomName, userId) {
         io.to(`voice:${roomName}`).emit('voice:participants', {
             roomName,
             participants,
-            startedAt: roomData.startedAt
+            startedAt: roomData.startedAt,
+            serverNow: Date.now()
         });
 
         // Emit explicit leave event for notifications

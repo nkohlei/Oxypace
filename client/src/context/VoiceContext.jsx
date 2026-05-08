@@ -293,7 +293,14 @@ export const VoiceProvider = ({ children }) => {
         const handleParticipants = (data) => {
             // Only update timer if we are actually in a room and it matches the data
             if (activeRoom && data.startedAt) {
-                setRoomStartTime(data.startedAt);
+                if (data.serverNow) {
+                    const localNow = Date.now();
+                    const offset = data.serverNow - localNow;
+                    // Adjust startedAt to be relative to this client's local clock
+                    setRoomStartTime(data.startedAt - offset);
+                } else {
+                    setRoomStartTime(data.startedAt);
+                }
             }
         };
 
