@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, ScreenShare, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, VolumeX, MonitorUp } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp } from 'lucide-react';
 import './VoiceChannel.css';
 
 const ConferenceChannel = ({ portalId, channelId, channelName }) => {
@@ -44,6 +44,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState(null);
     const [lobbyCount, setLobbyCount] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     const { socket } = useSocket();
     const { user } = useAuth();
@@ -57,6 +58,12 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const isConnecting = isActiveRoom && connectionState === ConnectionState.Connecting;
     const userRole = activeRoom?.userRole || 'member';
     const isAdmin = userRole === 'owner' || userRole === 'admin';
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (isActiveRoom && activeRoom) setCanSpeak(isAdmin || activeRoom.roomMode !== 'stage');
@@ -165,12 +172,18 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         {raisedHands.length > 0 && <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', borderRadius: '50%', fontSize: '10px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{raisedHands.length}</span>}
                     </button>
                 )}
-                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsListenersOpen(false); setIsSettingsOpen(false); }}><MessageCircle size={18} /></button>
+                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsListenersOpen(false); setIsSettingsOpen(false); }} title="Sohbet"><MessageCircle size={18} /></button>
+                
+                {/* More Menu (Arrow on Mobile, Settings on Desktop) */}
                 <div style={{ position: 'relative' }}>
-                    <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}><Settings size={18} /></button>
+                    <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} title="Daha Fazla">
+                        {isMobile ? <ChevronDown size={20} /> : <Settings size={18} />}
+                    </button>
                     {isMoreMenuOpen && (
                         <div className="vc-more-dropdown glass-panel">
-                            {canSpeak && (
+                            {/* In Conference, some controls might be in this menu even on desktop if requested, 
+                                but I'll stick to the user's wish: Desktop gets bottom bar. */}
+                            {isMobile && canSpeak && (
                                 <>
                                     <button className="vc-more-option" onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
                                         <MonitorUp size={16} /> <span>Ekran Paylaş</span>
@@ -233,11 +246,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             {isConnected && (
-                <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '12px', zIndex: 9999 }}>
+                <div className="vc-controls glass-controls">
                     {canSpeak ? (
                         <>
                             <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn glass-btn ${localState.isMuted ? 'danger' : ''}`} onClick={toggleMicrophone}>{localState.isMuted ? <MicOff size={20} /> : <Mic size={20} />}</button>
+                                <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : ''}`} onClick={toggleMicrophone}>{localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}</button>
                                 <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={14} /></button>
                                 {isMicMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
@@ -248,7 +261,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 )}
                             </div>
                             <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn glass-btn ${localState.isCameraOn ? 'active' : ''}`} onClick={toggleCamera}>{localState.isCameraOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
+                                <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : ''}`} onClick={toggleCamera}>{localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}</button>
                                 <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={14} /></button>
                                 {isCameraMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
@@ -260,11 +273,19 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Desktop Specific for Conference */}
+                            {!isMobile && (
+                                <>
+                                    <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : ''}`} onClick={toggleScreenShare} title="Ekran Paylaş"><MonitorUp size={22} /></button>
+                                    <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : ''}`} onClick={toggleDeafen}>{localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}</button>
+                                </>
+                            )}
                         </>
                     ) : (
-                        <button className={`vc-ctrl-btn ${handRaised ? 'active' : ''}`} onClick={handleRaiseHand} style={{ background: handRaised ? 'rgba(99, 102, 241, 0.5)' : undefined }}><Hand size={20} /></button>
+                        <button className={`vc-ctrl-btn ${handRaised ? 'active' : ''}`} onClick={handleRaiseHand} style={{ background: handRaised ? 'rgba(99, 102, 241, 0.5)' : undefined }}><Hand size={22} /></button>
                     )}
-                    <button className="vc-ctrl-btn action-btn-red danger leave" onClick={handleLeave}><PhoneOff size={20} /></button>
+                    <button className="vc-ctrl-btn danger leave" onClick={handleLeave}><PhoneOff size={22} /></button>
                 </div>
             )}
         </div>

@@ -24,17 +24,9 @@
 }
 
 @keyframes gradientShift {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .glass-panel {
@@ -69,20 +61,10 @@
     gap: 12px;
 }
 
-.vc-header-dot {
-    width: 12px;
-    height: 12px;
-    background-color: var(--primary-green);
-    border-radius: 50%;
-    box-shadow: none;
-    animation: pulse 2s infinite;
-}
-
 .vc-header-title {
     font-size: 24px;
     font-weight: 800;
     color: var(--text-primary);
-    text-shadow: none;
 }
 
 .glass-badge {
@@ -103,16 +85,14 @@
     flex-direction: column;
     gap: 16px;
     padding-bottom: 96px;
-    /* prevent overlap with bottom absolute controls */
     scrollbar-width: none;
-    /* Firefox */
 }
 
 .vc-viewport::-webkit-scrollbar {
     display: none;
 }
 
-/* Dynamic Grids (No Focus) - Pure Grid with Auto-fit logic */
+/* Dynamic Grids */
 .layout-dynamic .vc-grid {
     display: grid;
     gap: 16px;
@@ -125,46 +105,18 @@
 
 .layout-dynamic .vc-card.role-grid {
     aspect-ratio: 4 / 3;
-    /* More square-like rectangle than 16/9 */
     width: 100%;
     height: auto;
     max-height: 100%;
     margin: 0 auto;
     min-height: 0;
-    /* Prevents flex/grid implicit overflow */
 }
 
-/* 1 User */
-.layout-dynamic.grid-1 .vc-grid {
-    grid-template-columns: 1fr;
-    max-width: 600px; /* Increased from 350px */
-}
-
-/* 2 Users */
-.layout-dynamic.grid-2 .vc-grid {
-    grid-template-columns: repeat(2, 1fr);
-    max-width: 800px; /* Increased from 500px */
-}
-
-/* 3 Users - 2 on top, 1 bottom center */
-.layout-dynamic.grid-3 .vc-grid {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: 1fr 1fr;
-    max-width: 800px; /* Increased from 500px */
-}
-
-.layout-dynamic.grid-3 .vc-card.role-grid:nth-child(3) {
-    grid-column: 1 / -1;
-    /* spans full width but we restrict its size */
-    width: 50%;
-    justify-self: center;
-}
-
-/* 4+ Users */
-.layout-dynamic.grid-4 .vc-grid {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Increased minmax base */
-    max-width: 1000px; /* Increased from 600px */
-}
+.layout-dynamic.grid-1 .vc-grid { grid-template-columns: 1fr; max-width: 600px; }
+.layout-dynamic.grid-2 .vc-grid { grid-template-columns: repeat(2, 1fr); max-width: 800px; }
+.layout-dynamic.grid-3 .vc-grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; max-width: 800px; }
+.layout-dynamic.grid-3 .vc-card.role-grid:nth-child(3) { grid-column: 1 / -1; width: 50%; justify-self: center; }
+.layout-dynamic.grid-4 .vc-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); max-width: 1000px; }
 
 /* Spotlight Layout (Sidebar Carousel + Hero) */
 .layout-spotlight {
@@ -180,23 +132,18 @@
     height: 100%;
 }
 
-/* Vertical Carousel at left */
 .vc-carousel {
     display: flex;
     flex-direction: column;
     gap: 16px;
     overflow-y: auto;
     width: 200px;
-    /* Fixed width for left bar */
     height: 100%;
     flex-shrink: 0;
     padding-right: 8px;
-    /* space for scrollbar */
 }
 
-/* 
- * Video Card Architecture 
- */
+/* Video Card Architecture */
 .vc-card {
     position: relative;
     border-radius: 16px;
@@ -208,29 +155,10 @@
     border: 3px solid transparent;
     transition: all 0.3s ease;
     cursor: pointer;
-    box-shadow: none;
 }
 
-.vc-card:hover {
-    transform: translateY(-2px);
-    box-shadow: none;
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.vc-card.speaking {
-    border-color: #00a8fc;
-    box-shadow: none;
-    animation: speakerGlow 1.5s infinite alternate;
-}
-
-@keyframes speakerGlow {
-    from {
-        box-shadow: none;
-    }
-    to {
-        box-shadow: none;
-    }
-}
+.vc-card:hover { border-color: rgba(255, 255, 255, 0.1); }
+.vc-card.speaking { border-color: #00a8fc; }
 
 .vc-card-video-area {
     width: 100%;
@@ -239,14 +167,12 @@
     align-items: center;
     justify-content: center;
     background: var(--bg-card);
-    /* Fallback */
 }
 
 .vc-card-video {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* Cover is better to fill the 4:3 box, preventing ugly black pillarboxes */
     background: #000;
 }
 
@@ -261,14 +187,11 @@
 
 .vc-card-avatar {
     width: 35%;
-    height: auto;
-    aspect-ratio: 1;
     max-width: 96px;
     min-width: 48px;
+    aspect-ratio: 1;
     border-radius: 50%;
-    flex-shrink: 0;
     object-fit: cover;
-    box-shadow: none;
     border: 4px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -277,12 +200,6 @@
     width: 100%;
     height: 140px;
     flex-shrink: 0;
-    border-radius: 12px;
-}
-
-.vc-card.role-carousel .vc-card-avatar {
-    width: 48px;
-    height: 48px;
 }
 
 /* Hero Specific Overrides */
@@ -291,37 +208,11 @@
     width: 100%;
     border-radius: 20px;
     cursor: default;
-    /* Taking off hover pointer if hero */
-}
-
-.vc-card.role-hero:hover {
-    transform: none;
-    /* No float animation on hero */
 }
 
 .vc-card.role-hero .vc-card-avatar {
     width: 160px;
     height: 160px;
-    min-width: 160px;
-    min-height: 160px;
-    max-width: 160px;
-    max-height: 160px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.vc-focus-badge {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 8px;
-    border-radius: 10px;
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 /* Overlay Info */
@@ -331,35 +222,28 @@
     left: 8px;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     gap: 8px;
     border: 1px solid rgba(255, 255, 255, 0.05);
     max-width: calc(100% - 16px);
-    box-sizing: border-box;
+    z-index: 10;
 }
 
 .vc-card-name {
     color: white;
-    font-weight: 700;
-    font-size: clamp(8px, 1vw, 11px);
-    text-shadow: none;
-    max-width: 100%;
+    font-weight: 600;
+    font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.vc-card-indicators {
-    display: flex;
-    gap: 6px;
-}
-
 .vc-indicator {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -369,266 +253,105 @@
 .vc-indicator.muted {
     background: #f23f43;
     color: white;
-    box-shadow: none;
 }
 
-/* Bottom Controls - Strictly Circular */
+/* Bottom Controls */
 .vc-controls {
-    margin-top: auto;
-    margin-bottom: 0;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 16px;
-    padding: 12px 24px;
-    flex-shrink: 0;
+    padding: 16px 32px;
     border-radius: 100px;
-    /* Pill shape for the bar */
     max-width: max-content;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 0 auto;
 }
 
 .vc-ctrl-btn {
     width: 48px;
     height: 48px;
-    border-radius: 50% !important;
-    /* Forces perfect circle */
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-    flex-shrink: 0;
-    padding: 0;
+    transition: all 0.2s ease;
     border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
 }
 
-.vc-ctrl-btn svg {
-    transition: transform 0.2s;
-}
+.vc-ctrl-btn:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
+.vc-ctrl-btn.danger { background: #f23f43; }
+.vc-ctrl-btn.danger:hover { background: #e0383b; }
+.vc-ctrl-btn.active { background: #23a559; }
 
-.vc-ctrl-btn:hover svg {
-    transform: scale(1.1);
-}
-
+/* Control Group (Integrated Arrows) - Desktop Style */
 .vc-ctrl-group {
     display: flex;
     align-items: center;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 100px;
     padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vc-ctrl-group .vc-ctrl-btn {
+    background: transparent;
 }
 
 .vc-device-arrow {
     width: 24px;
-    height: 48px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: var(--text-muted);
-    transition: color 0.2s;
+    color: rgba(255, 255, 255, 0.5);
     border-radius: 0 100px 100px 0;
 }
 
-.vc-device-arrow:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.05);
-}
+.vc-device-arrow:hover { color: white; background: rgba(255, 255, 255, 0.05); }
 
-.vc-sidebar-timer {
-    color: #39ff14 !important;
-    font-weight: 700;
-    font-size: 13px;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
+/* Top Right controls */
+.vc-top-right-controls {
+    position: absolute;
+    top: 24px;
+    right: 24px;
     display: flex;
-    align-items: center;
-    gap: 4px;
-    text-shadow: 0 0 8px rgba(57, 255, 20, 0.4);
-}
-
-.vc-settings-dropdown {
-    backdrop-filter: blur(16px) saturate(180%);
-    background: rgba(15, 15, 15, 0.85) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-}
-
-.vc-device-option {
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    color: var(--text-secondary);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.vc-device-option:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: white;
-}
-
-.vc-device-option.active {
-    background: rgba(57, 255, 20, 0.1);
-    color: #39ff14;
-    border: 1px solid rgba(57, 255, 20, 0.2);
-}
-
-.action-btn-green {
-    background: #23a559 !important;
-    color: white !important;
-}
-
-.action-btn-green:hover {
-    background: #1a8344 !important;
-}
-
-.action-btn-red {
-    background: #f23f43 !important;
-    color: white !important;
-    box-shadow: none !important;
-}
-
-.action-btn-red:hover {
-    background: #e0383b !important;
-    transform: translateY(-2px);
-}
-
-/* Sub-panels (Lobby / Generating) */
-.vc-lobby {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 40px;
-    text-align: center;
-    margin: auto;
-    max-width: 500px;
-}
-
-.vc-lobby-icon {
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 24px;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
-    box-shadow: none;
-}
-
-.vc-error-icon {
-    font-size: 64px;
-    margin-bottom: 24px;
-    filter: none;
-}
-
-.vc-lobby-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 12px 0;
-    color: var(--text-primary);
-}
-
-.vc-lobby-subtitle {
-    font-size: 16px;
-    color: var(--text-secondary);
-    margin: 0 0 32px 0;
-    line-height: 1.5;
-}
-
-.action-btn-large {
-    padding: 16px 32px;
-    font-size: 16px;
     gap: 12px;
-    background: var(--primary-indigo);
-    color: white;
-    border-radius: 16px;
+    z-index: 100;
 }
 
-.glass-join-btn {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: white !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    box-shadow: none !important;
-    transition: all 0.3s ease;
-}
-
-.glass-join-btn:hover {
-    background: rgba(255, 255, 255, 0.2) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
-    transform: translateY(-2px);
-    box-shadow: none !important;
-}
-
-.circular {
-    border-radius: 50% !important;
-}
-
-.vc-connecting-spinner {
-    width: 64px;
-    height: 64px;
-    border: 4px solid rgba(255, 255, 255, 0.1);
-    border-top: 4px solid var(--primary-indigo);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 24px;
-}
-
-.vc-lobby-warning {
-    margin-top: 24px;
-    font-size: 13px;
-    color: var(--text-tertiary);
-    font-weight: 600;
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-/* ─── Mobile Responsiveness & Labels ─── */
+/* ─── Mobile Responsiveness ─── */
 @media (max-width: 768px) {
-    .layout-spotlight {
-        flex-direction: column;
-    }
+    .vc-container { padding: 12px; }
+
+    .layout-spotlight { flex-direction: column; }
 
     .vc-carousel {
         width: 100%;
-        height: 100px;
-        flex-direction: row;
-        overflow-x: auto;
-        overflow-y: hidden;
+        height: auto;
+        flex-direction: column; /* Vertical listing on mobile as requested */
         padding-right: 0;
-        padding-bottom: 8px;
+        max-height: 40%;
+        gap: 8px;
     }
 
     .vc-card.role-carousel {
-        width: 120px;
-        height: 100%;
+        width: 100%;
+        height: 80px;
     }
 
+    .vc-card-info {
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+
+    .vc-card-name { font-size: 11px; font-weight: 400; }
+
     .vc-controls {
-        gap: 10px;
+        gap: 8px;
         padding: 8px 16px;
     }
 
@@ -637,150 +360,66 @@
         height: 40px;
     }
 
-    .vc-ctrl-btn svg {
-        width: 20px;
-        height: 20px;
-    }
+    .vc-ctrl-btn svg { width: 18px; height: 18px; }
 
-    .vc-device-arrow {
-        width: 20px;
-        height: 40px;
-    }
+    .vc-device-arrow { width: 20px; height: 36px; }
 
-    .vc-card-info {
-        padding: 2px 6px;
-        border-radius: 4px;
-        bottom: 4px;
-        left: 4px;
-    }
-
-    .vc-card-name {
-        font-size: 8px;
-    }
-
-    .vc-indicator svg {
-        width: 12px;
-        height: 12px;
-    }
+    .vc-hero { height: auto; flex: 1; }
 }
 
-/* ─── Modernized Arrows & Groups ─── */
-.vc-ctrl-group {
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 0;
-    overflow: hidden;
-    transition: all 0.2s;
-}
-
-.vc-ctrl-group:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.vc-ctrl-btn.glass-btn {
-    background: transparent !important;
-    border-radius: 0 !important;
-}
-
-.vc-device-arrow {
-    background: rgba(255, 255, 255, 0.05);
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
-    width: 22px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: all 0.2s;
-}
-
-.vc-device-arrow:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-}
-
-.vc-device-arrow.active {
-    background: var(--primary-indigo);
-    color: white;
-}
-
-/* Top Right More Menu */
-.vc-top-right-controls {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    z-index: 500;
-    display: flex;
-    gap: 8px;
+/* Chat Sidebar Size */
+.voice-chat-sidebar {
+    width: 280px !important;
 }
 
 @media (max-width: 768px) {
-    .vc-top-right-controls {
-        top: 12px;
-        right: 12px;
+    .voice-chat-sidebar {
+        width: 260px !important;
+        max-width: 85%;
     }
 }
 
-.vc-more-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 8px;
-    padding: 8px;
-    min-width: 180px;
+/* Settings Dropdown Improvements */
+.vc-settings-dropdown {
+    background: rgba(20, 20, 24, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.vc-device-option {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 4px;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    z-index: 1000;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vc-device-option:hover { background: rgba(255,255,255,0.05); }
+.vc-device-option.active { background: rgba(35, 165, 89, 0.15); color: #23a559; }
+
+.vc-more-dropdown {
+    min-width: 200px;
 }
 
 .vc-more-option {
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text-secondary);
-    transition: all 0.2s;
-    background: rgba(255, 255, 255, 0.03);
-    border: none;
-    text-align: left;
+    gap: 12px;
     width: 100%;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
 }
 
-.vc-more-option:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: white;
-}
-
-.vc-more-option.active {
-    background: rgba(var(--primary-rgb), 0.1);
-    color: var(--primary-indigo);
-}
-
-.vc-more-option svg {
-    flex-shrink: 0;
-}
-
-/* Ultra Thin Name Labels */
-.vc-card-info {
-    font-weight: 300;
-    opacity: 0.8;
-}
-
-.role-carousel .vc-card-info {
-    transform: scale(0.7);
-    transform-origin: bottom left;
-}
-
-.vc-card-name {
-    font-weight: 400 !important;
-    letter-spacing: 0.02em;
-}
+.vc-more-option:hover { background: rgba(255,255,255,0.05); color: white; }
