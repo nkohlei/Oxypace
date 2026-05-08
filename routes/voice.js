@@ -2,6 +2,7 @@ import express from 'express';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { protect } from '../middleware/auth.js';
 import Portal from '../models/Portal.js';
+import { getVoiceRoomData } from '../sockets/voiceHandler.js';
 
 const router = express.Router();
 
@@ -109,6 +110,8 @@ router.post('/token', protect, async (req, res) => {
 
         const token = await at.toJwt();
 
+        const roomData = getVoiceRoomData(roomName);
+
         res.json({
             token,
             serverUrl: LIVEKIT_URL,
@@ -116,6 +119,8 @@ router.post('/token', protect, async (req, res) => {
             roomMode: isStageMode ? 'stage' : 'free',
             userRole,
             channelName: channel.name,
+            startedAt: roomData ? roomData.startedAt : null,
+            serverNow: Date.now()
         });
     } catch (error) {
         console.error('Voice token generation error:', error);

@@ -175,5 +175,6 @@ function getParticipantList(roomName) {
 }
 
 // Export for external access (e.g., from routes)
+export const getVoiceRoomData = (roomName) => voiceRooms.get(roomName);
 export const getVoiceRoomParticipants = (roomName) => getParticipantList(roomName);
 export const getActiveVoiceRooms = () => Array.from(voiceRooms.keys());

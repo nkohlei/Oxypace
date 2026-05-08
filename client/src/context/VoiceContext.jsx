@@ -190,7 +190,13 @@ export const VoiceProvider = ({ children }) => {
         try {
             // 1. Fetch Token
             const response = await axios.post('/api/voice/token', { portalId, channelId });
-            const { token, serverUrl, roomName, channelName, roomMode, userRole: returnRole } = response.data;
+            const { token, serverUrl, roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow } = response.data;
+
+            if (startedAt && serverNow) {
+                const localNow = Date.now();
+                const offset = serverNow - localNow;
+                setRoomStartTime(startedAt - offset);
+            }
 
             // 2. Instantiate Room
             const newRoom = new Room({
