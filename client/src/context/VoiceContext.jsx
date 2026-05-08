@@ -168,6 +168,7 @@ export const VoiceProvider = ({ children }) => {
         setConnectionState(ConnectionState.Connecting);
         setErrorMsg('');
         setChatMessages([]); // Clear chat on new room connect
+        setRoomStartTime(null); // Clear timer before join
 
         try {
             // 1. Fetch Token
@@ -245,24 +246,6 @@ export const VoiceProvider = ({ children }) => {
                     username: user?.username || 'Unknown',
                     avatar: user?.profile?.avatar || '',
                 });
-
-                socket.on('voice:participants', (data) => {
-                    if (data.startedAt) {
-                        setRoomStartTime(data.startedAt);
-                    }
-                });
-
-                socket.on('voice:user-joined', (data) => {
-                    if (data.userId !== user?._id?.toString()) {
-                        playInteractionSound('join');
-                    }
-                });
-
-                socket.on('voice:user-left', (data) => {
-                    if (data.userId !== user?._id?.toString()) {
-                        playInteractionSound('leave');
-                    }
-                });
             }
 
             // 6. Join with mic enabled by default as requested
@@ -292,15 +275,57 @@ export const VoiceProvider = ({ children }) => {
         setParticipants([]);
         setChatMessages([]);
         setPinnedParticipant(null);
+        setRoomStartTime(null);
         setConnectionState(ConnectionState.Disconnected);
     }, [room]);
 
-    // Media Controls
+    // Socket Event Handlers
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleParticipants = (data) => {
+            if (data.startedAt) {
+                setRoomStartTime(data.startedAt);
+            }
+        };
+
+        const handleUserJoined = (data) => {
+            if (data.userId !== user?._id?.toString()) {
+                playInteractionSound('join');
+            }
+        };
+
+        const handleUserLeft = (data) => {
+            if (data.userId !== user?._id?.toString()) {
+                playInteractionSound('leave');
+            }
+        };
+
+        socket.on('voice:participants', handleParticipants);
+        socket.on('voice:user-joined', handleUserJoined);
+        socket.on('voice:user-left', handleUserLeft);
+
+        return () => {
+            socket.off('voice:participants', handleParticipants);
+            socket.off('voice:user-joined', handleUserJoined);
+            socket.off('voice:user-left', handleUserLeft);
+        };
+    }, [socket, user, playInteractionSound]);
+
+    // Media Controls with Optimistic Updates
     const toggleMicrophone = useCallback(async () => {
         if (!room || !room.localParticipant) return;
         const willEnable = localState.isMuted;
-        await room.localParticipant.setMicrophoneEnabled(willEnable);
+        
+        // Optimistic update
         setLocalState(prev => ({ ...prev, isMuted: !willEnable }));
+        
+        try {
+            await room.localParticipant.setMicrophoneEnabled(willEnable);
+        } catch (err) {
+            console.error("Mic toggle failed", err);
+            setLocalState(prev => ({ ...prev, isMuted: willEnable }));
+        }
     }, [room, localState.isMuted]);
 
     const toggleDeafen = useCallback(() => {
@@ -310,8 +335,16 @@ export const VoiceProvider = ({ children }) => {
     const toggleCamera = useCallback(async () => {
         if (!room || !room.localParticipant) return;
         const willEnable = !localState.isCameraOn;
-        await room.localParticipant.setCameraEnabled(willEnable, { facingMode });
+        
+        // Optimistic update
         setLocalState(prev => ({ ...prev, isCameraOn: willEnable }));
+        
+        try {
+            await room.localParticipant.setCameraEnabled(willEnable, { facingMode });
+        } catch (err) {
+            console.error("Camera toggle failed", err);
+            setLocalState(prev => ({ ...prev, isCameraOn: !willEnable }));
+        }
     }, [room, localState.isCameraOn, facingMode]);
 
     const toggleFacingMode = useCallback(async () => {

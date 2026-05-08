@@ -555,7 +555,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         <div className="vc-ctrl-group">
                             <button
                                 className={`vc-ctrl-btn neumorphic-btn ${localState.isMuted ? 'danger' : ''}`}
-                                onClick={toggleMicrophone}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleMicrophone();
+                                }}
                                 title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
                             >
                                 {localState.isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -617,7 +620,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         <div className="vc-ctrl-group">
                             <button
                                 className={`vc-ctrl-btn neumorphic-btn ${localState.isDeafened ? 'danger action-btn-red' : 'action-btn-green'}`}
-                                onClick={toggleDeafen}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleDeafen();
+                                }}
                                 title={localState.isDeafened ? "Sesi Duy" : "Sesi Kapat (Sağırlaştır)"}
                             >
                                 {localState.isDeafened ? <VolumeX size={24} /> : <Volume2 size={24} />}

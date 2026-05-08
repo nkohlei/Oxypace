@@ -318,8 +318,11 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
                 <div className="vc-ctrl-group">
                     <button
-                        className={`vc-ctrl-btn glass-btn ${localState.isMuted ? 'danger' : ''}`}
-                        onClick={toggleMicrophone}
+                        className="vc-ctrl-btn glass-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMicrophone();
+                        }}
                         title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
                     >
                         {localState.isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -381,7 +384,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 <div className="vc-ctrl-group">
                     <button
                         className={`vc-ctrl-btn glass-btn ${localState.isDeafened ? 'danger action-btn-red' : 'action-btn-green'}`}
-                        onClick={toggleDeafen}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleDeafen();
+                        }}
                         title={localState.isDeafened ? "Sesi Duy" : "Sesi Kapat (Sağırlaştır)"}
                     >
                         {localState.isDeafened ? <VolumeX size={24} /> : <Volume2 size={24} />}
