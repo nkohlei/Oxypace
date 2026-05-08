@@ -574,7 +574,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             {isMicMenuOpen && (
                                 <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
-                                    {availableDevices.audioInputs.map(d => (
+                                    {availableDevices?.audioInputs?.map(d => (
                                         <div 
                                             key={d.deviceId} 
                                             className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`}
@@ -645,7 +645,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             {isSpeakerMenuOpen && (
                                 <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
-                                    {availableDevices.audioOutputs.map(d => (
+                                    {availableDevices?.audioOutputs?.map(d => (
                                         <button
                                             key={d.deviceId} 
                                             className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`}

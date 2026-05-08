@@ -1,7 +1,10 @@
 import { createContext, useContext, useCallback, useRef, useState, useEffect } from 'react';
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
-import { Room, RoomEvent, ConnectionState, Track } from 'livekit-client';
+import { Room, RoomEvent, ConnectionState, Track, setLogLevel, LogLevel } from 'livekit-client';
+
+// Silence LiveKit standard logs as requested by user
+setLogLevel(LogLevel.error);
 import axios from 'axios';
 
 const VoiceContext = createContext();
