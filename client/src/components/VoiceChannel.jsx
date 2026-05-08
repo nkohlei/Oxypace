@@ -77,15 +77,17 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const renderParticipantCard = (p, role = 'grid') => {
         const isShowingScreen = role === 'hero' && p.screenShareTrack;
         const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
+        const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
 
         return (
             <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={() => handleFocus(p.identity)}>
                 <div className="vc-card-video-area">
+                    <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
                     {trackToRender ? (
                         <video className="vc-card-video" ref={el => { if (el && trackToRender) trackToRender.attach(el); }} autoPlay muted={p.isLocal} playsInline />
                     ) : (
-                        <div className="vc-card-avatar-area" style={getCardBackground(p.identity)}>
-                            <img className="vc-card-avatar" src={getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`} alt="" />
+                        <div className="vc-card-avatar-area">
+                            <img className="vc-card-avatar" src={avatarUrl} alt="" />
                         </div>
                     )}
                 </div>
