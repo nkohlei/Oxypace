@@ -29,7 +29,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         setAudioOutput,
         setAudioInput,
         setVideoInput,
-        toggleDeafen
+        toggleDeafen,
+        enumerateDevices
     } = useVoice();
 
     const [focusedIdentity, setFocusedIdentity] = useState(null);
@@ -325,7 +326,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </button>
                     <div 
                         className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`}
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            enumerateDevices();
                             setIsMicMenuOpen(!isMicMenuOpen);
                             setIsSpeakerMenuOpen(false);
                         }}
@@ -385,7 +388,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </button>
                     <div 
                         className={`vc-device-arrow ${isSpeakerMenuOpen ? 'active' : ''}`}
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            enumerateDevices();
                             setIsSpeakerMenuOpen(!isSpeakerMenuOpen);
                             setIsMicMenuOpen(false);
                         }}

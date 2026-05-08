@@ -151,13 +151,12 @@ export const VoiceProvider = ({ children }) => {
 
     // Initialize device listener
     useEffect(() => {
-        if (!room) return;
         enumerateDevices();
         navigator.mediaDevices?.addEventListener('devicechange', enumerateDevices);
         return () => {
             navigator.mediaDevices?.removeEventListener('devicechange', enumerateDevices);
         };
-    }, [room, enumerateDevices]);
+    }, [enumerateDevices]);
 
     // Main connection function
     const connectToChannel = useCallback(async (portalId, channelId) => {
@@ -266,12 +265,15 @@ export const VoiceProvider = ({ children }) => {
                 });
             }
 
-            // 6. Force hardware tracks off (Local UI state is currently initialized to true/false above)
-            // Even if browser defaults allow hardware, we strictly enforce muted on join.
+            // 6. Join with mic enabled by default as requested
             if (newRoom.localParticipant) {
-                await newRoom.localParticipant.setMicrophoneEnabled(false);
-                await newRoom.localParticipant.setCameraEnabled(false);
-                setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false });
+                try {
+                    await newRoom.localParticipant.setMicrophoneEnabled(true);
+                    setLocalState({ isMuted: false, isCameraOn: false, isScreenSharing: false, isDeafened: false });
+                } catch (e) {
+                    console.warn("Could not enable mic on join", e);
+                    setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
+                }
             }
 
         } catch (err) {
