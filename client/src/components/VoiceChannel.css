@@ -606,7 +606,7 @@
     }
 }
 
-/* ─── Mobile Responsiveness ─── */
+/* ─── Mobile Responsiveness & Labels ─── */
 @media (max-width: 768px) {
     .layout-spotlight {
         flex-direction: column;
@@ -614,7 +614,7 @@
 
     .vc-carousel {
         width: 100%;
-        height: 120px;
+        height: 100px;
         flex-direction: row;
         overflow-x: auto;
         overflow-y: hidden;
@@ -623,7 +623,164 @@
     }
 
     .vc-card.role-carousel {
-        width: 140px;
+        width: 120px;
         height: 100%;
     }
+
+    .vc-controls {
+        gap: 10px;
+        padding: 8px 16px;
+    }
+
+    .vc-ctrl-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .vc-ctrl-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .vc-device-arrow {
+        width: 20px;
+        height: 40px;
+    }
+
+    .vc-card-info {
+        padding: 2px 6px;
+        border-radius: 4px;
+        bottom: 4px;
+        left: 4px;
+    }
+
+    .vc-card-name {
+        font-size: 8px;
+    }
+
+    .vc-indicator svg {
+        width: 12px;
+        height: 12px;
+    }
 }
+
+/* ─── Modernized Arrows & Groups ─── */
+.vc-ctrl-group {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.vc-ctrl-group:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.vc-ctrl-btn.glass-btn {
+    background: transparent !important;
+    border-radius: 0 !important;
+}
+
+.vc-device-arrow {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    width: 22px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.vc-device-arrow:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.vc-device-arrow.active {
+    background: var(--primary-indigo);
+    color: white;
+}
+
+/* Top Right More Menu */
+.vc-top-right-controls {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 500;
+    display: flex;
+    gap: 8px;
+}
+
+@media (max-width: 768px) {
+    .vc-top-right-controls {
+        top: 12px;
+        right: 12px;
+    }
+}
+
+.vc-more-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    padding: 8px;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 1000;
+}
+
+.vc-more-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
+    text-align: left;
+    width: 100%;
+}
+
+.vc-more-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.vc-more-option.active {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary-indigo);
+}
+
+.vc-more-option svg {
+    flex-shrink: 0;
+}
+
+/* Ultra Thin Name Labels */
+.vc-card-info {
+    font-weight: 300;
+    opacity: 0.8;
+}
+
+.role-carousel .vc-card-info {
+    transform: scale(0.7);
+    transform-origin: bottom left;
+}
+
+.vc-card-name {
+    font-weight: 400 !important;
+    letter-spacing: 0.02em;
+}
