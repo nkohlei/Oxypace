@@ -30,7 +30,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         setAudioInput,
         setVideoInput,
         toggleDeafen,
-        enumerateDevices
+        enumerateDevices,
+        selectedAudioInput,
+        selectedAudioOutput
     } = useVoice();
 
     const [focusedIdentity, setFocusedIdentity] = useState(null);

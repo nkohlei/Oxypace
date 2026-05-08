@@ -2,9 +2,6 @@ import { createContext, useContext, useCallback, useRef, useState, useEffect } f
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
 import { Room, RoomEvent, ConnectionState, Track, setLogLevel, LogLevel } from 'livekit-client';
-
-// Silence LiveKit standard logs as requested by user
-setLogLevel(LogLevel.error);
 import axios from 'axios';
 
 const VoiceContext = createContext();
@@ -18,6 +15,11 @@ export const useVoice = () => {
 export const VoiceProvider = ({ children }) => {
     const { socket } = useSocket();
     const { user } = useAuth();
+
+    // Silence LiveKit standard logs
+    useEffect(() => {
+        setLogLevel(LogLevel.error);
+    }, []);
 
     // Core states
     const [activeRoom, setActiveRoom] = useState(null); // { portalId, channelId, roomName, channelName }

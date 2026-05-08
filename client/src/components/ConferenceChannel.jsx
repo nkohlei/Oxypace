@@ -33,7 +33,9 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         setAudioOutput,
         setAudioInput,
         toggleDeafen,
-        enumerateDevices
+        enumerateDevices,
+        selectedAudioInput,
+        selectedAudioOutput
     } = useVoice();
 
     const [isMicMenuOpen, setIsMicMenuOpen] = useState(false);
@@ -97,7 +99,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         };
 
         fetchCount();
-        const interval = setInterval(fetchCount, 2000); // refresh every 2s for real-time feel
+        const interval = setInterval(fetchCount, 10000); // refresh every 10s
         return () => {
             isMounted = false;
             clearInterval(interval);
