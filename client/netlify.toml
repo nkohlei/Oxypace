@@ -41,7 +41,7 @@
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(self), microphone=(self), geolocation=(), interest-cohort=()"
+    # Permissions-Policy removed to allow default browser behavior
     X-DNS-Prefetch-Control = "off"
 
 # ── Cache Control for Static Assets ──────────────
