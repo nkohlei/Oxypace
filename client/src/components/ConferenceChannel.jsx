@@ -385,12 +385,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     // ─── CONNECTED ───
     return (
         <div className="vc-container glass-container">
-            {/* Isolated Top Right Controls */}
-            <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 110, display: 'flex', gap: '12px', alignItems: 'center' }}>
-                {/* RoomTimer removed from here, now in sidebar */}
-
-                {/* Removed floating Chat Mode Toggle, now inside Settings menu */}
-
+            {/* Top Right Controls */}
+            <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 50, display: 'flex', gap: '12px' }}>
                 {isAdmin && (
                     <button
                         className={`vc-ctrl-btn neumorphic-btn ${isListenersOpen ? 'active' : ''}`}
@@ -550,7 +546,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
             {/* Bottom Controls (Centered Symmetrically) */}
             {isConnected && (
-                <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
+                <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 9999 }}>
                 {canSpeak ? (
                     <>
                         <div className="vc-ctrl-group">
@@ -564,7 +560,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             >
                                 {localState.isMuted ? <MicOff size={24} /> : <Mic size={24} />}
                             </button>
-                            <div 
+                            <button 
                                 className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -574,21 +570,21 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 }}
                             >
                                 <ChevronUp size={16} />
-                            </div>
+                            </button>
                             {isMicMenuOpen && (
                                 <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
                                     {availableDevices.audioInputs.map(d => (
                                         <div 
                                             key={d.deviceId} 
-                                            className={`vc-device-option ${room?.getActiveDevice('audioinput') === d.deviceId ? 'active' : ''}`}
+                                            className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`}
                                             onClick={() => {
                                                 setAudioInput(d.deviceId);
                                                 setIsMicMenuOpen(false);
                                             }}
                                         >
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Varsayılan Mikrofon'}</span>
-                                            {room?.getActiveDevice('audioinput') === d.deviceId && <Check size={14} />}
+                                            {selectedAudioInput === d.deviceId && <Check size={14} />}
                                         </div>
                                     ))}
                                 </div>
@@ -635,7 +631,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             >
                                 {localState.isDeafened ? <VolumeX size={24} /> : <Volume2 size={24} />}
                             </button>
-                            <div 
+                            <button 
                                 className={`vc-device-arrow ${isSpeakerMenuOpen ? 'active' : ''}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -645,22 +641,23 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 }}
                             >
                                 <ChevronUp size={16} />
-                            </div>
+                            </button>
                             {isSpeakerMenuOpen && (
                                 <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
                                     {availableDevices.audioOutputs.map(d => (
-                                        <div 
+                                        <button
                                             key={d.deviceId} 
-                                            className={`vc-device-option ${room?.getActiveDevice('audiooutput') === d.deviceId ? 'active' : ''}`}
+                                            className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`}
                                             onClick={() => {
                                                 setAudioOutput(d.deviceId);
                                                 setIsSpeakerMenuOpen(false);
                                             }}
+                                            style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', textAlign: 'left', cursor: 'pointer', padding: '8px', borderRadius: '4px' }}
                                         >
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Varsayılan Hoparlör'}</span>
-                                            {room?.getActiveDevice('audiooutput') === d.deviceId && <Check size={14} />}
-                                        </div>
+                                            {selectedAudioOutput === d.deviceId && <Check size={14} />}
+                                        </button>
                                     ))}
 
                                     {localState.isCameraOn && (

@@ -22,6 +22,11 @@ export const VoiceProvider = ({ children }) => {
     const [connectionState, setConnectionState] = useState(ConnectionState.Disconnected);
     const [errorMsg, setErrorMsg] = useState('');
 
+    // Device persistence state
+    const [selectedAudioInput, setSelectedAudioInput] = useState(null);
+    const [selectedAudioOutput, setSelectedAudioOutput] = useState(null);
+    const [selectedVideoInput, setSelectedVideoInput] = useState(null);
+
     // Derived UI states
     const [participants, setParticipants] = useState([]);
     const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
@@ -232,8 +237,18 @@ export const VoiceProvider = ({ children }) => {
                 }
             });
 
-            // 4. Connect
-            await newRoom.connect(serverUrl, token);
+            // 4. Connect with pre-selected devices if any
+            const connectOptions = {};
+            if (selectedAudioInput) connectOptions.audio = { deviceId: selectedAudioInput };
+            if (selectedVideoInput) connectOptions.video = { deviceId: selectedVideoInput };
+
+            await newRoom.connect(serverUrl, token, connectOptions);
+            
+            // Set audio output if selected
+            if (selectedAudioOutput) {
+                try { await newRoom.setAudioOutputDevice(selectedAudioOutput); } catch(e) {}
+            }
+
             setRoom(newRoom);
             setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
             updateList();
@@ -372,20 +387,24 @@ export const VoiceProvider = ({ children }) => {
     }, [room, facingMode, localState.isCameraOn]);
 
     const setAudioOutput = useCallback(async (deviceId) => {
-        if (!room) return;
-        try {
-            await room.setAudioOutputDevice(deviceId);
-        } catch (err) {
-            console.error("Failed to set audio output device", err);
+        setSelectedAudioOutput(deviceId);
+        if (room) {
+            try {
+                await room.setAudioOutputDevice(deviceId);
+            } catch (err) {
+                console.error("Failed to set audio output device", err);
+            }
         }
     }, [room]);
 
     const setAudioInput = useCallback(async (deviceId) => {
-        if (!room) return;
-        try {
-            await room.switchActiveDevice('audioinput', deviceId);
-        } catch (err) {
-            console.error("Failed to set audio input device", err);
+        setSelectedAudioInput(deviceId);
+        if (room) {
+            try {
+                await room.switchActiveDevice('audioinput', deviceId);
+            } catch (err) {
+                console.error("Failed to set audio input device", err);
+            }
         }
     }, [room]);
 
@@ -453,7 +472,7 @@ export const VoiceProvider = ({ children }) => {
         activeRoom,
         connectionState,
         participants,
-        roomStartTime, // Exposed for frontend RoomTimer
+        roomStartTime,
         errorMsg,
         localState,
         chatMessages,
@@ -461,7 +480,7 @@ export const VoiceProvider = ({ children }) => {
         disconnectFromChannel,
         toggleMicrophone,
         toggleCamera,
-        toggleScreenShare, // Exposed to trigger screen sharing
+        toggleScreenShare,
         sendChatMessage,
         grantSpeak,
         revokeSpeak,
@@ -474,6 +493,10 @@ export const VoiceProvider = ({ children }) => {
         setAudioInput,
         setVideoInput,
         toggleDeafen,
+        enumerateDevices,
+        selectedAudioInput,
+        selectedAudioOutput,
+        selectedVideoInput
     };
 
     return (

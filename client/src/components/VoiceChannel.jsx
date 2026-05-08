@@ -211,9 +211,83 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
 
 
-                    <button className="vc-join-btn glass-join-btn action-btn-large" onClick={handleJoin}>
+                    <button className="vc-join-btn glass-join-btn action-btn-large" onClick={handleJoin} style={{ marginBottom: '24px' }}>
                         Aramaya Katıl
                     </button>
+
+                    {/* Pre-join Device Settings */}
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                        <div className="vc-ctrl-group">
+                            <div className="vc-ctrl-btn glass-btn" style={{ cursor: 'default' }}>
+                                <Mic size={20} />
+                            </div>
+                            <button 
+                                className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    enumerateDevices();
+                                    setIsMicMenuOpen(!isMicMenuOpen);
+                                    setIsSpeakerMenuOpen(false);
+                                }}
+                            >
+                                <ChevronUp size={16} />
+                            </button>
+                            {isMicMenuOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
+                                    {availableDevices.audioInputs.map(d => (
+                                        <div 
+                                            key={d.deviceId} 
+                                            className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`}
+                                            onClick={() => {
+                                                setAudioInput(d.deviceId);
+                                                setIsMicMenuOpen(false);
+                                            }}
+                                        >
+                                            <span>{d.label || 'Varsayılan Mikrofon'}</span>
+                                            {selectedAudioInput === d.deviceId && <Check size={14} />}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="vc-ctrl-group">
+                            <div className="vc-ctrl-btn glass-btn" style={{ cursor: 'default' }}>
+                                <Volume2 size={20} />
+                            </div>
+                            <button 
+                                className={`vc-device-arrow ${isSpeakerMenuOpen ? 'active' : ''}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    enumerateDevices();
+                                    setIsSpeakerMenuOpen(!isSpeakerMenuOpen);
+                                    setIsMicMenuOpen(false);
+                                }}
+                            >
+                                <ChevronUp size={16} />
+                            </button>
+                            {isSpeakerMenuOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
+                                    {availableDevices.audioOutputs.map(d => (
+                                        <div 
+                                            key={d.deviceId} 
+                                            className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`}
+                                            onClick={() => {
+                                                setAudioOutput(d.deviceId);
+                                                setIsSpeakerMenuOpen(false);
+                                            }}
+                                        >
+                                            <span>{d.label || 'Varsayılan Hoparlör'}</span>
+                                            {selectedAudioOutput === d.deviceId && <Check size={14} />}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {activeRoom && (
                         <p className="vc-lobby-warning">
                             Katıldığınızda diğer kanaldan otomatik ayrılırsınız.
@@ -276,7 +350,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         <div className="vc-container glass-container">
             {/* Isolated Top Right Controls */}
             <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 50, display: 'flex', gap: '12px' }}>
-                {isConnected && roomStartTime && <RoomTimer startedAt={roomStartTime} />}
                 <button
                     className={`vc-ctrl-btn neumorphic-btn ${isChatOpen ? 'active' : ''}`}
                     onClick={() => setIsChatOpen(!isChatOpen)}
@@ -316,7 +389,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
             {/* Bottom Controls (Centered Symmetrically) */}
             {isConnected && (
-                <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 120 }}>
+                <div className="vc-controls glass-controls" style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 9999 }}>
                 <div className="vc-ctrl-group">
                     <button
                         className="vc-ctrl-btn glass-btn"
@@ -328,7 +401,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     >
                         {localState.isMuted ? <MicOff size={24} /> : <Mic size={24} />}
                     </button>
-                    <div 
+                    <button 
                         className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -338,21 +411,21 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         }}
                     >
                         <ChevronUp size={16} />
-                    </div>
+                    </button>
                     {isMicMenuOpen && (
                         <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Mikrofon Seçimi</div>
                             {availableDevices.audioInputs.map(d => (
                                 <div 
                                     key={d.deviceId} 
-                                    className={`vc-device-option ${room?.getActiveDevice('audioinput') === d.deviceId ? 'active' : ''}`}
+                                    className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`}
                                     onClick={() => {
                                         setAudioInput(d.deviceId);
                                         setIsMicMenuOpen(false);
                                     }}
                                 >
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Varsayılan Mikrofon'}</span>
-                                    {room?.getActiveDevice('audioinput') === d.deviceId && <Check size={14} />}
+                                    {selectedAudioInput === d.deviceId && <Check size={14} />}
                                 </div>
                             ))}
                         </div>
@@ -393,7 +466,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     >
                         {localState.isDeafened ? <VolumeX size={24} /> : <Volume2 size={24} />}
                     </button>
-                    <div 
+                    <button 
                         className={`vc-device-arrow ${isSpeakerMenuOpen ? 'active' : ''}`}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -403,21 +476,21 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         }}
                     >
                         <ChevronUp size={16} />
-                    </div>
+                    </button>
                     {isSpeakerMenuOpen && (
                         <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '16px', padding: '12px', minWidth: '240px', zIndex: 200, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '0 4px', textTransform: 'uppercase' }}>Hoparlör Seçimi</div>
                             {availableDevices.audioOutputs.map(d => (
                                 <div 
                                     key={d.deviceId} 
-                                    className={`vc-device-option ${room?.getActiveDevice('audiooutput') === d.deviceId ? 'active' : ''}`}
+                                    className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`}
                                     onClick={() => {
                                         setAudioOutput(d.deviceId);
                                         setIsSpeakerMenuOpen(false);
                                     }}
                                 >
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Varsayılan Hoparlör'}</span>
-                                    {room?.getActiveDevice('audiooutput') === d.deviceId && <Check size={14} />}
+                                    {selectedAudioOutput === d.deviceId && <Check size={14} />}
                                 </div>
                             ))}
 
