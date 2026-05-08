@@ -7,10 +7,20 @@ const router = express.Router();
 
 // Helper: Get LiveKit config lazily at runtime
 const getLiveKitConfig = () => {
-    const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey';
-    const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secret';
-    const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
-    const LIVEKIT_HTTP_URL = LIVEKIT_URL.replace('ws://', 'http://').replace('wss://', 'https://');
+    let LIVEKIT_API_KEY = (process.env.LIVEKIT_API_KEY || 'devkey').trim();
+    let LIVEKIT_API_SECRET = (process.env.LIVEKIT_API_SECRET || 'secret').trim();
+    let LIVEKIT_URL = (process.env.LIVEKIT_URL || 'ws://localhost:7880').trim();
+
+    // Ensure protocol for RoomServiceClient
+    let LIVEKIT_HTTP_URL = LIVEKIT_URL;
+    if (LIVEKIT_HTTP_URL.startsWith('wss://')) {
+        LIVEKIT_HTTP_URL = LIVEKIT_HTTP_URL.replace('wss://', 'https://');
+    } else if (LIVEKIT_HTTP_URL.startsWith('ws://')) {
+        LIVEKIT_HTTP_URL = LIVEKIT_HTTP_URL.replace('ws://', 'http://');
+    } else if (!LIVEKIT_HTTP_URL.startsWith('http')) {
+        LIVEKIT_HTTP_URL = `https://${LIVEKIT_HTTP_URL}`; // Default to https for cloud
+    }
+
     return { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL, LIVEKIT_HTTP_URL };
 };
 
