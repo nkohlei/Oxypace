@@ -254,7 +254,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     {canSpeak ? (
                         <>
                             <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : ''}`} onClick={toggleMicrophone}>{localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}</button>
+                                <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : 'active'}`} onClick={toggleMicrophone}>{localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}</button>
                                 <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={14} /></button>
                                 {isMicMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
@@ -265,7 +265,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 )}
                             </div>
                             <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : ''}`} onClick={toggleCamera}>{localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}</button>
+                                <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : 'danger'}`} onClick={toggleCamera}>{localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}</button>
                                 <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={14} /></button>
                                 {isCameraMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
@@ -281,8 +281,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             {/* Desktop Specific for Conference */}
                             {!isMobile && (
                                 <>
-                                    <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : ''}`} onClick={toggleScreenShare} title="Ekran Paylaş"><MonitorUp size={22} /></button>
-                                    <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : ''}`} onClick={toggleDeafen}>{localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}</button>
+                                    <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : 'danger'}`} onClick={toggleScreenShare} title="Ekran Paylaş"><MonitorUp size={22} /></button>
+                                    <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : 'active'}`} onClick={toggleDeafen}>{localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}</button>
                                 </>
                             )}
                         </>

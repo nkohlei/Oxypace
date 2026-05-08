@@ -203,7 +203,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 <div className="vc-controls glass-controls">
                     {/* Microphone */}
                     <div className="vc-ctrl-group">
-                        <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : ''}`} onClick={toggleMicrophone}>
+                        <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : 'active'}`} onClick={toggleMicrophone}>
                             {localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
                         </button>
                         <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
@@ -222,7 +222,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
                     {/* Camera */}
                     <div className="vc-ctrl-group">
-                        <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : ''}`} onClick={toggleCamera}>
+                        <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : 'danger'}`} onClick={toggleCamera}>
                             {localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}
                         </button>
                         <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={16} /></button>
@@ -246,11 +246,11 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     {/* Desktop Specific Controls (Screen Share & Deafen) */}
                     {!isMobile && (
                         <>
-                            <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : ''}`} onClick={toggleScreenShare} title="Ekran Paylaş">
+                            <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : 'danger'}`} onClick={toggleScreenShare} title="Ekran Paylaş">
                                 <MonitorUp size={22} />
                             </button>
                             <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : ''}`} onClick={toggleDeafen}>
+                                <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : 'active'}`} onClick={toggleDeafen}>
                                     {localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}
                                 </button>
                                 <button className={`vc-device-arrow ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}><ChevronUp size={16} /></button>

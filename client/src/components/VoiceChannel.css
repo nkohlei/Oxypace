@@ -282,9 +282,9 @@
 }
 
 .vc-ctrl-btn:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
-.vc-ctrl-btn.danger { background: #f23f43; }
-.vc-ctrl-btn.danger:hover { background: #e0383b; }
-.vc-ctrl-btn.active { background: #23a559; }
+.vc-ctrl-btn.danger { background: #f23f43 !important; color: white !important; }
+.vc-ctrl-btn.danger:hover { background: #e0383b !important; }
+.vc-ctrl-btn.active { background: #23a559 !important; color: white !important; }
 
 /* Control Group (Integrated Arrows) - Desktop Style */
 .vc-ctrl-group {
