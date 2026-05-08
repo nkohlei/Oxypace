@@ -5,6 +5,8 @@ import InviteUserModal from './InviteUserModal';
 import Badge from './Badge';
 import UserBar from './UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
+import { useVoice } from '../context/VoiceContext';
+import RoomTimer from './RoomTimer';
 import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
@@ -25,6 +27,7 @@ const ChannelSidebar = ({
     const navigate = useNavigate();
     const { isMobileView } = useUI();
     const { unreadPostsByChannel, clearUnreadForChannel } = useGlobalStore();
+    const { roomStartTime, activeRoom } = useVoice();
 
     // Clear unread count for the active channel
     useEffect(() => {
@@ -228,6 +231,13 @@ const ChannelSidebar = ({
                             >
                                 {channel.name}
                             </span>
+
+                            {/* Room Timer for active voice channel */}
+                            {isVoice && isActive && roomStartTime && (
+                                <div style={{ marginLeft: 'auto', marginRight: '8px', opacity: 0.9, transform: 'scale(0.85)', transformOrigin: 'right' }}>
+                                    <RoomTimer startedAt={roomStartTime} />
+                                </div>
+                            )}
 
                             {/* Notification Badge - Positioned strictly next to the title */}
                             {!isActive && unreadPostsByChannel[channel.id]?.length > 0 && (

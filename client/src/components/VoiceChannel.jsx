@@ -5,7 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import RoomTimer from './RoomTimer';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Maximize, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff } from 'lucide-react';
+import { MicOff, Maximize, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, Settings } from 'lucide-react';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -22,11 +22,18 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         toggleCamera,
         toggleScreenShare,
         sendChatMessage,
-        roomStartTime
+        roomStartTime,
+        availableDevices,
+        facingMode,
+        toggleFacingMode,
+        setAudioOutput,
+        setAudioInput,
+        setVideoInput
     } = useVoice();
 
     const [focusedIdentity, setFocusedIdentity] = useState(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [isDevicesOpen, setIsDevicesOpen] = useState(false);
 
     // Pre-join stats
     const [lobbyCount, setLobbyCount] = useState(null);
@@ -147,10 +154,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
                 </div>
 
-                {/* Focus Overlay Icon */}
-                {isFocused && (
-                        <Maximize size={20} stroke="white" strokeWidth={2} />
-                )}
+                {/* Removed Focus Overlay Icon as requested */}
             </div>
         );
     };
@@ -269,7 +273,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         <div className="vc-container glass-container">
             {/* Isolated Top Right Controls */}
             <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 50, display: 'flex', gap: '12px' }}>
-                {roomStartTime && <RoomTimer startedAt={roomStartTime} />}
+                {/* RoomTimer removed from here, now in sidebar */}
                 <button
                     className={`vc-ctrl-btn neumorphic-btn ${isChatOpen ? 'active' : ''}`}
                     onClick={() => setIsChatOpen(!isChatOpen)}
@@ -346,6 +350,48 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <MonitorUp size={22} strokeWidth={2} />
                     )}
                 </button>
+
+                <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
+
+                <div style={{ position: 'relative' }}>
+                    <button
+                        className={`vc-ctrl-btn glass-btn ${isDevicesOpen ? 'active' : ''}`}
+                        onClick={() => setIsDevicesOpen(!isDevicesOpen)}
+                        title="Hoparlör & Cihaz Ayarları"
+                    >
+                        <Volume2 size={24} strokeWidth={2} />
+                    </button>
+                    
+                    {isDevicesOpen && (
+                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '16px', padding: '16px', minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 200 }}>
+                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase' }}>Cihaz Seçimi</div>
+                            
+                            {/* Audio Output */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Hoparlör</label>
+                                <select 
+                                    onChange={(e) => setAudioOutput(e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', padding: '4px', fontSize: '12px' }}
+                                >
+                                    {availableDevices.audioOutputs.map(d => (
+                                        <option key={d.deviceId} value={d.deviceId}>{d.label || 'Bilinmeyen Hoparlör'}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Camera Flip (Conditional) */}
+                            {localState.isCameraOn && (
+                                <button 
+                                    onClick={toggleFacingMode}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
+                                >
+                                    <RefreshCw size={16} />
+                                    Kamerayı Çevir ({facingMode === 'user' ? 'Ön' : 'Arka'})
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 <div style={{ width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }}></div>
 

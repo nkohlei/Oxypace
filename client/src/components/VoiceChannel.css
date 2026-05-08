@@ -260,8 +260,10 @@
 }
 
 .vc-card-avatar {
-    width: 96px;
-    height: 96px;
+    width: 35%;
+    aspect-ratio: 1;
+    max-width: 96px;
+    min-width: 48px;
     border-radius: 50%;
     object-fit: cover;
     box-shadow: none;
@@ -277,8 +279,8 @@
 }
 
 .vc-card.role-carousel .vc-card-avatar {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
 }
 
 /* Hero Specific Overrides */
@@ -316,25 +318,26 @@
 /* Overlay Info */
 .vc-card-info {
     position: absolute;
-    bottom: 16px;
-    left: 16px;
+    bottom: 8px;
+    left: 8px;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
-    padding: 8px 16px;
-    border-radius: 12px;
+    padding: 4px 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    max-width: calc(100% - 16px);
+    box-sizing: border-box;
 }
 
 .vc-card-name {
     color: white;
     font-weight: 700;
-    font-size: 11px;
-    /* Users requested smaller names */
+    font-size: clamp(9px, 1.2vw, 12px);
     text-shadow: none;
-    max-width: 150px;
+    max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -27,6 +27,10 @@ export const VoiceProvider = ({ children }) => {
     const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false });
     const [pinnedParticipant, setPinnedParticipant] = useState(null);
 
+    // Device management
+    const [availableDevices, setAvailableDevices] = useState({ audioInputs: [], audioOutputs: [], videoInputs: [] });
+    const [facingMode, setFacingMode] = useState('user'); // 'user' or 'environment'
+
     // Additional Voice states
     const [roomStartTime, setRoomStartTime] = useState(null);
 
@@ -132,6 +136,28 @@ export const VoiceProvider = ({ children }) => {
             return prev;
         });
     }, []);
+
+    // Enumerate devices
+    const enumerateDevices = useCallback(async () => {
+        try {
+            const audioInputs = await Room.getLocalDevices('audioinput');
+            const audioOutputs = await Room.getLocalDevices('audiooutput');
+            const videoInputs = await Room.getLocalDevices('videoinput');
+            setAvailableDevices({ audioInputs, audioOutputs, videoInputs });
+        } catch (err) {
+            console.error("Failed to enumerate devices", err);
+        }
+    }, []);
+
+    // Initialize device listener
+    useEffect(() => {
+        if (!room) return;
+        enumerateDevices();
+        navigator.mediaDevices?.addEventListener('devicechange', enumerateDevices);
+        return () => {
+            navigator.mediaDevices?.removeEventListener('devicechange', enumerateDevices);
+        };
+    }, [room, enumerateDevices]);
 
     // Main connection function
     const connectToChannel = useCallback(async (portalId, channelId) => {
@@ -278,9 +304,45 @@ export const VoiceProvider = ({ children }) => {
     const toggleCamera = useCallback(async () => {
         if (!room || !room.localParticipant) return;
         const willEnable = !localState.isCameraOn;
-        await room.localParticipant.setCameraEnabled(willEnable);
+        await room.localParticipant.setCameraEnabled(willEnable, { facingMode });
         setLocalState(prev => ({ ...prev, isCameraOn: willEnable }));
-    }, [room, localState.isCameraOn]);
+    }, [room, localState.isCameraOn, facingMode]);
+
+    const toggleFacingMode = useCallback(async () => {
+        if (!room || !room.localParticipant) return;
+        const newMode = facingMode === 'user' ? 'environment' : 'user';
+        setFacingMode(newMode);
+        if (localState.isCameraOn) {
+            await room.localParticipant.setCameraEnabled(true, { facingMode: newMode });
+        }
+    }, [room, facingMode, localState.isCameraOn]);
+
+    const setAudioOutput = useCallback(async (deviceId) => {
+        if (!room) return;
+        try {
+            await room.setAudioOutputDevice(deviceId);
+        } catch (err) {
+            console.error("Failed to set audio output device", err);
+        }
+    }, [room]);
+
+    const setAudioInput = useCallback(async (deviceId) => {
+        if (!room) return;
+        try {
+            await room.switchActiveDevice('audioinput', deviceId);
+        } catch (err) {
+            console.error("Failed to set audio input device", err);
+        }
+    }, [room]);
+
+    const setVideoInput = useCallback(async (deviceId) => {
+        if (!room) return;
+        try {
+            await room.switchActiveDevice('videoinput', deviceId);
+        } catch (err) {
+            console.error("Failed to set video input device", err);
+        }
+    }, [room]);
 
     const toggleScreenShare = useCallback(async () => {
         if (!room || !room.localParticipant) return;
@@ -351,6 +413,12 @@ export const VoiceProvider = ({ children }) => {
         revokeSpeak,
         pinnedParticipant,
         setPinnedParticipant,
+        availableDevices,
+        facingMode,
+        toggleFacingMode,
+        setAudioOutput,
+        setAudioInput,
+        setVideoInput,
     };
 
     return (
