@@ -108,15 +108,15 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     if (!isActiveRoom) {
         return (
             <div className="vc-container glass-container lobby-bg">
-                <div className="vc-lobby glass-panel">
+                <div className="vc-lobby">
                     {lobbyCount !== null && (
-                        <div className="glass-badge" style={{ position: 'absolute', top: '16px', right: '16px' }}>
-                            İçeride: {lobbyCount} Kişi
+                        <div className="glass-badge" style={{ marginBottom: '24px' }}>
+                            Şu an içeride {lobbyCount} kişi var
                         </div>
                     )}
-                    <div className="vc-lobby-icon"><Mic size={48} /></div>
+                    <div className="vc-lobby-icon"><Mic size={40} /></div>
                     <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
-                    <button className="vc-join-btn glass-join-btn action-btn-large" onClick={handleJoin}>Aramaya Katıl</button>
+                    <button className="vc-join-btn glass-join-btn action-btn-large" onClick={handleJoin} style={{ marginTop: '24px' }}>Aramaya Katıl</button>
                 </div>
             </div>
         );

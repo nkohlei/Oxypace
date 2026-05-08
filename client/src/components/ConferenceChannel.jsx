@@ -142,11 +142,15 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     if (!isActiveRoom) {
         return (
             <div className="vc-container glass-container lobby-bg">
-                <div className="vc-lobby glass-panel">
-                    {lobbyCount !== null && <div className="glass-badge" style={{ position: 'absolute', top: '20px', right: '20px' }}>İçeride: {lobbyCount}</div>}
+                <div className="vc-lobby">
+                    {lobbyCount !== null && (
+                        <div className="glass-badge" style={{ marginBottom: '24px' }}>
+                            Şu an içeride {lobbyCount} kişi var
+                        </div>
+                    )}
                     <div className="vc-lobby-icon conf"><Mic size={40} /></div>
                     <h2 className="vc-lobby-title">{channelName || 'Seminer Odası'}</h2>
-                    <button className="vc-join-btn conf action-btn-large" onClick={handleJoin}>Salona Geçiş Yap</button>
+                    <button className="vc-join-btn conf glass-join-btn action-btn-large" onClick={handleJoin} style={{ marginTop: '24px' }}>Salona Geçiş Yap</button>
                 </div>
             </div>
         );
