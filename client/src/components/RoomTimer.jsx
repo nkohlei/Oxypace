@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
 
 const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
     const [elapsed, setElapsed] = useState('');
@@ -38,19 +37,16 @@ const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
     const defaultStyle = {
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
-        background: 'rgba(0,0,0,0.5)',
-        padding: '6px 12px',
-        borderRadius: '20px',
-        fontSize: '14px',
+        fontSize: '15px',
         fontWeight: '800',
-        color: '#00FF00',
-        border: '1px solid rgba(0, 255, 0, 0.3)'
+        color: '#39FF14', // Phosphorus green
+        background: 'transparent',
+        border: 'none',
+        padding: '0 4px',
     };
 
     return (
         <div style={{ ...defaultStyle, ...style }} className={className}>
-            <Clock size={16} strokeWidth={3} color="#00FF00" />
             {elapsed}
         </div>
     );
