@@ -213,6 +213,8 @@
 .vc-card.role-hero .vc-card-avatar {
     width: 160px;
     height: 160px;
+    aspect-ratio: 1;
+    border-radius: 50%;
 }
 
 /* Overlay Info */
@@ -232,6 +234,14 @@
     z-index: 10;
 }
 
+/* Small label for carousel */
+.vc-card.role-carousel .vc-card-info {
+    padding: 2px 6px;
+    bottom: 4px;
+    left: 4px;
+    border-radius: 4px;
+}
+
 .vc-card-name {
     color: white;
     font-weight: 600;
@@ -239,6 +249,11 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.vc-card.role-carousel .vc-card-name {
+    font-size: 10px;
+    font-weight: 400;
 }
 
 .vc-indicator {
