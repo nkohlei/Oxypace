@@ -408,6 +408,7 @@ export const VoiceProvider = ({ children }) => {
     }, [room]);
 
     const setVideoInput = useCallback(async (deviceId) => {
+        setSelectedVideoInput(deviceId);
         if (!room) return;
         try {
             await room.switchActiveDevice('videoinput', deviceId);
