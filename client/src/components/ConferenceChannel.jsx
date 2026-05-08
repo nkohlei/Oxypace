@@ -9,28 +9,11 @@ import { getImageUrl } from '../utils/imageUtils';
 import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp } from 'lucide-react';
 import './VoiceChannel.css';
 
-const RoomTimer = ({ startTime }) => {
-    const [elapsed, setElapsed] = useState('00:00');
-    useEffect(() => {
-        if (!startTime) return;
-        const interval = setInterval(() => {
-            const seconds = Math.floor((Date.now() - startTime) / 1000);
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = seconds % 60;
-            setElapsed(h > 0 ? `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}` : `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [startTime]);
-    return <span className="vc-timer">{elapsed}</span>;
-};
-
 const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const {
         activeRoom,
         connectionState,
         participants,
-        roomStartTime,
         errorMsg,
         localState,
         chatMessages,
@@ -186,14 +169,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
     return (
         <div className="vc-container glass-container">
-            <div className="vc-header-info">
-                <div className="vc-channel-name-row">
-                    <Mic size={20} className="vc-channel-icon" />
-                    <span className="vc-channel-name">{channelName}</span>
-                    <RoomTimer startTime={roomStartTime} />
-                </div>
-            </div>
-
             <div className="vc-top-right-controls">
                 {isAdmin && (
                     <button className={`vc-ctrl-btn ${isListenersOpen ? 'active' : ''}`} onClick={() => { setIsListenersOpen(!isListenersOpen); setIsChatOpen(false); setIsSettingsOpen(false); }}>
@@ -201,23 +176,23 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         {raisedHands.length > 0 && <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', borderRadius: '50%', fontSize: '10px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{raisedHands.length}</span>}
                     </button>
                 )}
-                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsListenersOpen(false); setIsSettingsOpen(false); }} title="Sohbet">
-                    <MessageCircle size={18} />
-                    {participants.length > 0 && <span className="vc-participant-badge">{participants.length}</span>}
-                </button>
+                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsListenersOpen(false); setIsSettingsOpen(false); }} title="Sohbet"><MessageCircle size={18} /></button>
                 
+                {/* More Menu (Arrow on Mobile, Settings on Desktop) */}
                 <div style={{ position: 'relative' }}>
                     <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} title="Daha Fazla">
                         {isMobile ? <ChevronDown size={20} /> : <Settings size={18} />}
                     </button>
                     {isMoreMenuOpen && (
                         <div className="vc-more-dropdown glass-panel">
+                            {/* In Conference, some controls might be in this menu even on desktop if requested, 
+                                but I'll stick to the user's wish: Desktop gets bottom bar. */}
                             {isMobile && canSpeak && (
                                 <>
-                                    <button className={`vc-more-option ${localState.isScreenSharing ? 'active' : ''}`} onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
+                                    <button className="vc-more-option" onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
                                         <MonitorUp size={16} /> <span>Ekran Paylaş</span>
                                     </button>
-                                    <button className={`vc-more-option ${!localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
+                                    <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
                                         {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
                                     </button>
                                     <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
@@ -242,7 +217,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
                 )}
                 <div className="vc-hero">
-                    <div className="vc-grid" style={{ maxWidth: activeFocusIdentity ? '800px' : '600px' }}>
+                    <div className="vc-grid grid-1" style={{ maxWidth: activeFocusIdentity ? '800px' : '600px' }}>
                         {activeFocusIdentity ? [...adminSpeakers, ...guestSpeakers].map(p => p.identity === activeFocusIdentity ? renderSpeakerCard(p, true) : null) : adminSpeakers.map(p => renderSpeakerCard(p))}
                     </div>
                 </div>
@@ -279,7 +254,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     {canSpeak ? (
                         <>
                             <div className="vc-ctrl-group">
-                                <button className={`vc-ctrl-btn ${!localState.isMuted ? 'active' : ''}`} onClick={toggleMicrophone}>{localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}</button>
+                                <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : ''}`} onClick={toggleMicrophone}>{localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}</button>
                                 <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={14} /></button>
                                 {isMicMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
@@ -303,10 +278,11 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 )}
                             </div>
 
+                            {/* Desktop Specific for Conference */}
                             {!isMobile && (
                                 <>
                                     <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : ''}`} onClick={toggleScreenShare} title="Ekran Paylaş"><MonitorUp size={22} /></button>
-                                    <button className={`vc-ctrl-btn ${!localState.isDeafened ? 'active' : ''}`} onClick={toggleDeafen}>{localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}</button>
+                                    <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : ''}`} onClick={toggleDeafen}>{localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}</button>
                                 </>
                             )}
                         </>
