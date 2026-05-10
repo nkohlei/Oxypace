@@ -127,6 +127,9 @@ const requestNativePermissions = async () => {
         // Configure Status Bar for professional look
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: '#0a0a0a' });
+        
+        // Add native app class for CSS targeting
+        document.body.classList.add('native-app');
     } catch (err) {
         console.warn('Native initialization error:', err);
     }

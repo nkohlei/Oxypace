@@ -164,7 +164,7 @@
 
 @media (max-width: 768px) {
     .horizontal-layout-container {
-        padding-top: var(--global-header-height);
+        padding-top: calc(50px + var(--safe-area-top)); /* Explicit height to match navbar on mobile + safe area */
     }
 }
 

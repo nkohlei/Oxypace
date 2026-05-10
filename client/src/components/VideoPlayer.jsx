@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX, Check, Maximize, Play, Pause } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './VideoPlayer.css';
 
@@ -72,6 +73,17 @@ if (typeof window !== 'undefined') {
 
   const onFullscreenChange = (e) => {
       handleGlobalScroll(e);
+      if (!document.fullscreenElement) {
+          // On mobile native, this setTimeout causes a visual jump. 
+          // We only run it on the web version to prevent browser exit layout shifts.
+          if (!Capacitor.isNativePlatform()) {
+              setTimeout(() => {
+                  window.scrollTo(0, 0);
+                  document.body.scrollTop = 0;
+                  document.documentElement.scrollTop = 0;
+              }, 10);
+          }
+      }
   };
 
   document.addEventListener('fullscreenchange', onFullscreenChange);
