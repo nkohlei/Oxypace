@@ -69,8 +69,22 @@ const handleGlobalScroll = () => {
 if (typeof window !== 'undefined') {
   window.addEventListener('scroll', handleGlobalScroll, true);
   window.addEventListener('resize', handleGlobalScroll);
-  document.addEventListener('fullscreenchange', handleGlobalScroll);
-  document.addEventListener('webkitfullscreenchange', handleGlobalScroll);
+
+  const onFullscreenChange = (e) => {
+      handleGlobalScroll(e);
+      if (!document.fullscreenElement) {
+          // Force reset window scroll to prevent the layout shift bug
+          // that occurs when browsers exit fullscreen mode.
+          setTimeout(() => {
+              window.scrollTo(0, 0);
+              document.body.scrollTop = 0;
+              document.documentElement.scrollTop = 0;
+          }, 10);
+      }
+  };
+
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
 const VideoPlayer = ({ src, poster, className }) => {
