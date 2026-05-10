@@ -257,18 +257,13 @@ const ChannelSidebar = ({
                                 </div>
                             )}
 
-                            {/* Padding element to maintain hover background filling the width if needed, 
-                                but flex-container handles this automatically usually. 
-                                We just want the badge to NOT push to the right. */}
+                            {/* Padding element to maintain hover background filling the width if needed */}
                             <div style={{ flex: 1 }} />
 
-                            {/* Active Icon (Person+) and Timer */}
-                            {isActive && (
+                            {/* Timer (if active voice channel) */}
+                            {isActive && isVoice && activeRoom && String(activeRoom.channelId) === String(channel.id) && roomStartTime && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {isVoice && activeRoom && String(activeRoom.channelId) === String(channel.id) && roomStartTime && (
-                                        <RoomTimer startedAt={roomStartTime} className="vc-sidebar-timer" />
-                                    )}
-                                    <UserPlus size={16} color="white" style={{ flexShrink: 0 }} />
+                                    <RoomTimer startedAt={roomStartTime} className="vc-sidebar-timer" />
                                 </div>
                             )}
                         </div>
