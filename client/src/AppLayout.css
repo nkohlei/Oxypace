@@ -1,6 +1,6 @@
 /* Main App Layout - Full Screen Discord Style */
 :root {
-    --global-header-height-base: 56px;
+    --global-header-height-base: 64px;
     --safe-area-top: env(safe-area-inset-top, 0px);
     --global-header-height: calc(var(--global-header-height-base) + var(--safe-area-top));
     --sub-header-height: 44px;
@@ -164,7 +164,7 @@
 
 @media (max-width: 768px) {
     .horizontal-layout-container {
-        padding-top: 56px; /* Explicit height to match navbar on mobile */
+        padding-top: calc(50px + var(--safe-area-top)); /* Explicit height to match navbar on mobile + safe area */
     }
 }
 
