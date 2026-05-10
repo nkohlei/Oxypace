@@ -22,6 +22,14 @@ export default function EarthSimulation() {
     const [cardLoading, setCardLoading] = useState(false);
     const [isMember, setIsMember] = useState(false);
     const [joining, setJoining] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    // Track resize for mobile detection
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Fetch real portals with map location from API
     useEffect(() => {
@@ -272,13 +280,21 @@ export default function EarthSimulation() {
             <main style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
                 {/* Globe canvas — full area */}
                 <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                    <EarthCanvas
-                        ref={earthCanvasRef}
-                        portals={portals}
-                        onPortalClick={handlePortalClick}
-                        activePortalSearch={activePortalSearch}
-                        onGlobeClick={() => setSidebarOpen(false)}
-                    />
+                    {isMobile ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.6)', padding: '24px', textAlign: 'center' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>public_off</span>
+                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>Mobil Görünüm Devre Dışı</h2>
+                            <p style={{ fontSize: '14px', maxWidth: '300px' }}>Yüksek performans gerektiren 3D dünya simülasyonu, mobil cihazlarda pil ve performans tasarrufu amacıyla devre dışı bırakılmıştır. Lütfen masaüstü sürümünü kullanın.</p>
+                        </div>
+                    ) : (
+                        <EarthCanvas
+                            ref={earthCanvasRef}
+                            portals={portals}
+                            onPortalClick={handlePortalClick}
+                            activePortalSearch={activePortalSearch}
+                            onGlobeClick={() => setSidebarOpen(false)}
+                        />
+                    )}
                 </div>
 
 

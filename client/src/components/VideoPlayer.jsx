@@ -72,15 +72,6 @@ if (typeof window !== 'undefined') {
 
   const onFullscreenChange = (e) => {
       handleGlobalScroll(e);
-      if (!document.fullscreenElement) {
-          // Force reset window scroll to prevent the layout shift bug
-          // that occurs when browsers exit fullscreen mode.
-          setTimeout(() => {
-              window.scrollTo(0, 0);
-              document.body.scrollTop = 0;
-              document.documentElement.scrollTop = 0;
-          }, 10);
-      }
   };
 
   document.addEventListener('fullscreenchange', onFullscreenChange);

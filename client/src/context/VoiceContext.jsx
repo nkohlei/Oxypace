@@ -188,6 +188,18 @@ export const VoiceProvider = ({ children }) => {
         setRoomStartTime(null); // Clear timer before join
 
         try {
+            // 0. Trigger native permission prompt (Mic/Camera) before joining
+            if (window.navigator?.mediaDevices?.getUserMedia) {
+                try {
+                    // This forces the OS to prompt for Microphone and Camera permissions
+                    const stream = await window.navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                    // Stop tracks immediately so LiveKit can take control
+                    stream.getTracks().forEach(track => track.stop());
+                } catch (permErr) {
+                    console.warn("Could not get pre-permissions (user denied or no hardware)", permErr);
+                }
+            }
+
             // 1. Fetch Token
             const response = await axios.post('/api/voice/token', { portalId, channelId });
             const { token, serverUrl, roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow } = response.data;

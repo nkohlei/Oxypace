@@ -10,6 +10,8 @@ import ShareModal from './ShareModal';
 import Badge from './Badge';
 import { linkifyText, truncateAndLinkifyText, extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
@@ -262,16 +264,51 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         const url = getImageUrl(post.media);
         try {
             const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(blobUrl);
-            document.body.removeChild(a);
+            
+            if (Capacitor.isNativePlatform()) {
+                // Check permissions
+                let permStatus = await Filesystem.checkPermissions();
+                if (permStatus.publicStorage !== 'granted') {
+                    permStatus = await Filesystem.requestPermissions();
+                    if (permStatus.publicStorage !== 'granted') {
+                        alert('Dosya indirmek için depolama iznine ihtiyacımız var.');
+                        return;
+                    }
+                }
+
+                const response = await fetch(url);
+                const blob = await response.blob();
+                
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = async () => {
+                    const base64data = reader.result;
+                    try {
+                        await Filesystem.writeFile({
+                            path: `Oxypace/${filename}`,
+                            data: base64data,
+                            directory: Directory.Documents,
+                            recursive: true
+                        });
+                        alert('Başarıyla indirildi: Belgeler/Oxypace klasörüne kaydedildi.');
+                    } catch (err) {
+                        console.error("Capacitor write error:", err);
+                        alert("Dosya kaydedilirken hata oluştu.");
+                    }
+                };
+            } else {
+                // Web Desktop Download
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(blobUrl);
+                document.body.removeChild(a);
+            }
             setShowMenu(false);
         } catch (error) {
             console.error('Download error:', error);
