@@ -5,6 +5,7 @@ import Navbar from '../../components/Navbar';
 import SubHeader from '../../components/SubHeader';
 import SEO from '../../components/SEO';
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 
 export default function EarthSimulation() {
     const earthCanvasRef = useRef(null);
@@ -22,13 +23,10 @@ export default function EarthSimulation() {
     const [cardLoading, setCardLoading] = useState(false);
     const [isMember, setIsMember] = useState(false);
     const [joining, setJoining] = useState(false);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [isNativeApp, setIsNativeApp] = useState(false);
 
-    // Track resize for mobile detection
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        setIsNativeApp(Capacitor.isNativePlatform());
     }, []);
 
     // Fetch real portals with map location from API
@@ -280,11 +278,11 @@ export default function EarthSimulation() {
             <main style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
                 {/* Globe canvas — full area */}
                 <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                    {isMobile ? (
+                    {isNativeApp ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.6)', padding: '24px', textAlign: 'center' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>public_off</span>
-                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>Mobil Görünüm Devre Dışı</h2>
-                            <p style={{ fontSize: '14px', maxWidth: '300px' }}>Yüksek performans gerektiren 3D dünya simülasyonu, mobil cihazlarda pil ve performans tasarrufu amacıyla devre dışı bırakılmıştır. Lütfen masaüstü sürümünü kullanın.</p>
+                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>Mobil Uygulama Görünümü Devre Dışı</h2>
+                            <p style={{ fontSize: '14px', maxWidth: '300px' }}>Yüksek performans gerektiren 3D dünya simülasyonu, mobil uygulamada pil ve performans tasarrufu amacıyla devre dışı bırakılmıştır. Web sürümünden erişebilirsiniz.</p>
                         </div>
                     ) : (
                         <EarthCanvas
