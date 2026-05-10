@@ -3,6 +3,76 @@ import { Volume2, VolumeX, Check, Maximize, Play, Pause } from 'lucide-react';
 import { useGlobalStore } from '../store/useGlobalStore';
 import './VideoPlayer.css';
 
+const mountedVideos = new Set();
+let scrollTimeout = null;
+
+const checkCenterVideo = () => {
+  if (mountedVideos.size === 0) return;
+  
+  const isFs = !!document.fullscreenElement;
+  if (isFs) {
+    mountedVideos.forEach(video => {
+      const amIFs = document.fullscreenElement.contains(video);
+      if (!amIFs && !video.paused) {
+        video.pause();
+      }
+    });
+    return;
+  }
+
+  const centerY = window.innerHeight / 2;
+  let closestVideo = null;
+  let minDistance = Infinity;
+
+  mountedVideos.forEach(video => {
+    if (!video) return;
+    const rect = video.getBoundingClientRect();
+    
+    // Check if reasonably visible
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+      const ratio = visibleHeight / (rect.height || 1);
+      
+      // Consider if at least 20% visible
+      if (ratio > 0.2) {
+          const vCenter = rect.top + rect.height / 2;
+          const distance = Math.abs(vCenter - centerY);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestVideo = video;
+          }
+      }
+    }
+  });
+
+  mountedVideos.forEach(video => {
+    if (video === closestVideo) {
+      if (video.dataset.userPaused !== "true" && video.paused) {
+        video.play().catch(() => {});
+      }
+    } else {
+      if (!video.paused) {
+        video.pause();
+      }
+    }
+  });
+};
+
+const handleGlobalScroll = () => {
+  if (scrollTimeout) cancelAnimationFrame(scrollTimeout);
+  scrollTimeout = requestAnimationFrame(() => {
+    checkCenterVideo();
+  });
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('scroll', handleGlobalScroll, true);
+  window.addEventListener('resize', handleGlobalScroll);
+  document.addEventListener('fullscreenchange', handleGlobalScroll);
+  document.addEventListener('webkitfullscreenchange', handleGlobalScroll);
+}
+
 const VideoPlayer = ({ src, poster, className }) => {
   const videoRef = useRef(null);
   const { isMuted, setIsMuted } = useGlobalStore();
@@ -16,20 +86,23 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const [isFullscreenActive, setIsFullscreenActive] = useState(false);
-
   // Sync isPaused state with video element
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const onPlay = () => setIsPaused(false);
+    const onPlay = () => {
+      setIsPaused(false);
+      // Ensure other videos pause when this one plays
+      mountedVideos.forEach(v => {
+        if (v !== video && !v.paused) v.pause();
+      });
+    };
     const onPause = () => setIsPaused(true);
 
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
 
-    // Initial state
     setIsPaused(video.paused);
 
     return () => {
@@ -38,56 +111,26 @@ const VideoPlayer = ({ src, poster, className }) => {
     };
   }, []);
 
-  // Track global fullscreen state to re-trigger observers
+  // Sync video properties
   useEffect(() => {
-    const handleFsChange = () => {
-      setIsFullscreenActive(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFsChange);
-    document.addEventListener('webkitfullscreenchange', handleFsChange);
-    
-    // Initial check
-    handleFsChange();
+    if (videoRef.current) {
+        videoRef.current.muted = isMuted;
+        videoRef.current.playbackRate = playbackRate;
+    }
+  }, [isMuted, playbackRate]);
 
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFsChange);
-      document.removeEventListener('webkitfullscreenchange', handleFsChange);
-    };
-  }, []);
-
-  // --- Strict IntersectionObserver Autoplay ---
+  // Register to global manager
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    video.muted = isMuted;
-    video.volume = 1;
-    video.playbackRate = playbackRate;
+    mountedVideos.add(video);
+    handleGlobalScroll(); // Initial check
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        const isFs = !!document.fullscreenElement;
-        const amIFs = isFs && document.fullscreenElement.contains(video);
-
-        if (entry.isIntersecting) {
-            if (video.dataset.userPaused !== "true" && (!isFs || amIFs)) {
-                video.muted = isMuted;
-                video.play().catch(() => {});
-            } else if (isFs && !amIFs) {
-                // Another video is fullscreen, pause this one
-                video.pause();
-            }
-        } else {
-            if (video.dataset.userPaused !== "true") {
-                video.pause();
-            }
-        }
-      });
-    }, { threshold: 0.5 });
-
-    observer.observe(video);
-    return () => observer.disconnect();
-  }, [src, isMuted, playbackRate, isFullscreenActive]);
+    return () => {
+      mountedVideos.delete(video);
+    };
+  }, [src]);
 
   // Zaman İlerleyişini Yakalama (Bar için)
   const handleTimeUpdate = () => {
