@@ -27,8 +27,6 @@ const Home = () => {
     const [scrollY, setScrollY] = useState(0);
     const [revealedSections, setRevealedSections] = useState(new Set());
     const sectionRefs = useRef([]);
-    const lastScrollYRef = useRef(0);
-    const isRestoredRef = useRef(false);
 
     // Auto-redirect logged-in users
     useEffect(() => {
@@ -80,46 +78,14 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Save scroll position to sessionStorage
-    const saveScrollPosition = useCallback((y) => {
-        console.log('[Oxypace Scroll] Saving position to sessionStorage:', y);
-        sessionStorage.setItem('oxypace_home_scroll', y);
-    }, []);
-
-    // Save scroll position on component unmount (using the last tracked coordinate from ref)
-    useEffect(() => {
-        console.log('[Oxypace Scroll] Home mounted');
-        return () => {
-            console.log('[Oxypace Scroll] Home unmounting. Last scroll ref value:', lastScrollYRef.current);
-            if (lastScrollYRef.current > 0) {
-                sessionStorage.setItem('oxypace_home_scroll', lastScrollYRef.current);
-            }
-        };
-    }, []);
-
     // Scroll tracking - perfectly tracks any element's scroll via capture phase
     useEffect(() => {
         const handleScroll = (e) => {
             const target = e.target;
-            let currentScrollY = 0;
-
             if (target === document || target === window) {
-                currentScrollY = window.scrollY;
+                setScrollY(window.scrollY);
             } else if (target.scrollTop !== undefined) {
-                currentScrollY = target.scrollTop;
-            } else {
-                return;
-            }
-
-            setScrollY(currentScrollY);
-
-            if (window.location.pathname === '/') {
-                // Only track/save position if restoration is already completed or if scrolling is active
-                if (currentScrollY > 0 || isRestoredRef.current) {
-                    console.log('[Oxypace Scroll] Valid scroll event captured:', currentScrollY, 'isRestored:', isRestoredRef.current);
-                    lastScrollYRef.current = currentScrollY;
-                    saveScrollPosition(currentScrollY);
-                }
+                setScrollY(target.scrollTop);
             }
         };
 
@@ -128,78 +94,7 @@ const Home = () => {
         handleScroll({ target: window });
         
         return () => window.removeEventListener('scroll', handleScroll, { capture: true });
-    }, [saveScrollPosition]);
-
-    // Scroll restoration
-    useEffect(() => {
-        if (loading) {
-            console.log('[Oxypace Scroll] Auth loading is true, waiting...');
-            return;
-        }
-
-        const savedPosition = sessionStorage.getItem('oxypace_home_scroll');
-        console.log('[Oxypace Scroll] Read saved position from sessionStorage:', savedPosition);
-
-        if (savedPosition) {
-            const pos = parseInt(savedPosition, 10);
-            if (!isNaN(pos) && pos > 0) {
-                let attempts = 0;
-                let lastScrollHeight = 0;
-                let stableAttempts = 0;
-                console.log('[Oxypace Scroll] Starting scroll restoration polling to:', pos);
-                const scrollInterval = setInterval(() => {
-                    // Scroll the window
-                    window.scrollTo({ top: pos, behavior: 'instant' });
-
-                    // Scroll the content container if it exists and is scrollable
-                    const scrollArea = document.querySelector('.content-scroll-area');
-                    if (scrollArea) {
-                        const originalScrollBehavior = scrollArea.style.scrollBehavior;
-                        scrollArea.style.scrollBehavior = 'auto';
-                        scrollArea.scrollTo({ top: pos, behavior: 'instant' });
-                        setTimeout(() => {
-                            if (scrollArea) {
-                                scrollArea.style.scrollBehavior = originalScrollBehavior;
-                            }
-                        }, 20);
-                    }
-
-                    attempts += 1;
-
-                    const currentWindowScroll = window.scrollY;
-                    const currentAreaScroll = scrollArea ? scrollArea.scrollTop : 0;
-                    const currentScrollHeight = document.documentElement.scrollHeight;
-                    const maxWindowScroll = currentScrollHeight - window.innerHeight;
-
-                    if (currentScrollHeight === lastScrollHeight) {
-                        stableAttempts += 1;
-                    } else {
-                        stableAttempts = 0;
-                        lastScrollHeight = currentScrollHeight;
-                    }
-
-                    console.log(`[Oxypace Scroll] Poll attempt ${attempts}. Window Y: ${currentWindowScroll}, Area Top: ${currentAreaScroll}, Height: ${currentScrollHeight}, Stable: ${stableAttempts}`);
-
-                    const isRestored = currentWindowScroll >= pos || 
-                                     currentAreaScroll >= pos || 
-                                     (stableAttempts >= 3 && currentWindowScroll >= maxWindowScroll) ||
-                                     attempts >= 40;
-
-                    if (isRestored) {
-                        console.log('[Oxypace Scroll] Restoration complete or max attempts reached. Setting isRestored = true.');
-                        isRestoredRef.current = true;
-                        clearInterval(scrollInterval);
-                    }
-                }, 50);
-                
-                return () => clearInterval(scrollInterval);
-            } else {
-                isRestoredRef.current = true;
-            }
-        } else {
-            isRestoredRef.current = true;
-        }
-    }, [loading]);
+    }, []);
 
     // Intersection Observer for scroll-reveal
     useEffect(() => {
