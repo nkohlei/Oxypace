@@ -16,8 +16,8 @@ import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import SEO from '../components/SEO';
 import PortalInfoModal from '../components/PortalInfoModal';
-import VoiceChannel from '../components/VoiceChannel';
-import ConferenceChannel from '../components/ConferenceChannel';
+const VoiceChannel = lazy(() => import('../components/VoiceChannel'));
+const ConferenceChannel = lazy(() => import('../components/ConferenceChannel'));
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useSocket } from '../context/SocketContext';
 import { X, Youtube, Search } from 'lucide-react';
@@ -1031,19 +1031,25 @@ const Portal = () => {
                                                     </div>
                                                 </header>
                                             )}
-                                            {channelType === 'conference' ? (
-                                                <ConferenceChannel
-                                                    portalId={id}
-                                                    channelId={currentChannel}
-                                                    channelName={channelName}
-                                                />
-                                            ) : (
-                                                <VoiceChannel
-                                                    portalId={id}
-                                                    channelId={currentChannel}
-                                                    channelName={channelName}
-                                                />
-                                            )}
+                                            <Suspense fallback={
+                                                <div className="skeleton-loader">
+                                                    <p>Canlı bağlantı odası hazırlanıyor...</p>
+                                                </div>
+                                            }>
+                                                {channelType === 'conference' ? (
+                                                    <ConferenceChannel
+                                                        portalId={id}
+                                                        channelId={currentChannel}
+                                                        channelName={channelName}
+                                                    />
+                                                ) : (
+                                                    <VoiceChannel
+                                                        portalId={id}
+                                                        channelId={currentChannel}
+                                                        channelName={channelName}
+                                                    />
+                                                )}
+                                            </Suspense>
                                         </div>
                                     ) : (
                                         /* Text Channel — Original Feed */

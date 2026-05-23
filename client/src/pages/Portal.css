@@ -1811,4 +1811,49 @@
     transform: scale(1.1);
 }
 
+/* Görsel ve Medya Yüklenirken Kaymaları (CLS) Engelleme */
+img, video, iframe {
+  max-width: 100%;
+  height: auto;
+}
 
+.responsive-media {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background-color: #1a1a1a;
+}
+
+/* Yükleme İskeleti (Skeleton) - Kullanıcıyı bekleme anında görsel olarak rahatlatır */
+.skeleton-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60vh;
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  color: #888;
+  border-radius: 8px;
+  font-family: sans-serif;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Erişilebilirlik: Ekran okuyucular için gizli ama var olan metin sınıfı (İkonlu butonlar için) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
