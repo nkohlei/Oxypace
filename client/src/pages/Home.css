@@ -5,7 +5,7 @@
    ======================================== */
 .app-wrapper.advanced-home,
 .advanced-home {
-  background: transparent !important;
+  background-color: transparent !important;
   color: #fff;
   min-height: 100dvh;
   overflow-x: hidden;
