@@ -9,6 +9,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import FloatingScrollTop from '../components/FloatingScrollTop';
 import './Home.css';
+import heroBg from '../assets/oxypace-hero-bg.webp';
 
 // Fisher-Yates shuffle
 const shuffleArray = (arr) => {
@@ -187,7 +188,7 @@ const Home = () => {
     ];
 
     return (
-        <div className="app-wrapper advanced-home" style={{ backgroundImage: "url('/oxypace-hero-bg.webp')", backgroundSize: "cover", backgroundPosition: "center", minHeight: "100vh", width: "100%" }}>
+        <div className="app-wrapper advanced-home" style={{ backgroundImage: `url(${heroBg})`, backgroundSize: "cover", backgroundPosition: "center", minHeight: "100vh", width: "100%" }}>
             <SEO
                 title="Ana Sayfa | Global Message & Portallar"
                 description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu. Kendi portalınızı oluşturun, arkadaşlarınızla sohbet edin ve global mesajlaşmanın keyfini çıkarın."

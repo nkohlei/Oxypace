@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import './Auth.css';
+import heroBg from '../assets/oxypace-hero-bg.webp';
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -94,7 +95,7 @@ const Login = () => {
     }, []);
 
     return (
-        <div className="auth-container" style={{ backgroundImage: "url('/oxypace-hero-bg.webp')", backgroundSize: "cover", backgroundPosition: "center", minHeight: "100vh", width: "100%" }}>
+        <div className="auth-container" style={{ backgroundImage: `url(${heroBg})`, backgroundSize: "cover", backgroundPosition: "center", minHeight: "100vh", width: "100%" }}>
             <div className="auth-bg-overlay" />
 
             <div className="auth-card fade-in">
