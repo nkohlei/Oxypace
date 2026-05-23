@@ -10,11 +10,15 @@ import { useUI } from '../context/UIContext';
 import './Navbar.css';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
+    const location = useLocation();
+    if (location.pathname !== '/') {
+        return null;
+    }
     const { user, token, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
     const { toggleSidebar, isMobileView } = useUI();
-    const location = useLocation();
+// Duplicate location removed
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);

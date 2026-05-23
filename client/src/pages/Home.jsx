@@ -24,7 +24,7 @@ const Home = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
     const [publicPortals, setPublicPortals] = useState([]);
-    const [scrollY, setScrollY] = useState(0);
+    // Removed scrollY state; hero scaling will be static.
     const [revealedSections, setRevealedSections] = useState(new Set());
     const sectionRefs = useRef([]);
 
@@ -78,23 +78,7 @@ const Home = () => {
         fetchPortals();
     }, []);
 
-    // Scroll tracking - perfectly tracks any element's scroll via capture phase
-    useEffect(() => {
-        const handleScroll = (e) => {
-            const target = e.target;
-            if (target === document || target === window) {
-                setScrollY(window.scrollY);
-            } else if (target.scrollTop !== undefined) {
-                setScrollY(target.scrollTop);
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
-        // Initial setup
-        handleScroll({ target: window });
-        
-        return () => window.removeEventListener('scroll', handleScroll, { capture: true });
-    }, []);
+    // Scroll tracking logic removed; hero animation will be static.
 
     // Intersection Observer for scroll-reveal
     useEffect(() => {
@@ -132,14 +116,10 @@ const Home = () => {
     }
 
     // Scroll-based hero animation
-    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const splitProgress = Math.min(scrollY / (windowHeight * 0.6), 1);
-    
-    // "başlık arka plana ve ekranın ortasına doğru küçülerek geçecek ve buğulu/sisli bir hale gelecek"
-    // We stay perfectly centered (no translateY), scale down to 0.5, become foggy/blurry up to 25px, and keep some opacity so it's visible in the background
-    const logoScale = 1 - (splitProgress * 0.5);
-    const logoBlur = splitProgress * 25; 
-    const logoOpacity = 1 - (splitProgress * 0.4); 
+    // Static hero animation values (no scroll interaction)
+    const logoScale = 1;
+    const logoBlur = 0;
+    const logoOpacity = 1; 
 
     // Tripled for infinite scroll illusion
     const sliderPortals = useMemo(() => {
