@@ -135,17 +135,12 @@ const Register = () => {
 
     return (
         <div className="auth-container">
-            {/* Video Background */}
-            <video
-                className="auth-bg-video"
-                autoPlay
-                loop
-                muted
-                playsInline
-            >
-                <source src="/auth-bg.mp4" type="video/mp4" />
-                <source src="/auth-bg.webm" type="video/webm" />
-            </video>
+            {/* Image Background */}
+            <img
+                className="auth-bg-image"
+                src="/oxypace-hero-bg.webp"
+                alt="Background"
+            />
             <div className="auth-bg-overlay" />
 
             <div className="auth-card fade-in">
