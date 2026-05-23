@@ -94,13 +94,7 @@ const Login = () => {
     }, []);
 
     return (
-        <div className="auth-container">
-            {/* Image Background */}
-            <img
-                className="auth-bg-image"
-                src="/oxypace-hero-bg.webp"
-                alt="Background"
-            />
+        <div className="auth-container" style={{ backgroundImage: "url('/oxypace-hero-bg.webp')", backgroundSize: "cover", backgroundPosition: "center", minHeight: "100vh", width: "100%" }}>
             <div className="auth-bg-overlay" />
 
             <div className="auth-card fade-in">

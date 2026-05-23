@@ -187,7 +187,7 @@ const Home = () => {
     ];
 
     return (
-        <div className="app-wrapper advanced-home">
+        <div className="app-wrapper advanced-home" style={{ backgroundImage: "url('/oxypace-hero-bg.webp')", backgroundSize: "cover", backgroundPosition: "center", minHeight: "100vh", width: "100%" }}>
             <SEO
                 title="Ana Sayfa | Global Message & Portallar"
                 description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu. Kendi portalınızı oluşturun, arkadaşlarınızla sohbet edin ve global mesajlaşmanın keyfini çıkarın."
@@ -207,8 +207,6 @@ const Home = () => {
             <Navbar hideThemeToggle />
 
             <main className="advanced-home-content">
-                {/* IMAGE BACKGROUND */}
-                <img className="home-bg-image" src="/oxypace-hero-bg.webp" alt="Background" />
                 <div className="home-bg-overlay"></div>
 
                 {/* ATMOSPHERIC SPHERES */}
