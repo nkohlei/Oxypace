@@ -33,15 +33,18 @@
     height: auto;
     max-height: none;
     overflow: visible;
+    background-color: transparent !important;
 }
 
 .app-container.guest-mode .main-content-wrapper {
     height: auto;
     overflow: visible;
+    background-color: transparent !important;
 }
 
 .app-container.guest-mode .content-scroll-area {
     overflow: visible;
+    background-color: transparent !important;
 }
 
 .app-container.guest-mode .horizontal-layout-container {
