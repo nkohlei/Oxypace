@@ -3,8 +3,9 @@
 /* ========================================
    BASE
    ======================================== */
+.app-wrapper.advanced-home,
 .advanced-home {
-  background: transparent;
+  background: transparent !important;
   color: #fff;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -15,14 +16,14 @@
 .home-bg-image {
   position: fixed; top: 0; left: 0;
   width: 100vw; height: 100dvh;
-  object-fit: cover; z-index: 0;
+  object-fit: cover; z-index: -2;
   pointer-events: none;
 }
 .home-bg-overlay {
   position: fixed; top: 0; left: 0;
   width: 100vw; height: 100dvh;
   background: linear-gradient(180deg, rgba(3, 4, 8, 0.3) 0%, rgba(3, 4, 8, 0.75) 100%);
-  z-index: 1; pointer-events: none;
+  z-index: -1; pointer-events: none;
 }
 
 .advanced-home-content {
