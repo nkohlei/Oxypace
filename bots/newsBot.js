@@ -12,7 +12,7 @@ const parser = new Parser();
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 
 // --- MULTI-BOT ARCHITECTURE ---
-const BOT_CONFIGS = [
+export const BOT_CONFIGS = [
     {
         botUsername: 'GamesNews',
         portalName: 'OXYᴳᴬᴹᴱ', 
@@ -25,7 +25,7 @@ const BOT_CONFIGS = [
     {
         botUsername: 'TechNews',
         portalName: 'Oxypace Global',
-        channelName: 'Tech News 🚀 (EN)',
+        channelName: 'Tech News 🚀',
         feeds: [
             'https://techcrunch.com/feed/',
             'https://www.theverge.com/rss/index.xml'
@@ -34,7 +34,7 @@ const BOT_CONFIGS = [
     {
         botUsername: 'SportNews',
         portalName: 'Oxypace Global',
-        channelName: 'Sports News 🏆 (EN)',
+        channelName: 'Sports News 🏆',
         feeds: [
             'https://www.espn.com/espn/rss/news',
             'https://feeds.bbci.co.uk/sport/rss.xml'
@@ -53,8 +53,11 @@ const BOT_CONFIGS = [
     }
 ];
 
+let globalIo = null;
+
 // Initialize the master loop
-export default async function startBotLoop() {
+export default async function startBotLoop(io) {
+    globalIo = io;
     console.log('🤖 Starting Elite Multi-News Bot Service (Turkish)...');
 
     if (mongoose.connection.readyState !== 1) {
@@ -194,11 +197,13 @@ const processItem = async (item, bot) => {
                 await Notification.insertMany(notificationDocs);
                 
                 // Emit global activity signal for sidebar unread indicators
-                const io = mongoose.connection.getClient().io; // Attempt to get IO if possible, or use global
-                // Note: In server.js, we set app.set('io', io). 
-                // Since this bot runs in the same process, we can try to emit if we have access to the io instance.
-                // However, newsBot.js is an exported function. 
-                // We'll use a safer approach: checking if a global IO exists or if we can get it from the app.
+                if (globalIo) {
+                    globalIo.emit('global:portal_activity', {
+                        portalId: bot.portal._id.toString(),
+                        channelId: bot.channel._id.toString(),
+                        postId: newPost._id.toString()
+                    });
+                }
             }
         } catch (notifyErr) {
             console.error(`⚠️ [${bot.user.username}] Notification sync failed:`, notifyErr.message);

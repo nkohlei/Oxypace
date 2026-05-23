@@ -297,7 +297,7 @@ if (process.argv[1] === __filename) {
         console.log('✅ Backend updated: v2.6 - Sitemap Integrated');
 
         // Start Bot Loop (in background)
-        startBotLoop();
+        startBotLoop(io);
 
         // Keep-Alive Cron Job
         cron.schedule('*/10 * * * *', async () => {
