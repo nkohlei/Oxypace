@@ -207,15 +207,6 @@ const Home = () => {
             <Navbar hideThemeToggle />
 
             <main className="advanced-home-content">
-                <div className="home-bg-overlay"></div>
-
-                {/* ATMOSPHERIC SPHERES */}
-                <div className="atmospheric-bg">
-                    <div className="gradient-sphere sphere-1"></div>
-                    <div className="gradient-sphere sphere-2"></div>
-                    <div className="gradient-sphere sphere-3"></div>
-                </div>
-
                 {/* HERO TITLE - User's Logo Image masked with an actual CSS Gradient overlay */}
                 <div className="hero-title-container" style={{
                     transform: `scale(${logoScale})`,

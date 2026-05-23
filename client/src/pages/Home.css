@@ -10,6 +10,8 @@
   background-position: center !important;
   background-repeat: no-repeat !important;
   background-color: transparent !important;
+  opacity: 1 !important;
+  filter: none !important;
   color: #fff;
   min-height: 100vh !important;
   min-height: 100dvh !important;
@@ -20,55 +22,8 @@
   font-family: 'Outfit', sans-serif;
 }
 
-/* IMAGE BACKGROUND */
-.home-bg-image {
-  position: fixed; top: 0; left: 0;
-  width: 100vw; height: 100dvh;
-  object-fit: cover; z-index: -2;
-  pointer-events: none;
-}
-.home-bg-overlay {
-  position: fixed; top: 0; left: 0;
-  width: 100vw; height: 100dvh;
-  background: linear-gradient(180deg, rgba(3, 4, 8, 0.3) 0%, rgba(3, 4, 8, 0.75) 100%);
-  z-index: -1; pointer-events: none;
-}
-
 .advanced-home-content {
   position: relative; width: 100%;
-}
-
-/* ATMOSPHERIC SPHERES */
-.advanced-home .atmospheric-bg {
-  position: fixed; top: 0; left: 0;
-  width: 100vw; height: 100dvh;
-  z-index: 2; overflow: hidden;
-  pointer-events: none;
-}
-.advanced-home .gradient-sphere {
-  position: absolute; border-radius: 50%;
-  filter: blur(120px); opacity: 0.12;
-  animation: sphereDrift 25s ease-in-out infinite alternate;
-  will-change: transform;
-}
-@keyframes sphereDrift {
-  0%   { transform: translate(0, 0) scale(1); }
-  50%  { transform: translate(8vw, -6vh) scale(1.15); }
-  100% { transform: translate(-5vw, 8vh) scale(0.9); }
-}
-.advanced-home .sphere-1 {
-  width: 60vw; height: 60vh; top: -15%; left: -15%;
-  background: radial-gradient(circle, #60A5FA 0%, transparent 70%);
-}
-.advanced-home .sphere-2 {
-  width: 80vw; height: 80vh; bottom: -20%; right: -10%;
-  background: radial-gradient(circle, #818cf8 0%, transparent 70%);
-  animation-duration: 35s; animation-direction: reverse;
-}
-.advanced-home .sphere-3 {
-  width: 50vw; height: 50vh; top: 40%; left: 30%;
-  background: radial-gradient(circle, #38bdf8 0%, transparent 70%);
-  animation-duration: 20s;
 }
 
 /* ========================================
