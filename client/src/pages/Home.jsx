@@ -207,10 +207,8 @@ const Home = () => {
             <Navbar hideThemeToggle />
 
             <main className="advanced-home-content">
-                {/* VIDEO BACKGROUND */}
-                <video className="home-bg-video" autoPlay muted loop playsInline poster="/space-bg.png">
-                    <source src="/auth-bg.mp4" type="video/mp4" />
-                </video>
+                {/* IMAGE BACKGROUND */}
+                <img className="home-bg-image" src="/oxypace-hero-bg.webp" alt="Background" />
                 <div className="home-bg-overlay"></div>
 
                 {/* ATMOSPHERIC SPHERES */}
