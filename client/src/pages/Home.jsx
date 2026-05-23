@@ -98,18 +98,24 @@ const Home = () => {
     useEffect(() => {
         const handleScroll = (e) => {
             const target = e.target;
+            let currentScrollY = 0;
+
             if (target === document || target === window) {
-                const currentScrollY = window.scrollY;
-                setScrollY(currentScrollY);
-                if (window.location.pathname === '/') {
-                    // Only track/save position if restoration is already completed or if scrolling is active
-                    if (currentScrollY > 0 || isRestoredRef.current) {
-                        lastScrollYRef.current = currentScrollY;
-                        saveScrollPosition(currentScrollY);
-                    }
-                }
+                currentScrollY = window.scrollY;
             } else if (target.scrollTop !== undefined) {
-                setScrollY(target.scrollTop);
+                currentScrollY = target.scrollTop;
+            } else {
+                return;
+            }
+
+            setScrollY(currentScrollY);
+
+            if (window.location.pathname === '/') {
+                // Only track/save position if restoration is already completed or if scrolling is active
+                if (currentScrollY > 0 || isRestoredRef.current) {
+                    lastScrollYRef.current = currentScrollY;
+                    saveScrollPosition(currentScrollY);
+                }
             }
         };
 
@@ -143,9 +149,21 @@ const Home = () => {
                 // Poll scroll position multiple times to overwrite dynamic content height shifts and router resets
                 let attempts = 0;
                 const scrollInterval = setInterval(() => {
+                    // Scroll the window
                     window.scrollTo({ top: pos, behavior: 'instant' });
+
+                    // Scroll the content container if it exists and is scrollable
+                    const scrollArea = document.querySelector('.content-scroll-area');
+                    if (scrollArea) {
+                        scrollArea.scrollTo({ top: pos, behavior: 'instant' });
+                    }
+
                     attempts += 1;
-                    if (window.scrollY >= pos || attempts >= 15) {
+
+                    const currentWindowScroll = window.scrollY;
+                    const currentAreaScroll = scrollArea ? scrollArea.scrollTop : 0;
+
+                    if (currentWindowScroll >= pos || currentAreaScroll >= pos || attempts >= 15) {
                         isRestoredRef.current = true;
                         clearInterval(scrollInterval);
                     }
