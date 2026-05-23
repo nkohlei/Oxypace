@@ -116,12 +116,12 @@
 
 .advanced-home .info-section {
   display: flex; align-items: stretch; gap: 0;
-  background: rgba(8, 12, 25, 0.55);
-  backdrop-filter: blur(30px) saturate(150%);
-  -webkit-backdrop-filter: blur(30px) saturate(150%);
-  border: 1px solid rgba(96, 165, 250, 0.08);
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(16px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 28px; overflow: hidden;
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
   /* Hidden until revealed */
   opacity: 0; transform: translateY(50px);
   transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
@@ -135,24 +135,24 @@
 .advanced-home .info-section:nth-child(3) { transition-delay: 0.16s; }
 
 .advanced-home .info-section:hover {
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45), 0 0 25px rgba(96, 165, 250, 0.05);
-  border-color: rgba(96, 165, 250, 0.2);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 .advanced-home .info-section.revealed:hover { transform: translateY(-6px); }
 
 /* Feature Icon Badge */
 .advanced-home .feature-icon-badge {
   width: 50px; height: 50px; border-radius: 14px;
-  background: rgba(96, 165, 250, 0.08);
-  border: 1px solid rgba(96, 165, 250, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.4rem; margin-bottom: 18px;
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .advanced-home .info-section:hover .feature-icon-badge {
-  background: rgba(96, 165, 250, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   transform: scale(1.08) rotate(-3deg);
-  box-shadow: 0 0 18px rgba(96, 165, 250, 0.12);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.1);
 }
 
 /* Text */
@@ -172,7 +172,7 @@
   letter-spacing: 3px;
 }
 .advanced-home .info-text p {
-  font-size: 0.95rem; color: rgba(255,255,255,0.45);
+  font-size: 0.95rem; color: rgba(255, 255, 255, 0.75);
   margin-bottom: 26px; line-height: 1.7;
 }
 
@@ -297,21 +297,21 @@
 
 /* PORTAL CARDS */
 .advanced-home .modern-portal-card.frosted-discovery {
-  background: rgba(10, 12, 22, 0.75);
-  backdrop-filter: blur(25px) saturate(140%);
-  -webkit-backdrop-filter: blur(25px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(16px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 22px; overflow: hidden;
   height: 380px; width: 350px;
   display: flex; flex-direction: column;
   flex-shrink: 0; cursor: pointer;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 12px 35px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
 }
 .advanced-home .modern-portal-card.frosted-discovery:hover {
   transform: translateY(-8px) scale(1.015);
-  border-color: rgba(96, 165, 250, 0.3);
-  box-shadow: 0 22px 55px rgba(0,0,0,0.4), 0 0 15px rgba(96, 165, 250, 0.06);
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35) !important;
 }
 
 .advanced-home .card-banner { height: 140px; width: 100%; }
@@ -335,7 +335,7 @@
   display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
 }
 .advanced-home .card-desc {
-  font-size: 0.85rem; color: rgba(255,255,255,0.35);
+  font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);
   line-height: 1.5; margin-bottom: 14px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
