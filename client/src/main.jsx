@@ -33,6 +33,18 @@ if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 }
 
+// Clean scroll memory on page reload
+const isReload = 
+    (performance.getEntriesByType && 
+     performance.getEntriesByType('navigation')[0] && 
+     performance.getEntriesByType('navigation')[0].type === 'reload') ||
+    (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+
+if (isReload) {
+    console.log('[Oxypace Scroll] Page reload detected globally. Clearing scroll memory.');
+    sessionStorage.removeItem('oxypace_home_scroll');
+}
+
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { HelmetProvider } from 'react-helmet-async';
 

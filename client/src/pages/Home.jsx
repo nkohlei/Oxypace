@@ -130,25 +130,10 @@ const Home = () => {
         return () => window.removeEventListener('scroll', handleScroll, { capture: true });
     }, [saveScrollPosition]);
 
-    // Scroll restoration and reload detection
+    // Scroll restoration
     useEffect(() => {
         if (loading) {
             console.log('[Oxypace Scroll] Auth loading is true, waiting...');
-            return;
-        }
-
-        const isReload = 
-            (performance.getEntriesByType && 
-             performance.getEntriesByType('navigation')[0] && 
-             performance.getEntriesByType('navigation')[0].type === 'reload') ||
-            (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
-        
-        console.log('[Oxypace Scroll] Auth loading finished. isReload:', isReload);
-
-        if (isReload) {
-            console.log('[Oxypace Scroll] Page reload detected. Clearing scroll memory.');
-            sessionStorage.removeItem('oxypace_home_scroll');
-            isRestoredRef.current = true;
             return;
         }
 
