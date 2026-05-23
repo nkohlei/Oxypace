@@ -423,8 +423,11 @@
 .advanced-home .card-desc {
   font-size: 0.85rem; color: rgba(255,255,255,0.35);
   line-height: 1.5; margin-bottom: 14px;
-  display: -webkit-box; -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .advanced-home .card-footer {
   margin-top: auto; padding-top: 12px;
