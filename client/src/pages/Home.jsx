@@ -78,12 +78,19 @@ const Home = () => {
         fetchPortals();
     }, []);
 
+    // Save scroll position to sessionStorage
+    const saveScrollPosition = useCallback((y) => {
+        sessionStorage.setItem('oxypace_home_scroll_pos', y);
+    }, []);
+
     // Scroll tracking - perfectly tracks any element's scroll via capture phase
     useEffect(() => {
         const handleScroll = (e) => {
             const target = e.target;
             if (target === document || target === window) {
-                setScrollY(window.scrollY);
+                const currentScrollY = window.scrollY;
+                setScrollY(currentScrollY);
+                saveScrollPosition(currentScrollY);
             } else if (target.scrollTop !== undefined) {
                 setScrollY(target.scrollTop);
             }
@@ -94,7 +101,34 @@ const Home = () => {
         handleScroll({ target: window });
         
         return () => window.removeEventListener('scroll', handleScroll, { capture: true });
-    }, []);
+    }, [saveScrollPosition]);
+
+    // Scroll restoration and reload detection
+    useEffect(() => {
+        if (loading) return;
+
+        const isReload = 
+            (performance.getEntriesByType && 
+             performance.getEntriesByType('navigation')[0] && 
+             performance.getEntriesByType('navigation')[0].type === 'reload') ||
+            (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+        
+        if (isReload) {
+            sessionStorage.removeItem('oxypace_home_scroll_pos');
+            return;
+        }
+
+        const savedPosition = sessionStorage.getItem('oxypace_home_scroll_pos');
+        if (savedPosition) {
+            const pos = parseInt(savedPosition, 10);
+            if (!isNaN(pos) && pos > 0) {
+                const timer = setTimeout(() => {
+                    window.scrollTo({ top: pos, behavior: 'instant' });
+                }, 50);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [loading]);
 
     // Intersection Observer for scroll-reveal
     useEffect(() => {
