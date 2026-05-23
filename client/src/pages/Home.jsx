@@ -27,6 +27,7 @@ const Home = () => {
     const [scrollY, setScrollY] = useState(0);
     const [revealedSections, setRevealedSections] = useState(new Set());
     const sectionRefs = useRef([]);
+    const lastScrollYRef = useRef(0);
 
     // Auto-redirect logged-in users
     useEffect(() => {
@@ -83,12 +84,11 @@ const Home = () => {
         sessionStorage.setItem('oxypace_home_scroll', y);
     }, []);
 
-    // Save scroll position on component unmount
+    // Save scroll position on component unmount (using the last tracked coordinate from ref)
     useEffect(() => {
         return () => {
-            const currentScroll = window.scrollY;
-            if (currentScroll > 0) {
-                sessionStorage.setItem('oxypace_home_scroll', currentScroll);
+            if (lastScrollYRef.current > 0) {
+                sessionStorage.setItem('oxypace_home_scroll', lastScrollYRef.current);
             }
         };
     }, []);
@@ -101,6 +101,7 @@ const Home = () => {
                 const currentScrollY = window.scrollY;
                 setScrollY(currentScrollY);
                 if (window.location.pathname === '/') {
+                    lastScrollYRef.current = currentScrollY;
                     saveScrollPosition(currentScrollY);
                 }
             } else if (target.scrollTop !== undefined) {
@@ -136,7 +137,7 @@ const Home = () => {
             if (!isNaN(pos) && pos > 0) {
                 const timer = setTimeout(() => {
                     window.scrollTo({ top: pos, behavior: 'instant' });
-                }, 100);
+                }, 150);
                 return () => clearTimeout(timer);
             }
         }
