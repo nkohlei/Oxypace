@@ -198,12 +198,14 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                     <Link
                                         to="/login"
                                         className="guest-login-btn"
+                                        preventScrollReset={true}
                                     >
                                         Giriş Yap
                                     </Link>
                                     <Link
                                         to="/register"
                                         className="guest-register-btn"
+                                        preventScrollReset={true}
                                     >
                                         Kaydol
                                     </Link>

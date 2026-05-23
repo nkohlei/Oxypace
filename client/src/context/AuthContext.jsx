@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem('token');
-        sessionStorage.removeItem('oxypace_home_scroll_pos');
+        sessionStorage.removeItem('oxypace_home_scroll');
         setToken(null);
         setUser(null);
         delete axios.defaults.headers.common['Authorization'];

@@ -80,7 +80,14 @@ const Home = () => {
 
     // Save scroll position to sessionStorage
     const saveScrollPosition = useCallback((y) => {
-        sessionStorage.setItem('oxypace_home_scroll_pos', y);
+        sessionStorage.setItem('oxypace_home_scroll', y);
+    }, []);
+
+    // Save scroll position on component unmount
+    useEffect(() => {
+        return () => {
+            sessionStorage.setItem('oxypace_home_scroll', window.scrollY);
+        };
     }, []);
 
     // Scroll tracking - perfectly tracks any element's scroll via capture phase
@@ -114,17 +121,17 @@ const Home = () => {
             (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
         
         if (isReload) {
-            sessionStorage.removeItem('oxypace_home_scroll_pos');
+            sessionStorage.removeItem('oxypace_home_scroll');
             return;
         }
 
-        const savedPosition = sessionStorage.getItem('oxypace_home_scroll_pos');
+        const savedPosition = sessionStorage.getItem('oxypace_home_scroll');
         if (savedPosition) {
             const pos = parseInt(savedPosition, 10);
             if (!isNaN(pos) && pos > 0) {
                 const timer = setTimeout(() => {
                     window.scrollTo({ top: pos, behavior: 'instant' });
-                }, 50);
+                }, 100);
                 return () => clearTimeout(timer);
             }
         }
@@ -153,7 +160,7 @@ const Home = () => {
     // Handle portal card click - save portal ID and redirect to login
     const handlePortalClick = useCallback((portalId) => {
         localStorage.setItem('oxypace_pending_portal', portalId);
-        navigate('/login');
+        navigate('/login', { preventScrollReset: true });
     }, [navigate]);
 
     if (loading) {
@@ -204,7 +211,7 @@ const Home = () => {
             title: 'Küresel İletişim',
             desc: 'Global message özelliği sayesinde farklı portallardaki arkadaşlarınızla tek bir arayüzden gerçek zamanlı sohbet edin. Kesintisiz etkileşim ve güvenli altyapı her an yanınızda.',
             cta: 'Aramıza Katıl',
-            ctaAction: () => navigate('/register'),
+            ctaAction: () => navigate('/register', { preventScrollReset: true }),
             icon: '💬',
             mockup: 'chat'
         },
@@ -213,7 +220,7 @@ const Home = () => {
             title: 'Sizi Yansıtan Yapı',
             desc: 'Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler... Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.',
             cta: 'Hemen Başla',
-            ctaAction: () => navigate('/register'),
+            ctaAction: () => navigate('/register', { preventScrollReset: true }),
             icon: '✨',
             mockup: 'profile',
             primary: true
@@ -400,17 +407,17 @@ const Home = () => {
                                 <div className="footer-col">
                                     <h4>Platform</h4>
                                     <span onClick={scrollToDiscovery}>Portalları Keşfet</span>
-                                    <span onClick={() => navigate('/login')}>Giriş Yap</span>
-                                    <span onClick={() => navigate('/register')}>Kayıt Ol</span>
+                                    <span onClick={() => navigate('/login', { preventScrollReset: true })}>Giriş Yap</span>
+                                    <span onClick={() => navigate('/register', { preventScrollReset: true })}>Kayıt Ol</span>
                                 </div>
                                 <div className="footer-col">
                                     <h4>Yasal</h4>
-                                    <span onClick={() => navigate('/privacy')}>Gizlilik Politikası</span>
-                                    <span onClick={() => navigate('/terms')}>Kullanım Koşulları</span>
+                                    <span onClick={() => navigate('/privacy', { preventScrollReset: true })}>Gizlilik Politikası</span>
+                                    <span onClick={() => navigate('/terms', { preventScrollReset: true })}>Kullanım Koşulları</span>
                                 </div>
                                 <div className="footer-col">
                                     <h4>İletişim</h4>
-                                    <span onClick={() => navigate('/contact')}>Bize Ulaşın</span>
+                                    <span onClick={() => navigate('/contact', { preventScrollReset: true })}>Bize Ulaşın</span>
                                     <a href="mailto:nqohlei@gmail.com">Destek</a>
                                 </div>
                             </div>
