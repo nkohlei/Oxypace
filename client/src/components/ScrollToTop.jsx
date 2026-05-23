@@ -5,6 +5,11 @@ const ScrollToTop = () => {
     const { pathname } = useLocation();
 
     useEffect(() => {
+        // Do not reset scroll if we are navigating to the Home page, let the Home page restore it
+        if (pathname === '/') {
+            return;
+        }
+
         // Reset window scroll
         window.scrollTo(0, 0);
 

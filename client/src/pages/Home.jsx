@@ -155,7 +155,14 @@ const Home = () => {
                     // Scroll the content container if it exists and is scrollable
                     const scrollArea = document.querySelector('.content-scroll-area');
                     if (scrollArea) {
+                        const originalScrollBehavior = scrollArea.style.scrollBehavior;
+                        scrollArea.style.scrollBehavior = 'auto';
                         scrollArea.scrollTo({ top: pos, behavior: 'instant' });
+                        setTimeout(() => {
+                            if (scrollArea) {
+                                scrollArea.style.scrollBehavior = originalScrollBehavior;
+                            }
+                        }, 20);
                     }
 
                     attempts += 1;
