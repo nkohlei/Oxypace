@@ -11,15 +11,20 @@ import './Navbar.css';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const location = useLocation();
-    if (location.pathname !== '/') {
-        return null;
-    }
     const { user, token, logout } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
     const { toggleSidebar, isMobileView } = useUI();
-// Duplicate location removed
     const navigate = useNavigate();
+
+    // Hide Navbar on non-home pages ONLY for guests (not logged-in users)
+    // Logged-in users' pages (Portal, Profile, etc.) always show the Navbar
+    const isGuest = !token;
+    const isHomePage = location.pathname === '/';
+    if (isGuest && !isHomePage) {
+        return null;
+    }
+
     const [showMenu, setShowMenu] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [adminPendingCount, setAdminPendingCount] = useState(0);
