@@ -28,6 +28,7 @@ const Home = () => {
     const [revealedSections, setRevealedSections] = useState(new Set());
     const sectionRefs = useRef([]);
     const lastScrollYRef = useRef(0);
+    const isRestoredRef = useRef(false);
 
     // Auto-redirect logged-in users
     useEffect(() => {
@@ -101,8 +102,11 @@ const Home = () => {
                 const currentScrollY = window.scrollY;
                 setScrollY(currentScrollY);
                 if (window.location.pathname === '/') {
-                    lastScrollYRef.current = currentScrollY;
-                    saveScrollPosition(currentScrollY);
+                    // Only track/save position if restoration is already completed or if scrolling is active
+                    if (currentScrollY > 0 || isRestoredRef.current) {
+                        lastScrollYRef.current = currentScrollY;
+                        saveScrollPosition(currentScrollY);
+                    }
                 }
             } else if (target.scrollTop !== undefined) {
                 setScrollY(target.scrollTop);
@@ -128,6 +132,7 @@ const Home = () => {
         
         if (isReload) {
             sessionStorage.removeItem('oxypace_home_scroll');
+            isRestoredRef.current = true;
             return;
         }
 
@@ -135,11 +140,23 @@ const Home = () => {
         if (savedPosition) {
             const pos = parseInt(savedPosition, 10);
             if (!isNaN(pos) && pos > 0) {
-                const timer = setTimeout(() => {
+                // Poll scroll position multiple times to overwrite dynamic content height shifts and router resets
+                let attempts = 0;
+                const scrollInterval = setInterval(() => {
                     window.scrollTo({ top: pos, behavior: 'instant' });
-                }, 150);
-                return () => clearTimeout(timer);
+                    attempts += 1;
+                    if (window.scrollY >= pos || attempts >= 15) {
+                        isRestoredRef.current = true;
+                        clearInterval(scrollInterval);
+                    }
+                }, 50);
+                
+                return () => clearInterval(scrollInterval);
+            } else {
+                isRestoredRef.current = true;
             }
+        } else {
+            isRestoredRef.current = true;
         }
     }, [loading]);
 
