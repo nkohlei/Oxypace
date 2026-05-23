@@ -134,7 +134,7 @@ const Register = () => {
     }, []);
 
     return (
-        <div className="auth-container" style={{ backgroundImage: "url('/oxypace-hero-bg.webp')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", minHeight: "100vh", width: "100%", position: "relative", zIndex: 1 }}>
+        <div className="auth-container">
             <div className="auth-bg-overlay" />
 
             <div className="auth-card fade-in">

@@ -5,9 +5,17 @@
    ======================================== */
 .app-wrapper.advanced-home,
 .advanced-home {
+  background-image: url('../assets/oxypace-hero-bg.webp') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   background-color: transparent !important;
   color: #fff;
-  min-height: 100dvh;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  width: 100% !important;
+  position: relative !important;
+  z-index: 1 !important;
   overflow-x: hidden;
   font-family: 'Outfit', sans-serif;
 }
