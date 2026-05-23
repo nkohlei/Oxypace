@@ -25,7 +25,7 @@
     overflow: hidden;
     background-color: var(--bg-primary);
     position: relative;
-    /* Ensure stacking context */
+    z-index: 1; /* Ensure stacking context */
 }
 
 /* Guest mode: allow the Home page to scroll naturally */
