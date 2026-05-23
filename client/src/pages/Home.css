@@ -116,7 +116,7 @@
 
 .advanced-home .info-section {
   display: flex; align-items: stretch; gap: 0;
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgba(255, 255, 255, 0.01) !important;
   backdrop-filter: blur(16px) saturate(120%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -297,7 +297,7 @@
 
 /* PORTAL CARDS */
 .advanced-home .modern-portal-card.frosted-discovery {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgba(255, 255, 255, 0.01) !important;
   backdrop-filter: blur(16px) saturate(120%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
