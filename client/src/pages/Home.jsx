@@ -144,6 +144,8 @@ const Home = () => {
             const pos = parseInt(savedPosition, 10);
             if (!isNaN(pos) && pos > 0) {
                 let attempts = 0;
+                let lastScrollHeight = 0;
+                let stableAttempts = 0;
                 console.log('[Oxypace Scroll] Starting scroll restoration polling to:', pos);
                 const scrollInterval = setInterval(() => {
                     // Scroll the window
@@ -166,10 +168,24 @@ const Home = () => {
 
                     const currentWindowScroll = window.scrollY;
                     const currentAreaScroll = scrollArea ? scrollArea.scrollTop : 0;
+                    const currentScrollHeight = document.documentElement.scrollHeight;
+                    const maxWindowScroll = currentScrollHeight - window.innerHeight;
 
-                    console.log(`[Oxypace Scroll] Poll attempt ${attempts}. Window Y: ${currentWindowScroll}, Area Top: ${currentAreaScroll}`);
+                    if (currentScrollHeight === lastScrollHeight) {
+                        stableAttempts += 1;
+                    } else {
+                        stableAttempts = 0;
+                        lastScrollHeight = currentScrollHeight;
+                    }
 
-                    if (currentWindowScroll >= pos || currentAreaScroll >= pos || attempts >= 15) {
+                    console.log(`[Oxypace Scroll] Poll attempt ${attempts}. Window Y: ${currentWindowScroll}, Area Top: ${currentAreaScroll}, Height: ${currentScrollHeight}, Stable: ${stableAttempts}`);
+
+                    const isRestored = currentWindowScroll >= pos || 
+                                     currentAreaScroll >= pos || 
+                                     (stableAttempts >= 3 && currentWindowScroll >= maxWindowScroll) ||
+                                     attempts >= 40;
+
+                    if (isRestored) {
                         console.log('[Oxypace Scroll] Restoration complete or max attempts reached. Setting isRestored = true.');
                         isRestoredRef.current = true;
                         clearInterval(scrollInterval);
