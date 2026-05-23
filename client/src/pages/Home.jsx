@@ -82,12 +82,15 @@ const Home = () => {
 
     // Save scroll position to sessionStorage
     const saveScrollPosition = useCallback((y) => {
+        console.log('[Oxypace Scroll] Saving position to sessionStorage:', y);
         sessionStorage.setItem('oxypace_home_scroll', y);
     }, []);
 
     // Save scroll position on component unmount (using the last tracked coordinate from ref)
     useEffect(() => {
+        console.log('[Oxypace Scroll] Home mounted');
         return () => {
+            console.log('[Oxypace Scroll] Home unmounting. Last scroll ref value:', lastScrollYRef.current);
             if (lastScrollYRef.current > 0) {
                 sessionStorage.setItem('oxypace_home_scroll', lastScrollYRef.current);
             }
@@ -113,6 +116,7 @@ const Home = () => {
             if (window.location.pathname === '/') {
                 // Only track/save position if restoration is already completed or if scrolling is active
                 if (currentScrollY > 0 || isRestoredRef.current) {
+                    console.log('[Oxypace Scroll] Valid scroll event captured:', currentScrollY, 'isRestored:', isRestoredRef.current);
                     lastScrollYRef.current = currentScrollY;
                     saveScrollPosition(currentScrollY);
                 }
@@ -128,7 +132,10 @@ const Home = () => {
 
     // Scroll restoration and reload detection
     useEffect(() => {
-        if (loading) return;
+        if (loading) {
+            console.log('[Oxypace Scroll] Auth loading is true, waiting...');
+            return;
+        }
 
         const isReload = 
             (performance.getEntriesByType && 
@@ -136,18 +143,23 @@ const Home = () => {
              performance.getEntriesByType('navigation')[0].type === 'reload') ||
             (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
         
+        console.log('[Oxypace Scroll] Auth loading finished. isReload:', isReload);
+
         if (isReload) {
+            console.log('[Oxypace Scroll] Page reload detected. Clearing scroll memory.');
             sessionStorage.removeItem('oxypace_home_scroll');
             isRestoredRef.current = true;
             return;
         }
 
         const savedPosition = sessionStorage.getItem('oxypace_home_scroll');
+        console.log('[Oxypace Scroll] Read saved position from sessionStorage:', savedPosition);
+
         if (savedPosition) {
             const pos = parseInt(savedPosition, 10);
             if (!isNaN(pos) && pos > 0) {
-                // Poll scroll position multiple times to overwrite dynamic content height shifts and router resets
                 let attempts = 0;
+                console.log('[Oxypace Scroll] Starting scroll restoration polling to:', pos);
                 const scrollInterval = setInterval(() => {
                     // Scroll the window
                     window.scrollTo({ top: pos, behavior: 'instant' });
@@ -170,7 +182,10 @@ const Home = () => {
                     const currentWindowScroll = window.scrollY;
                     const currentAreaScroll = scrollArea ? scrollArea.scrollTop : 0;
 
+                    console.log(`[Oxypace Scroll] Poll attempt ${attempts}. Window Y: ${currentWindowScroll}, Area Top: ${currentAreaScroll}`);
+
                     if (currentWindowScroll >= pos || currentAreaScroll >= pos || attempts >= 15) {
+                        console.log('[Oxypace Scroll] Restoration complete or max attempts reached. Setting isRestored = true.');
                         isRestoredRef.current = true;
                         clearInterval(scrollInterval);
                     }
