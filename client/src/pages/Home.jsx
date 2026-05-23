@@ -216,8 +216,7 @@ const Home = () => {
                     <div className="hero-gradient-glow"></div>
                     
                     <div className="hero-logo-mask-container">
-                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Layout Reference" className="hero-logo-layout-reference" />
-                        <div className="hero-logo-gradient-overlay" />
+                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" />
                     </div>
                 </div>
 
@@ -360,7 +359,7 @@ const Home = () => {
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
-                                <img src="/oxypace-text-logo.webp" alt="OXYPACE" className="footer-logo" />
+                                <img src="/oxypace-text-logo1.webp" alt="OXYPACE" className="footer-logo" />
                                 <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
                             </div>
                             <div className="footer-links-grid">

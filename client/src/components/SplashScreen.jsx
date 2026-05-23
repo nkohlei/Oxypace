@@ -116,11 +116,11 @@ const SplashScreen = ({ onFinish }) => {
                 .logo-layer {
                     position: absolute;
                     inset: 0;
-                    -webkit-mask-image: url('/oxypace-text-logo.webp');
+                    -webkit-mask-image: url('/oxypace-text-logo1.webp');
                     -webkit-mask-size: contain;
                     -webkit-mask-repeat: no-repeat;
                     -webkit-mask-position: center;
-                    mask-image: url('/oxypace-text-logo.webp');
+                    mask-image: url('/oxypace-text-logo1.webp');
                     mask-size: contain;
                     mask-repeat: no-repeat;
                     mask-position: center;
