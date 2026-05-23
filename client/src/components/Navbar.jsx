@@ -145,7 +145,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     <div className="nav-left">
                         <Link to="/" className="brand-logo">
                             <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
-                            <img src="/oxypace-text-logo.png" alt="oxypace" className="logo-text" />
+                            <img src="/oxypace-text-logo.webp" alt="oxypace" className="logo-text" />
                         </Link>
                     </div>
 

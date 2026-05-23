@@ -101,8 +101,8 @@
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 40%, #60A5FA 70%, #38bdf8 100%);
-  -webkit-mask-image: url('/oxypace-text-logo.png');
-  mask-image: url('/oxypace-text-logo.png');
+  -webkit-mask-image: url('/oxypace-text-logo.webp');
+  mask-image: url('/oxypace-text-logo.webp');
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -110,55 +110,6 @@
   -webkit-mask-position: center;
   mask-position: center;
   filter: drop-shadow(0 0 35px rgba(96, 165, 250, 0.4)) drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
-}
-
-/* TYPEWRITER SUBTITLE */
-.advanced-home .hero-subtitle-typing-container {
-  width: max-content; max-width: 90vw;
-}
-.advanced-home .hero-subtitle-typing {
-  overflow: hidden;
-  border-right: 0.12em solid #60A5FA;
-  white-space: nowrap; margin: 0;
-  letter-spacing: 0.04em;
-  font-size: 1.3rem; font-weight: 400;
-  color: rgba(255, 255, 255, 0.65);
-  width: 0;
-  animation: typingEffect 3s steps(30) 0.8s forwards, blinkCaret 0.75s step-end infinite;
-}
-@keyframes typingEffect { from { width: 0; } to { width: 100%; } }
-@keyframes blinkCaret { from, to { border-color: transparent; } 50% { border-color: #60A5FA; } }
-
-/* SCROLL HINT */
-.advanced-home .hero-scroll-hint {
-  display: flex; flex-direction: column;
-  align-items: center; gap: 10px;
-  margin-top: 12px; opacity: 0;
-  animation: fadeInUp 1s ease 4.2s forwards;
-}
-.advanced-home .hero-scroll-hint span {
-  font-size: 0.7rem; color: rgba(255,255,255,0.3);
-  text-transform: uppercase; letter-spacing: 3px;
-}
-.advanced-home .scroll-mouse {
-  width: 20px; height: 34px;
-  border: 2px solid rgba(255,255,255,0.2);
-  border-radius: 11px;
-  display: flex; justify-content: center; padding-top: 6px;
-}
-.advanced-home .scroll-dot {
-  width: 3px; height: 7px;
-  background: rgba(255,255,255,0.4);
-  border-radius: 3px;
-  animation: scrollBounce 1.8s ease-in-out infinite;
-}
-@keyframes scrollBounce {
-  0%, 100% { transform: translateY(0); opacity: 1; }
-  50% { transform: translateY(10px); opacity: 0.2; }
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ========================================

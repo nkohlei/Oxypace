@@ -216,16 +216,8 @@ const Home = () => {
                     <div className="hero-gradient-glow"></div>
                     
                     <div className="hero-logo-mask-container">
-                        <img src="/oxypace-text-logo.png" alt="OXYPACE Layout Reference" className="hero-logo-layout-reference" />
+                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Layout Reference" className="hero-logo-layout-reference" />
                         <div className="hero-logo-gradient-overlay" />
-                    </div>
-
-                    <div className="hero-subtitle-typing-container">
-                        <h2 className="hero-subtitle-typing">Oda'ya davetlisin, özgürce takıl!</h2>
-                    </div>
-                    <div className="hero-scroll-hint">
-                        <div className="scroll-mouse"><div className="scroll-dot"></div></div>
-                        <span>Keşfetmek için kaydır</span>
                     </div>
                 </div>
 
@@ -368,7 +360,7 @@ const Home = () => {
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
-                                <img src="/oxypace-text-logo.png" alt="OXYPACE" className="footer-logo" />
+                                <img src="/oxypace-text-logo.webp" alt="OXYPACE" className="footer-logo" />
                                 <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
                             </div>
                             <div className="footer-links-grid">
