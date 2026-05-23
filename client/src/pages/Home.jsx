@@ -86,7 +86,10 @@ const Home = () => {
     // Save scroll position on component unmount
     useEffect(() => {
         return () => {
-            sessionStorage.setItem('oxypace_home_scroll', window.scrollY);
+            const currentScroll = window.scrollY;
+            if (currentScroll > 0) {
+                sessionStorage.setItem('oxypace_home_scroll', currentScroll);
+            }
         };
     }, []);
 
@@ -97,7 +100,9 @@ const Home = () => {
             if (target === document || target === window) {
                 const currentScrollY = window.scrollY;
                 setScrollY(currentScrollY);
-                saveScrollPosition(currentScrollY);
+                if (window.location.pathname === '/') {
+                    saveScrollPosition(currentScrollY);
+                }
             } else if (target.scrollTop !== undefined) {
                 setScrollY(target.scrollTop);
             }
