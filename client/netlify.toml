@@ -32,6 +32,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/sitemap.xml"
+  status = 200
+  force = true
+
 # ── SPA Fallback ─────────────────────────────────
 # All routes that don't match a static file → serve index.html
 # force = false ensures existing static files (.webp, .png, etc.) are served directly
