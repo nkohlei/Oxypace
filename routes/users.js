@@ -47,16 +47,24 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
         );
 
         if (isFollowing) {
-            // Unfollow
+            // Unfriend / Unfollow in both directions
             targetUser.followers = targetUser.followers.filter(
                 (id) => id.toString() !== req.user._id.toString()
             );
-            targetUser.followerCount = Math.max(0, targetUser.followerCount - 1);
+            targetUser.following = targetUser.following.filter(
+                (id) => id.toString() !== req.user._id.toString()
+            );
+            targetUser.followerCount = targetUser.followers.length;
+            targetUser.followingCount = targetUser.following.length;
 
             currentUser.following = currentUser.following.filter(
                 (id) => id.toString() !== req.params.id
             );
-            currentUser.followingCount = Math.max(0, currentUser.followingCount - 1);
+            currentUser.followers = currentUser.followers.filter(
+                (id) => id.toString() !== req.params.id
+            );
+            currentUser.followerCount = currentUser.followers.length;
+            currentUser.followingCount = currentUser.following.length;
 
             await targetUser.save();
             await currentUser.save();
@@ -80,7 +88,9 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
         // START FOLLOW (TANIŞMA) PROCESS
         // Force Request Logic for Everyone (No direct follow)
         if (!hasRequested) {
-            targetUser.followRequests.push(req.user._id);
+            if (!targetUser.followRequests.some(id => id.toString() === req.user._id.toString())) {
+                targetUser.followRequests.push(req.user._id);
+            }
             await targetUser.save();
         }
 
@@ -132,18 +142,29 @@ router.post('/follow/accept/:id', protect, mongoIdValidation('id'), async (req, 
         currentUser.followRequests = currentUser.followRequests.filter(
             (id) => id.toString() !== requesterId
         );
-        currentUser.followers.push(requesterId);
-        currentUser.followerCount += 1;
-        // User follows Requester (Make it mutual Friend)
-        currentUser.following.push(requesterId);
-        currentUser.followingCount += 1;
 
-        // Requester follows User (Already set above by implicit graph, but explicit lists needed)
-        requester.following.push(currentUser._id);
-        requester.followingCount += 1;
-        // Requester is followed by User (Mutual)
-        requester.followers.push(currentUser._id);
-        requester.followerCount += 1;
+        const requesterIdStr = requesterId.toString();
+        const currentUserIdStr = currentUser._id.toString();
+
+        if (!currentUser.followers.some(id => id.toString() === requesterIdStr)) {
+            currentUser.followers.push(requesterId);
+        }
+        if (!currentUser.following.some(id => id.toString() === requesterIdStr)) {
+            currentUser.following.push(requesterId);
+        }
+
+        if (!requester.following.some(id => id.toString() === currentUserIdStr)) {
+            requester.following.push(currentUser._id);
+        }
+        if (!requester.followers.some(id => id.toString() === currentUserIdStr)) {
+            requester.followers.push(currentUser._id);
+        }
+
+        // Recalculate counts
+        currentUser.followerCount = currentUser.followers.length;
+        currentUser.followingCount = currentUser.following.length;
+        requester.followerCount = requester.followers.length;
+        requester.followingCount = requester.following.length;
 
         await currentUser.save();
         await requester.save();

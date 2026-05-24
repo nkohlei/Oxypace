@@ -291,14 +291,81 @@ setupRedisAdapter(io);
 initializeSocket(io);
 setupChangeStreams(io);
 
+const repairUserFriendships = async () => {
+    try {
+        console.log('🔧 Starting user friendship repair & deduplication...');
+        const users = await User.find({});
+        let repairedCount = 0;
+        for (const user of users) {
+            let modified = false;
+
+            const deduplicateArray = (arr) => {
+                if (!Array.isArray(arr)) return [];
+                const seen = new Set();
+                return arr.filter(item => {
+                    if (!item) return false;
+                    const strVal = item.toString();
+                    if (seen.has(strVal)) return false;
+                    seen.add(strVal);
+                    return true;
+                });
+            };
+
+            const cleanFollowers = deduplicateArray(user.followers);
+            if (cleanFollowers.length !== (user.followers || []).length) {
+                user.followers = cleanFollowers;
+                modified = true;
+            }
+
+            const cleanFollowing = deduplicateArray(user.following);
+            if (cleanFollowing.length !== (user.following || []).length) {
+                user.following = cleanFollowing;
+                modified = true;
+            }
+
+            const cleanRequests = deduplicateArray(user.followRequests);
+            if (cleanRequests.length !== (user.followRequests || []).length) {
+                user.followRequests = cleanRequests;
+                modified = true;
+            }
+
+            if (user.followerCount !== user.followers.length) {
+                user.followerCount = user.followers.length;
+                modified = true;
+            }
+            if (user.followingCount !== user.following.length) {
+                user.followingCount = user.following.length;
+                modified = true;
+            }
+
+            if (modified) {
+                await user.save();
+                repairedCount++;
+                console.log(`🔧 Repaired friendship arrays & counts for user: @${user.username}`);
+            }
+        }
+        console.log(`✅ User friendship repair complete. Repaired ${repairedCount} users.`);
+    } catch (err) {
+        console.error('⚠️ Error running user friendship repair:', err);
+    }
+};
+
 // Start server
 // Start server only if run directly
 if (process.argv[1] === __filename) {
     const PORT = process.env.PORT || 5000;
-    httpServer.listen(PORT, () => {
+    httpServer.listen(PORT, async () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📡 Socket.IO ready for real-time connections`);
         console.log('✅ Backend updated: v2.6 - Sitemap Integrated');
+
+        // Database repair on boot
+        try {
+            await connectDB();
+            await repairUserFriendships();
+        } catch (err) {
+            console.error('⚠️ Boot DB connect/repair failed:', err.message);
+        }
 
         // Start Bot Loop (in background)
         startBotLoop(io);
