@@ -82,24 +82,26 @@ router.post('/:userId', protect, async (req, res) => {
             await userToFollow.save();
 
             // Create Notification
-            // Create Notification
-            const notification = await Notification.create({
-                recipient: userToFollow._id,
-                sender: req.user.id,
-                type: 'follow',
-            });
+            const friendRequestsEnabled = userToFollow.settings?.notifications?.friendRequests !== false;
+            if (friendRequestsEnabled) {
+                const notification = await Notification.create({
+                    recipient: userToFollow._id,
+                    sender: req.user.id,
+                    type: 'follow',
+                });
 
-            // Emit real-time notification
-            req.app
-                .get('io')
-                .to(userToFollow._id.toString())
-                .emit(
-                    'newNotification',
-                    await notification.populate(
-                        'sender',
-                        'username profile.displayName profile.avatar'
-                    )
-                );
+                // Emit real-time notification
+                req.app
+                    .get('io')
+                    .to(userToFollow._id.toString())
+                    .emit(
+                        'newNotification',
+                        await notification.populate(
+                            'sender',
+                            'username profile.displayName profile.avatar'
+                        )
+                    );
+            }
 
             res.json({
                 message: 'User followed',

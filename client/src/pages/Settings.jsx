@@ -1109,43 +1109,11 @@ const Settings = () => {
             {/* SECTION 2: Etkileşim Bildirimleri */}
             <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Etkileşim & Hareketler</h3>
             <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px' }}>
-                {/* Bahsedilmeler */}
+                {/* Alıntılar ve Yanıtlar */}
                 <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
                     <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Bahsedilmeler</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Gönderilerde veya yorumlarda @kullanıcıadı şeklinde etiketlendiğinizde haber verilsin.</p>
-                    </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={notifications.mentions}
-                            onChange={() => handleToggle('mentions')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
-
-                {/* Beğeniler */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Beğeniler</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Gönderileriniz diğer kullanıcılar tarafından beğenildiğinde bildirim alın.</p>
-                    </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={notifications.likes}
-                            onChange={() => handleToggle('likes')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
-
-                {/* Yorumlar */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Yorumlar</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Paylaşımlarınıza yeni bir yorum veya cevap yazıldığında bildirim alın.</p>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Alıntılar ve Yanıtlar</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Gönderileriniz alıntılandığında veya yanıtlandığında bildirim alın.</p>
                     </div>
                     <label className="switch">
                         <input

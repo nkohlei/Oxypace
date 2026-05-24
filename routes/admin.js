@@ -63,11 +63,14 @@ router.post('/verify-user/:id', protect, admin, async (req, res) => {
         await user.save();
 
         // Create Notification
-        await Notification.create({
-            recipient: user._id,
-            type: 'system', // We might need to add 'system' to Notification enum if not exists, or verify logic
-            content: `Tebrikler! Hesabınız doğrulandı ve ${badgeType.toUpperCase()} rozetiniz tanımlandı.`,
-        });
+        const systemEnabled = user.settings?.notifications?.system !== false;
+        if (systemEnabled) {
+            await Notification.create({
+                recipient: user._id,
+                type: 'system', // We might need to add 'system' to Notification enum if not exists, or verify logic
+                content: `Tebrikler! Hesabınız doğrulandı ve ${badgeType.toUpperCase()} rozetiniz tanımlandı.`,
+            });
+        }
 
         res.json({ message: 'User verified successfully', user });
     } catch (error) {
@@ -93,12 +96,15 @@ router.post('/reject-verification/:id', protect, admin, async (req, res) => {
         await user.save();
 
         // Create Notification
-        await Notification.create({
-            recipient: user._id,
-            type: 'system',
-            content:
-                'Üzgünüz, onaylanmış hesap başvurunuz reddedildi. Şartları sağladığınızda tekrar başvurabilirsiniz.',
-        });
+        const systemEnabled = user.settings?.notifications?.system !== false;
+        if (systemEnabled) {
+            await Notification.create({
+                recipient: user._id,
+                type: 'system',
+                content:
+                    'Üzgünüz, onaylanmış hesap başvurunuz reddedildi. Şartları sağladığınızda tekrar başvurabilirsiniz.',
+            });
+        }
 
         res.json({ message: 'Request rejected', user });
     } catch (error) {
@@ -313,12 +319,16 @@ router.post('/portals/:id/warning', protect, admin, async (req, res) => {
         await portal.save();
 
         // Notify Portal Owner
-        await Notification.create({
-            recipient: portal.owner,
-            type: 'system',
-            content: `Portalınız "${portal.name}" için bir yönetici uyarısı aldınız: ${message}`,
-            link: `/portal/${portal._id}`
-        });
+        const owner = await User.findById(portal.owner);
+        const systemEnabled = owner?.settings?.notifications?.system !== false;
+        if (systemEnabled) {
+            await Notification.create({
+                recipient: portal.owner,
+                type: 'system',
+                content: `Portalınız "${portal.name}" için bir yönetici uyarısı aldınız: ${message}`,
+                link: `/portal/${portal._id}`
+            });
+        }
 
         res.json({ message: 'Warning sent', portal });
     } catch (error) {
@@ -366,12 +376,16 @@ router.post('/portals/:id/alert', protect, admin, async (req, res) => {
         await portal.save();
 
         // Notify Portal Owner
-        await Notification.create({
-            recipient: portal.owner,
-            type: 'system',
-            content: `Portalınız "${portal.name}" için bir yönetici uyarısı yayınlandı: ${String(message).slice(0, 100)}${message.length > 100 ? '...' : ''}`,
-            link: `/portal/${portal._id}`
-        });
+        const owner = await User.findById(portal.owner);
+        const systemEnabled = owner?.settings?.notifications?.system !== false;
+        if (systemEnabled) {
+            await Notification.create({
+                recipient: portal.owner,
+                type: 'system',
+                content: `Portalınız "${portal.name}" için bir yönetici uyarısı yayınlandı: ${String(message).slice(0, 100)}${message.length > 100 ? '...' : ''}`,
+                link: `/portal/${portal._id}`
+            });
+        }
 
         const createdAlert = portal.alerts[portal.alerts.length - 1];
         res.json({ message: 'Uyarı yayınlandı', alert: createdAlert });

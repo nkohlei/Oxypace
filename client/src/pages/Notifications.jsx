@@ -150,7 +150,7 @@ const Notifications = () => {
     const filteredNotifications = notifications.filter((notif) => {
         if (activeFilter === 'all') return true;
         if (activeFilter === 'quotes') {
-            return notif.type === 'comment' || notif.type === 'reply';
+            return notif.type === 'comment' || notif.type === 'reply' || notif.type === 'quote';
         }
         if (activeFilter === 'friends') {
             return notif.type === 'follow' || notif.type === 'follow_request' || notif.type === 'friend_connected' || notif.type === 'follow_request_handled';
@@ -259,6 +259,7 @@ const Notifications = () => {
                                                 {notif.type === 'like' && '❤️'}
                                                 {notif.type === 'comment' && '💬'}
                                                 {notif.type === 'reply' && '↩️'}
+                                                {notif.type === 'quote' && '💬'}
                                                 {notif.type === 'follow' && '👤'}
                                                 {notif.type === 'follow_request' && '👤'}
                                                 {notif.type === 'message' && '✉️'}
@@ -277,6 +278,8 @@ const Notifications = () => {
                                                     ' gönderine yorum yaptı: '}
                                                 {notif.type === 'reply' &&
                                                     ' yorumuna yanıt verdi: '}
+                                                {notif.type === 'quote' &&
+                                                    ' gönderini alıntıladı.'}
                                                 {notif.type === 'follow' &&
                                                     ' seni takip etmeye başladı.'}
                                                 {notif.type === 'follow_request' &&
@@ -297,6 +300,11 @@ const Notifications = () => {
                                                         "{notif.comment.content}"
                                                     </p>
                                                 )}
+                                            {notif.type === 'quote' && notif.post && (
+                                                <p className="notif-text-preview">
+                                                    "{notif.post.content}"
+                                                </p>
+                                            )}
 
                                             {/* Follow Request Actions - Trust the notification type, but hide if we know it's handled */}
                                             {notif.type === 'follow_request' && (
