@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { SocketProvider } from './context/SocketContext';
+import { SocketProvider, useSocket } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BadgeProvider } from './context/BadgeContext';
 import { VoiceProvider } from './context/VoiceContext';
@@ -164,11 +164,28 @@ const AppLayout = () => {
     const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen } = useUI();
     const { user, token } = useAuth();
     const location = useLocation();
+    const { socket, connected } = useSocket();
 
-    // Use token (not user) to determine layout mode.
-    // Token is available synchronously from localStorage, while user requires an API call.
-    // This prevents the brief guest-mode flash during auth loading.
     const isLoggedIn = !!token;
+
+    // Gezinme (navigasyon) takibi ve 45 saniyelik heartbeat varlık bildirimi
+    useEffect(() => {
+        if (isLoggedIn && socket && connected) {
+            const sendUpdate = () => {
+                socket.emit('presence_update', { path: location.pathname });
+            };
+
+            // Sayfa değiştiğinde bildir
+            sendUpdate();
+
+            // 45 saniyede bir varlığı tazele
+            const interval = setInterval(sendUpdate, 45000);
+
+            return () => {
+                clearInterval(interval);
+            };
+        }
+    }, [location.pathname, socket, connected, isLoggedIn]);
 
     // Map and admin pages get a clean full-screen layout — no sidebar, no footer
     const isMapPage = location.pathname === '/map';
@@ -242,6 +259,50 @@ const AppLayout = () => {
 
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
+            {localStorage.getItem('admin_backup_token') && (
+                <div 
+                    className="ghost-mode-banner" 
+                    style={{
+                        backgroundColor: '#e74c3c',
+                        color: '#fff',
+                        padding: '10px 20px',
+                        textAlign: 'center',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '15px',
+                        boxShadow: '0 4px 12px rgba(231, 76, 60, 0.4)',
+                        flexShrink: 0,
+                        zIndex: 99999
+                    }}
+                >
+                    <span>🔴 TAKLİT MODU AKTİF: <strong>@{user?.username}</strong> olarak görüntülüyorsunuz (Salt Okunur).</span>
+                    <button 
+                        onClick={() => {
+                            const backupToken = localStorage.getItem('admin_backup_token');
+                            localStorage.setItem('token', backupToken);
+                            localStorage.removeItem('admin_backup_token');
+                            window.location.reload();
+                        }}
+                        style={{
+                            backgroundColor: '#fff',
+                            color: '#e74c3c',
+                            border: 'none',
+                            padding: '5px 14px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            transition: '0.2s',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        Taklidi Sonlandır
+                    </button>
+                </div>
+            )}
             <div className="horizontal-layout-container" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {/* Mobile Overlay */}
                 <div

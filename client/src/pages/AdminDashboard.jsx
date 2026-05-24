@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
+import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Home, Pencil, Trash2 } from 'lucide-react';
 import Badge from '../components/Badge';
@@ -139,6 +140,135 @@ const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
                         </button>
                         <button type="submit" className="btn-modern-primary">
                             {actionBtnText}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// Modern Ban Modal Component for User and IP Banning
+const BanModal = ({ isOpen, onClose, onSubmit, type }) => {
+    const [reason, setReason] = useState('');
+    const [durationType, setDurationType] = useState('preset'); // 'preset' or 'custom' or 'permanent'
+    const [selectedPreset, setSelectedPreset] = useState(null); // hours
+    const [customDate, setCustomDate] = useState('');
+
+    if (!isOpen) return null;
+
+    const presets = [
+        { label: '1 Saat', hours: 1 },
+        { label: '12 Saat', hours: 12 },
+        { label: '1 Gün', hours: 24 },
+        { label: '3 Gün', hours: 72 },
+        { label: '7 Gün', hours: 168 },
+        { label: '30 Gün', hours: 720 },
+    ];
+
+    const calculateExpiresAt = () => {
+        if (durationType === 'permanent') return null;
+        if (durationType === 'preset' && selectedPreset) {
+            return new Date(Date.now() + selectedPreset * 60 * 60 * 1000).toISOString();
+        }
+        if (durationType === 'custom' && customDate) {
+            return new Date(customDate).toISOString();
+        }
+        return null;
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit(reason, calculateExpiresAt());
+        setReason('');
+        setSelectedPreset(null);
+        setCustomDate('');
+    };
+
+    const minDate = new Date().toISOString().slice(0, 16);
+
+    return (
+        <div className="modal-overlay-modern">
+            <div className="modal-content-modern">
+                <div className="modal-header-modern">
+                    <h2>{type === 'ip' ? '🚫 IP Adresini Engelle' : '🚫 Kullanıcıyı Engelle'}</h2>
+                    <button className="close-btn-modern" onClick={onClose}>&times;</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="modal-body-modern">
+                        <p className="modal-description-modern">
+                            Bu {type === 'ip' ? 'IP adresini' : 'kullanıcıyı'} engellemek için bir sebep ve süre belirleyin.
+                        </p>
+                        <textarea
+                            className="reason-input-modern"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Örn: Topluluk kuralları ihlali, spam faaliyeti..."
+                            rows="4"
+                            required
+                        />
+
+                        <div className="duration-picker-section">
+                            <h4 className="duration-title">⏱ Engel Süresi</h4>
+                            <div className="duration-type-toggle">
+                                <button
+                                    type="button"
+                                    className={`duration-type-btn ${durationType === 'preset' ? 'active' : ''}`}
+                                    onClick={() => setDurationType('preset')}
+                                >
+                                    Süre Seç
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`duration-type-btn ${durationType === 'custom' ? 'active' : ''}`}
+                                    onClick={() => setDurationType('custom')}
+                                >
+                                    Özel Tarih
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`duration-type-btn ${durationType === 'permanent' ? 'active' : ''}`}
+                                    onClick={() => setDurationType('permanent')}
+                                >
+                                    Kalıcı
+                                </button>
+                            </div>
+
+                            {durationType === 'preset' ? (
+                                <div className="preset-grid">
+                                    {presets.map((p) => (
+                                        <button
+                                            key={p.hours}
+                                            type="button"
+                                            className={`preset-btn ${selectedPreset === p.hours ? 'active' : ''}`}
+                                            onClick={() => setSelectedPreset(p.hours)}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : durationType === 'custom' ? (
+                                <input
+                                    type="datetime-local"
+                                    className="custom-date-input"
+                                    value={customDate}
+                                    onChange={(e) => setCustomDate(e.target.value)}
+                                    min={minDate}
+                                    required={durationType === 'custom'}
+                                />
+                            ) : (
+                                <div className="permanent-ban-warning" style={{ color: '#ff4b4b', fontSize: '12px', fontWeight: '600', marginTop: '10px' }}>
+                                    ⚠️ Bu engel elle kaldırılana kadar süresiz olarak geçerli olacaktır.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="modal-footer-modern">
+                        <button type="button" className="btn-modern-ghost" onClick={onClose}>
+                            İptal
+                        </button>
+                        <button type="submit" className="btn-modern-primary" style={{ background: '#ff4b4b' }}>
+                            ENGELE
                         </button>
                     </div>
                 </form>
@@ -450,6 +580,13 @@ const AdminDashboard = () => {
     const [contactMessages, setContactMessages] = useState([]);
     const [messageFilter, setMessageFilter] = useState('Tümü');
 
+    // Active Sessions & Banned IPs State
+    const { socket, connected } = useSocket();
+    const [activeSessions, setActiveSessions] = useState([]);
+    const [bannedIps, setBannedIps] = useState([]);
+    const [banModalOpen, setBanModalOpen] = useState(false);
+    const [banModalTarget, setBanModalTarget] = useState({ type: 'user', id: '', extraData: '' }); // type can be 'user' or 'ip'
+
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPortalId, setSelectedPortalId] = useState(null);
@@ -503,10 +640,95 @@ const AdminDashboard = () => {
             fetchAllBadges();
         } else if (activeTab === 'feedback') {
             fetchFeedbacks();
+        } else if (activeTab === 'ipbans') {
+            fetchBannedIps();
         } else if (activeTab === 'system' && isOxypace) {
             fetchMaintenanceStatus();
         }
     }, [activeTab, isOxypace]);
+
+    // Aktif oturum izleme WebSocket dinleyicisi
+    useEffect(() => {
+        if (activeTab === 'activity' && socket && connected) {
+            socket.emit('join_admin_presence');
+
+            socket.on('admin_presence_update', (data) => {
+                setActiveSessions(data);
+            });
+
+            return () => {
+                socket.emit('leave_admin_presence');
+                socket.off('admin_presence_update');
+            };
+        }
+    }, [activeTab, socket, connected]);
+
+    const fetchBannedIps = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/ip-bans');
+            setBannedIps(data);
+        } catch (err) {
+            setError('Engelli IP listesi yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBanSubmit = async (reason, expiresAt) => {
+        try {
+            if (banModalTarget.type === 'user') {
+                const userId = banModalTarget.id;
+                await axios.put(`/api/admin/users/${userId}/ban`, { reason, expiresAt });
+                alert('Kullanıcı başarıyla engellendi.');
+                if (activeTab === 'users') fetchUsers(searchTerm);
+            } else if (banModalTarget.type === 'ip') {
+                const ip = banModalTarget.id;
+                await axios.post('/api/admin/ip-bans', { ip, reason, expiresAt });
+                alert('IP adresi başarıyla engellendi.');
+                if (activeTab === 'ipbans') fetchBannedIps();
+            }
+            setBanModalOpen(false);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Engelleme işlemi başarısız.');
+        }
+    };
+
+    const handleUnbanUser = async (userId) => {
+        if (!window.confirm('Bu kullanıcının engelini kaldırmak istediğinize emin misiniz?')) return;
+        try {
+            await axios.put(`/api/admin/users/${userId}/unban`);
+            alert('Kullanıcının engeli kaldırıldı.');
+            if (activeTab === 'users') fetchUsers(searchTerm);
+        } catch (err) {
+            alert('İşlem başarısız.');
+        }
+    };
+
+    const handleUnbanIp = async (ip) => {
+        if (!window.confirm(`Bu IP adresinin (${ip}) engelini kaldırmak istediğinize emin misiniz?`)) return;
+        try {
+            await axios.delete(`/api/admin/ip-bans/${ip}`);
+            alert('IP adresinin engeli kaldırıldı.');
+            if (activeTab === 'ipbans') fetchBannedIps();
+        } catch (err) {
+            alert('İşlem başarısız.');
+        }
+    };
+
+    const handleImpersonate = async (userId) => {
+        if (!window.confirm('Bu kullanıcının kimliğine bürünmek (Taklit Et) istediğinize emin misiniz?')) return;
+        try {
+            const { data } = await axios.post(`/api/admin/impersonate/${userId}`);
+            const adminToken = localStorage.getItem('token');
+            localStorage.setItem('admin_backup_token', adminToken);
+            localStorage.setItem('token', data.token);
+            alert(`Taklit modu başlatıldı: @${data.user.username}`);
+            window.location.href = '/';
+        } catch (err) {
+            alert(err.response?.data?.message || 'Taklit modu başlatılamadı.');
+        }
+    };
 
     const fetchMaintenanceStatus = async () => {
         setLoading(true);
@@ -986,6 +1208,18 @@ const AdminDashboard = () => {
                     {unreadFeedbackCount > 0 && <span className="tab-badge">{unreadFeedbackCount}</span>}
                 </button>
                 <button
+                    className={`admin-tab ${activeTab === 'activity' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('activity')}
+                >
+                    Aktif Oturumlar
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'ipbans' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('ipbans')}
+                >
+                    IP Engelleri
+                </button>
+                <button
                     className={`admin-tab ${activeTab === 'badges' ? 'active' : ''}`}
                     onClick={() => setActiveTab('badges')}
                 >
@@ -1133,6 +1367,68 @@ const AdminDashboard = () => {
                                                 return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
                                             })()}
                                         </select>
+                                        {user.isBanned ? (
+                                            <button 
+                                                className="unban-btn-admin"
+                                                onClick={() => handleUnbanUser(user._id)}
+                                                style={{
+                                                    marginLeft: '10px',
+                                                    padding: '6px 12px',
+                                                    backgroundColor: 'rgba(46, 204, 113, 0.15)',
+                                                    color: '#2ecc71',
+                                                    border: '1px solid #2ecc71',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '12px',
+                                                    minWidth: '100px'
+                                                }}
+                                            >
+                                                Engeli Kaldır
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                className="ban-btn-admin"
+                                                onClick={() => {
+                                                    setBanModalTarget({ type: 'user', id: user._id });
+                                                    setBanModalOpen(true);
+                                                }}
+                                                style={{
+                                                    marginLeft: '10px',
+                                                    padding: '6px 12px',
+                                                    backgroundColor: 'rgba(231, 76, 60, 0.15)',
+                                                    color: '#e74c3c',
+                                                    border: '1px solid #e74c3c',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '12px',
+                                                    minWidth: '100px'
+                                                }}
+                                            >
+                                                Engelle
+                                            </button>
+                                        )}
+                                        {isOxypace && user.username !== 'oxypace' && (
+                                            <button
+                                                className="impersonate-btn-admin"
+                                                onClick={() => handleImpersonate(user._id)}
+                                                style={{
+                                                    marginLeft: '10px',
+                                                    padding: '6px 12px',
+                                                    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                                                    color: '#818cf8',
+                                                    border: '1px solid #6366f1',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '12px',
+                                                    minWidth: '100px'
+                                                }}
+                                            >
+                                                👤 Taklit Et
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -1544,6 +1840,183 @@ const AdminDashboard = () => {
                         )}
                     </div>
                 )}
+                {activeTab === 'activity' && (
+                    <div className="activity-section fade-in">
+                        <div className="section-header-modern">
+                            <div className="header-left">
+                                <h2>⚡ Canlı Aktif Oturum İzleyici</h2>
+                                <p>Platformda o an aktif olan kullanıcıları ve bulundukları sayfaları izleyin.</p>
+                            </div>
+                            <div className="header-right">
+                                <div className="connection-status-pill" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px' }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#2ecc71' : '#e74c3c' }}></span>
+                                    {connected ? 'Canlı Sunucu Bağlantısı Aktif' : 'Bağlantı Kesildi'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Summary Metrics Cards */}
+                        <div className="system-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '25px' }}>
+                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🟢 Toplam Aktif</span>
+                                <strong style={{ fontSize: '28px', color: '#fff' }}>{activeSessions.length}</strong>
+                            </div>
+                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🏠 Akış / Mesajlar</span>
+                                <strong style={{ fontSize: '28px', color: '#6366f1' }}>{activeSessions.filter(s => s.path === '/').length}</strong>
+                            </div>
+                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🌐 Portallarda</span>
+                                <strong style={{ fontSize: '28px', color: '#10b981' }}>{activeSessions.filter(s => s.path.startsWith('/portal')).length}</strong>
+                            </div>
+                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🗺️ Haritada</span>
+                                <strong style={{ fontSize: '28px', color: '#f59e0b' }}>{activeSessions.filter(s => s.path === '/map').length}</strong>
+                            </div>
+                        </div>
+
+                        {loading && activeSessions.length === 0 && <div className="admin-loading">Aktif oturumlar çekiliyor...</div>}
+                        
+                        {!loading && activeSessions.length === 0 && (
+                            <p className="no-data">Şu an aktif çevrimiçi kullanıcı bulunmuyor.</p>
+                        )}
+
+                        <div className="users-list">
+                            {activeSessions.map((session) => (
+                                <div key={session.userId} className="user-list-item" style={{ padding: '15px 20px' }}>
+                                    <div className="user-item-left">
+                                        <img
+                                            src={session.avatar || 'https://via.placeholder.com/150'}
+                                            alt=""
+                                            className="user-list-avatar"
+                                        />
+                                        <div className="user-item-info">
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {session.displayName || session.username}
+                                            </h4>
+                                            <span>@{session.username}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                        {/* Current Location Badge */}
+                                        <div className="location-badge" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Mevcut Konum</span>
+                                            <span 
+                                                onClick={() => navigate(session.path)}
+                                                style={{ 
+                                                    background: 'rgba(99, 102, 241, 0.15)', 
+                                                    color: '#818cf8', 
+                                                    padding: '4px 10px', 
+                                                    borderRadius: '6px', 
+                                                    fontSize: '12px', 
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    border: '1px solid rgba(99, 102, 241, 0.3)'
+                                                }}
+                                            >
+                                                {session.path === '/' ? 'Genel Akış / Mesajlar' : session.path.startsWith('/portal') ? `Portal: ${session.path.split('/')[2] || ''}` : session.path}
+                                            </span>
+                                        </div>
+
+                                        <button
+                                            className="ban-btn-admin"
+                                            onClick={() => {
+                                                setBanModalTarget({ type: 'user', id: session.userId });
+                                                setBanModalOpen(true);
+                                            }}
+                                            style={{
+                                                padding: '6px 12px',
+                                                backgroundColor: 'rgba(231, 76, 60, 0.15)',
+                                                color: '#e74c3c',
+                                                border: '1px solid #e74c3c',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontWeight: 'bold',
+                                                fontSize: '12px',
+                                                minWidth: '100px'
+                                            }}
+                                        >
+                                            Engelle (Kick)
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'ipbans' && (
+                    <div className="ipbans-section fade-in">
+                        <div className="section-header-modern">
+                            <div className="header-left">
+                                <h2>🚫 IP Adresi Engelleme Paneli</h2>
+                                <p>Sistem genelinde şüpheli IP adreslerini, ağ saldırısı veya spam kaynaklarını engelleyin.</p>
+                            </div>
+                            <div className="header-right">
+                                <button 
+                                    className="btn-modern-primary"
+                                    onClick={() => {
+                                        const ip = window.prompt('Engellenecek IP adresini yazın:');
+                                        if (ip && ip.trim()) {
+                                            setBanModalTarget({ type: 'ip', id: ip.trim() });
+                                            setBanModalOpen(true);
+                                        }
+                                    }}
+                                    style={{ padding: '10px 20px', fontSize: '14px', background: '#e74c3c' }}
+                                >
+                                    + IP Engelle
+                                </button>
+                            </div>
+                        </div>
+
+                        {loading && bannedIps.length === 0 && <div className="admin-loading">IP engelleri çekiliyor...</div>}
+                        
+                        {!loading && bannedIps.length === 0 && (
+                            <p className="no-data">Kayıtlı engelli IP bulunmamaktadır.</p>
+                        )}
+
+                        <div className="users-list">
+                            {bannedIps.map((ban) => (
+                                <div key={ban._id} className="user-list-item" style={{ padding: '15px 20px' }}>
+                                    <div className="user-item-left" style={{ gap: '15px' }}>
+                                        <div style={{ background: 'rgba(231, 76, 60, 0.1)', color: '#e74c3c', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        </div>
+                                        <div className="user-item-info">
+                                            <h4 style={{ fontSize: '16px', fontFamily: 'monospace' }}>{ban.ip}</h4>
+                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                                Gerekçe: <strong>{ban.reason}</strong> • Ekleyen: @{ban.bannedBy?.username || 'Sistem'}
+                                            </span>
+                                            {ban.expiresAt && (
+                                                <span style={{ fontSize: '11px', color: 'orange', marginTop: '4px', display: 'block' }}>
+                                                    Süre Sonu: {new Date(ban.expiresAt).toLocaleString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <button
+                                        className="unban-btn-admin"
+                                        onClick={() => handleUnbanIp(ban.ip)}
+                                        style={{
+                                            padding: '6px 12px',
+                                            backgroundColor: 'rgba(46, 204, 113, 0.15)',
+                                            color: '#2ecc71',
+                                            border: '1px solid #2ecc71',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold',
+                                            fontSize: '12px',
+                                            minWidth: '100px'
+                                        }}
+                                    >
+                                        Engeli Kaldır
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 {activeTab === 'system' && isOxypace && (
                     <div className="system-settings-section">
                         <div className="system-card">
@@ -1599,6 +2072,14 @@ const AdminDashboard = () => {
                 onClose={() => setFeedbackModalOpen(false)}
                 feedback={selectedFeedback}
                 onSubmit={handleFeedbackReply}
+            />
+
+            {/* Custom Ban Modal for User / IP Banning */}
+            <BanModal
+                isOpen={banModalOpen}
+                onClose={() => setBanModalOpen(false)}
+                onSubmit={handleBanSubmit}
+                type={banModalTarget.type}
             />
 
 

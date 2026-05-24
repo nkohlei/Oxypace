@@ -19,6 +19,14 @@ export const protect = async (req, res, next) => {
                 return res.status(401).json({ message: 'User not found' });
             }
 
+            // Ghost Mode / Taklit Modu kısıtlaması (Read-Only)
+            if (decoded.isGhost) {
+                req.user.isGhost = true;
+                if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+                    return res.status(403).json({ message: 'Taklit modunda (Ghost Mode) yazma işlemleri kısıtlanmıştır.' });
+                }
+            }
+
             next();
         } catch (error) {
             console.error('Auth Middleware Error:', error);
@@ -48,6 +56,12 @@ export const optionalProtect = async (req, res, next) => {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             req.user = await User.findById(decoded.id).select('-password');
+            if (req.user && decoded.isGhost) {
+                req.user.isGhost = true;
+                if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+                    return res.status(403).json({ message: 'Taklit modunda (Ghost Mode) yazma işlemleri kısıtlanmıştır.' });
+                }
+            }
         } catch (error) {
             // Token failed - just continue without user
             console.error('Optional auth error (token invalid):', error.message);

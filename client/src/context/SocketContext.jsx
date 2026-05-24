@@ -62,6 +62,22 @@ export const SocketProvider = ({ children }) => {
             }
         });
 
+        newSocket.on('user_banned', ({ reason, expiresAt }) => {
+            let message = 'Erişiminiz Engellendi!\n\n';
+            message += `Gerekçe: ${reason || 'Belirtilmedi'}\n`;
+            if (expiresAt) {
+                const date = new Date(expiresAt);
+                message += `Bitiş Tarihi: ${date.toLocaleString()}`;
+            } else {
+                message += 'Bitiş Tarihi: Süresiz (Kalıcı)';
+            }
+            alert(message);
+            
+            // Oturumu temizle ve sayfayı yenile
+            localStorage.removeItem('token');
+            window.location.reload();
+        });
+
         newSocket.on('disconnect', () => {
             setConnected(false);
         });

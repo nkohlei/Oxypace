@@ -71,6 +71,42 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
     };
 
+    // Axios global response interceptor to detect if client IP or authenticated user is banned
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error.response && error.response.status === 403) {
+                    const data = error.response.data;
+                    if (data && data.isBanned) {
+                        let message = 'Erişiminiz Engellendi!\n\n';
+                        message += `Gerekçe: ${data.banReason || 'Belirtilmedi'}\n`;
+                        
+                        if (data.banExpiresAt) {
+                            const date = new Date(data.banExpiresAt);
+                            message += `Bitiş Tarihi: ${date.toLocaleString()}`;
+                        } else {
+                            message += 'Bitiş Tarihi: Süresiz (Kalıcı)';
+                        }
+                        
+                        alert(message);
+                        
+                        // Clean user session and token
+                        logout();
+                        
+                        // Force clean page reload
+                        window.location.reload();
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
+    }, []);
+
     const value = {
         user,
         token,

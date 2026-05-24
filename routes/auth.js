@@ -148,6 +148,23 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             return res.status(403).json({ message: 'Please verify your email before logging in' });
         }
 
+        // Check if user is banned
+        if (user.isBanned) {
+            // Check if ban is expired
+            if (user.banExpiresAt && user.banExpiresAt < new Date()) {
+                user.isBanned = false;
+                user.banReason = '';
+                user.banExpiresAt = null;
+                await user.save();
+            } else {
+                return res.status(403).json({
+                    isBanned: true,
+                    banReason: user.banReason || 'Hesabınız platform kuralları ihlali nedeniyle engellenmiştir.',
+                    banExpiresAt: user.banExpiresAt
+                });
+            }
+        }
+
         // Generate token
         const token = generateToken(user._id);
 
@@ -258,9 +275,25 @@ router.post('/google/validate', async (req, res) => {
         } else {
             // Existing User -> Always Login
             console.log('✨ Smart Auth: Existing User detected -> Auto Login');
-            const realToken = generateToken(decoded.id);
             // Fetch fresh user data with populated portals
             const user = await User.findById(decoded.id).populate('joinedPortals', 'name avatar');
+
+            if (user && user.isBanned) {
+                if (user.banExpiresAt && user.banExpiresAt < new Date()) {
+                    user.isBanned = false;
+                    user.banReason = '';
+                    user.banExpiresAt = null;
+                    await user.save();
+                } else {
+                    return res.status(403).json({
+                        isBanned: true,
+                        banReason: user.banReason || 'Hesabınız platform kuralları ihlali nedeniyle engellenmiştir.',
+                        banExpiresAt: user.banExpiresAt
+                    });
+                }
+            }
+
+            const realToken = generateToken(decoded.id);
             return res.json({
                 action: 'login',
                 token: realToken,

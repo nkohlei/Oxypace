@@ -1,5 +1,29 @@
 import { initializeVoiceHandler } from './voiceHandler.js';
 import User from '../models/User.js';
+import { savePresence, removePresence, getActivePresences } from '../services/presenceService.js';
+
+let presenceInterval = null;
+
+// Aktif admin izleme odasındaki yöneticilere 5 saniyede bir güncelleme yayınlayan döngü
+const startPresenceBroadcast = (io) => {
+    if (presenceInterval) {return;}
+
+    presenceInterval = setInterval(async () => {
+        try {
+            const adminPresenceRoom = io.sockets.adapter.rooms.get('admin_presence');
+            if (adminPresenceRoom && adminPresenceRoom.size > 0) {
+                const activeUsers = await getActivePresences();
+                io.to('admin_presence').emit('admin_presence_update', activeUsers);
+            } else {
+                // Odada admin yoksa kaynak tüketimini önlemek için döngüyü durdur
+                clearInterval(presenceInterval);
+                presenceInterval = null;
+            }
+        } catch (err) {
+            console.error('Error broadcasting admin presence:', err);
+        }
+    }, 5000);
+};
 
 export const initializeSocket = (io) => {
     // Store user socket connections
@@ -14,8 +38,12 @@ export const initializeSocket = (io) => {
             socket.join(userId);
             console.log(`👤 User ${userId} joined`);
 
-            // Update user's last active to now and broadcast
+            // Kullanıcı profil bilgilerini çekip socket nesnesine önbelleğe alalım (DB yükünü önlemek için)
             try {
+                const user = await User.findById(userId).select('username profile isAdmin');
+                if (user) {
+                    socket.user = user;
+                }
                 await User.findByIdAndUpdate(userId, { lastActive: new Date() });
             } catch (err) {
                 console.error('Error updating lastActive on join:', err);
@@ -32,6 +60,18 @@ export const initializeSocket = (io) => {
                     userSockets.delete(userId);
                     console.log(`👋 User ${userId} disconnected`);
 
+                    // Presence kaydını anında bellekten/Redis'ten kaldır ve adminleri güncelle
+                    try {
+                        await removePresence(userId);
+                        const adminPresenceRoom = io.sockets.adapter.rooms.get('admin_presence');
+                        if (adminPresenceRoom && adminPresenceRoom.size > 0) {
+                            const activeUsers = await getActivePresences();
+                            io.to('admin_presence').emit('admin_presence_update', activeUsers);
+                        }
+                    } catch (err) {
+                        console.error('Error removing presence on disconnect:', err);
+                    }
+
                     // Update the user's lastActive time in the database
                     try {
                         await User.findByIdAndUpdate(userId, { lastActive: new Date() });
@@ -44,6 +84,47 @@ export const initializeSocket = (io) => {
                     break;
                 }
             }
+        });
+
+        // --- PRESENCE & REAL-TIME ACTIVITY ---
+
+        socket.on('presence_update', async ({ path }) => {
+            const user = socket.user;
+            if (!user) {return;}
+
+            try {
+                await savePresence(user._id, {
+                    userId: user._id.toString(),
+                    username: user.username,
+                    displayName: user.profile?.displayName || user.username,
+                    avatar: user.profile?.avatar || '',
+                    path: path || '/',
+                });
+            } catch (err) {
+                console.error('Error handling presence_update:', err);
+            }
+        });
+
+        socket.on('join_admin_presence', async () => {
+            // Sadece yetkili adminlerin izleme odasına girmesine izin ver
+            if (socket.user && (socket.user.isAdmin || socket.user.username === 'oxypace')) {
+                socket.join('admin_presence');
+                console.log(`🛡️ Admin @${socket.user.username} joined admin_presence`);
+
+                try {
+                    // İlk katılımda listeyi bekletmeden anında gönder
+                    const activeUsers = await getActivePresences();
+                    socket.emit('admin_presence_update', activeUsers);
+                    startPresenceBroadcast(io);
+                } catch (err) {
+                    console.error('Error sending initial presence update:', err);
+                }
+            }
+        });
+
+        socket.on('leave_admin_presence', () => {
+            socket.leave('admin_presence');
+            console.log(`🛡️ Socket ${socket.id} left admin_presence`);
         });
 
         // Typing indicator

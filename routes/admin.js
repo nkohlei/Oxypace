@@ -5,6 +5,8 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import ContactMessage from '../models/ContactMessage.js';
 import SystemSettings from '../models/SystemSettings.js';
+import BannedIP from '../models/BannedIP.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
@@ -118,7 +120,7 @@ router.get('/users', protect, admin, async (req, res) => {
         }
 
         const users = await User.find(query)
-            .select('username email profile verificationBadge isVerified createdAt')
+            .select('username email profile verificationBadge isVerified isBanned banReason banExpiresAt createdAt')
             .sort({ createdAt: -1 })
             .limit(50); // Limit to avoid massive payloads
 
@@ -261,8 +263,8 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
             portal.status = status;
         }
 
-        if (req.body.statusReason !== undefined) portal.statusReason = String(req.body.statusReason).slice(0, 500);
-        if (req.body.suspendedUntil !== undefined) portal.suspendedUntil = req.body.suspendedUntil;
+        if (req.body.statusReason !== undefined) {portal.statusReason = String(req.body.statusReason).slice(0, 500);}
+        if (req.body.suspendedUntil !== undefined) {portal.suspendedUntil = req.body.suspendedUntil;}
 
         // Clear suspendedUntil when activating
         if (status === 'active') {
@@ -278,8 +280,8 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
             portal.badges = badges.map(b => b.trim().toLowerCase().slice(0, 50));
         }
 
-        if (typeof isVerified === 'boolean') portal.isVerified = isVerified;
-        if (typeof req.body.isNSFW === 'boolean') portal.isNSFW = req.body.isNSFW;
+        if (typeof isVerified === 'boolean') {portal.isVerified = isVerified;}
+        if (typeof req.body.isNSFW === 'boolean') {portal.isNSFW = req.body.isNSFW;}
 
         await portal.save();
         res.json({ message: 'Portal updated', portal });
@@ -411,7 +413,7 @@ router.delete('/portals/:id/alert/:alertId', protect, admin, async (req, res) =>
 // @access  Private/Admin
 router.get('/system-settings/maintenance', protect, admin, async (req, res) => {
     try {
-        let setting = await SystemSettings.findOne({ key: 'maintenance_mode' });
+        const setting = await SystemSettings.findOne({ key: 'maintenance_mode' });
         const active = setting ? !!setting.value?.active : false;
         res.json({ active });
     } catch (error) {
@@ -454,6 +456,169 @@ router.put('/system-settings/maintenance', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Update maintenance setting error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/admin/users/:id/ban
+// @desc    Ban a user profile and broadcast socket logout signal
+// @access  Private/Admin
+router.put('/users/:id/ban', protect, admin, async (req, res) => {
+    try {
+        const { reason, expiresAt } = req.body;
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        user.isBanned = true;
+        user.banReason = reason || 'Topluluk kuralları ihlali';
+        user.banExpiresAt = expiresAt ? new Date(expiresAt) : null;
+
+        await user.save();
+
+        // Aktif kullanıcının oturumunu gerçek zamanlı sonlandırmak için socket yayını gönder
+        const io = req.app.get('io');
+        if (io) {
+            io.to(user._id.toString()).emit('user_banned', {
+                reason: user.banReason,
+                expiresAt: user.banExpiresAt
+            });
+            console.log(`📡 Broadcasted user_banned to user room: ${user._id}`);
+        }
+
+        res.json({ message: 'Kullanıcı başarıyla engellendi.', user });
+    } catch (error) {
+        console.error('Ban user error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   PUT /api/admin/users/:id/unban
+// @desc    Unban a user profile
+// @access  Private/Admin
+router.put('/users/:id/unban', protect, admin, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        user.isBanned = false;
+        user.banReason = '';
+        user.banExpiresAt = null;
+
+        await user.save();
+        res.json({ message: 'Kullanıcının engeli başarıyla kaldırıldı.', user });
+    } catch (error) {
+        console.error('Unban user error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   GET /api/admin/ip-bans
+// @desc    Get all active IP bans
+// @access  Private/Admin
+router.get('/ip-bans', protect, admin, async (req, res) => {
+    try {
+        const bans = await BannedIP.find().populate('bannedBy', 'username').sort({ createdAt: -1 });
+        res.json(bans);
+    } catch (error) {
+        console.error('Fetch IP bans error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   POST /api/admin/ip-bans
+// @desc    Ban an IP address
+// @access  Private/Admin
+router.post('/ip-bans', protect, admin, async (req, res) => {
+    try {
+        const { ip, reason, expiresAt } = req.body;
+
+        if (!ip) {
+            return res.status(400).json({ message: 'IP adresi zorunludur.' });
+        }
+
+        const ban = await BannedIP.findOneAndUpdate(
+            { ip: ip.trim() },
+            {
+                reason: reason || 'Güvenlik ihlali',
+                bannedBy: req.user._id,
+                expiresAt: expiresAt ? new Date(expiresAt) : null
+            },
+            { upsert: true, new: true }
+        );
+
+        res.json({ message: 'IP adresi başarıyla engellendi.', ban });
+    } catch (error) {
+        console.error('IP ban error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   DELETE /api/admin/ip-bans/:ip
+// @desc    Unban an IP address
+// @access  Private/Admin
+router.delete('/ip-bans/:ip', protect, admin, async (req, res) => {
+    try {
+        const result = await BannedIP.deleteOne({ ip: req.params.ip });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Engellenmiş IP bulunamadı.' });
+        }
+        res.json({ message: 'IP adresinin engeli kaldırıldı.' });
+    } catch (error) {
+        console.error('IP unban error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   POST /api/admin/impersonate/:id
+// @desc    Impersonate a user (generate 15 min restricted ghost JWT)
+// @access  Private/Admin (Oxypace Only)
+router.post('/impersonate/:id', protect, admin, async (req, res) => {
+    try {
+        // Güvenlik: Sadece baş yönetici (oxypace) taklit modu başlatabilir
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu işlemi sadece baş yönetici yapabilir.' });
+        }
+
+        const targetUser = await User.findById(req.params.id);
+        if (!targetUser) {
+            return res.status(404).json({ message: 'Taklit edilecek kullanıcı bulunamadı.' });
+        }
+
+        // Baş yöneticinin kendisini taklit etmesini engelle (sonsuz döngü/mantık hatasını önlemek için)
+        if (targetUser.username === 'oxypace') {
+            return res.status(400).json({ message: 'Kendinizi taklit edemezsiniz.' });
+        }
+
+        // 15 dakika ömürlü, isGhost claim'ine sahip kısıtlı token üret
+        const token = jwt.sign(
+            { id: targetUser._id, adminId: req.user._id, isGhost: true },
+            process.env.JWT_SECRET,
+            { expiresIn: '15m' }
+        );
+
+        console.log(`👤 Ghost Mode Impersonation Started: Admin @${req.user.username} is now @${targetUser.username}`);
+
+        res.json({
+            message: `Taklit modu başarıyla başlatıldı: @${targetUser.username}`,
+            token,
+            user: {
+                _id: targetUser._id,
+                email: targetUser.email,
+                username: targetUser.username,
+                profile: targetUser.profile,
+                joinedPortals: targetUser.joinedPortals,
+                isAdmin: targetUser.isAdmin,
+                verificationBadge: targetUser.verificationBadge,
+            }
+        });
+    } catch (error) {
+        console.error('Impersonate user error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
     }
 });
 
