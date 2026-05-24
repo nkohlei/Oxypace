@@ -70,7 +70,6 @@ import { Filesystem } from '@capacitor/filesystem';
 
 import PortalSidebar from './components/PortalSidebar';
 import UserBar from './components/UserBar';
-import SplashScreen from './components/SplashScreen';
 import ScrollToTop from './components/ScrollToTop';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import './AppLayout.css';
@@ -459,17 +458,9 @@ const MaintenanceGate = ({ children }) => {
 // Separate wrapper to access AuthContext
 const AppContent = () => {
     const { loading, token } = useAuth();
-    const [showSplash, setShowSplash] = useState(true);
-    const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
-    // Coordinate splash screen with auth loading
+    // Send FCM Token to Backend if available and logged in
     useEffect(() => {
-        // Minimum time for splash animation (3s total, matching SplashScreen.jsx)
-        const timer = setTimeout(() => {
-            setMinTimeElapsed(true);
-        }, 3000);
-
-        // Send FCM Token to Backend if available and logged in
         if (token && Capacitor.isNativePlatform()) {
             const fcmToken = localStorage.getItem('fcm_token');
             if (fcmToken) {
@@ -480,26 +471,16 @@ const AppContent = () => {
                 });
             }
         }
-
-        return () => clearTimeout(timer);
     }, [token]);
 
-    useEffect(() => {
-        // Only hide splash when:
-        // 1. Min animation time has passed
-        // 2. Auth is no longer loading (profile fetched or no token)
-        if (minTimeElapsed && !loading) {
-            setShowSplash(false);
-        }
-    }, [minTimeElapsed, loading]);
+    if (loading) {
+        return <PageLoader />;
+    }
 
     return (
-        <>
-            {showSplash && <SplashScreen onFinish={() => {}} />}
-            <MaintenanceGate>
-                <AppLayout />
-            </MaintenanceGate>
-        </>
+        <MaintenanceGate>
+            <AppLayout />
+        </MaintenanceGate>
     );
 };
 
