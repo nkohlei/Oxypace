@@ -244,6 +244,12 @@ router.get('/me', protect, async (req, res) => {
             Portal.find({ owner: req.user._id }).select('name avatar')
         ]);
 
+        // Pre-build follower ID set for fast lookup
+        // user.followers is an array of raw ObjectIDs (not populated)
+        const followerIdSet = new Set(
+            (user.followers || []).filter(Boolean).map((id) => id.toString())
+        );
+
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -267,6 +273,12 @@ router.get('/me', protect, async (req, res) => {
         if (Array.isArray(userObj.following)) {
             userObj.following = userObj.following.filter(Boolean);
         }
+
+        // Compute TRUE mutual friends: people I follow AND who follow me back.
+        // following is already populated with user objects; filter to those also in followerIdSet.
+        userObj.friends = (userObj.following || []).filter(
+            (f) => f && followerIdSet.has(f._id.toString())
+        );
 
         res.json(userObj);
     } catch (error) {

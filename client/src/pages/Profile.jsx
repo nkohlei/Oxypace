@@ -1119,11 +1119,11 @@ const Profile = () => {
                                         </h4>
                                         <div className="friends-grid">
                                             {(isOwnProfile
-                                                ? profileUser.following
+                                                ? profileUser.friends   // mutual follows only
                                                 : profileUser.mutualFriends
                                             )?.length > 0 ? (
                                                 (isOwnProfile
-                                                    ? profileUser.following
+                                                    ? profileUser.friends
                                                     : profileUser.mutualFriends
                                                 ).map((friend) => (
                                                     <div
