@@ -709,6 +709,38 @@ const Profile = () => {
 
                         {/* RIGHT SECTION: Content Area */}
                         <section className="profile-right-column">
+                            {/* ── PRIVATE ACCOUNT LOCKED STATE ──────────────────── */}
+                            {profileUser.contentLocked && !isOwnProfile ? (
+                                <div className="private-account-locked">
+                                    <svg
+                                        width="52" height="52"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        style={{ opacity: 0.5, marginBottom: '16px' }}
+                                    >
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                    </svg>
+                                    <h3 style={{ margin: '0 0 8px', fontWeight: 600, fontSize: '18px' }}>
+                                        Bu hesap gizlidir
+                                    </h3>
+                                    <p style={{ margin: '0 0 20px', opacity: 0.5, fontSize: '14px' }}>
+                                        Gönderileri ve üyelikleri görmek için arkadaş olmanız gerekir.
+                                    </p>
+                                    <div className="private-stats-row">
+                                        <span className="private-stat">
+                                            <strong>{profileUser.followerCount || 0}</strong> takipçi
+                                        </span>
+                                        <span className="private-stat-dot">·</span>
+                                        <span className="private-stat">
+                                            <strong>{profileUser.followingCount || 0}</strong> takip
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                            <>
                             <div className="profile-tabs">
                                 <div
                                     className={`profile-tab-item ${activeTab === 'posts' ? 'active' : ''}`}
@@ -1293,6 +1325,8 @@ const Profile = () => {
                                     </div>
                                 )}
                             </div>
+                        </>
+                        )}
                         </section>
                     </div>
 

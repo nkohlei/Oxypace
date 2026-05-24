@@ -454,9 +454,44 @@ router.get('/:username', optionalProtect, async (req, res) => {
         }
 
         userObj.mutualFriends = mutualFriends;
-        userObj.mutualFriendsCount = mutualFriends.length; // Approximate, or count all mutuals
+        userObj.mutualFriendsCount = mutualFriends.length;
         userObj.mutualPortals = mutualPortals;
         userObj.mutualPortalsCount = mutualPortals.length;
+
+        // ─── PRIVATE ACCOUNT GATE ────────────────────────────────────────────────
+        // If the account is private AND the viewer is not the owner AND not a friend,
+        // return only the minimal public surface. Nothing else leaks.
+        const isPrivateAccount = user.settings?.privacy?.isPrivate === true;
+        if (isPrivateAccount && !isOwner && !isFriend) {
+            return res.json({
+                _id: userObj._id,
+                username: userObj.username,
+                profile: {
+                    displayName: userObj.profile?.displayName,
+                    bio: null,         // bio hidden for strangers
+                    avatar: userObj.profile?.avatar,
+                    coverImage: userObj.profile?.coverImage,
+                },
+                followerCount: userObj.followerCount,
+                followingCount: userObj.followingCount,
+                postCount: 0,          // exact count hidden
+                verificationBadge: userObj.verificationBadge,
+                createdAt: userObj.createdAt,
+                isPrivate: true,
+                contentLocked: true,
+                isFollowing: userObj.isFollowing || false,
+                hasRequested: userObj.hasRequested || false,
+                isFriend: false,
+                settings: { privacy: { isPrivate: true } },
+                portals: [],
+                portalsHidden: true,
+                mutualFriends: [],
+                mutualFriendsCount: 0,
+                mutualPortals: [],
+                mutualPortalsCount: 0,
+            });
+        }
+        // ─────────────────────────────────────────────────────────────────────────
 
         // Fetch portals owned by the user
         const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar badges isVerified privacy members allowedUsers owner admins');
@@ -515,15 +550,9 @@ router.get('/:username', optionalProtect, async (req, res) => {
             userObj.portalsHidden = false;
         }
 
-        // Remove raw lists not needed for client to see fully if private?
-        // We already stripped unnecessary fields by selective object creation, but userObj came from user.toObject() which has everything select()ed.
         delete userObj.joinedPortals;
         delete userObj.followers;
-        delete userObj.following; // Don't expose full following list blindly
-        // Depending on following/follower privacy setting (which users also have 'isPrivate' for account), we might hide counts/lists.
-        // For now respecting 'isPrivate' for general account visibility was handled in existing code?
-        // Existing code checks isPrivate in GET followers/following routes, but detailed profile view should also respect it?
-        // The previous code didn't seem to block basic profile info if private, only lists.
+        delete userObj.following;
 
         res.json(userObj);
     } catch (error) {
@@ -531,6 +560,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
 
 // @route   POST /api/users/me/avatar
 // @desc    Upload profile photo
