@@ -35,7 +35,6 @@ const Notifications = () => {
             updateUser({
                 ...currentUser,
                 followRequests: updatedRequests,
-                followerCount: (currentUser.followerCount || 0) + 1,
             });
         } catch (error) {
             console.error('Accept error:', error);

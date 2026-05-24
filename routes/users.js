@@ -458,6 +458,17 @@ router.get('/:username', optionalProtect, async (req, res) => {
         userObj.mutualPortals = mutualPortals;
         userObj.mutualPortalsCount = mutualPortals.length;
 
+        // Friendship = mutual follow (both in each other's followers+following)
+        // user.followers and user.following are raw ID arrays (not populated here)
+        const followerIdSet = new Set(
+            (user.followers || []).filter(Boolean).map((id) => id.toString())
+        );
+        const friendCount = (user.following || []).filter(
+            (id) => id && followerIdSet.has(id.toString())
+        ).length;
+
+        userObj.friendCount = friendCount;
+
         // ─── PRIVATE ACCOUNT GATE ────────────────────────────────────────────────
         // If the account is private AND the viewer is not the owner AND not a friend,
         // return only the minimal public surface. Nothing else leaks.
@@ -468,13 +479,12 @@ router.get('/:username', optionalProtect, async (req, res) => {
                 username: userObj.username,
                 profile: {
                     displayName: userObj.profile?.displayName,
-                    bio: null,         // bio hidden for strangers
+                    bio: null,          // bio hidden for strangers
                     avatar: userObj.profile?.avatar,
                     coverImage: userObj.profile?.coverImage,
                 },
-                followerCount: userObj.followerCount,
-                followingCount: userObj.followingCount,
-                postCount: 0,          // exact count hidden
+                friendCount,            // mutual friends only — no follow direction
+                postCount: 0,           // exact count hidden
                 verificationBadge: userObj.verificationBadge,
                 createdAt: userObj.createdAt,
                 isPrivate: true,

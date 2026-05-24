@@ -731,11 +731,7 @@ const Profile = () => {
                                     </p>
                                     <div className="private-stats-row">
                                         <span className="private-stat">
-                                            <strong>{profileUser.followerCount || 0}</strong> takipçi
-                                        </span>
-                                        <span className="private-stat-dot">·</span>
-                                        <span className="private-stat">
-                                            <strong>{profileUser.followingCount || 0}</strong> takip
+                                            <strong>{profileUser.friendCount || 0}</strong> arkadaş
                                         </span>
                                     </div>
                                 </div>

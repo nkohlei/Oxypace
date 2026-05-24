@@ -162,7 +162,7 @@ const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
                 </div>
 
                 {/* Suggested Friends (Horizontal List) */}
-                {!searchQuery && currentUser?.following?.length > 0 && (
+                {!searchQuery && currentUser?.friends?.length > 0 && (
                     <div style={{ padding: '0 16px 16px 16px' }}>
                         <div
                             style={{
@@ -194,10 +194,10 @@ const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
                              `}</style>
                             }
 
-                            {currentUser.following.map((friendId) => {
-                                // Assuming 'following' is an array of IDs or objects.
+                            {currentUser.friends.map((friendId) => {
+                                // Assuming 'friends' is an array of IDs or objects.
                                 // If IDs, we can't show much without fetching.
-                                // Ideally, user.following would be populated.
+                                // Ideally, user.friends would be populated.
                                 // If not, we might fail to show avatar/name.
                                 // Let's check if it's an object.
                                 const friend =

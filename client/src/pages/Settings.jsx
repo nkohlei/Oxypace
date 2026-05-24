@@ -756,7 +756,7 @@ const Settings = () => {
                         style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', outline: 'none' }}
                     >
                         <option value="everyone">Herkes</option>
-                        <option value="friends">Sadece Arkadaşlar (Karşılıklı Takip)</option>
+                        <option value="friends">Sadece Arkadaşlar</option>
                         <option value="none">Hiç Kimse</option>
                     </select>
                 </div>

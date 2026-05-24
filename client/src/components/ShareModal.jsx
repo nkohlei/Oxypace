@@ -11,7 +11,6 @@ const ShareModal = ({ postId, onClose }) => {
     const { user: currentUser } = useAuth();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]); // Search results
-    const [followers, setFollowers] = useState([]); // Followers list
     const [loading, setLoading] = useState(false);
     const [sendingMap, setSendingMap] = useState({}); // Track sending state per user
     const [showCopyAlert, setShowCopyAlert] = useState(false);
@@ -24,27 +23,7 @@ const ShareModal = ({ postId, onClose }) => {
         };
     }, []);
 
-    useEffect(() => {
-        // Fetch following/followers to suggest (Using 'following' mostly makes sense for share, but user said followers)
-        // Actually, you usually share to people you follow or who follow you (Mutuals).
-        // Let's fetch followers as requested by the user prompt "mevcut takipçilerden oluşacak"
-        if (currentUser) {
-            fetchFollowers();
-        }
-    }, [currentUser]);
-
-    const fetchFollowers = async () => {
-        try {
-            // Using logic: Get users that follow me? Or users I follow?
-            // "Takipçilerden" usually means followers, but for sharing, you usually share to friends (following).
-            // Let's stick to "Followers" as explicitly requested.
-            // But wait, the API I checked was `/:id/followers`.
-            const response = await axios.get(`/api/users/${currentUser._id}/followers`);
-            setFollowers(response.data);
-        } catch (error) {
-            console.error('Failed to fetch followers', error);
-        }
-    };
+    const friends = currentUser?.friends || [];
 
     const handleSearch = async (searchQuery) => {
         if (!searchQuery.trim()) {
@@ -145,7 +124,7 @@ const ShareModal = ({ postId, onClose }) => {
     };
 
     const showSearchResults = query.length > 0;
-    const listToRender = showSearchResults ? results : followers;
+    const listToRender = showSearchResults ? results : friends;
 
     return createPortal(
         <div
@@ -181,7 +160,7 @@ const ShareModal = ({ postId, onClose }) => {
                         ></div>
                     ) : listToRender.length === 0 ? (
                         <p className="no-results">
-                            {showSearchResults ? 'Kullanıcı bulunamadı' : 'Takipçi bulunamadı'}
+                            {showSearchResults ? 'Kullanıcı bulunamadı' : 'Arkadaş bulunamadı'}
                         </p>
                     ) : showSearchResults ? (
                         /* List Layout for Search */
@@ -216,9 +195,9 @@ const ShareModal = ({ postId, onClose }) => {
                             ))}
                         </div>
                     ) : (
-                        /* Grid Layout for Followers */
+                        /* Grid Layout for Friends */
                         <div className="share-grid">
-                            {followers.map((user) => (
+                            {friends.map((user) => (
                                 <div
                                     key={user._id}
                                     className="share-user-card"
