@@ -964,10 +964,6 @@ router.post('/request-verification', protect, async (req, res) => {
             return res.status(400).json({ message: 'Zaten bekleyen bir başvurunuz var.' });
         }
 
-        if (user.verificationBadge !== 'none' && user.verificationBadge !== 'staff') {
-            return res.status(400).json({ message: 'Zaten doğrulanmış bir rozetiniz var.' });
-        }
-
         user.verificationRequest = {
             status: 'pending',
             badgeType,

@@ -1019,6 +1019,18 @@ input:checked+.slider::before {
 }
 
 /* --- Glassmorphism Redesign Overrides --- */
+.settings-page-wrapper {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
 .glass-redesign {
     background-color: var(--bg-primary); /* Darker backdrop */
 }

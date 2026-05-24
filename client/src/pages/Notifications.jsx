@@ -14,6 +14,7 @@ const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [activeFilter, setActiveFilter] = useState('all');
     const { socket } = useSocket();
 
     const handleAccept = async (e, senderId, notifId) => {
@@ -146,6 +147,20 @@ const Notifications = () => {
         );
     }
 
+    const filteredNotifications = notifications.filter((notif) => {
+        if (activeFilter === 'all') return true;
+        if (activeFilter === 'quotes') {
+            return notif.type === 'comment' || notif.type === 'reply';
+        }
+        if (activeFilter === 'friends') {
+            return notif.type === 'follow' || notif.type === 'follow_request' || notif.type === 'friend_connected' || notif.type === 'follow_request_handled';
+        }
+        if (activeFilter === 'system') {
+            return notif.type === 'system';
+        }
+        return true;
+    });
+
     return (
         <div className="app-wrapper">
             <Navbar />
@@ -181,9 +196,37 @@ const Notifications = () => {
                         )}
                     </div>
 
+                    {/* Filter Tabs */}
+                    <div className="notifications-filter-bar">
+                        <button 
+                            className={`filter-tab-btn ${activeFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setActiveFilter('all')}
+                        >
+                            Hepsi
+                        </button>
+                        <button 
+                            className={`filter-tab-btn ${activeFilter === 'quotes' ? 'active' : ''}`}
+                            onClick={() => setActiveFilter('quotes')}
+                        >
+                            Alıntılar
+                        </button>
+                        <button 
+                            className={`filter-tab-btn ${activeFilter === 'friends' ? 'active' : ''}`}
+                            onClick={() => setActiveFilter('friends')}
+                        >
+                            Arkadaşlık
+                        </button>
+                        <button 
+                            className={`filter-tab-btn ${activeFilter === 'system' ? 'active' : ''}`}
+                            onClick={() => setActiveFilter('system')}
+                        >
+                            Sistem
+                        </button>
+                    </div>
+
                     <div className="notifications-list">
-                        {notifications.length > 0 ? (
-                            notifications.map((notif) => {
+                        {filteredNotifications.length > 0 ? (
+                            filteredNotifications.map((notif) => {
                                 // Guard clause: if no sender, skip rendering to prevent crash
                                 if (!notif.sender) return null;
 
@@ -326,9 +369,24 @@ const Notifications = () => {
                             })
                         ) : (
                             <div className="empty-state">
-                                <div className="empty-icon">🔔</div>
-                                <h3>Bildirim yok</h3>
-                                <p>Henüz yeni bir etkileşimin yok.</p>
+                                <div className="empty-icon">
+                                    {activeFilter === 'all' && '🔔'}
+                                    {activeFilter === 'quotes' && '💬'}
+                                    {activeFilter === 'friends' && '🤝'}
+                                    {activeFilter === 'system' && '📢'}
+                                </div>
+                                <h3>
+                                    {activeFilter === 'all' && 'Bildirim yok'}
+                                    {activeFilter === 'quotes' && 'Alıntı yok'}
+                                    {activeFilter === 'friends' && 'Arkadaşlık bildirimi yok'}
+                                    {activeFilter === 'system' && 'Sistem bildirimi yok'}
+                                </h3>
+                                <p>
+                                    {activeFilter === 'all' && 'Henüz yeni bir etkileşimin yok.'}
+                                    {activeFilter === 'quotes' && 'Henüz bir alıntı bildiriminiz yok.'}
+                                    {activeFilter === 'friends' && 'Henüz bir arkadaşlık bildiriminiz yok.'}
+                                    {activeFilter === 'system' && 'Henüz bir sistem bildiriminiz yok.'}
+                                </p>
                             </div>
                         )}
                     </div>

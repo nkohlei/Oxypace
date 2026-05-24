@@ -59,6 +59,7 @@ const Settings = () => {
     const [passwordError, setPasswordError] = useState('');
     const [passwordSuccess, setPasswordSuccess] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false); // For custom verification dropdown
+    const [reapplyMode, setReapplyMode] = useState(false);
 
     // Extract query params to open specific section
     useEffect(() => {
@@ -462,7 +463,7 @@ const Settings = () => {
         return (
             <main className={`discord-main-content ${activeMenu === 'main' ? 'hidden-on-mobile' : ''}`}>
                 {activeMenu !== 'main' && (
-                    <div className="info-page-header" style={{ padding: '40px 24px 0 24px', marginBottom: '20px' }}>
+                    <div className="info-page-header" style={{ padding: '8px 24px 0 24px', marginBottom: '6px' }}>
                         <div className="title-group">
                             <button 
                                 className="minimal-back-btn" 
@@ -675,7 +676,7 @@ const Settings = () => {
                             </p>
                         </div>
                     </div>
-                ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' ? (
+                ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' && !reapplyMode ? (
                     <div className="verification-status approved">
                         <div className="status-icon-large" style={{ color: '#2ecc71' }}>✓</div>
                         <div className="status-info">
@@ -691,10 +692,52 @@ const Settings = () => {
                                     <Badge type={user.verificationBadge} size={16} />
                                 </div>
                             </div>
+                            <div style={{ marginTop: '20px' }}>
+                                <button
+                                    onClick={() => setReapplyMode(true)}
+                                    style={{
+                                        padding: '10px 20px',
+                                        borderRadius: '8px',
+                                        fontSize: '13px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        background: 'var(--primary-cyan)',
+                                        color: 'black',
+                                        border: 'none',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+                                    onMouseOut={(e) => e.currentTarget.style.filter = 'none'}
+                                >
+                                    Farklı Bir Kategori İçin Yeniden Başvur
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ) : (
                     <div className="verification-apply">
+                        {user?.verificationRequest?.status === 'rejected' && (
+                            <div className="verification-status rejected" style={{
+                                background: 'rgba(255, 77, 77, 0.05)',
+                                border: '1px solid rgba(255, 77, 77, 0.2)',
+                                color: '#ff6b6b',
+                                borderRadius: '12px',
+                                padding: '16px',
+                                marginBottom: '20px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                textAlign: 'left'
+                            }}>
+                                <span style={{ fontSize: '24px' }}>⚠️</span>
+                                <div>
+                                    <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#ff6b6b' }}>Önceki Başvurunuz Reddedildi</h4>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: '#b5bac1', lineHeight: '1.4' }}>
+                                        Önceki doğrulama talebiniz kriterlerimize uymadığı için reddedilmiştir. Bilgilerinizi düzelterek aşağıdan tekrar başvurabilirsiniz.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                         <p className="verification-desc" style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6' }}>
                             Hesabınızın türünü en iyi anlatan kategoriyi seçerek başvurabilirsiniz. Başvurunuz ardından hesabınız topluluk kriterlerimize göre incelenecektir.
                         </p>
