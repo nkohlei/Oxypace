@@ -1589,4 +1589,107 @@
 .nsfw-toggle-input:checked ~ .nsfw-toggle-text {
     color: #ef4444;
 }
+
+/* =============================================
+   SİSTEM AYARLARI (MAINTENANCE TAB)
+   ============================================= */
+.system-settings-section {
+    animation: fadeIn 0.4s ease forwards;
+}
+
+.system-card {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    margin-bottom: 25px;
+    transition: border-color 0.3s;
+}
+
+.system-card:hover {
+    border-color: #444;
+}
+
+.system-card-header {
+    border-bottom: 1px solid #222;
+    padding-bottom: 20px;
+    margin-bottom: 25px;
+}
+
+.system-card-header h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    color: #fff;
+}
+
+.system-card-header p {
+    font-size: 0.9rem;
+    color: #888;
+    margin: 0;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 30px;
+}
+
+.setting-info {
+    flex: 1;
+}
+
+.setting-info h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 8px 0;
+}
+
+.setting-info p {
+    font-size: 0.9rem;
+    color: #aaa;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.setting-control {
+    flex-shrink: 0;
+}
+
+.maintenance-toggle-btn {
+    border: 1px solid #333;
+    background: #1a1a1a;
+    color: #ccc;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.maintenance-toggle-btn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(239, 68, 68, 0.1);
+}
+
+.maintenance-toggle-btn.active {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+}
+
+.maintenance-toggle-btn.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(220, 38, 38, 0.6);
+}
 

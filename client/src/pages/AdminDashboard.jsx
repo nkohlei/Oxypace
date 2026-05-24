@@ -437,6 +437,7 @@ const AdminDashboard = () => {
     }
 
     const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals', 'messages', 'badges'
+    const [maintenanceActive, setMaintenanceActive] = useState(false);
     const [requests, setRequests] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -502,8 +503,40 @@ const AdminDashboard = () => {
             fetchAllBadges();
         } else if (activeTab === 'feedback') {
             fetchFeedbacks();
+        } else if (activeTab === 'system' && isOxypace) {
+            fetchMaintenanceStatus();
         }
     }, [activeTab, isOxypace]);
+
+    const fetchMaintenanceStatus = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/system-settings/maintenance');
+            setMaintenanceActive(data.active);
+        } catch (err) {
+            setError('Bakım modu durumu yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleMaintenance = async () => {
+        const confirmMsg = maintenanceActive
+            ? 'Bakım modunu kapatmak ve platformu genel kullanıma açmak istediğinize emin misiniz?'
+            : 'Bakım modunu açmak ve platformu genel kullanıma kapatmak istediğinize emin misiniz? Sitedeki tüm aktif kullanıcılar anında 404 sayfasına yönlendirilecektir.';
+        
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            const { data } = await axios.put('/api/admin/system-settings/maintenance', {
+                active: !maintenanceActive
+            });
+            setMaintenanceActive(data.active);
+            alert(data.message);
+        } catch (err) {
+            alert(err.response?.data?.message || 'İşlem başarısız.');
+        }
+    };
 
     // Fetch Feedbacks for the dedicated tab
     const fetchFeedbacks = async () => {
@@ -967,6 +1000,14 @@ const AdminDashboard = () => {
                         {contactMessages.filter(m => m.status === 'unread').length > 0 &&
                             <span className="tab-badge">{contactMessages.filter(m => m.status === 'unread').length}</span>
                         }
+                    </button>
+                )}
+                {isOxypace && (
+                    <button
+                        className={`admin-tab ${activeTab === 'system' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('system')}
+                    >
+                        Sistem Ayarları
                     </button>
                 )}
             </div>
@@ -1501,6 +1542,36 @@ const AdminDashboard = () => {
                                 )}
                             </div>
                         )}
+                    </div>
+                )}
+                {activeTab === 'system' && isOxypace && (
+                    <div className="system-settings-section">
+                        <div className="system-card">
+                            <div className="system-card-header">
+                                <h3>🔧 Sistem Genel Ayarları</h3>
+                                <p>Platform erişimi ve global bakım ayarları</p>
+                            </div>
+                            <div className="system-card-body">
+                                <div className="setting-row">
+                                    <div className="setting-info">
+                                        <h4>Vercel 404 Kısıtlaması (Bakım Modu)</h4>
+                                        <p>
+                                            Bu ayar aktifleştirildiğinde, geliştirici yetkisi (?access=oxypace çerezi) 
+                                            olmayan tüm kullanıcılar sahte Vercel 404 (DEPLOYMENT_NOT_FOUND) sayfasına yönlendirilir. 
+                                            Sitede o an açık olan kullanıcıların sayfası otomatik olarak yenilenerek engellenir.
+                                        </p>
+                                    </div>
+                                    <div className="setting-control">
+                                        <button 
+                                            className={`maintenance-toggle-btn ${maintenanceActive ? 'active' : ''}`}
+                                            onClick={handleToggleMaintenance}
+                                        >
+                                            {maintenanceActive ? '🔴 Bakım Modu Aktif (Kapat)' : '🟢 Bakım Modu Pasif (Aç)'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

@@ -4,6 +4,7 @@ import { admin } from '../middleware/admin.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import ContactMessage from '../models/ContactMessage.js';
+import SystemSettings from '../models/SystemSettings.js';
 
 const router = express.Router();
 
@@ -401,6 +402,57 @@ router.delete('/portals/:id/alert/:alertId', protect, admin, async (req, res) =>
         res.json({ message: 'Uyarı kaldırıldı' });
     } catch (error) {
         console.error('Deactivate portal alert error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   GET /api/admin/system-settings/maintenance
+// @desc    Get current maintenance mode status
+// @access  Private/Admin
+router.get('/system-settings/maintenance', protect, admin, async (req, res) => {
+    try {
+        let setting = await SystemSettings.findOne({ key: 'maintenance_mode' });
+        const active = setting ? !!setting.value?.active : false;
+        res.json({ active });
+    } catch (error) {
+        console.error('Fetch maintenance setting error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/admin/system-settings/maintenance
+// @desc    Toggle maintenance mode (Only for head admin oxypace)
+// @access  Private/Admin
+router.put('/system-settings/maintenance', protect, admin, async (req, res) => {
+    try {
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu ayarı sadece baş yönetici değiştirebilir.' });
+        }
+
+        const { active } = req.body;
+        if (typeof active !== 'boolean') {
+            return res.status(400).json({ message: 'Geçersiz aktiflik değeri.' });
+        }
+
+        await SystemSettings.findOneAndUpdate(
+            { key: 'maintenance_mode' },
+            { value: { active } },
+            { upsert: true, new: true }
+        );
+
+        // Update local global cache
+        global.isMaintenanceActive = active;
+
+        // Broadcast to all active socket connections
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('maintenance_toggle', { active });
+            console.log(`📡 Broadcasted maintenance_toggle event: active = ${active}`);
+        }
+
+        res.json({ message: `Bakım modu başarıyla ${active ? 'aktifleştirildi' : 'devre dışı bırakıldı'}.`, active });
+    } catch (error) {
+        console.error('Update maintenance setting error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

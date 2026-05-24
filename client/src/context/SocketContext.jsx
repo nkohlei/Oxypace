@@ -49,6 +49,20 @@ export const SocketProvider = ({ children }) => {
                 setOnlineUsers(users);
             });
 
+            newSocket.on('maintenance_toggle', ({ active }) => {
+                if (active) {
+                    const getCookie = (name) => {
+                        const value = `; ${document.cookie}`;
+                        const parts = value.split(`; ${name}=`);
+                        if (parts.length === 2) return parts.pop().split(';').shift();
+                    };
+                    const hasAccess = getCookie('admin_access') === 'true' || localStorage.getItem('admin_access') === 'true';
+                    if (!hasAccess) {
+                        window.location.reload();
+                    }
+                }
+            });
+
             newSocket.on('disconnect', () => {
                 setConnected(false);
             });

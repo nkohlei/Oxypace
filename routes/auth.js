@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import passport from 'passport';
 import User from '../models/User.js';
+import SystemSettings from '../models/SystemSettings.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rate-limit.js';
 import {
@@ -449,6 +450,20 @@ router.post('/maintenance-login', async (req, res) => {
     } catch (error) {
         console.error('Maintenance login error:', error);
         res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
+// @route   GET /api/auth/maintenance-status
+// @desc    Get current maintenance status (Public/Edge Function check)
+// @access  Public
+router.get('/maintenance-status', async (req, res) => {
+    try {
+        let setting = await SystemSettings.findOne({ key: 'maintenance_mode' });
+        const active = setting ? !!setting.value?.active : false;
+        res.json({ active });
+    } catch (error) {
+        console.error('Fetch public maintenance status error:', error);
+        res.status(500).json({ active: false });
     }
 });
 

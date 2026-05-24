@@ -50,13 +50,14 @@ const getCookie = (name) => {
 };
 
 const urlParams = new URLSearchParams(window.location.search);
-let hasAccess = getCookie('admin_access') === 'true';
+let hasAccess = getCookie('admin_access') === 'true' || localStorage.getItem('admin_access') === 'true';
 
 if (urlParams.get('access') === 'oxypace') {
-    // 30 gün geçerli çerez ata
+    // 30 gün geçerli çerez ve localStorage yetkisi ata
     const date = new Date();
     date.setTime(date.getTime() + (30 * 24 * 60 * 60 * 1000));
     document.cookie = `admin_access=true; expires=${date.toUTCString()}; path=/; SameSite=Lax; Secure`;
+    localStorage.setItem('admin_access', 'true');
     hasAccess = true;
 
     // URL parametresini temizle
@@ -65,7 +66,7 @@ if (urlParams.get('access') === 'oxypace') {
     window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
 }
 
-if (hasAccess) {
+const renderApp = () => {
     ReactDOM.createRoot(document.getElementById('root')).render(
         <React.StrictMode>
             <HelmetProvider>
@@ -75,8 +76,9 @@ if (hasAccess) {
             </HelmetProvider>
         </React.StrictMode>
     );
-} else {
-    // Çerez yoksa React uygulamasını yükleme, sahte 404 sayfasını sessizce çekip göster (silent rewrite)
+};
+
+const show404Page = () => {
     fetch('/404.html')
         .then((res) => res.text())
         .then((html) => {
@@ -87,5 +89,32 @@ if (hasAccess) {
         .catch(() => {
             window.location.href = '/404.html';
         });
-}
+};
+
+const init = async () => {
+    // 1. Yetki varsa doğrudan uygulamayı başlat
+    if (hasAccess) {
+        renderApp();
+        return;
+    }
+
+    try {
+        // 2. Bakım durumunu API'den sorgula
+        const res = await fetch('/api/auth/maintenance-status');
+        const data = await res.json();
+        
+        if (data.active) {
+            // Bakım aktif ve yetki yoksa sahte 404 sayfasına yönlendir
+            show404Page();
+        } else {
+            // Bakım pasifse uygulamayı normal başlat
+            renderApp();
+        }
+    } catch (err) {
+        // API bağlantı hatası durumunda kullanıcıyı engelleme (fail-safe)
+        renderApp();
+    }
+};
+
+init();
 
