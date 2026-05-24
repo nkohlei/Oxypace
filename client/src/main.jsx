@@ -42,13 +42,50 @@ window.addEventListener('vite:preloadError', (event) => {
     window.location.reload();
 });
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-        <HelmetProvider>
-            <ErrorBoundary>
-                <App />
-            </ErrorBoundary>
-        </HelmetProvider>
-    </React.StrictMode>
-);
+// ── Client-side Access Control Fallback ────────────────────────────────
+const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+};
+
+const urlParams = new URLSearchParams(window.location.search);
+let hasAccess = getCookie('admin_access') === 'true';
+
+if (urlParams.get('access') === 'oxypace') {
+    // 30 gün geçerli çerez ata
+    const date = new Date();
+    date.setTime(date.getTime() + (30 * 24 * 60 * 60 * 1000));
+    document.cookie = `admin_access=true; expires=${date.toUTCString()}; path=/; SameSite=Lax; Secure`;
+    hasAccess = true;
+
+    // URL parametresini temizle
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('access');
+    window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+}
+
+if (hasAccess) {
+    ReactDOM.createRoot(document.getElementById('root')).render(
+        <React.StrictMode>
+            <HelmetProvider>
+                <ErrorBoundary>
+                    <App />
+                </ErrorBoundary>
+            </HelmetProvider>
+        </React.StrictMode>
+    );
+} else {
+    // Çerez yoksa React uygulamasını yükleme, sahte 404 sayfasını sessizce çekip göster (silent rewrite)
+    fetch('/404.html')
+        .then((res) => res.text())
+        .then((html) => {
+            document.open();
+            document.write(html);
+            document.close();
+        })
+        .catch(() => {
+            window.location.href = '/404.html';
+        });
+}
 

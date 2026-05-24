@@ -31,3 +31,6 @@ yarn-error.log*
 android/
 ios/
 capacitor.config.json.local
+
+# Local Netlify folder
+.netlify

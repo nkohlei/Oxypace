@@ -6,6 +6,12 @@
   command = "npm run build"
   # Output directory (Vite default)
   publish = "dist"
+  edge_functions = "netlify/edge-functions"
+
+# ── Edge Functions ───────────────────────────────
+[[edge-functions]]
+  path = "/*"
+  function = "access-control"
 
 # ── Proxies (ported from vercel.json) ────────────
 [[redirects]]
