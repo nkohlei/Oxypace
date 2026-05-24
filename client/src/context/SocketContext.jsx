@@ -40,7 +40,8 @@ export const SocketProvider = ({ children }) => {
         newSocket.on('connect', () => {
             setConnected(true);
             if (isAuthenticated && user?._id) {
-                newSocket.emit('join', user._id);
+                const isGhost = !!localStorage.getItem('admin_backup_token');
+                newSocket.emit('join', user._id, isGhost);
             }
         });
 

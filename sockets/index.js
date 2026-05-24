@@ -33,10 +33,13 @@ export const initializeSocket = (io) => {
         console.log(`✅ Socket connected: ${socket.id}`);
 
         // User joins with their ID
-        socket.on('join', async (userId) => {
-            userSockets.set(userId, socket.id);
+        socket.on('join', async (userId, isGhost) => {
+            socket.isGhost = !!isGhost;
+            if (!socket.isGhost) {
+                userSockets.set(userId, socket.id);
+            }
             socket.join(userId);
-            console.log(`👤 User ${userId} joined`);
+            console.log(`👤 User ${userId} joined${socket.isGhost ? ' (Ghost Mode)' : ''}`);
 
             // Kullanıcı profil bilgilerini çekip socket nesnesine önbelleğe alalım (DB yükünü önlemek için)
             try {
@@ -44,16 +47,24 @@ export const initializeSocket = (io) => {
                 if (user) {
                     socket.user = user;
                 }
-                await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+                if (!socket.isGhost) {
+                    await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+                }
             } catch (err) {
                 console.error('Error updating lastActive on join:', err);
             }
 
-            io.emit('getOnlineUsers', Array.from(userSockets.keys()));
+            if (!socket.isGhost) {
+                io.emit('getOnlineUsers', Array.from(userSockets.keys()));
+            }
         });
 
         // Handle disconnect
         socket.on('disconnect', async () => {
+            if (socket.isGhost) {
+                console.log(`👋 Ghost connection ${socket.id} disconnected`);
+                return;
+            }
             // Remove user from map
             for (const [userId, socketId] of userSockets.entries()) {
                 if (socketId === socket.id) {
@@ -91,6 +102,7 @@ export const initializeSocket = (io) => {
         socket.on('presence_update', async ({ path }) => {
             const user = socket.user;
             if (!user) {return;}
+            if (socket.isGhost) {return;} // Ghost modunda ise presence kaydı oluşturma!
 
             try {
                 await savePresence(user._id, {
