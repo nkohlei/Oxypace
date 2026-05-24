@@ -149,6 +149,9 @@ const userSchema = new mongoose.Schema(
                 push: { type: Boolean, default: true },
                 mentions: { type: Boolean, default: true },
                 likes: { type: Boolean, default: false },
+                comments: { type: Boolean, default: true },
+                friendRequests: { type: Boolean, default: true },
+                system: { type: Boolean, default: true },
             },
             privacy: {
                 isPrivate: { type: Boolean, default: false },

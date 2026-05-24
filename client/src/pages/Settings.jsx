@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import Badge from '../components/Badge';
+import { getImageUrl } from '../utils/imageUtils';
+import '../components/InfoPage.css';
 import './Settings.css';
 
 const Settings = () => {
-    const { logout, user, loading: authLoading } = useAuth();
+    const { logout, user, updateUser, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
     // Navigation State
@@ -18,6 +21,9 @@ const Settings = () => {
         push: true,
         mentions: true,
         likes: false,
+        comments: true,
+        friendRequests: true,
+        system: true,
     });
     const [privacy, setPrivacy] = useState({
         isPrivate: false,
@@ -32,6 +38,16 @@ const Settings = () => {
     const [loading, setLoading] = useState(true);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+    // Profile Form State
+    const [profileForm, setProfileForm] = useState({
+        displayName: '',
+        username: '',
+        bio: '',
+    });
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileError, setProfileError] = useState('');
+    const [profileSuccess, setProfileSuccess] = useState('');
 
     // Forms State
     const [passwordForm, setPasswordForm] = useState({
@@ -56,6 +72,47 @@ const Settings = () => {
     useEffect(() => {
         fetchSettings();
     }, []);
+
+    // Sync profileForm when user is loaded
+    useEffect(() => {
+        if (user) {
+            setProfileForm({
+                displayName: user.profile?.displayName || '',
+                username: user.username || '',
+                bio: user.profile?.bio || '',
+            });
+        }
+    }, [user]);
+
+    const handleProfileUpdate = async (e) => {
+        e.preventDefault();
+        setProfileError('');
+        setProfileSuccess('');
+        setProfileLoading(true);
+
+        try {
+            const res = await axios.put('/api/users/me', {
+                displayName: profileForm.displayName,
+                username: profileForm.username,
+                bio: profileForm.bio,
+            });
+
+            // Sync with auth context
+            updateUser({
+                ...user,
+                username: res.data.user.username,
+                profile: res.data.user.profile
+            });
+            setProfileSuccess('Profil bilgileriniz başarıyla güncellendi.');
+            setTimeout(() => setProfileSuccess(''), 4000);
+        } catch (err) {
+            console.error('Profile update error:', err);
+            setProfileError(err.response?.data?.message || 'Profil güncellenemedi.');
+            setTimeout(() => setProfileError(''), 4000);
+        } finally {
+            setProfileLoading(false);
+        }
+    };
 
     const fetchSettings = async () => {
         try {
@@ -430,51 +487,184 @@ const Settings = () => {
     };
 
     const renderAccountMenu = () => (
-        <div className="submenu-content">
-
-            <div className="setting-group">
-                <h3>Güvenlik</h3>
-                <button className="setting-action-btn" onClick={() => setShowPasswordModal(true)}>
-                    <span>Şifre Değiştir</span>
-                    <span className="arrow">›</span>
-                </button>
+        <div className="submenu-content animation-slide-in">
+            {/* Real-time Glassmorphic Profile Preview Card */}
+            <div className="settings-profile-preview-card" style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                backdropFilter: 'blur(10px)'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    {user?.profile?.avatar ? (
+                        <img 
+                            src={getImageUrl(user.profile.avatar)} 
+                            alt={user.username} 
+                            style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-cyan)' }}
+                        />
+                    ) : (
+                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--primary-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+                            {user?.username?.charAt(0)?.toUpperCase()}
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                {profileForm.displayName || user?.profile?.displayName || user?.username}
+                            </span>
+                            <Badge type={user?.verificationBadge} />
+                        </div>
+                        <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>@{profileForm.username || user?.username}</span>
+                    </div>
+                </div>
+                {profileForm.bio && (
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.15)', padding: '10px 14px', borderRadius: '8px', fontStyle: 'italic', borderLeft: '3px solid var(--primary-cyan)' }}>
+                        {profileForm.bio}
+                    </div>
+                )}
             </div>
 
-            <div className="setting-group">
-                <h3>Doğrulama</h3>
-                <button
-                    className="setting-action-btn gold-accent"
-                    onClick={() => setActiveMenu('verification')}
+            {/* Profile Form */}
+            <form onSubmit={handleProfileUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '32px' }}>
+                <div className="setting-group" style={{ margin: 0 }}>
+                    <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Profil Bilgileri</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255, 255, 255, 0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#b5bac1' }}>Görünen İsim</label>
+                            <input 
+                                type="text" 
+                                value={profileForm.displayName} 
+                                onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })}
+                                style={{ padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: 'white', outline: 'none' }}
+                                placeholder="Görünen Adınız"
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#b5bac1' }}>Kullanıcı Adı</label>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ position: 'absolute', left: '12px', color: '#949ba4', fontWeight: '600' }}>@</span>
+                                <input 
+                                    type="text" 
+                                    value={profileForm.username} 
+                                    onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                                    style={{ width: '100%', padding: '12px 12px 12px 28px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: 'white', outline: 'none' }}
+                                    placeholder="kullanici_adi"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#b5bac1' }}>Biyografi</label>
+                            <textarea 
+                                value={profileForm.bio} 
+                                onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value.slice(0, 500) })}
+                                style={{ padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: 'white', outline: 'none', resize: 'none', fontFamily: 'inherit' }}
+                                placeholder="Kendinizden bahsedin..."
+                                rows="3"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {profileError && <div style={{ color: '#ff4444', fontSize: '13px', fontWeight: '500' }}>{profileError}</div>}
+                {profileSuccess && <div style={{ color: '#00c851', fontSize: '13px', fontWeight: '500' }}>{profileSuccess}</div>}
+
+                <button 
+                    type="submit" 
+                    disabled={profileLoading}
+                    className="confirm-btn"
+                    style={{
+                        padding: '12px 20px',
+                        background: 'var(--primary-color)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        cursor: profileLoading ? 'not-allowed' : 'pointer',
+                        alignSelf: 'flex-start',
+                        transition: 'background 0.2s',
+                    }}
                 >
-                    <span>Onaylanmış Hesap Başvurusu</span>
-                    <span className="arrow">›</span>
+                    {profileLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
                 </button>
+            </form>
+
+            {/* Account Stats & Security */}
+            <div className="setting-group" style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Hesap & Güvenlik</h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* E-posta (Read-Only) */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '11px', color: '#949ba4', fontWeight: '700', textTransform: 'uppercase' }}>E-Posta Adresi</span>
+                            <span style={{ fontSize: '14px', color: 'white' }}>{user?.email}</span>
+                        </div>
+                        <span style={{ fontSize: '12px', background: 'rgba(46, 204, 113, 0.15)', color: '#2ecc71', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            ✓ Doğrulanmış
+                        </span>
+                    </div>
+
+                    {/* Şifre Değiştir */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>Şifre</span>
+                            <span style={{ fontSize: '12px', color: '#949ba4' }}>Güvenlik amacıyla şifrenizi buradan değiştirebilirsiniz.</span>
+                        </div>
+                        <button 
+                            onClick={() => setShowPasswordModal(true)}
+                            style={{ padding: '8px 16px', background: 'rgba(255, 255, 255, 0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: 'background 0.2s' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
+                        >
+                            Şifreyi Güncelle
+                        </button>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '11px', color: '#949ba4', fontWeight: '700', textTransform: 'uppercase' }}>Kayıt Tarihi</span>
+                            <span style={{ fontSize: '14px', color: 'white', fontWeight: '600' }}>
+                                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
+                            </span>
+                        </div>
+                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '11px', color: '#949ba4', fontWeight: '700', textTransform: 'uppercase' }}>Rol</span>
+                            <span style={{ fontSize: '14px', color: user?.isAdmin ? '#ffd700' : 'white', fontWeight: '600' }}>
+                                {user?.isAdmin ? 'Baş Yönetici (Admin)' : 'Standart Üye'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 
     const renderVerificationMenu = () => (
-        <div className="submenu-content">
-
+        <div className="submenu-content animation-slide-in">
             <div className="verification-container">
                 {user?.verificationRequest?.status === 'pending' ? (
                     <div className="verification-status pending">
                         <div className="status-icon-large">⏳</div>
                         <div className="status-info">
                             <h4>Başvurunuz İnceleniyor</h4>
-                            <p>Talebini aldık ve ekibimiz tarafından değerlendiriliyor.</p>
+                            <p>Talebiniz ekibimiz tarafından değerlendiriliyor.</p>
 
                             <div className="badge-display-row">
                                 <span>Talep Edilen:</span>
                                 <strong>
-                                    {user.verificationRequest.category === 'creator' &&
-                                        'Mavi Tik (Tanınmış Kişi)'}
-                                    {user.verificationRequest.category === 'business' &&
-                                        'Altın Tik (İşletme)'}
-                                    {user.verificationRequest.category === 'government' &&
-                                        'Platin Tik (Devlet)'}
-                                    {user.verificationRequest.category === 'partner' &&
-                                        'Özel Tik (Partner)'}
+                                    {user.verificationRequest.category === 'creator' && 'Mavi Tik (Tanınmış Kişi)'}
+                                    {user.verificationRequest.category === 'business' && 'Altın Tik (İşletme)'}
+                                    {user.verificationRequest.category === 'government' && 'Platin Tik (Devlet)'}
+                                    {user.verificationRequest.category === 'partner' && 'Özel Tik (Partner)'}
                                     {!user.verificationRequest.category && 'Doğrulama Rozeti'}
                                 </strong>
                             </div>
@@ -487,17 +677,26 @@ const Settings = () => {
                     </div>
                 ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' ? (
                     <div className="verification-status approved">
-                        <div className="status-icon-large">✅</div>
+                        <div className="status-icon-large" style={{ color: '#2ecc71' }}>✓</div>
                         <div className="status-info">
                             <h4>Hesabınız Doğrulandı</h4>
-                            <p>Tebrikler! Mavi tik rozetine sahipsiniz.</p>
+                            <p>Tebrikler! Doğrulanmış rozetiniz aktif durumdadır.</p>
+                            <div className="badge-display-row" style={{ background: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71' }}>
+                                <span>Aktif Rozet:</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}>
+                                    {user.verificationBadge === 'blue' && 'Mavi Tik'}
+                                    {user.verificationBadge === 'gold' && 'Altın Tik'}
+                                    {user.verificationBadge === 'platinum' && 'Platin Tik'}
+                                    {user.verificationBadge === 'special' && 'Özel Tik'}
+                                    <Badge type={user.verificationBadge} size={16} />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ) : (
                     <div className="verification-apply">
-                        <p className="verification-desc">
-                            Hesabınızın türünü en iyi anlatan kategoriyi seçerek başvurun.
-                            Belgeleriniz titizlikle incelenir.
+                        <p className="verification-desc" style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6' }}>
+                            Hesabınızın türünü en iyi anlatan kategoriyi seçerek başvurabilirsiniz. Başvurunuz ardından hesabınız topluluk kriterlerimize göre incelenecektir.
                         </p>
 
                         <div className="custom-dropdown-container">
@@ -515,24 +714,16 @@ const Settings = () => {
                                         </span>
                                         <div className="selected-text-group">
                                             <span className="selected-title">
-                                                {passwordForm.selectedCategory === 'creator' &&
-                                                    'Tanınmış Kişi / Üretici'}
-                                                {passwordForm.selectedCategory === 'business' &&
-                                                    'İşletme / Kurum'}
-                                                {passwordForm.selectedCategory === 'government' &&
-                                                    'Devlet Yetkilisi'}
-                                                {passwordForm.selectedCategory === 'partner' &&
-                                                    'Platform Ortağı'}
+                                                {passwordForm.selectedCategory === 'creator' && 'Tanınmış Kişi / Üretici'}
+                                                {passwordForm.selectedCategory === 'business' && 'İşletme / Kurum'}
+                                                {passwordForm.selectedCategory === 'government' && 'Devlet Yetkilisi'}
+                                                {passwordForm.selectedCategory === 'partner' && 'Platform Ortağı'}
                                             </span>
                                             <span className="selected-badge-preview">
-                                                {passwordForm.selectedCategory === 'creator' &&
-                                                    'Mavi Tik'}
-                                                {passwordForm.selectedCategory === 'business' &&
-                                                    'Altın Tik'}
-                                                {passwordForm.selectedCategory === 'government' &&
-                                                    'Platin Tik'}
-                                                {passwordForm.selectedCategory === 'partner' &&
-                                                    'Özel Tik'}
+                                                {passwordForm.selectedCategory === 'creator' && 'Mavi Tik Rozeti'}
+                                                {passwordForm.selectedCategory === 'business' && 'Altın Tik Rozeti'}
+                                                {passwordForm.selectedCategory === 'government' && 'Platin Tik Rozeti'}
+                                                {passwordForm.selectedCategory === 'partner' && 'Özel Tik Rozeti'}
                                             </span>
                                         </div>
                                     </div>
@@ -542,8 +733,8 @@ const Settings = () => {
                                 <svg
                                     className="dropdown-arrow"
                                     viewBox="0 0 24 24"
-                                    width="24"
-                                    height="24"
+                                    width="20"
+                                    height="20"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
@@ -557,10 +748,7 @@ const Settings = () => {
                                     <div
                                         className="dropdown-option"
                                         onClick={() => {
-                                            setPasswordForm((prev) => ({
-                                                ...prev,
-                                                selectedCategory: 'creator',
-                                            }));
+                                            setPasswordForm((prev) => ({ ...prev, selectedCategory: 'creator' }));
                                             setIsDropdownOpen(false);
                                         }}
                                     >
@@ -574,10 +762,7 @@ const Settings = () => {
                                     <div
                                         className="dropdown-option"
                                         onClick={() => {
-                                            setPasswordForm((prev) => ({
-                                                ...prev,
-                                                selectedCategory: 'business',
-                                            }));
+                                            setPasswordForm((prev) => ({ ...prev, selectedCategory: 'business' }));
                                             setIsDropdownOpen(false);
                                         }}
                                     >
@@ -591,10 +776,7 @@ const Settings = () => {
                                     <div
                                         className="dropdown-option"
                                         onClick={() => {
-                                            setPasswordForm((prev) => ({
-                                                ...prev,
-                                                selectedCategory: 'government',
-                                            }));
+                                            setPasswordForm((prev) => ({ ...prev, selectedCategory: 'government' }));
                                             setIsDropdownOpen(false);
                                         }}
                                     >
@@ -608,10 +790,7 @@ const Settings = () => {
                                     <div
                                         className="dropdown-option"
                                         onClick={() => {
-                                            setPasswordForm((prev) => ({
-                                                ...prev,
-                                                selectedCategory: 'partner',
-                                            }));
+                                            setPasswordForm((prev) => ({ ...prev, selectedCategory: 'partner' }));
                                             setIsDropdownOpen(false);
                                         }}
                                     >
@@ -623,6 +802,54 @@ const Settings = () => {
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Real-time Badge Preview Card */}
+                        {passwordForm.selectedCategory && (
+                            <div className="badge-preview-card" style={{
+                                background: 'rgba(0, 0, 0, 0.2)',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                borderRadius: '12px',
+                                padding: '16px 20px',
+                                margin: '20px 0',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px'
+                            }}>
+                                <span style={{ fontSize: '11px', color: '#949ba4', textTransform: 'uppercase', fontWeight: 'bold' }}>Canlı Rozet Önizlemesi</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'white' }}>
+                                        {profileForm.displayName || user?.profile?.displayName || user?.username}
+                                    </span>
+                                    <Badge type={
+                                        passwordForm.selectedCategory === 'creator' ? 'blue' :
+                                        passwordForm.selectedCategory === 'business' ? 'gold' :
+                                        passwordForm.selectedCategory === 'government' ? 'platinum' :
+                                        passwordForm.selectedCategory === 'partner' ? 'special' : 'none'
+                                    } size={18} />
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Raporlarda, gönderilerinizde ve profil sayfanızda bu şekilde görüntülenecektir.</p>
+                            </div>
+                        )}
+
+                        {/* Verification Criteria Checklist */}
+                        <div className="verification-criteria" style={{
+                            background: 'rgba(255, 255, 255, 0.01)',
+                            border: '1px solid rgba(255,255,255,0.04)',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            marginTop: '24px',
+                            marginBottom: '24px'
+                        }}>
+                            <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                📋 Doğrulama Başvuru Şartları
+                            </h4>
+                            <ul style={{ paddingLeft: '18px', margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.5' }}>
+                                <li><strong>Özgünlük:</strong> Hesabınız gerçek bir kişiyi, markayı veya resmi kurumu temsil etmelidir.</li>
+                                <li><strong>Tam Profil:</strong> Hesabınızın bir profil fotoğrafı, biyografisi ve en az bir aktif gönderisi bulunmalıdır.</li>
+                                <li><strong>Aktiflik:</strong> Son 30 günde platforma giriş yapmış ve etkileşimde bulunmuş olmanız gerekir.</li>
+                                <li><strong>Güvenilirlik:</strong> Topluluk kurallarına aykırı davranış veya yakın zamanda ban cezası bulunmamalıdır.</li>
+                            </ul>
                         </div>
 
                         <button
@@ -659,134 +886,265 @@ const Settings = () => {
     );
 
     const renderPrivacyMenu = () => (
-        <div className="submenu-content">
-            <div className="settings-section">
-                {/* 1. Gizli Hesap */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <div className="setting-info">
-                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Gizli Hesap</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Hesabınızı ve gönderilerinizi sadece onaylanmış arkadaşlarınız görebilir.</p>
+        <div className="submenu-content animation-slide-in">
+            {/* Privacy Summary Area */}
+            <div style={{
+                background: privacy.isPrivate ? 'rgba(52, 152, 219, 0.05)' : 'rgba(230, 126, 34, 0.03)',
+                border: `1px solid ${privacy.isPrivate ? 'rgba(52, 152, 219, 0.15)' : 'rgba(255, 255, 255, 0.05)'}`,
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px'
+            }}>
+                <div style={{ fontSize: '32px' }}>
+                    {privacy.isPrivate ? '🛡️' : '🌍'}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: 'white', margin: 0 }}>
+                        {privacy.isPrivate ? 'Hesabınız Korumalı' : 'Hesabınız Herkese Açık'}
+                    </h4>
+                    <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: 0 }}>
+                        {privacy.isPrivate 
+                            ? 'Sadece onayladığınız arkadaşlarınız profil detaylarınızı ve gönderilerinizi görebilir.' 
+                            : 'Tüm Oxypace kullanıcıları profilinizi inceleyebilir ve gönderilerinize erişebilir.'}
+                    </p>
+                </div>
+            </div>
+
+            <div className="settings-section" style={{ margin: 0, padding: 0, background: 'transparent' }}>
+                {/* SECTION 1: Profil Görünürlüğü */}
+                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Profil Görünürlüğü</h3>
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px', marginBottom: '24px' }}>
+                    {/* 1. Gizli Hesap */}
+                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                        <div className="setting-info" style={{ paddingRight: '15px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Gizli Hesap</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Profilinizi kilitler. Yalnızca arkadaşlarınız içeriklerinizi görebilir.</p>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={privacy.isPrivate || false}
+                                onChange={() => handleToggle('isPrivate', 'privacy')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={privacy.isPrivate || false}
-                            onChange={() => handleToggle('isPrivate', 'privacy')}
-                        />
-                        <span className="slider"></span>
-                    </label>
+
+                    {/* 2. Arama Görünürlüğü */}
+                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                        <div className="setting-info" style={{ paddingRight: '15px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Arama Sonuçlarında Görünme</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Kapatırsanız, arama sayfasında kullanıcı adınız aratıldığında profiliniz gizlenir.</p>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={privacy.searchVisibility !== false}
+                                onChange={() => handleToggle('searchVisibility', 'privacy')}
+                            />
+                            <span className="slider"></span>
+                        </label>
+                    </div>
+
+                    {/* 3. Portal Görünürlüğü */}
+                    <div className="setting-item" style={{ padding: '16px 0', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                        <div className="setting-info">
+                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px', color: 'var(--text-primary)' }}>Portal Katılım Görünürlüğü</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Profil sayfanızda katıldığınız portalları kimlerin listeleyebileceğini seçin.</p>
+                        </div>
+                        <select
+                            value={privacy.portalVisibility || 'public'}
+                            onChange={(e) => handleSelectChange('portalVisibility', e.target.value)}
+                            className="badge-select"
+                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                        >
+                            <option value="public">Herkes (Herkese Açık)</option>
+                            <option value="friends">Sadece Arkadaşlarım</option>
+                            <option value="private">Gizli (Yalnızca Ben)</option>
+                        </select>
+                    </div>
                 </div>
 
-                {/* 2. Çevrimiçi Durumu */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <div className="setting-info">
-                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Çevrimiçi Durumunu Göster</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Aktif olduğunuzda diğer kullanıcılara çevrimiçi olarak görünürsünüz.</p>
+                {/* SECTION 2: İletişim ve Mesajlar */}
+                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>İletişim & Etkileşim</h3>
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px' }}>
+                    {/* 1. Çevrimiçi Durumu */}
+                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                        <div className="setting-info" style={{ paddingRight: '15px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Çevrimiçi Durumunu Göster</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Aktif olduğunuzda diğer kullanıcılara yeşil çevrimiçi simgesini gösterir.</p>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={privacy.showOnlineStatus !== false}
+                                onChange={() => handleToggle('showOnlineStatus', 'privacy')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={privacy.showOnlineStatus !== false}
-                            onChange={() => handleToggle('showOnlineStatus', 'privacy')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
 
-                {/* 3. Arama Görünürlüğü */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <div className="setting-info">
-                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Arama Sonuçlarında Görünme</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Diğer kullanıcılar sizi arama bölümünde kullanıcı adınızla aratarak bulabilir.</p>
+                    {/* 2. Okundu Bilgisi */}
+                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                        <div className="setting-info" style={{ paddingRight: '15px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Okundu Bilgisi (Mavi Tik)</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Özel DM sohbetlerinizde mesajları okuduğunuzda karşı tarafa bilgi iletilmesini kontrol eder.</p>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={privacy.readReceipts !== false}
+                                onChange={() => handleToggle('readReceipts', 'privacy')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={privacy.searchVisibility !== false}
-                            onChange={() => handleToggle('searchVisibility', 'privacy')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
 
-                {/* 4. Okundu Bilgisi */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <div className="setting-info">
-                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Okundu Bilgisi (Mavi Tik)</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Kapatırsanız, gönderdiğiniz ve aldığınız özel mesajlarda okundu bilgisi iletilmez.</p>
+                    {/* 3. DM İzinleri */}
+                    <div className="setting-item" style={{ padding: '16px 0', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                        <div className="setting-info">
+                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px', color: 'var(--text-primary)' }}>Doğrudan Mesaj (DM) İzinleri</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Sohbet başlatılmamış hangi kullanıcıların size mesaj atabileceğini belirler.</p>
+                        </div>
+                        <select
+                            value={privacy.dmSettings || 'everyone'}
+                            onChange={(e) => handleSelectChange('dmSettings', e.target.value)}
+                            className="badge-select"
+                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                        >
+                            <option value="everyone">Herkes Gönderebilir</option>
+                            <option value="friends">Sadece Arkadaşlarım</option>
+                            <option value="none">Hiç Kimse (Kapalı)</option>
+                        </select>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={privacy.readReceipts !== false}
-                            onChange={() => handleToggle('readReceipts', 'privacy')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
-
-                {/* 5. Portal Görünürlüğü */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                    <div className="setting-info">
-                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Portal Katılım Görünürlüğü</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Profilinizde katıldığınız veya oluşturduğunuz portalları kimlerin görebileceğini belirler.</p>
-                    </div>
-                    <select
-                        value={privacy.portalVisibility || 'public'}
-                        onChange={(e) => handleSelectChange('portalVisibility', e.target.value)}
-                        className="badge-select"
-                        style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', outline: 'none' }}
-                    >
-                        <option value="public">Herkes (Açık)</option>
-                        <option value="friends">Sadece Arkadaşlar</option>
-                        <option value="private">Gizli (Yalnızca Ben)</option>
-                    </select>
-                </div>
-
-                {/* 6. DM İzinleri */}
-                <div className="setting-item" style={{ padding: '16px 0', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                    <div className="setting-info">
-                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Doğrudan Mesaj (DM) İzinleri</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Kimlerin size doğrudan özel mesaj gönderebileceğini belirler.</p>
-                    </div>
-                    <select
-                        value={privacy.dmSettings || 'everyone'}
-                        onChange={(e) => handleSelectChange('dmSettings', e.target.value)}
-                        className="badge-select"
-                        style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', outline: 'none' }}
-                    >
-                        <option value="everyone">Herkes</option>
-                        <option value="friends">Sadece Arkadaşlar</option>
-                        <option value="none">Hiç Kimse</option>
-                    </select>
                 </div>
             </div>
         </div>
     );
 
     const renderNotificationsMenu = () => (
-        <div className="submenu-content">
-            <div className="settings-section">
-                {Object.entries({
-                    email: 'E-posta Bildirimleri',
-                    push: 'Anlık Bildirimler',
-                    mentions: 'Bahsedilmeler',
-                    likes: 'Beğeniler',
-                }).map(([key, label]) => (
-                    <div className="setting-item" key={key}>
-                        <div className="setting-info">
-                            <h3>{label}</h3>
-                        </div>
-                        <label className="switch">
-                            <input
-                                type="checkbox"
-                                checked={notifications[key]}
-                                onChange={() => handleToggle(key)}
-                            />
-                            <span className="slider"></span>
-                        </label>
+        <div className="submenu-content animation-slide-in">
+            {/* SECTION 1: Sistem Bildirim Kanalları */}
+            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Bildirim Kanalları</h3>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px', marginBottom: '24px' }}>
+                {/* E-posta Bildirimleri */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div className="setting-info" style={{ paddingRight: '15px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>E-posta Bildirimleri</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Sistem duyuruları ve önemli etkileşim özetleri e-posta adresinize gönderilir.</p>
                     </div>
-                ))}
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={notifications.email}
+                            onChange={() => handleToggle('email')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* Anlık Bildirimler */}
+                <div className="setting-item" style={{ padding: '16px 0' }}>
+                    <div className="setting-info" style={{ paddingRight: '15px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Anlık (Push) Bildirimler</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Tarayıcı veya mobil cihazınıza anlık etkileşim bildirimleri gönderilir.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={notifications.push}
+                            onChange={() => handleToggle('push')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            {/* SECTION 2: Etkileşim Bildirimleri */}
+            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Etkileşim & Hareketler</h3>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px' }}>
+                {/* Bahsedilmeler */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div className="setting-info" style={{ paddingRight: '15px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Bahsedilmeler</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Gönderilerde veya yorumlarda @kullanıcıadı şeklinde etiketlendiğinizde haber verilsin.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={notifications.mentions}
+                            onChange={() => handleToggle('mentions')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* Beğeniler */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div className="setting-info" style={{ paddingRight: '15px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Beğeniler</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Gönderileriniz diğer kullanıcılar tarafından beğenildiğinde bildirim alın.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={notifications.likes}
+                            onChange={() => handleToggle('likes')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* Yorumlar */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div className="setting-info" style={{ paddingRight: '15px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Yorumlar</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Paylaşımlarınıza yeni bir yorum veya cevap yazıldığında bildirim alın.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={notifications.comments !== false}
+                            onChange={() => handleToggle('comments')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* Arkadaşlık İstekleri */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div className="setting-info" style={{ paddingRight: '15px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Arkadaşlık İstekleri</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Yeni bir arkadaşlık (tanışma) veya kabul isteği aldığınızda haber verilsin.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={notifications.friendRequests !== false}
+                            onChange={() => handleToggle('friendRequests')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* Sistem Duyuruları */}
+                <div className="setting-item" style={{ padding: '16px 0' }}>
+                    <div className="setting-info" style={{ paddingRight: '15px' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Sistem Duyuruları</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Oxypace yönetimi tarafından yayınlanan genel güncellemeler ve duyurular.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={notifications.system !== false}
+                            onChange={() => handleToggle('system')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
             </div>
         </div>
     );
