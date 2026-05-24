@@ -21,6 +21,11 @@ const Settings = () => {
     });
     const [privacy, setPrivacy] = useState({
         isPrivate: false,
+        portalVisibility: 'public',
+        showOnlineStatus: true,
+        dmSettings: 'everyone',
+        searchVisibility: true,
+        readReceipts: true,
     });
 
     // UI State
@@ -93,6 +98,18 @@ const Settings = () => {
             } else {
                 setPrivacy((prev) => ({ ...prev, [setting]: !newValue }));
             }
+        }
+    };
+
+    const handleSelectChange = async (setting, value, type = 'privacy') => {
+        if (type === 'privacy') {
+            setPrivacy((prev) => ({ ...prev, [setting]: value }));
+        }
+        try {
+            await axios.put('/api/users/settings', { [type]: { [setting]: value } });
+        } catch (error) {
+            console.error('Failed to update settings:', error);
+            fetchSettings();
         }
     };
 
@@ -644,19 +661,104 @@ const Settings = () => {
     const renderPrivacyMenu = () => (
         <div className="submenu-content">
             <div className="settings-section">
-                <div className="setting-item">
+                {/* 1. Gizli Hesap */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
                     <div className="setting-info">
-                        <h3>Gizli Hesap</h3>
-                        <p>Hesabını sadece takipçilerin görebilsin</p>
+                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Gizli Hesap</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Hesabınızı ve gönderilerinizi sadece onaylanmış arkadaşlarınız görebilir.</p>
                     </div>
                     <label className="switch">
                         <input
                             type="checkbox"
-                            checked={privacy.isPrivate}
+                            checked={privacy.isPrivate || false}
                             onChange={() => handleToggle('isPrivate', 'privacy')}
                         />
                         <span className="slider"></span>
                     </label>
+                </div>
+
+                {/* 2. Çevrimiçi Durumu */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div className="setting-info">
+                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Çevrimiçi Durumunu Göster</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Aktif olduğunuzda diğer kullanıcılara çevrimiçi olarak görünürsünüz.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={privacy.showOnlineStatus !== false}
+                            onChange={() => handleToggle('showOnlineStatus', 'privacy')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* 3. Arama Görünürlüğü */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div className="setting-info">
+                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Arama Sonuçlarında Görünme</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Diğer kullanıcılar sizi arama bölümünde kullanıcı adınızla aratarak bulabilir.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={privacy.searchVisibility !== false}
+                            onChange={() => handleToggle('searchVisibility', 'privacy')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* 4. Okundu Bilgisi */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div className="setting-info">
+                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Okundu Bilgisi (Mavi Tik)</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Kapatırsanız, gönderdiğiniz ve aldığınız özel mesajlarda okundu bilgisi iletilmez.</p>
+                    </div>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={privacy.readReceipts !== false}
+                            onChange={() => handleToggle('readReceipts', 'privacy')}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+
+                {/* 5. Portal Görünürlüğü */}
+                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-subtle)', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                    <div className="setting-info">
+                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Portal Katılım Görünürlüğü</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Profilinizde katıldığınız veya oluşturduğunuz portalları kimlerin görebileceğini belirler.</p>
+                    </div>
+                    <select
+                        value={privacy.portalVisibility || 'public'}
+                        onChange={(e) => handleSelectChange('portalVisibility', e.target.value)}
+                        className="badge-select"
+                        style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', outline: 'none' }}
+                    >
+                        <option value="public">Herkes (Açık)</option>
+                        <option value="friends">Sadece Arkadaşlar</option>
+                        <option value="private">Gizli (Yalnızca Ben)</option>
+                    </select>
+                </div>
+
+                {/* 6. DM İzinleri */}
+                <div className="setting-item" style={{ padding: '16px 0', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                    <div className="setting-info">
+                        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Doğrudan Mesaj (DM) İzinleri</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Kimlerin size doğrudan özel mesaj gönderebileceğini belirler.</p>
+                    </div>
+                    <select
+                        value={privacy.dmSettings || 'everyone'}
+                        onChange={(e) => handleSelectChange('dmSettings', e.target.value)}
+                        className="badge-select"
+                        style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', outline: 'none' }}
+                    >
+                        <option value="everyone">Herkes</option>
+                        <option value="friends">Sadece Arkadaşlar (Karşılıklı Takip)</option>
+                        <option value="none">Hiç Kimse</option>
+                    </select>
                 </div>
             </div>
         </div>

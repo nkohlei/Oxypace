@@ -314,6 +314,7 @@ router.get('/search', protect, async (req, res) => {
         const users = await User.find({
             username: { $regex: q, $options: 'i' },
             _id: { $ne: req.user._id }, // Exclude current user
+            'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
         })
             .select('username profile.displayName profile.avatar verificationBadge')
             .limit(20);

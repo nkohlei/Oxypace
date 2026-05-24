@@ -35,18 +35,28 @@ export const initializeSocket = (io) => {
         // User joins with their ID
         socket.on('join', async (userId, isGhost) => {
             socket.isGhost = !!isGhost;
+
+            // Kullanıcı profil ve gizlilik bilgilerini çekelim
+            try {
+                const user = await User.findById(userId).select('username profile isAdmin settings');
+                if (user) {
+                    socket.user = user;
+                    // Eğer çevrimiçi durumu göster ayarı kapatılmışsa ghost olarak işaretle
+                    if (user.settings?.privacy?.showOnlineStatus === false) {
+                        socket.isGhost = true;
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching user on socket join:', err);
+            }
+
             if (!socket.isGhost) {
                 userSockets.set(userId, socket.id);
             }
             socket.join(userId);
-            console.log(`👤 User ${userId} joined${socket.isGhost ? ' (Ghost Mode)' : ''}`);
+            console.log(`👤 User ${userId} joined${socket.isGhost ? ' (Ghost/Hidden)' : ''}`);
 
-            // Kullanıcı profil bilgilerini çekip socket nesnesine önbelleğe alalım (DB yükünü önlemek için)
             try {
-                const user = await User.findById(userId).select('username profile isAdmin');
-                if (user) {
-                    socket.user = user;
-                }
                 if (!socket.isGhost) {
                     await User.findByIdAndUpdate(userId, { lastActive: new Date() });
                 }

@@ -105,6 +105,19 @@ router.post(
                 return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
             }
 
+            // DM settings check
+            const dmSettings = recipient.settings?.privacy?.dmSettings || 'everyone';
+            if (dmSettings === 'none' && !req.user.isAdmin) {
+                return res.status(403).json({ message: 'Bu kullanıcı doğrudan mesaj almayı kapatmıştır.' });
+            }
+            if (dmSettings === 'friends' && !req.user.isAdmin) {
+                const isFriend = recipient.followers?.some(id => id.toString() === req.user._id.toString()) && 
+                                 recipient.following?.some(id => id.toString() === req.user._id.toString());
+                if (!isFriend) {
+                    return res.status(403).json({ message: 'Bu kullanıcıya yalnızca arkadaşları doğrudan mesaj gönderebilir.' });
+                }
+            }
+
             // Block messages to system accounts
             if (recipient.isSystemAccount) {
                 return res.status(403).json({ 
@@ -281,7 +294,19 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
             { read: true }
         );
 
-        res.json(messages);
+        const otherUser = await User.findById(otherUserId).select('settings');
+        const hideReadReceipts = (req.user.settings?.privacy?.readReceipts === false) || 
+                                 (otherUser?.settings?.privacy?.readReceipts === false);
+
+        const messagesToSend = messages.map(msg => {
+            const msgObj = msg.toObject();
+            if (hideReadReceipts && msgObj.sender?._id?.toString() === currentUserId.toString()) {
+                msgObj.read = false;
+            }
+            return msgObj;
+        });
+
+        res.json(messagesToSend);
     } catch (error) {
         console.error('Get messages error:', error);
         res.status(500).json({ message: 'Server error' });

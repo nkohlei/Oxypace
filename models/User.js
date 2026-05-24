@@ -157,6 +157,14 @@ const userSchema = new mongoose.Schema(
                     enum: ['public', 'friends', 'private'],
                     default: 'public',
                 },
+                showOnlineStatus: { type: Boolean, default: true },
+                dmSettings: {
+                    type: String,
+                    enum: ['everyone', 'friends', 'none'],
+                    default: 'everyone',
+                },
+                searchVisibility: { type: Boolean, default: true },
+                readReceipts: { type: Boolean, default: true },
             },
         },
         lastActive: {
