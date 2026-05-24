@@ -19,6 +19,7 @@ import LinkPreview from './LinkPreview';
 import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2 } from 'lucide-react';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
+import ReportModal from './ReportModal';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -90,6 +91,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showQuoteModal, setShowQuoteModal] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const MAX_LENGTH = 150;
 
@@ -323,6 +325,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     // Placeholder handlers for new menu items
     const handleMenuAction = (action) => {
         setShowMenu(false);
+        if (action === 'report') {
+            setShowReportModal(true);
+        }
     };
 
     // Auto-close menu on outside click (Mobile/General)
@@ -689,6 +694,15 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
             {showShareModal && (
                 <ShareModal postId={post._id} onClose={() => setShowShareModal(false)} />
+            )}
+
+            {showReportModal && (
+                <ReportModal
+                    targetType="post"
+                    targetId={post._id}
+                    targetName={post.content ? (post.content.length > 60 ? post.content.substring(0, 60) + '...' : post.content) : 'Görsel / Video Paylaşımı'}
+                    onClose={() => setShowReportModal(false)}
+                />
             )}
         </article>
     );

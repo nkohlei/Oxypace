@@ -16,6 +16,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import PostCard from '../components/PostCard';
 import LinkPreview from '../components/LinkPreview';
 import { extractFirstUrl } from '../utils/linkify';
+import ReportModal from '../components/ReportModal';
 import './Profile.css';
 
 
@@ -25,6 +26,7 @@ const Profile = () => {
     const { user: currentUser, updateUser } = useAuth();
     const [profileUser, setProfileUser] = useState(null);
     const [editing, setEditing] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
     const [formData, setFormData] = useState({
         displayName: '',
         bio: '',
@@ -626,6 +628,39 @@ const Profile = () => {
                                                     style={{ minWidth: '80px' }}
                                                 >
                                                     Mesaj
+                                                </button>
+                                                <button
+                                                    className="profile-action-btn danger icon-only"
+                                                    onClick={() => setShowReportModal(true)}
+                                                    title="Bildir"
+                                                    style={{
+                                                        minWidth: '40px',
+                                                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                                        color: '#e74c3c',
+                                                        border: '1px solid rgba(231, 76, 60, 0.2)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        padding: '0 10px',
+                                                        height: '36px',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(231, 76, 60, 0.2)'}
+                                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(231, 76, 60, 0.1)'}
+                                                >
+                                                    <svg
+                                                        width="18"
+                                                        height="18"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                    >
+                                                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                                                        <line x1="4" y1="22" x2="4" y2="15"></line>
+                                                    </svg>
                                                 </button>
                                             </div>
                                         </div>
@@ -1501,6 +1536,15 @@ const Profile = () => {
                     onComplete={handleCropComplete}
                     onCancel={handleCropCancel}
                     title={cropperMode === 'avatar' ? 'Profil Fotoğrafı' : 'Kapak Resmi'}
+                />
+            )}
+
+            {showReportModal && profileUser && (
+                <ReportModal
+                    targetType="user"
+                    targetId={profileUser._id}
+                    targetName={profileUser.profile?.displayName || profileUser.username}
+                    onClose={() => setShowReportModal(false)}
                 />
             )}
         </div>

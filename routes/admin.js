@@ -622,4 +622,23 @@ router.post('/impersonate/:id', protect, admin, async (req, res) => {
     }
 });
 
+// @route   DELETE /api/admin/posts/:id
+// @desc    Delete any post (Admin only)
+// @access  Private/Admin
+router.delete('/posts/:id', protect, admin, async (req, res) => {
+    try {
+        const Post = await import('../models/Post.js').then(m => m.default);
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Gönderi bulunamadı.' });
+        }
+
+        await post.deleteOne();
+        res.json({ message: 'Gönderi başarıyla silindi.' });
+    } catch (error) {
+        console.error('Admin delete post error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
 export default router;

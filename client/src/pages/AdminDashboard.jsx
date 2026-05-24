@@ -566,7 +566,7 @@ const AdminDashboard = () => {
         );
     }
 
-    const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals', 'messages', 'badges'
+    const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals', 'reports', 'badges'
     const [maintenanceActive, setMaintenanceActive] = useState(false);
     const [requests, setRequests] = useState([]);
     const [users, setUsers] = useState([]);
@@ -576,9 +576,9 @@ const AdminDashboard = () => {
     const [portals, setPortals] = useState([]);
     const [searchTermPortal, setSearchTermPortal] = useState('');
 
-    // Messages State (Oxypace Only)
-    const [contactMessages, setContactMessages] = useState([]);
-    const [messageFilter, setMessageFilter] = useState('Tümü');
+    // Reports State (Oxypace Only)
+    const [reports, setReports] = useState([]);
+    const [reportFilter, setReportFilter] = useState('pending');
 
     // Active Sessions & Banned IPs State
     const { socket, connected } = useSocket();
@@ -634,8 +634,8 @@ const AdminDashboard = () => {
             fetchUsers();
         } else if (activeTab === 'portals') {
             fetchPortals();
-        } else if (activeTab === 'messages' && isOxypace) {
-            fetchContactMessages();
+        } else if (activeTab === 'reports' && isOxypace) {
+            fetchReports();
         } else if (activeTab === 'badges') {
             fetchAllBadges();
         } else if (activeTab === 'feedback') {
@@ -785,26 +785,52 @@ const AdminDashboard = () => {
         checkUnread();
     }, []);
 
-    const fetchContactMessages = async () => {
+    const fetchReports = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get('/api/admin/contact-messages');
-            setContactMessages(data);
+            const { data } = await axios.get('/api/reports');
+            setReports(data);
         } catch (err) {
-            setError('Mesajlar yüklenemedi.');
+            setError('Bildirilenler yüklenemedi.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleMessageStatus = async (id, status) => {
+    const handleResolveReport = async (reportId) => {
         try {
-            await axios.put(`/api/admin/contact-messages/${id}/status`, { status });
-            setContactMessages(contactMessages.map(msg =>
-                msg._id === id ? { ...msg, status } : msg
-            ));
+            await axios.put(`/api/reports/${reportId}/status`, { status: 'resolved' });
+            setReports(prev => prev.map(r => r._id === reportId ? { ...r, status: 'resolved' } : r));
+            alert('Bildirim çözüldü olarak işaretlendi.');
         } catch (err) {
-            alert('Mesaj durumu güncellenemedi.');
+            console.error('Resolve report error:', err);
+            alert('İşlem başarısız.');
+        }
+    };
+
+    const handleDeleteReport = async (reportId) => {
+        if (!window.confirm('Bu bildiriyi silmek istediğinize emin misiniz?')) return;
+        try {
+            await axios.delete(`/api/reports/${reportId}`);
+            setReports(prev => prev.filter(r => r._id !== reportId));
+            alert('Bildirim silindi.');
+        } catch (err) {
+            console.error('Delete report error:', err);
+            alert('İşlem başarısız.');
+        }
+    };
+
+    const handleAdminDeletePost = async (postId, reportId) => {
+        if (!window.confirm('Bu gönderiyi silmek istediğinize emin misiniz?')) return;
+        try {
+            await axios.delete(`/api/admin/posts/${postId}`);
+            alert('Gönderi başarıyla silindi.');
+            // Auto mark the report resolved
+            await axios.put(`/api/reports/${reportId}/status`, { status: 'resolved' });
+            setReports(prev => prev.map(r => r._id === reportId ? { ...r, status: 'resolved' } : r));
+        } catch (err) {
+            console.error('Admin delete post error:', err);
+            alert('İşlem başarısız.');
         }
     };
 
@@ -1227,12 +1253,12 @@ const AdminDashboard = () => {
                 </button>
                 {isOxypace && (
                     <button
-                        className={`admin-tab ${activeTab === 'messages' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('messages')}
+                        className={`admin-tab ${activeTab === 'reports' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('reports')}
                     >
-                        İletiler
-                        {contactMessages.filter(m => m.status === 'unread').length > 0 &&
-                            <span className="tab-badge">{contactMessages.filter(m => m.status === 'unread').length}</span>
+                        Bildirilenler
+                        {reports.filter(r => r.status === 'pending').length > 0 &&
+                            <span className="tab-badge">{reports.filter(r => r.status === 'pending').length}</span>
                         }
                     </button>
                 )}
@@ -1622,130 +1648,240 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {activeTab === 'messages' && isOxypace && (() => {
-                    const getMessageBadgeStyle = (subject) => {
-                        switch (subject) {
-                            case 'Destek': return { bg: 'rgba(52, 152, 219, 0.15)', text: '#3498db' };
-                            case 'Sikayet': return { bg: 'rgba(231, 76, 60, 0.15)', text: '#e74c3c' };
-                            case 'Geribildirim': return { bg: 'rgba(46, 204, 113, 0.15)', text: '#2ecc71' };
-                            case 'Isbirligi': return { bg: 'rgba(155, 89, 182, 0.15)', text: '#9b59b6' };
-                            default: return { bg: 'rgba(149, 165, 166, 0.15)', text: '#95a5a6' }; // Genel
+                {activeTab === 'reports' && isOxypace && (() => {
+                    const getReportReasonLabel = (reason) => {
+                        switch (reason) {
+                            case 'spam': return { label: 'İstenmeyen İçerik (Spam)', bg: 'rgba(52, 152, 219, 0.15)', text: '#3498db' };
+                            case 'harassment': return { label: 'Taciz veya Zorbalık', bg: 'rgba(230, 126, 34, 0.15)', text: '#e67e22' };
+                            case 'hate_speech': return { label: 'Nefret Söylemi', bg: 'rgba(231, 76, 60, 0.15)', text: '#e74c3c' };
+                            case 'violence': return { label: 'Şiddet veya Tehdit', bg: 'rgba(155, 89, 182, 0.15)', text: '#9b59b6' };
+                            case 'sexual_content': return { label: 'Müstehcenlik veya Cinsel İçerik', bg: 'rgba(241, 196, 15, 0.15)', text: '#f1c40f' };
+                            default: return { label: 'Diğer Nedenler', bg: 'rgba(149, 165, 166, 0.15)', text: '#95a5a6' };
                         }
                     };
 
-                    const filters = ['Tümü', 'Genel', 'Destek', 'Geribildirim', 'Sikayet', 'Isbirligi'];
-                    const filteredMessages = messageFilter === 'Tümü'
-                        ? contactMessages
-                        : contactMessages.filter(m => m.subject === messageFilter);
+                    const filters = ['pending', 'resolved', 'all'];
+                    const filterLabels = {
+                        pending: 'Bekleyenler',
+                        resolved: 'Çözülenler',
+                        all: 'Tümü'
+                    };
+
+                    const filteredReports = reports.filter(r => {
+                        if (reportFilter === 'all') return true;
+                        return r.status === reportFilter;
+                    });
 
                     return (
-                        <div className="messages-section fade-in">
-                            <div className="message-filters" style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                        <div className="reports-section fade-in">
+                            <div className="report-filters" style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                                 {filters.map(filter => (
                                     <button
                                         key={filter}
-                                        onClick={() => setMessageFilter(filter)}
+                                        onClick={() => setReportFilter(filter)}
                                         style={{
                                             padding: '8px 16px',
                                             borderRadius: '20px',
                                             border: 'none',
                                             cursor: 'pointer',
                                             fontWeight: '600',
-                                            background: messageFilter === filter ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.05)',
-                                            color: messageFilter === filter ? '#fff' : 'var(--text-muted)',
+                                            background: reportFilter === filter ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.05)',
+                                            color: reportFilter === filter ? '#fff' : 'var(--text-muted)',
                                             transition: '0.2s ease',
                                         }}
                                     >
-                                        {filter}
+                                        {filterLabels[filter]}
                                     </button>
                                 ))}
                             </div>
 
                             {loading && <div className="admin-loading">Yükleniyor...</div>}
 
-                            {!loading && filteredMessages.length === 0 && (
-                                <p className="no-data">Bu kategoride mesaj bulunamadı.</p>
+                            {!loading && filteredReports.length === 0 && (
+                                <p className="no-data">Bildirim bulunamadı.</p>
                             )}
 
-                            <div className="messages-grid" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                {filteredMessages.map((msg) => {
-                                    const badgeStyle = getMessageBadgeStyle(msg.subject);
+                            <div className="reports-grid" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {filteredReports.map((report) => {
+                                    const reasonStyle = getReportReasonLabel(report.reason);
+                                    const reportedPost = report.targetPost;
+                                    const reportedUser = report.targetUser;
+
                                     return (
-                                        <div key={msg._id} className="message-card" style={{
-                                            background: msg.status === 'unread' ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-secondary)',
-                                            border: `1px solid ${msg.status === 'unread' ? 'var(--primary-color)' : 'var(--border-subtle)'}`,
+                                        <div key={report._id} className="report-card-dashboard" style={{
+                                            background: 'var(--bg-secondary)',
+                                            border: `1px solid ${report.status === 'pending' ? 'rgba(231, 76, 60, 0.3)' : 'var(--border-subtle)'}`,
                                             borderRadius: '12px',
                                             padding: '20px',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             gap: '15px',
-                                            boxShadow: msg.status === 'unread' ? '0 4px 12px rgba(255, 95, 31, 0.1)' : 'none'
+                                            boxShadow: report.status === 'pending' ? '0 4px 12px rgba(231, 76, 60, 0.05)' : 'none'
                                         }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                                    <img
-                                                        src={msg.user?.profile?.avatar || 'https://via.placeholder.com/50'}
-                                                        alt={msg.user?.username}
-                                                        style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
-                                                    />
-                                                    <div>
-                                                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                                                            {msg.user?.profile?.displayName || msg.user?.username}
-                                                            <span style={{ fontWeight: 'normal', color: 'var(--text-muted)', marginLeft: '6px' }}>@{msg.user?.username}</span>
-                                                        </div>
-                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                                                            {new Date(msg.createdAt).toLocaleString()}
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Bildiren</span>
+                                                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            {report.reporter?.profile?.displayName || report.reporter?.username || 'Silinmiş Kullanıcı'}
+                                                            <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>@{report.reporter?.username}</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                     <span style={{
-                                                        background: badgeStyle.bg,
-                                                        color: badgeStyle.text,
+                                                        background: reasonStyle.bg,
+                                                        color: reasonStyle.text,
                                                         padding: '4px 10px',
                                                         borderRadius: '12px',
                                                         fontSize: '0.75rem',
                                                         fontWeight: 'bold'
                                                     }}>
-                                                        {msg.subject.toUpperCase()}
+                                                        {reasonStyle.label}
                                                     </span>
-                                                    {msg.status === 'unread' && (
+                                                    <span style={{
+                                                        background: report.targetType === 'post' ? 'rgba(0, 200, 81, 0.15)' : 'rgba(17, 168, 255, 0.15)',
+                                                        color: report.targetType === 'post' ? '#00c851' : '#11a8ff',
+                                                        padding: '4px 10px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {report.targetType === 'post' ? 'GÖNDERİ' : 'KULLANICI'}
+                                                    </span>
+                                                    {report.status === 'pending' && (
                                                         <span style={{ background: '#e74c3c', color: 'white', padding: '3px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold' }}>
-                                                            YENİ
+                                                            BEKLEMEDE
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
 
-                                            <div style={{
-                                                color: 'var(--text-secondary)',
-                                                fontSize: '0.9rem',
-                                                lineHeight: '1.6',
-                                                background: 'rgba(0,0,0,0.2)',
-                                                padding: '15px',
-                                                borderRadius: '8px',
-                                                whiteSpace: 'pre-wrap'
-                                            }}>
-                                                {msg.message}
-                                            </div>
+                                            {/* Report Details */}
+                                            {report.details && (
+                                                <div style={{
+                                                    color: 'var(--text-secondary)',
+                                                    fontSize: '0.9rem',
+                                                    background: 'rgba(0,0,0,0.15)',
+                                                    padding: '12px 15px',
+                                                    borderRadius: '8px',
+                                                    borderLeft: '3px solid #ff4b4b'
+                                                }}>
+                                                    <strong>Açıklama:</strong> {report.details}
+                                                </div>
+                                            )}
 
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                                                {msg.status !== 'read' && (
+                                            {/* Target Post View */}
+                                            {report.targetType === 'post' && reportedPost && (
+                                                <div style={{
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    padding: '16px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '10px'
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <img src={reportedPost.author?.profile?.avatar || 'https://via.placeholder.com/40'} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                        <div>
+                                                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                                                {reportedPost.author?.profile?.displayName || reportedPost.author?.username}
+                                                                <span style={{ fontWeight: 'normal', color: 'var(--text-muted)', marginLeft: '6px' }}>@{reportedPost.author?.username}</span>
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{new Date(reportedPost.createdAt).toLocaleString()}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', paddingLeft: '42px' }}>
+                                                        {reportedPost.content}
+                                                    </div>
+                                                    {reportedPost.media && (
+                                                        <div style={{ paddingLeft: '42px', marginTop: '6px' }}>
+                                                            {reportedPost.mediaType === 'video' ? (
+                                                                <video src={getImageUrl(reportedPost.media)} style={{ maxWidth: '200px', borderRadius: '8px' }} controls />
+                                                            ) : (
+                                                                <img src={getImageUrl(reportedPost.media)} alt="" style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', objectFit: 'cover' }} />
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Target User View */}
+                                            {report.targetType === 'user' && reportedUser && (
+                                                <div style={{
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    padding: '16px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px'
+                                                }}>
+                                                    <img src={reportedUser.profile?.avatar || 'https://via.placeholder.com/50'} alt="" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                    <div>
+                                                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                                            {reportedUser.profile?.displayName || reportedUser.username}
+                                                            <span style={{ fontWeight: 'normal', color: 'var(--text-muted)', marginLeft: '6px' }}>@{reportedUser.username}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                            Hesap Türü: {reportedUser.settings?.privacy?.isPrivate ? 'Gizli Hesap' : 'Açık Hesap'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Action Buttons */}
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px', marginTop: '5px' }}>
+                                                {report.targetType === 'post' && reportedPost && (
                                                     <button
-                                                        onClick={() => handleMessageStatus(msg._id, 'read')}
-                                                        style={{ background: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71', border: '1px solid #2ecc71', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+                                                        onClick={() => navigate(`/post/${reportedPost._id}`)}
+                                                        style={{ background: 'rgba(17, 168, 255, 0.1)', color: '#11a8ff', border: '1px solid #11a8ff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
                                                     >
-                                                        Okundu İşaretle
+                                                        Gönderiye Git
                                                     </button>
                                                 )}
-                                                {msg.status !== 'archived' && (
+                                                {report.targetType === 'user' && reportedUser && (
                                                     <button
-                                                        onClick={() => handleMessageStatus(msg._id, 'archived')}
-                                                        style={{ background: 'rgba(149, 165, 166, 0.1)', color: '#95a5a6', border: '1px solid #95a5a6', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+                                                        onClick={() => navigate(`/profile/${reportedUser.username}`)}
+                                                        style={{ background: 'rgba(17, 168, 255, 0.1)', color: '#11a8ff', border: '1px solid #11a8ff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
                                                     >
-                                                        Arşivle
+                                                        Profile Git
                                                     </button>
                                                 )}
+                                                {report.targetType === 'user' && reportedUser && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setBanModalTarget({ type: 'user', id: reportedUser._id });
+                                                            setBanModalOpen(true);
+                                                        }}
+                                                        style={{ background: 'rgba(231, 76, 60, 0.1)', color: '#e74c3c', border: '1px solid #e74c3c', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+                                                    >
+                                                        Kullanıcıyı Engelle
+                                                    </button>
+                                                )}
+                                                {report.targetType === 'post' && reportedPost && (
+                                                    <button
+                                                        onClick={() => handleAdminDeletePost(reportedPost._id, report._id)}
+                                                        style={{ background: 'rgba(231, 76, 60, 0.1)', color: '#e74c3c', border: '1px solid #e74c3c', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+                                                    >
+                                                        Gönderiyi Sil
+                                                    </button>
+                                                )}
+                                                {report.status !== 'resolved' && (
+                                                    <button
+                                                        onClick={() => handleResolveReport(report._id)}
+                                                        style={{ background: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71', border: '1px solid #2ecc71', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+                                                    >
+                                                        Çözüldü İşaretle
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleDeleteReport(report._id)}
+                                                    style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+                                                >
+                                                    Bildirimi Sil
+                                                </button>
                                             </div>
                                         </div>
                                     );

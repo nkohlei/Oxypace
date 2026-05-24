@@ -31,6 +31,7 @@ import badgeRoutes from './routes/badges.js';
 import voiceRoutes from './routes/voice.js';
 import translateRoutes from './routes/translate.js';
 import previewRoutes from './routes/preview.js';
+import reportRoutes from './routes/reports.js';
 
 // Models for Sitemap
 import Portal from './models/Portal.js';
@@ -214,6 +215,7 @@ app.use('/api/badges', badgeRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/translate', translateRoutes);
 app.use('/api/preview', previewRoutes);
+app.use('/api/reports', reportRoutes);
 
 import contactRoutes from './routes/contact.js';
 import feedbackRoutes from './routes/feedback.js';
