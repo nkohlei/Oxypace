@@ -19,60 +19,58 @@ export const SocketProvider = ({ children }) => {
     const { user, isAuthenticated } = useAuth();
 
     useEffect(() => {
-        if (isAuthenticated && user) {
-            // Determine Socket URL
-            const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
-            let socketUrl = (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : 'http://localhost:5000'));
+        // Determine Socket URL
+        const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
+        let socketUrl = (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : 'http://localhost:5000'));
 
-            // Remove '/api' suffix if present, as Socket.io connects to root
-            if (socketUrl.endsWith('/api')) {
-                socketUrl = socketUrl.slice(0, -4);
-            }
-            if (socketUrl.endsWith('/')) {
-                socketUrl = socketUrl.slice(0, -1);
-            }
-
-
-
-            const newSocket = io(socketUrl, {
-                transports: ['polling', 'websocket'],
-                // Add secure option for https
-                secure: true,
-            });
-
-            newSocket.on('connect', () => {
-                setConnected(true);
-                newSocket.emit('join', user._id);
-            });
-
-            newSocket.on('getOnlineUsers', (users) => {
-                setOnlineUsers(users);
-            });
-
-            newSocket.on('maintenance_toggle', ({ active }) => {
-                if (active) {
-                    const getCookie = (name) => {
-                        const value = `; ${document.cookie}`;
-                        const parts = value.split(`; ${name}=`);
-                        if (parts.length === 2) return parts.pop().split(';').shift();
-                    };
-                    const hasAccess = getCookie('admin_access') === 'true' || localStorage.getItem('admin_access') === 'true';
-                    if (!hasAccess) {
-                        window.location.reload();
-                    }
-                }
-            });
-
-            newSocket.on('disconnect', () => {
-                setConnected(false);
-            });
-
-            setSocket(newSocket);
-
-            return () => {
-                newSocket.close();
-            };
+        // Remove '/api' suffix if present, as Socket.io connects to root
+        if (socketUrl.endsWith('/api')) {
+            socketUrl = socketUrl.slice(0, -4);
         }
+        if (socketUrl.endsWith('/')) {
+            socketUrl = socketUrl.slice(0, -1);
+        }
+
+        const newSocket = io(socketUrl, {
+            transports: ['polling', 'websocket'],
+            // Add secure option for https
+            secure: true,
+        });
+
+        newSocket.on('connect', () => {
+            setConnected(true);
+            if (isAuthenticated && user?._id) {
+                newSocket.emit('join', user._id);
+            }
+        });
+
+        newSocket.on('getOnlineUsers', (users) => {
+            setOnlineUsers(users);
+        });
+
+        newSocket.on('maintenance_toggle', ({ active }) => {
+            if (active) {
+                const getCookie = (name) => {
+                    const value = `; ${document.cookie}`;
+                    const parts = value.split(`; ${name}=`);
+                    if (parts.length === 2) return parts.pop().split(';').shift();
+                };
+                const hasAccess = getCookie('admin_access') === 'true' || localStorage.getItem('admin_access') === 'true';
+                if (!hasAccess) {
+                    window.location.reload();
+                }
+            }
+        });
+
+        newSocket.on('disconnect', () => {
+            setConnected(false);
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+            newSocket.close();
+        };
     }, [isAuthenticated, user]);
 
     const value = {
