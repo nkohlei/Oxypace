@@ -95,19 +95,22 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
         }
 
         // Notify
-        const notification = await Notification.create({
-            recipient: targetUser._id,
-            sender: currentUser._id,
-            type: 'follow_request',
-        });
+        const friendRequestsEnabled = targetUser.settings?.notifications?.friendRequests !== false;
+        if (friendRequestsEnabled) {
+            const notification = await Notification.create({
+                recipient: targetUser._id,
+                sender: currentUser._id,
+                type: 'follow_request',
+            });
 
-        const io = req.app.get('io');
-        if (io) {
-            const populated = await notification.populate(
-                'sender',
-                'username profile.displayName profile.avatar verificationBadge'
-            );
-            io.to(targetUser._id.toString()).emit('newNotification', populated);
+            const io = req.app.get('io');
+            if (io) {
+                const populated = await notification.populate(
+                    'sender',
+                    'username profile.displayName profile.avatar verificationBadge'
+                );
+                io.to(targetUser._id.toString()).emit('newNotification', populated);
+            }
         }
 
         return res.json({
@@ -177,25 +180,32 @@ router.post('/follow/accept/:id', protect, mongoIdValidation('id'), async (req, 
         );
 
         // Notify Requester (They are now friends with me)
-        const notification = await Notification.create({
-            recipient: requester._id,
-            sender: currentUser._id,
-            type: 'friend_connected',
-        });
+        const friendRequestsEnabled = requester.settings?.notifications?.friendRequests !== false;
+        let notification = null;
+
+        if (friendRequestsEnabled) {
+            notification = await Notification.create({
+                recipient: requester._id,
+                sender: currentUser._id,
+                type: 'friend_connected',
+            });
+        }
 
         const io = req.app.get('io');
         if (io) {
             // Notify Requester
-            const populated = await notification.populate(
-                'sender',
-                'username profile.displayName profile.avatar verificationBadge'
-            );
-            io.to(requesterId.toString()).emit('newNotification', populated);
+            if (notification) {
+                const populated = await notification.populate(
+                    'sender',
+                    'username profile.displayName profile.avatar verificationBadge'
+                );
+                io.to(requesterId.toString()).emit('newNotification', populated);
+            }
 
             // Notify Receiver (Self) to update UI immediately
             io.to(currentUser._id.toString()).emit('friendRequestAccepted', {
                 senderId: requester._id,
-                notificationId: notification._id,
+                notificationId: notification ? notification._id : null,
             });
         }
 

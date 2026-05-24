@@ -177,14 +177,17 @@ router.post(
             // Create notification for quoted post author
             if (quotedPostId) {
                 try {
-                    const originalPost = await Post.findById(quotedPostId);
-                    if (originalPost && originalPost.author.toString() !== req.user._id.toString()) {
-                        await Notification.create({
-                            recipient: originalPost.author,
-                            sender: req.user._id,
-                            type: 'quote',
-                            post: post._id,
-                        });
+                    const originalPost = await Post.findById(quotedPostId).populate('author');
+                    if (originalPost && originalPost.author && originalPost.author._id.toString() !== req.user._id.toString()) {
+                        const commentsEnabled = originalPost.author.settings?.notifications?.comments !== false;
+                        if (commentsEnabled) {
+                            await Notification.create({
+                                recipient: originalPost.author._id,
+                                sender: req.user._id,
+                                type: 'quote',
+                                post: post._id,
+                            });
+                        }
                     }
                 } catch (err) {
                     console.error('Quote notification error:', err);

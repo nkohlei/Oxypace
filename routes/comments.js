@@ -86,7 +86,7 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
             return res.status(400).json({ message: 'Comment content or media is required' });
         }
 
-        const post = await Post.findById(req.params.postId);
+        const post = await Post.findById(req.params.postId).populate('author');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -120,24 +120,28 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
         await post.save();
 
         // Create Notification (if not own post)
-        if (post.author.toString() !== req.user.id) {
-            const notification = await Notification.create({
-                recipient: post.author,
-                sender: req.user.id,
-                type: 'comment',
-                post: post._id,
-                comment: comment._id,
-            });
-            req.app
-                .get('io')
-                .to(post.author.toString())
-                .emit(
-                    'newNotification',
-                    await notification.populate(
-                        'sender',
-                        'username profile.displayName profile.avatar verificationBadge'
-                    )
-                );
+        if (post.author && post.author._id.toString() !== req.user.id) {
+            const commentsEnabled = post.author.settings?.notifications?.comments !== false;
+
+            if (commentsEnabled) {
+                const notification = await Notification.create({
+                    recipient: post.author._id,
+                    sender: req.user.id,
+                    type: 'comment',
+                    post: post._id,
+                    comment: comment._id,
+                });
+                req.app
+                    .get('io')
+                    .to(post.author._id.toString())
+                    .emit(
+                        'newNotification',
+                        await notification.populate(
+                            'sender',
+                            'username profile.displayName profile.avatar verificationBadge'
+                        )
+                    );
+            }
         }
 
         await comment.populate(
@@ -162,7 +166,7 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
             return res.status(400).json({ message: 'Reply content or media is required' });
         }
 
-        const parentComment = await Comment.findById(req.params.commentId);
+        const parentComment = await Comment.findById(req.params.commentId).populate('author');
 
         if (!parentComment) {
             return res.status(404).json({ message: 'Comment not found' });
@@ -192,24 +196,28 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
         parentComment.replyCount += 1;
         await parentComment.save();
 
-        if (parentComment.author.toString() !== req.user.id) {
-            const notification = await Notification.create({
-                recipient: parentComment.author,
-                sender: req.user.id,
-                type: 'reply',
-                post: parentComment.post,
-                comment: reply._id,
-            });
-            req.app
-                .get('io')
-                .to(parentComment.author.toString())
-                .emit(
-                    'newNotification',
-                    await notification.populate(
-                        'sender',
-                        'username profile.displayName profile.avatar verificationBadge'
-                    )
-                );
+        if (parentComment.author && parentComment.author._id.toString() !== req.user.id) {
+            const commentsEnabled = parentComment.author.settings?.notifications?.comments !== false;
+
+            if (commentsEnabled) {
+                const notification = await Notification.create({
+                    recipient: parentComment.author._id,
+                    sender: req.user.id,
+                    type: 'reply',
+                    post: parentComment.post,
+                    comment: reply._id,
+                });
+                req.app
+                    .get('io')
+                    .to(parentComment.author._id.toString())
+                    .emit(
+                        'newNotification',
+                        await notification.populate(
+                            'sender',
+                            'username profile.displayName profile.avatar verificationBadge'
+                        )
+                    );
+            }
         }
 
         await reply.populate(

@@ -11,7 +11,7 @@ const router = express.Router();
 // @access  Private
 router.post('/post/:postId', protect, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.postId);
+        const post = await Post.findById(req.params.postId).populate('author');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -37,31 +37,35 @@ router.post('/post/:postId', protect, async (req, res) => {
             await post.save();
 
             // Create Notification (if not own post)
-            if (post.author.toString() !== req.user.id) {
-                // Check if notification already exists to avoid spamming touches
-                const existingNotif = await Notification.findOne({
-                    recipient: post.author,
-                    sender: req.user.id,
-                    type: 'like',
-                    post: post._id,
-                });
-
-                if (!existingNotif) {
-                    const notification = await Notification.create({
-                        recipient: post.author,
+            if (post.author && post.author._id.toString() !== req.user.id) {
+                const likesEnabled = post.author.settings?.notifications?.likes !== false;
+                
+                if (likesEnabled) {
+                    // Check if notification already exists to avoid spamming touches
+                    const existingNotif = await Notification.findOne({
+                        recipient: post.author._id,
                         sender: req.user.id,
                         type: 'like',
                         post: post._id,
                     });
 
-                    // Real-time socket part
-                    const io = req.app.get('io');
-                    if (io) {
-                        const populatedNotif = await notification.populate(
-                            'sender',
-                            'username profile.displayName profile.avatar verificationBadge'
-                        );
-                        io.to(post.author.toString()).emit('newNotification', populatedNotif);
+                    if (!existingNotif) {
+                        const notification = await Notification.create({
+                            recipient: post.author._id,
+                            sender: req.user.id,
+                            type: 'like',
+                            post: post._id,
+                        });
+
+                        // Real-time socket part
+                        const io = req.app.get('io');
+                        if (io) {
+                            const populatedNotif = await notification.populate(
+                                'sender',
+                                'username profile.displayName profile.avatar verificationBadge'
+                            );
+                            io.to(post.author._id.toString()).emit('newNotification', populatedNotif);
+                        }
                     }
                 }
             }
@@ -83,7 +87,7 @@ router.post('/post/:postId', protect, async (req, res) => {
 // @access  Private
 router.post('/comment/:commentId', protect, async (req, res) => {
     try {
-        const comment = await Comment.findById(req.params.commentId);
+        const comment = await Comment.findById(req.params.commentId).populate('author');
 
         if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });
@@ -109,30 +113,34 @@ router.post('/comment/:commentId', protect, async (req, res) => {
             await comment.save();
 
             // Create Notification for Comment Like
-            if (comment.author.toString() !== req.user.id) {
-                const existingNotif = await Notification.findOne({
-                    recipient: comment.author,
-                    sender: req.user.id,
-                    type: 'like',
-                    comment: comment._id,
-                });
+            if (comment.author && comment.author._id.toString() !== req.user.id) {
+                const likesEnabled = comment.author.settings?.notifications?.likes !== false;
 
-                if (!existingNotif) {
-                    const notification = await Notification.create({
-                        recipient: comment.author,
+                if (likesEnabled) {
+                    const existingNotif = await Notification.findOne({
+                        recipient: comment.author._id,
                         sender: req.user.id,
                         type: 'like',
-                        post: comment.post, // Link to the post
                         comment: comment._id,
                     });
 
-                    const io = req.app.get('io');
-                    if (io) {
-                        const populatedNotif = await notification.populate(
-                            'sender',
-                            'username profile.displayName profile.avatar verificationBadge'
-                        );
-                        io.to(comment.author.toString()).emit('newNotification', populatedNotif);
+                    if (!existingNotif) {
+                        const notification = await Notification.create({
+                            recipient: comment.author._id,
+                            sender: req.user.id,
+                            type: 'like',
+                            post: comment.post, // Link to the post
+                            comment: comment._id,
+                        });
+
+                        const io = req.app.get('io');
+                        if (io) {
+                            const populatedNotif = await notification.populate(
+                                'sender',
+                                'username profile.displayName profile.avatar verificationBadge'
+                            );
+                            io.to(comment.author._id.toString()).emit('newNotification', populatedNotif);
+                        }
                     }
                 }
             }
