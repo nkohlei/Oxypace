@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     try {
         await connectDB();
 
-        const baseUrl = 'https://oxypace.vercel.app';
+        const baseUrl = 'https://oxypace.netlify.app';
         const now = new Date().toISOString();
 
         let xml = '<?xml version="1.0" encoding="UTF-8"?>';
