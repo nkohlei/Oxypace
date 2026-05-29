@@ -601,6 +601,7 @@ const Profile = () => {
                                         src={profileUser?.profile?.avatar}
                                         alt={profileUser.username}
                                         style={{ width: '100%', height: '100%' }}
+                                        isDeleted={profileUser?.isDeleted}
                                     />
                                     {/* Edit button removed from here, now in modal */}
                                 </div>
@@ -690,6 +691,23 @@ const Profile = () => {
                                             {profileUser?.profile?.displayName ||
                                                 profileUser?.username}
                                         </h1>
+                                        {profileUser?.isDeleted && (
+                                            <span className="deleted-user-badge" style={{
+                                                marginLeft: '8px',
+                                                padding: '3px 8px',
+                                                fontSize: '11px',
+                                                fontWeight: 'bold',
+                                                borderRadius: '4px',
+                                                background: 'rgba(239, 68, 68, 0.15)',
+                                                color: '#f87171',
+                                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                height: '22px'
+                                            }}>
+                                                Silinmiş Kullanıcı
+                                            </span>
+                                        )}
                                         <div className="badge-alignment-container">
                                             <Badge type={profileUser?.verificationBadge} />
                                         </div>

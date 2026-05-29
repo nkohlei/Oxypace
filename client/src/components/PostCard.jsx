@@ -383,6 +383,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         alt={author.username}
                         className="author-avatar"
                         size={40}
+                        isDeleted={author.isDeleted}
                     />
                 </Link>
             </div>
@@ -416,6 +417,23 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             <span className="author-name">
                                 {author.profile?.displayName || author.username}
                             </span>
+                            {author.isDeleted && (
+                                <span className="deleted-user-badge" style={{
+                                    marginLeft: '6px',
+                                    padding: '2px 6px',
+                                    fontSize: '10px',
+                                    fontWeight: 'bold',
+                                    borderRadius: '4px',
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    color: '#f87171',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    verticalAlign: 'middle'
+                                }}>
+                                    Silinmiş Kullanıcı
+                                </span>
+                            )}
                             <Badge type={author.verificationBadge} size={16} />
                             <span className="author-username">@{author.username}</span>
                         </Link>

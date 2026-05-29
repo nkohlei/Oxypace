@@ -17,9 +17,51 @@ const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    // Recovery Flow States
+    const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+    const [recoveryData, setRecoveryData] = useState({
+        petName: '',
+        favoriteMovie: '',
+        recoveryReason: '',
+    });
+    const [recoveryError, setRecoveryError] = useState('');
+    const [recoverySuccess, setRecoverySuccess] = useState('');
+    const [recoveryLoading, setRecoveryLoading] = useState(false);
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         setError('');
+    };
+
+    const handleRecoverySubmit = async (e) => {
+        e.preventDefault();
+        setRecoveryError('');
+        setRecoverySuccess('');
+        setRecoveryLoading(true);
+
+        const securityAnswers = [
+            { question: 'İlk evcil hayvanınızın adı?', answer: recoveryData.petName },
+            { question: 'En sevdiğiniz film?', answer: recoveryData.favoriteMovie }
+        ];
+
+        try {
+            const response = await axios.post('/api/auth/recover-request', {
+                email: formData.email,
+                password: formData.password,
+                securityAnswers,
+                recoveryReason: recoveryData.recoveryReason
+            });
+            setRecoverySuccess(response.data.message);
+            setTimeout(() => {
+                setShowRecoveryModal(false);
+                setRecoveryData({ petName: '', favoriteMovie: '', recoveryReason: '' });
+                setRecoverySuccess('');
+            }, 4000);
+        } catch (err) {
+            setRecoveryError(err.response?.data?.message || 'Kurtarma talebi gönderilemedi.');
+        } finally {
+            setRecoveryLoading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -38,7 +80,13 @@ const Login = () => {
             login(response.data.token, response.data.user);
             window.location.href = '/'; // Full reload for clean layout
         } catch (err) {
-            setError(err.response?.data?.message || 'Giriş başarısız');
+            if (err.response?.status === 403 && err.response?.data?.isDeleted) {
+                if (window.confirm("Bu hesap silinmiştir. Kurtarmak istiyor musunuz?")) {
+                    setShowRecoveryModal(true);
+                }
+            } else {
+                setError(err.response?.data?.message || 'Giriş başarısız');
+            }
         } finally {
             setLoading(false);
         }
@@ -235,6 +283,137 @@ const Login = () => {
                     </p>
                 </div>
             </div>
+
+            {showRecoveryModal && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(10px)',
+                }}>
+                    <div style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: '16px',
+                        padding: '30px',
+                        maxWidth: '450px',
+                        width: '90%',
+                        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                        backdropFilter: 'blur(8.5px)',
+                        WebkitBackdropFilter: 'blur(8.5px)',
+                        color: '#fff',
+                        fontFamily: "'Inter', sans-serif"
+                    }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '10px', color: '#ff4b4b' }}>Hesap Kurtarma Talebi</h2>
+                        <p style={{ fontSize: '13px', color: '#ccc', marginBottom: '20px', lineHeight: '1.4' }}>
+                            Hesabınızı kurtarmak için lütfen güvenlik sorularını yanıtlayın ve gerekçenizi belirtin. Yönetici onayının ardından hesabınız tekrar aktif edilecektir.
+                        </p>
+
+                        <form onSubmit={handleRecoverySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Güvenlik Sorusu 1: İlk evcil hayvanınızın adı nedir?</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={recoveryData.petName}
+                                    onChange={(e) => setRecoveryData({ ...recoveryData, petName: e.target.value })}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        color: '#fff',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Güvenlik Sorusu 2: En sevdiğiniz film hangisidir?</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={recoveryData.favoriteMovie}
+                                    onChange={(e) => setRecoveryData({ ...recoveryData, favoriteMovie: e.target.value })}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        color: '#fff',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Hesap Kurtarma Gerekçesi</label>
+                                <textarea
+                                    required
+                                    rows="3"
+                                    placeholder="Neden bu hesabı geri almak istiyorsunuz?"
+                                    value={recoveryData.recoveryReason}
+                                    onChange={(e) => setRecoveryData({ ...recoveryData, recoveryReason: e.target.value })}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        color: '#fff',
+                                        outline: 'none',
+                                        resize: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            {recoveryError && <div style={{ color: '#ff4b4b', fontSize: '12px', fontWeight: '600' }}>{recoveryError}</div>}
+                            {recoverySuccess && <div style={{ color: '#22c55e', fontSize: '12px', fontWeight: '600' }}>{recoverySuccess}</div>}
+
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRecoveryModal(false)}
+                                    style={{
+                                        flex: 1,
+                                        background: 'rgba(255, 255, 255, 0.1)',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '12px',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    Vazgeç
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={recoveryLoading}
+                                    style={{
+                                        flex: 1,
+                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '12px',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                        fontWeight: '600',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    {recoveryLoading ? 'Gönderiliyor...' : 'Talebi İlet'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

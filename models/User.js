@@ -215,6 +215,29 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        isDeleted: {
+            type: Boolean,
+            default: false,
+        },
+        deletionReason: {
+            type: String,
+            default: '',
+        },
+        recoveryStatus: {
+            type: String,
+            enum: ['none', 'pending', 'approved', 'rejected'],
+            default: 'none',
+        },
+        recoveryReason: {
+            type: String,
+            default: '',
+        },
+        securityAnswers: [
+            {
+                question: String,
+                answer: String,
+            }
+        ],
     },
     {
         timestamps: true,

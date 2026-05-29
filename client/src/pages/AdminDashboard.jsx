@@ -784,7 +784,9 @@ const UserDetailModal = ({
     setBanModalOpen,
     handleImpersonate,
     handleUserShadowbanToggle,
-    isOxypace
+    isOxypace,
+    handleApproveRecovery,
+    handleRejectRecovery
 }) => {
     if (!isOpen || !user) return null;
 
@@ -875,6 +877,66 @@ const UserDetailModal = ({
                             )}
                         </div>
                     </div>
+
+                    {/* Hesap Kurtarma Talebi */}
+                    {user.recoveryStatus === 'pending' && (
+                        <div className="detail-section-card" style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.04)' }}>
+                            <h4 className="detail-section-title" style={{ color: '#ef4444' }}>⏳ Hesap Kurtarma Talebi</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#ccc' }}>
+                                <div>
+                                    <span style={{ color: '#888', display: 'block', marginBottom: '2px' }}>Kurtarma Gerekçesi:</span>
+                                    <strong style={{ fontSize: '14px', color: '#fff' }}>{user.recoveryReason || 'Gerekçe belirtilmemiş.'}</strong>
+                                </div>
+                                {user.securityAnswers && user.securityAnswers.length > 0 && (
+                                    <div>
+                                        <span style={{ color: '#888', display: 'block', marginBottom: '6px' }}>Güvenlik Soruları & Cevapları:</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
+                                            {user.securityAnswers.map((item, idx) => (
+                                                <div key={idx} style={{ borderBottom: idx < user.securityAnswers.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', paddingBottom: idx < user.securityAnswers.length - 1 ? '6px' : 0 }}>
+                                                    <div style={{ color: '#aaa', fontSize: '12px' }}>Soru: {item.question}</div>
+                                                    <div style={{ color: '#4ade80', fontWeight: '600', marginTop: '2px' }}>Cevap: {item.answer}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                    <button
+                                        onClick={() => handleApproveRecovery(user._id)}
+                                        style={{
+                                            flex: 1,
+                                            background: '#22c55e',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '10px',
+                                            borderRadius: '8px',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            fontSize: '12px'
+                                        }}
+                                    >
+                                        Talebi Onayla (Hesabı Aç)
+                                    </button>
+                                    <button
+                                        onClick={() => handleRejectRecovery(user._id)}
+                                        style={{
+                                            flex: 1,
+                                            background: '#ef4444',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '10px',
+                                            borderRadius: '8px',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            fontSize: '12px'
+                                        }}
+                                    >
+                                        Talebi Reddet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Operations */}
                     <div className="detail-section-card">
@@ -1324,6 +1386,32 @@ const AdminDashboard = () => {
             setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, verificationBadge: newBadge, isVerified: newBadge !== 'none' } : prev);
         } catch (err) {
             alert('Rozet güncellenemedi.');
+        }
+    };
+
+    const handleApproveRecovery = async (userId) => {
+        if (!window.confirm('Bu kullanıcının hesap kurtarma talebini onaylamak istiyor musunuz? Hesabı tekrar aktif edilecektir.')) return;
+        try {
+            const { data } = await axios.put(`/api/admin/users/${userId}/recover-approve`);
+            alert(data.message);
+            setUsers(prev => prev.map(u => u._id === userId ? { ...u, isDeleted: false, recoveryStatus: 'approved' } : u));
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isDeleted: false, recoveryStatus: 'approved' } : prev);
+            if (activeTab === 'users') fetchUsers(searchTerm);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Onaylama işlemi başarısız.');
+        }
+    };
+
+    const handleRejectRecovery = async (userId) => {
+        if (!window.confirm('Bu kullanıcının hesap kurtarma talebini reddetmek istiyor musunuz?')) return;
+        try {
+            const { data } = await axios.put(`/api/admin/users/${userId}/recover-reject`);
+            alert(data.message);
+            setUsers(prev => prev.map(u => u._id === userId ? { ...u, recoveryStatus: 'rejected' } : u));
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, recoveryStatus: 'rejected' } : prev);
+            if (activeTab === 'users') fetchUsers(searchTerm);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Reddetme işlemi başarısız.');
         }
     };
 
@@ -2602,6 +2690,8 @@ const AdminDashboard = () => {
                 handleImpersonate={handleImpersonate}
                 handleUserShadowbanToggle={handleUserShadowbanToggle}
                 isOxypace={isOxypace}
+                handleApproveRecovery={handleApproveRecovery}
+                handleRejectRecovery={handleRejectRecovery}
             />
 
 

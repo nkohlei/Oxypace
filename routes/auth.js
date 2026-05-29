@@ -169,6 +169,15 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
+        // Check if soft-deleted
+        if (user.isDeleted) {
+            return res.status(403).json({
+                isDeleted: true,
+                message: 'Bu hesap silinmiştir. Kurtarmak istiyor musunuz?',
+                email: user.email
+            });
+        }
+
         // Check if verified
         if (!user.isVerified) {
             return res.status(403).json({ message: 'Please verify your email before logging in' });
@@ -532,6 +541,38 @@ router.get('/maintenance-status', async (req, res) => {
     } catch (error) {
         console.error('Fetch public maintenance status error:', error);
         res.status(500).json({ active: false });
+    }
+});
+
+// @route   POST /api/auth/recover-request
+// @desc    Submit account recovery request
+// @access  Public
+router.post('/recover-request', async (req, res) => {
+    try {
+        const { email, password, securityAnswers, recoveryReason } = req.body;
+        if (!email || !password || !securityAnswers || !recoveryReason) {
+            return res.status(400).json({ message: 'Lütfen tüm alanları doldurun.' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'E-posta veya şifre hatalı.' });
+        }
+
+        user.recoveryStatus = 'pending';
+        user.recoveryReason = recoveryReason;
+        user.securityAnswers = securityAnswers;
+        await user.save();
+
+        res.json({ message: 'Kurtarma talebiniz başarıyla alındı. Yönetici onayının ardından bilgilendirileceksiniz.' });
+    } catch (error) {
+        console.error('Recovery request error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

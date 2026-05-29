@@ -7,6 +7,7 @@ import ContactMessage from '../models/ContactMessage.js';
 import SystemSettings from '../models/SystemSettings.js';
 import BannedIP from '../models/BannedIP.js';
 import jwt from 'jsonwebtoken';
+import transporter from '../config/email.js';
 
 const router = express.Router();
 
@@ -775,6 +776,109 @@ router.delete('/posts/:id', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Admin delete post error:', error);
         res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   PUT /api/admin/users/:id/recover-approve
+// @desc    Approve user account recovery request
+// @access  Private/Admin
+router.put('/users/:id/recover-approve', protect, admin, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        user.isDeleted = false;
+        user.recoveryStatus = 'approved';
+        await user.save();
+
+        // Send Email notification
+        const mailOptions = {
+            from: process.env.EMAIL_FROM,
+            to: user.email,
+            subject: '✅ Hesabınız Başarıyla Kurtarıldı - Oxypace',
+            html: `
+                <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fa; border-radius: 16px;">
+                    <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
+                        <h1 style="color: #22c55e; margin-bottom: 20px; font-size: 24px;">Hesabınız Yeniden Aktif!</h1>
+                        <p style="color: #666; font-size: 16px; line-height: 1.6;">Merhaba <strong>${user.profile?.displayName || user.username}</strong>,</p>
+                        <p style="color: #666; font-size: 16px; line-height: 1.6;">
+                            Hesap kurtarma talebiniz yöneticilerimiz tarafından incelenmiş ve onaylanmıştır. Artık hesabınıza tekrar giriş yapabilir, paylaşımlarınıza kaldığınız yerden devam edebilirsiniz.
+                        </p>
+                        <div style="margin: 30px 0;">
+                            <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/login" style="display: inline-block; background: #22c55e; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                Şimdi Giriş Yap
+                            </a>
+                        </div>
+                        <p style="color: #999; font-size: 13px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                            Oxypace Topluluk Yönetimi
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+        } catch (emailErr) {
+            console.error('Approval email error:', emailErr);
+        }
+
+        res.json({ message: 'Hesap kurtarma talebi onaylandı ve kullanıcı bilgilendirildi.', user });
+    } catch (error) {
+        console.error('Recover approve error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/admin/users/:id/recover-reject
+// @desc    Reject user account recovery request
+// @access  Private/Admin
+router.put('/users/:id/recover-reject', protect, admin, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        user.recoveryStatus = 'rejected';
+        await user.save();
+
+        // Send Email notification
+        const mailOptions = {
+            from: process.env.EMAIL_FROM,
+            to: user.email,
+            subject: '❌ Hesap Kurtarma Talebiniz Reddedildi - Oxypace',
+            html: `
+                <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fa; border-radius: 16px;">
+                    <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
+                        <h1 style="color: #ef4444; margin-bottom: 20px; font-size: 24px;">Kurtarma Talebi Reddedildi</h1>
+                        <p style="color: #666; font-size: 16px; line-height: 1.6;">Merhaba <strong>${user.profile?.displayName || user.username}</strong>,</p>
+                        <p style="color: #666; font-size: 16px; line-height: 1.6;">
+                            Hesap kurtarma talebiniz yöneticilerimiz tarafından incelenmiş, ancak maalesef uygun bulunmayarak reddedilmiştir.
+                        </p>
+                        <p style="color: #888; font-size: 14px; margin-top: 20px;">
+                            Herhangi bir sorunuz varsa veya bunun bir hata olduğunu düşünüyorsanız destek ekibimizle iletişime geçebilirsiniz.
+                        </p>
+                        <p style="color: #999; font-size: 13px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                            Oxypace Topluluk Yönetimi
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+        } catch (emailErr) {
+            console.error('Rejection email error:', emailErr);
+        }
+
+        res.json({ message: 'Hesap kurtarma talebi reddedildi ve kullanıcı bilgilendirildi.', user });
+    } catch (error) {
+        console.error('Recover reject error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
