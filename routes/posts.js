@@ -460,9 +460,6 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
 
         // --- Portal Privacy Filter ---
         // If the viewer is NOT the author, we must only show posts from portals they have access to
-        const viewerId = req.user?._id;
-        const targetUserId = req.params.userId;
-        const isAuthor = viewerId && viewerId.toString() === targetUserId;
 
         let query = { author: targetUserId };
 
