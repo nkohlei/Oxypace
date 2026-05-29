@@ -771,6 +771,159 @@ const PortalDetailModal = ({
 };
 
 
+// User Detail / Management Modal
+const UserDetailModal = ({
+    isOpen,
+    onClose,
+    user,
+    contextBadges,
+    handleBadgeChange,
+    handleUnbanUser,
+    setBanModalTarget,
+    setBanModalOpen,
+    handleImpersonate,
+    handleUserShadowbanToggle,
+    isOxypace
+}) => {
+    if (!isOpen || !user) return null;
+
+    return (
+        <div className="modal-overlay-modern">
+            <div className="modal-content-modern user-detail-modal">
+                <div className="modal-header-modern" style={{ paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <h2>👤 Kullanıcı Yönetimi</h2>
+                    <button className="close-btn-modern" onClick={onClose}>&times;</button>
+                </div>
+
+                <div className="modal-body-modern" style={{ gap: '20px', overflowY: 'auto', maxHeight: '70vh' }}>
+                    {/* Profile Summary */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <img 
+                            src={user.profile?.avatar || 'https://via.placeholder.com/150'} 
+                            alt="" 
+                            style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.08)' }} 
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <strong style={{ fontSize: '16px', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {user.profile?.displayName || user.username}
+                                <Badge type={user.verificationBadge} size={18} />
+                            </strong>
+                            <span style={{ fontSize: '13px', color: '#888' }}>@{user.username}</span>
+                            <span style={{ fontSize: '12px', color: '#666' }}>{user.email}</span>
+                        </div>
+                    </div>
+
+                    {/* Shadowban (Hayalet Mod) */}
+                    <div className="read-only-toggle-container" style={{ margin: 0 }}>
+                        <div className="read-only-info">
+                            <strong>Hayalet Modu (Shadowban)</strong>
+                            <span>Aktif edildiğinde kullanıcının gönderi ve yorumları sadece kendisine gösterilir.</span>
+                        </div>
+                        <div 
+                            className={`read-only-toggle-switch ${user.isShadowbanned ? 'active' : ''}`}
+                            onClick={() => handleUserShadowbanToggle(user._id, user.isShadowbanned)}
+                        />
+                    </div>
+
+                    {/* Badge Selection */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Doğrulama Rozeti</h4>
+                        <select
+                            className={`badge-select ${user.verificationBadge}`}
+                            value={user.verificationBadge}
+                            onChange={(e) => handleBadgeChange(user._id, e.target.value)}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                        >
+                            <option value="none">Rozet Yok</option>
+                            {(() => {
+                                const userBadges = contextBadges.filter(b => b.category === 'user' || b.category === 'both');
+                                const slugs = new Set(userBadges.map(b => b.slug));
+                                const LEGACY = [
+                                    { slug: 'blue', name: 'Mavi Onay' },
+                                    { slug: 'gold', name: 'Altın Onay' },
+                                    { slug: 'platinum', name: 'Platin Onay' },
+                                    { slug: 'special', name: 'Özel Rozet' },
+                                    { slug: 'staff', name: 'Platform Yöneticisi' },
+                                    { slug: 'partner', name: 'Partner' },
+                                    { slug: 'official', name: 'Resmi Hesap' },
+                                ];
+                                const merged = [...userBadges];
+                                LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
+                                if (user.verificationBadge && user.verificationBadge !== 'none' && !slugs.has(user.verificationBadge) && !LEGACY.find(l => l.slug === user.verificationBadge)) {
+                                    merged.push({ slug: user.verificationBadge, name: user.verificationBadge });
+                                }
+                                return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
+                            })()}
+                        </select>
+                    </div>
+
+                    {/* Security Info (IP & Device info) */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Güvenlik Bilgisi</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: '#ccc' }}>
+                            <div>
+                                <span style={{ color: '#666' }}>Son IP Adresi: </span>
+                                <strong style={{ fontFamily: 'monospace' }}>{user.lastIP || 'Kayıtlı Değil'}</strong>
+                            </div>
+                            {user.isBanned && (
+                                <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', marginTop: '4px' }}>
+                                    <div style={{ color: '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>⚠️ Hesap Engellendi (Ban)</div>
+                                    <div style={{ fontSize: '12px' }}><span style={{ color: '#888' }}>Sebep:</span> {user.banReason || 'Belirtilmedi'}</div>
+                                    <div style={{ fontSize: '12px' }}><span style={{ color: '#888' }}>Bitiş:</span> {user.banExpiresAt ? new Date(user.banExpiresAt).toLocaleString() : 'Kalıcı / Süresiz'}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Operations */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Yönetim Eylemleri</h4>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            {user.isBanned ? (
+                                <button 
+                                    className="btn-modern-primary"
+                                    onClick={() => handleUnbanUser(user._id)}
+                                    style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid #4ade80', textTransform: 'none', padding: '10px 16px' }}
+                                >
+                                    Engeli Kaldır
+                                </button>
+                            ) : (
+                                <button 
+                                    className="btn-modern-primary"
+                                    onClick={() => {
+                                        setBanModalTarget({ type: 'user', id: user._id });
+                                        setBanModalOpen(true);
+                                    }}
+                                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid #f87171', textTransform: 'none', padding: '10px 16px' }}
+                                >
+                                    Kullanıcıyı Engelle
+                                </button>
+                            )}
+
+                            {isOxypace && user.username !== 'oxypace' && (
+                                <button
+                                    className="btn-modern-primary"
+                                    onClick={() => handleImpersonate(user._id)}
+                                    style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid #6366f1', textTransform: 'none', padding: '10px 16px' }}
+                                >
+                                    👤 Taklit Et (Ghost Mode)
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="modal-footer-modern" style={{ padding: '10px 28px 24px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button type="button" className="btn-modern-ghost" onClick={onClose}>
+                        Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
     const navigate = useNavigate();
@@ -864,6 +1017,10 @@ const AdminDashboard = () => {
     const [ownershipTarget, setOwnershipTarget] = useState('');
     const [transferring, setTransferring] = useState(false);
 
+    // User Detail Modal State
+    const [userDetailModalOpen, setUserDetailModalOpen] = useState(false);
+    const [selectedUserDetail, setSelectedUserDetail] = useState(null);
+
 
     // Feedbacks State
     const [feedbacks, setFeedbacks] = useState([]);
@@ -923,6 +1080,8 @@ const AdminDashboard = () => {
                 const userId = banModalTarget.id;
                 await axios.put(`/api/admin/users/${userId}/ban`, { reason, expiresAt });
                 alert('Kullanıcı başarıyla engellendi.');
+                setUsers(prev => prev.map(u => u._id === userId ? { ...u, isBanned: true, banReason: reason, banExpiresAt: expiresAt } : u));
+                setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isBanned: true, banReason: reason, banExpiresAt: expiresAt } : prev);
                 if (activeTab === 'users') fetchUsers(searchTerm);
             } else if (banModalTarget.type === 'ip') {
                 const ip = banModalTarget.id;
@@ -941,6 +1100,8 @@ const AdminDashboard = () => {
         try {
             await axios.put(`/api/admin/users/${userId}/unban`);
             alert('Kullanıcının engeli kaldırıldı.');
+            setUsers(prev => prev.map(u => u._id === userId ? { ...u, isBanned: false, banReason: '', banExpiresAt: null } : u));
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isBanned: false, banReason: '', banExpiresAt: null } : prev);
             if (activeTab === 'users') fetchUsers(searchTerm);
         } catch (err) {
             alert('İşlem başarısız.');
@@ -1157,10 +1318,39 @@ const AdminDashboard = () => {
                         : user
                 )
             );
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, verificationBadge: newBadge, isVerified: newBadge !== 'none' } : prev);
         } catch (err) {
             alert('Rozet güncellenemedi.');
         }
     };
+
+    const openUserDetail = (user) => {
+        setSelectedUserDetail(user);
+        setUserDetailModalOpen(true);
+    };
+
+    const handleUserShadowbanToggle = async (userId, currentShadowbanned) => {
+        try {
+            const { data } = await axios.put(`/api/admin/users/${userId}/shadowban`, {
+                isShadowbanned: !currentShadowbanned
+            });
+            alert(data.message);
+            setUsers(prev => prev.map(u => u._id === userId ? { ...u, isShadowbanned: data.user.isShadowbanned } : u));
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isShadowbanned: data.user.isShadowbanned } : prev);
+        } catch (err) {
+            alert('Hayalet mod durumu güncellenemedi.');
+        }
+    };
+
+    // Search effect for users
+    useEffect(() => {
+        if (activeTab === 'users') {
+            const delayDebounceFn = setTimeout(() => {
+                fetchUsers(searchTerm);
+            }, 500);
+            return () => clearTimeout(delayDebounceFn);
+        }
+    }, [searchTerm]);
 
     // Search effect for portals
     useEffect(() => {
@@ -1653,116 +1843,27 @@ const AdminDashboard = () => {
 
                         {loading && <div className="admin-loading">Yükleniyor...</div>}
 
-                        <div className="users-list">
+                        <div className="admin-users-avatar-grid">
                             {users.map((user) => (
-                                <div key={user._id} className="user-list-item">
-                                    <div className="user-item-left">
+                                <div
+                                    key={user._id}
+                                    className={`admin-user-avatar-card ${user.isBanned ? 'banned' : ''} ${user.isShadowbanned ? 'shadowbanned' : ''}`}
+                                    onClick={() => openUserDetail(user)}
+                                >
+                                    <div className="avatar-wrapper-modern">
                                         <img
-                                            src={
-                                                user.profile.avatar ||
-                                                'https://via.placeholder.com/150'
-                                            }
+                                            src={user.profile?.avatar || 'https://via.placeholder.com/150'}
                                             alt={user.username}
-                                            className="user-list-avatar"
+                                            className="admin-user-avatar-img"
                                         />
-                                        <div className="user-item-info">
-                                            <h4>{user.profile.displayName || user.username}</h4>
-                                            <span>@{user.username}</span>
-                                        </div>
+                                        {user.isBanned && <span className="banned-indicator-dot">🚫</span>}
+                                        {user.isShadowbanned && <span className="shadowbanned-indicator-dot">👻</span>}
                                     </div>
-                                    <div className="user-item-actions">
-                                        <select
-                                            className={`badge-select ${user.verificationBadge}`}
-                                            value={user.verificationBadge}
-                                            onChange={(e) =>
-                                                handleBadgeChange(user._id, e.target.value)
-                                            }
-                                        >
-                                            <option value="none">Rozet Yok</option>
-                                            {(() => {
-                                                const userBadges = contextBadges.filter(b => b.category === 'user' || b.category === 'both');
-                                                const slugs = new Set(userBadges.map(b => b.slug));
-                                                // Add legacy badge fallbacks
-                                                const LEGACY = [
-                                                    { slug: 'blue', name: 'Mavi Onay' },
-                                                    { slug: 'gold', name: 'Altın Onay' },
-                                                    { slug: 'platinum', name: 'Platin Onay' },
-                                                    { slug: 'special', name: 'Özel Rozet' },
-                                                    { slug: 'staff', name: 'Platform Yöneticisi' },
-                                                    { slug: 'partner', name: 'Partner' },
-                                                    { slug: 'official', name: 'Resmi Hesap' },
-                                                ];
-                                                const merged = [...userBadges];
-                                                LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
-                                                // Also ensure user's current badge is in the list
-                                                if (user.verificationBadge && user.verificationBadge !== 'none' && !slugs.has(user.verificationBadge) && !LEGACY.find(l => l.slug === user.verificationBadge)) {
-                                                    merged.push({ slug: user.verificationBadge, name: user.verificationBadge });
-                                                }
-                                                return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
-                                            })()}
-                                        </select>
-                                        {user.isBanned ? (
-                                            <button 
-                                                className="unban-btn-admin"
-                                                onClick={() => handleUnbanUser(user._id)}
-                                                style={{
-                                                    marginLeft: '10px',
-                                                    padding: '6px 12px',
-                                                    backgroundColor: 'rgba(46, 204, 113, 0.15)',
-                                                    color: '#2ecc71',
-                                                    border: '1px solid #2ecc71',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '12px',
-                                                    minWidth: '100px'
-                                                }}
-                                            >
-                                                Engeli Kaldır
-                                            </button>
-                                        ) : (
-                                            <button 
-                                                className="ban-btn-admin"
-                                                onClick={() => {
-                                                    setBanModalTarget({ type: 'user', id: user._id });
-                                                    setBanModalOpen(true);
-                                                }}
-                                                style={{
-                                                    marginLeft: '10px',
-                                                    padding: '6px 12px',
-                                                    backgroundColor: 'rgba(231, 76, 60, 0.15)',
-                                                    color: '#e74c3c',
-                                                    border: '1px solid #e74c3c',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '12px',
-                                                    minWidth: '100px'
-                                                }}
-                                            >
-                                                Engelle
-                                            </button>
-                                        )}
-                                        {isOxypace && user.username !== 'oxypace' && (
-                                            <button
-                                                className="impersonate-btn-admin"
-                                                onClick={() => handleImpersonate(user._id)}
-                                                style={{
-                                                    marginLeft: '10px',
-                                                    padding: '6px 12px',
-                                                    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                                                    color: '#818cf8',
-                                                    border: '1px solid #6366f1',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '12px',
-                                                    minWidth: '100px'
-                                                }}
-                                            >
-                                                👤 Taklit Et
-                                            </button>
-                                        )}
+                                    <div className="admin-user-avatar-name">
+                                        {user.profile?.displayName || user.username}
+                                    </div>
+                                    <div className="admin-user-avatar-username">
+                                        @{user.username}
                                     </div>
                                 </div>
                             ))}
@@ -2483,6 +2584,21 @@ const AdminDashboard = () => {
                 setOwnershipTarget={setOwnershipTarget}
                 handleTransferOwnership={handleTransferOwnership}
                 transferring={transferring}
+            />
+
+            {/* User Detail / Management Modal */}
+            <UserDetailModal
+                isOpen={userDetailModalOpen}
+                onClose={() => setUserDetailModalOpen(false)}
+                user={selectedUserDetail}
+                contextBadges={contextBadges}
+                handleBadgeChange={handleBadgeChange}
+                handleUnbanUser={handleUnbanUser}
+                setBanModalTarget={setBanModalTarget}
+                setBanModalOpen={setBanModalOpen}
+                handleImpersonate={handleImpersonate}
+                handleUserShadowbanToggle={handleUserShadowbanToggle}
+                isOxypace={isOxypace}
             />
 
 

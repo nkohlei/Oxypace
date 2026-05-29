@@ -2,7 +2,7 @@ import express from 'express';
 import Comment from '../models/Comment.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
-import { protect } from '../middleware/auth.js';
+import { protect, optionalProtect } from '../middleware/auth.js';
 import { commentValidation, mongoIdValidation } from '../middleware/validation.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
@@ -12,14 +12,22 @@ const router = express.Router();
 // @route   GET /api/comments/:commentId
 // @desc    Get single comment by ID
 // @access  Public
-router.get('/:commentId', mongoIdValidation('commentId'), async (req, res) => {
+router.get('/:commentId', optionalProtect, mongoIdValidation('commentId'), async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.commentId)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge isShadowbanned')
             .populate('post', '_id content');
 
         if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });
+        }
+
+        if (comment.author && comment.author.isShadowbanned) {
+            const viewerId = req.user?._id;
+            const isAuthor = viewerId && viewerId.toString() === comment.author._id.toString();
+            if (!isAuthor) {
+                return res.status(404).json({ message: 'Comment not found' });
+            }
         }
 
         res.json(comment);
@@ -32,19 +40,33 @@ router.get('/:commentId', mongoIdValidation('commentId'), async (req, res) => {
 // @route   GET /api/comments/:commentId/replies
 // @desc    Get replies to a comment
 // @access  Public
-router.get('/:commentId/replies', mongoIdValidation('commentId'), async (req, res) => {
+router.get('/:commentId/replies', optionalProtect, mongoIdValidation('commentId'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const replies = await Comment.find({ parentComment: req.params.commentId })
+        const User = await import('../models/User.js').then(m => m.default);
+        const shadowbannedUsers = await User.find({ isShadowbanned: true }).distinct('_id');
+
+        const query = {
+            parentComment: req.params.commentId,
+            $or: [
+                { author: { $nin: shadowbannedUsers } }
+            ]
+        };
+
+        if (req.user) {
+            query.$or.push({ author: req.user._id });
+        }
+
+        const replies = await Comment.find(query)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: 1 })
             .skip(skip)
             .limit(limit);
 
-        const total = await Comment.countDocuments({ parentComment: req.params.commentId });
+        const total = await Comment.countDocuments(query);
 
         res.json({
             replies,
@@ -234,25 +256,34 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
 // @route   GET /api/comments/post/:postId
 // @desc    Get post comments (top-level only)
 // @access  Public
-router.get('/post/:postId', mongoIdValidation('postId'), async (req, res) => {
+router.get('/post/:postId', optionalProtect, mongoIdValidation('postId'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const comments = await Comment.find({
+        const User = await import('../models/User.js').then(m => m.default);
+        const shadowbannedUsers = await User.find({ isShadowbanned: true }).distinct('_id');
+
+        const query = {
             post: req.params.postId,
             parentComment: null, // Only top-level comments
-        })
+            $or: [
+                { author: { $nin: shadowbannedUsers } }
+            ]
+        };
+
+        if (req.user) {
+            query.$or.push({ author: req.user._id });
+        }
+
+        const comments = await Comment.find(query)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
 
-        const total = await Comment.countDocuments({
-            post: req.params.postId,
-            parentComment: null,
-        });
+        const total = await Comment.countDocuments(query);
 
         res.json({
             comments,
@@ -269,23 +300,33 @@ router.get('/post/:postId', mongoIdValidation('postId'), async (req, res) => {
 // @route   GET /api/comments/comment/:commentId/replies
 // @desc    Get comment replies
 // @access  Public
-router.get('/comment/:commentId/replies', mongoIdValidation('commentId'), async (req, res) => {
+router.get('/comment/:commentId/replies', optionalProtect, mongoIdValidation('commentId'), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const replies = await Comment.find({
+        const User = await import('../models/User.js').then(m => m.default);
+        const shadowbannedUsers = await User.find({ isShadowbanned: true }).distinct('_id');
+
+        const query = {
             parentComment: req.params.commentId,
-        })
+            $or: [
+                { author: { $nin: shadowbannedUsers } }
+            ]
+        };
+
+        if (req.user) {
+            query.$or.push({ author: req.user._id });
+        }
+
+        const replies = await Comment.find(query)
             .populate('author', 'username profile.displayName profile.avatar verificationBadge')
             .sort({ createdAt: 1 }) // Oldest first for replies
             .skip(skip)
             .limit(limit);
 
-        const total = await Comment.countDocuments({
-            parentComment: req.params.commentId,
-        });
+        const total = await Comment.countDocuments(query);
 
         res.json({
             replies,

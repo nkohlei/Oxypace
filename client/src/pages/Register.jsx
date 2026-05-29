@@ -68,6 +68,7 @@ const Register = () => {
                 email: formData.email,
                 username: formData.username,
                 password: formData.password,
+                bannedDevice: localStorage.getItem('banned_device') || undefined,
             });
 
             setSuccess(

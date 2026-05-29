@@ -248,9 +248,17 @@ router.get('/', optionalProtect, async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        // Only show posts that are NOT assigned to a portal in the global feed
-        // Unless the user explicitly asks for portal posts (not implemented yet for global)
-        const query = { portal: { $exists: false } };
+        const shadowbannedUsers = await User.find({ isShadowbanned: true }).distinct('_id');
+        const query = {
+            portal: { $exists: false },
+            $or: [
+                { author: { $nin: shadowbannedUsers } }
+            ]
+        };
+
+        if (req.user) {
+            query.$or.push({ author: req.user._id });
+        }
 
         const posts = await Post.find(query)
             .sort({ createdAt: -1 })
@@ -325,7 +333,7 @@ router.get('/', optionalProtect, async (req, res) => {
 router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy isShadowbanned')
             .populate('portal', 'privacy members blockedUsers allowedUsers')
             .populate({
                 path: 'quotedPost',
@@ -344,6 +352,15 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Shadowban Check
+        if (post.author && post.author.isShadowbanned) {
+            const viewerId = req.user?._id;
+            const isAuthor = viewerId && viewerId.toString() === post.author._id.toString();
+            if (!isAuthor) {
+                return res.status(404).json({ message: 'Post not found' });
+            }
         }
 
         // --- Portal Privacy Check ---
@@ -403,6 +420,19 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
         const targetUser = await User.findById(req.params.userId);
         if (!targetUser) {
             return res.status(404).json({ message: 'User not found' });
+        }
+
+        const viewerId = req.user?._id;
+        const targetUserId = req.params.userId;
+        const isAuthor = viewerId && viewerId.toString() === targetUserId;
+
+        if (targetUser.isShadowbanned && !isAuthor) {
+            return res.json({
+                posts: [],
+                currentPage: 1,
+                totalPages: 0,
+                totalPosts: 0
+            });
         }
 
         if (targetUser.settings?.privacy?.isPrivate) {

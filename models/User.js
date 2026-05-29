@@ -190,6 +190,14 @@ const userSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        isShadowbanned: {
+            type: Boolean,
+            default: false,
+        },
+        lastIP: {
+            type: String,
+            default: '',
+        },
     },
     {
         timestamps: true,

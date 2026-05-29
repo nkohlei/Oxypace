@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import passport from 'passport';
 import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
+import BannedIP from '../models/BannedIP.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rate-limit.js';
 import {
@@ -27,7 +28,32 @@ const generateToken = (id) => {
 // @access  Public
 router.post('/register', registerLimiter, registerValidation, async (req, res) => {
     try {
-        const { email, username, password } = req.body;
+        const { email, username, password, bannedDevice } = req.body;
+
+        // Check Banned Device
+        if (bannedDevice) {
+            try {
+                const decoded = jwt.verify(bannedDevice, process.env.JWT_SECRET);
+                if (decoded.banned) {
+                    if (!decoded.expiresAt || new Date(decoded.expiresAt) > new Date()) {
+                        return res.status(403).json({ message: 'Bu cihaz platform kuralları ihlali nedeniyle engellenmiştir.' });
+                    }
+                }
+            } catch (err) {
+                // Invalid token
+            }
+        }
+
+        // Check Banned IP
+        const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const ipBan = await BannedIP.findOne({ ip: clientIP });
+        if (ipBan) {
+            if (!ipBan.expiresAt || new Date(ipBan.expiresAt) > new Date()) {
+                return res.status(403).json({ message: 'Bu IP adresi platform kuralları ihlali nedeniyle engellenmiştir.' });
+            } else {
+                await BannedIP.deleteOne({ _id: ipBan._id });
+            }
+        }
 
         // Validation
         if (!email || !username || !password) {
@@ -157,13 +183,22 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 user.banExpiresAt = null;
                 await user.save();
             } else {
+                const bannedDeviceToken = jwt.sign(
+                    { banned: true, expiresAt: user.banExpiresAt },
+                    process.env.JWT_SECRET
+                );
                 return res.status(403).json({
                     isBanned: true,
                     banReason: user.banReason || 'Hesabınız platform kuralları ihlali nedeniyle engellenmiştir.',
-                    banExpiresAt: user.banExpiresAt
+                    banExpiresAt: user.banExpiresAt,
+                    bannedDeviceToken
                 });
             }
         }
+
+        // Save last active IP address
+        user.lastIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        await user.save();
 
         // Generate token
         const token = generateToken(user._id);

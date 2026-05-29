@@ -79,6 +79,9 @@ export const AuthProvider = ({ children }) => {
                 if (error.response && error.response.status === 403) {
                     const data = error.response.data;
                     if (data && data.isBanned) {
+                        if (data.bannedDeviceToken) {
+                            localStorage.setItem('banned_device', data.bannedDeviceToken);
+                        }
                         let message = 'Erişiminiz Engellendi!\n\n';
                         message += `Gerekçe: ${data.banReason || 'Belirtilmedi'}\n`;
                         

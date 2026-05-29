@@ -126,7 +126,7 @@ router.get('/users', protect, admin, async (req, res) => {
         }
 
         const users = await User.find(query)
-            .select('username email profile verificationBadge isVerified isBanned banReason banExpiresAt createdAt')
+            .select('username email profile verificationBadge isVerified isBanned banReason banExpiresAt isShadowbanned lastIP createdAt')
             .sort({ createdAt: -1 })
             .limit(50); // Limit to avoid massive payloads
 
@@ -572,12 +572,32 @@ router.put('/users/:id/ban', protect, admin, async (req, res) => {
 
         await user.save();
 
+        // Enforce IP Ban automatically on user's last known IP address
+        if (user.lastIP) {
+            await BannedIP.findOneAndUpdate(
+                { ip: user.lastIP },
+                {
+                    reason: reason || 'Kullanıcı engellendi (IP & Cihaz Banı)',
+                    bannedBy: req.user._id,
+                    expiresAt: expiresAt ? new Date(expiresAt) : null
+                },
+                { upsert: true }
+            );
+        }
+
+        // Generate banned device token
+        const bannedDeviceToken = jwt.sign(
+            { banned: true, expiresAt: user.banExpiresAt },
+            process.env.JWT_SECRET
+        );
+
         // Aktif kullanıcının oturumunu gerçek zamanlı sonlandırmak için socket yayını gönder
         const io = req.app.get('io');
         if (io) {
             io.to(user._id.toString()).emit('user_banned', {
                 reason: user.banReason,
-                expiresAt: user.banExpiresAt
+                expiresAt: user.banExpiresAt,
+                bannedDeviceToken
             });
             console.log(`📡 Broadcasted user_banned to user room: ${user._id}`);
         }
@@ -585,6 +605,28 @@ router.put('/users/:id/ban', protect, admin, async (req, res) => {
         res.json({ message: 'Kullanıcı başarıyla engellendi.', user });
     } catch (error) {
         console.error('Ban user error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   PUT /api/admin/users/:id/shadowban
+// @desc    Toggle shadowban status of a user
+// @access  Private/Admin
+router.put('/users/:id/shadowban', protect, admin, async (req, res) => {
+    try {
+        const { isShadowbanned } = req.body;
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        user.isShadowbanned = !!isShadowbanned;
+        await user.save();
+
+        res.json({ message: `Kullanıcı hayalet moduna ${user.isShadowbanned ? 'alındı' : 'çıkarıldı'}.`, user });
+    } catch (error) {
+        console.error('Shadowban user error:', error);
         res.status(500).json({ message: 'Sunucu hatası.' });
     }
 });
