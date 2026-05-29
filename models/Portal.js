@@ -76,6 +76,10 @@ const portalSchema = new mongoose.Schema(
             enum: ['active', 'suspended', 'closed'],
             default: 'active',
         },
+        isReadOnly: {
+            type: Boolean,
+            default: false,
+        },
         isNSFW: {
             type: Boolean,
             default: false,

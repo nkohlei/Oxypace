@@ -73,6 +73,10 @@ router.post(
                     return res.status(404).json({ message: 'Portal bulunamadı' });
                 }
 
+                if (portal.isReadOnly) {
+                    return res.status(403).json({ message: 'Bu portal salt okunurdur. Yeni gönderi paylaşılamaz.' });
+                }
+
                 const isMember = portal.members.some(
                     (m) => m.toString() === req.user._id.toString()
                 );

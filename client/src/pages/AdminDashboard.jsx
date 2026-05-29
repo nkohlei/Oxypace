@@ -535,6 +535,242 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
 };
 
 
+// Portal Detail / Management Modal
+const PortalDetailModal = ({
+    isOpen,
+    onClose,
+    portal,
+    contextBadges,
+    handlePortalBadge,
+    handleNSFWToggle,
+    handleReadOnlyToggle,
+    initiatePortalStatusChange,
+    openAlertModal,
+    handleRemoveAlert,
+    ownershipTarget,
+    setOwnershipTarget,
+    handleTransferOwnership,
+    transferring
+}) => {
+    if (!isOpen || !portal) return null;
+
+    const activeAlerts = portal.alerts ? portal.alerts.filter(a => new Date(a.expiresAt) > new Date() && a.isActive !== false) : [];
+    const defaultBanner = 'linear-gradient(45deg, #4f46e5, #9333ea)';
+
+    return (
+        <div className="modal-overlay-modern">
+            <div className="modal-content-modern portal-detail-modal">
+                <div className="portal-detail-header-banner" style={{ background: portal.banner ? `url(${getImageUrl(portal.banner)}) center/cover` : defaultBanner }}>
+                    <button className="close-btn-modern" onClick={onClose} style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.5)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: 'none' }}>&times;</button>
+                </div>
+
+                <div className="portal-detail-avatar-container">
+                    {portal.avatar ? (
+                        <img src={getImageUrl(portal.avatar)} alt="" className="portal-detail-avatar" />
+                    ) : (
+                        <div className="portal-detail-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#3b82f6', color: 'white', fontWeight: 'bold', fontSize: '2rem' }}>
+                            {portal.name.substring(0, 2).toUpperCase()}
+                        </div>
+                    )}
+                    <div className="portal-detail-title-info">
+                        <h2>
+                            {portal.name}
+                            <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={20} />
+                            {portal.isNSFW && <span className="nsfw-badge-admin">+18</span>}
+                        </h2>
+                        <p>Sahibi: <strong>@{portal.owner?.username || 'Bilinmiyor'}</strong></p>
+                    </div>
+                </div>
+
+                <div className="detail-modal-body-scroller">
+                    {/* Description */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Açıklama</h4>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#ccc', lineHeight: '1.5' }}>
+                            {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
+                        </p>
+                    </div>
+
+                    {/* Read-Only mode */}
+                    <div className="read-only-toggle-container">
+                        <div className="read-only-info">
+                            <strong>Karantina / Salt Okunur Mod</strong>
+                            <span>Aktif edildiğinde bu portala yeni gönderi gönderilmesi tamamen engellenir.</span>
+                        </div>
+                        <div 
+                            className={`read-only-toggle-switch ${portal.isReadOnly ? 'active' : ''}`}
+                            onClick={() => handleReadOnlyToggle(portal._id, portal.isReadOnly)}
+                        />
+                    </div>
+
+                    {/* Management Controls */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Portal Ayarları</h4>
+                        <div className="flex-control-row" style={{ gap: '15px' }}>
+                            <div>
+                                <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Rozet Ata</span>
+                                <select
+                                    className="badge-select"
+                                    value={portal.badges && portal.badges.length > 0 ? portal.badges[0] : 'none'}
+                                    onChange={(e) => handlePortalBadge(portal._id, e.target.value)}
+                                    style={{ width: '150px' }}
+                                >
+                                    <option value="none">Rozet Yok</option>
+                                    {(() => {
+                                        const portalBadges = contextBadges.filter(b => b.category === 'portal' || b.category === 'both');
+                                        const slugs = new Set(portalBadges.map(b => b.slug));
+                                        const LEGACY = [
+                                            { slug: 'blue', name: 'Mavi Onay' },
+                                            { slug: 'gold', name: 'Altın Onay' },
+                                            { slug: 'verified', name: 'Onaylı Portal' },
+                                            { slug: 'partner', name: 'Partner' },
+                                            { slug: 'official', name: 'Resmi Hesap' },
+                                        ];
+                                        const merged = [...portalBadges];
+                                        LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
+                                        const currentBadge = portal.badges?.[0];
+                                        if (currentBadge && currentBadge !== 'none' && !slugs.has(currentBadge) && !LEGACY.find(l => l.slug === currentBadge)) {
+                                            merged.push({ slug: currentBadge, name: currentBadge });
+                                        }
+                                        return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
+                                    })()}
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>+18 NSFW Durumu</span>
+                                <label className="nsfw-toggle-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={portal.isNSFW || false}
+                                        onChange={() => handleNSFWToggle(portal._id, portal.isNSFW)}
+                                        className="nsfw-toggle-input"
+                                    />
+                                    <span className="nsfw-toggle-slider"></span>
+                                    <span className="nsfw-toggle-text">+18 NSFW</span>
+                                </label>
+                            </div>
+
+                            <div>
+                                <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Portal Durumu</span>
+                                <span className={`badge-pill-status ${portal.status}`} style={{ display: 'inline-block', padding: '6px 12px', borderRadius: '8px' }}>
+                                    {portal.status === 'active' ? 'Aktif' : portal.status === 'suspended' ? 'Askıya Alındı' : 'Kapatıldı'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sahiplik Devri (Transfer Ownership) */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Sahiplik Devri (Transfer Ownership)</h4>
+                        <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#888' }}>
+                            Portal sahipliğini başka bir kullanıcının ID'si veya kullanıcı adı (@username) ile devredebilirsiniz.
+                        </p>
+                        <div className="transfer-ownership-box">
+                            <input
+                                type="text"
+                                className="transfer-ownership-input"
+                                placeholder="Kullanıcı adı veya ID girin..."
+                                value={ownershipTarget}
+                                onChange={(e) => setOwnershipTarget(e.target.value)}
+                            />
+                            <button
+                                className="btn-transfer-action"
+                                onClick={() => handleTransferOwnership(portal._id)}
+                                disabled={transferring || !ownershipTarget.trim()}
+                            >
+                                {transferring ? 'Devrediliyor...' : 'Devret'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Actions and Status Operations */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Yönetim Eylemleri</h4>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button
+                                className="btn-modern-primary"
+                                onClick={() => openAlertModal(portal._id, portal.name)}
+                                style={{ background: 'linear-gradient(135deg, #ff9800, #ff5722)', textTransform: 'none', padding: '10px 16px' }}
+                            >
+                                📢 Uyarı Yayınla
+                            </button>
+
+                            {portal.status !== 'suspended' && (
+                                <button
+                                    className="btn-modern-primary"
+                                    onClick={() => {
+                                        onClose();
+                                        initiatePortalStatusChange(portal._id, 'suspend');
+                                    }}
+                                    style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid #fbbf24', textTransform: 'none', padding: '10px 16px' }}
+                                >
+                                    ⛔ Askıya Al
+                                </button>
+                            )}
+
+                            {portal.status !== 'active' && (
+                                <button
+                                    className="btn-modern-primary"
+                                    onClick={() => {
+                                        onClose();
+                                        initiatePortalStatusChange(portal._id, 'activate');
+                                    }}
+                                    style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid #4ade80', textTransform: 'none', padding: '10px 16px' }}
+                                >
+                                    ✅ Aktifleştir
+                                </button>
+                            )}
+
+                            {portal.status !== 'closed' && (
+                                <button
+                                    className="btn-modern-primary"
+                                    onClick={() => {
+                                        onClose();
+                                        initiatePortalStatusChange(portal._id, 'close');
+                                    }}
+                                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid #f87171', textTransform: 'none', padding: '10px 16px' }}
+                                >
+                                    ❌ Kapat (Hukuki)
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Timed alerts / announcements list */}
+                    {activeAlerts.length > 0 && (
+                        <div className="detail-section-card" style={{ border: '1px solid rgba(255, 87, 34, 0.2)', background: 'rgba(255, 87, 34, 0.02)' }}>
+                            <h4 className="detail-section-title" style={{ color: '#ff5722' }}>📢 Aktif Portal Uyarıları</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {activeAlerts.map(alert => (
+                                    <div key={alert._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            <span style={{ fontSize: '13px', color: '#e0e0e0', lineHeight: '1.4' }}>{alert.message}</span>
+                                            <span style={{ fontSize: '11px', color: '#888' }}>Bitiş: {new Date(alert.expiresAt).toLocaleString()}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleRemoveAlert(portal._id, alert._id)}
+                                            style={{ background: 'transparent', color: '#ff4b4b', border: '1px solid #ff4b4b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                        >
+                                            Kaldır
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="modal-footer-modern" style={{ padding: '10px 28px 24px' }}>
+                    <button type="button" className="btn-modern-ghost" onClick={onClose}>
+                        Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
     const navigate = useNavigate();
@@ -621,6 +857,12 @@ const AdminDashboard = () => {
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [selectedFeedback, setSelectedFeedback] = useState(null);
     const [feedbackFilter, setFeedbackFilter] = useState('new'); // 'new', 'replied', 'all'
+
+    // Portal Detail Modal State
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
+    const [detailPortal, setDetailPortal] = useState(null);
+    const [ownershipTarget, setOwnershipTarget] = useState('');
+    const [transferring, setTransferring] = useState(false);
 
 
     // Feedbacks State
@@ -955,6 +1197,7 @@ const AdminDashboard = () => {
             setPortals(portals.map(p =>
                 p._id === portalId ? { ...p, badges } : p
             ));
+            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, badges } : prev);
         } catch (err) {
             alert('Rozet güncellenemedi.');
         }
@@ -966,8 +1209,53 @@ const AdminDashboard = () => {
             setPortals(portals.map(p =>
                 p._id === portalId ? { ...p, isNSFW: !currentValue } : p
             ));
+            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, isNSFW: !currentValue } : prev);
         } catch (err) {
             alert('+18 durumu güncellenemedi.');
+        }
+    };
+
+    const openPortalDetail = (portal) => {
+        setDetailPortal(portal);
+        setOwnershipTarget('');
+        setDetailModalOpen(true);
+    };
+
+    const handleReadOnlyToggle = async (portalId, currentReadOnly) => {
+        try {
+            const { data } = await axios.put(`/api/admin/portals/${portalId}`, {
+                isReadOnly: !currentReadOnly
+            });
+            const updated = data.portal;
+            setPortals(prev => prev.map(p => p._id === portalId ? { ...p, isReadOnly: updated.isReadOnly } : p));
+            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, isReadOnly: updated.isReadOnly } : prev);
+        } catch (err) {
+            alert('Salt okunur durumu güncellenemedi.');
+        }
+    };
+
+    const handleTransferOwnership = async (portalId) => {
+        if (!ownershipTarget.trim()) {
+            alert('Lütfen hedef kullanıcının ID veya kullanıcı adını girin.');
+            return;
+        }
+
+        const confirmMsg = `Portal sahipliğini @${ownershipTarget} kullanıcısına devretmek istediğinize emin misiniz? Bu işlem geri alınamaz.`;
+        if (!window.confirm(confirmMsg)) return;
+
+        setTransferring(true);
+        try {
+            const { data } = await axios.post(`/api/admin/portals/${portalId}/transfer-ownership`, {
+                targetUserIdentifier: ownershipTarget.trim()
+            });
+            alert(data.message);
+            setPortals(prev => prev.map(p => p._id === portalId ? { ...p, owner: data.portal.owner, members: data.portal.members } : p));
+            setDetailPortal(data.portal);
+            setOwnershipTarget('');
+        } catch (err) {
+            alert(err.response?.data?.message || 'Sahiplik devredilemedi.');
+        } finally {
+            setTransferring(false);
         }
     };
 
@@ -1001,6 +1289,12 @@ const AdminDashboard = () => {
                     suspendedUntil: suspendedUntil
                 } : p
             ));
+            setDetailPortal(prev => prev && prev._id === portalId ? {
+                ...prev,
+                status: newStatus,
+                statusReason: reason,
+                suspendedUntil: suspendedUntil
+            } : prev);
             setModalOpen(false);
         } catch (err) {
             alert('Durum güncellenemedi.');
@@ -1033,10 +1327,17 @@ const AdminDashboard = () => {
 
     const handleAlertSubmit = async (message, expiresAt) => {
         try {
-            await axios.post(`/api/admin/portals/${alertPortalId}/alert`, { message, expiresAt });
+            const { data } = await axios.post(`/api/admin/portals/${alertPortalId}/alert`, { message, expiresAt });
             setAlertModalOpen(false);
             alert('Uyarı başarıyla yayınlandı!');
             fetchPortals(searchTermPortal);
+            setDetailPortal(prev => {
+                if (prev && prev._id === alertPortalId) {
+                    const updatedAlerts = [...(prev.alerts || []), data.alert];
+                    return { ...prev, alerts: updatedAlerts };
+                }
+                return prev;
+            });
         } catch (err) {
             alert(err.response?.data?.message || 'Uyarı gönderilemedi.');
         }
@@ -1048,6 +1349,13 @@ const AdminDashboard = () => {
             await axios.delete(`/api/admin/portals/${portalId}/alert/${alertId}`);
             alert('Uyarı kaldırıldı.');
             fetchPortals(searchTermPortal);
+            setDetailPortal(prev => {
+                if (prev && prev._id === portalId) {
+                    const updatedAlerts = (prev.alerts || []).map(a => a._id === alertId ? { ...a, isActive: false } : a);
+                    return { ...prev, alerts: updatedAlerts };
+                }
+                return prev;
+            });
         } catch (err) {
             alert('Uyarı kaldırılamadı.');
         }
@@ -1475,125 +1783,66 @@ const AdminDashboard = () => {
 
                         {loading && <div className="admin-loading">Yükleniyor...</div>}
 
-                        <div className="users-list">
+                        <div className="admin-portals-grid">
                             {portals.map((portal) => {
-                                const activeAlerts = portal.alerts ? portal.alerts.filter(a => new Date(a.expiresAt) > new Date() && a.isActive !== false) : [];
+                                const defaultBanner = 'linear-gradient(45deg, #4f46e5, #9333ea)';
                                 return (
-                                <div key={portal._id} className="user-list-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div className="user-item-left">
-                                            <img
-                                                src={portal.avatar || 'https://via.placeholder.com/150'}
-                                                alt={portal.name}
-                                                className="user-list-avatar"
-                                                style={{ borderRadius: '12px' }}
-                                            />
-                                        <div className="user-item-info">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <h4>{portal.name}</h4>
-                                                {portal.isNSFW && <span className="nsfw-badge-admin">+18</span>}
-                                                {portal.status === 'suspended' && <span style={{ color: 'orange', fontSize: '10px' }}>(ASKIDA)</span>}
-                                                {portal.status === 'closed' && <span style={{ color: 'red', fontSize: '10px' }}>(KAPALI)</span>}
-                                            </div>
-                                            <span>Sahibi: @{portal.owner?.username || 'Bilinmiyor'}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="user-item-actions" style={{ gap: '10px' }}>
-                                        {/* Badge Selection */}
-                                        <select
-                                            className="badge-select"
-                                            value={portal.badges && portal.badges.length > 0 ? portal.badges[0] : 'none'}
-                                            onChange={(e) => handlePortalBadge(portal._id, e.target.value)}
-                                        >
-                                            <option value="none">Rozet Yok</option>
-                                            {(() => {
-                                                const portalBadges = contextBadges.filter(b => b.category === 'portal' || b.category === 'both');
-                                                const slugs = new Set(portalBadges.map(b => b.slug));
-                                                const LEGACY = [
-                                                    { slug: 'blue', name: 'Mavi Onay' },
-                                                    { slug: 'gold', name: 'Altın Onay' },
-                                                    { slug: 'verified', name: 'Onaylı Portal' },
-                                                    { slug: 'partner', name: 'Partner' },
-                                                    { slug: 'official', name: 'Resmi Hesap' },
-                                                ];
-                                                const merged = [...portalBadges];
-                                                LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
-                                                const currentBadge = portal.badges?.[0];
-                                                if (currentBadge && currentBadge !== 'none' && !slugs.has(currentBadge) && !LEGACY.find(l => l.slug === currentBadge)) {
-                                                    merged.push({ slug: currentBadge, name: currentBadge });
-                                                }
-                                                return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
-                                            })()}
-                                        </select>
-
-                                        {/* +18 NSFW Toggle */}
-                                        <label className="nsfw-toggle-label">
-                                            <input
-                                                type="checkbox"
-                                                checked={portal.isNSFW || false}
-                                                onChange={() => handleNSFWToggle(portal._id, portal.isNSFW)}
-                                                className="nsfw-toggle-input"
-                                            />
-                                            <span className="nsfw-toggle-slider"></span>
-                                            <span className="nsfw-toggle-text">+18</span>
-                                        </label>
-
-                                        {/* Action Dropdown */}
-                                        <select
-                                            className="action-select"
-                                            onChange={(e) => {
-                                                if (e.target.value === 'alert') openAlertModal(portal._id, portal.name);
-                                                else if (e.target.value === 'suspend') initiatePortalStatusChange(portal._id, 'suspend');
-                                                else if (e.target.value === 'close') initiatePortalStatusChange(portal._id, 'close');
-                                                else if (e.target.value === 'activate') initiatePortalStatusChange(portal._id, 'activate');
-                                                e.target.value = ''; // Reset selection
-                                            }}
+                                    <div
+                                        key={portal._id}
+                                        className="admin-portal-card"
+                                        onClick={() => openPortalDetail(portal)}
+                                    >
+                                        <div
+                                            className="card-banner"
                                             style={{
-                                                backgroundColor: '#202225',
-                                                color: '#b9bbbe',
-                                                border: '1px solid #40444b',
-                                                padding: '6px',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer'
+                                                background: portal.banner
+                                                    ? `url(${getImageUrl(portal.banner)}) center/cover`
+                                                    : defaultBanner,
                                             }}
                                         >
-                                            <option value="">İşlemler...</option>
-                                            <option value="alert">📢 Uyarı Yayınla (Banner)</option>
-                                            {portal.status !== 'suspended' && <option value="suspend">⛔ Askıya Al</option>}
-                                            {portal.status !== 'active' && <option value="activate">✅ Aktifleştir</option>}
-                                            {portal.status !== 'closed' && <option value="close">❌ Kapat (Hukuki)</option>}
-                                        </select>
-                                    </div>
-                                    </div>
-
-                                    {activeAlerts.length > 0 && (
-                                        <div style={{ padding: '10px', background: 'rgba(255, 87, 34, 0.05)', border: '1px solid rgba(255, 87, 34, 0.2)', borderRadius: '8px', marginTop: '4px' }}>
-                                            <h5 style={{ margin: '0 0 10px 0', color: '#ff5722', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                                Aktif Portal Uyarıları (Banner)
-                                            </h5>
-                                            {activeAlerts.map(alert => (
-                                                <div key={alert._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', padding: '10px 14px', borderRadius: '6px', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                        <span style={{ fontSize: '13px', color: '#e0e0e0', lineHeight: '1.4' }}>{alert.message}</span>
-                                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Bitiş: {new Date(alert.expiresAt).toLocaleString()}</span>
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => handleRemoveAlert(portal._id, alert._id)}
-                                                        style={{ background: 'transparent', color: '#ff4b4b', border: '1px solid #ff4b4b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', minWidth: '70px', transition: '0.2s' }}
-                                                        onMouseOver={(e) => e.target.style.background = 'rgba(255,75,75,0.1)'}
-                                                        onMouseOut={(e) => e.target.style.background = 'transparent'}
-                                                    >
-                                                        Kaldır
-                                                    </button>
-                                                </div>
-                                            ))}
+                                            {portal.isNSFW && (
+                                                <span className="nsfw-badge-admin">+18</span>
+                                            )}
                                         </div>
-                                    )}
 
-                                </div>
-                            )})}
+                                        <div className="card-icon-wrapper">
+                                            {portal.avatar ? (
+                                                <img
+                                                    src={getImageUrl(portal.avatar)}
+                                                    alt={portal.name}
+                                                    className="user-list-avatar"
+                                                    style={{ borderRadius: '12px', width: '100%', height: '100%' }}
+                                                />
+                                            ) : (
+                                                <div className="card-icon-placeholder" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#3b82f6', color: 'white', fontWeight: 'bold', borderRadius: '12px', width: '100%', height: '100%' }}>
+                                                    {portal.name.substring(0, 2).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="card-body">
+                                            <h3 className="card-title">
+                                                {portal.name}
+                                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
+                                                {portal.isReadOnly && <span className="read-only-badge" style={{ marginLeft: 'auto' }}>SALT OKUNUR</span>}
+                                            </h3>
+                                            <p className="card-desc">
+                                                {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
+                                            </p>
+
+                                            <div className="card-footer">
+                                                <span className="member-count">
+                                                    <span className="status-dot"></span>
+                                                    {portal.members ? portal.members.length : 0} Üye
+                                                </span>
+                                                <span className={`badge-pill-status ${portal.status}`}>
+                                                    {portal.status === 'active' ? 'Aktif' : portal.status === 'suspended' ? 'Askıda' : 'Kapalı'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -2216,6 +2465,24 @@ const AdminDashboard = () => {
                 onClose={() => setBanModalOpen(false)}
                 onSubmit={handleBanSubmit}
                 type={banModalTarget.type}
+            />
+
+            {/* Portal Detail / Management Modal */}
+            <PortalDetailModal
+                isOpen={detailModalOpen}
+                onClose={() => setDetailModalOpen(false)}
+                portal={detailPortal}
+                contextBadges={contextBadges}
+                handlePortalBadge={handlePortalBadge}
+                handleNSFWToggle={handleNSFWToggle}
+                handleReadOnlyToggle={handleReadOnlyToggle}
+                initiatePortalStatusChange={initiatePortalStatusChange}
+                openAlertModal={openAlertModal}
+                handleRemoveAlert={handleRemoveAlert}
+                ownershipTarget={ownershipTarget}
+                setOwnershipTarget={setOwnershipTarget}
+                handleTransferOwnership={handleTransferOwnership}
+                transferring={transferring}
             />
 
 

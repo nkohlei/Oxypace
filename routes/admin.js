@@ -235,7 +235,7 @@ router.get('/portals', protect, admin, async (req, res) => {
         }
 
         const portals = await import('../models/Portal.js').then(m => m.default.find(query)
-            .select('name description owner avatar banner themeColor isVerified badges status statusReason suspendedUntil warnings alerts isNSFW createdAt members')
+            .select('name description owner avatar banner themeColor isVerified badges status statusReason suspendedUntil warnings alerts isNSFW isReadOnly createdAt members')
             .populate('owner', 'username profile.displayName')
             .sort({ createdAt: -1 })
             .limit(50));
@@ -248,7 +248,7 @@ router.get('/portals', protect, admin, async (req, res) => {
 });
 
 // @route   PUT /api/admin/portals/:id
-// @desc    Update portal status/badges
+// @desc    Update portal status/badges/read-only
 // @access  Private/Admin
 router.put('/portals/:id', protect, admin, async (req, res) => {
     try {
@@ -288,11 +288,92 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
 
         if (typeof isVerified === 'boolean') {portal.isVerified = isVerified;}
         if (typeof req.body.isNSFW === 'boolean') {portal.isNSFW = req.body.isNSFW;}
+        if (typeof req.body.isReadOnly === 'boolean') {portal.isReadOnly = req.body.isReadOnly;}
 
         await portal.save();
         res.json({ message: 'Portal updated', portal });
     } catch (error) {
         console.error('Update portal error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/portals/:id/transfer-ownership
+// @desc    Transfer portal ownership to another user (ID or username)
+// @access  Private/Admin
+router.post('/portals/:id/transfer-ownership', protect, admin, async (req, res) => {
+    try {
+        const { targetUserIdentifier } = req.body;
+        if (!targetUserIdentifier) {
+            return res.status(400).json({ message: 'Hedef kullanıcı belirtilmelidir.' });
+        }
+
+        const Portal = await import('../models/Portal.js').then(m => m.default);
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        let targetUser = null;
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(targetUserIdentifier);
+        if (isValidObjectId) {
+            targetUser = await User.findById(targetUserIdentifier);
+        }
+        if (!targetUser) {
+            targetUser = await User.findOne({ username: targetUserIdentifier });
+        }
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'Belirtilen kullanıcı bulunamadı.' });
+        }
+
+        const oldOwnerId = portal.owner;
+        portal.owner = targetUser._id;
+
+        // Ensure target user is in members
+        const isMember = portal.members.some(m => m.toString() === targetUser._id.toString());
+        if (!isMember) {
+            portal.members.push(targetUser._id);
+        }
+
+        await portal.save();
+
+        // Send notifications
+        try {
+            const systemEnabledNew = targetUser.settings?.notifications?.system !== false;
+            if (systemEnabledNew) {
+                await Notification.create({
+                    recipient: targetUser._id,
+                    type: 'system',
+                    content: `"${portal.name}" portalının sahipliği size devredildi.`,
+                    link: `/portal/${portal._id}`
+                });
+            }
+
+            const oldOwner = await User.findById(oldOwnerId);
+            if (oldOwner) {
+                const systemEnabledOld = oldOwner.settings?.notifications?.system !== false;
+                if (systemEnabledOld) {
+                    await Notification.create({
+                        recipient: oldOwner._id,
+                        type: 'system',
+                        content: `"${portal.name}" portalının sahipliği başka bir kullanıcıya devredildi.`,
+                        link: `/portal/${portal._id}`
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error('Notification creation error during transfer ownership:', notifErr);
+        }
+
+        // Return updated portal populated
+        const updatedPortal = await Portal.findById(portal._id)
+            .select('name description owner avatar banner themeColor isVerified badges status statusReason suspendedUntil warnings alerts isNSFW isReadOnly createdAt members')
+            .populate('owner', 'username profile.displayName');
+
+        res.json({ message: 'Sahiplik başarıyla devredildi.', portal: updatedPortal });
+    } catch (error) {
+        console.error('Transfer ownership error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
