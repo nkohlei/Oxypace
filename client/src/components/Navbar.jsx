@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
 import { useUI } from '../context/UIContext';
 import './Navbar.css';
+import UserAvatar from './UserAvatar';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const location = useLocation();
@@ -179,17 +180,12 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                     aria-haspopup="true"
                                 >
                                     <div className="nav-icon-wrapper" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {user?.profile?.avatar ? (
-                                            <img
-                                                src={getImageUrl(user.profile.avatar)}
-                                                alt="Profile"
-                                                className="nav-profile-img"
-                                            />
-                                        ) : (
-                                            <div className="nav-profile-placeholder">
-                                                <User size={20} strokeWidth={1.5} />
-                                            </div>
-                                        )}
+                                        <UserAvatar
+                                            src={user?.profile?.avatar}
+                                            alt="Profile"
+                                            className="nav-profile-img"
+                                            size={40}
+                                        />
                                         {unreadCount > 0 && (
                                             <span className="nav-badge count-badge">
                                                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -228,17 +224,12 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         className="dropdown-user-info"
                                         onClick={() => setShowMenu(false)}
                                     >
-                                         {user?.profile?.avatar ? (
-                                             <img
-                                                 src={getImageUrl(user.profile.avatar)}
-                                                 alt="Avatar"
-                                                 className="dropdown-avatar"
-                                             />
-                                         ) : (
-                                             <div className="dropdown-avatar-placeholder">
-                                                 <span>{user?.username?.[0]?.toUpperCase()}</span>
-                                             </div>
-                                         )}
+                                         <UserAvatar
+                                             src={user?.profile?.avatar}
+                                             alt="Avatar"
+                                             className="dropdown-avatar"
+                                             size={40}
+                                         />
                                          <div className="dropdown-user-details">
                                              <span className="dropdown-username">{user?.username}</span>
                                              <span className="dropdown-user-status">giriş yapıldı</span>

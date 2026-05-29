@@ -17,6 +17,7 @@ import PostCard from '../components/PostCard';
 import LinkPreview from '../components/LinkPreview';
 import { extractFirstUrl } from '../utils/linkify';
 import ReportModal from '../components/ReportModal';
+import UserAvatar from '../components/UserAvatar';
 import './Profile.css';
 
 
@@ -596,16 +597,11 @@ const Profile = () => {
                                     style={{ cursor: 'pointer' }}
                                     onClick={() => setShowImageModal(true)}
                                 >
-                                    {profileUser?.profile?.avatar ? (
-                                        <img
-                                            src={getImageUrl(profileUser.profile.avatar)}
-                                            alt={profileUser.username}
-                                        />
-                                    ) : (
-                                        <div className="profile-avatar-placeholder">
-                                            {profileUser.username?.[0]?.toUpperCase()}
-                                        </div>
-                                    )}
+                                    <UserAvatar
+                                        src={profileUser?.profile?.avatar}
+                                        alt={profileUser.username}
+                                        style={{ width: '100%', height: '100%' }}
+                                    />
                                     {/* Edit button removed from here, now in modal */}
                                 </div>
                                 <input
@@ -828,13 +824,11 @@ const Profile = () => {
                                                 onClick={() => { if (!composeFocused) setComposeFocused(true); }}
                                             >
                                                 <div className="compose-avatar">
-                                                    {currentUser?.profile?.avatar ? (
-                                                        <img src={getImageUrl(currentUser.profile.avatar)} alt="" />
-                                                    ) : (
-                                                        <div className="compose-avatar-placeholder">
-                                                            {currentUser?.username?.[0]?.toUpperCase()}
-                                                        </div>
-                                                    )}
+                                                    <UserAvatar
+                                                        src={currentUser?.profile?.avatar}
+                                                        alt="Avatar"
+                                                        size={40}
+                                                    />
                                                 </div>
                                                 <div className="compose-input-area">
                                                     {!composeFocused ? (

@@ -6,6 +6,7 @@ import { uploadFile } from '../utils/uploadUtils';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
+import UserAvatar from './UserAvatar';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
 import { User, MoreHorizontal, Trash2, Download, X, MessageCircle, Heart, Image as ImageIcon, Send } from 'lucide-react';
@@ -292,21 +293,12 @@ const CommentSection = ({ postId }) => {
                     }}
                     style={safeAuthor._id === 'deleted' ? { cursor: 'default' } : {}}
                 >
-                    {safeAuthor.profile?.avatar ? (
-                        <img
-                            src={getImageUrl(safeAuthor.profile.avatar)}
-                            alt={safeAuthor.username}
-                            className={isReply ? 'reply-avatar' : 'comment-avatar'}
-                        />
-                    ) : (
-                        <div
-                            className={
-                                isReply ? 'reply-avatar-placeholder' : 'comment-avatar-placeholder'
-                            }
-                        >
-                            <User strokeWidth={1.5} />
-                        </div>
-                    )}
+                    <UserAvatar
+                        src={safeAuthor.profile?.avatar}
+                        alt={safeAuthor.username}
+                        className={isReply ? 'reply-avatar' : 'comment-avatar'}
+                        size={isReply ? 24 : 32}
+                    />
                 </Link>
 
                 <div className={isReply ? 'reply-content' : 'comment-body'}>
@@ -524,17 +516,12 @@ const CommentSection = ({ postId }) => {
         <div className="comment-section">
             {user ? (
                 <form onSubmit={handleSubmit} className="comment-form">
-                    {user.profile?.avatar ? (
-                        <img
-                            src={getImageUrl(user.profile.avatar)}
-                            alt={user.username}
-                            className="comment-avatar-small"
-                        />
-                    ) : (
-                        <div className="comment-avatar-placeholder-small">
-                            <User strokeWidth={1.5} />
-                        </div>
-                    )}
+                    <UserAvatar
+                        src={user.profile?.avatar}
+                        alt={user.username}
+                        className="comment-avatar-small"
+                        size={32}
+                    />
 
                     <div className="comment-input-wrapper">
                         {replyingTo && (

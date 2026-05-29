@@ -7,6 +7,7 @@ import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Home, Pencil, Trash2 } from 'lucide-react';
 import Badge from '../components/Badge';
+import UserAvatar from '../components/UserAvatar';
 import './AdminDashboard.css';
 
 // Modern Modal Component for Reason Entry + Duration Picker
@@ -1853,9 +1854,8 @@ const AdminDashboard = () => {
                                     onClick={() => openUserDetail(user)}
                                 >
                                     <div className="avatar-wrapper-modern">
-                                        <img
-                                            src={user.profile?.avatar || DEFAULT_AVATAR}
-                                            onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
+                                        <UserAvatar
+                                            src={user.profile?.avatar}
                                             alt={user.username}
                                             className="admin-user-avatar-img"
                                         />

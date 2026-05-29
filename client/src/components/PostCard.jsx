@@ -8,6 +8,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
 import Badge from './Badge';
+import UserAvatar from './UserAvatar';
 import { linkifyText, truncateAndLinkifyText, extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import { Capacitor } from '@capacitor/core';
@@ -377,21 +378,12 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     className="avatar-link"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {author.profile?.avatar ? (
-                        <img
-                            src={getImageUrl(author.profile.avatar)}
-                            alt={author.username}
-                            className="author-avatar"
-                            loading="lazy"
-                            decoding="async"
-                            width="40"
-                            height="40"
-                        />
-                    ) : (
-                        <div className="author-placeholder">
-                            {author.username?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                    )}
+                    <UserAvatar
+                        src={author.profile?.avatar}
+                        alt={author.username}
+                        className="author-avatar"
+                        size={40}
+                    />
                 </Link>
             </div>
 

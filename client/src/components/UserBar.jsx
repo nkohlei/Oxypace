@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ConnectionState } from 'livekit-client';
 import { PhoneOff, MicOff, Mic, Pencil, Headphones, Settings } from 'lucide-react';
 import './UserBar.css';
+import UserAvatar from './UserAvatar';
 
 const UserBar = ({ currentChannelId }) => {
     const { user } = useAuth();
@@ -165,28 +166,11 @@ const UserBar = ({ currentChannelId }) => {
                                 }}
                                 onClick={() => navigate(`/profile`)}
                             >
-                                {user.profile?.avatar ? (
-                                    <img
-                                        src={getImageUrl(user.profile.avatar)}
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        alt="Avatar"
-                                    />
-                                ) : (
-                                    <div
-                                        style={{
-                                            width: '100%',
-                                            height: '100%',
-                                            backgroundColor: 'var(--primary-cyan)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '32px',
-                                            color: '#000',
-                                        }}
-                                    >
-                                        {user.username?.[0]?.toUpperCase()}
-                                    </div>
-                                )}
+                                <UserAvatar
+                                    src={user.profile?.avatar}
+                                    style={{ width: '100%', height: '100%' }}
+                                    alt="Avatar"
+                                />
                                 <div
                                     style={{
                                         position: 'absolute',
@@ -262,35 +246,11 @@ const UserBar = ({ currentChannelId }) => {
                     onClick={() => setShowPopover(!showPopover)}
                 >
                     <div style={{ position: 'relative', flexShrink: 0 }}>
-                        {user.profile?.avatar ? (
-                            <img
-                                src={getImageUrl(user.profile.avatar)}
-                                alt="User"
-                                style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '50%',
-                                    objectFit: 'cover',
-                                }}
-                            />
-                        ) : (
-                            <div
-                                style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '50%',
-                                    backgroundColor: 'var(--primary-cyan)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#000',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                }}
-                            >
-                                {user.username?.[0]?.toUpperCase()}
-                            </div>
-                        )}
+                        <UserAvatar
+                            src={user.profile?.avatar}
+                            alt="User"
+                            size={32}
+                        />
                         <div
                             style={{
                                 position: 'absolute',
