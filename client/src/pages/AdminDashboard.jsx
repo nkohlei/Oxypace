@@ -1023,6 +1023,7 @@ const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals', 'reports', 'badges'
     const [maintenanceActive, setMaintenanceActive] = useState(false);
     const [requests, setRequests] = useState([]);
+    const [recoveryRequests, setRecoveryRequests] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -1091,9 +1092,23 @@ const AdminDashboard = () => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
 
+    const fetchRecoveryRequests = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/recovery-requests');
+            setRecoveryRequests(data);
+        } catch (err) {
+            setError('Kurtarma talepleri yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'requests') {
             fetchRequests();
+        } else if (activeTab === 'recovery') {
+            fetchRecoveryRequests();
         } else if (activeTab === 'users') {
             fetchUsers();
         } else if (activeTab === 'portals') {
@@ -1396,6 +1411,7 @@ const AdminDashboard = () => {
             alert(data.message);
             setUsers(prev => prev.map(u => u._id === userId ? { ...u, isDeleted: false, recoveryStatus: 'approved' } : u));
             setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isDeleted: false, recoveryStatus: 'approved' } : prev);
+            setRecoveryRequests(prev => prev.filter(r => r._id !== userId));
             if (activeTab === 'users') fetchUsers(searchTerm);
         } catch (err) {
             alert(err.response?.data?.message || 'Onaylama işlemi başarısız.');
@@ -1409,6 +1425,7 @@ const AdminDashboard = () => {
             alert(data.message);
             setUsers(prev => prev.map(u => u._id === userId ? { ...u, recoveryStatus: 'rejected' } : u));
             setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, recoveryStatus: 'rejected' } : prev);
+            setRecoveryRequests(prev => prev.filter(r => r._id !== userId));
             if (activeTab === 'users') fetchUsers(searchTerm);
         } catch (err) {
             alert(err.response?.data?.message || 'Reddetme işlemi başarısız.');
@@ -1804,6 +1821,13 @@ const AdminDashboard = () => {
                     {requests.length > 0 && <span className="tab-badge">{requests.length}</span>}
                 </button>
                 <button
+                    className={`admin-tab ${activeTab === 'recovery' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('recovery')}
+                >
+                    Kurtarma Talepleri
+                    {recoveryRequests.length > 0 && <span className="tab-badge">{recoveryRequests.length}</span>}
+                </button>
+                <button
                     className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
                     onClick={() => setActiveTab('users')}
                 >
@@ -1910,6 +1934,56 @@ const AdminDashboard = () => {
                                         <button
                                             className="approve-btn"
                                             onClick={() => handleApprove(user._id)}
+                                        >
+                                            Onayla
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'recovery' && (
+                    // --- RECOVERY REQUESTS TAB ---
+                    <div className="requests-section">
+                        {loading && <div className="admin-loading">Yükleniyor...</div>}
+                        {!loading && recoveryRequests.length === 0 && (
+                            <p className="no-data">Bekleyen hesap kurtarma başvurusu bulunmamaktadır.</p>
+                        )}
+                        <div className="requests-grid">
+                            {recoveryRequests.map((user) => (
+                                <div key={user._id} className="request-card" style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                                    <div className="request-header" style={{ cursor: 'pointer' }} onClick={() => openUserDetail(user)}>
+                                        <img
+                                            src={
+                                                user.profile?.avatar ||
+                                                'https://via.placeholder.com/150'
+                                            }
+                                            alt={user.username}
+                                            className="request-avatar"
+                                        />
+                                        <div className="request-user-info">
+                                            <h3>{user.profile?.displayName || user.username}</h3>
+                                            <span>@{user.username}</span>
+                                        </div>
+                                    </div>
+                                    <div className="request-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px' }}>
+                                        <div style={{ fontSize: '13px', color: '#ccc' }}>
+                                            <span style={{ color: '#888' }}>Gerekçe: </span>
+                                            <strong>{user.recoveryReason || 'Gerekçe belirtilmemiş.'}</strong>
+                                        </div>
+                                    </div>
+                                    <div className="request-actions">
+                                        <button
+                                            className="reject-btn"
+                                            onClick={() => handleRejectRecovery(user._id)}
+                                        >
+                                            Reddet
+                                        </button>
+                                        <button
+                                            className="approve-btn"
+                                            onClick={() => handleApproveRecovery(user._id)}
                                         >
                                             Onayla
                                         </button>

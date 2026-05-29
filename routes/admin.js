@@ -43,6 +43,21 @@ router.get('/verification-requests', protect, admin, async (req, res) => {
     }
 });
 
+// @route   GET /api/admin/recovery-requests
+// @desc    Get all pending recovery requests
+// @access  Private/Admin
+router.get('/recovery-requests', protect, admin, async (req, res) => {
+    try {
+        const users = await User.find({ recoveryStatus: 'pending' }).select(
+            'username email profile recoveryReason securityAnswers recoveryStatus'
+        );
+        res.json(users);
+    } catch (error) {
+        console.error('Fetch recovery requests error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // @route   POST /api/admin/verify-user/:id
 // @desc    Approve verification request
 // @access  Private/Admin
