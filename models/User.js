@@ -178,6 +178,23 @@ const userSchema = new mongoose.Schema(
                 type: String,
             },
         ],
+        portalNotificationSettings: [
+            {
+                portal: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Portal',
+                },
+                mutedChannels: [
+                    {
+                        type: mongoose.Schema.Types.ObjectId,
+                    }
+                ],
+                isAllMuted: {
+                    type: Boolean,
+                    default: false,
+                }
+            }
+        ],
         isBanned: {
             type: Boolean,
             default: false,

@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import { UserPlus, Users, AlertTriangle, Check, X, CheckCircle } from 'lucide-react';
+import { UserPlus, Users, AlertTriangle, Check, X, CheckCircle, Volume2, Megaphone, Hash, Image, Bell, BellOff } from 'lucide-react';
 import './PortalNotifications.css';
 
-const PortalNotifications = ({ portalId, onUpdate }) => {
-    const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'members', or 'alerts'
+const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
+    // Member preferences state
+    const [isAllMuted, setIsAllMuted] = useState(false);
+    const [mutedChannels, setMutedChannels] = useState([]);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    // Admin state
+    const [activeTab, setActiveTab] = useState('settings'); // 'settings', 'requests', 'members', 'alerts'
     const [joinRequests, setJoinRequests] = useState([]);
     const [recentMembers, setRecentMembers] = useState([]);
     const [alerts, setAlerts] = useState([]);
@@ -19,6 +25,11 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
         try {
             setLoading(true);
             const response = await axios.get(`/api/portals/${portalId}/notifications`);
+            setIsAllMuted(response.data.isAllMuted || false);
+            setMutedChannels(response.data.mutedChannels || []);
+            setIsAdmin(response.data.isAdmin || false);
+            
+            // Set tab to settings by default, but if admin, they also have other tabs
             setJoinRequests(response.data.joinRequests || []);
             setRecentMembers(response.data.recentMembers || []);
             setAlerts(response.data.alerts || []);
@@ -29,14 +40,39 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
         }
     };
 
+    const handleSaveSettings = async (updatedAllMuted, updatedMutedChannels) => {
+        try {
+            await axios.put(`/api/portals/${portalId}/notifications`, {
+                isAllMuted: updatedAllMuted,
+                mutedChannels: updatedMutedChannels,
+            });
+        } catch (error) {
+            console.error('Update settings failed:', error);
+        }
+    };
+
+    const toggleAllMuted = async () => {
+        const newVal = !isAllMuted;
+        setIsAllMuted(newVal);
+        await handleSaveSettings(newVal, mutedChannels);
+    };
+
+    const toggleChannelMute = async (channelId) => {
+        let updated;
+        if (mutedChannels.includes(channelId)) {
+            updated = mutedChannels.filter(id => id !== channelId);
+        } else {
+            updated = [...mutedChannels, channelId];
+        }
+        setMutedChannels(updated);
+        await handleSaveSettings(isAllMuted, updated);
+    };
+
     const handleApprove = async (userId) => {
         try {
             await axios.post(`/api/portals/${portalId}/approve-member`, { userId });
-            // Remove from requests and optionally add to recent members
             setJoinRequests((prev) => prev.filter((r) => r._id !== userId));
-            // Refresh to get updated list
             fetchNotifications();
-            // Notify parent to update portal data (clears badge)
             if (onUpdate) onUpdate();
         } catch (error) {
             console.error('Approve error:', error);
@@ -48,7 +84,6 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
         try {
             await axios.post(`/api/portals/${portalId}/reject-member`, { userId });
             setJoinRequests((prev) => prev.filter((r) => r._id !== userId));
-            // Notify parent to update portal data (clears badge)
             if (onUpdate) onUpdate();
         } catch (error) {
             console.error('Reject error:', error);
@@ -84,6 +119,20 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
         return `${minutes} dakika kaldı`;
     };
 
+    const getChannelIcon = (type) => {
+        switch (type) {
+            case 'voice':
+            case 'conference':
+                return <Volume2 size={16} className="channel-mute-icon" />;
+            case 'image':
+                return <Image size={16} className="channel-mute-icon" />;
+            case 'announcement':
+                return <Megaphone size={16} className="channel-mute-icon" />;
+            default:
+                return <Hash size={16} className="channel-mute-icon" />;
+        }
+    };
+
     if (loading) {
         return (
             <div className="portal-notifications-container">
@@ -99,43 +148,101 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
         <div className="portal-notifications-container">
             {/* Header */}
             <div className="notifications-header">
-                <h2>Portal Bildirimleri</h2>
+                <h2>Portal Bildirim Ayarları</h2>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="notifications-tabs">
-                <button
-                    className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('requests')}
-                >
-                    <UserPlus size={18} strokeWidth={2} />
-                    Üyelik İstekleri
-                    {joinRequests.length > 0 && (
-                        <span className="tab-badge">{joinRequests.length}</span>
-                    )}
-                </button>
-                <button
-                    className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('members')}
-                >
-                    <Users size={18} strokeWidth={2} />
-                    Yeni Üyeler
-                </button>
-                {alerts.length > 0 && (
+            {/* Tab Navigation (Visible if Admin/Owner) */}
+            {isAdmin && (
+                <div className="notifications-tabs">
                     <button
-                        className={`tab-btn ${activeTab === 'alerts' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('alerts')}
+                        className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('settings')}
                     >
-                        <AlertTriangle size={18} strokeWidth={2} />
-                        Uyarılar
-                        <span className="tab-badge alert-badge">{alerts.length}</span>
+                        <Bell size={18} strokeWidth={2} />
+                        Bildirim Seçenekleri
                     </button>
-                )}
-            </div>
+                    <button
+                        className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('requests')}
+                    >
+                        <UserPlus size={18} strokeWidth={2} />
+                        Üyelik İstekleri
+                        {joinRequests.length > 0 && (
+                            <span className="tab-badge">{joinRequests.length}</span>
+                        )}
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('members')}
+                    >
+                        <Users size={18} strokeWidth={2} />
+                        Yeni Üyeler
+                    </button>
+                    {alerts.length > 0 && (
+                        <button
+                            className={`tab-btn ${activeTab === 'alerts' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('alerts')}
+                        >
+                            <AlertTriangle size={18} strokeWidth={2} />
+                            Uyarılar
+                            <span className="tab-badge alert-badge">{alerts.length}</span>
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Content */}
             <div className="notifications-content">
-                {activeTab === 'requests' && (
+                {activeTab === 'settings' && (
+                    <div className="mute-settings-section">
+                        {/* Toggle All */}
+                        <div className="settings-group">
+                            <div className="settings-info">
+                                <div className="settings-title">Tüm Bildirimleri Kapat</div>
+                                <div className="settings-desc">Bu portal altındaki tüm kanalların bildirimlerini susturur.</div>
+                            </div>
+                            <label className="switch">
+                                <input
+                                    type="checkbox"
+                                    checked={isAllMuted}
+                                    onChange={toggleAllMuted}
+                                />
+                                <span className="slider"></span>
+                            </label>
+                        </div>
+
+                        {/* Channel List */}
+                        <h3 className="channels-mute-title">Kanal Bildirim Tercihleri</h3>
+                        <div className="channels-mute-list">
+                            {portalChannels.length === 0 ? (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Kanal bulunamadı.</p>
+                            ) : (
+                                portalChannels.map((channel) => {
+                                    const isMuted = isAllMuted || mutedChannels.includes(channel._id);
+                                    return (
+                                        <div key={channel._id} className="channel-mute-item">
+                                            <div className="channel-mute-name-wrapper">
+                                                {getChannelIcon(channel.type)}
+                                                <span>{channel.name}</span>
+                                            </div>
+                                            <label className={`switch ${isAllMuted ? 'disabled' : ''}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isMuted}
+                                                    onChange={() => !isAllMuted && toggleChannelMute(channel._id)}
+                                                    disabled={isAllMuted}
+                                                />
+                                                <span className="slider"></span>
+                                            </label>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'requests' && isAdmin && (
                     <div className="requests-list">
                         {joinRequests.length === 0 ? (
                             <div className="empty-state">
@@ -189,7 +296,7 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                     </div>
                 )}
 
-                {activeTab === 'members' && (
+                {activeTab === 'members' && isAdmin && (
                     <div className="members-list">
                         {recentMembers.length === 0 ? (
                             <div className="empty-state">
@@ -230,7 +337,7 @@ const PortalNotifications = ({ portalId, onUpdate }) => {
                     </div>
                 )}
 
-                {activeTab === 'alerts' && (
+                {activeTab === 'alerts' && isAdmin && (
                     <div className="alerts-list">
                         {alerts.length === 0 ? (
                             <div className="empty-state">

@@ -1641,6 +1641,7 @@ const Portal = () => {
                         <Suspense fallback={null}>
                             <PortalNotifications
                                 portalId={portal._id}
+                                portalChannels={portal.channels || []}
                                 onUpdate={fetchPortalData}
                             />
                         </Suspense>

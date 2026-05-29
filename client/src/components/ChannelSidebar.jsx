@@ -104,7 +104,7 @@ const ChannelSidebar = ({
                 </div>
 
                 <div className="portal-header-actions">
-                    {canManage && (
+                    {(isMember || canManage) && (
                         <button 
                             className="portal-action-btn-circle"
                             onClick={(e) => {

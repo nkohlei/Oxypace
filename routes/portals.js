@@ -964,9 +964,9 @@ router.post('/:id/invite', protect, async (req, res) => {
     }
 });
 
-// @desc    Get portal notifications (join requests and recent members)
+// @desc    Get portal notifications (settings for all members, requests/recent members for admins)
 // @route   GET /api/portals/:id/notifications
-// @access  Private (Admin only)
+// @access  Private
 router.get('/:id/notifications', protect, async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
@@ -977,38 +977,114 @@ router.get('/:id/notifications', protect, async (req, res) => {
             return res.status(404).json({ message: 'Portal bulunamadı' });
         }
 
-        // Check if user is admin or owner
+        // Check if user is member
+        const isMember = portal.members.some((m) => m._id.toString() === req.user._id.toString());
         const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
         const isOwner = portal.owner.toString() === req.user._id.toString();
 
-        if (!isAdmin && !isOwner) {
-            return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+        if (!isMember && !isAdmin && !isOwner) {
+            return res.status(403).json({ message: 'Bu portalın üyesi değilsiniz' });
         }
 
-        // Get recent members (last 10)
-        const recentMembers = portal.members
-            .slice(-10)
-            .reverse()
-            .map((member) => ({
-                _id: member._id,
-                username: member.username,
-                profile: member.profile,
-                joinedAt: member.createdAt,
-            }));
+        // Fetch user's notification preferences for this portal
+        const user = await User.findById(req.user._id);
+        const settings = user.portalNotificationSettings?.find(
+            (s) => s.portal && s.portal.toString() === portal._id.toString()
+        ) || { isAllMuted: false, mutedChannels: [] };
 
-        // Get active alerts (non-expired, isActive)
-        const now = new Date();
-        const activeAlerts = (portal.alerts || []).filter(
-            a => a.isActive && new Date(a.expiresAt) > now
-        );
+        const isUserAdmin = isAdmin || isOwner;
 
-        res.json({
-            joinRequests: portal.joinRequests,
-            recentMembers,
-            alerts: activeAlerts,
-        });
+        const responseData = {
+            isAllMuted: settings.isAllMuted,
+            mutedChannels: settings.mutedChannels,
+            isAdmin: isUserAdmin,
+        };
+
+        // Append admin-only data
+        if (isUserAdmin) {
+            // Get recent members (last 10)
+            const recentMembers = portal.members
+                .slice(-10)
+                .reverse()
+                .map((member) => ({
+                    _id: member._id,
+                    username: member.username,
+                    profile: member.profile,
+                    joinedAt: member.createdAt,
+                }));
+
+            // Get active alerts (non-expired, isActive)
+            const now = new Date();
+            const activeAlerts = (portal.alerts || []).filter(
+                a => a.isActive && new Date(a.expiresAt) > now
+            );
+
+            responseData.joinRequests = portal.joinRequests;
+            responseData.recentMembers = recentMembers;
+            responseData.alerts = activeAlerts;
+        }
+
+        res.json(responseData);
     } catch (error) {
         console.error('Get notifications error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
+// @desc    Update portal notification settings
+// @route   PUT /api/portals/:id/notifications
+// @access  Private
+router.put('/:id/notifications', protect, async (req, res) => {
+    try {
+        const { isAllMuted, mutedChannels } = req.body;
+        const portal = await Portal.findById(req.params.id);
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı' });
+        }
+
+        // Check if user is a member, admin, or owner
+        const isMember = portal.members.some((m) => m.toString() === req.user._id.toString());
+        const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+
+        if (!isMember && !isAdmin && !isOwner) {
+            return res.status(403).json({ message: 'Bu portalın üyesi değilsiniz' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user.portalNotificationSettings) {
+            user.portalNotificationSettings = [];
+        }
+
+        const settingIndex = user.portalNotificationSettings.findIndex(
+            (s) => s.portal && s.portal.toString() === portal._id.toString()
+        );
+
+        if (settingIndex > -1) {
+            if (isAllMuted !== undefined) {
+                user.portalNotificationSettings[settingIndex].isAllMuted = isAllMuted;
+            }
+            if (mutedChannels !== undefined) {
+                user.portalNotificationSettings[settingIndex].mutedChannels = mutedChannels;
+            }
+        } else {
+            user.portalNotificationSettings.push({
+                portal: portal._id,
+                isAllMuted: isAllMuted || false,
+                mutedChannels: mutedChannels || [],
+            });
+        }
+
+        await user.save();
+
+        res.json({
+            message: 'Bildirim ayarları güncellendi',
+            isAllMuted: isAllMuted !== undefined ? isAllMuted : false,
+            mutedChannels: mutedChannels || [],
+        });
+    } catch (error) {
+        console.error('Update notifications error:', error);
         res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
