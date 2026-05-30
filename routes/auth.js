@@ -222,6 +222,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 joinedPortals: user.joinedPortals,
                 isAdmin: user.isAdmin,
                 verificationBadge: user.verificationBadge,
+                securityQuestionsConfigured: user.securityAnswers && user.securityAnswers.length >= 2,
             },
         });
     } catch (error) {
@@ -544,6 +545,124 @@ router.get('/maintenance-status', async (req, res) => {
     }
 });
 
+// @route   POST /api/auth/recover-init
+// @desc    Initiate recovery flow and retrieve questions
+// @access  Public
+router.post('/recover-init', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Lütfen e-posta ve şifre girin.' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'E-posta veya şifre hatalı.' });
+        }
+
+        if (!user.isDeleted) {
+            return res.status(400).json({ message: 'Bu hesap silinmemiş, normal şekilde giriş yapabilirsiniz.' });
+        }
+
+        if (user.recoveryStatus === 'pending' || user.recoveryStatus === 'rejected') {
+            return res.status(400).json({
+                message: `Hesabı kurtarmak için en fazla 1 kez başvuru formu doldurabilirsiniz. Mevcut durum: ${user.recoveryStatus === 'pending' ? 'Beklemede' : 'Reddedildi'}.`
+            });
+        }
+
+        if (user.recoveryAttempts >= 3) {
+            return res.status(400).json({ message: 'Güvenlik soruları 3 kez yanlış yanıtlandığı için kurtarma süreci kilitlenmiştir.' });
+        }
+
+        const questions = user.securityAnswers.map(qa => qa.question);
+        if (questions.length < 2) {
+            return res.status(400).json({ message: 'Bu hesapta tanımlı güvenlik soruları bulunamadı. Lütfen destek ekibiyle iletişime geçin.' });
+        }
+
+        res.json({ questions });
+    } catch (error) {
+        console.error('Recover init error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
+// @route   POST /api/auth/recover-verify
+// @desc    Verify security questions answers
+// @access  Public
+router.post('/recover-verify', async (req, res) => {
+    try {
+        const { email, password, answers } = req.body;
+        if (!email || !password || !answers || !Array.isArray(answers)) {
+            return res.status(400).json({ message: 'Lütfen tüm alanları doldurun.' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'E-posta veya şifre hatalı.' });
+        }
+
+        if (!user.isDeleted) {
+            return res.status(400).json({ message: 'Bu hesap silinmemiş.' });
+        }
+
+        if (user.recoveryStatus === 'pending' || user.recoveryStatus === 'rejected') {
+            return res.status(400).json({ message: 'Kurtarma başvurusu hakkınız tükenmiştir.' });
+        }
+
+        if (user.recoveryAttempts >= 3) {
+            return res.status(400).json({ message: 'Güvenlik soruları 3 kez yanlış yanıtlandığı için kurtarma süreci kilitlenmiştir.' });
+        }
+
+        // Compare answers
+        let allCorrect = true;
+        for (const submitted of answers) {
+            const dbAnswer = user.securityAnswers.find(
+                sa => sa.question.trim().toLowerCase() === submitted.question.trim().toLowerCase()
+            );
+
+            if (!dbAnswer || dbAnswer.answer.trim().toLowerCase() !== submitted.answer.trim().toLowerCase()) {
+                allCorrect = false;
+                break;
+            }
+        }
+
+        if (allCorrect) {
+            res.json({ success: true, message: 'Doğrulama başarılı. Gerekçe sayfasına geçebilirsiniz.' });
+        } else {
+            user.recoveryAttempts += 1;
+            await user.save();
+
+            const remaining = 3 - user.recoveryAttempts;
+            if (remaining <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Güvenlik soruları 3 kez yanlış yanıtlandığı için kurtarma süreci kilitlenmiştir.',
+                    remainingAttempts: 0
+                });
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: `Güvenlik soruları hatalı. Kalan hak: ${remaining}`,
+                    remainingAttempts: remaining
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Recover verify error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
 // @route   POST /api/auth/recover-request
 // @desc    Submit account recovery request
 // @access  Public
@@ -564,9 +683,44 @@ router.post('/recover-request', async (req, res) => {
             return res.status(401).json({ message: 'E-posta veya şifre hatalı.' });
         }
 
+        if (!user.isDeleted) {
+            return res.status(400).json({ message: 'Bu hesap silinmemiş.' });
+        }
+
+        if (user.recoveryStatus === 'pending' || user.recoveryStatus === 'rejected') {
+            return res.status(400).json({ message: 'Kurtarma başvurusu hakkınız tükenmiştir.' });
+        }
+
+        if (user.recoveryAttempts >= 3) {
+            return res.status(400).json({ message: 'Güvenlik soruları 3 kez yanlış yanıtlandığı için kurtarma süreci kilitlenmiştir.' });
+        }
+
+        // Compare answers
+        let allCorrect = true;
+        for (const submitted of securityAnswers) {
+            const dbAnswer = user.securityAnswers.find(
+                sa => sa.question.trim().toLowerCase() === submitted.question.trim().toLowerCase()
+            );
+
+            if (!dbAnswer || dbAnswer.answer.trim().toLowerCase() !== submitted.answer.trim().toLowerCase()) {
+                allCorrect = false;
+                break;
+            }
+        }
+
+        if (!allCorrect) {
+            user.recoveryAttempts += 1;
+            await user.save();
+            const remaining = 3 - user.recoveryAttempts;
+            return res.status(400).json({
+                message: remaining <= 0 
+                    ? 'Güvenlik soruları 3 kez yanlış yanıtlandığı için kurtarma süreci kilitlenmiştir.' 
+                    : `Güvenlik soruları hatalı. Kalan hak: ${remaining}`
+            });
+        }
+
         user.recoveryStatus = 'pending';
         user.recoveryReason = recoveryReason;
-        user.securityAnswers = securityAnswers;
         await user.save();
 
         res.json({ message: 'Kurtarma talebiniz başarıyla alındı. Yönetici onayının ardından bilgilendirileceksiniz.' });

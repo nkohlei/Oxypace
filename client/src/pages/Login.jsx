@@ -20,17 +20,81 @@ const Login = () => {
     // Recovery Flow States
     const [showRecoveryModal, setShowRecoveryModal] = useState(false);
     const [recoveryData, setRecoveryData] = useState({
-        petName: '',
-        favoriteMovie: '',
         recoveryReason: '',
     });
     const [recoveryError, setRecoveryError] = useState('');
     const [recoverySuccess, setRecoverySuccess] = useState('');
     const [recoveryLoading, setRecoveryLoading] = useState(false);
 
+    // Multi-step Recovery States
+    const [recoveryStep, setRecoveryStep] = useState(1); // 1: checking, 2: questions challenge, 3: reason form
+    const [dbQuestions, setDbQuestions] = useState([]);
+    const [qAnswers, setQAnswers] = useState({ ans1: '', ans2: '' });
+    const [remainingAttempts, setRemainingAttempts] = useState(3);
+    const [isRecoveryLocked, setIsRecoveryLocked] = useState(false);
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         setError('');
+    };
+
+    const initRecovery = async (email, password) => {
+        setRecoveryError('');
+        setRecoverySuccess('');
+        setRecoveryLoading(true);
+        setRecoveryStep(1);
+        setIsRecoveryLocked(false);
+
+        try {
+            const response = await axios.post('/api/auth/recover-init', { email, password });
+            setDbQuestions(response.data.questions || []);
+            setRecoveryStep(2); // Automatically transition to questions challenge
+        } catch (err) {
+            const message = err.response?.data?.message || 'Hesap durum kontrolü başarısız.';
+            setRecoveryError(message);
+            if (message.includes('kilitlenmiştir') || message.includes('en fazla 1 kez')) {
+                setIsRecoveryLocked(true);
+            }
+        } finally {
+            setRecoveryLoading(false);
+        }
+    };
+
+    const handleVerifyAnswers = async (e) => {
+        e.preventDefault();
+        setRecoveryError('');
+        setRecoverySuccess('');
+        setRecoveryLoading(true);
+
+        const answersPayload = [
+            { question: dbQuestions[0], answer: qAnswers.ans1 },
+            { question: dbQuestions[1], answer: qAnswers.ans2 }
+        ];
+
+        try {
+            const response = await axios.post('/api/auth/recover-verify', {
+                email: formData.email,
+                password: formData.password,
+                answers: answersPayload
+            });
+            setRecoverySuccess(response.data.message);
+            setTimeout(() => {
+                setRecoverySuccess('');
+                setRecoveryStep(3); // Transition to justification form
+            }, 1500);
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Cevaplar hatalı.';
+            setRecoveryError(msg);
+            if (err.response?.data?.remainingAttempts !== undefined) {
+                const rem = err.response.data.remainingAttempts;
+                setRemainingAttempts(rem);
+                if (rem <= 0) {
+                    setIsRecoveryLocked(true);
+                }
+            }
+        } finally {
+            setRecoveryLoading(false);
+        }
     };
 
     const handleRecoverySubmit = async (e) => {
@@ -40,8 +104,8 @@ const Login = () => {
         setRecoveryLoading(true);
 
         const securityAnswers = [
-            { question: 'İlk evcil hayvanınızın adı?', answer: recoveryData.petName },
-            { question: 'En sevdiğiniz film?', answer: recoveryData.favoriteMovie }
+            { question: dbQuestions[0], answer: qAnswers.ans1 },
+            { question: dbQuestions[1], answer: qAnswers.ans2 }
         ];
 
         try {
@@ -54,8 +118,10 @@ const Login = () => {
             setRecoverySuccess(response.data.message);
             setTimeout(() => {
                 setShowRecoveryModal(false);
-                setRecoveryData({ petName: '', favoriteMovie: '', recoveryReason: '' });
+                setRecoveryData({ recoveryReason: '' });
+                setQAnswers({ ans1: '', ans2: '' });
                 setRecoverySuccess('');
+                setRecoveryStep(1);
             }, 4000);
         } catch (err) {
             setRecoveryError(err.response?.data?.message || 'Kurtarma talebi gönderilemedi.');
@@ -83,6 +149,7 @@ const Login = () => {
             if (err.response?.status === 403 && err.response?.data?.isDeleted) {
                 if (window.confirm("Bu hesap silinmiştir. Kurtarmak istiyor musunuz?")) {
                     setShowRecoveryModal(true);
+                    initRecovery(formData.email, formData.password);
                 }
             } else {
                 setError(err.response?.data?.message || 'Giriş başarısız');
@@ -309,108 +376,189 @@ const Login = () => {
                         fontFamily: "'Inter', sans-serif"
                     }}>
                         <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '10px', color: '#ff4b4b' }}>Hesap Kurtarma Talebi</h2>
-                        <p style={{ fontSize: '13px', color: '#ccc', marginBottom: '20px', lineHeight: '1.4' }}>
-                            Hesabınızı kurtarmak için lütfen güvenlik sorularını yanıtlayın ve gerekçenizi belirtin. Yönetici onayının ardından hesabınız tekrar aktif edilecektir.
-                        </p>
-
-                        <form onSubmit={handleRecoverySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Güvenlik Sorusu 1: İlk evcil hayvanınızın adı nedir?</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={recoveryData.petName}
-                                    onChange={(e) => setRecoveryData({ ...recoveryData, petName: e.target.value })}
-                                    style={{
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        color: '#fff',
-                                        outline: 'none'
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Güvenlik Sorusu 2: En sevdiğiniz film hangisidir?</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={recoveryData.favoriteMovie}
-                                    onChange={(e) => setRecoveryData({ ...recoveryData, favoriteMovie: e.target.value })}
-                                    style={{
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        color: '#fff',
-                                        outline: 'none'
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Hesap Kurtarma Gerekçesi</label>
-                                <textarea
-                                    required
-                                    rows="3"
-                                    placeholder="Neden bu hesabı geri almak istiyorsunuz?"
-                                    value={recoveryData.recoveryReason}
-                                    onChange={(e) => setRecoveryData({ ...recoveryData, recoveryReason: e.target.value })}
-                                    style={{
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        color: '#fff',
-                                        outline: 'none',
-                                        resize: 'none'
-                                    }}
-                                />
-                            </div>
-
-                            {recoveryError && <div style={{ color: '#ff4b4b', fontSize: '12px', fontWeight: '600' }}>{recoveryError}</div>}
-                            {recoverySuccess && <div style={{ color: '#22c55e', fontSize: '12px', fontWeight: '600' }}>{recoverySuccess}</div>}
-
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                        
+                        {recoveryStep === 1 && (
+                            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                <p style={{ fontSize: '14px', color: '#ccc', marginBottom: '15px' }}>
+                                    Hesap durumu ve kurtarma limitleri kontrol ediliyor...
+                                </p>
+                                {recoveryError && (
+                                    <div style={{ color: '#ff4b4b', fontSize: '13px', fontWeight: '600', marginBottom: '20px', background: 'rgba(255,75,75,0.1)', padding: '10px', borderRadius: '8px' }}>
+                                        {recoveryError}
+                                    </div>
+                                )}
                                 <button
                                     type="button"
                                     onClick={() => setShowRecoveryModal(false)}
                                     style={{
-                                        flex: 1,
                                         background: 'rgba(255, 255, 255, 0.1)',
                                         border: 'none',
                                         borderRadius: '8px',
-                                        padding: '12px',
+                                        padding: '10px 20px',
                                         color: '#fff',
                                         cursor: 'pointer',
                                         fontWeight: '600'
                                     }}
                                 >
-                                    Vazgeç
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={recoveryLoading}
-                                    style={{
-                                        flex: 1,
-                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        padding: '12px',
-                                        color: '#fff',
-                                        cursor: 'pointer',
-                                        fontWeight: '600',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
-                                >
-                                    {recoveryLoading ? 'Gönderiliyor...' : 'Talebi İlet'}
+                                    Kapat
                                 </button>
                             </div>
-                        </form>
+                        )}
+
+                        {recoveryStep === 2 && (
+                            <div>
+                                <p style={{ fontSize: '13px', color: '#ccc', marginBottom: '20px', lineHeight: '1.4' }}>
+                                    Kurtarma aşamasına geçebilmek için lütfen aşağıdaki güvenlik sorularını doğru yanıtlayın. (Kalan Hak: {remainingAttempts})
+                                </p>
+
+                                <form onSubmit={handleVerifyAnswers} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Soru 1: {dbQuestions[0]}</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            disabled={isRecoveryLocked}
+                                            value={qAnswers.ans1}
+                                            onChange={(e) => setQAnswers({ ...qAnswers, ans1: e.target.value })}
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '8px',
+                                                padding: '10px',
+                                                color: '#fff',
+                                                outline: 'none'
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Soru 2: {dbQuestions[1]}</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            disabled={isRecoveryLocked}
+                                            value={qAnswers.ans2}
+                                            onChange={(e) => setQAnswers({ ...qAnswers, ans2: e.target.value })}
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '8px',
+                                                padding: '10px',
+                                                color: '#fff',
+                                                outline: 'none'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {recoveryError && <div style={{ color: '#ff4b4b', fontSize: '12px', fontWeight: '600' }}>{recoveryError}</div>}
+                                    {recoverySuccess && <div style={{ color: '#22c55e', fontSize: '12px', fontWeight: '600' }}>{recoverySuccess}</div>}
+
+                                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRecoveryModal(false)}
+                                            style={{
+                                                flex: 1,
+                                                background: 'rgba(255, 255, 255, 0.1)',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                padding: '12px',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                fontWeight: '600'
+                                            }}
+                                        >
+                                            Vazgeç
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={recoveryLoading || isRecoveryLocked}
+                                            style={{
+                                                flex: 1,
+                                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                padding: '12px',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                fontWeight: '600',
+                                                opacity: isRecoveryLocked ? 0.5 : 1
+                                            }}
+                                        >
+                                            {recoveryLoading ? 'Doğrulanıyor...' : 'Doğrula'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {recoveryStep === 3 && (
+                            <div>
+                                <p style={{ fontSize: '13px', color: '#ccc', marginBottom: '20px', lineHeight: '1.4' }}>
+                                    Güvenlik soruları başarıyla doğrulandı. Hesabınızı kurtarmak için lütfen gerekçenizi yazın.
+                                </p>
+
+                                <form onSubmit={handleRecoverySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', color: '#aaa', fontWeight: '600' }}>Hesap Kurtarma Gerekçesi</label>
+                                        <textarea
+                                            required
+                                            rows="4"
+                                            placeholder="Neden bu hesabı geri almak istiyorsunuz?"
+                                            value={recoveryData.recoveryReason}
+                                            onChange={(e) => setRecoveryData({ ...recoveryData, recoveryReason: e.target.value })}
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '8px',
+                                                padding: '10px',
+                                                color: '#fff',
+                                                outline: 'none',
+                                                resize: 'none'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {recoveryError && <div style={{ color: '#ff4b4b', fontSize: '12px', fontWeight: '600' }}>{recoveryError}</div>}
+                                    {recoverySuccess && <div style={{ color: '#22c55e', fontSize: '12px', fontWeight: '600' }}>{recoverySuccess}</div>}
+
+                                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRecoveryModal(false)}
+                                            style={{
+                                                flex: 1,
+                                                background: 'rgba(255, 255, 255, 0.1)',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                padding: '12px',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                fontWeight: '600'
+                                            }}
+                                        >
+                                            Vazgeç
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={recoveryLoading}
+                                            style={{
+                                                flex: 1,
+                                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                padding: '12px',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                fontWeight: '600'
+                                            }}
+                                        >
+                                            {recoveryLoading ? 'Gönderiliyor...' : 'Talebi İlet'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

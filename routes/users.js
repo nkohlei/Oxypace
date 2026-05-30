@@ -290,6 +290,14 @@ router.get('/me', protect, async (req, res) => {
             (f) => f && followerIdSet.has(f._id.toString())
         );
 
+        if (userObj.securityAnswers) {
+            userObj.securityAnswers = userObj.securityAnswers.map(item => ({
+                question: item.question,
+                answer: '••••••••'
+            }));
+        }
+        userObj.securityQuestionsConfigured = user.securityAnswers && user.securityAnswers.length >= 2;
+
         res.json(userObj);
     } catch (error) {
         console.error('Get profile error:', error);
@@ -894,6 +902,69 @@ router.put('/settings', protect, async (req, res) => {
     } catch (error) {
         console.error('Update settings error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/users/security-questions
+// @desc    Update user security questions
+// @access  Private
+router.put('/security-questions', protect, async (req, res) => {
+    try {
+        const { securityAnswers } = req.body;
+        if (!securityAnswers || !Array.isArray(securityAnswers) || securityAnswers.length < 2) {
+            return res.status(400).json({ message: 'Lütfen en az 2 güvenlik sorusu belirleyin.' });
+        }
+
+        // Validate that questions and answers are not empty
+        for (const item of securityAnswers) {
+            if (!item.question || !item.question.trim() || !item.answer || !item.answer.trim()) {
+                return res.status(400).json({ message: 'Tüm sorular ve cevaplar dolu olmalıdır.' });
+            }
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        // Update answers
+        const updatedAnswers = [];
+        for (let i = 0; i < securityAnswers.length; i++) {
+            const item = securityAnswers[i];
+            if (item.answer.trim() === '••••••••') {
+                const existing = user.securityAnswers[i];
+                if (existing) {
+                    updatedAnswers.push({
+                        question: item.question.trim(),
+                        answer: existing.answer
+                    });
+                } else {
+                    updatedAnswers.push({
+                        question: item.question.trim(),
+                        answer: item.answer.trim()
+                    });
+                }
+            } else {
+                updatedAnswers.push({
+                    question: item.question.trim(),
+                    answer: item.answer.trim()
+                });
+            }
+        }
+        user.securityAnswers = updatedAnswers;
+
+        await user.save();
+
+        // Send back masked answers
+        const maskedAnswers = user.securityAnswers.map(item => ({
+            question: item.question,
+            answer: '••••••••'
+        }));
+
+        res.json({ message: 'Güvenlik soruları başarıyla güncellendi.', securityAnswers: maskedAnswers });
+    } catch (error) {
+        console.error('Update security questions error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 

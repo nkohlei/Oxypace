@@ -61,6 +61,25 @@ const Settings = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false); // For custom verification dropdown
     const [reapplyMode, setReapplyMode] = useState(false);
 
+    const SECURITY_QUESTIONS_POOL = [
+        'İlk evcil hayvanınızın adı nedir?',
+        'En sevdiğiniz film hangisidir?',
+        'Annenizin kızlık soyadı nedir?',
+        'İlk okulunuzun adı nedir?',
+        'Hangi şehirde doğdunuz?',
+        'En sevdiğiniz öğretmenin adı nedir?'
+    ];
+    
+    const [securityQ1, setSecurityQ1] = useState(SECURITY_QUESTIONS_POOL[0]);
+    const [securityQ2, setSecurityQ2] = useState(SECURITY_QUESTIONS_POOL[1]);
+    const [securityA1, setSecurityA1] = useState('');
+    const [securityA2, setSecurityA2] = useState('');
+    const [showSecurityA1, setShowSecurityA1] = useState(false);
+    const [showSecurityA2, setShowSecurityA2] = useState(false);
+    const [securitySuccess, setSecuritySuccess] = useState('');
+    const [securityError, setSecurityError] = useState('');
+    const [securityLoading, setSecurityLoading] = useState(false);
+
     // Extract query params to open specific section
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -82,6 +101,12 @@ const Settings = () => {
                 username: user.username || '',
                 bio: user.profile?.bio || '',
             });
+            if (user.securityAnswers && user.securityAnswers.length >= 2) {
+                setSecurityQ1(user.securityAnswers[0].question);
+                setSecurityQ2(user.securityAnswers[1].question);
+                setSecurityA1(user.securityAnswers[0].answer || '');
+                setSecurityA2(user.securityAnswers[1].answer || '');
+            }
         }
     }, [user]);
 
@@ -112,6 +137,46 @@ const Settings = () => {
             setTimeout(() => setProfileError(''), 4000);
         } finally {
             setProfileLoading(false);
+        }
+    };
+
+    const handleSecurityQuestionsUpdate = async (e) => {
+        e.preventDefault();
+        setSecurityError('');
+        setSecuritySuccess('');
+
+        if (securityQ1 === securityQ2) {
+            setSecurityError('Lütfen iki farklı güvenlik sorusu seçin.');
+            return;
+        }
+
+        if (!securityA1.trim() || !securityA2.trim()) {
+            setSecurityError('Cevaplar boş olamaz.');
+            return;
+        }
+
+        setSecurityLoading(true);
+
+        try {
+            const res = await axios.put('/api/users/security-questions', {
+                securityAnswers: [
+                    { question: securityQ1, answer: securityA1.trim() },
+                    { question: securityQ2, answer: securityA2.trim() }
+                ]
+            });
+            updateUser({
+                ...user,
+                securityQuestionsConfigured: true,
+                securityAnswers: res.data.securityAnswers
+            });
+            setSecuritySuccess('Güvenlik soruları başarıyla güncellendi.');
+            setTimeout(() => setSecuritySuccess(''), 4000);
+        } catch (err) {
+            console.error('Failed to update security questions:', err);
+            setSecurityError(err.response?.data?.message || 'Güvenlik soruları güncellenemedi.');
+            setTimeout(() => setSecurityError(''), 4000);
+        } finally {
+            setSecurityLoading(false);
         }
     };
 
@@ -344,7 +409,7 @@ const Settings = () => {
                     style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'privacy' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'privacy' ? 'var(--bg-hover)' : 'transparent' }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    <span style={{ fontWeight: 500 }}>Gizlilik</span>
+                    <span style={{ fontWeight: 500 }}>Gizlilik ve Güvenlik</span>
                 </div>
 
                 <div style={{
@@ -439,7 +504,7 @@ const Settings = () => {
                 content = renderVerificationMenu();
                 break;
             case 'privacy':
-                title = "Gizlilik";
+                title = "Gizlilik ve Güvenlik";
                 content = renderPrivacyMenu();
                 break;
             case 'notifications':
@@ -1063,6 +1128,178 @@ const Settings = () => {
                             <option value="none">Hiç Kimse (Kapalı)</option>
                         </select>
                     </div>
+                </div>
+
+                {/* SECTION 3: Güvenlik Soruları */}
+                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginTop: '28px', marginBottom: '12px', textTransform: 'uppercase' }}>Hesap Kurtarma Soruları</h3>
+                <div style={{
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    borderRadius: '16px',
+                    padding: '24px',
+                    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                }}>
+                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '20px' }}>
+                        Hesap kurtarma (recovery) durumlarında kimliğinizi doğrulamak için kullanılacak bankacılık düzeyinde güvenlik sorularınızı aşağıdan seçip güncelleyebilirsiniz.
+                    </p>
+
+                    <form onSubmit={handleSecurityQuestionsUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Question 1 */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 'bold' }}>GÜVENLİK SORUSU 1</label>
+                            <select
+                                value={securityQ1}
+                                onChange={(e) => setSecurityQ1(e.target.value)}
+                                className="badge-select"
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                            >
+                                {SECURITY_QUESTIONS_POOL.map((q) => (
+                                    <option key={q} value={q} style={{ backgroundColor: '#18191c', color: 'white' }}>{q}</option>
+                                ))}
+                            </select>
+                            <div style={{ position: 'relative', marginTop: '4px' }}>
+                                <input
+                                    type={showSecurityA1 ? 'text' : 'password'}
+                                    placeholder="Cevabınızı yazın"
+                                    required
+                                    value={securityA1}
+                                    onChange={(e) => setSecurityA1(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 40px 10px 12px',
+                                        borderRadius: '8px',
+                                        backgroundColor: 'rgba(0,0,0,0.3)',
+                                        color: 'white',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        outline: 'none',
+                                        fontSize: '13.5px'
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSecurityA1(!showSecurityA1)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#949ba4',
+                                        cursor: 'pointer',
+                                        padding: 0
+                                    }}
+                                >
+                                    {showSecurityA1 ? (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                            <line x1="1" y1="1" x2="23" y2="23" />
+                                        </svg>
+                                    ) : (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Question 2 */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 'bold' }}>GÜVENLİK SORUSU 2</label>
+                            <select
+                                value={securityQ2}
+                                onChange={(e) => setSecurityQ2(e.target.value)}
+                                className="badge-select"
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                            >
+                                {SECURITY_QUESTIONS_POOL.map((q) => (
+                                    <option key={q} value={q} style={{ backgroundColor: '#18191c', color: 'white' }}>{q}</option>
+                                ))}
+                            </select>
+                            <div style={{ position: 'relative', marginTop: '4px' }}>
+                                <input
+                                    type={showSecurityA2 ? 'text' : 'password'}
+                                    placeholder="Cevabınızı yazın"
+                                    required
+                                    value={securityA2}
+                                    onChange={(e) => setSecurityA2(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 40px 10px 12px',
+                                        borderRadius: '8px',
+                                        backgroundColor: 'rgba(0,0,0,0.3)',
+                                        color: 'white',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        outline: 'none',
+                                        fontSize: '13.5px'
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSecurityA2(!showSecurityA2)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#949ba4',
+                                        cursor: 'pointer',
+                                        padding: 0
+                                    }}
+                                >
+                                    {showSecurityA2 ? (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                            <line x1="1" y1="1" x2="23" y2="23" />
+                                        </svg>
+                                    ) : (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {securityError && (
+                            <div style={{ color: '#ef4444', fontSize: '13px', fontWeight: '600', marginTop: '4px' }}>
+                                {securityError}
+                            </div>
+                        )}
+                        {securitySuccess && (
+                            <div style={{ color: '#10b981', fontSize: '13px', fontWeight: '600', marginTop: '4px' }}>
+                                {securitySuccess}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={securityLoading}
+                            style={{
+                                marginTop: '8px',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '12px',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                transition: 'opacity 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                        >
+                            {securityLoading ? 'Kaydediliyor...' : 'Güvenlik Sorularını Güncelle'}
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

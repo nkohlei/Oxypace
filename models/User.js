@@ -232,6 +232,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        recoveryAttempts: {
+            type: Number,
+            default: 0,
+        },
         securityAnswers: [
             {
                 question: String,

@@ -72,6 +72,7 @@ import PortalSidebar from './components/PortalSidebar';
 import UserBar from './components/UserBar';
 import ScrollToTop from './components/ScrollToTop';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
+import SecurityQuestionsModal from './components/SecurityQuestionsModal';
 import './AppLayout.css';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
@@ -161,7 +162,7 @@ const PageLoader = () => (
 const AppLayout = () => {
     useRealtimeSync(); // Global websocket synchronization
     const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen } = useUI();
-    const { user, token } = useAuth();
+    const { user, token, updateUser } = useAuth();
     const location = useLocation();
     const { socket, connected } = useSocket();
 
@@ -258,6 +259,18 @@ const AppLayout = () => {
 
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
+            {user && !user.securityQuestionsConfigured && (
+                <SecurityQuestionsModal 
+                    user={user} 
+                    onCompleted={(questions) => {
+                        updateUser({
+                            ...user,
+                            securityQuestionsConfigured: true,
+                            securityAnswers: questions
+                        });
+                    }} 
+                />
+            )}
             {localStorage.getItem('admin_backup_token') && (
                 <div 
                     className="ghost-mode-banner" 
