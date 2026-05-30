@@ -153,7 +153,7 @@ async function fetchInternalPreview(urlStr, baseUrl = '') {
         if (postMatch) {
             const postId = postMatch[1];
             const post = await Post.findById(postId)
-                .populate('author', 'username profile.displayName profile.avatar')
+                .populate('author', 'username profile.displayName profile.avatar isDeleted')
                 .populate('portal', 'name avatar banner');
             
             if (post) {

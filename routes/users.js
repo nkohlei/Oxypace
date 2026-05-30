@@ -384,7 +384,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
             .select(
-                'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers followRequests'
+                'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers followRequests isDeleted'
             )
             .populate('joinedPortals', 'name avatar badges isVerified privacy members allowedUsers owner admins');
 

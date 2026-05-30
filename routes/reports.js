@@ -63,15 +63,15 @@ router.get('/', protect, async (req, res) => {
         }
 
         const reports = await Report.find()
-            .populate('reporter', 'username profile.displayName profile.avatar')
+            .populate('reporter', 'username profile.displayName profile.avatar isDeleted')
             .populate({
                 path: 'targetPost',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar'
+                    select: 'username profile.displayName profile.avatar isDeleted'
                 }
             })
-            .populate('targetUser', 'username profile.displayName profile.avatar settings.privacy.isPrivate')
+            .populate('targetUser', 'username profile.displayName profile.avatar settings.privacy.isPrivate isDeleted')
             .sort({ createdAt: -1 });
 
         res.json(reports);

@@ -138,6 +138,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const authorBase = post.author ? {
         ...post.author,
         ...cachedUser,
+        isDeleted: post.author.isDeleted || cachedUser?.isDeleted,
         profile: {
             ...post.author.profile,
             ...(cachedUser?.profile || {})

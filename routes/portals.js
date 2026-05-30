@@ -172,10 +172,10 @@ router.get('/map', optionalProtect, async (req, res) => {
 router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
-            .populate('owner', 'username profile.displayName profile.avatar')
-            .populate('admins', 'username profile.displayName profile.avatar')
-            .populate('members', 'username profile.displayName profile.avatar lastActive')
-            .populate('allowedUsers', 'username profile.displayName profile.avatar');
+            .populate('owner', 'username profile.displayName profile.avatar isDeleted')
+            .populate('admins', 'username profile.displayName profile.avatar isDeleted')
+            .populate('members', 'username profile.displayName profile.avatar lastActive isDeleted')
+            .populate('allowedUsers', 'username profile.displayName profile.avatar isDeleted');
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal not found' });
@@ -355,16 +355,16 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
         }
 
         const posts = await Post.find(query)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge isDeleted')
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                         ]
                     }
@@ -522,8 +522,8 @@ router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
         await portal.save();
 
         // Repopulate owner for frontend consistency
-        await portal.populate('owner', 'username profile.displayName profile.avatar');
-        await portal.populate('allowedUsers', 'username profile.displayName profile.avatar');
+        await portal.populate('owner', 'username profile.displayName profile.avatar isDeleted');
+        await portal.populate('allowedUsers', 'username profile.displayName profile.avatar isDeleted');
 
         res.json(portal);
     } catch (error) {
@@ -554,7 +554,7 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
         }
 
         await portal.save();
-        await portal.populate('owner', 'username profile.displayName profile.avatar');
+        await portal.populate('owner', 'username profile.displayName profile.avatar isDeleted');
         res.json(portal);
 
     } catch (error) {
@@ -586,7 +586,7 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
         }
 
         await portal.save();
-        await portal.populate('owner', 'username profile.displayName profile.avatar');
+        await portal.populate('owner', 'username profile.displayName profile.avatar isDeleted');
         res.json(portal);
 
     } catch (error) {
@@ -773,7 +773,7 @@ router.post('/:id/roles', protect, mongoIdValidation('id'), async (req, res) => 
 
         await portal.save();
         // Return full member details to look reactive
-        await portal.populate('admins', 'username profile.displayName profile.avatar');
+        await portal.populate('admins', 'username profile.displayName profile.avatar isDeleted');
         res.json(portal.admins);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -906,7 +906,7 @@ router.get('/:id/blocked', protect, mongoIdValidation('id'), async (req, res) =>
     try {
         const portal = await Portal.findById(req.params.id).populate(
             'blockedUsers',
-            'username profile.displayName profile.avatar'
+            'username profile.displayName profile.avatar isDeleted'
         );
 
         if (!portal) {
@@ -970,8 +970,8 @@ router.post('/:id/invite', protect, async (req, res) => {
 router.get('/:id/notifications', protect, async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
-            .populate('joinRequests', 'username profile.avatar profile.displayName createdAt')
-            .populate('members', 'username profile.avatar profile.displayName createdAt lastActive');
+            .populate('joinRequests', 'username profile.avatar profile.displayName createdAt isDeleted')
+            .populate('members', 'username profile.avatar profile.displayName createdAt lastActive isDeleted');
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal bulunamadı' });
