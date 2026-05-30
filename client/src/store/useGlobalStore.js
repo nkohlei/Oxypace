@@ -85,7 +85,35 @@ export const useGlobalStore = create(
             syncUnreadCounts: async () => {
                 try {
                     const response = await axios.get('/api/notifications/portal-unreads');
-                    set({ unreadPostsByPortal: response.data || {} });
+                    const notifications = response.data || [];
+                    
+                    const unreadPostsByPortal = {};
+                    const unreadPostsByChannel = {};
+                    
+                    notifications.forEach(n => {
+                        if (n.portal && n.post) {
+                            const portalId = n.portal.toString();
+                            const postId = n.post.toString();
+                            if (!unreadPostsByPortal[portalId]) {
+                                unreadPostsByPortal[portalId] = [];
+                            }
+                            if (!unreadPostsByPortal[portalId].includes(postId)) {
+                                unreadPostsByPortal[portalId].push(postId);
+                            }
+                        }
+                        if (n.channel && n.post) {
+                            const channelId = n.channel.toString();
+                            const postId = n.post.toString();
+                            if (!unreadPostsByChannel[channelId]) {
+                                unreadPostsByChannel[channelId] = [];
+                            }
+                            if (!unreadPostsByChannel[channelId].includes(postId)) {
+                                unreadPostsByChannel[channelId].push(postId);
+                            }
+                        }
+                    });
+                    
+                    set({ unreadPostsByPortal, unreadPostsByChannel });
                 } catch (err) {
                     console.error('Failed to sync unread counts:', err);
                 }

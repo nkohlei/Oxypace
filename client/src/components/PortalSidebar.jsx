@@ -13,10 +13,31 @@ import './PortalSidebar.css';
 const PortalSidebar = () => {
     const { user, isAuthenticated, updateUser } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
-    const { unreadPostsByPortal, clearUnreadForPortal, syncUnreadCounts } = useGlobalStore();
+    const { unreadPostsByPortal, unreadPostsByChannel, clearUnreadForPortal, syncUnreadCounts } = useGlobalStore();
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
+    
+    // Helper to filter unread counts based on user's muted channels settings
+    const getFilteredUnreadCount = (portalId) => {
+        if (!portalId) return 0;
+        const settings = user?.portalNotificationSettings?.find(
+            (s) => s.portal?.toString() === portalId.toString()
+        );
+        if (settings?.isAllMuted) return 0;
+        
+        const allUnread = unreadPostsByPortal[portalId.toString()] || [];
+        const mutedChannels = settings?.mutedChannels?.map(id => id.toString()) || [];
+        
+        const filtered = allUnread.filter(postId => {
+            const isMuted = mutedChannels.some(channelId => 
+                unreadPostsByChannel[channelId]?.includes(postId)
+            );
+            return !isMuted;
+        });
+        
+        return filtered.length;
+    };
     
     // Reorder & Tooltip State
     const [orderedPortals, setOrderedPortals] = useState([]);
@@ -124,37 +145,40 @@ const PortalSidebar = () => {
 
                 {/* User's Portals (Scrollable Area) */}
                 <div className="portals-scroll-area">
-                    {orderedPortals.map((portal, index) => (
-                        <div
-                            key={portal._id}
-                            draggable={isReordering}
-                            className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${unreadPostsByPortal[portal._id?.toString()]?.length > 0 ? 'has-unread' : ''}`}
-                            onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
-                            onDragStart={(e) => handleDragStart(e, index)}
-                            onDragOver={(e) => handleDragOver(e, index)}
-                            onDragEnd={handleDragEnd}
-                        >
-                            {/* Discord-style left indicator bar - Edge Aligned */}
-                            <div className="sidebar-indicator" />
+                    {orderedPortals.map((portal, index) => {
+                        const filteredCount = getFilteredUnreadCount(portal._id);
+                        return (
+                            <div
+                                key={portal._id}
+                                draggable={isReordering}
+                                className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${filteredCount > 0 ? 'has-unread' : ''}`}
+                                onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragOver={(e) => handleDragOver(e, index)}
+                                onDragEnd={handleDragEnd}
+                            >
+                                {/* Discord-style left indicator bar - Edge Aligned */}
+                                <div className="sidebar-indicator" />
 
-                            <div className="portal-icon-container">
-                                <div className="portal-icon">
-                                    {portal.avatar ? (
-                                        <img src={getImageUrl(portal.avatar)} alt={portal.name} draggable="false" />
-                                    ) : (
-                                        <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                <div className="portal-icon-container">
+                                    <div className="portal-icon">
+                                        {portal.avatar ? (
+                                            <img src={getImageUrl(portal.avatar)} alt={portal.name} draggable="false" />
+                                        ) : (
+                                            <span>{portal.name.substring(0, 2).toUpperCase()}</span>
+                                        )}
+                                    </div>
+
+                                    {/* Red Notification Badge - Moved outside .portal-icon to avoid clipping */}
+                                    {filteredCount > 0 && (
+                                        <div className="unread-badge">
+                                            {filteredCount > 9 ? '9+' : filteredCount}
+                                        </div>
                                     )}
                                 </div>
-
-                                {/* Red Notification Badge - Moved outside .portal-icon to avoid clipping */}
-                                {unreadPostsByPortal[portal._id?.toString()]?.length > 0 && (
-                                    <div className="unread-badge">
-                                        {unreadPostsByPortal[portal._id.toString()].length > 9 ? '9+' : unreadPostsByPortal[portal._id.toString()].length}
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <div className="sidebar-separator"></div>

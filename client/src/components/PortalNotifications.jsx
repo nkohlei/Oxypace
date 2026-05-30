@@ -212,7 +212,12 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                         </div>
 
                         {/* Channel List */}
-                        <h3 className="channels-mute-title">Kanal Bildirim Tercihleri</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', margin: '24px 0 16px 0' }}>
+                            <h3 className="channels-mute-title" style={{ margin: 0, borderBottom: 'none', paddingBottom: 0 }}>Kanal Bildirim Tercihleri</h3>
+                            <span className="channels-mute-info-note" style={{ fontSize: '11px', color: '#ff7675', fontWeight: '500', letterSpacing: '0.3px' }}>
+                                Açık olan kanallardan bildirim alınmayacaktır!
+                            </span>
+                        </div>
                         <div className="channels-mute-list">
                             {portalChannels.length === 0 ? (
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Kanal bulunamadı.</p>

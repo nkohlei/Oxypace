@@ -53,30 +53,13 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.get('/portal-unreads', protect, async (req, res) => {
     try {
-        const counts = await Notification.aggregate([
-            {
-                $match: {
-                    recipient: new mongoose.Types.ObjectId(req.user.id),
-                    type: 'portal_post',
-                    read: false
-                }
-            },
-            {
-                $group: {
-                    _id: '$portal',
-                    postIds: { $push: '$post' }
-                }
-            }
-        ]);
+        const notifications = await Notification.find({
+            recipient: req.user.id,
+            type: 'portal_post',
+            read: false
+        }).select('portal channel post');
         
-        const result = {};
-        counts.forEach(c => {
-           if (c._id) {
-               result[c._id.toString()] = c.postIds;
-           }
-        });
-        
-        res.json(result);
+        res.json(notifications);
     } catch (error) {
         console.error('Portal unreads error:', error);
         res.status(500).json({ message: 'Server error' });
