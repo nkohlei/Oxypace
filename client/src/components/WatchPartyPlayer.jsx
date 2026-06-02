@@ -15,6 +15,7 @@ const WatchPartyPlayer = () => {
 
     const playerRef = useRef(null);
     const isSyncingRef = useRef(false);
+    const lastProgrammaticSeekTimeRef = useRef(null);
     const [isReady, setIsReady] = useState(false);
     const [hasError, setHasError] = useState(false);
 
@@ -25,6 +26,7 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         setHasError(false);
         setIsReady(false);
+        lastProgrammaticSeekTimeRef.current = null;
     }, [watchParty?.url]);
 
     // Synchronize time updates from the room state
@@ -46,6 +48,7 @@ const WatchPartyPlayer = () => {
 
         if (timeDiff > threshold) {
             isSyncingRef.current = true;
+            lastProgrammaticSeekTimeRef.current = expectedTime;
             playerRef.current.seekTo(expectedTime, 'seconds');
             console.log(`[Watch Party] Synced offset. Difference: ${timeDiff}s. Seeking to: ${expectedTime}s`);
             setTimeout(() => {
@@ -74,6 +77,16 @@ const WatchPartyPlayer = () => {
 
     const handleSeek = (e) => {
         if (isSyncingRef.current) return;
+
+        // Avoid feedback loops from programmatic seeks
+        if (lastProgrammaticSeekTimeRef.current !== null) {
+            const diff = Math.abs(e - lastProgrammaticSeekTimeRef.current);
+            if (diff < 1.5) {
+                lastProgrammaticSeekTimeRef.current = null;
+                return;
+            }
+        }
+
         sendWatchSeek(e);
     };
 
