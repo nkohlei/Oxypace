@@ -189,10 +189,10 @@ export const VoiceProvider = ({ children }) => {
                 role: activeRoom?.userRole || 'member',
                 isLocal: true,
                 isMuted: localState.isMuted,
-                isCameraOn: localState.isCameraOn,
+                isCameraOn: localState.isCameraOn || localState.isScreenSharing,
                 isScreenSharing: localState.isScreenSharing,
                 isSpeaking: false,
-                videoTrack: makeTrackObject(localVideoTrack),
+                videoTrack: makeTrackObject(localState.isScreenSharing ? null : localVideoTrack),
                 audioTrack: makeTrackObject(localAudioTrack),
                 screenShareTrack: makeTrackObject(localScreenTrack),
             });
@@ -212,12 +212,12 @@ export const VoiceProvider = ({ children }) => {
                 role: 'member',
                 isLocal: false,
                 isMuted: rState.isMuted,
-                isCameraOn: rState.isCameraOn,
+                isCameraOn: rState.isCameraOn || rState.isScreenSharing,
                 isScreenSharing: rState.isScreenSharing,
                 isSpeaking: false,
-                videoTrack: makeTrackObject(rTracks.video),
+                videoTrack: makeTrackObject(rState.isScreenSharing ? null : rTracks.video),
                 audioTrack: makeTrackObject(rTracks.audio),
-                screenShareTrack: makeTrackObject(rTracks.screen),
+                screenShareTrack: makeTrackObject(rState.isScreenSharing ? rTracks.video : rTracks.screen),
             });
         });
 
@@ -297,15 +297,17 @@ export const VoiceProvider = ({ children }) => {
         // Add local camera/mic stream tracks
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => {
-                pc.addTrack(track, localStreamRef.current);
+                const sender = pc.addTrack(track, localStreamRef.current);
                 console.log(`[WebRTC] Added local track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
-            });
-        }
-        // Add screen share tracks
-        if (screenStreamRef.current) {
-            screenStreamRef.current.getTracks().forEach(track => {
-                pc.addTrack(track, screenStreamRef.current);
-                console.log(`[WebRTC] Added screen track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
+                
+                // If currently screen sharing and this is the video track, swap it with the screen track immediately
+                if (track.kind === 'video' && localState.isScreenSharing && screenStreamRef.current) {
+                    const screenTrack = screenStreamRef.current.getVideoTracks()[0];
+                    if (screenTrack && sender) {
+                        sender.replaceTrack(screenTrack);
+                        console.log(`[WebRTC] Immediately replaced new connection camera track with active screen track`);
+                    }
+                }
             });
         }
 
@@ -356,7 +358,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         return pc;
-    }, [activeRoom, updateParticipantList, safeEmit]);
+    }, [activeRoom, updateParticipantList, safeEmit, localState]);
 
     // Handle joining room and configuring media
     const connectToChannel = useCallback(async (portalId, channelId) => {
@@ -707,35 +709,41 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [localState, activeRoom, user, safeEmit]);
 
+    const stopScreenShareAndRevert = useCallback(() => {
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(t => t.stop());
+            screenStreamRef.current = null;
+        }
+
+        const localCamVideoTrack = localStreamRef.current?.getVideoTracks()[0];
+
+        peerConnectionsRef.current.forEach(pc => {
+            const senders = pc.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            if (videoSender && localCamVideoTrack) {
+                videoSender.replaceTrack(localCamVideoTrack);
+                console.log(`[WebRTC] Reverted screen track back to camera track`);
+            }
+        });
+
+        setLocalState(prev => {
+            const next = { ...prev, isScreenSharing: false };
+            if (activeRoom) {
+                safeEmit('voice:state-update', {
+                    roomName: activeRoom.roomName,
+                    userId: user?._id?.toString(),
+                    isMuted: next.isMuted,
+                    isCameraOn: next.isCameraOn,
+                    isScreenSharing: false
+                });
+            }
+            return next;
+        });
+    }, [activeRoom, user, safeEmit]);
+
     const toggleScreenShare = useCallback(async () => {
         if (localState.isScreenSharing) {
-            if (screenStreamRef.current) {
-                screenStreamRef.current.getTracks().forEach(t => t.stop());
-                screenStreamRef.current = null;
-            }
-
-            peerConnectionsRef.current.forEach(pc => {
-                const senders = pc.getSenders();
-                senders.forEach(sender => {
-                    if (sender.track && (sender.track.contentHint === 'text' || sender.track.label.includes('screen'))) {
-                        pc.removeTrack(sender);
-                    }
-                });
-            });
-
-            setLocalState(prev => {
-                const next = { ...prev, isScreenSharing: false };
-                if (activeRoom) {
-                    safeEmit('voice:state-update', {
-                        roomName: activeRoom.roomName,
-                        userId: user?._id?.toString(),
-                        isMuted: next.isMuted,
-                        isCameraOn: next.isCameraOn,
-                        isScreenSharing: false
-                    });
-                }
-                return next;
-            });
+            stopScreenShareAndRevert();
         } else {
             try {
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -747,15 +755,22 @@ export const VoiceProvider = ({ children }) => {
                 if (videoTrack) {
                     videoTrack.contentHint = 'text';
 
-                    // Add screen share tracks to all active peer connections
+                    // Replace local camera video track with screen track in all peer connections
+                    const localCamVideoTrack = localStreamRef.current?.getVideoTracks()[0];
                     peerConnectionsRef.current.forEach(pc => {
-                        pc.addTrack(videoTrack, screenStream);
+                        const senders = pc.getSenders();
+                        const videoSender = senders.find(s => s.track && (s.track === localCamVideoTrack || s.track.kind === 'video'));
+                        if (videoSender) {
+                            videoSender.replaceTrack(videoTrack);
+                            console.log(`[WebRTC] Swapped camera video track with screen video track`);
+                        } else {
+                            pc.addTrack(videoTrack, screenStream);
+                            console.log(`[WebRTC] Added screen track since video sender was not found`);
+                        }
                     });
 
-                    renegotiateAll();
-
                     videoTrack.onended = () => {
-                        toggleScreenShare();
+                        stopScreenShareAndRevert();
                     };
                 }
 
@@ -776,7 +791,7 @@ export const VoiceProvider = ({ children }) => {
                 console.warn("Screen sharing failed:", err);
             }
         }
-    }, [localState, activeRoom, user, safeEmit]);
+    }, [localState, activeRoom, user, safeEmit, stopScreenShareAndRevert]);
 
     const toggleDeafen = useCallback(() => {
         setLocalState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
