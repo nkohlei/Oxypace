@@ -491,24 +491,30 @@ export const VoiceProvider = ({ children }) => {
                 }
             });
             
-            // Initiate WebRTC offers to everyone already in the room
+            // Initiate WebRTC offers deterministically to prevent glare collisions
             rawParticipantsRef.current.forEach(async (p) => {
                 const localUserId = user?._id?.toString();
                 if (p.userId !== localUserId && !peerConnectionsRef.current.has(p.userId)) {
-                    const pc = getOrCreatePC(p.userId, true);
-                    try {
-                        console.log(`[WebRTC] Creating and sending offer to existing user ${p.userId}`);
-                        const offer = await pc.createOffer();
-                        const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
-                        await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
-                        safeEmit('voice:video-offer', {
-                            roomName: activeRoom.roomName,
-                            targetUserId: p.userId,
-                            sdp: prioritizedOffer
-                        });
-                        console.log(`[Socket] video-offer gönderildi to user ${p.userId}`);
-                    } catch (err) {
-                        console.error("Failed to create offer for:", p.userId, err);
+                    const isOfferCreator = localUserId.localeCompare(p.userId) < 0;
+                    if (isOfferCreator) {
+                        const pc = getOrCreatePC(p.userId, true);
+                        try {
+                            console.log(`[WebRTC] Creating and sending offer to existing user ${p.userId}`);
+                            const offer = await pc.createOffer();
+                            const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+                            await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
+                            safeEmit('voice:video-offer', {
+                                roomName: activeRoom.roomName,
+                                targetUserId: p.userId,
+                                sdp: prioritizedOffer
+                            });
+                            console.log(`[Socket] video-offer gönderildi to user ${p.userId}`);
+                        } catch (err) {
+                            console.error("Failed to create offer for:", p.userId, err);
+                        }
+                    } else {
+                        getOrCreatePC(p.userId, false);
+                        console.log(`[WebRTC] Prepared peer connection as answerer for user ${p.userId}, waiting for offer.`);
                     }
                 }
             });
