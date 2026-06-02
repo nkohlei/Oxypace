@@ -16,6 +16,8 @@ const WatchPartyPlayer = () => {
     const playerRef = useRef(null);
     const isSyncingRef = useRef(false);
     const lastProgrammaticSeekTimeRef = useRef(null);
+    const lastPolledTimeRef = useRef(null);
+    const prevIsPlayingRef = useRef(false);
     const [isReady, setIsReady] = useState(false);
     const [hasError, setHasError] = useState(false);
 
@@ -27,7 +29,40 @@ const WatchPartyPlayer = () => {
         setHasError(false);
         setIsReady(false);
         lastProgrammaticSeekTimeRef.current = null;
+        lastPolledTimeRef.current = null;
+        prevIsPlayingRef.current = false;
     }, [watchParty?.url]);
+
+    // Detect manual seeks via polling to support clicks on YouTube's native progress bar
+    useEffect(() => {
+        if (!isReady || hasError || !playerRef.current) return;
+
+        const interval = setInterval(() => {
+            const player = playerRef.current;
+            if (!player) return;
+
+            try {
+                const currentTime = player.getCurrentTime();
+                if (typeof currentTime !== 'number') return;
+
+                if (lastPolledTimeRef.current !== null && !isSyncingRef.current) {
+                    const expectedProgress = watchParty?.isPlaying ? 0.4 : 0;
+                    const diff = Math.abs(currentTime - lastPolledTimeRef.current - expectedProgress);
+
+                    // If time jumped by more than 1.5 seconds, it's a manual seek
+                    if (diff > 1.5) {
+                        console.log(`[Watch Party] Manual seek detected via polling: ${lastPolledTimeRef.current}s -> ${currentTime}s`);
+                        sendWatchSeek(currentTime);
+                    }
+                }
+                lastPolledTimeRef.current = currentTime;
+            } catch (err) {
+                console.error("Error polling player time:", err);
+            }
+        }, 400);
+
+        return () => clearInterval(interval);
+    }, [isReady, hasError, watchParty?.isPlaying, sendWatchSeek]);
 
     // Synchronize time updates from the room state
     useEffect(() => {
@@ -43,18 +78,22 @@ const WatchPartyPlayer = () => {
         const localTime = playerRef.current.getCurrentTime();
         const timeDiff = Math.abs(localTime - expectedTime);
 
-        // Tighter sync threshold: 1.0 seconds when playing, 0.3 seconds when paused
-        const threshold = watchParty.isPlaying ? 1.0 : 0.3;
+        // If we transitioned from paused to playing, we sync immediately (threshold = 0.1)
+        const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
+        const threshold = isPlayTransition ? 0.1 : (watchParty.isPlaying ? 0.8 : 0.3);
 
         if (timeDiff > threshold) {
             isSyncingRef.current = true;
             lastProgrammaticSeekTimeRef.current = expectedTime;
+            lastPolledTimeRef.current = expectedTime;
             playerRef.current.seekTo(expectedTime, 'seconds');
-            console.log(`[Watch Party] Synced offset. Difference: ${timeDiff}s. Seeking to: ${expectedTime}s`);
+            console.log(`[Watch Party] Synced offset (transition: ${isPlayTransition}). Difference: ${timeDiff}s. Seeking to: ${expectedTime}s`);
             setTimeout(() => {
                 isSyncingRef.current = false;
-            }, 400);
+            }, 500);
         }
+
+        prevIsPlayingRef.current = watchParty.isPlaying;
     }, [watchParty?.currentTime, watchParty?.isPlaying, isReady, hasError]);
 
     const handlePlay = () => {
