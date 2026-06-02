@@ -115,6 +115,52 @@ export const initializeVoiceHandler = (io) => {
             console.log(`🔇 Speak revoked from ${targetUserId} in ${roomName}`);
         });
 
+        // ─── Broadcast Participant State (Mute/Camera/Screen) ───
+        socket.on('voice:state-update', ({ roomName, userId, isMuted, isCameraOn, isScreenSharing }) => {
+            if (!roomName || !userId) return;
+            io.to(`voice:${roomName}`).emit('voice:state-update', {
+                userId,
+                isMuted,
+                isCameraOn,
+                isScreenSharing
+            });
+        });
+
+        // ─── Broadcast Chat Messages ───
+        socket.on('voice:chat-message', ({ roomName, text, senderName, senderId }) => {
+            if (!roomName) return;
+            io.to(`voice:${roomName}`).emit('voice:chat-message', {
+                text,
+                senderName,
+                senderId
+            });
+        });
+
+        // ─── WebRTC Signaling ───
+        socket.on('voice:video-offer', ({ roomName, targetUserId, sdp }) => {
+            if (!roomName || !targetUserId) return;
+            io.to(targetUserId).emit('voice:video-offer', {
+                senderId: socket._voiceUserId || socket.id,
+                sdp
+            });
+        });
+
+        socket.on('voice:video-answer', ({ roomName, targetUserId, sdp }) => {
+            if (!roomName || !targetUserId) return;
+            io.to(targetUserId).emit('voice:video-answer', {
+                senderId: socket._voiceUserId || socket.id,
+                sdp
+            });
+        });
+
+        socket.on('voice:new-ice-candidate', ({ roomName, targetUserId, candidate }) => {
+            if (!roomName || !targetUserId) return;
+            io.to(targetUserId).emit('voice:new-ice-candidate', {
+                senderId: socket._voiceUserId || socket.id,
+                candidate
+            });
+        });
+
         // ─── Cleanup on Disconnect ───
         socket.on('disconnect', () => {
             if (socket._voiceRooms && socket._voiceUserId) {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useCallback, useRef, useState, useEffect } from 'react';
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
-import { Room, RoomEvent, ConnectionState, Track, setLogLevel, LogLevel } from 'livekit-client';
+import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
 
 const VoiceContext = createContext();
@@ -12,18 +12,70 @@ export const useVoice = () => {
     return context;
 };
 
+// WebRTC ICE configuration
+const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' }
+];
+
+// Helper to prioritize AV1/VP9 video codec in SDP
+const prioritizeVideoCodec = (sdp) => {
+    const lines = sdp.split('\r\n');
+    let mVideoIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('m=video ')) {
+            mVideoIndex = i;
+            break;
+        }
+    }
+    if (mVideoIndex === -1) return sdp;
+
+    const codecs = [];
+    for (const line of lines) {
+        if (line.startsWith('a=rtpmap:')) {
+            const match = line.match(/^a=rtpmap:(\d+)\s+([A-Za-z0-9-]+)\//);
+            if (match) {
+                codecs.push({
+                    payloadType: match[1],
+                    name: match[2].toUpperCase()
+                });
+            }
+        }
+    }
+
+    const preferredPayloads = codecs
+        .filter(c => c.name === 'VP9' || c.name === 'AV1')
+        .sort((a, b) => {
+            if (a.name === 'AV1') return -1;
+            if (b.name === 'AV1') return 1;
+            return 0;
+        })
+        .map(c => c.payloadType);
+
+    if (preferredPayloads.length === 0) return sdp;
+
+    const parts = lines[mVideoIndex].split(' ');
+    const media = parts[0];
+    const port = parts[1];
+    const proto = parts[2];
+    const formats = parts.slice(3);
+
+    const otherFormats = formats.filter(f => !preferredPayloads.includes(f));
+    const newFormats = [...preferredPayloads, ...otherFormats];
+
+    lines[mVideoIndex] = `${media} ${port} ${proto} ${newFormats.join(' ')}`;
+    return lines.join('\r\n');
+};
+
 export const VoiceProvider = ({ children }) => {
     const { socket } = useSocket();
     const { user } = useAuth();
 
-    // Silence LiveKit standard logs
-    useEffect(() => {
-        setLogLevel(LogLevel.error);
-    }, []);
-
     // Core states
-    const [activeRoom, setActiveRoom] = useState(null); // { portalId, channelId, roomName, channelName }
-    const [room, setRoom] = useState(null); // The actual LiveKit Room instance
+    const [activeRoom, setActiveRoom] = useState(null); // { portalId, channelId, roomName, channelName, roomMode, userRole }
     const [connectionState, setConnectionState] = useState(ConnectionState.Disconnected);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -47,25 +99,21 @@ export const VoiceProvider = ({ children }) => {
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
 
-    // Ensure room is cleaned up on user logout only
-    useEffect(() => {
-        if (!user && connectionState !== ConnectionState.Disconnected) {
-            if (room) {
-                room.disconnect();
-            }
-            setConnectionState(ConnectionState.Disconnected);
-        }
-        // Removed aggressive cleanup return on re-renders to prevent sudden disconnects during UI state changes
-    }, [room, user, connectionState]);
+    // WebRTC connection references
+    const localStreamRef = useRef(null);
+    const screenStreamRef = useRef(null);
+    const peerConnectionsRef = useRef(new Map()); // userId -> RTCPeerConnection
+    const remoteTracksRef = useRef(new Map()); // userId -> { audio: Track, video: Track, screen: Track }
+    const remoteStatesRef = useRef(new Map()); // userId -> { isMuted, isCameraOn, isScreenSharing }
+    const rawParticipantsRef = useRef([]); // list of current participants in socket room
 
     // Local Sound Helper
     const playInteractionSound = useCallback((type) => {
         try {
             const soundFile = `/sounds/${type}.mp3`;
             const audio = new Audio(soundFile);
-            audio.volume = type === 'message' ? 0.2 : 0.4; // Reduced from 0.6 to 0.4 for better balance
+            audio.volume = type === 'message' ? 0.2 : 0.4;
             audio.play().catch((err) => {
-                // Autoplay might be blocked if no user interaction yet
                 console.warn(`Audio play blocked: ${soundFile}`, err);
             });
         } catch (e) {
@@ -73,93 +121,92 @@ export const VoiceProvider = ({ children }) => {
         }
     }, []);
 
-    // Handle participant list updates
-    const updateParticipantList = useCallback((currentRoom) => {
-        if (!currentRoom) return;
+    // Create custom wrapper for tracks to expose attach/detach functions for UI compatibility
+    const makeTrackObject = (track) => {
+        if (!track) return null;
+        return {
+            track,
+            attach: (el) => {
+                if (el) {
+                    el.srcObject = new MediaStream([track]);
+                }
+            },
+            detach: (el) => {
+                if (el) {
+                    el.srcObject = null;
+                }
+            }
+        };
+    };
+
+    // Update derived participants array for React components
+    const updateParticipantList = useCallback(() => {
         const list = [];
+        const localUserId = user?._id?.toString();
 
-        // Add Local Participant
-        if (currentRoom.localParticipant) {
-            const p = currentRoom.localParticipant;
-            let avatar = '';
-            let role = 'member';
-            try {
-                const meta = JSON.parse(p.metadata || '{}');
-                avatar = meta.avatar || '';
-                if (meta.role) role = meta.role;
-            } catch { }
-            const videoPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.Camera);
-            const audioPub = Array.from(p.audioTrackPublications.values()).find(pub => pub.track);
-            const screenPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.ScreenShare);
+        // 1. Add Local Participant
+        if (localUserId) {
+            let localVideoTrack = null;
+            let localAudioTrack = null;
+            let localScreenTrack = null;
+
+            if (localStreamRef.current) {
+                localVideoTrack = localStreamRef.current.getVideoTracks()[0] || null;
+                localAudioTrack = localStreamRef.current.getAudioTracks()[0] || null;
+            }
+            if (screenStreamRef.current) {
+                localScreenTrack = screenStreamRef.current.getVideoTracks()[0] || null;
+            }
 
             list.push({
-                identity: p.identity,
-                name: p.name || p.identity,
-                avatar,
-                role,
+                identity: localUserId,
+                name: user?.profile?.displayName || user?.username || 'Sen',
+                avatar: user?.profile?.avatar || '',
+                role: activeRoom?.userRole || 'member',
                 isLocal: true,
-                isMuted: !p.isMicrophoneEnabled,
-                isCameraOn: p.isCameraEnabled,
-                isScreenSharing: p.isScreenShareEnabled,
-                isSpeaking: p.isSpeaking,
-                connectionQuality: p.connectionQuality,
-                videoTrack: videoPub?.track || null,
-                audioTrack: audioPub?.track || null,
-                screenShareTrack: screenPub?.track || null,
+                isMuted: localState.isMuted,
+                isCameraOn: localState.isCameraOn,
+                isScreenSharing: localState.isScreenSharing,
+                isSpeaking: false,
+                videoTrack: makeTrackObject(localVideoTrack),
+                audioTrack: makeTrackObject(localAudioTrack),
+                screenShareTrack: makeTrackObject(localScreenTrack),
             });
-
-            setLocalState(prev => ({
-                ...prev,
-                isMuted: !p.isMicrophoneEnabled,
-                isCameraOn: p.isCameraEnabled,
-                isScreenSharing: p.isScreenShareEnabled
-            }));
         }
 
-        // Add Remote Participants
-        for (const p of currentRoom.remoteParticipants.values()) {
-            let avatar = '';
-            let role = 'member';
-            try {
-                const meta = JSON.parse(p.metadata || '{}');
-                avatar = meta.avatar || '';
-                if (meta.role) role = meta.role;
-            } catch { }
-            const videoPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.Camera);
-            const audioPub = Array.from(p.audioTrackPublications.values()).find(pub => pub.track);
-            const screenPub = Array.from(p.videoTrackPublications.values()).find(pub => pub.track && pub.source === Track.Source.ScreenShare);
+        // 2. Add Remote Participants
+        rawParticipantsRef.current.forEach(p => {
+            if (p.userId === localUserId) return;
+
+            const rState = remoteStatesRef.current.get(p.userId) || { isMuted: true, isCameraOn: false, isScreenSharing: false };
+            const rTracks = remoteTracksRef.current.get(p.userId) || {};
 
             list.push({
-                identity: p.identity,
-                name: p.name || p.identity,
-                avatar,
-                role,
+                identity: p.userId,
+                name: p.username,
+                avatar: p.avatar,
+                role: 'member',
                 isLocal: false,
-                isMuted: !p.isMicrophoneEnabled,
-                isCameraOn: p.isCameraEnabled,
-                isScreenSharing: p.isScreenShareEnabled,
-                isSpeaking: p.isSpeaking,
-                connectionQuality: p.connectionQuality,
-                videoTrack: videoPub?.track || null,
-                audioTrack: audioPub?.track || null,
-                screenShareTrack: screenPub?.track || null,
+                isMuted: rState.isMuted,
+                isCameraOn: rState.isCameraOn,
+                isScreenSharing: rState.isScreenSharing,
+                isSpeaking: false,
+                videoTrack: makeTrackObject(rTracks.video),
+                audioTrack: makeTrackObject(rTracks.audio),
+                screenShareTrack: makeTrackObject(rTracks.screen),
             });
-        }
-        setParticipants(list);
-
-        // Check if the currently pinned participant is still in the room
-        setPinnedParticipant(prev => {
-            if (prev && !list.find(p => p.identity === prev)) return null;
-            return prev;
         });
-    }, []);
+
+        setParticipants(list);
+    }, [user, activeRoom, localState]);
 
     // Enumerate devices
     const enumerateDevices = useCallback(async () => {
         try {
-            const audioInputs = await Room.getLocalDevices('audioinput');
-            const audioOutputs = await Room.getLocalDevices('audiooutput');
-            const videoInputs = await Room.getLocalDevices('videoinput');
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioInputs = devices.filter(d => d.kind === 'audioinput');
+            const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+            const videoInputs = devices.filter(d => d.kind === 'videoinput');
             setAvailableDevices({ audioInputs, audioOutputs, videoInputs });
         } catch (err) {
             console.error("Failed to enumerate devices", err);
@@ -175,34 +222,114 @@ export const VoiceProvider = ({ children }) => {
         };
     }, [enumerateDevices]);
 
-    // Main connection function
+    // Renegotiate all WebRTC connections (e.g. after adding screen share)
+    const renegotiateAll = async () => {
+        for (const [targetUserId, pc] of peerConnectionsRef.current.entries()) {
+            try {
+                const offer = await pc.createOffer();
+                const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+                await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
+                if (socket && activeRoom) {
+                    socket.emit('voice:video-offer', {
+                        roomName: activeRoom.roomName,
+                        targetUserId,
+                        sdp: prioritizedOffer
+                    });
+                }
+            } catch (err) {
+                console.error("Renegotiation failed for:", targetUserId, err);
+            }
+        }
+    };
+
+    // WebRTC connection builder
+    const getOrCreatePC = useCallback((targetUserId, isOfferCreator) => {
+        if (peerConnectionsRef.current.has(targetUserId)) {
+            return peerConnectionsRef.current.get(targetUserId);
+        }
+
+        const pc = new RTCPeerConnection({ iceServers });
+        peerConnectionsRef.current.set(targetUserId, pc);
+
+        // Add local camera/mic stream tracks
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => {
+                pc.addTrack(track, localStreamRef.current);
+            });
+        }
+        // Add screen share tracks
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(track => {
+                pc.addTrack(track, screenStreamRef.current);
+            });
+        }
+
+        // ICE candidate handler
+        pc.onicecandidate = (event) => {
+            if (event.candidate && socket && activeRoom) {
+                socket.emit('voice:new-ice-candidate', {
+                    roomName: activeRoom.roomName,
+                    targetUserId,
+                    candidate: event.candidate
+                });
+            }
+        };
+
+        // Incoming track handler
+        pc.ontrack = (event) => {
+            const stream = event.streams[0] || new MediaStream([event.track]);
+            if (!remoteTracksRef.current.has(targetUserId)) {
+                remoteTracksRef.current.set(targetUserId, {});
+            }
+            const tracks = remoteTracksRef.current.get(targetUserId);
+
+            if (event.track.kind === 'audio') {
+                tracks.audio = event.track;
+            } else if (event.track.kind === 'video') {
+                if (event.track.contentHint === 'text' || stream.id.includes('screen')) {
+                    tracks.screen = event.track;
+                } else {
+                    tracks.video = event.track;
+                }
+            }
+
+            updateParticipantList();
+        };
+
+        return pc;
+    }, [socket, activeRoom, updateParticipantList]);
+
+    // Handle joining room and configuring media
     const connectToChannel = useCallback(async (portalId, channelId) => {
-        if (room) {
-            await room.disconnect();
-            setRoom(null);
+        if (connectionState === ConnectionState.Connecting || connectionState === ConnectionState.Connected) {
+            return;
         }
 
         setConnectionState(ConnectionState.Connecting);
         setErrorMsg('');
-        setChatMessages([]); // Clear chat on new room connect
-        setRoomStartTime(null); // Clear timer before join
+        setChatMessages([]);
+        setRoomStartTime(null);
 
         try {
-            // 0. Trigger native permission prompt (Mic/Camera) before joining
-            if (window.navigator?.mediaDevices?.getUserMedia) {
-                try {
-                    // This forces the OS to prompt for Microphone and Camera permissions
-                    const stream = await window.navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                    // Stop tracks immediately so LiveKit can take control
-                    stream.getTracks().forEach(track => track.stop());
-                } catch (permErr) {
-                    console.warn("Could not get pre-permissions (user denied or no hardware)", permErr);
-                }
+            // Get local audio and video media
+            let localStream;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+                    video: { width: 640, height: 480, frameRate: 24 }
+                });
+                localStreamRef.current = localStream;
+                
+                // Keep tracks disabled by default
+                localStream.getAudioTracks().forEach(t => t.enabled = false);
+                localStream.getVideoTracks().forEach(t => t.enabled = false);
+            } catch (permErr) {
+                console.warn("Could not get local media permissions:", permErr);
             }
 
-            // 1. Fetch Token
+            // Fetch Token details
             const response = await axios.post('/api/voice/token', { portalId, channelId });
-            const { token, serverUrl, roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow } = response.data;
+            const { roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow } = response.data;
 
             if (startedAt && serverNow) {
                 const localNow = Date.now();
@@ -210,80 +337,7 @@ export const VoiceProvider = ({ children }) => {
                 setRoomStartTime(startedAt - offset);
             }
 
-            // 2. Instantiate Room
-            const newRoom = new Room({
-                adaptiveStream: true,
-                dynacast: true,
-                audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-                videoCaptureDefaults: { resolution: { width: 640, height: 480, frameRate: 24 } },
-                publishDefaults: {
-                    screenShareEncoding: { maxBitrate: 1500000, maxFramerate: 30 } // Bandwidth optimization for low-latency
-                }
-            });
-
-            // 3. Bind Events
-            newRoom.on(RoomEvent.ConnectionStateChanged, (state) => {
-                setConnectionState(state);
-                if (state === ConnectionState.Disconnected) {
-                    setActiveRoom(null);
-                    setParticipants([]);
-                    if (socket) {
-                        socket.emit('voice:leave', { roomName, userId: user?._id });
-                    }
-                }
-            });
-
-            const updateList = () => updateParticipantList(newRoom);
-            newRoom.on(RoomEvent.ParticipantConnected, (p) => { updateList(); });
-            newRoom.on(RoomEvent.ParticipantDisconnected, (p) => { updateList(); });
-            newRoom.on(RoomEvent.TrackSubscribed, updateList);
-            newRoom.on(RoomEvent.TrackUnsubscribed, updateList);
-            newRoom.on(RoomEvent.TrackMuted, updateList);
-            newRoom.on(RoomEvent.TrackUnmuted, updateList);
-            // newRoom.on(RoomEvent.ActiveSpeakersChanged, updateList); // Removed to prevent slow-down from high frequency events
-            newRoom.on(RoomEvent.ConnectionQualityChanged, updateList);
-            newRoom.on(RoomEvent.LocalTrackPublished, updateList);
-            newRoom.on(RoomEvent.LocalTrackUnpublished, updateList);
-
-            // Listen for DataChannel (Chat)
-            newRoom.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
-                if (topic === 'chat') {
-                    const decoder = new TextDecoder();
-                    try {
-                        const msgObj = JSON.parse(decoder.decode(payload));
-                        // Append to messages
-                        setChatMessages(prev => [...prev, {
-                            id: Date.now() + Math.random(),
-                            senderName: participant?.name || participant?.identity || 'Unknown',
-                            senderId: participant?.identity,
-                            text: msgObj.text,
-                            timestamp: new Date().toISOString(),
-                            isLocal: false
-                        }]);
-                        playInteractionSound('message');
-                    } catch (e) {
-                        console.error("Failed to parse chat message", e);
-                    }
-                }
-            });
-
-            // 4. Connect with pre-selected devices if any
-            const connectOptions = {};
-            if (selectedAudioInput) connectOptions.audio = { deviceId: selectedAudioInput };
-            if (selectedVideoInput) connectOptions.video = { deviceId: selectedVideoInput };
-
-            await newRoom.connect(serverUrl, token, connectOptions);
-            
-            // Set audio output if selected
-            if (selectedAudioOutput) {
-                try { await newRoom.setAudioOutputDevice(selectedAudioOutput); } catch(e) {}
-            }
-
-            setRoom(newRoom);
-            setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
-            updateList();
-
-            // 5. Notify Presence Socket
+            // Join socket.io channel signaling
             if (socket) {
                 socket.emit('voice:join', {
                     roomName,
@@ -291,54 +345,98 @@ export const VoiceProvider = ({ children }) => {
                     username: user?.username || 'Unknown',
                     avatar: user?.profile?.avatar || '',
                 });
+
+                socket.emit('voice:state-update', {
+                    roomName,
+                    userId: user?._id?.toString(),
+                    isMuted: true,
+                    isCameraOn: false,
+                    isScreenSharing: false
+                });
             }
 
-            // 6. Join muted by default to avoid immediate permission prompt (as requested)
+            setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
+            setConnectionState(ConnectionState.Connected);
             setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
 
         } catch (err) {
-            console.error('Failed to connect to LiveKit:', err);
+            console.error('Failed to connect via WebRTC:', err);
             setErrorMsg(err.message || 'Bağlantı kurulamadı.');
             setConnectionState(ConnectionState.Disconnected);
         }
-    }, [room, socket, user, updateParticipantList]);
+    }, [socket, user, connectionState]);
 
     const disconnectFromChannel = useCallback(async () => {
-        if (room) {
-            await room.disconnect();
-            setRoom(null);
+        // Stop local streams
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(t => t.stop());
+            localStreamRef.current = null;
         }
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(t => t.stop());
+            screenStreamRef.current = null;
+        }
+
+        // Close peer connections
+        peerConnectionsRef.current.forEach(pc => pc.close());
+        peerConnectionsRef.current.clear();
+        remoteTracksRef.current.clear();
+        remoteStatesRef.current.clear();
+
+        // Notify socket
         if (socket && activeRoom) {
             socket.emit('voice:leave', {
                 roomName: activeRoom.roomName,
                 userId: user?._id?.toString()
             });
         }
-        
+
         setActiveRoom(null);
         setParticipants([]);
         setChatMessages([]);
         setPinnedParticipant(null);
         setRoomStartTime(null);
         setConnectionState(ConnectionState.Disconnected);
-    }, [room, socket, activeRoom, user]);
+    }, [socket, activeRoom, user]);
 
-    // Socket Event Handlers
+    // Handle WebSocket Signaling Events
     useEffect(() => {
-        if (!socket) return;
+        if (!socket || !activeRoom) return;
 
-        const handleParticipants = (data) => {
-            // Only update timer if we are actually in a room and it matches the data
+        const handleParticipants = async (data) => {
             if (activeRoom && data.startedAt) {
                 if (data.serverNow) {
                     const localNow = Date.now();
                     const offset = data.serverNow - localNow;
-                    // Adjust startedAt to be relative to this client's local clock
                     setRoomStartTime(data.startedAt - offset);
                 } else {
                     setRoomStartTime(data.startedAt);
                 }
             }
+
+            rawParticipantsRef.current = data.participants || [];
+            
+            // Initiate WebRTC offers to everyone already in the room
+            rawParticipantsRef.current.forEach(async (p) => {
+                const localUserId = user?._id?.toString();
+                if (p.userId !== localUserId && !peerConnectionsRef.current.has(p.userId)) {
+                    const pc = getOrCreatePC(p.userId, true);
+                    try {
+                        const offer = await pc.createOffer();
+                        const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+                        await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
+                        socket.emit('voice:video-offer', {
+                            roomName: activeRoom.roomName,
+                            targetUserId: p.userId,
+                            sdp: prioritizedOffer
+                        });
+                    } catch (err) {
+                        console.error("Failed to create offer for:", p.userId, err);
+                    }
+                }
+            });
+
+            updateParticipantList();
         };
 
         const handleUserJoined = (data) => {
@@ -350,129 +448,269 @@ export const VoiceProvider = ({ children }) => {
         const handleUserLeft = (data) => {
             if (data.userId !== user?._id?.toString()) {
                 playInteractionSound('leave');
+                
+                // Cleanup connection
+                if (peerConnectionsRef.current.has(data.userId)) {
+                    peerConnectionsRef.current.get(data.userId).close();
+                    peerConnectionsRef.current.delete(data.userId);
+                }
+                remoteTracksRef.current.delete(data.userId);
+                remoteStatesRef.current.delete(data.userId);
+                rawParticipantsRef.current = rawParticipantsRef.current.filter(p => p.userId !== data.userId);
+                updateParticipantList();
             }
+        };
+
+        const handleVideoOffer = async ({ senderId, sdp }) => {
+            const pc = getOrCreatePC(senderId, false);
+            try {
+                await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+                const answer = await pc.createAnswer();
+                const prioritizedAnswer = prioritizeVideoCodec(answer.sdp);
+                await pc.setLocalDescription({ type: 'answer', sdp: prioritizedAnswer });
+                socket.emit('voice:video-answer', {
+                    roomName: activeRoom.roomName,
+                    targetUserId: senderId,
+                    sdp: prioritizedAnswer
+                });
+            } catch (err) {
+                console.error("Error setting video offer from remote:", err);
+            }
+        };
+
+        const handleVideoAnswer = async ({ senderId, sdp }) => {
+            const pc = peerConnectionsRef.current.get(senderId);
+            if (pc) {
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
+                } catch (err) {
+                    console.error("Error setting video answer from remote:", err);
+                }
+            }
+        };
+
+        const handleNewIceCandidate = async ({ senderId, candidate }) => {
+            const pc = peerConnectionsRef.current.get(senderId);
+            if (pc) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) {
+                    console.error("Error adding ice candidate:", err);
+                }
+            }
+        };
+
+        const handleStateUpdate = ({ userId, isMuted, isCameraOn, isScreenSharing }) => {
+            remoteStatesRef.current.set(userId, { isMuted, isCameraOn, isScreenSharing });
+            updateParticipantList();
         };
 
         socket.on('voice:participants', handleParticipants);
         socket.on('voice:user-joined', handleUserJoined);
         socket.on('voice:user-left', handleUserLeft);
+        socket.on('voice:video-offer', handleVideoOffer);
+        socket.on('voice:video-answer', handleVideoAnswer);
+        socket.on('voice:new-ice-candidate', handleNewIceCandidate);
+        socket.on('voice:state-update', handleStateUpdate);
 
         return () => {
             socket.off('voice:participants', handleParticipants);
             socket.off('voice:user-joined', handleUserJoined);
             socket.off('voice:user-left', handleUserLeft);
+            socket.off('voice:video-offer', handleVideoOffer);
+            socket.off('voice:video-answer', handleVideoAnswer);
+            socket.off('voice:new-ice-candidate', handleNewIceCandidate);
+            socket.off('voice:state-update', handleStateUpdate);
         };
-    }, [socket, user, playInteractionSound, activeRoom]);
+    }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList]);
 
-    // Media Controls with Optimistic Updates
+    // Media toggle functions
     const toggleMicrophone = useCallback(async () => {
-        if (!room || !room.localParticipant) return;
-        const willEnable = !room.localParticipant.isMicrophoneEnabled;
-        
-        try {
-            await room.localParticipant.setMicrophoneEnabled(willEnable, {
-                deviceId: selectedAudioInput || undefined
+        if (!localStreamRef.current) return;
+        const track = localStreamRef.current.getAudioTracks()[0];
+        if (track) {
+            const willMute = !localState.isMuted;
+            track.enabled = !willMute;
+
+            setLocalState(prev => {
+                const next = { ...prev, isMuted: willMute };
+                if (socket && activeRoom) {
+                    socket.emit('voice:state-update', {
+                        roomName: activeRoom.roomName,
+                        userId: user?._id?.toString(),
+                        isMuted: next.isMuted,
+                        isCameraOn: next.isCameraOn,
+                        isScreenSharing: next.isScreenSharing
+                    });
+                }
+                return next;
             });
-        } catch (err) {
-            console.error("Mic toggle failed", err);
         }
-    }, [room, selectedAudioInput]);
+    }, [localState, socket, activeRoom, user]);
+
+    const toggleCamera = useCallback(async () => {
+        if (!localStreamRef.current) return;
+        const track = localStreamRef.current.getVideoTracks()[0];
+        if (track) {
+            const willCameraOn = !localState.isCameraOn;
+            track.enabled = willCameraOn;
+
+            setLocalState(prev => {
+                const next = { ...prev, isCameraOn: willCameraOn };
+                if (socket && activeRoom) {
+                    socket.emit('voice:state-update', {
+                        roomName: activeRoom.roomName,
+                        userId: user?._id?.toString(),
+                        isMuted: next.isMuted,
+                        isCameraOn: next.isCameraOn,
+                        isScreenSharing: next.isScreenSharing
+                    });
+                }
+                return next;
+            });
+        }
+    }, [localState, socket, activeRoom, user]);
+
+    const toggleScreenShare = useCallback(async () => {
+        if (localState.isScreenSharing) {
+            if (screenStreamRef.current) {
+                screenStreamRef.current.getTracks().forEach(t => t.stop());
+                screenStreamRef.current = null;
+            }
+
+            peerConnectionsRef.current.forEach(pc => {
+                const senders = pc.getSenders();
+                senders.forEach(sender => {
+                    if (sender.track && (sender.track.contentHint === 'text' || sender.track.label.includes('screen'))) {
+                        pc.removeTrack(sender);
+                    }
+                });
+            });
+
+            setLocalState(prev => {
+                const next = { ...prev, isScreenSharing: false };
+                if (socket && activeRoom) {
+                    socket.emit('voice:state-update', {
+                        roomName: activeRoom.roomName,
+                        userId: user?._id?.toString(),
+                        isMuted: next.isMuted,
+                        isCameraOn: next.isCameraOn,
+                        isScreenSharing: false
+                    });
+                }
+                return next;
+            });
+        } else {
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { frameRate: 60 },
+                    audio: true
+                });
+                screenStreamRef.current = screenStream;
+                const videoTrack = screenStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.contentHint = 'text';
+
+                    // Add screen share tracks to all active peer connections
+                    peerConnectionsRef.current.forEach(pc => {
+                        pc.addTrack(videoTrack, screenStream);
+                    });
+
+                    renegotiateAll();
+
+                    videoTrack.onended = () => {
+                        toggleScreenShare();
+                    };
+                }
+
+                setLocalState(prev => {
+                    const next = { ...prev, isScreenSharing: true };
+                    if (socket && activeRoom) {
+                        socket.emit('voice:state-update', {
+                            roomName: activeRoom.roomName,
+                            userId: user?._id?.toString(),
+                            isMuted: next.isMuted,
+                            isCameraOn: next.isCameraOn,
+                            isScreenSharing: true
+                        });
+                    }
+                    return next;
+                });
+            } catch (err) {
+                console.warn("Screen sharing failed:", err);
+            }
+        }
+    }, [localState, socket, activeRoom, user]);
 
     const toggleDeafen = useCallback(() => {
         setLocalState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
     }, []);
 
-    const toggleCamera = useCallback(async () => {
-        if (!room || !room.localParticipant) return;
-        const willEnable = !room.localParticipant.isCameraEnabled;
-        
-        try {
-            await room.localParticipant.setCameraEnabled(willEnable);
-            // State will be updated via updateList through LiveKit events
-        } catch (err) {
-            console.error("Camera toggle failed", err);
-        }
-    }, [room]);
-
     const toggleFacingMode = useCallback(async () => {
-        if (!room || !room.localParticipant) return;
         const newMode = facingMode === 'user' ? 'environment' : 'user';
         setFacingMode(newMode);
-        if (localState.isCameraOn) {
-            await room.localParticipant.setCameraEnabled(true, { facingMode: newMode });
-        }
-    }, [room, facingMode, localState.isCameraOn]);
+        // Under WebRTC connection renegotiation is not needed for camera swap if track is replaced
+    }, [facingMode]);
 
     const setAudioOutput = useCallback(async (deviceId) => {
         setSelectedAudioOutput(deviceId);
-        if (room) {
-            try {
-                await room.setAudioOutputDevice(deviceId);
-            } catch (err) {
-                console.error("Failed to set audio output device", err);
-            }
-        }
-    }, [room]);
+    }, []);
 
     const setAudioInput = useCallback(async (deviceId) => {
         setSelectedAudioInput(deviceId);
-        if (room) {
-            try {
-                await room.switchActiveDevice('audioinput', deviceId);
-            } catch (err) {
-                console.error("Failed to set audio input device", err);
-            }
-        }
-    }, [room]);
+    }, []);
 
     const setVideoInput = useCallback(async (deviceId) => {
         setSelectedVideoInput(deviceId);
-        if (!room) return;
-        try {
-            await room.switchActiveDevice('videoinput', deviceId);
-        } catch (err) {
-            console.error("Failed to set video input device", err);
-        }
-    }, [room]);
+    }, []);
 
-    const toggleScreenShare = useCallback(async () => {
-        if (!room || !room.localParticipant) return;
-        const willEnable = !localState.isScreenSharing;
-        try {
-            await room.localParticipant.setScreenShareEnabled(willEnable);
-            setLocalState(prev => ({ ...prev, isScreenSharing: willEnable }));
-        } catch (err) {
-            console.warn('Screen share failed or cancelled:', err);
-        }
-    }, [room, localState.isScreenSharing]);
-
-    // Send Chat Message
+    // Chat messaging
     const sendChatMessage = useCallback(async (text) => {
-        if (!room || !room.localParticipant || !text.trim()) return;
+        if (!text.trim() || !socket || !activeRoom) return;
 
-        const payload = JSON.stringify({ text });
-        const encoder = new TextEncoder();
+        // Since we are not using LiveKit's publishData, we can use socket.io to send chat messages
+        socket.emit('voice:chat-message', {
+            roomName: activeRoom.roomName,
+            text,
+            senderName: user?.profile?.displayName || user?.username || 'Sen',
+            senderId: user?._id?.toString(),
+        });
 
-        try {
-            // Using reliable data delivery
-            await room.localParticipant.publishData(encoder.encode(payload), { reliable: true, topic: 'chat' });
+        setChatMessages(prev => [...prev, {
+            id: Date.now() + Math.random(),
+            senderName: user?.profile?.displayName || user?.username || 'Sen',
+            senderId: user?._id?.toString(),
+            text,
+            timestamp: new Date().toISOString(),
+            isLocal: true
+        }]);
+        playInteractionSound('message');
+    }, [socket, activeRoom, user, playInteractionSound]);
 
-            // Re-append to our own local state
-            setChatMessages(prev => [...prev, {
-                id: Date.now() + Math.random(),
-                senderName: user?.profile?.displayName || user?.username || room.localParticipant.name || 'Sen',
-                senderId: room.localParticipant.identity,
-                text: text,
-                timestamp: new Date().toISOString(),
-                isLocal: true
-            }]);
-            playInteractionSound('message');
-        } catch (err) {
-            console.error("Failed to send chat message", err);
-        }
-    }, [room, user]);
+    // Handle incoming chat messages via socket
+    useEffect(() => {
+        if (!socket) return;
 
-    // Permissions (Admin)
+        const handleChatMessage = (msgObj) => {
+            if (msgObj.senderId !== user?._id?.toString()) {
+                setChatMessages(prev => [...prev, {
+                    id: Date.now() + Math.random(),
+                    senderName: msgObj.senderName,
+                    senderId: msgObj.senderId,
+                    text: msgObj.text,
+                    timestamp: new Date().toISOString(),
+                    isLocal: false
+                }]);
+                playInteractionSound('message');
+            }
+        };
+
+        socket.on('voice:chat-message', handleChatMessage);
+        return () => {
+            socket.off('voice:chat-message', handleChatMessage);
+        };
+    }, [socket, user, playInteractionSound]);
+
     const grantSpeak = useCallback(async (portalId, channelId, targetUserId) => {
         await axios.post(`/api/voice/rooms/${portalId}/${channelId}/permissions`, {
             targetUserId, canPublish: true,
@@ -485,8 +723,13 @@ export const VoiceProvider = ({ children }) => {
         });
     }, []);
 
+    // Trigger update on state change
+    useEffect(() => {
+        updateParticipantList();
+    }, [localState, updateParticipantList]);
+
     const value = {
-        room,
+        room: { localParticipant: { identity: user?._id?.toString() } },
         activeRoom,
         connectionState,
         participants,
@@ -530,7 +773,7 @@ const GlobalAudioRenderer = ({ participants, isDeafened }) => {
     return (
         <div style={{ display: 'none' }}>
             {participants.filter(p => !p.isLocal && p.audioTrack).map(p => (
-                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack} muted={isDeafened} />
+                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack.track} muted={isDeafened} />
             ))}
         </div>
     );
@@ -540,10 +783,10 @@ const AudioTrackPlayer = ({ track, muted }) => {
     const audioEl = useRef(null);
     useEffect(() => {
         if (audioEl.current && track) {
-            track.attach(audioEl.current);
+            audioEl.current.srcObject = new MediaStream([track]);
         }
         return () => {
-            if (track) track.detach();
+            if (audioEl.current) audioEl.current.srcObject = null;
         };
     }, [track]);
 
