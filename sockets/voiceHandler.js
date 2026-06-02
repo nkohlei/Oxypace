@@ -35,6 +35,9 @@ export const initializeVoiceHandler = (io) => {
                 username,
                 avatar: avatar || '',
                 joinedAt: Date.now(),
+                isMuted: true,
+                isCameraOn: false,
+                isScreenSharing: false
             });
             console.log(`[Backend Debug] voice:join registration: userId: ${userId} successfully mapped to socketId: ${socket.id} in room: ${roomName}`);
 
@@ -119,6 +122,15 @@ export const initializeVoiceHandler = (io) => {
         // ─── Broadcast Participant State (Mute/Camera/Screen) ───
         socket.on('voice:state-update', ({ roomName, userId, isMuted, isCameraOn, isScreenSharing }) => {
             if (!roomName || !userId) return;
+            
+            const roomData = voiceRooms.get(roomName);
+            const participant = roomData?.participants?.get(userId);
+            if (participant) {
+                participant.isMuted = isMuted;
+                participant.isCameraOn = isCameraOn;
+                participant.isScreenSharing = isScreenSharing;
+            }
+
             io.to(`voice:${roomName}`).emit('voice:state-update', {
                 userId,
                 isMuted,
@@ -239,6 +251,9 @@ function getParticipantList(roomName) {
         username: data.username,
         avatar: data.avatar,
         joinedAt: data.joinedAt,
+        isMuted: data.isMuted !== false,
+        isCameraOn: !!data.isCameraOn,
+        isScreenSharing: !!data.isScreenSharing
     }));
 }
 

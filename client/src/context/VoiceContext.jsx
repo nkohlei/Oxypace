@@ -480,6 +480,17 @@ export const VoiceProvider = ({ children }) => {
 
             rawParticipantsRef.current = data.participants || [];
             
+            // Map initial states for remote users
+            rawParticipantsRef.current.forEach(p => {
+                if (p.userId !== user?._id?.toString()) {
+                    remoteStatesRef.current.set(p.userId, {
+                        isMuted: p.isMuted !== false,
+                        isCameraOn: !!p.isCameraOn,
+                        isScreenSharing: !!p.isScreenSharing
+                    });
+                }
+            });
+            
             // Initiate WebRTC offers to everyone already in the room
             rawParticipantsRef.current.forEach(async (p) => {
                 const localUserId = user?._id?.toString();
@@ -524,6 +535,7 @@ export const VoiceProvider = ({ children }) => {
                 }
                 remoteTracksRef.current.delete(data.userId);
                 remoteStatesRef.current.delete(data.userId);
+                candidateQueuesRef.current.delete(data.userId);
                 rawParticipantsRef.current = rawParticipantsRef.current.filter(p => p.userId !== data.userId);
                 updateParticipantList();
             }
