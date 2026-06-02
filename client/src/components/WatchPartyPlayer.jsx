@@ -41,25 +41,33 @@ const WatchPartyPlayer = () => {
         const localTime = playerRef.current.getCurrentTime();
         const timeDiff = Math.abs(localTime - expectedTime);
 
-        // Sync time if diff is greater than 3 seconds (buffering / catching up)
-        if (timeDiff > 3) {
+        // Tighter sync threshold: 1.0 seconds when playing, 0.3 seconds when paused
+        const threshold = watchParty.isPlaying ? 1.0 : 0.3;
+
+        if (timeDiff > threshold) {
             isSyncingRef.current = true;
             playerRef.current.seekTo(expectedTime, 'seconds');
-            console.log(`[Watch Party] Synced buffering offset. Difference: ${timeDiff}s. Seeking to: ${expectedTime}s`);
+            console.log(`[Watch Party] Synced offset. Difference: ${timeDiff}s. Seeking to: ${expectedTime}s`);
             setTimeout(() => {
                 isSyncingRef.current = false;
-            }, 200);
+            }, 400);
         }
     }, [watchParty?.currentTime, watchParty?.isPlaying, isReady, hasError]);
 
     const handlePlay = () => {
         if (isSyncingRef.current) return;
+        // Avoid feedback loop: if the server state is already playing, this callback was triggered by a state prop update
+        if (watchParty && watchParty.isPlaying) return;
+
         const time = playerRef.current ? playerRef.current.getCurrentTime() : 0;
         sendWatchPlay(time);
     };
 
     const handlePause = () => {
         if (isSyncingRef.current) return;
+        // Avoid feedback loop: if the server state is already paused, this callback was triggered by a state prop update
+        if (watchParty && !watchParty.isPlaying) return;
+
         const time = playerRef.current ? playerRef.current.getCurrentTime() : 0;
         sendWatchPause(time);
     };
