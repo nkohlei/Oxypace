@@ -311,17 +311,22 @@ export const VoiceProvider = ({ children }) => {
 
         // Monitor ICE Connection State Changes
         pc.oniceconnectionstatechange = () => {
-            console.log(`[WebRTC] ICE Connection State değişti for ${targetUserId}: ${pc.iceConnectionState}`);
+            console.log(`[WebRTC Log] ICE Connection State değişti for ${targetUserId}: ${pc.iceConnectionState}`);
         };
 
         // ICE candidate handler
         pc.onicecandidate = (event) => {
-            if (event.candidate && activeRoom) {
-                safeEmit('voice:new-ice-candidate', {
-                    roomName: activeRoom.roomName,
-                    targetUserId,
-                    candidate: event.candidate
-                });
+            if (event.candidate) {
+                console.log(`[WebRTC Log] onicecandidate event triggered for user ${targetUserId}: candidate gathered`);
+                if (activeRoom) {
+                    safeEmit('voice:new-ice-candidate', {
+                        roomName: activeRoom.roomName,
+                        targetUserId,
+                        candidate: event.candidate
+                    });
+                }
+            } else {
+                console.log(`[WebRTC Log] onicecandidate gathering completed for user ${targetUserId}`);
             }
         };
 
@@ -373,12 +378,14 @@ export const VoiceProvider = ({ children }) => {
                     video: { width: 640, height: 480, frameRate: 24 }
                 });
                 localStreamRef.current = localStream;
+                console.log('[WebRTC Log] getUserMedia Success');
                 console.log('[WebRTC] Yerel medya akışı (Local Stream) başarıyla alındı', localStream);
                 
                 // Keep tracks disabled by default
                 localStream.getAudioTracks().forEach(t => t.enabled = false);
                 localStream.getVideoTracks().forEach(t => t.enabled = false);
             } catch (permErr) {
+                console.error('[WebRTC Log] getUserMedia Error:', permErr);
                 console.warn("Could not get local media permissions:", permErr);
             }
 
@@ -517,7 +524,6 @@ export const VoiceProvider = ({ children }) => {
                 }
                 remoteTracksRef.current.delete(data.userId);
                 remoteStatesRef.current.delete(data.userId);
-                candidateQueuesRef.current.delete(data.userId);
                 rawParticipantsRef.current = rawParticipantsRef.current.filter(p => p.userId !== data.userId);
                 updateParticipantList();
             }

@@ -36,6 +36,7 @@ export const initializeVoiceHandler = (io) => {
                 avatar: avatar || '',
                 joinedAt: Date.now(),
             });
+            console.log(`[Backend Debug] voice:join registration: userId: ${userId} successfully mapped to socketId: ${socket.id} in room: ${roomName}`);
 
             // Store room info on socket for cleanup on disconnect
             if (!socket._voiceRooms) socket._voiceRooms = new Set();
