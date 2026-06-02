@@ -106,6 +106,9 @@ export const VoiceProvider = ({ children }) => {
     const remoteTracksRef = useRef(new Map()); // userId -> { audio: Track, video: Track, screen: Track }
     const remoteStatesRef = useRef(new Map()); // userId -> { isMuted, isCameraOn, isScreenSharing }
     const rawParticipantsRef = useRef([]); // list of current participants in socket room
+    
+    // ICE candidate queue to prevent early candidate addition error before setRemoteDescription completes
+    const candidateQueuesRef = useRef(new Map()); // userId -> [RTCIceCandidate]
 
     // Local Sound Helper
     const playInteractionSound = useCallback((type) => {
@@ -144,7 +147,11 @@ export const VoiceProvider = ({ children }) => {
                     el.srcObject = new MediaStream([track]);
                     el.autoplay = true;
                     el.playsInline = true;
-                    console.log(`[WebRTC] Attached track ${track.id} to element. Autoplay: ${el.autoplay}, playsInline: ${el.playsInline}`);
+                    if (track.kind === 'video') {
+                        el.muted = true; // Video elements are only for visual rendering, audio is handled by GlobalAudioRenderer
+                    }
+                    el.play().catch(e => console.warn("[WebRTC] Autoplay prevented on element, but it is muted:", e));
+                    console.log(`[WebRTC] Attached track ${track.id} to element. Autoplay: ${el.autoplay}, playsInline: ${el.playsInline}, muted: ${el.muted}`);
                 }
             },
             detach: (el) => {
@@ -257,6 +264,22 @@ export const VoiceProvider = ({ children }) => {
                 }
             } catch (err) {
                 console.error("Renegotiation failed for:", targetUserId, err);
+            }
+        }
+    };
+
+    // Helper to process queued candidates for a peer
+    const processQueuedCandidates = async (userId, pc) => {
+        const queue = candidateQueuesRef.current.get(userId);
+        if (queue && queue.length > 0) {
+            console.log(`[WebRTC] Processing ${queue.length} queued ICE candidates for ${userId}`);
+            while (queue.length > 0) {
+                const candidate = queue.shift();
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) {
+                    console.error(`[WebRTC] Error adding queued ice candidate for ${userId}:`, err);
+                }
             }
         }
     };
@@ -414,6 +437,7 @@ export const VoiceProvider = ({ children }) => {
         peerConnectionsRef.current.clear();
         remoteTracksRef.current.clear();
         remoteStatesRef.current.clear();
+        candidateQueuesRef.current.clear();
 
         // Notify socket
         if (activeRoom) {
@@ -493,6 +517,7 @@ export const VoiceProvider = ({ children }) => {
                 }
                 remoteTracksRef.current.delete(data.userId);
                 remoteStatesRef.current.delete(data.userId);
+                candidateQueuesRef.current.delete(data.userId);
                 rawParticipantsRef.current = rawParticipantsRef.current.filter(p => p.userId !== data.userId);
                 updateParticipantList();
             }
@@ -503,6 +528,11 @@ export const VoiceProvider = ({ children }) => {
             const pc = getOrCreatePC(senderId, false);
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+                console.log(`[WebRTC] setRemoteDescription completed for offer from ${senderId}`);
+                
+                // Process any ICE candidates that arrived early
+                await processQueuedCandidates(senderId, pc);
+
                 const answer = await pc.createAnswer();
                 const prioritizedAnswer = prioritizeVideoCodec(answer.sdp);
                 await pc.setLocalDescription({ type: 'answer', sdp: prioritizedAnswer });
@@ -524,6 +554,9 @@ export const VoiceProvider = ({ children }) => {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
                     console.log(`[WebRTC] Successfully set remote answer for peer ${senderId}`);
+                    
+                    // Process any ICE candidates that arrived early
+                    await processQueuedCandidates(senderId, pc);
                 } catch (err) {
                     console.error("Error setting video answer from remote:", err);
                 }
@@ -535,7 +568,16 @@ export const VoiceProvider = ({ children }) => {
             const pc = peerConnectionsRef.current.get(senderId);
             if (pc) {
                 try {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    if (pc.remoteDescription && pc.remoteDescription.type) {
+                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                        console.log(`[WebRTC] Added ICE candidate immediately for user ${senderId}`);
+                    } else {
+                        if (!candidateQueuesRef.current.has(senderId)) {
+                            candidateQueuesRef.current.set(senderId, []);
+                        }
+                        candidateQueuesRef.current.get(senderId).push(candidate);
+                        console.log(`[WebRTC] Queued ICE candidate for user ${senderId} (remoteDescription is not yet set)`);
+                    }
                 } catch (err) {
                     console.error("Error adding ice candidate:", err);
                 }
@@ -864,5 +906,5 @@ const AudioTrackPlayer = ({ track, muted }) => {
         }
     }, [muted]);
 
-    return <audio ref={audioEl} autoPlay />;
+    return <audio ref={audioEl} autoPlay playsInline />;
 };
