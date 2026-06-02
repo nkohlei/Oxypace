@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Youtube } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
@@ -63,6 +63,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState(null);
     const [lobbyCount, setLobbyCount] = useState(null);
+    const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
+    const [watchUrl, setWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     const { socket } = useSocket();
@@ -231,9 +233,14 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
             <div className="vc-viewport layout-spotlight" style={{ padding: '80px 24px 100px 24px' }}>
                 {watchParty && watchParty.url ? (
-                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', minHeight: '350px' }}>
-                        <WatchPartyPlayer />
-                    </div>
+                    <>
+                        <div className="vc-carousel custom-scrollbar">
+                            {[...adminSpeakers, ...guestSpeakers].map(p => renderSpeakerCard(p))}
+                        </div>
+                        <div className="vc-hero" style={{ maxWidth: '800px' }}>
+                            <WatchPartyPlayer />
+                        </div>
+                    </>
                 ) : (
                     <>
                         {guestSpeakers.length > 0 && (
@@ -304,6 +311,39 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                     </div>
                                 )}
                             </div>
+
+                            {/* YouTube Watch Party Button */}
+                            {isAdmin && (
+                                <div className="vc-ctrl-group" style={{ position: 'relative' }}>
+                                    <button className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`} onClick={() => setIsWatchInputOpen(!isWatchInputOpen)} title="Birlikte İzle">
+                                        <Youtube size={22} color={watchParty?.url ? '#ffffff' : '#ef4444'} />
+                                    </button>
+                                    {isWatchInputOpen && (
+                                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '260px', display: 'flex', gap: '8px', zIndex: 999 }}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="YouTube URL girin..." 
+                                                value={watchUrl} 
+                                                onChange={(e) => setWatchUrl(e.target.value)} 
+                                                className="chat-input glass-input"
+                                                style={{ flex: 1, padding: '6px 12px', fontSize: '12px' }}
+                                            />
+                                            <button 
+                                                onClick={() => {
+                                                    if (watchUrl.trim()) {
+                                                        startWatchParty(watchUrl.trim());
+                                                        setIsWatchInputOpen(false);
+                                                    }
+                                                }}
+                                                className="chat-send-btn glass-btn active"
+                                                style={{ padding: '6px 12px', fontSize: '12px' }}
+                                            >
+                                                Başlat
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Desktop Specific for Conference */}
                             {!isMobile && (

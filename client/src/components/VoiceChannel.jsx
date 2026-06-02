@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Youtube } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
@@ -57,6 +57,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isCameraMenuOpen, setIsCameraMenuOpen] = useState(false);
     const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
     const [lobbyCount, setLobbyCount] = useState(null);
+    const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
+    const [watchUrl, setWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     const isActiveRoom = activeRoom?.channelId === channelId;
@@ -170,7 +172,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const activeFocusIdentity = screenSharer ? screenSharer.identity : focusedIdentity;
     const focusedParticipant = activeFocusIdentity ? participants.find(p => p.identity === activeFocusIdentity) : null;
 
-    let gridClass = focusedParticipant ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
+    let gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
 
     return (
         <div className="vc-container glass-container">
@@ -209,9 +211,14 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px' }}>
                 {watchParty && watchParty.url ? (
-                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', minHeight: '350px' }}>
-                        <WatchPartyPlayer />
-                    </div>
+                    <>
+                        <div className="vc-carousel custom-scrollbar">
+                            {participants.map(p => renderParticipantCard(p, 'carousel'))}
+                        </div>
+                        <div className="vc-hero">
+                            <WatchPartyPlayer />
+                        </div>
+                    </>
                 ) : !focusedParticipant ? (
                     <div className="vc-grid">{participants.map(p => renderParticipantCard(p, 'grid'))}</div>
                 ) : (
@@ -268,6 +275,39 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 </div>
                             )}
                         </div>
+
+                        {/* YouTube Watch Party Button */}
+                        {(activeRoom?.userRole === 'owner' || activeRoom?.userRole === 'admin') && (
+                            <div className="vc-ctrl-group" style={{ position: 'relative' }}>
+                                <button className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`} onClick={() => setIsWatchInputOpen(!isWatchInputOpen)} title="Birlikte İzle">
+                                    <Youtube size={22} color={watchParty?.url ? '#ffffff' : '#ef4444'} />
+                                </button>
+                                {isWatchInputOpen && (
+                                    <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '260px', display: 'flex', gap: '8px', zIndex: 999 }}>
+                                        <input 
+                                            type="text" 
+                                            placeholder="YouTube URL girin..." 
+                                            value={watchUrl} 
+                                            onChange={(e) => setWatchUrl(e.target.value)} 
+                                            className="chat-input glass-input"
+                                            style={{ flex: 1, padding: '6px 12px', fontSize: '12px' }}
+                                        />
+                                        <button 
+                                            onClick={() => {
+                                                if (watchUrl.trim()) {
+                                                    startWatchParty(watchUrl.trim());
+                                                    setIsWatchInputOpen(false);
+                                                }
+                                            }}
+                                            className="chat-send-btn glass-btn active"
+                                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                                        >
+                                            Başlat
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Desktop Specific Controls (Screen Share & Deafen) */}
                         {!isMobile && (
