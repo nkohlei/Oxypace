@@ -940,18 +940,21 @@ export const VoiceProvider = ({ children }) => {
     const sendWatchPlay = useCallback((time) => {
         if (activeRoom) {
             safeEmit('voice:watch-play', { roomName: activeRoom.roomName, time });
+            setWatchParty(prev => prev ? { ...prev, isPlaying: true, currentTime: time, lastUpdated: Date.now() } : null);
         }
     }, [activeRoom, safeEmit]);
 
     const sendWatchPause = useCallback((time) => {
         if (activeRoom) {
             safeEmit('voice:watch-pause', { roomName: activeRoom.roomName, time });
+            setWatchParty(prev => prev ? { ...prev, isPlaying: false, currentTime: time, lastUpdated: Date.now() } : null);
         }
     }, [activeRoom, safeEmit]);
 
     const sendWatchSeek = useCallback((time) => {
         if (activeRoom) {
             safeEmit('voice:watch-seek', { roomName: activeRoom.roomName, time });
+            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: Date.now() } : null);
         }
     }, [activeRoom, safeEmit]);
 
