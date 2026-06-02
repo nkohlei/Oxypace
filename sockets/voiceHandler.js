@@ -139,26 +139,47 @@ export const initializeVoiceHandler = (io) => {
         // ─── WebRTC Signaling ───
         socket.on('voice:video-offer', ({ roomName, targetUserId, sdp }) => {
             if (!roomName || !targetUserId) return;
-            io.to(targetUserId).emit('voice:video-offer', {
+            console.log(`[Socket Backend] video-offer received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+            
+            const roomData = voiceRooms.get(roomName);
+            const targetParticipant = roomData?.participants?.get(targetUserId);
+            const destination = targetParticipant?.socketId || targetUserId;
+            
+            io.to(destination).emit('voice:video-offer', {
                 senderId: socket._voiceUserId || socket.id,
                 sdp
             });
+            console.log(`[Socket Backend] video-offer forwarded to ${destination}`);
         });
 
         socket.on('voice:video-answer', ({ roomName, targetUserId, sdp }) => {
             if (!roomName || !targetUserId) return;
-            io.to(targetUserId).emit('voice:video-answer', {
+            console.log(`[Socket Backend] video-answer received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+            
+            const roomData = voiceRooms.get(roomName);
+            const targetParticipant = roomData?.participants?.get(targetUserId);
+            const destination = targetParticipant?.socketId || targetUserId;
+            
+            io.to(destination).emit('voice:video-answer', {
                 senderId: socket._voiceUserId || socket.id,
                 sdp
             });
+            console.log(`[Socket Backend] video-answer forwarded to ${destination}`);
         });
 
         socket.on('voice:new-ice-candidate', ({ roomName, targetUserId, candidate }) => {
             if (!roomName || !targetUserId) return;
-            io.to(targetUserId).emit('voice:new-ice-candidate', {
+            console.log(`[Socket Backend] new-ice-candidate received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+            
+            const roomData = voiceRooms.get(roomName);
+            const targetParticipant = roomData?.participants?.get(targetUserId);
+            const destination = targetParticipant?.socketId || targetUserId;
+            
+            io.to(destination).emit('voice:new-ice-candidate', {
                 senderId: socket._voiceUserId || socket.id,
                 candidate
             });
+            console.log(`[Socket Backend] new-ice-candidate forwarded to ${destination}`);
         });
 
         // ─── Cleanup on Disconnect ───

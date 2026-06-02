@@ -142,11 +142,15 @@ export const VoiceProvider = ({ children }) => {
             attach: (el) => {
                 if (el) {
                     el.srcObject = new MediaStream([track]);
+                    el.autoplay = true;
+                    el.playsInline = true;
+                    console.log(`[WebRTC] Attached track ${track.id} to element. Autoplay: ${el.autoplay}, playsInline: ${el.playsInline}`);
                 }
             },
             detach: (el) => {
                 if (el) {
                     el.srcObject = null;
+                    console.log(`[WebRTC] Detached track ${track.id} from element`);
                 }
             }
         };
@@ -239,6 +243,7 @@ export const VoiceProvider = ({ children }) => {
     const renegotiateAll = async () => {
         for (const [targetUserId, pc] of peerConnectionsRef.current.entries()) {
             try {
+                console.log(`[WebRTC] Starting renegotiation for peer ${targetUserId}`);
                 const offer = await pc.createOffer();
                 const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
                 await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
@@ -248,6 +253,7 @@ export const VoiceProvider = ({ children }) => {
                         targetUserId,
                         sdp: prioritizedOffer
                     });
+                    console.log(`[Socket] video-offer gönderildi to ${targetUserId}`);
                 }
             } catch (err) {
                 console.error("Renegotiation failed for:", targetUserId, err);
@@ -261,6 +267,7 @@ export const VoiceProvider = ({ children }) => {
             return peerConnectionsRef.current.get(targetUserId);
         }
 
+        console.log(`[WebRTC] Creating new RTCPeerConnection for user ${targetUserId}. IsOfferCreator: ${isOfferCreator}`);
         const pc = new RTCPeerConnection({ iceServers });
         peerConnectionsRef.current.set(targetUserId, pc);
 
@@ -268,14 +275,21 @@ export const VoiceProvider = ({ children }) => {
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => {
                 pc.addTrack(track, localStreamRef.current);
+                console.log(`[WebRTC] Added local track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
             });
         }
         // Add screen share tracks
         if (screenStreamRef.current) {
             screenStreamRef.current.getTracks().forEach(track => {
                 pc.addTrack(track, screenStreamRef.current);
+                console.log(`[WebRTC] Added screen track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
             });
         }
+
+        // Monitor ICE Connection State Changes
+        pc.oniceconnectionstatechange = () => {
+            console.log(`[WebRTC] ICE Connection State değişti for ${targetUserId}: ${pc.iceConnectionState}`);
+        };
 
         // ICE candidate handler
         pc.onicecandidate = (event) => {
@@ -291,6 +305,8 @@ export const VoiceProvider = ({ children }) => {
         // Incoming track handler
         pc.ontrack = (event) => {
             const stream = event.streams[0] || new MediaStream([event.track]);
+            console.log(`[WebRTC] Received remote track ${event.track.kind} (${event.track.id}) from ${targetUserId}`);
+            
             if (!remoteTracksRef.current.has(targetUserId)) {
                 remoteTracksRef.current.set(targetUserId, {});
             }
@@ -301,8 +317,10 @@ export const VoiceProvider = ({ children }) => {
             } else if (event.track.kind === 'video') {
                 if (event.track.contentHint === 'text' || stream.id.includes('screen')) {
                     tracks.screen = event.track;
+                    console.log(`[WebRTC] remote screenShareTrack set for user ${targetUserId}`);
                 } else {
                     tracks.video = event.track;
+                    console.log(`[WebRTC] remote videoTrack set for user ${targetUserId}`);
                 }
             }
 
@@ -332,6 +350,7 @@ export const VoiceProvider = ({ children }) => {
                     video: { width: 640, height: 480, frameRate: 24 }
                 });
                 localStreamRef.current = localStream;
+                console.log('[WebRTC] Yerel medya akışı (Local Stream) başarıyla alındı', localStream);
                 
                 // Keep tracks disabled by default
                 localStream.getAudioTracks().forEach(t => t.enabled = false);
@@ -350,6 +369,7 @@ export const VoiceProvider = ({ children }) => {
                 setRoomStartTime(startedAt - offset);
             }
 
+            console.log(`[Socket] Joining signaling room: ${roomName} as user: ${user?._id}`);
             // Join socket.io channel signaling
             safeEmit('voice:join', {
                 roomName,
@@ -378,6 +398,7 @@ export const VoiceProvider = ({ children }) => {
     }, [user, connectionState, safeEmit]);
 
     const disconnectFromChannel = useCallback(async () => {
+        console.log("[WebRTC] Disconnecting from channel...");
         // Stop local streams
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(t => t.stop());
@@ -415,6 +436,7 @@ export const VoiceProvider = ({ children }) => {
         if (!socket || !activeRoom) return;
 
         const handleParticipants = async (data) => {
+            console.log(`[Socket] Received voice:participants. Count: ${data.participants?.length}`);
             if (activeRoom && data.startedAt) {
                 if (data.serverNow) {
                     const localNow = Date.now();
@@ -433,6 +455,7 @@ export const VoiceProvider = ({ children }) => {
                 if (p.userId !== localUserId && !peerConnectionsRef.current.has(p.userId)) {
                     const pc = getOrCreatePC(p.userId, true);
                     try {
+                        console.log(`[WebRTC] Creating and sending offer to existing user ${p.userId}`);
                         const offer = await pc.createOffer();
                         const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
                         await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
@@ -441,6 +464,7 @@ export const VoiceProvider = ({ children }) => {
                             targetUserId: p.userId,
                             sdp: prioritizedOffer
                         });
+                        console.log(`[Socket] video-offer gönderildi to user ${p.userId}`);
                     } catch (err) {
                         console.error("Failed to create offer for:", p.userId, err);
                     }
@@ -451,12 +475,14 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleUserJoined = (data) => {
+            console.log(`[Socket] voice:user-joined: ${data.username} (${data.userId})`);
             if (data.userId !== user?._id?.toString()) {
                 playInteractionSound('join');
             }
         };
 
         const handleUserLeft = (data) => {
+            console.log(`[Socket] voice:user-left: (${data.userId})`);
             if (data.userId !== user?._id?.toString()) {
                 playInteractionSound('leave');
                 
@@ -473,6 +499,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleVideoOffer = async ({ senderId, sdp }) => {
+            console.log(`[Socket] video-offer alındı from user: ${senderId}`);
             const pc = getOrCreatePC(senderId, false);
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
@@ -484,16 +511,19 @@ export const VoiceProvider = ({ children }) => {
                     targetUserId: senderId,
                     sdp: prioritizedAnswer
                 });
+                console.log(`[Socket] video-answer gönderildi to ${senderId}`);
             } catch (err) {
                 console.error("Error setting video offer from remote:", err);
             }
         };
 
         const handleVideoAnswer = async ({ senderId, sdp }) => {
+            console.log(`[Socket] video-answer alındı from user: ${senderId}`);
             const pc = peerConnectionsRef.current.get(senderId);
             if (pc) {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
+                    console.log(`[WebRTC] Successfully set remote answer for peer ${senderId}`);
                 } catch (err) {
                     console.error("Error setting video answer from remote:", err);
                 }
@@ -501,6 +531,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleNewIceCandidate = async ({ senderId, candidate }) => {
+            console.log(`[Socket] new-ice-candidate received from user: ${senderId}`);
             const pc = peerConnectionsRef.current.get(senderId);
             if (pc) {
                 try {
@@ -512,6 +543,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleStateUpdate = ({ userId, isMuted, isCameraOn, isScreenSharing }) => {
+            console.log(`[Socket] voice:state-update received for user ${userId}: Mute=${isMuted}, Camera=${isCameraOn}, Screen=${isScreenSharing}`);
             remoteStatesRef.current.set(userId, { isMuted, isCameraOn, isScreenSharing });
             updateParticipantList();
         };
