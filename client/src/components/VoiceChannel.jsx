@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Youtube } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Youtube, Clipboard } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
@@ -38,8 +38,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
     const handleSendMessage = (text) => {
         if (text.startsWith('/watch ')) {
-            const isHost = activeRoom?.userRole === 'owner' || activeRoom?.userRole === 'admin';
-            if (!isHost) return;
             const url = text.substring(7).trim();
             if (url === 'stop') {
                 stopWatchParty();
@@ -277,37 +275,62 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         </div>
 
                         {/* YouTube Watch Party Button */}
-                        {(activeRoom?.userRole === 'owner' || activeRoom?.userRole === 'admin') && (
-                            <div className="vc-ctrl-group" style={{ position: 'relative' }}>
-                                <button className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`} onClick={() => setIsWatchInputOpen(!isWatchInputOpen)} title="Birlikte İzle">
-                                    <Youtube size={22} color={watchParty?.url ? '#ffffff' : '#ef4444'} />
-                                </button>
-                                {isWatchInputOpen && (
-                                    <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '260px', display: 'flex', gap: '8px', zIndex: 999 }}>
+                        <div className="vc-ctrl-group" style={{ position: 'relative' }}>
+                            <button className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`} onClick={() => setIsWatchInputOpen(!isWatchInputOpen)} title="Birlikte İzle">
+                                <Youtube size={22} color={watchParty?.url ? '#ffffff' : '#ef4444'} />
+                            </button>
+                            {isWatchInputOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px', zIndex: 999 }}>
+                                    <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <input 
                                             type="text" 
                                             placeholder="YouTube URL girin..." 
                                             value={watchUrl} 
                                             onChange={(e) => setWatchUrl(e.target.value)} 
                                             className="chat-input glass-input"
-                                            style={{ flex: 1, padding: '6px 12px', fontSize: '12px' }}
+                                            style={{ flex: 1, padding: '6px 64px 6px 12px', fontSize: '12px', width: '100%' }}
                                         />
-                                        <button 
-                                            onClick={() => {
-                                                if (watchUrl.trim()) {
-                                                    startWatchParty(watchUrl.trim());
-                                                    setIsWatchInputOpen(false);
-                                                }
-                                            }}
-                                            className="chat-send-btn glass-btn active"
-                                            style={{ padding: '6px 12px', fontSize: '12px' }}
-                                        >
-                                            Başlat
-                                        </button>
+                                        <div style={{ position: 'absolute', right: '4px', display: 'flex', gap: '4px', zIndex: 5 }}>
+                                            <button 
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        const text = await navigator.clipboard.readText();
+                                                        setWatchUrl(text);
+                                                    } catch (err) {
+                                                        console.warn("Clipboard access denied", err);
+                                                    }
+                                                }}
+                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                title="Yapıştır"
+                                            >
+                                                <Clipboard size={12} />
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setWatchUrl('')}
+                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                title="Temizle"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                    <button 
+                                        onClick={() => {
+                                            if (watchUrl.trim()) {
+                                                startWatchParty(watchUrl.trim());
+                                                setIsWatchInputOpen(false);
+                                            }
+                                        }}
+                                        className="chat-send-btn glass-btn active"
+                                        style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
+                                    >
+                                        Başlat
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Desktop Specific Controls (Screen Share & Deafen) */}
                         {!isMobile && (
@@ -349,7 +372,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     messages={chatMessages} 
                     onSendMessage={handleSendMessage} 
                     onClose={() => setIsChatOpen(false)} 
-                    isAdmin={activeRoom?.userRole === 'owner' || activeRoom?.userRole === 'admin'}
+                    isAdmin={true}
                 />
             )}
         </div>

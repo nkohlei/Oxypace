@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, RotateCcw } from 'lucide-react';
+import { X } from 'lucide-react';
 import './WatchPartyPlayer.css';
 
 const WatchPartyPlayer = () => {
@@ -10,21 +10,26 @@ const WatchPartyPlayer = () => {
         stopWatchParty, 
         sendWatchPlay, 
         sendWatchPause, 
-        sendWatchSeek,
-        activeRoom
+        sendWatchSeek
     } = useVoice();
 
     const playerRef = useRef(null);
     const isSyncingRef = useRef(false);
-    const [playing, setPlaying] = useState(false);
     const [isReady, setIsReady] = useState(false);
+    const [hasError, setHasError] = useState(false);
 
-    const userRole = activeRoom?.userRole || 'member';
-    const isHost = userRole === 'owner' || userRole === 'admin';
+    // All participants in the watch party have permissions to play, pause, and seek
+    const isHost = true;
 
-    // Synchronize play/pause and time updates from the room state
+    // Reset error state when the URL changes
     useEffect(() => {
-        if (!watchParty || !playerRef.current || !isReady) return;
+        setHasError(false);
+        setIsReady(false);
+    }, [watchParty?.url]);
+
+    // Synchronize time updates from the room state
+    useEffect(() => {
+        if (!watchParty || !playerRef.current || !isReady || hasError) return;
 
         // Calculate expected time based on when the state was last updated
         let expectedTime = watchParty.currentTime;
@@ -36,15 +41,6 @@ const WatchPartyPlayer = () => {
         const localTime = playerRef.current.getCurrentTime();
         const timeDiff = Math.abs(localTime - expectedTime);
 
-        // Sync playback state
-        if (watchParty.isPlaying !== playing) {
-            isSyncingRef.current = true;
-            setPlaying(watchParty.isPlaying);
-            setTimeout(() => {
-                isSyncingRef.current = false;
-            }, 100);
-        }
-
         // Sync time if diff is greater than 3 seconds (buffering / catching up)
         if (timeDiff > 3) {
             isSyncingRef.current = true;
@@ -52,93 +48,66 @@ const WatchPartyPlayer = () => {
             console.log(`[Watch Party] Synced buffering offset. Difference: ${timeDiff}s. Seeking to: ${expectedTime}s`);
             setTimeout(() => {
                 isSyncingRef.current = false;
-            }, 150);
+            }, 200);
         }
-    }, [watchParty, isReady, playing]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, isReady, hasError]);
 
     const handlePlay = () => {
         if (isSyncingRef.current) return;
-        if (!isHost) {
-            // Revert non-host changes
-            syncToWatchParty();
-            return;
-        }
         const time = playerRef.current ? playerRef.current.getCurrentTime() : 0;
         sendWatchPlay(time);
     };
 
     const handlePause = () => {
         if (isSyncingRef.current) return;
-        if (!isHost) {
-            syncToWatchParty();
-            return;
-        }
         const time = playerRef.current ? playerRef.current.getCurrentTime() : 0;
         sendWatchPause(time);
     };
 
     const handleSeek = (e) => {
         if (isSyncingRef.current) return;
-        if (!isHost) {
-            syncToWatchParty();
-            return;
-        }
         sendWatchSeek(e);
     };
 
-    const syncToWatchParty = () => {
-        if (!watchParty || !playerRef.current) return;
-        let expectedTime = watchParty.currentTime;
-        if (watchParty.isPlaying && watchParty.lastUpdated) {
-            const elapsed = (Date.now() - watchParty.lastUpdated) / 1000;
-            expectedTime += elapsed;
-        }
-        isSyncingRef.current = true;
-        setPlaying(watchParty.isPlaying);
-        playerRef.current.seekTo(expectedTime, 'seconds');
-        setTimeout(() => {
-            isSyncingRef.current = false;
-        }, 150);
-    };
-
     if (!watchParty || !watchParty.url) return null;
+
+    if (hasError) {
+        return (
+            <div className="watch-party-player-wrapper" style={{ padding: '32px', color: '#ff4444', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
+                <span className="watch-party-title" style={{ color: '#ff4444', fontSize: '16px' }}>Oynatma Hatası</span>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', maxWidth: '400px' }}>Video yüklenemedi. Lütfen geçerli bir YouTube URL'si girdiğinizden emin olun.</p>
+                <button className="watch-party-stop-btn glass-btn danger" style={{ padding: '8px 20px', borderRadius: '8px' }} onClick={stopWatchParty}>Kapat</button>
+            </div>
+        );
+    }
 
     return (
         <div className="watch-party-player-wrapper">
             <div className="watch-party-header">
                 <span className="watch-party-title">Birlikte İzle (YouTube)</span>
-                {isHost && (
-                    <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
-                        <X size={16} /> <span>Bitir</span>
-                    </button>
-                )}
+                <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
+                    <X size={16} /> <span>Bitir</span>
+                </button>
             </div>
             <div className="watch-party-player-container">
                 <ReactPlayer
                     ref={playerRef}
                     url={watchParty.url}
-                    playing={playing}
+                    playing={watchParty.isPlaying}
                     controls={isHost}
                     width="100%"
                     height="100%"
+                    onError={() => setHasError(true)}
                     onReady={() => setIsReady(true)}
                     onPlay={handlePlay}
                     onPause={handlePause}
                     onSeek={handleSeek}
                     config={{
                         youtube: {
-                            playerVars: { autoplay: 1, disablekb: isHost ? 0 : 1 }
+                            playerVars: { autoplay: 1, disablekb: 0 }
                         }
                     }}
                 />
-                {!isHost && (
-                    <div className="watch-party-overlay" onClick={syncToWatchParty}>
-                        <div className="overlay-sync-info glass-panel">
-                            <RotateCcw size={16} />
-                            <span>Yayını Yöneticiyle Eşitle</span>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
