@@ -100,6 +100,7 @@ const corsOptions = {
         }
     },
     credentials: true,
+    methods: ["GET", "POST"],
     exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 };
 
@@ -107,7 +108,7 @@ const corsOptions = {
 const io = new Server(httpServer, {
     cors: corsOptions,
     transports: ['polling', 'websocket'],
-    pingTimeout: 60000,
+    pingTimeout: 30000,
     pingInterval: 25000,
 });
 

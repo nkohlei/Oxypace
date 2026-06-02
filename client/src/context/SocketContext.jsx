@@ -33,6 +33,11 @@ export const SocketProvider = ({ children }) => {
 
         const newSocket = io(socketUrl, {
             transports: ['polling', 'websocket'],
+            upgrade: true,
+            rememberUpgrade: true,
+            forceNew: true,
+            reconnectionAttempts: Infinity,
+            timeout: 20000,
             withCredentials: true,
             secure: true,
         });
