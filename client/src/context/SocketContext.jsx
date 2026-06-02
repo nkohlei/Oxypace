@@ -32,7 +32,7 @@ export const SocketProvider = ({ children }) => {
         }
 
         const newSocket = io(socketUrl, {
-            transports: ['websocket', 'polling'],
+            transports: ['polling', 'websocket'],
             withCredentials: true,
             secure: true,
         });
