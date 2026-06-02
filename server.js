@@ -106,6 +106,7 @@ const corsOptions = {
 // Initialize Socket.IO
 const io = new Server(httpServer, {
     cors: corsOptions,
+    transports: ['websocket', 'polling'],
 });
 
 // Push Trigger: efee3de

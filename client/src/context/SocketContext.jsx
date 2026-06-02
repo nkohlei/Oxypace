@@ -32,8 +32,8 @@ export const SocketProvider = ({ children }) => {
         }
 
         const newSocket = io(socketUrl, {
-            transports: ['polling', 'websocket'],
-            // Add secure option for https
+            transports: ['websocket', 'polling'],
+            withCredentials: true,
             secure: true,
         });
 

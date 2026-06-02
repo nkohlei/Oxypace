@@ -121,6 +121,19 @@ export const VoiceProvider = ({ children }) => {
         }
     }, []);
 
+    // Safe Socket Emit with try-catch and connection checks
+    const safeEmit = useCallback((eventName, data) => {
+        if (socket && socket.connected) {
+            try {
+                socket.emit(eventName, data);
+            } catch (err) {
+                console.error(`[WebRTC Socket error] Failed to emit ${eventName}:`, err);
+            }
+        } else {
+            console.warn(`[WebRTC Socket warning] Socket not connected or missing. Postponed ${eventName}`);
+        }
+    }, [socket]);
+
     // Create custom wrapper for tracks to expose attach/detach functions for UI compatibility
     const makeTrackObject = (track) => {
         if (!track) return null;
@@ -229,8 +242,8 @@ export const VoiceProvider = ({ children }) => {
                 const offer = await pc.createOffer();
                 const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
                 await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
-                if (socket && activeRoom) {
-                    socket.emit('voice:video-offer', {
+                if (activeRoom) {
+                    safeEmit('voice:video-offer', {
                         roomName: activeRoom.roomName,
                         targetUserId,
                         sdp: prioritizedOffer
@@ -266,8 +279,8 @@ export const VoiceProvider = ({ children }) => {
 
         // ICE candidate handler
         pc.onicecandidate = (event) => {
-            if (event.candidate && socket && activeRoom) {
-                socket.emit('voice:new-ice-candidate', {
+            if (event.candidate && activeRoom) {
+                safeEmit('voice:new-ice-candidate', {
                     roomName: activeRoom.roomName,
                     targetUserId,
                     candidate: event.candidate
@@ -297,7 +310,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         return pc;
-    }, [socket, activeRoom, updateParticipantList]);
+    }, [activeRoom, updateParticipantList, safeEmit]);
 
     // Handle joining room and configuring media
     const connectToChannel = useCallback(async (portalId, channelId) => {
@@ -338,22 +351,20 @@ export const VoiceProvider = ({ children }) => {
             }
 
             // Join socket.io channel signaling
-            if (socket) {
-                socket.emit('voice:join', {
-                    roomName,
-                    userId: user?._id?.toString(),
-                    username: user?.username || 'Unknown',
-                    avatar: user?.profile?.avatar || '',
-                });
+            safeEmit('voice:join', {
+                roomName,
+                userId: user?._id?.toString(),
+                username: user?.username || 'Unknown',
+                avatar: user?.profile?.avatar || '',
+            });
 
-                socket.emit('voice:state-update', {
-                    roomName,
-                    userId: user?._id?.toString(),
-                    isMuted: true,
-                    isCameraOn: false,
-                    isScreenSharing: false
-                });
-            }
+            safeEmit('voice:state-update', {
+                roomName,
+                userId: user?._id?.toString(),
+                isMuted: true,
+                isCameraOn: false,
+                isScreenSharing: false
+            });
 
             setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
             setConnectionState(ConnectionState.Connected);
@@ -364,7 +375,7 @@ export const VoiceProvider = ({ children }) => {
             setErrorMsg(err.message || 'Bağlantı kurulamadı.');
             setConnectionState(ConnectionState.Disconnected);
         }
-    }, [socket, user, connectionState]);
+    }, [user, connectionState, safeEmit]);
 
     const disconnectFromChannel = useCallback(async () => {
         // Stop local streams
@@ -384,8 +395,8 @@ export const VoiceProvider = ({ children }) => {
         remoteStatesRef.current.clear();
 
         // Notify socket
-        if (socket && activeRoom) {
-            socket.emit('voice:leave', {
+        if (activeRoom) {
+            safeEmit('voice:leave', {
                 roomName: activeRoom.roomName,
                 userId: user?._id?.toString()
             });
@@ -397,7 +408,7 @@ export const VoiceProvider = ({ children }) => {
         setPinnedParticipant(null);
         setRoomStartTime(null);
         setConnectionState(ConnectionState.Disconnected);
-    }, [socket, activeRoom, user]);
+    }, [activeRoom, user, safeEmit]);
 
     // Handle WebSocket Signaling Events
     useEffect(() => {
@@ -425,7 +436,7 @@ export const VoiceProvider = ({ children }) => {
                         const offer = await pc.createOffer();
                         const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
                         await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
-                        socket.emit('voice:video-offer', {
+                        safeEmit('voice:video-offer', {
                             roomName: activeRoom.roomName,
                             targetUserId: p.userId,
                             sdp: prioritizedOffer
@@ -468,7 +479,7 @@ export const VoiceProvider = ({ children }) => {
                 const answer = await pc.createAnswer();
                 const prioritizedAnswer = prioritizeVideoCodec(answer.sdp);
                 await pc.setLocalDescription({ type: 'answer', sdp: prioritizedAnswer });
-                socket.emit('voice:video-answer', {
+                safeEmit('voice:video-answer', {
                     roomName: activeRoom.roomName,
                     targetUserId: senderId,
                     sdp: prioritizedAnswer
@@ -522,7 +533,34 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:new-ice-candidate', handleNewIceCandidate);
             socket.off('voice:state-update', handleStateUpdate);
         };
-    }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList]);
+    }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList, safeEmit]);
+
+    // Reconnection listener to recover signalling state automatically
+    useEffect(() => {
+        if (!socket) return;
+        const handleConnect = () => {
+            if (activeRoom) {
+                console.log("[WebRTC Reconnect] Restoring voice channel session:", activeRoom.roomName);
+                safeEmit('voice:join', {
+                    roomName: activeRoom.roomName,
+                    userId: user?._id?.toString(),
+                    username: user?.username || 'Unknown',
+                    avatar: user?.profile?.avatar || '',
+                });
+                safeEmit('voice:state-update', {
+                    roomName: activeRoom.roomName,
+                    userId: user?._id?.toString(),
+                    isMuted: localState.isMuted,
+                    isCameraOn: localState.isCameraOn,
+                    isScreenSharing: localState.isScreenSharing
+                });
+            }
+        };
+        socket.on('connect', handleConnect);
+        return () => {
+            socket.off('connect', handleConnect);
+        };
+    }, [socket, activeRoom, user, localState, safeEmit]);
 
     // Media toggle functions
     const toggleMicrophone = useCallback(async () => {
@@ -534,8 +572,8 @@ export const VoiceProvider = ({ children }) => {
 
             setLocalState(prev => {
                 const next = { ...prev, isMuted: willMute };
-                if (socket && activeRoom) {
-                    socket.emit('voice:state-update', {
+                if (activeRoom) {
+                    safeEmit('voice:state-update', {
                         roomName: activeRoom.roomName,
                         userId: user?._id?.toString(),
                         isMuted: next.isMuted,
@@ -546,7 +584,7 @@ export const VoiceProvider = ({ children }) => {
                 return next;
             });
         }
-    }, [localState, socket, activeRoom, user]);
+    }, [localState, activeRoom, user, safeEmit]);
 
     const toggleCamera = useCallback(async () => {
         if (!localStreamRef.current) return;
@@ -557,8 +595,8 @@ export const VoiceProvider = ({ children }) => {
 
             setLocalState(prev => {
                 const next = { ...prev, isCameraOn: willCameraOn };
-                if (socket && activeRoom) {
-                    socket.emit('voice:state-update', {
+                if (activeRoom) {
+                    safeEmit('voice:state-update', {
                         roomName: activeRoom.roomName,
                         userId: user?._id?.toString(),
                         isMuted: next.isMuted,
@@ -569,7 +607,7 @@ export const VoiceProvider = ({ children }) => {
                 return next;
             });
         }
-    }, [localState, socket, activeRoom, user]);
+    }, [localState, activeRoom, user, safeEmit]);
 
     const toggleScreenShare = useCallback(async () => {
         if (localState.isScreenSharing) {
@@ -589,8 +627,8 @@ export const VoiceProvider = ({ children }) => {
 
             setLocalState(prev => {
                 const next = { ...prev, isScreenSharing: false };
-                if (socket && activeRoom) {
-                    socket.emit('voice:state-update', {
+                if (activeRoom) {
+                    safeEmit('voice:state-update', {
                         roomName: activeRoom.roomName,
                         userId: user?._id?.toString(),
                         isMuted: next.isMuted,
@@ -625,8 +663,8 @@ export const VoiceProvider = ({ children }) => {
 
                 setLocalState(prev => {
                     const next = { ...prev, isScreenSharing: true };
-                    if (socket && activeRoom) {
-                        socket.emit('voice:state-update', {
+                    if (activeRoom) {
+                        safeEmit('voice:state-update', {
                             roomName: activeRoom.roomName,
                             userId: user?._id?.toString(),
                             isMuted: next.isMuted,
@@ -640,7 +678,7 @@ export const VoiceProvider = ({ children }) => {
                 console.warn("Screen sharing failed:", err);
             }
         }
-    }, [localState, socket, activeRoom, user]);
+    }, [localState, activeRoom, user, safeEmit]);
 
     const toggleDeafen = useCallback(() => {
         setLocalState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
@@ -649,7 +687,6 @@ export const VoiceProvider = ({ children }) => {
     const toggleFacingMode = useCallback(async () => {
         const newMode = facingMode === 'user' ? 'environment' : 'user';
         setFacingMode(newMode);
-        // Under WebRTC connection renegotiation is not needed for camera swap if track is replaced
     }, [facingMode]);
 
     const setAudioOutput = useCallback(async (deviceId) => {
@@ -666,10 +703,9 @@ export const VoiceProvider = ({ children }) => {
 
     // Chat messaging
     const sendChatMessage = useCallback(async (text) => {
-        if (!text.trim() || !socket || !activeRoom) return;
+        if (!text.trim() || !activeRoom) return;
 
-        // Since we are not using LiveKit's publishData, we can use socket.io to send chat messages
-        socket.emit('voice:chat-message', {
+        safeEmit('voice:chat-message', {
             roomName: activeRoom.roomName,
             text,
             senderName: user?.profile?.displayName || user?.username || 'Sen',
@@ -685,7 +721,7 @@ export const VoiceProvider = ({ children }) => {
             isLocal: true
         }]);
         playInteractionSound('message');
-    }, [socket, activeRoom, user, playInteractionSound]);
+    }, [activeRoom, user, playInteractionSound, safeEmit]);
 
     // Handle incoming chat messages via socket
     useEffect(() => {
