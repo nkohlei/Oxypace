@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Youtube, Clipboard } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Youtube, Clipboard, X } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
