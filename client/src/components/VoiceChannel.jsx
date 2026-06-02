@@ -5,6 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX } from 'lucide-react';
+import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -29,8 +30,26 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         toggleDeafen,
         selectedAudioInput,
         selectedAudioOutput,
-        selectedVideoInput
+        selectedVideoInput,
+        watchParty,
+        startWatchParty,
+        stopWatchParty
     } = useVoice();
+
+    const handleSendMessage = (text) => {
+        if (text.startsWith('/watch ')) {
+            const isHost = activeRoom?.userRole === 'owner' || activeRoom?.userRole === 'admin';
+            if (!isHost) return;
+            const url = text.substring(7).trim();
+            if (url === 'stop') {
+                stopWatchParty();
+            } else if (url) {
+                startWatchParty(url);
+            }
+            return;
+        }
+        sendChatMessage(text);
+    };
 
     const [focusedIdentity, setFocusedIdentity] = useState(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -189,7 +208,11 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px' }}>
-                {!focusedParticipant ? (
+                {watchParty && watchParty.url ? (
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', minHeight: '350px' }}>
+                        <WatchPartyPlayer />
+                    </div>
+                ) : !focusedParticipant ? (
                     <div className="vc-grid">{participants.map(p => renderParticipantCard(p, 'grid'))}</div>
                 ) : (
                     <>
@@ -281,7 +304,14 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 </div>
             )}
 
-            {isChatOpen && <VoiceChatSidebar messages={chatMessages} onSendMessage={sendChatMessage} onClose={() => setIsChatOpen(false)} />}
+            {isChatOpen && (
+                <VoiceChatSidebar 
+                    messages={chatMessages} 
+                    onSendMessage={handleSendMessage} 
+                    onClose={() => setIsChatOpen(false)} 
+                    isAdmin={activeRoom?.userRole === 'owner' || activeRoom?.userRole === 'admin'}
+                />
+            )}
         </div>
     );
 };

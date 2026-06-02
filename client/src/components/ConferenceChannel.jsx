@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp } from 'lucide-react';
+import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
 const ConferenceChannel = ({ portalId, channelId, channelName }) => {
@@ -33,8 +34,26 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
         toggleDeafen,
         selectedAudioInput,
         selectedAudioOutput,
-        selectedVideoInput
+        selectedVideoInput,
+        watchParty,
+        startWatchParty,
+        stopWatchParty
     } = useVoice();
+
+    const handleSendMessage = (text) => {
+        if (text.startsWith('/watch ')) {
+            const isHost = activeRoom?.userRole === 'owner' || activeRoom?.userRole === 'admin';
+            if (!isHost) return;
+            const url = text.substring(7).trim();
+            if (url === 'stop') {
+                stopWatchParty();
+            } else if (url) {
+                startWatchParty(url);
+            }
+            return;
+        }
+        sendChatMessage(text);
+    };
 
     const [isMicMenuOpen, setIsMicMenuOpen] = useState(false);
     const [isCameraMenuOpen, setIsCameraMenuOpen] = useState(false);
@@ -102,7 +121,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
     const handleJoin = () => connectToChannel(portalId, channelId);
     const handleLeave = () => disconnectFromChannel();
-    const handleSendMessage = (text) => { if (isChatRestricted && !isAdmin) return; sendChatMessage(text); };
+    const handleSendMessageChat = (text) => { if (isChatRestricted && !isAdmin) return; handleSendMessage(text); };
     const handleRaiseHand = () => {
         const newState = !handRaised; setHandRaised(newState);
         if (socket && activeRoom) socket.emit('voice:raise-hand', { roomName: activeRoom.roomName, userId: user?._id, username: user?.username, avatar: user?.profile?.avatar || '', raised: newState });
@@ -211,16 +230,24 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             <div className="vc-viewport layout-spotlight" style={{ padding: '80px 24px 100px 24px' }}>
-                {guestSpeakers.length > 0 && (
-                    <div className="vc-carousel custom-scrollbar">
-                        {guestSpeakers.map(p => (p.identity === activeFocusIdentity && !p.screenShareTrack) ? null : renderSpeakerCard(p))}
+                {watchParty && watchParty.url ? (
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', minHeight: '350px' }}>
+                        <WatchPartyPlayer />
                     </div>
+                ) : (
+                    <>
+                        {guestSpeakers.length > 0 && (
+                            <div className="vc-carousel custom-scrollbar">
+                                {guestSpeakers.map(p => (p.identity === activeFocusIdentity && !p.screenShareTrack) ? null : renderSpeakerCard(p))}
+                            </div>
+                        )}
+                        <div className="vc-hero">
+                            <div className="vc-grid grid-1" style={{ maxWidth: activeFocusIdentity ? '800px' : '600px' }}>
+                                {activeFocusIdentity ? [...adminSpeakers, ...guestSpeakers].map(p => p.identity === activeFocusIdentity ? renderSpeakerCard(p, true) : null) : adminSpeakers.map(p => renderSpeakerCard(p))}
+                            </div>
+                        </div>
+                    </>
                 )}
-                <div className="vc-hero">
-                    <div className="vc-grid grid-1" style={{ maxWidth: activeFocusIdentity ? '800px' : '600px' }}>
-                        {activeFocusIdentity ? [...adminSpeakers, ...guestSpeakers].map(p => p.identity === activeFocusIdentity ? renderSpeakerCard(p, true) : null) : adminSpeakers.map(p => renderSpeakerCard(p))}
-                    </div>
-                </div>
             </div>
 
             <div style={{ position: 'absolute', right: '24px', top: '84px', bottom: '96px', display: 'flex', gap: '16px', zIndex: 100, pointerEvents: 'none' }}>
@@ -246,7 +273,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         </div>
                     </div>
                 )}
-                {isChatOpen && <div style={{ width: '300px', pointerEvents: 'auto', height: '100%' }}><VoiceChatSidebar messages={chatMessages} onSendMessage={handleSendMessage} onClose={() => setIsChatOpen(false)} isRestricted={isChatRestricted} isAdmin={isAdmin} /></div>}
+                {isChatOpen && <div style={{ width: '300px', pointerEvents: 'auto', height: '100%' }}><VoiceChatSidebar messages={chatMessages} onSendMessage={handleSendMessageChat} onClose={() => setIsChatOpen(false)} isRestricted={isChatRestricted} isAdmin={isAdmin} /></div>}
             </div>
 
             {isConnected && (

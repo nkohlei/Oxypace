@@ -52,7 +52,8 @@ export const initializeVoiceHandler = (io) => {
                 roomName,
                 participants,
                 startedAt: roomData.startedAt,
-                serverNow: Date.now()
+                serverNow: Date.now(),
+                watchParty: roomData.watchParty || null
             });
 
             // Emit explicit join event for notifications
@@ -149,6 +150,67 @@ export const initializeVoiceHandler = (io) => {
             });
         });
 
+        // ─── Watch Party (YouTube Sync) ───
+        socket.on('voice:watch-start', ({ roomName, url }) => {
+            if (!roomName) return;
+            const roomData = voiceRooms.get(roomName);
+            if (roomData) {
+                roomData.watchParty = {
+                    url,
+                    isPlaying: false,
+                    currentTime: 0,
+                    lastUpdated: Date.now()
+                };
+                io.to(`voice:${roomName}`).emit('voice:watch-state', roomData.watchParty);
+                console.log(`[Watch Party] started in ${roomName} with URL: ${url}`);
+            }
+        });
+
+        socket.on('voice:watch-play', ({ roomName, time }) => {
+            if (!roomName) return;
+            const roomData = voiceRooms.get(roomName);
+            if (roomData && roomData.watchParty) {
+                roomData.watchParty.isPlaying = true;
+                roomData.watchParty.currentTime = time;
+                roomData.watchParty.lastUpdated = Date.now();
+                socket.to(`voice:${roomName}`).emit('voice:watch-play', { time });
+                console.log(`[Watch Party] play event in ${roomName} at time: ${time}`);
+            }
+        });
+
+        socket.on('voice:watch-pause', ({ roomName, time }) => {
+            if (!roomName) return;
+            const roomData = voiceRooms.get(roomName);
+            if (roomData && roomData.watchParty) {
+                roomData.watchParty.isPlaying = false;
+                roomData.watchParty.currentTime = time;
+                roomData.watchParty.lastUpdated = Date.now();
+                socket.to(`voice:${roomName}`).emit('voice:watch-pause', { time });
+                console.log(`[Watch Party] pause event in ${roomName} at time: ${time}`);
+            }
+        });
+
+        socket.on('voice:watch-seek', ({ roomName, time }) => {
+            if (!roomName) return;
+            const roomData = voiceRooms.get(roomName);
+            if (roomData && roomData.watchParty) {
+                roomData.watchParty.currentTime = time;
+                roomData.watchParty.lastUpdated = Date.now();
+                socket.to(`voice:${roomName}`).emit('voice:watch-seek', { time });
+                console.log(`[Watch Party] seek event in ${roomName} to time: ${time}`);
+            }
+        });
+
+        socket.on('voice:watch-stop', ({ roomName }) => {
+            if (!roomName) return;
+            const roomData = voiceRooms.get(roomName);
+            if (roomData) {
+                roomData.watchParty = null;
+                io.to(`voice:${roomName}`).emit('voice:watch-stop');
+                console.log(`[Watch Party] stopped in ${roomName}`);
+            }
+        });
+
         // ─── WebRTC Signaling ───
         socket.on('voice:video-offer', ({ roomName, targetUserId, sdp }) => {
             if (!roomName || !targetUserId) return;
@@ -225,7 +287,8 @@ function removeParticipant(io, roomName, userId) {
             roomName,
             participants,
             startedAt: roomData.startedAt,
-            serverNow: Date.now()
+            serverNow: Date.now(),
+            watchParty: roomData.watchParty || null
         });
 
         // Emit explicit leave event for notifications

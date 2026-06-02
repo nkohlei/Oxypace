@@ -81,7 +81,7 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
                 <form className="chat-input-area" onSubmit={handleSend}>
                     <input
                         type="text"
-                        placeholder="Mesaj yaz..."
+                        placeholder={isAdmin ? "Mesaj veya /watch [YouTube URL]..." : "Mesaj yaz..."}
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         className="chat-input glass-input"

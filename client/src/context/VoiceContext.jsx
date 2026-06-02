@@ -99,6 +99,9 @@ export const VoiceProvider = ({ children }) => {
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
 
+    // Watch Party State
+    const [watchParty, setWatchParty] = useState(null);
+
     // WebRTC connection references
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
@@ -482,6 +485,17 @@ export const VoiceProvider = ({ children }) => {
 
             rawParticipantsRef.current = data.participants || [];
             
+            if (data.watchParty) {
+                const wp = { ...data.watchParty };
+                if (wp.isPlaying && wp.lastUpdated) {
+                    const elapsed = (Date.now() - wp.lastUpdated) / 1000;
+                    wp.currentTime += elapsed;
+                }
+                setWatchParty(wp);
+            } else {
+                setWatchParty(null);
+            }
+            
             // Map initial states for remote users
             rawParticipantsRef.current.forEach(p => {
                 if (p.userId !== user?._id?.toString()) {
@@ -616,6 +630,35 @@ export const VoiceProvider = ({ children }) => {
             updateParticipantList();
         };
 
+        const handleWatchState = (wp) => {
+            if (wp && wp.url) {
+                const updatedWp = { ...wp };
+                if (updatedWp.isPlaying && updatedWp.lastUpdated) {
+                    const elapsed = (Date.now() - updatedWp.lastUpdated) / 1000;
+                    updatedWp.currentTime += elapsed;
+                }
+                setWatchParty(updatedWp);
+            } else {
+                setWatchParty(null);
+            }
+        };
+
+        const handleWatchPlay = ({ time }) => {
+            setWatchParty(prev => prev ? { ...prev, isPlaying: true, currentTime: time, lastUpdated: Date.now() } : null);
+        };
+
+        const handleWatchPause = ({ time }) => {
+            setWatchParty(prev => prev ? { ...prev, isPlaying: false, currentTime: time, lastUpdated: Date.now() } : null);
+        };
+
+        const handleWatchSeek = ({ time }) => {
+            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: Date.now() } : null);
+        };
+
+        const handleWatchStop = () => {
+            setWatchParty(null);
+        };
+
         socket.on('voice:participants', handleParticipants);
         socket.on('voice:user-joined', handleUserJoined);
         socket.on('voice:user-left', handleUserLeft);
@@ -623,6 +666,11 @@ export const VoiceProvider = ({ children }) => {
         socket.on('voice:video-answer', handleVideoAnswer);
         socket.on('voice:new-ice-candidate', handleNewIceCandidate);
         socket.on('voice:state-update', handleStateUpdate);
+        socket.on('voice:watch-state', handleWatchState);
+        socket.on('voice:watch-play', handleWatchPlay);
+        socket.on('voice:watch-pause', handleWatchPause);
+        socket.on('voice:watch-seek', handleWatchSeek);
+        socket.on('voice:watch-stop', handleWatchStop);
 
         return () => {
             socket.off('voice:participants', handleParticipants);
@@ -632,6 +680,11 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:video-answer', handleVideoAnswer);
             socket.off('voice:new-ice-candidate', handleNewIceCandidate);
             socket.off('voice:state-update', handleStateUpdate);
+            socket.off('voice:watch-state', handleWatchState);
+            socket.off('voice:watch-play', handleWatchPlay);
+            socket.off('voice:watch-pause', handleWatchPause);
+            socket.off('voice:watch-seek', handleWatchSeek);
+            socket.off('voice:watch-stop', handleWatchStop);
         };
     }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList, safeEmit]);
 
@@ -872,6 +925,36 @@ export const VoiceProvider = ({ children }) => {
         });
     }, []);
 
+    const startWatchParty = useCallback((url) => {
+        if (activeRoom) {
+            safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url });
+        }
+    }, [activeRoom, safeEmit]);
+
+    const stopWatchParty = useCallback(() => {
+        if (activeRoom) {
+            safeEmit('voice:watch-stop', { roomName: activeRoom.roomName });
+        }
+    }, [activeRoom, safeEmit]);
+
+    const sendWatchPlay = useCallback((time) => {
+        if (activeRoom) {
+            safeEmit('voice:watch-play', { roomName: activeRoom.roomName, time });
+        }
+    }, [activeRoom, safeEmit]);
+
+    const sendWatchPause = useCallback((time) => {
+        if (activeRoom) {
+            safeEmit('voice:watch-pause', { roomName: activeRoom.roomName, time });
+        }
+    }, [activeRoom, safeEmit]);
+
+    const sendWatchSeek = useCallback((time) => {
+        if (activeRoom) {
+            safeEmit('voice:watch-seek', { roomName: activeRoom.roomName, time });
+        }
+    }, [activeRoom, safeEmit]);
+
     // Trigger update on state change
     useEffect(() => {
         updateParticipantList();
@@ -906,7 +989,13 @@ export const VoiceProvider = ({ children }) => {
         enumerateDevices,
         selectedAudioInput,
         selectedAudioOutput,
-        selectedVideoInput
+        selectedVideoInput,
+        watchParty,
+        startWatchParty,
+        stopWatchParty,
+        sendWatchPlay,
+        sendWatchPause,
+        sendWatchSeek
     };
 
     return (
