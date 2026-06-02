@@ -97,7 +97,7 @@ const WatchPartyPlayer = () => {
                     controls={isHost}
                     width="100%"
                     height="100%"
-                    onError={() => setHasError(true)}
+                    onError={(e) => console.warn("ReactPlayer non-fatal error logged:", e)}
                     onReady={() => setIsReady(true)}
                     onPlay={handlePlay}
                     onPause={handlePause}
