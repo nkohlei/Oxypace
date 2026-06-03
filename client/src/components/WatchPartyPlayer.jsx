@@ -135,7 +135,7 @@ const WatchPartyPlayer = () => {
         return (
             <div className="watch-party-player-wrapper" style={{ padding: '32px', color: '#ff4444', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
                 <span className="watch-party-title" style={{ color: '#ff4444', fontSize: '16px' }}>Oynatma Hatası</span>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', maxWidth: '400px' }}>Video yüklenemedi. Lütfen geçerli bir YouTube URL'si girdiğinizden emin olun.</p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', maxWidth: '400px' }}>Video yüklenemedi. Lütfen geçerli bir medya URL'si girdiğinizden emin olun.</p>
                 <button className="watch-party-stop-btn glass-btn danger" style={{ padding: '8px 20px', borderRadius: '8px' }} onClick={stopWatchParty}>Kapat</button>
             </div>
         );
@@ -144,7 +144,7 @@ const WatchPartyPlayer = () => {
     return (
         <div className="watch-party-player-wrapper">
             <div className="watch-party-header">
-                <span className="watch-party-title">Birlikte İzle (YouTube)</span>
+                <span className="watch-party-title">Birlikte İzle (URL)</span>
                 <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
                     <X size={16} /> <span>Bitir</span>
                 </button>

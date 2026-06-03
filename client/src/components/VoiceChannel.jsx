@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Youtube, Clipboard, X } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
@@ -274,17 +274,17 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             )}
                         </div>
 
-                        {/* YouTube Watch Party Button */}
+                        {/* Medya URL Watch Party Button */}
                         <div className="vc-ctrl-group" style={{ position: 'relative' }}>
                             <button className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`} onClick={() => setIsWatchInputOpen(!isWatchInputOpen)} title="Birlikte İzle">
-                                <Youtube size={22} color={watchParty?.url ? '#ffffff' : '#ef4444'} />
+                                <Link size={22} color={watchParty?.url ? '#ffffff' : '#ef4444'} />
                             </button>
                             {isWatchInputOpen && (
                                 <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px', zIndex: 999 }}>
                                     <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <input 
                                             type="text" 
-                                            placeholder="YouTube URL girin..." 
+                                            placeholder="YouTube, Twitch, Vimeo veya MP4 linki yapıştırın..." 
                                             value={watchUrl} 
                                             onChange={(e) => setWatchUrl(e.target.value)} 
                                             className="chat-input glass-input"
