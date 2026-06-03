@@ -71,6 +71,12 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     };
 
     useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
         if (focusedIdentity && !participants.find(p => p.identity === focusedIdentity)) {
             setFocusedIdentity(null);
         }
@@ -179,11 +185,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
 
 
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth <= 768);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+
 
     return (
         <div className="vc-container glass-container" onClick={handleContainerClick}>
