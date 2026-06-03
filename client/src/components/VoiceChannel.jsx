@@ -220,8 +220,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         );
     }
 
-    const screenSharer = participants.find(p => p.screenShareTrack);
-    const activeFocusIdentity = screenSharer ? screenSharer.identity : focusedIdentity;
+    const activeFocusIdentity = focusedIdentity;
     const focusedParticipant = activeFocusIdentity ? participants.find(p => p.identity === activeFocusIdentity) : null;
 
     const carouselItemsCount = (watchParty && watchParty.url) 
