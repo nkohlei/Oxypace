@@ -397,15 +397,17 @@
 
     .vc-container {
         padding: 0 !important;
+        margin: 0 !important;
+        top: 0 !important;
         height: 100vh !important;
         height: 100dvh !important;
     }
 
-    /* Back button style */
+    /* Back button style positioned at the very top left */
     .vc-mobile-back-btn {
         position: absolute !important;
-        top: 1rem !important;
-        left: 1rem !important;
+        top: 0.5rem !important;
+        left: 0.5rem !important;
         width: 36px !important;
         height: 36px !important;
         border-radius: 50% !important;
@@ -423,8 +425,8 @@
 
     /* Position top-right controls at the very top right, stacked vertically */
     .vc-top-right-controls {
-        top: 1rem !important;
-        right: 1rem !important;
+        top: 0.5rem !important;
+        right: 0.5rem !important;
         position: absolute !important;
         display: flex !important;
         flex-direction: column !important;
@@ -450,32 +452,38 @@
 
     .layout-spotlight .vc-hero {
         position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
+        top: 8px !important;
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 8px !important;
+        width: calc(100% - 16px) !important;
+        height: calc(100% - 16px) !important;
+        padding-bottom: 90px !important;
+        box-sizing: border-box !important;
         z-index: 1 !important;
-        border-radius: 0 !important;
+        border-radius: 12px !important;
     }
 
     .layout-spotlight .vc-hero .vc-card.role-hero {
-        border-radius: 0 !important;
+        border-radius: 12px !important;
+        height: 100% !important;
+        width: 100% !important;
     }
 
-    /* Dynamic Alt Grid: Float on top of the hero at bottom center */
+    /* Dynamic Alt Grid: Float on top of the hero at bottom center, side-by-side flex wrap */
     .layout-spotlight .vc-carousel {
         position: absolute !important;
-        bottom: 80px !important;
+        bottom: 95px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
-        width: auto !important;
-        max-width: 90% !important;
+        width: calc(100% - 16px) !important;
+        max-width: calc(100% - 16px) !important;
         display: flex !important;
         flex-direction: row !important;
         justify-content: center !important;
         align-items: center !important;
         flex-wrap: wrap !important;
-        gap: 8px !important;
+        gap: 10px !important;
         z-index: 10 !important;
         background: transparent !important;
         height: auto !important;
@@ -494,11 +502,12 @@
         border-radius: 12px !important;
         border: 2px solid rgba(255, 255, 255, 0.2) !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        margin: 0 !important;
     }
 
     .vc-card.role-carousel .vc-card-avatar {
-        width: 36px !important;
-        height: 36px !important;
+        width: 40px !important;
+        height: 40px !important;
         aspect-ratio: 1 / 1 !important;
         border-radius: 50% !important;
         object-fit: cover !important;
@@ -575,18 +584,21 @@
         width: 100% !important;
         max-width: 100% !important;
         gap: 12px !important;
+        padding: 8px !important;
+        box-sizing: border-box !important;
     }
 
     .vc-card.role-grid {
         aspect-ratio: 16 / 9 !important;
         width: 100% !important;
         height: auto !important;
-        margin: 0 !important;
+        margin: 4px !important;
+        border-radius: 12px !important;
     }
 
     .layout-dynamic.grid-3 .vc-card.role-grid:nth-child(3) {
         width: 100% !important;
-        margin: 0 !important;
+        margin: 4px !important;
     }
 }
 
@@ -600,21 +612,21 @@
 }
 
 .vc-card-avatar {
-    width: 56px !important;
-    height: 56px !important;
-    aspect-ratio: 1 / 1 !important;
+    width: 80px !important;
+    height: 80px !important;
+    flex-shrink: 0 !important;
     border-radius: 50% !important;
     object-fit: cover !important;
-    flex-shrink: 0 !important;
+    aspect-ratio: 1 / 1 !important;
 }
 
 .vc-card.role-hero .vc-card-avatar {
-    width: 120px !important;
-    height: 120px !important;
-    aspect-ratio: 1 / 1 !important;
+    width: 80px !important;
+    height: 80px !important;
+    flex-shrink: 0 !important;
     border-radius: 50% !important;
     object-fit: cover !important;
-    flex-shrink: 0 !important;
+    aspect-ratio: 1 / 1 !important;
 }
 
 .vc-card-video {
