@@ -51,6 +51,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         sendChatMessage(text);
     };
 
+    const isActiveRoom = activeRoom?.channelId === channelId;
+    const isConnected = isActiveRoom && connectionState === ConnectionState.Connected;
+    const isConnecting = isActiveRoom && connectionState === ConnectionState.Connecting;
+
     const [focusedIdentity, setFocusedIdentity] = useState(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isMicMenuOpen, setIsMicMenuOpen] = useState(false);
@@ -173,9 +177,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const carouselClass = carouselItemsCount >= 4 ? 'grid-multi' : 'grid-single';
     const gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
 
-    const isActiveRoom = activeRoom?.channelId === channelId;
-    const isConnected = isActiveRoom && connectionState === ConnectionState.Connected;
-    const isConnecting = isActiveRoom && connectionState === ConnectionState.Connecting;
+
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
