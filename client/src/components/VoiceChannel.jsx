@@ -6,6 +6,7 @@ import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
+import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -35,6 +36,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         startWatchParty,
         stopWatchParty
     } = useVoice();
+    const { setMobileChannelOpen } = useUI();
 
     const handleSendMessage = (text) => {
         if (text.startsWith('/watch ')) {
@@ -210,6 +212,13 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
     return (
         <div className="vc-container glass-container" onClick={handleContainerClick}>
+            {isMobile && (
+                <button className="vc-mobile-back-btn" onClick={() => setMobileChannelOpen(false)} title="Geri">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                </button>
+            )}
             <div className="vc-top-right-controls">
                 <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => setIsChatOpen(!isChatOpen)} title="Sohbet">
                     <MessageCircle size={18} />

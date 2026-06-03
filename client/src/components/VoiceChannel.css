@@ -396,78 +396,126 @@
     }
 
     .vc-container {
-        padding: 8px !important;
+        padding: 0 !important;
         height: 100vh !important;
         height: 100dvh !important;
     }
 
-    /* Position top-right controls at the very top right */
-    .vc-top-right-controls {
-        top: 12px !important;
-        right: 12px !important;
+    /* Back button style */
+    .vc-mobile-back-btn {
         position: absolute !important;
+        top: 1rem !important;
+        left: 1rem !important;
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 50% !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: white !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 999 !important;
+        cursor: pointer !important;
+    }
+
+    /* Position top-right controls at the very top right, stacked vertically */
+    .vc-top-right-controls {
+        top: 1rem !important;
+        right: 1rem !important;
+        position: absolute !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
         z-index: 999 !important;
     }
 
     .vc-viewport {
-        margin-top: 48px !important;
+        margin-top: 0 !important;
         padding-bottom: 72px !important;
-        height: auto !important;
+        height: 100% !important;
+        width: 100% !important;
         flex: 1 !important;
+        position: relative !important;
     }
 
-    /* Pinned layout: main video goes on top */
+    /* Pinned Layout: Main video starting from absolute 0, 0 and covering 100% */
     .layout-spotlight {
-        flex-direction: column-reverse !important;
+        position: relative !important;
+        width: 100% !important;
         height: 100% !important;
     }
 
-    .vc-hero {
-        flex: 1 !important;
+    .layout-spotlight .vc-hero {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
         width: 100% !important;
-        height: auto !important;
-        min-height: 0 !important;
+        height: 100% !important;
+        z-index: 1 !important;
+        border-radius: 0 !important;
     }
 
-    /* Dynamic Alt Grid: unfocused participant cameras */
-    .vc-carousel {
-        display: grid !important;
-        width: 100% !important;
-        height: auto !important;
-        max-height: 35% !important;
+    .layout-spotlight .vc-hero .vc-card.role-hero {
+        border-radius: 0 !important;
+    }
+
+    /* Dynamic Alt Grid: Float on top of the hero at bottom center */
+    .layout-spotlight .vc-carousel {
+        position: absolute !important;
+        bottom: 80px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: auto !important;
+        max-width: 90% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
         gap: 8px !important;
-        margin-top: 8px !important;
-        padding-right: 0 !important;
-        overflow-y: auto !important;
-    }
-    
-    .vc-carousel.grid-single {
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)) !important;
-        grid-template-rows: 1fr !important;
-    }
-    
-    .vc-carousel.grid-multi {
-        grid-template-columns: repeat(2, 1fr) !important;
+        z-index: 10 !important;
+        background: transparent !important;
+        height: auto !important;
+        max-height: 150px !important;
+        padding: 0 !important;
+        margin-top: 0 !important;
+        overflow-y: visible !important;
+        overflow-x: visible !important;
     }
 
+    /* Pinned layout thumbnail sizes */
     .vc-card.role-carousel {
-        width: 100% !important;
-        height: auto !important;
-        aspect-ratio: 16 / 9 !important;
+        width: 90px !important;
+        height: 120px !important;
+        flex-shrink: 0 !important;
+        border-radius: 12px !important;
+        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
     }
 
     .vc-card.role-carousel .vc-card-avatar {
-        width: 40px !important;
-        height: 40px !important;
+        width: 36px !important;
+        height: 36px !important;
         aspect-ratio: 1 / 1 !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
     }
 
-    .vc-card-info {
-        padding: 4px 8px;
-        border-radius: 6px;
+    .vc-card.role-carousel .vc-card-info {
+        padding: 2px 6px !important;
+        bottom: 4px !important;
+        left: 4px !important;
+        border-radius: 4px !important;
+        max-width: calc(100% - 8px) !important;
     }
 
-    .vc-card-name { font-size: 11px; font-weight: 400; }
+    .vc-card.role-carousel .vc-card-name { 
+        font-size: 0.7rem !important; 
+        font-weight: 500 !important; 
+    }
 
     /* Float Controls: remove background wrappers */
     .vc-ctrl-section.glass-controls {
@@ -492,7 +540,24 @@
     .vc-ctrl-group {
         background: transparent !important;
         border: none !important;
+        box-shadow: none !important;
         padding: 0 !important;
+    }
+
+    /* Transparent Chevron Ok Buttons next to main buttons */
+    .vc-device-arrow {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: rgba(255, 255, 255, 0.7) !important;
+        width: 16px !important; 
+        height: 32px !important;
+        border-radius: 50% !important;
+    }
+
+    .vc-device-arrow:hover {
+        background: transparent !important;
+        color: white !important;
     }
 
     /* Scale Down Controls on Mobile */
@@ -503,16 +568,7 @@
 
     .vc-ctrl-btn svg { width: 16px !important; height: 16px !important; }
 
-    .vc-device-arrow { 
-        width: 16px !important; 
-        height: 32px !important; 
-    }
-    .vc-device-arrow svg {
-        width: 12px !important;
-        height: 12px !important;
-    }
-
-    /* Force vertical stacking for unfocused dynamic grid */
+    /* Force vertical stacking for unfocused dynamic grid when NOT spotlight */
     .vc-grid {
         grid-template-columns: 1fr !important;
         grid-template-rows: auto !important;
@@ -535,16 +591,30 @@
 }
 
 /* ─── Media/Avatar Aspect Ratio & Distortion Fixes ─── */
+.vc-card-avatar-area {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
 .vc-card-avatar {
+    width: 56px !important;
+    height: 56px !important;
     aspect-ratio: 1 / 1 !important;
     border-radius: 50% !important;
     object-fit: cover !important;
+    flex-shrink: 0 !important;
 }
 
 .vc-card.role-hero .vc-card-avatar {
+    width: 120px !important;
+    height: 120px !important;
     aspect-ratio: 1 / 1 !important;
     border-radius: 50% !important;
     object-fit: cover !important;
+    flex-shrink: 0 !important;
 }
 
 .vc-card-video {
