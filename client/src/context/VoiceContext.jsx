@@ -352,6 +352,26 @@ export const VoiceProvider = ({ children }) => {
             }
         }
 
+        // Bind onnegotiationneeded to trigger renegotiation automatically
+        pc.onnegotiationneeded = async () => {
+            try {
+                console.log(`[WebRTC] onnegotiationneeded triggered for user ${targetUserId}`);
+                const offer = await pc.createOffer();
+                const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+                await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
+                if (activeRoom) {
+                    safeEmit('voice:video-offer', {
+                        roomName: activeRoom.roomName,
+                        targetUserId,
+                        sdp: prioritizedOffer
+                    });
+                    console.log(`[Socket] renegotiation video-offer sent to ${targetUserId}`);
+                }
+            } catch (err) {
+                console.error(`[WebRTC] Negotiation offer generation failed for user ${targetUserId}:`, err);
+            }
+        };
+
         // Monitor ICE Connection State Changes
         pc.oniceconnectionstatechange = () => {
             console.log(`[WebRTC Log] ICE Connection State değişti for ${targetUserId}: ${pc.iceConnectionState}`);
@@ -386,12 +406,21 @@ export const VoiceProvider = ({ children }) => {
             if (event.track.kind === 'audio') {
                 tracks.audio = event.track;
             } else if (event.track.kind === 'video') {
-                if (event.track.contentHint === 'text' || stream.id.includes('screen')) {
+                // Determine if screenshare: check content hint, stream ID string, track ID difference, or custom stream ID mismatch
+                const isScreen = event.track.contentHint === 'text' || 
+                                 stream.id.includes('screen') || 
+                                 (tracks.video && tracks.video.id !== event.track.id) ||
+                                 (tracks.camStreamId && stream.id !== tracks.camStreamId);
+
+                if (isScreen) {
                     tracks.screen = event.track;
-                    console.log(`[WebRTC] remote screenShareTrack set for user ${targetUserId}`);
+                    console.log(`[WebRTC] remote screenShareTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 } else {
+                    if (!tracks.camStreamId) {
+                        tracks.camStreamId = stream.id;
+                    }
                     tracks.video = event.track;
-                    console.log(`[WebRTC] remote videoTrack set for user ${targetUserId}`);
+                    console.log(`[WebRTC] remote videoTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 }
             }
 
