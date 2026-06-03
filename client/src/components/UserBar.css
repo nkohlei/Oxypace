@@ -88,3 +88,23 @@
     background: var(--primary-red);
     box-shadow: none;
 }
+
+/* Fix profile avatar button stretching */
+.user-bar-info img,
+.user-bar-info .global-user-avatar,
+.user-bar-info .global-user-avatar img {
+    width: 32px !important;
+    height: 32px !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    object-fit: cover !important;
+}
+
+.user-bar-info > div:first-child {
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+}
