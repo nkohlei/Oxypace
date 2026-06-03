@@ -64,6 +64,18 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
+    const [lastScreenShareId, setLastScreenShareId] = useState(null);
+
+    const screenShareIdentity = participants.find(p => p.screenShareTrack)?.identity || null;
+
+    useEffect(() => {
+        if (screenShareIdentity !== lastScreenShareId) {
+            setLastScreenShareId(screenShareIdentity);
+            setWatchStreamAccepted(false);
+        }
+    }, [screenShareIdentity, lastScreenShareId]);
+
     const showControls = true; // Permanent controls, no auto-hide
 
     const handleContainerClick = (e) => {
@@ -104,16 +116,51 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         const isShowingScreen = role === 'hero' && p.screenShareTrack;
         const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
+        const shouldAttachVideo = !isShowingScreen || !isMobile || p.isLocal || watchStreamAccepted;
 
         return (
             <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={() => handleFocus(p.identity)}>
                 <div className="vc-card-video-area">
                     <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
-                    {trackToRender ? (
-                        <video className="vc-card-video" ref={el => { if (el && trackToRender) trackToRender.attach(el); }} autoPlay muted={p.isLocal} playsInline />
+                    {trackToRender && shouldAttachVideo ? (
+                        <video 
+                            className={`vc-card-video ${isShowingScreen && isMobile ? 'vc-screenshare-video-mobile' : ''}`} 
+                            ref={el => { if (el && trackToRender) trackToRender.attach(el); }} 
+                            autoPlay 
+                            muted={p.isLocal} 
+                            playsInline 
+                        />
                     ) : (
-                        <div className="vc-card-avatar-area">
-                            <img className="vc-card-avatar" src={avatarUrl} alt="" />
+                        isShowingScreen && isMobile ? (
+                            <div className="vc-screenshare-placeholder-bg-mobile">
+                                <div className="vc-card-avatar-area">
+                                    <img className="vc-card-avatar" src={avatarUrl} alt="" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="vc-card-avatar-area">
+                                <img className="vc-card-avatar" src={avatarUrl} alt="" />
+                            </div>
+                        )
+                    )}
+
+                    {isShowingScreen && isMobile && !p.isLocal && (
+                        <div className={`vc-screenshare-overlay-mobile ${watchStreamAccepted ? 'hidden' : ''}`}>
+                            <div className="vc-screenshare-overlay-content">
+                                <MonitorUp size={32} style={{ marginBottom: '8px', color: '#00d2ff' }} />
+                                <span className="vc-screenshare-overlay-text">
+                                    {p.name} ekran paylaşıyor
+                                </span>
+                                <button 
+                                    className="vc-watch-stream-btn"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setWatchStreamAccepted(true);
+                                    }}
+                                >
+                                    Yayını İzle
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
