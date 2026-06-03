@@ -184,7 +184,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             src={user?.profile?.avatar}
                                             alt="Profile"
                                             className="nav-profile-img"
-                                            size={40}
+                                            size={28}
                                         />
                                         {unreadCount > 0 && (
                                             <span className="nav-badge count-badge">
