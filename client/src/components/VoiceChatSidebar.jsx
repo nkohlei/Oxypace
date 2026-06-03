@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import './VoiceChatSidebar.css';
 import { X, MessageSquare, Lock, Send } from 'lucide-react';
 
-const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAdmin }) => {
+const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAdmin, isOpen }) => {
     const [inputText, setInputText] = useState('');
     const endOfMessagesRef = useRef(null);
 
@@ -40,7 +40,7 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
     };
 
     return (
-        <div className="voice-chat-sidebar glass-panel">
+        <div className={`voice-chat-sidebar glass-panel ${isOpen ? 'open' : ''}`}>
             <div className="chat-header">
                 <h3>Oda Sohbeti</h3>
                 <button className="chat-close-btn icon-btn" onClick={onClose} title="Kapat">

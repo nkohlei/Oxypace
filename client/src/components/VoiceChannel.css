@@ -648,6 +648,7 @@
     .voice-chat-sidebar {
         width: 260px !important;
         max-width: 85%;
+        z-index: 9999 !important;
     }
 }
 

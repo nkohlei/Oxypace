@@ -11,7 +11,6 @@
     flex-direction: column;
     border-radius: 16px;
     z-index: 100;
-    animation: sidebarPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     background: rgba(20, 21, 25, 0.7);
     /* Deep dark glass */
     backdrop-filter: blur(20px);
@@ -19,19 +18,19 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     overflow: hidden;
+    /* Smooth transition for showing/hiding without unmounting */
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15), visibility 0.3s ease;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.95) translateY(10px);
+    pointer-events: none;
 }
 
-@keyframes sidebarPopIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-        /* removed translation which caused scrollbar horizontal shift jitter */
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+.voice-chat-sidebar.open {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
 }
 
 .chat-header {

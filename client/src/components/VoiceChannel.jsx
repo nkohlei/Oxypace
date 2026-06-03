@@ -60,48 +60,11 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-    const [showControls, setShowControls] = useState(true);
-    const controlsTimeoutRef = useRef(null);
-
-    const resetControlsTimeout = () => {
-        if (controlsTimeoutRef.current) {
-            clearTimeout(controlsTimeoutRef.current);
-        }
-        controlsTimeoutRef.current = setTimeout(() => {
-            if (window.innerWidth <= 768) {
-                setShowControls(false);
-            }
-        }, 3000);
-    };
+    const showControls = true; // Permanent controls, no auto-hide
 
     const handleContainerClick = (e) => {
-        if (window.innerWidth <= 768) {
-            setShowControls(true);
-            resetControlsTimeout();
-        }
+        // No-op, controls are permanently active
     };
-
-    const isActiveRoom = activeRoom?.channelId === channelId;
-    const isConnected = isActiveRoom && connectionState === ConnectionState.Connected;
-    const isConnecting = isActiveRoom && connectionState === ConnectionState.Connecting;
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth <= 768);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    useEffect(() => {
-        if (isConnected) {
-            setShowControls(true);
-            resetControlsTimeout();
-        }
-        return () => {
-            if (controlsTimeoutRef.current) {
-                clearTimeout(controlsTimeoutRef.current);
-            }
-        };
-    }, [isConnected, isMobile]);
 
     useEffect(() => {
         if (focusedIdentity && !participants.find(p => p.identity === focusedIdentity)) {
@@ -209,6 +172,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         : (focusedParticipant ? participants.length - 1 : 0);
     const carouselClass = carouselItemsCount >= 4 ? 'grid-multi' : 'grid-single';
     const gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
+
+    const isActiveRoom = activeRoom?.channelId === channelId;
+    const isConnected = isActiveRoom && connectionState === ConnectionState.Connected;
+    const isConnecting = isActiveRoom && connectionState === ConnectionState.Connecting;
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     return (
         <div className="vc-container glass-container" onClick={handleContainerClick}>
@@ -412,14 +385,13 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 </div>
             )}
 
-            {isChatOpen && (
-                <VoiceChatSidebar 
-                    messages={chatMessages} 
-                    onSendMessage={handleSendMessage} 
-                    onClose={() => setIsChatOpen(false)} 
-                    isAdmin={true}
-                />
-            )}
+            <VoiceChatSidebar 
+                messages={chatMessages} 
+                onSendMessage={handleSendMessage} 
+                onClose={() => setIsChatOpen(false)} 
+                isAdmin={true}
+                isOpen={isChatOpen}
+            />
         </div>
     );
 };
