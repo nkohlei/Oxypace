@@ -206,6 +206,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         ? participants.length 
         : (focusedParticipant ? participants.length - 1 : 0);
     const carouselClass = carouselItemsCount >= 4 ? 'grid-multi' : 'grid-single';
+    const gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
 
     return (
         <div className="vc-container glass-container" onClick={handleContainerClick}>
