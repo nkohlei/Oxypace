@@ -113,10 +113,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const handleFocus = (identity) => setFocusedIdentity(focusedIdentity === identity ? null : identity);
 
     const renderParticipantCard = (p, role = 'grid') => {
-        const isShowingScreen = role === 'hero' && p.screenShareTrack;
+        const isShowingScreen = p.isScreenSharing;
         const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
-        const shouldAttachVideo = !isShowingScreen || !isMobile || p.isLocal || watchStreamAccepted;
+        const shouldAttachVideo = !isShowingScreen || p.isLocal || watchStreamAccepted;
 
         return (
             <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={() => handleFocus(p.identity)}>
@@ -124,14 +124,14 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
                     {trackToRender && shouldAttachVideo ? (
                         <video 
-                            className={`vc-card-video ${isShowingScreen && isMobile ? 'vc-screenshare-video-mobile' : ''}`} 
+                            className={`vc-card-video ${isShowingScreen ? 'vc-screenshare-video-contained' : ''}`} 
                             ref={el => { if (el && trackToRender) trackToRender.attach(el); }} 
                             autoPlay 
                             muted={p.isLocal} 
                             playsInline 
                         />
                     ) : (
-                        isShowingScreen && isMobile ? (
+                        isShowingScreen ? (
                             <div className="vc-screenshare-placeholder-bg-mobile">
                                 <div className="vc-card-avatar-area">
                                     <img className="vc-card-avatar" src={avatarUrl} alt="" />
@@ -144,7 +144,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         )
                     )}
 
-                    {isShowingScreen && isMobile && !p.isLocal && (
+                    {isShowingScreen && !p.isLocal && (
                         <div className={`vc-screenshare-overlay-mobile ${watchStreamAccepted ? 'hidden' : ''}`}>
                             <div className="vc-screenshare-overlay-content">
                                 <MonitorUp size={32} style={{ marginBottom: '8px', color: '#00d2ff' }} />

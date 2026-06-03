@@ -779,86 +779,85 @@
     font-weight: 600;
 }
 
-/* Mobile Screenshare Styles */
-@media (max-width: 768px) {
-    .vc-screenshare-video-mobile {
-        object-fit: contain !important;
-        width: 100% !important;
-        height: 100% !important;
-        background: #000 !important;
-    }
+/* Global Screenshare Styles (Web/Desktop & Mobile) */
+.vc-screenshare-video-contained {
+    object-fit: contain !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: #000 !important;
+}
 
-    .vc-screenshare-placeholder-bg-mobile {
-        width: 100% !important;
-        height: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        background: #0a0a0c !important;
-        position: relative !important;
-    }
+.vc-screenshare-placeholder-bg-mobile {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #0a0a0c !important;
+    position: relative !important;
+}
 
-    .vc-screenshare-overlay-mobile {
-        position: absolute !important;
-        inset: 0 !important;
-        background: rgba(10, 10, 12, 0.88) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        z-index: 99 !important;
-        transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
+.vc-screenshare-overlay-mobile {
+    position: absolute !important;
+    inset: 0 !important;
+    background: rgba(10, 10, 12, 0.88) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99 !important;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border-radius: 12px !important;
+}
 
-    .vc-screenshare-overlay-mobile.hidden {
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
+.vc-screenshare-overlay-mobile.hidden {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
 
-    .vc-screenshare-overlay-content {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 24px !important;
-        text-align: center !important;
-    }
+.vc-screenshare-overlay-content {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px !important;
+    text-align: center !important;
+}
 
-    .vc-screenshare-overlay-text {
-        font-size: 13px !important;
-        font-weight: 500 !important;
-        color: rgba(255, 255, 255, 0.9) !important;
-        margin-bottom: 16px !important;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
-        font-family: inherit !important;
-    }
+.vc-screenshare-overlay-text {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    margin-bottom: 16px !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    font-family: inherit !important;
+}
 
-    .vc-watch-stream-btn {
-        background: rgba(0, 210, 255, 0.15) !important;
-        border: 1px solid rgba(0, 210, 255, 0.35) !important;
-        color: #00d2ff !important;
-        padding: 10px 24px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        border-radius: 20px !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(0, 210, 255, 0.15) !important;
-        font-family: inherit !important;
-        text-shadow: none !important;
-    }
+.vc-watch-stream-btn {
+    background: rgba(0, 210, 255, 0.15) !important;
+    border: 1px solid rgba(0, 210, 255, 0.35) !important;
+    color: #00d2ff !important;
+    padding: 10px 24px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 20px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 4px 12px rgba(0, 210, 255, 0.15) !important;
+    font-family: inherit !important;
+    text-shadow: none !important;
+}
 
-    .vc-watch-stream-btn:hover {
-        background: rgba(0, 210, 255, 0.25) !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 16px rgba(0, 210, 255, 0.25) !important;
-    }
+.vc-watch-stream-btn:hover {
+    background: rgba(0, 210, 255, 0.25) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px rgba(0, 210, 255, 0.25) !important;
+}
 
-    .vc-watch-stream-btn:active {
-        transform: translateY(1px) !important;
-    }
+.vc-watch-stream-btn:active {
+    transform: translateY(1px) !important;
 }

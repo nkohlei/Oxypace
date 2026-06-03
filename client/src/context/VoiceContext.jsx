@@ -185,6 +185,7 @@ export const VoiceProvider = ({ children }) => {
                 localScreenTrack = screenStreamRef.current.getVideoTracks()[0] || null;
             }
 
+            // Camera/Avatar card
             list.push({
                 identity: localUserId,
                 name: user?.profile?.displayName || user?.username || 'Sen',
@@ -192,13 +193,31 @@ export const VoiceProvider = ({ children }) => {
                 role: activeRoom?.userRole || 'member',
                 isLocal: true,
                 isMuted: localState.isMuted,
-                isCameraOn: localState.isCameraOn || localState.isScreenSharing,
-                isScreenSharing: localState.isScreenSharing,
+                isCameraOn: localState.isCameraOn,
+                isScreenSharing: false,
                 isSpeaking: false,
-                videoTrack: makeTrackObject(localState.isScreenSharing ? null : localVideoTrack),
+                videoTrack: makeTrackObject(localVideoTrack),
                 audioTrack: makeTrackObject(localAudioTrack),
-                screenShareTrack: makeTrackObject(localScreenTrack),
+                screenShareTrack: null,
             });
+
+            // Independent screenshare card
+            if (localState.isScreenSharing && localScreenTrack) {
+                list.push({
+                    identity: `${localUserId}-screen`,
+                    name: `${user?.profile?.displayName || user?.username || 'Sen'} (Ekran)`,
+                    avatar: user?.profile?.avatar || '',
+                    role: activeRoom?.userRole || 'member',
+                    isLocal: true,
+                    isMuted: true,
+                    isCameraOn: true,
+                    isScreenSharing: true,
+                    isSpeaking: false,
+                    videoTrack: null,
+                    audioTrack: null,
+                    screenShareTrack: makeTrackObject(localScreenTrack),
+                });
+            }
         }
 
         // 2. Add Remote Participants
@@ -208,6 +227,7 @@ export const VoiceProvider = ({ children }) => {
             const rState = remoteStatesRef.current.get(p.userId) || { isMuted: true, isCameraOn: false, isScreenSharing: false };
             const rTracks = remoteTracksRef.current.get(p.userId) || {};
 
+            // Camera/Avatar card
             list.push({
                 identity: p.userId,
                 name: p.username,
@@ -215,13 +235,31 @@ export const VoiceProvider = ({ children }) => {
                 role: 'member',
                 isLocal: false,
                 isMuted: rState.isMuted,
-                isCameraOn: rState.isCameraOn || rState.isScreenSharing,
-                isScreenSharing: rState.isScreenSharing,
+                isCameraOn: rState.isCameraOn,
+                isScreenSharing: false,
                 isSpeaking: false,
-                videoTrack: makeTrackObject(rState.isScreenSharing ? null : rTracks.video),
+                videoTrack: makeTrackObject(rTracks.video),
                 audioTrack: makeTrackObject(rTracks.audio),
-                screenShareTrack: makeTrackObject(rState.isScreenSharing ? rTracks.video : rTracks.screen),
+                screenShareTrack: null,
             });
+
+            // Independent screenshare card
+            if (rState.isScreenSharing && rTracks.screen) {
+                list.push({
+                    identity: `${p.userId}-screen`,
+                    name: `${p.username} (Ekran)`,
+                    avatar: p.avatar,
+                    role: 'member',
+                    isLocal: false,
+                    isMuted: true,
+                    isCameraOn: true,
+                    isScreenSharing: true,
+                    isSpeaking: false,
+                    videoTrack: null,
+                    audioTrack: null,
+                    screenShareTrack: makeTrackObject(rTracks.screen),
+                });
+            }
         });
 
         setParticipants(list);
@@ -250,7 +288,7 @@ export const VoiceProvider = ({ children }) => {
     }, [enumerateDevices]);
 
     // Renegotiate all WebRTC connections (e.g. after adding screen share)
-    const renegotiateAll = async () => {
+    const renegotiateAll = useCallback(async () => {
         for (const [targetUserId, pc] of peerConnectionsRef.current.entries()) {
             try {
                 console.log(`[WebRTC] Starting renegotiation for peer ${targetUserId}`);
@@ -269,7 +307,7 @@ export const VoiceProvider = ({ children }) => {
                 console.error("Renegotiation failed for:", targetUserId, err);
             }
         }
-    };
+    }, [activeRoom, safeEmit]);
 
     // Helper to process queued candidates for a peer
     const processQueuedCandidates = async (userId, pc) => {
@@ -302,16 +340,16 @@ export const VoiceProvider = ({ children }) => {
             localStreamRef.current.getTracks().forEach(track => {
                 const sender = pc.addTrack(track, localStreamRef.current);
                 console.log(`[WebRTC] Added local track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
-                
-                // If currently screen sharing and this is the video track, swap it with the screen track immediately
-                if (track.kind === 'video' && localState.isScreenSharing && screenStreamRef.current) {
-                    const screenTrack = screenStreamRef.current.getVideoTracks()[0];
-                    if (screenTrack && sender) {
-                        sender.replaceTrack(screenTrack);
-                        console.log(`[WebRTC] Immediately replaced new connection camera track with active screen track`);
-                    }
-                }
             });
+        }
+
+        // Add local screen share track if currently screen sharing
+        if (localState.isScreenSharing && screenStreamRef.current) {
+            const screenTrack = screenStreamRef.current.getVideoTracks()[0];
+            if (screenTrack) {
+                pc.addTrack(screenTrack, screenStreamRef.current);
+                console.log(`[WebRTC] Added independent screen track to peer connection for ${targetUserId}`);
+            }
         }
 
         // Monitor ICE Connection State Changes
@@ -772,12 +810,14 @@ export const VoiceProvider = ({ children }) => {
 
         peerConnectionsRef.current.forEach(pc => {
             const senders = pc.getSenders();
-            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-            if (videoSender && localCamVideoTrack) {
-                videoSender.replaceTrack(localCamVideoTrack);
-                console.log(`[WebRTC] Reverted screen track back to camera track`);
+            const screenSender = senders.find(s => s.track && s.track.kind === 'video' && s.track !== localCamVideoTrack);
+            if (screenSender) {
+                pc.removeTrack(screenSender);
+                console.log(`[WebRTC] Removed independent screen track from peer connection`);
             }
         });
+
+        renegotiateAll();
 
         setLocalState(prev => {
             const next = { ...prev, isScreenSharing: false };
@@ -792,7 +832,7 @@ export const VoiceProvider = ({ children }) => {
             }
             return next;
         });
-    }, [activeRoom, user, safeEmit]);
+    }, [activeRoom, user, safeEmit, renegotiateAll]);
 
     const toggleScreenShare = useCallback(async () => {
         if (localState.isScreenSharing) {
@@ -808,19 +848,12 @@ export const VoiceProvider = ({ children }) => {
                 if (videoTrack) {
                     videoTrack.contentHint = 'text';
 
-                    // Replace local camera video track with screen track in all peer connections
-                    const localCamVideoTrack = localStreamRef.current?.getVideoTracks()[0];
                     peerConnectionsRef.current.forEach(pc => {
-                        const senders = pc.getSenders();
-                        const videoSender = senders.find(s => s.track && (s.track === localCamVideoTrack || s.track.kind === 'video'));
-                        if (videoSender) {
-                            videoSender.replaceTrack(videoTrack);
-                            console.log(`[WebRTC] Swapped camera video track with screen video track`);
-                        } else {
-                            pc.addTrack(videoTrack, screenStream);
-                            console.log(`[WebRTC] Added screen track since video sender was not found`);
-                        }
+                        pc.addTrack(videoTrack, screenStream);
+                        console.log(`[WebRTC] Added independent screen track to peer connection`);
                     });
+
+                    renegotiateAll();
 
                     videoTrack.onended = () => {
                         stopScreenShareAndRevert();
@@ -844,7 +877,7 @@ export const VoiceProvider = ({ children }) => {
                 console.warn("Screen sharing failed:", err);
             }
         }
-    }, [localState, activeRoom, user, safeEmit, stopScreenShareAndRevert]);
+    }, [localState, activeRoom, user, safeEmit, stopScreenShareAndRevert, renegotiateAll]);
 
     const toggleDeafen = useCallback(() => {
         setLocalState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
