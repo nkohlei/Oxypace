@@ -226,8 +226,13 @@ body.dark-mode .logo-text {
 
 .profile-unified-btn {
     padding: 4px;
-    /* Less padding for image */
     border: 1px solid transparent;
+    width: 38px !important;
+    height: 38px !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
 }
 
 .profile-unified-btn:hover {
@@ -235,10 +240,12 @@ body.dark-mode .logo-text {
 }
 
 .nav-profile-img {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
+    width: 28px !important;
+    height: 28px !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    object-fit: cover !important;
 }
 
 .nav-profile-placeholder {
@@ -675,7 +682,8 @@ body.dark-mode .logo-text {
     position: absolute;
     inset: -3px;
     border: 2px solid #00d2ff;
-    border-radius: 50%;
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1 !important;
     animation: profileUnreadPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     pointer-events: none;
     box-shadow: none;
