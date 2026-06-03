@@ -396,18 +396,22 @@
     }
 
     .vc-container {
-        padding: 0 !important;
-        margin: 0 !important;
+        position: fixed !important;
         top: 0 !important;
-        height: 100vh !important;
+        left: 0 !important;
+        width: 100vw !important;
         height: 100dvh !important;
+        z-index: 999 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #000 !important;
     }
 
     /* Back button style positioned at the very top left */
     .vc-mobile-back-btn {
         position: absolute !important;
-        top: 0.5rem !important;
-        left: 0.5rem !important;
+        top: 15px !important;
+        left: 15px !important;
         width: 36px !important;
         height: 36px !important;
         border-radius: 50% !important;
@@ -419,19 +423,19 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        z-index: 999 !important;
+        z-index: 1000 !important;
         cursor: pointer !important;
     }
 
     /* Position top-right controls at the very top right, stacked vertically */
     .vc-top-right-controls {
-        top: 0.5rem !important;
-        right: 0.5rem !important;
         position: absolute !important;
+        top: 15px !important;
+        right: 15px !important;
         display: flex !important;
         flex-direction: column !important;
         gap: 8px !important;
-        z-index: 999 !important;
+        z-index: 1000 !important;
     }
 
     .vc-viewport {

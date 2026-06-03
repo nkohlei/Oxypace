@@ -78,6 +78,7 @@ const Portal = () => {
     const activeChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
     const isImageChannel = activeChannelObj?.type === 'image';
     const isVoiceChannel = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
+    const isVoiceChannelActive = isVoiceChannel && (!isMobileView || mobileChannelOpen);
 
     // --- SOCKET ROOM MANAGEMENT ---
     useEffect(() => {
@@ -868,7 +869,7 @@ const Portal = () => {
     }
 
     return (
-        <div className={`app-wrapper full-height discord-layout ${isVoiceChannel ? 'voice-channel-active' : ''}`}>
+        <div className={`app-wrapper full-height discord-layout ${isVoiceChannelActive ? 'voice-channel-active' : ''}`}>
             <SEO
                 title={portal.name}
                 description={portal.description || `${portal.name} topluluğuna katılın.`}
