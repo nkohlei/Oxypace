@@ -18,15 +18,7 @@
 }
 
 .lobby-bg {
-    background: linear-gradient(-45deg, var(--bg-card), var(--bg-hover), var(--bg-darker), var(--bg-primary));
-    background-size: 400% 400%;
-    animation: gradientShift 5s ease infinite;
-}
-
-@keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    background: var(--bg-darker) !important;
 }
 
 .glass-panel {
