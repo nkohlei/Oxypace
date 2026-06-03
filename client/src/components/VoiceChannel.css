@@ -290,7 +290,6 @@
     color: white;
 }
 
-/* Bottom Controls */
 .vc-controls {
     position: absolute;
     bottom: 24px;
@@ -301,6 +300,14 @@
     align-items: center;
     gap: 16px;
     z-index: 100;
+    transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.4s ease;
+}
+
+.vc-controls.controls-hidden {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translate(-50%, 15px) !important;
 }
 
 .vc-ctrl-section {
@@ -377,22 +384,82 @@
 
 /* ─── Mobile Responsiveness ─── */
 @media (max-width: 768px) {
-    .vc-container { padding: 12px; }
+    /* Immersive Mode: Hide headers when inside a voice channel */
+    .discord-layout.voice-channel-active .navbar {
+        display: none !important;
+    }
+    .discord-layout.voice-channel-active .channel-top-bar {
+        display: none !important;
+    }
+    .discord-layout.voice-channel-active .mobile-fab-create {
+        display: none !important;
+    }
 
-    .layout-spotlight { flex-direction: column; }
+    .vc-container {
+        padding: 8px !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+    }
 
+    /* Position top-right controls at the very top right */
+    .vc-top-right-controls {
+        top: 12px !important;
+        right: 12px !important;
+        position: absolute !important;
+        z-index: 999 !important;
+    }
+
+    .vc-viewport {
+        margin-top: 48px !important;
+        padding-bottom: 72px !important;
+        height: auto !important;
+        flex: 1 !important;
+    }
+
+    /* Pinned layout: main video goes on top */
+    .layout-spotlight {
+        flex-direction: column-reverse !important;
+        height: 100% !important;
+    }
+
+    .vc-hero {
+        flex: 1 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
+    /* Dynamic Alt Grid: unfocused participant cameras */
     .vc-carousel {
-        width: 100%;
-        height: auto;
-        flex-direction: column; /* Vertical listing on mobile */
-        padding-right: 0;
-        max-height: 40%;
-        gap: 8px;
+        display: grid !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: 35% !important;
+        gap: 8px !important;
+        margin-top: 8px !important;
+        padding-right: 0 !important;
+        overflow-y: auto !important;
+    }
+    
+    .vc-carousel.grid-single {
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)) !important;
+        grid-template-rows: 1fr !important;
+    }
+    
+    .vc-carousel.grid-multi {
+        grid-template-columns: repeat(2, 1fr) !important;
     }
 
     .vc-card.role-carousel {
-        width: 100%;
-        height: 80px;
+        width: 100% !important;
+        height: auto !important;
+        aspect-ratio: 16 / 9 !important;
+    }
+
+    .vc-card.role-carousel .vc-card-avatar {
+        width: 40px !important;
+        height: 40px !important;
+        aspect-ratio: 1 / 1 !important;
     }
 
     .vc-card-info {
@@ -402,23 +469,50 @@
 
     .vc-card-name { font-size: 11px; font-weight: 400; }
 
+    /* Float Controls: remove background wrappers */
+    .vc-ctrl-section.glass-controls {
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        gap: 8px !important;
+    }
+    
     .vc-controls {
-        gap: 8px;
-        padding: 8px 16px;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        bottom: 16px !important;
+        gap: 8px !important;
     }
 
+    .vc-ctrl-group {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    /* Scale Down Controls on Mobile */
     .vc-ctrl-btn {
-        width: 40px;
-        height: 40px;
+        width: 36px !important;
+        height: 36px !important;
     }
 
-    .vc-ctrl-btn svg { width: 18px; height: 18px; }
+    .vc-ctrl-btn svg { width: 16px !important; height: 16px !important; }
 
-    .vc-device-arrow { width: 20px; height: 36px; }
+    .vc-device-arrow { 
+        width: 16px !important; 
+        height: 32px !important; 
+    }
+    .vc-device-arrow svg {
+        width: 12px !important;
+        height: 12px !important;
+    }
 
-    .vc-hero { height: auto; flex: 1; }
-
-    /* Force vertical stacking for participants on mobile */
+    /* Force vertical stacking for unfocused dynamic grid */
     .vc-grid {
         grid-template-columns: 1fr !important;
         grid-template-rows: auto !important;
@@ -438,6 +532,25 @@
         width: 100% !important;
         margin: 0 !important;
     }
+}
+
+/* ─── Media/Avatar Aspect Ratio & Distortion Fixes ─── */
+.vc-card-avatar {
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+}
+
+.vc-card.role-hero .vc-card-avatar {
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+}
+
+.vc-card-video {
+    object-fit: cover !important;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 /* Chat Sidebar Size */

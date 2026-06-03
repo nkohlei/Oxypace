@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
@@ -58,6 +58,26 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [showControls, setShowControls] = useState(true);
+    const controlsTimeoutRef = useRef(null);
+
+    const resetControlsTimeout = () => {
+        if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current);
+        }
+        controlsTimeoutRef.current = setTimeout(() => {
+            if (window.innerWidth <= 768) {
+                setShowControls(false);
+            }
+        }, 3000);
+    };
+
+    const handleContainerClick = (e) => {
+        if (window.innerWidth <= 768) {
+            setShowControls(true);
+            resetControlsTimeout();
+        }
+    };
 
     const isActiveRoom = activeRoom?.channelId === channelId;
     const isConnected = isActiveRoom && connectionState === ConnectionState.Connected;
@@ -68,6 +88,18 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    useEffect(() => {
+        if (isConnected) {
+            setShowControls(true);
+            resetControlsTimeout();
+        }
+        return () => {
+            if (controlsTimeoutRef.current) {
+                clearTimeout(controlsTimeoutRef.current);
+            }
+        };
+    }, [isConnected, isMobile]);
 
     useEffect(() => {
         if (focusedIdentity && !participants.find(p => p.identity === focusedIdentity)) {
@@ -170,10 +202,13 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const activeFocusIdentity = screenSharer ? screenSharer.identity : focusedIdentity;
     const focusedParticipant = activeFocusIdentity ? participants.find(p => p.identity === activeFocusIdentity) : null;
 
-    let gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
+    const carouselItemsCount = (watchParty && watchParty.url) 
+        ? participants.length 
+        : (focusedParticipant ? participants.length - 1 : 0);
+    const carouselClass = carouselItemsCount >= 4 ? 'grid-multi' : 'grid-single';
 
     return (
-        <div className="vc-container glass-container">
+        <div className="vc-container glass-container" onClick={handleContainerClick}>
             <div className="vc-top-right-controls">
                 <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => setIsChatOpen(!isChatOpen)} title="Sohbet">
                     <MessageCircle size={18} />
@@ -210,7 +245,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px' }}>
                 {watchParty && watchParty.url ? (
                     <>
-                        <div className="vc-carousel custom-scrollbar">
+                        <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
                             {participants.map(p => renderParticipantCard(p, 'carousel'))}
                         </div>
                         <div className="vc-hero">
@@ -221,7 +256,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <div className="vc-grid">{participants.map(p => renderParticipantCard(p, 'grid'))}</div>
                 ) : (
                     <>
-                        <div className="vc-carousel custom-scrollbar">
+                        <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
                             {participants.filter(p => p.identity !== activeFocusIdentity).map(p => renderParticipantCard(p, 'carousel'))}
                         </div>
                         <div className="vc-hero">{renderParticipantCard(focusedParticipant, 'hero')}</div>
@@ -230,7 +265,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             {isConnected && (
-                <div className="vc-controls">
+                <div className={`vc-controls ${(!showControls && isMobile) ? 'controls-hidden' : ''}`}>
                     <div className="vc-ctrl-section glass-controls">
                         {/* Microphone */}
                         <div className="vc-ctrl-group">
