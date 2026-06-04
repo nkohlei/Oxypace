@@ -69,6 +69,18 @@ export const initializeSocket = (io) => {
             }
         });
 
+        // Handle disconnecting to capture rooms before they are cleared
+        socket.on('disconnecting', () => {
+            for (const roomName of socket.rooms) {
+                if (roomName.startsWith('portal:')) {
+                    const portalId = roomName.split(':')[1];
+                    const room = io.sockets.adapter.rooms.get(roomName);
+                    const onlineCount = room ? Math.max(0, room.size - 1) : 0;
+                    socket.to(roomName).emit('portal_presence_update', { portalId, onlineCount });
+                }
+            }
+        });
+
         // Handle disconnect
         socket.on('disconnect', async () => {
             if (socket.isGhost) {
@@ -163,11 +175,25 @@ export const initializeSocket = (io) => {
         socket.on('join_portal', (portalId) => {
             socket.join(`portal:${portalId}`);
             console.log(`📡 Socket ${socket.id} joined portal room: ${portalId}`);
+            
+            const room = io.sockets.adapter.rooms.get(`portal:${portalId}`);
+            const onlineCount = room ? room.size : 0;
+            io.to(`portal:${portalId}`).emit('portal_presence_update', { portalId, onlineCount });
         });
 
         socket.on('leave_portal', (portalId) => {
             socket.leave(`portal:${portalId}`);
             console.log(`📡 Socket ${socket.id} left portal room: ${portalId}`);
+            
+            const room = io.sockets.adapter.rooms.get(`portal:${portalId}`);
+            const onlineCount = room ? room.size : 0;
+            io.to(`portal:${portalId}`).emit('portal_presence_update', { portalId, onlineCount });
+        });
+
+        socket.on('get_portal_presence', (portalId) => {
+            const room = io.sockets.adapter.rooms.get(`portal:${portalId}`);
+            const onlineCount = room ? room.size : 0;
+            socket.emit('portal_presence_update', { portalId, onlineCount });
         });
 
         // Channel Rooms

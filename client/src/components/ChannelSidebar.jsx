@@ -6,6 +6,7 @@ import Badge from './Badge';
 import UserBar from './UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useVoice } from '../context/VoiceContext';
+import { useSocket } from '../context/SocketContext';
 import RoomTimer from './RoomTimer';
 import { useEffect } from 'react';
 
@@ -28,6 +29,34 @@ const ChannelSidebar = ({
     const { isMobileView } = useUI();
     const { unreadPostsByChannel, clearUnreadForChannel } = useGlobalStore();
     const { roomStartTime, activeRoom } = useVoice();
+    const { socket } = useSocket();
+    const [onlineCount, setOnlineCount] = useState(() => {
+        const total = portal?.membersCount || portal?.members?.length || 0;
+        return total > 0 ? Math.max(1, Math.floor(total * 0.12)) : 1;
+    });
+
+    useEffect(() => {
+        if (!socket || !portal?._id) return;
+
+        // Initialize state to fallback / estimate when portal changes
+        const total = portal.membersCount || portal.members?.length || 0;
+        setOnlineCount(total > 0 ? Math.max(1, Math.floor(total * 0.12)) : 1);
+
+        const handlePresenceUpdate = (data) => {
+            if (String(data.portalId) === String(portal._id)) {
+                setOnlineCount(data.onlineCount);
+            }
+        };
+
+        socket.on('portal_presence_update', handlePresenceUpdate);
+        
+        // Ask for the current room size immediately
+        socket.emit('get_portal_presence', portal._id);
+
+        return () => {
+            socket.off('portal_presence_update', handlePresenceUpdate);
+        };
+    }, [socket, portal?._id]);
 
     // Clear unread count for the active channel
     useEffect(() => {
@@ -93,12 +122,7 @@ const ChannelSidebar = ({
                         <div className="stat-dot" />
                         <div className="stat-item">
                             <div className="online-indicator-dot" />
-                            <span>
-                                {(() => {
-                                    const total = portal.membersCount || portal.members?.length || 0;
-                                    return total > 0 ? Math.max(1, Math.floor(total * 0.12)) : 0;
-                                })()} Çevrimiçi
-                            </span>
+                            <span>{onlineCount} Çevrimiçi</span>
                         </div>
                     </div>
                 </div>
