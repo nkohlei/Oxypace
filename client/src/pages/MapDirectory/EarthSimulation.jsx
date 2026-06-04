@@ -44,6 +44,39 @@ export default function EarthSimulation() {
         return resolved;
     };
 
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const touchStartY = useRef(0);
+    const touchCurrentY = useRef(0);
+
+    const handleTouchStart = (e) => {
+        touchStartY.current = e.touches[0].clientY;
+        touchCurrentY.current = e.touches[0].clientY;
+        setIsDragging(true);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        const currentY = e.touches[0].clientY;
+        touchCurrentY.current = currentY;
+        const diffY = currentY - touchStartY.current;
+        if (diffY > 0) {
+            setDragOffset(diffY);
+        } else {
+            setDragOffset(0);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (!isDragging) return;
+        setIsDragging(false);
+        const diffY = touchCurrentY.current - touchStartY.current;
+        if (diffY > 100) {
+            setSidebarOpen(false);
+        }
+        setDragOffset(0);
+    };
+
     useEffect(() => {
         setIsNativeApp(Capacitor.isNativePlatform());
     }, []);
@@ -396,7 +429,23 @@ export default function EarthSimulation() {
 
                 {/* Portal detail card — slides in from right on portal click */}
                 {selectedPortal && sidebarOpen && (
-                    <aside className="map-portal-card glass-panel">
+                    <aside 
+                        className="map-portal-card glass-panel map-portal-card-drawer open"
+                        style={{
+                            transform: (window.innerWidth <= 768 && dragOffset > 0) ? `translateY(${dragOffset}px)` : undefined,
+                            transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                    >
+                        {/* Drag Handle for Mobile Swipe-to-Dismiss */}
+                        <div 
+                            className="map-portal-drag-handle-wrapper"
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                        >
+                            <div className="map-portal-drag-handle" />
+                        </div>
+
                         {/* Close button */}
                         <button
                             onClick={() => setSidebarOpen(false)}
@@ -1049,6 +1098,10 @@ export default function EarthSimulation() {
                 }
                 .map-portal-btn-secondary:hover { background: rgba(255,255,255,0.12); }
 
+                .map-portal-drag-handle-wrapper {
+                    display: none;
+                }
+
                 /* ── Glass panel shared ── */
                 .glass-panel {
                     background: rgba(13,17,28,0.75);
@@ -1097,6 +1150,27 @@ export default function EarthSimulation() {
                     }
                     .map-portal-card-drawer.open {
                         transform: translateY(0);
+                    }
+
+                    .map-portal-drag-handle-wrapper {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        padding: 12px 0 6px;
+                        cursor: grab;
+                        touch-action: none;
+                        width: 100%;
+                        z-index: 20;
+                    }
+                    .map-portal-drag-handle {
+                        width: 40px;
+                        height: 5px;
+                        background: rgba(255, 255, 255, 0.3);
+                        border-radius: 3px;
+                        transition: background 0.2s;
+                    }
+                    .map-portal-drag-handle-wrapper:active .map-portal-drag-handle {
+                        background: rgba(255, 255, 255, 0.6);
                     }
                 }
             `}</style>
