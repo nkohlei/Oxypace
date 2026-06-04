@@ -522,6 +522,15 @@ body.dark-mode .logo-text {
         width: 38px;
         height: 38px;
     }
+
+    .guest-register-btn {
+        display: none !important;
+    }
+
+    .guest-nav-actions {
+        margin-left: auto;
+        gap: 0;
+    }
 }
 
 /* Mobile FAB removed as per user request */
