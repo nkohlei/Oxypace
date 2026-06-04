@@ -146,7 +146,10 @@ router.put('/:id/read', protect, async (req, res) => {
 // @access  Private
 router.delete('/', protect, async (req, res) => {
     try {
-        await Notification.deleteMany({ recipient: req.user.id });
+        await Notification.deleteMany({ 
+            recipient: req.user.id,
+            type: { $ne: 'portal_post' }
+        });
         res.json({ message: 'All notifications removed successfully' });
     } catch (error) {
         console.error('Delete all notifications error:', error);
