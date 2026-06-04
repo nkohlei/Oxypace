@@ -284,19 +284,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
     color: var(--text-primary);
     cursor: pointer;
-    border-radius: 50%;
     transition: all 0.2s;
     flex-shrink: 0;
+    margin-right: -8px; /* Move closer to user details */
 }
 
 .back-btn:hover {
-    background-color: var(--bg-hover);
+    background-color: transparent;
+    color: var(--primary-cyan);
 }
 
 .chat-header-content {

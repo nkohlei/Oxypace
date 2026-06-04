@@ -321,22 +321,18 @@ const Settings = () => {
                         <button 
                             className="mobile-back-btn-inline" 
                             onClick={() => navigate(-1)}
-                            style={{
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: 'none',
-                                borderRadius: '50%',
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--text-primary)',
-                                cursor: 'pointer'
-                            }}
                         >
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <line x1="19" y1="12" x2="5" y2="12"></line>
-                                <polyline points="12 19 5 12 12 5"></polyline>
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                width="24"
+                                height="24"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <polyline points="15 18 9 12 15 6" />
                             </svg>
                         </button>
                     )}
@@ -344,22 +340,18 @@ const Settings = () => {
                         <button 
                             className="mobile-back-btn-inline" 
                             onClick={() => setActiveMenu('main')}
-                            style={{
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: 'none',
-                                borderRadius: '50%',
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--text-primary)',
-                                cursor: 'pointer'
-                            }}
                         >
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <line x1="19" y1="12" x2="5" y2="12"></line>
-                                <polyline points="12 19 5 12 12 5"></polyline>
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                width="24"
+                                height="24"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <polyline points="15 18 9 12 15 6" />
                             </svg>
                         </button>
                     )}
@@ -535,8 +527,17 @@ const Settings = () => {
                                 onClick={() => setActiveMenu('main')}
                                 aria-label="Geri Dön"
                             >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                    <path d="M15 18l-6-6 6-6" />
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    width="24"
+                                    height="24"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <polyline points="15 18 9 12 15 6" />
                                 </svg>
                             </button>
                             <h1 className="gradient-title" style={{ fontSize: '2rem' }}>{title}</h1>

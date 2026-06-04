@@ -396,3 +396,59 @@ body.native-app .navbar {
   }
 }
 
+/* Modern Minimalist Back Buttons override */
+.back-btn,
+.minimal-back-btn,
+.saved-back-btn,
+.profile-card-back-btn,
+.channel-back-btn,
+.text-back-btn,
+.auth-back-btn,
+.forbidden-back-btn,
+.vc-mobile-back-btn,
+.mobile-back-btn-inline,
+.sub-header-back-circle {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    transition: all 0.2s ease !important;
+    transform: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.back-btn:hover,
+.minimal-back-btn:hover,
+.saved-back-btn:hover,
+.profile-card-back-btn:hover,
+.channel-back-btn:hover,
+.text-back-btn:hover,
+.auth-back-btn:hover,
+.forbidden-back-btn:hover,
+.vc-mobile-back-btn:hover,
+.mobile-back-btn-inline:hover,
+.sub-header-back-circle:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--primary-cyan) !important;
+    transform: none !important;
+}
+
+.back-btn:active,
+.minimal-back-btn:active,
+.saved-back-btn:active,
+.profile-card-back-btn:active,
+.channel-back-btn:active,
+.text-back-btn:active,
+.auth-back-btn:active,
+.forbidden-back-btn:active,
+.vc-mobile-back-btn:active,
+.mobile-back-btn-inline:active,
+.sub-header-back-circle:active {
+    transform: scale(0.95) !important;
+}
+

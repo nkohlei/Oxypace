@@ -122,8 +122,17 @@ const Search = () => {
                                 className="mobile-back-btn-inline" 
                                 onClick={() => navigate('/')}
                             >
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    width="24"
+                                    height="24"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <polyline points="15 18 9 12 15 6" />
                                 </svg>
                             </button>
                             <h1 className="search-title">Keşfet</h1>

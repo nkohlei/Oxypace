@@ -318,8 +318,17 @@ const Inbox = () => {
                                         }
                                     }}
                                 >
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        width="24"
+                                        height="24"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <polyline points="15 18 9 12 15 6" />
                                     </svg>
                                 </button>
                                 <h1>Mesajlar</h1>
@@ -437,12 +446,13 @@ const Inbox = () => {
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
-                                        strokeWidth="2.5"
-                                        width="20"
-                                        height="20"
+                                        strokeWidth="1.5"
+                                        width="24"
+                                        height="24"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
                                     >
-                                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                                        <polyline points="12 19 5 12 12 5"></polyline>
+                                        <polyline points="15 18 9 12 15 6" />
                                     </svg>
                                 </button>
                                 <div
