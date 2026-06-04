@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import './VoiceChatSidebar.css';
 import { X, MessageSquare, Lock, Send } from 'lucide-react';
 
-const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAdmin, isOpen }) => {
+const VoiceChatSidebar = React.memo(({ messages, onSendMessage, onClose, isRestricted, isAdmin, isOpen }) => {
     const [inputText, setInputText] = useState('');
     const endOfMessagesRef = useRef(null);
 
@@ -98,6 +98,6 @@ const VoiceChatSidebar = ({ messages, onSendMessage, onClose, isRestricted, isAd
             )}
         </div>
     );
-};
+});
 
 export default VoiceChatSidebar;

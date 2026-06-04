@@ -442,20 +442,18 @@ export const VoiceProvider = ({ children }) => {
         setRoomStartTime(null);
 
         try {
-            // Get local audio and video media
+            // Get local audio media (camera/video stream will be requested dynamically when activated)
             let localStream;
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-                    video: { width: 640, height: 480, frameRate: 24 }
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
                 });
                 localStreamRef.current = localStream;
-                console.log('[WebRTC Log] getUserMedia Success');
-                console.log('[WebRTC] Yerel medya akışı (Local Stream) başarıyla alındı', localStream);
+                console.log('[WebRTC Log] getUserMedia Success (Audio Only)');
+                console.log('[WebRTC] Yerel ses akışı (Local Audio Stream) başarıyla alındı', localStream);
                 
                 // Keep tracks disabled by default
                 localStream.getAudioTracks().forEach(t => t.enabled = false);
-                localStream.getVideoTracks().forEach(t => t.enabled = false);
             } catch (permErr) {
                 console.error('[WebRTC Log] getUserMedia Error:', permErr);
                 console.warn("Could not get local media permissions:", permErr);
@@ -808,10 +806,46 @@ export const VoiceProvider = ({ children }) => {
 
     const toggleCamera = useCallback(async () => {
         if (!localStreamRef.current) return;
-        const track = localStreamRef.current.getVideoTracks()[0];
+        let track = localStreamRef.current.getVideoTracks()[0];
+        const willCameraOn = !localState.isCameraOn;
+
+        if (willCameraOn && !track) {
+            try {
+                const videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, frameRate: 24 }
+                });
+                const videoTrack = videoStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    localStreamRef.current.addTrack(videoTrack);
+                    track = videoTrack;
+                    
+                    // Add this new video track to all active peer connections
+                    peerConnectionsRef.current.forEach(pc => {
+                        pc.addTrack(videoTrack, localStreamRef.current);
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to start camera dynamically:', err);
+                return;
+            }
+        }
+
         if (track) {
-            const willCameraOn = !localState.isCameraOn;
             track.enabled = willCameraOn;
+            
+            if (!willCameraOn) {
+                track.stop();
+                localStreamRef.current.removeTrack(track);
+                
+                peerConnectionsRef.current.forEach(pc => {
+                    const sender = pc.getSenders().find(s => s.track === track);
+                    if (sender) {
+                        pc.removeTrack(sender);
+                    }
+                });
+                
+                renegotiateAll();
+            }
 
             setLocalState(prev => {
                 const next = { ...prev, isCameraOn: willCameraOn };
@@ -827,7 +861,7 @@ export const VoiceProvider = ({ children }) => {
                 return next;
             });
         }
-    }, [localState, activeRoom, user, safeEmit]);
+    }, [localState, activeRoom, user, safeEmit, renegotiateAll]);
 
     const stopScreenShareAndRevert = useCallback(() => {
         if (screenStreamRef.current) {

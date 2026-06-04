@@ -74,6 +74,8 @@ import ScrollToTop from './components/ScrollToTop';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import SecurityQuestionsModal from './components/SecurityQuestionsModal';
 import './AppLayout.css';
+import InAppBrowser from './components/InAppBrowser';
+import { Browser } from '@capacitor/browser';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
 const MAINTENANCE_MODE = false;
@@ -89,12 +91,6 @@ const requestNativePermissions = async () => {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
-        // Request Camera & Photos
-        const cameraStatus = await Camera.checkPermissions();
-        if (cameraStatus.camera !== 'granted' || cameraStatus.photos !== 'granted') {
-            await Camera.requestPermissions();
-        }
-
         // Request Filesystem (Storage)
         const fsStatus = await Filesystem.checkPermissions();
         if (fsStatus.publicStorage !== 'granted') {
@@ -121,6 +117,25 @@ const requestNativePermissions = async () => {
             });
 
             await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            });
+
+            await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+                console.log('Push notification action performed:', notification);
+                const data = notification.notification?.data;
+                if (data) {
+                    const { type, targetId, route } = data;
+                    if (route) {
+                        window.location.href = route;
+                    } else if (type === 'message' && targetId) {
+                        window.location.href = `/inbox/${targetId}`;
+                    } else if (type === 'quote' && targetId) {
+                        window.location.href = `/post/${targetId}`;
+                    } else if (type === 'security') {
+                        window.location.href = `/settings?tab=security`;
+                    } else if (type === 'friend_request') {
+                        window.location.href = `/notifications`;
+                    }
+                }
             });
         }
 
@@ -443,6 +458,7 @@ const AppLayout = () => {
                     </div>
                 </div>
             </div>
+            <InAppBrowser />
         </div>
     );
 };
@@ -505,13 +521,11 @@ function App() {
             requestNativePermissions();
             CapacitorUpdater.notifyAppReady();
 
-            // Handle Deep Linking for Google Auth
+            // Handle Deep Linking for Google Auth and general routes
             CapacitorApp.addListener('appUrlOpen', (event) => {
                 const url = event.url;
                 if (url.includes('oxypace://auth/process')) {
                     try {
-                        // In Capacitor, custom scheme URLs might not parse cleanly with standard URL API
-                        // Fallback to string splitting if URL parsing fails
                         let token = null;
                         if (url.includes('?token=')) {
                             token = url.split('?token=')[1];
@@ -522,9 +536,40 @@ function App() {
                     } catch (e) {
                         console.error('Deep link error:', e);
                     }
+                } else if (url.startsWith('oxypace://')) {
+                    try {
+                        const path = url.replace('oxypace://', '/');
+                        if (path) {
+                            window.location.href = path;
+                        }
+                    } catch (e) {
+                        console.error('Custom scheme deep link error:', e);
+                    }
                 }
             });
         }
+
+        // Global click interceptor for external links on native platform
+        const handleExternalLinks = (e) => {
+            const anchor = e.target.closest('a');
+            if (anchor) {
+                const href = anchor.getAttribute('href');
+                if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+                    if (Capacitor.isNativePlatform()) {
+                        e.preventDefault();
+                        if (href.includes('auth/google') || href.includes('accounts.google.com')) {
+                            // Direct opening via safe native browser to avoid disallowed_useragent
+                            Browser.open({ url: href });
+                        } else {
+                            // Dispatch event to show our premium custom in-app browser
+                            const openEvent = new CustomEvent('open-inapp-browser', { detail: { url: href } });
+                            window.dispatchEvent(openEvent);
+                        }
+                    }
+                }
+            }
+        };
+        document.addEventListener('click', handleExternalLinks);
 
         // Global protection for images and videos - Disable Right Click
         const handleContextMenu = (e) => {
@@ -533,7 +578,10 @@ function App() {
             }
         };
         document.addEventListener('contextmenu', handleContextMenu);
-        return () => document.removeEventListener('contextmenu', handleContextMenu);
+        return () => {
+            document.removeEventListener('click', handleExternalLinks);
+            document.removeEventListener('contextmenu', handleContextMenu);
+        };
     }, []);
 
 
