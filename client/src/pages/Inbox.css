@@ -621,8 +621,10 @@
 /* Plus Menu Popover */
 .inbox-container .plus-menu {
     position: absolute;
-    bottom: 75px; /* Open upwards above the input */
+    bottom: 100%; /* Open upwards above the input */
+    top: auto;
     left: 20px;
+    margin-bottom: 8px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -717,10 +719,10 @@
     .chat-view {
         display: none;
         position: fixed;
-        top: 50px; /* Aligned to mobile Navbar height to remove gap */
+        top: calc(50px + env(safe-area-inset-top, 0px)); /* Aligned to mobile Navbar height to remove gap, taking safe area into account */
         left: 0;
         width: 100%;
-        height: calc(100% - 50px);
+        height: calc(100% - 50px - env(safe-area-inset-top, 0px));
         z-index: 50;
     }
 

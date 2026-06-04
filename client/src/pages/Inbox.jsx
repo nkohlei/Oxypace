@@ -26,6 +26,7 @@ const Inbox = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
     const [media, setMedia] = useState([]);
     const [replyingTo, setReplyingTo] = useState(null);
     const [showNewMessageModal, setShowNewMessageModal] = useState(false); // Modal State
@@ -33,6 +34,13 @@ const Inbox = () => {
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
+
+    const scrollToBottom = () => {
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    };
 
     useEffect(() => {
         fetchConversations();
@@ -90,7 +98,13 @@ const Inbox = () => {
 
     useEffect(() => {
         if (selectedUser) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            scrollToBottom();
+            const timer = setTimeout(scrollToBottom, 50);
+            const timerLong = setTimeout(scrollToBottom, 150);
+            return () => {
+                clearTimeout(timer);
+                clearTimeout(timerLong);
+            };
         }
     }, [selectedUser, messages, media, replyingTo]);
 
@@ -474,7 +488,7 @@ const Inbox = () => {
                                 </div>
                             </div>
 
-                            <div className="messages-container">
+                            <div className="messages-container" ref={messagesContainerRef}>
                                 {messages.map((message) => (
                                     <MessageBubble
                                         key={message._id}

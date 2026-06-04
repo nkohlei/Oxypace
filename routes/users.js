@@ -1125,4 +1125,48 @@ router.put('/portals/reorder', protect, async (req, res) => {
     }
 });
 
+// @route   POST /api/users/updatePortalOrder
+// @desc    Reorder joined portals (POST version)
+// @access  Private
+router.post('/updatePortalOrder', protect, async (req, res) => {
+    try {
+        const { orderedPortalIds } = req.body;
+        
+        if (!orderedPortalIds || !Array.isArray(orderedPortalIds)) {
+            return res.status(400).json({ message: 'Lütfen geçerli bir sıralama dizisi gönderin.' });
+        }
+
+        const [user, ownedPortals] = await Promise.all([
+            User.findById(req.user._id),
+            Portal.find({ owner: req.user._id }).select('_id')
+        ]);
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const currentJoinedStrings = user.joinedPortals.map(id => id ? id.toString() : null).filter(Boolean);
+        const ownedIds = ownedPortals.map(p => p._id.toString());
+        const allowedIds = [...new Set([...currentJoinedStrings, ...ownedIds])];
+        
+        const providedStrings = orderedPortalIds.map(id => id ? id.toString() : null).filter(Boolean);
+        const isValid = providedStrings.every(id => allowedIds.includes(id));
+
+        if (!isValid) {
+            return res.status(400).json({ message: 'Geçersiz sıralama: Veri tutarsızlığı saptandı.' });
+        }
+
+        const missingIds = currentJoinedStrings.filter(id => !providedStrings.includes(id));
+        user.joinedPortals = [...providedStrings, ...missingIds];
+        await user.save();
+
+        const populatedUser = await User.findById(req.user._id)
+            .select('-password -verificationToken')
+            .populate('joinedPortals', 'name avatar badges isVerified privacy members allowedUsers owner admins');
+
+        res.json({ message: 'Sıralama güncellendi', user: populatedUser });
+    } catch (error) {
+        console.error('Reorder portals POST error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
 export default router;

@@ -8,6 +8,8 @@ import LinkPreview from './LinkPreview';
 import { Trash2, Play, Download, ArrowRight } from 'lucide-react';
 import './MessageBubble.css';
 
+import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
+
 const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     const formatTime = (date) => {
         return new Date(date).toLocaleTimeString('tr-TR', {
@@ -18,21 +20,8 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
 
     const handleDownload = async (e, url) => {
         e.stopPropagation();
-        try {
-            const filename = url.split('/').pop() || `oxypace-file-${Date.now()}`;
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(blobUrl);
-            document.body.removeChild(a);
-        } catch (error) {
-            console.error('Download error:', error);
-        }
+        const filename = url.split('/').pop() || `oxypace-file-${Date.now()}`;
+        await nativeDownloadFile(url, filename);
     };
 
     const [showLightbox, setShowLightbox] = React.useState(false);

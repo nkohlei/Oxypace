@@ -18,6 +18,7 @@ import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
 import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2 } from 'lucide-react';
+import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
 import ReportModal from './ReportModal';
@@ -266,58 +267,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         if (!post.media) return;
 
         const url = getImageUrl(post.media);
-        try {
-            const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;
-            
-            if (Capacitor.isNativePlatform()) {
-                // Check permissions
-                let permStatus = await Filesystem.checkPermissions();
-                if (permStatus.publicStorage !== 'granted') {
-                    permStatus = await Filesystem.requestPermissions();
-                    if (permStatus.publicStorage !== 'granted') {
-                        alert('Dosya indirmek için depolama iznine ihtiyacımız var.');
-                        return;
-                    }
-                }
-
-                const response = await fetch(url);
-                const blob = await response.blob();
-                
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = async () => {
-                    const base64data = reader.result;
-                    try {
-                        await Filesystem.writeFile({
-                            path: `Oxypace/${filename}`,
-                            data: base64data,
-                            directory: Directory.Documents,
-                            recursive: true
-                        });
-                        alert('Başarıyla indirildi: Belgeler/Oxypace klasörüne kaydedildi.');
-                    } catch (err) {
-                        console.error("Capacitor write error:", err);
-                        alert("Dosya kaydedilirken hata oluştu.");
-                    }
-                };
-            } else {
-                // Web Desktop Download
-                const response = await fetch(url);
-                const blob = await response.blob();
-                const blobUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(blobUrl);
-                document.body.removeChild(a);
-            }
-            setShowMenu(false);
-        } catch (error) {
-            console.error('Download error:', error);
-            alert('İndirme başarısız oldu.');
-        }
+        const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;
+        await nativeDownloadFile(url, filename);
+        setShowMenu(false);
     };
 
 

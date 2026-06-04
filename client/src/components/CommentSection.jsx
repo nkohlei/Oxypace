@@ -10,6 +10,7 @@ import UserAvatar from './UserAvatar';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
 import { User, MoreHorizontal, Trash2, Download, X, MessageCircle, Heart, Image as ImageIcon, Send } from 'lucide-react';
+import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import './CommentSection.css';
 
 const CommentSection = ({ postId }) => {
@@ -180,21 +181,10 @@ const CommentSection = ({ postId }) => {
     };
 
     const handleDownload = async (mediaUrl, filename) => {
-        try {
-            const response = await fetch(getImageUrl(mediaUrl));
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename || 'download';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            setActiveMenuId(null);
-        } catch (error) {
-            console.error('Download failed:', error);
-        }
+        const url = getImageUrl(mediaUrl);
+        const name = filename || url.split('/').pop() || `oxypace-comment-${Date.now()}`;
+        await nativeDownloadFile(url, name);
+        setActiveMenuId(null);
     };
 
     const fetchReplies = async (commentId) => {

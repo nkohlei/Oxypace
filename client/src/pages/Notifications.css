@@ -4,6 +4,8 @@
     max-width: 700px;
     margin: 0 auto;
     box-sizing: border-box;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
 }
 
 .notifications-header {
@@ -364,6 +366,9 @@
 @media (max-width: 480px) {
     .notifications-container {
         padding: 12px;
+        padding-bottom: 80px; /* leaves room for bottom nav */
+        height: calc(100vh - 50px - env(safe-area-inset-top, 0px));
+        overflow-y: auto;
     }
     
     .notification-item {

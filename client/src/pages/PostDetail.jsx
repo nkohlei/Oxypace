@@ -21,6 +21,7 @@ import {
     ChevronLeft,
     Globe
 } from 'lucide-react';
+import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import './PostDetail.css';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from '../components/LinkPreview';
@@ -131,16 +132,12 @@ const PostDetail = () => {
         }
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         if (!post.media || post.media.length === 0) return;
         const mediaUrl = Array.isArray(post.media) ? post.media[0] : post.media;
-        const link = document.createElement('a');
-        link.href = getImageUrl(mediaUrl);
-        link.download = `oxypace_post_${postId}`;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = getImageUrl(mediaUrl);
+        const filename = url.split('/').pop() || `oxypace_post_${postId}`;
+        await nativeDownloadFile(url, filename);
         setIsMenuOpen(false);
     };
 

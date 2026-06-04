@@ -78,37 +78,31 @@ const PortalSidebar = () => {
         setOrderedPortals(newOrder);
     };
 
-    const handleDragEnd = () => {
+    const handleDragEnd = async () => {
         setDraggedIndex(null);
+        setIsSaving(true);
+        try {
+            const orderedIds = orderedPortals.map(p => p._id);
+            const response = await axios.post('/api/users/updatePortalOrder', { orderedPortalIds: orderedIds });
+            
+            if (user && response.data.user) {
+                updateUser(response.data.user);
+            } else if (user) {
+                updateUser({ 
+                    ...user, 
+                    portals: orderedPortals,
+                    joinedPortals: orderedPortals 
+                });
+            }
+        } catch (err) {
+            console.error('Failed to update portal order:', err);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const toggleReorderMode = async () => {
-        if (isReordering) {
-            setIsSaving(true);
-            try {
-                const orderedIds = orderedPortals.map(p => p._id);
-                await axios.put('/api/users/portals/reorder', { orderedPortalIds: orderedIds });
-                
-                // Update global user state locally to prevent UI revert before re-fetch
-                if (user) {
-                    const newPortals = [...orderedPortals];
-                    updateUser({ 
-                        ...user, 
-                        portals: newPortals,
-                        joinedPortals: newPortals 
-                    });
-                }
-                
-                setIsReordering(false);
-            } catch (err) {
-                console.error(err);
-                alert('Sıralama güncellenemedi.');
-            } finally {
-                setIsSaving(false);
-            }
-        } else {
-            setIsReordering(true);
-        }
+    const toggleReorderMode = () => {
+        setIsReordering(!isReordering);
     };
 
 
