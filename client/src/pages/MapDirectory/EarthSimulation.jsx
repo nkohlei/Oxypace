@@ -26,37 +26,22 @@ export default function EarthSimulation() {
     const [joining, setJoining] = useState(false);
     const [isNativeApp, setIsNativeApp] = useState(false);
 
-    const resolveAvatarUrl = (url) => {
+    const resolvePortalImage = (url) => {
         if (!url) return '';
-        let finalUrl = url;
-
-        // Check if it is double encoded (contains %3A or %2F)
+        let clean = url;
         if (url.includes('%3A') || url.includes('%2F')) {
             try {
-                finalUrl = decodeURIComponent(url);
-                if (finalUrl.includes('%3A') || finalUrl.includes('%2F')) {
-                    finalUrl = decodeURIComponent(finalUrl);
+                clean = decodeURIComponent(url);
+                if (clean.includes('%3A') || clean.includes('%2F')) {
+                    clean = decodeURIComponent(clean);
                 }
             } catch (e) {
-                console.error('Error decoding avatar URL:', e);
+                console.error('Error decoding portal image URL:', e);
             }
         }
-
-        // If it does not start with http/https, prepend the API URL
-        if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-            const apiBase = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-            const cleanApiBase = apiBase.replace(/\/$/, '');
-            const cleanPath = finalUrl.startsWith('/') ? finalUrl : `/${finalUrl}`;
-            finalUrl = `${cleanApiBase}${cleanPath}`;
-        }
-
-        // Ensure HTTPS protocol
-        if (finalUrl.startsWith('http://')) {
-            finalUrl = finalUrl.replace('http://', 'https://');
-        }
-
-        console.log('[Avatar URL Resolution]:', finalUrl);
-        return finalUrl;
+        const resolved = getImageUrl(clean);
+        console.log('[Portal Image Resolution]:', resolved);
+        return resolved;
     };
 
     useEffect(() => {
@@ -440,7 +425,7 @@ export default function EarthSimulation() {
                                 <div className="map-portal-card-banner">
                                     {portalDetail.banner ? (
                                         <img 
-                                            src={portalDetail.banner} 
+                                            src={resolvePortalImage(portalDetail.banner)} 
                                             alt="" 
                                             className="map-portal-banner-img" 
                                             onError={(e) => { 
@@ -463,7 +448,7 @@ export default function EarthSimulation() {
                                     <div className="map-portal-card-avatar-wrap">
                                         {portalDetail.avatar ? (
                                             <img 
-                                                src={resolveAvatarUrl(portalDetail.avatar)} 
+                                                src={resolvePortalImage(portalDetail.avatar)} 
                                                 alt={portalDetail.name} 
                                                 className="map-portal-card-avatar" 
                                                 onError={(e) => { 
@@ -518,7 +503,7 @@ export default function EarthSimulation() {
                                     <div className="map-portal-owner-row">
                                         {portalDetail.owner.profile?.avatar ? (
                                             <img 
-                                                src={resolveAvatarUrl(portalDetail.owner.profile.avatar)} 
+                                                src={resolvePortalImage(portalDetail.owner.profile.avatar)} 
                                                 alt="" 
                                                 className="map-portal-owner-avatar" 
                                                 onError={(e) => { 

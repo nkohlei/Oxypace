@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback } from 'react';
 import Globe from 'react-globe.gl';
 import * as THREE from 'three';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearch, onGlobeClick }, ref) => {
     const globeRef = useRef();
@@ -465,21 +466,10 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                             }
                         }
 
-                        // If it does not start with http/https, prepend the API URL
-                        if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-                            const apiBase = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-                            const cleanApiBase = apiBase.replace(/\/$/, '');
-                            const cleanPath = finalUrl.startsWith('/') ? finalUrl : `/${finalUrl}`;
-                            finalUrl = `${cleanApiBase}${cleanPath}`;
-                        }
-
-                        // Ensure HTTPS protocol
-                        if (finalUrl.startsWith('http://')) {
-                            finalUrl = finalUrl.replace('http://', 'https://');
-                        }
-
-                        console.log('[Map Marker Avatar URL Resolution]:', finalUrl);
-                        cleanUrl = finalUrl;
+                        // Use getImageUrl to resolve standard web proxy path (/r2-media)
+                        const resolved = getImageUrl(finalUrl);
+                        console.log('[Map Marker Avatar URL Resolution]:', resolved);
+                        cleanUrl = resolved;
                     }
 
                     el.innerHTML = `
