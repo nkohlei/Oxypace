@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
@@ -96,7 +96,7 @@ const Inbox = () => {
         }
     }, [socket, selectedUser, user]);
 
-    React.useLayoutEffect(() => {
+    useLayoutEffect(() => {
         if (selectedUser && messages.length > 0) {
             if (messagesContainerRef.current) {
                 messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
