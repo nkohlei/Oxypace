@@ -452,3 +452,17 @@ body.native-app .navbar {
     transform: scale(0.95) !important;
 }
 
+/* Kökten Çözüm: Arama ve Mesaj inputlarındaki beyaz outline/border sızıntısını ve gölgesini engelleme */
+input,
+input:focus,
+input:active,
+input:focus-visible,
+input:hover {
+    outline: none !important;
+    outline-width: 0 !important;
+    border: none !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+}
+
+
