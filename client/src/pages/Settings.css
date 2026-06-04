@@ -1173,11 +1173,12 @@ input:checked+.slider::before {
 
 @media (max-width: 768px) {
     .glass-redesign .discord-main-content {
-        padding-top: 48px !important;
+        padding-top: 0 !important;
+        margin-top: 0 !important;
     }
     
     .settings-page-wrapper .info-page-header {
-        padding: 4px 12px 0 12px !important;
+        padding: 15px 12px 0 12px !important;
         margin-top: 0 !important;
         margin-bottom: 2px !important;
     }
