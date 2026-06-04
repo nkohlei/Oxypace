@@ -96,6 +96,14 @@ const Inbox = () => {
         }
     }, [socket, selectedUser, user]);
 
+    React.useLayoutEffect(() => {
+        if (selectedUser && messages.length > 0) {
+            if (messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+        }
+    }, [selectedUser, messages.length]);
+
     useEffect(() => {
         if (selectedUser) {
             scrollToBottom();

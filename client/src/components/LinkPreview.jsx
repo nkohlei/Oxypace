@@ -40,6 +40,20 @@ const LinkPreview = ({ url }) => {
         }
     }, [url]);
 
+    useEffect(() => {
+        if (data && data.type === 'tweet') {
+            if (!window.twttr) {
+                const script = document.createElement('script');
+                script.setAttribute('src', 'https://platform.twitter.com/widgets.js');
+                script.setAttribute('async', 'true');
+                script.setAttribute('charset', 'utf-8');
+                document.head.appendChild(script);
+            } else if (window.twttr.widgets) {
+                window.twttr.widgets.load();
+            }
+        }
+    }, [data]);
+
     if (loading) {
         return (
             <div className="link-preview-container loading">

@@ -1,5 +1,9 @@
 /* ===================== Auth Page Layout ===================== */
 .auth-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100% !important;
     min-height: 100vh !important;
     min-height: 100dvh !important;
     width: 100% !important;
@@ -12,8 +16,7 @@
     background-position: center !important;
     background-repeat: no-repeat !important;
     background-color: transparent !important;
-    position: relative !important;
-    z-index: 1 !important;
+    z-index: 9999 !important;
     overflow: hidden;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */

@@ -101,6 +101,40 @@ const PortalSidebar = () => {
         }
     };
 
+    const handleTouchStart = (e, index) => {
+        if (!isReordering) return;
+        setDraggedIndex(index);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isReordering || draggedIndex === null) return;
+        
+        const touch = e.touches[0];
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!element) return;
+        
+        const sidebarItem = element.closest('.sidebar-item');
+        if (!sidebarItem) return;
+        
+        const items = Array.from(document.querySelectorAll('.portals-scroll-area .sidebar-item'));
+        const targetIndex = items.indexOf(sidebarItem);
+        
+        if (targetIndex !== -1 && targetIndex !== draggedIndex) {
+            const newOrder = [...orderedPortals];
+            const draggedItem = newOrder[draggedIndex];
+            newOrder.splice(draggedIndex, 1);
+            newOrder.splice(targetIndex, 0, draggedItem);
+            setDraggedIndex(targetIndex);
+            setOrderedPortals(newOrder);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (draggedIndex !== null) {
+            handleDragEnd();
+        }
+    };
+
     const toggleReorderMode = () => {
         setIsReordering(!isReordering);
     };
@@ -150,6 +184,9 @@ const PortalSidebar = () => {
                                 onDragStart={(e) => handleDragStart(e, index)}
                                 onDragOver={(e) => handleDragOver(e, index)}
                                 onDragEnd={handleDragEnd}
+                                onTouchStart={(e) => handleTouchStart(e, index)}
+                                onTouchMove={handleTouchMove}
+                                onTouchEnd={handleTouchEnd}
                             >
                                 {/* Discord-style left indicator bar - Edge Aligned */}
                                 <div className="sidebar-indicator" />

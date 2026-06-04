@@ -742,7 +742,8 @@
 
     .inbox-header,
     .chat-header {
-        height: 56px;
+        height: calc(56px + env(safe-area-inset-top, 0px));
+        padding-top: env(safe-area-inset-top, 0px);
     }
 
 }

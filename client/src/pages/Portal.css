@@ -196,10 +196,11 @@
     }
 
     .discord-layout .plus-menu {
-        top: 60px;
-        bottom: auto;
+        bottom: 100%;
+        top: auto;
         left: 16px;
         z-index: 101;
+        margin-bottom: 8px;
     }
 }
 
@@ -230,9 +231,10 @@
 /* Plus Menu Popover */
 .discord-layout .plus-menu {
     position: absolute;
-    top: 100%;
-    bottom: auto;
+    bottom: 100%;
+    top: auto;
     left: 0;
+    margin-bottom: 8px;
     width: 150px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
