@@ -717,10 +717,10 @@
     .chat-view {
         display: none;
         position: fixed;
-        top: 60px; /* Below standard Navbar height */
+        top: 50px; /* Aligned to mobile Navbar height to remove gap */
         left: 0;
         width: 100%;
-        height: calc(100% - 60px);
+        height: calc(100% - 50px);
         z-index: 50;
     }
 

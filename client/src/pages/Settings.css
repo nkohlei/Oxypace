@@ -1173,14 +1173,16 @@ input:checked+.slider::before {
 
 @media (max-width: 768px) {
     .glass-redesign .discord-main-content {
-        padding-top: 64px;
+        padding-top: 50px;
     }
     
     .settings-page-wrapper .info-page-header {
-        padding: 20px 16px 0 16px !important;
+        padding: 8px 16px 0 16px !important;
+        margin-top: 0 !important;
     }
     
     .settings-page-wrapper .gradient-title {
         font-size: 1.5rem !important;
+        margin-top: 0 !important;
     }
 }
