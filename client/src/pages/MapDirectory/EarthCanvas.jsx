@@ -451,37 +451,41 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                     let cleanUrl = '';
                     if (d.avatar) {
                         const imgUrl = d.avatar;
-                        // Double encoding & URL protocol fixing
-                        if (imgUrl.startsWith('http')) {
-                            let decoded = imgUrl;
+                        let finalUrl = imgUrl;
+
+                        // Check if it is double encoded (contains %3A or %2F)
+                        if (imgUrl.includes('%3A') || imgUrl.includes('%2F')) {
                             try {
-                                decoded = decodeURIComponent(imgUrl);
-                                if (decoded.includes('%')) {
-                                    decoded = decodeURIComponent(decoded);
+                                finalUrl = decodeURIComponent(imgUrl);
+                                if (finalUrl.includes('%3A') || finalUrl.includes('%2F')) {
+                                    finalUrl = decodeURIComponent(finalUrl);
                                 }
                             } catch (e) {
-                                console.error('Error decoding image URL:', e);
+                                console.error('Error decoding avatar URL:', e);
                             }
-                            cleanUrl = decoded;
-                        } else {
-                            // If relative (e.g. avatar-...), prepend API URL
-                            const apiBase = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
-                            // Normalize API base to not have trailing slash
-                            const cleanApiBase = apiBase.replace(/\/$/, '');
-                            const relativePath = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
-                            cleanUrl = `${cleanApiBase}${relativePath}`;
                         }
 
-                        // Ensure cleanUrl has correct HTTPS protocol if it's an absolute URL
-                        if (cleanUrl.startsWith('http://')) {
-                            cleanUrl = cleanUrl.replace('http://', 'https://');
+                        // If it does not start with http/https, prepend the API URL
+                        if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+                            const apiBase = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+                            const cleanApiBase = apiBase.replace(/\/$/, '');
+                            const cleanPath = finalUrl.startsWith('/') ? finalUrl : `/${finalUrl}`;
+                            finalUrl = `${cleanApiBase}${cleanPath}`;
                         }
+
+                        // Ensure HTTPS protocol
+                        if (finalUrl.startsWith('http://')) {
+                            finalUrl = finalUrl.replace('http://', 'https://');
+                        }
+
+                        console.log('[Map Marker Avatar URL Resolution]:', finalUrl);
+                        cleanUrl = finalUrl;
                     }
 
                     el.innerHTML = `
                         <div class="${circleClass}" data-name="${d.name[0].toUpperCase()}">
                             ${cleanUrl
-                            ? `<img src="${cleanUrl}" alt="${d.name}" onerror="this.style.display='none';this.parentNode.classList.add('no-avatar');" />`
+                            ? `<img src="${cleanUrl}" alt="${d.name}" onerror="this.onerror=null;this.src='/assets/default-avatar.png';" />`
                             : `<span class="portal-letter">${d.name[0].toUpperCase()}</span>`
                         }
                         </div>

@@ -26,35 +26,37 @@ export default function EarthSimulation() {
     const [joining, setJoining] = useState(false);
     const [isNativeApp, setIsNativeApp] = useState(false);
 
-    const getAbsoluteImageUrl = (path) => {
-        if (!path) return null;
-        
-        // If it starts with http/https, return it directly
-        if (path.startsWith('http://') || path.startsWith('https://')) {
-            return path;
+    const resolveAvatarUrl = (url) => {
+        if (!url) return '';
+        let finalUrl = url;
+
+        // Check if it is double encoded (contains %3A or %2F)
+        if (url.includes('%3A') || url.includes('%2F')) {
+            try {
+                finalUrl = decodeURIComponent(url);
+                if (finalUrl.includes('%3A') || finalUrl.includes('%2F')) {
+                    finalUrl = decodeURIComponent(finalUrl);
+                }
+            } catch (e) {
+                console.error('Error decoding avatar URL:', e);
+            }
         }
-        
-        // If it is a local upload path like /uploads/... or uploads/...
-        if (path.startsWith('/uploads/') || path.startsWith('uploads/')) {
-            const cleanPath = path.startsWith('/') ? path : `/${path}`;
-            const apiBase = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_BASE_URL || window.location.origin;
+
+        // If it does not start with http/https, prepend the API URL
+        if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+            const apiBase = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
             const cleanApiBase = apiBase.replace(/\/$/, '');
-            return `${cleanApiBase}${cleanPath}`;
+            const cleanPath = finalUrl.startsWith('/') ? finalUrl : `/${finalUrl}`;
+            finalUrl = `${cleanApiBase}${cleanPath}`;
         }
-        
-        // Use getImageUrl to resolve other paths
-        let url = getImageUrl(path);
-        if (!url) return null;
-        
-        if (url.startsWith('http://') || url.startsWith('https://')) {
-            return url;
+
+        // Ensure HTTPS protocol
+        if (finalUrl.startsWith('http://')) {
+            finalUrl = finalUrl.replace('http://', 'https://');
         }
-        
-        if (url.startsWith('/')) {
-            return `${window.location.origin}${url}`;
-        }
-        
-        return `${window.location.origin}/${url}`;
+
+        console.log('[Avatar URL Resolution]:', finalUrl);
+        return finalUrl;
     };
 
     useEffect(() => {
@@ -436,39 +438,42 @@ export default function EarthSimulation() {
                             <>
                                 {/* Banner */}
                                 <div className="map-portal-card-banner">
-                                    <img 
-                                        src={getAbsoluteImageUrl(portalDetail.banner) || '/assets/default-cover.png'} 
-                                        alt="" 
-                                        className="map-portal-banner-img" 
-                                        onError={(e) => { 
-                                            e.target.onerror = null;
-                                            e.target.src = '/assets/default-cover.png'; 
-                                        }}
-                                    />
+                                    {portalDetail.banner ? (
+                                        <img 
+                                            src={portalDetail.banner} 
+                                            alt="" 
+                                            className="map-portal-banner-img" 
+                                            onError={(e) => { 
+                                                e.target.onerror = null;
+                                                e.target.src = '/assets/default-cover.png'; 
+                                            }}
+                                        />
+                                    ) : (
+                                        <img 
+                                            src="/assets/default-cover.png" 
+                                            alt="" 
+                                            className="map-portal-banner-img" 
+                                        />
+                                    )}
                                     <div className="map-portal-banner-gradient" />
                                 </div>
 
                                 {/* Avatar + Name row */}
                                 <div className="map-portal-card-identity">
-                                    <div className="map-portal-card-avatar-wrap" style={{ position: 'relative', width: '52px', height: '52px' }}>
+                                    <div className="map-portal-card-avatar-wrap">
                                         {portalDetail.avatar ? (
                                             <img 
-                                                src={getAbsoluteImageUrl(portalDetail.avatar)} 
+                                                src={resolveAvatarUrl(portalDetail.avatar)} 
                                                 alt={portalDetail.name} 
                                                 className="map-portal-card-avatar" 
                                                 onError={(e) => { 
                                                     e.target.onerror = null;
-                                                    e.target.style.display = 'none'; 
-                                                    e.target.nextSibling.style.display = 'flex'; 
+                                                    e.target.src = '/assets/default-avatar.png'; 
                                                 }}
                                             />
-                                        ) : null}
-                                        <div 
-                                            className="map-portal-card-avatar-letter"
-                                            style={{ display: portalDetail.avatar ? 'none' : 'flex', position: 'absolute', inset: 0 }}
-                                        >
-                                            {(portalDetail.name || '?')[0].toUpperCase()}
-                                        </div>
+                                        ) : (
+                                            <div className="map-portal-card-avatar-letter">{portalDetail.name[0]}</div>
+                                        )}
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <h2 className="map-portal-card-title">{portalDetail.name}</h2>
@@ -511,26 +516,21 @@ export default function EarthSimulation() {
                                 {/* Owner info */}
                                 {portalDetail.owner && (
                                     <div className="map-portal-owner-row">
-                                        <div style={{ position: 'relative', width: '30px', height: '30px', flexShrink: 0 }}>
-                                            {portalDetail.owner.profile?.avatar ? (
-                                                <img 
-                                                    src={getAbsoluteImageUrl(portalDetail.owner.profile.avatar)} 
-                                                    alt="" 
-                                                    className="map-portal-owner-avatar" 
-                                                    onError={(e) => { 
-                                                        e.target.onerror = null;
-                                                        e.target.style.display = 'none'; 
-                                                        e.target.nextSibling.style.display = 'flex'; 
-                                                    }}
-                                                />
-                                            ) : null}
-                                            <div 
-                                                className="map-portal-owner-avatar map-portal-owner-letter"
-                                                style={{ display: portalDetail.owner.profile?.avatar ? 'none' : 'flex', position: 'absolute', inset: 0 }}
-                                            >
+                                        {portalDetail.owner.profile?.avatar ? (
+                                            <img 
+                                                src={resolveAvatarUrl(portalDetail.owner.profile.avatar)} 
+                                                alt="" 
+                                                className="map-portal-owner-avatar" 
+                                                onError={(e) => { 
+                                                    e.target.onerror = null;
+                                                    e.target.src = '/assets/default-avatar.png'; 
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="map-portal-owner-avatar map-portal-owner-letter">
                                                 {(portalDetail.owner.profile?.displayName || portalDetail.owner.username || '?')[0].toUpperCase()}
                                             </div>
-                                        </div>
+                                        )}
                                         <div>
                                             <span className="map-portal-owner-label">Kurucu</span>
                                             <span className="map-portal-owner-name">{portalDetail.owner.profile?.displayName || portalDetail.owner.username}</span>
