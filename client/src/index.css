@@ -465,4 +465,73 @@ input:hover {
     box-shadow: none !important;
 }
 
+/* --- Locked search input styles to prevent scoped styles clashing --- */
+.oxypace-search-input-wrapper {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 600px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 42px !important;
+}
+
+.oxypace-search-input-wrapper svg.oxypace-search-icon {
+    position: absolute !important;
+    left: 16px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 18px !important;
+    height: 18px !important;
+    color: var(--text-secondary) !important;
+    z-index: 5 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+    display: block !important;
+}
+
+.oxypace-search-input-wrapper input.oxypace-search-input {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 12px 16px 12px 46px !important;
+    background: #080c18 !important; /* Koyu mavimsi/lacivert tonu */
+    backdrop-filter: var(--glass-blur) !important;
+    -webkit-backdrop-filter: var(--glass-blur) !important;
+    border: none !important;
+    border-radius: 9999px !important; /* Capsule style */
+    color: var(--text-primary) !important;
+    font-size: 1.02rem !important;
+    box-shadow: none !important;
+    outline: none !important;
+    transition: all 0.2s !important;
+}
+
+[data-theme='light'] .oxypace-search-input-wrapper input.oxypace-search-input {
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.oxypace-search-input-wrapper input.oxypace-search-input:focus {
+    background: #0c152b !important; /* Slightly lighter on focus */
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Clear button within wrapper */
+.oxypace-search-input-wrapper .clear-btn {
+    position: absolute !important;
+    right: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background: none !important;
+    border: none !important;
+    color: var(--text-secondary) !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+    padding: 4px !important;
+    z-index: 5 !important;
+}
+
 

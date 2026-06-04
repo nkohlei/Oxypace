@@ -137,8 +137,9 @@ const Search = () => {
                             </button>
                             <h1 className="search-title">Keşfet</h1>
                         </div>
-                        <div className="search-input-wrapper">
+                        <div className="oxypace-search-input-wrapper">
                             <svg
+                                className="oxypace-search-icon"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -149,6 +150,7 @@ const Search = () => {
                             </svg>
                             <input
                                 type="text"
+                                className="oxypace-search-input"
                                 placeholder="Portal veya kişi ara..."
                                 value={query}
                                 onChange={handleInputChange}

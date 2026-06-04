@@ -350,8 +350,9 @@ const Inbox = () => {
                             </button>
                         </div>
                         <div className="search-container">
-                            <div className="search-input-wrapper">
+                            <div className="oxypace-search-input-wrapper">
                                 <svg
+                                    className="oxypace-search-icon"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
@@ -362,6 +363,7 @@ const Inbox = () => {
                                 </svg>
                                 <input
                                     type="text"
+                                    className="oxypace-search-input"
                                     placeholder="Mesajlarda ara"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
