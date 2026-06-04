@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import passport from 'passport';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import SystemSettings from '../models/SystemSettings.js';
 import BannedIP from '../models/BannedIP.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email.js';
@@ -206,7 +207,30 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         }
 
         // Save last active IP address
-        user.lastIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const prevIP = user.lastIP;
+
+        if (prevIP && prevIP !== incomingIP) {
+            try {
+                const notification = await Notification.create({
+                    recipient: user._id,
+                    type: 'security',
+                    content: 'Hesabınıza farklı bir IP adresinden giriş yapıldı.',
+                    link: '/settings',
+                });
+
+                const io = req.app.get('io');
+                if (io) {
+                    const populated = await Notification.findById(notification._id)
+                        .populate('sender', 'username profile.displayName profile.avatar');
+                    io.to(user._id.toString()).emit('newNotification', populated);
+                }
+            } catch (err) {
+                console.error('Security login notification error:', err);
+            }
+        }
+
+        user.lastIP = incomingIP;
         await user.save();
 
         // Generate token

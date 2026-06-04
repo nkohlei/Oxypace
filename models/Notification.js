@@ -19,6 +19,8 @@ const notificationSchema = new mongoose.Schema(
                 'reply',
                 'follow',
                 'follow_request',
+                'friend_request',
+                'security',
                 'system',
                 'portal_invite',
                 'message',
@@ -92,12 +94,14 @@ notificationSchema.post('save', async function (doc) {
             case 'like': body = `${senderName} gönderini beğendi.`; break;
             case 'comment': body = `${senderName} gönderine yorum yaptı.`; break;
             case 'reply': body = `${senderName} yorumuna yanıt verdi.`; break;
-            case 'follow_request': body = `${senderName} seninle tanışmak istiyor.`; break;
+            case 'follow_request':
+            case 'friend_request': body = `${senderName} seninle tanışmak istiyor.`; break;
             case 'friend_connected': body = `${senderName} ile artık arkadaşsınız!`; break;
             case 'portal_post': body = `Portalında yeni bir paylaşım var.`; break;
             case 'message': body = `${senderName} sana bir mesaj gönderdi.`; break;
             case 'portal_invite': body = `${senderName} seni bir portala davet etti.`; break;
             case 'quote': body = `${senderName} gönderini alıntıladı.`; break;
+            case 'security': body = `Hesabınıza farklı bir cihaz/IP üzerinden giriş yapıldı.`; break;
         }
 
         // Dynamically import push service to prevent circular dependencies

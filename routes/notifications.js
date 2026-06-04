@@ -141,6 +141,19 @@ router.put('/:id/read', protect, async (req, res) => {
     }
 });
 
+// @route   DELETE /api/notifications
+// @desc    Delete all user notifications
+// @access  Private
+router.delete('/', protect, async (req, res) => {
+    try {
+        await Notification.deleteMany({ recipient: req.user.id });
+        res.json({ message: 'All notifications removed successfully' });
+    } catch (error) {
+        console.error('Delete all notifications error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // @route   DELETE /api/notifications/:id
 // @desc    Delete a notification
 // @access  Private

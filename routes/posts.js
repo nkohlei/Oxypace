@@ -185,12 +185,20 @@ router.post(
                     if (originalPost && originalPost.author && originalPost.author._id.toString() !== req.user._id.toString()) {
                         const commentsEnabled = originalPost.author.settings?.notifications?.comments !== false;
                         if (commentsEnabled) {
-                            await Notification.create({
+                            const newNotif = await Notification.create({
                                 recipient: originalPost.author._id,
                                 sender: req.user._id,
                                 type: 'quote',
                                 post: post._id,
                             });
+                            const io = req.app.get('io');
+                            if (io) {
+                                const populatedNotif = await Notification.findById(newNotif._id)
+                                    .populate('sender', 'username profile.displayName profile.avatar verificationBadge')
+                                    .populate('post', 'content media')
+                                    .populate('comment', 'content');
+                                io.to(originalPost.author._id.toString()).emit('newNotification', populatedNotif);
+                            }
                         }
                     }
                 } catch (err) {

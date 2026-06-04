@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
-import SubHeader from '../components/SubHeader';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -15,14 +14,18 @@ const Notifications = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
+    const [handlingRequests, setHandlingRequests] = useState({}); // { [notifId]: 'accept' | 'decline' }
     const { socket } = useSocket();
 
     const handleAccept = async (e, senderId, notifId) => {
         e.preventDefault();
+        e.stopPropagation();
+        if (handlingRequests[notifId]) return;
+        setHandlingRequests((prev) => ({ ...prev, [notifId]: 'accept' }));
         try {
             await axios.post(`/api/users/follow/accept/${senderId}`);
 
-            // Immediately transform this notification to "Friend Connected"
+            // Immediately transform this notification to "friend_connected"
             setNotifications((prev) =>
                 prev.map((n) => {
                     if (n._id === notifId) {
@@ -31,7 +34,6 @@ const Notifications = () => {
                     return n;
                 })
             );
-            // ... rest of logic ...
             const updatedRequests = currentUser.followRequests.filter((id) => id !== senderId);
             updateUser({
                 ...currentUser,
@@ -39,11 +41,20 @@ const Notifications = () => {
             });
         } catch (error) {
             console.error('Accept error:', error);
+        } finally {
+            setHandlingRequests((prev) => {
+                const copy = { ...prev };
+                delete copy[notifId];
+                return copy;
+            });
         }
     };
 
     const handleDecline = async (e, senderId, notifId) => {
         e.preventDefault();
+        e.stopPropagation();
+        if (handlingRequests[notifId]) return;
+        setHandlingRequests((prev) => ({ ...prev, [notifId]: 'decline' }));
         try {
             await axios.post(`/api/users/follow/decline/${senderId}`);
 
@@ -60,17 +71,34 @@ const Notifications = () => {
             updateUser({ ...currentUser, followRequests: updatedRequests });
         } catch (error) {
             console.error('Decline error:', error);
+        } finally {
+            setHandlingRequests((prev) => {
+                const copy = { ...prev };
+                delete copy[notifId];
+                return copy;
+            });
         }
     };
 
     const handleDelete = async (e, id) => {
-        e.preventDefault(); // Prevent navigation
-        e.stopPropagation(); // Stop propagation
+        e.preventDefault();
+        e.stopPropagation();
         try {
             await axios.delete(`/api/notifications/${id}`);
             setNotifications((prev) => prev.filter((n) => n._id !== id));
         } catch (error) {
             console.error('Delete notification error:', error);
+        }
+    };
+
+    const handleDeleteAllNotifications = async () => {
+        const confirmDelete = window.confirm("Tüm bildirimlerinizi kalıcı olarak silmek istediğinizden emin misiniz?");
+        if (!confirmDelete) return;
+        try {
+            await axios.delete('/api/notifications');
+            setNotifications([]);
+        } catch (err) {
+            console.error('Tüm bildirimleri silme hatası:', err);
         }
     };
 
@@ -95,10 +123,7 @@ const Notifications = () => {
             const response = await axios.get('/api/notifications');
             setNotifications(response.data.notifications);
 
-            // Auto mark as read when page loads (User is viewing)
             if (response.data.notifications.some((n) => !n.read)) {
-                // We call the API to mark read, and client state updates via handleMarkAllRead or we can just do it silently here?
-                // handleMarkAllRead updates state too.
                 handleMarkAllRead();
             }
         } catch (err) {
@@ -153,10 +178,10 @@ const Notifications = () => {
             return notif.type === 'comment' || notif.type === 'reply' || notif.type === 'quote';
         }
         if (activeFilter === 'friends') {
-            return notif.type === 'follow' || notif.type === 'follow_request' || notif.type === 'friend_connected' || notif.type === 'follow_request_handled';
+            return notif.type === 'follow' || notif.type === 'follow_request' || notif.type === 'friend_request' || notif.type === 'friend_connected' || notif.type === 'follow_request_handled';
         }
         if (activeFilter === 'system') {
-            return notif.type === 'system';
+            return notif.type === 'system' || notif.type === 'security';
         }
         return true;
     });
@@ -166,38 +191,20 @@ const Notifications = () => {
             <Navbar />
             <main className="app-content">
                 <div className="notifications-container">
-                    {/* Desktop Back Button - Hide on mobile */}
-                    <div className="notif-desktop-back-wrapper desktop-only">
-                        <button className="notif-desktop-back" onClick={() => navigate(-1)}>
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                width="24"
-                                height="24"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                <polyline points="15 18 9 12 15 6" />
-                            </svg>
-                            <span>Geri</span>
-                        </button>
-                    </div>
-
                     <div className="notifications-header">
                         <div className="title-with-back">
                             <button 
-                                className="mobile-back-btn-inline" 
+                                className="back-btn-minimalist" 
                                 onClick={() => navigate(-1)}
+                                aria-label="Geri"
                             >
                                 <svg
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    width="24"
-                                    height="24"
+                                    strokeWidth="2"
+                                    width="20"
+                                    height="20"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                 >
@@ -206,11 +213,18 @@ const Notifications = () => {
                             </button>
                             <h1>Bildirimler</h1>
                         </div>
-                        {notifications.some((n) => !n.read) && (
-                            <button className="mark-read-btn" onClick={handleMarkAllRead}>
-                                Tümünü Okundu İşaretle
-                            </button>
-                        )}
+                        <div className="notifications-header-actions">
+                            {notifications.some((n) => !n.read) && (
+                                <button className="mark-read-btn" onClick={handleMarkAllRead}>
+                                    Tümünü Okundu İşaretle
+                                </button>
+                            )}
+                            {notifications.length > 0 && (
+                                <button className="clear-all-btn" onClick={handleDeleteAllNotifications}>
+                                    Tümünü Temizle
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Filter Tabs */}
@@ -244,30 +258,34 @@ const Notifications = () => {
                     <div className="notifications-list">
                         {filteredNotifications.length > 0 ? (
                             filteredNotifications.map((notif) => {
-                                // Guard clause: if no sender, skip rendering to prevent crash
-                                if (!notif.sender) return null;
+                                // Guard clause: if no sender and not security/system type, skip rendering to prevent crash
+                                if (!notif.sender && notif.type !== 'security' && notif.type !== 'system') return null;
 
                                 return (
                                     <Link
                                         to={
-                                            notif.type === 'message'
-                                                ? `/inbox?user=${notif.sender.username}`
-                                                : notif.post
-                                                    ? `/post/${notif.post._id}`
-                                                    : `/profile/${notif.sender.username}`
+                                            notif.type === 'security'
+                                                ? '/settings'
+                                                : notif.type === 'message'
+                                                    ? `/inbox?user=${notif.sender?.username}`
+                                                    : notif.post
+                                                        ? `/post/${notif.post._id || notif.post}`
+                                                        : notif.sender
+                                                            ? `/profile/${notif.sender.username}`
+                                                            : '#'
                                         }
                                         key={notif._id}
                                         className={`notification-item ${!notif.read ? 'unread' : ''}`}
                                     >
                                         <div className="notif-avatar">
-                                            {notif.sender.profile?.avatar ? (
+                                            {notif.sender?.profile?.avatar ? (
                                                 <img
                                                     src={getImageUrl(notif.sender.profile.avatar)}
                                                     alt={notif.sender.username}
                                                 />
                                             ) : (
                                                 <div className="notif-avatar-placeholder">
-                                                    {notif.sender.username
+                                                    {notif.sender?.username
                                                         ? notif.sender.username[0].toUpperCase()
                                                         : '?'}
                                                 </div>
@@ -278,39 +296,76 @@ const Notifications = () => {
                                                 {notif.type === 'reply' && '↩️'}
                                                 {notif.type === 'quote' && '💬'}
                                                 {notif.type === 'follow' && '👤'}
-                                                {notif.type === 'follow_request' && '👤'}
+                                                {(notif.type === 'follow_request' || notif.type === 'friend_request') && '👤'}
                                                 {notif.type === 'message' && '✉️'}
                                                 {notif.type === 'portal_invite' && '🏰'}
                                                 {notif.type === 'system' && '📢'}
+                                                {notif.type === 'security' && '🛡️'}
                                             </div>
                                         </div>
 
                                         <div className="notif-content">
-                                            <p>
-                                                <span className="notif-user">
-                                                    {notif.sender.username}
+                                            <div className="notif-text-row">
+                                                <div className="notif-text-left">
+                                                    <p className="notif-message-text">
+                                                        {notif.type !== 'security' && notif.type !== 'system' && notif.sender && (
+                                                            <span className="notif-user">
+                                                                {notif.sender.username}
+                                                            </span>
+                                                        )}
+                                                        {notif.type === 'like' && ' gönderini beğendi.'}
+                                                        {notif.type === 'comment' && ' gönderine yorum yaptı: '}
+                                                        {notif.type === 'reply' && ' yorumuna yanıt verdi: '}
+                                                        {notif.type === 'quote' && ' gönderini alıntıladı.'}
+                                                        {notif.type === 'follow' && ' seni takip etmeye başladı.'}
+                                                        {(notif.type === 'follow_request' || notif.type === 'friend_request') && ' seninle tanışmak istiyor.'}
+                                                        {notif.type === 'friend_connected' && ' ile artık arkadaşsınız! 🤝'}
+                                                        {notif.type === 'follow_request_handled' && ' tanışma isteği reddedildi.'}
+                                                        {notif.type === 'message' && ' sana bir mesaj gönderdi.'}
+                                                        {notif.type === 'portal_invite' && ' seni bir portala davet etti.'}
+                                                        {(notif.type === 'system' || notif.type === 'security') && (
+                                                            <span>{notif.content}</span>
+                                                        )}
+                                                    </p>
+
+                                                    {/* Follow Request Actions inline & compact */}
+                                                    {(notif.type === 'follow_request' || notif.type === 'friend_request') && (
+                                                        <div className="notif-actions">
+                                                            <button
+                                                                className="notif-btn-primary compact"
+                                                                disabled={handlingRequests[notif._id]}
+                                                                onClick={(e) =>
+                                                                    handleAccept(
+                                                                        e,
+                                                                        notif.sender._id,
+                                                                        notif._id
+                                                                    )
+                                                                }
+                                                            >
+                                                                {handlingRequests[notif._id] === 'accept' ? '...' : 'Onayla'}
+                                                            </button>
+                                                            <button
+                                                                className="notif-btn-secondary compact"
+                                                                disabled={handlingRequests[notif._id]}
+                                                                onClick={(e) =>
+                                                                    handleDecline(
+                                                                        e,
+                                                                        notif.sender._id,
+                                                                        notif._id
+                                                                    )
+                                                                }
+                                                            >
+                                                                {handlingRequests[notif._id] === 'decline' ? '...' : 'Reddet'}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <span className="notif-time-new">
+                                                    {formatDate(notif.createdAt)}
                                                 </span>
-                                                {notif.type === 'like' && ' gönderini beğendi.'}
-                                                {notif.type === 'comment' &&
-                                                    ' gönderine yorum yaptı: '}
-                                                {notif.type === 'reply' &&
-                                                    ' yorumuna yanıt verdi: '}
-                                                {notif.type === 'quote' &&
-                                                    ' gönderini alıntıladı.'}
-                                                {notif.type === 'follow' &&
-                                                    ' seni takip etmeye başladı.'}
-                                                {notif.type === 'follow_request' &&
-                                                    ' seninle tanışmak istiyor.'}
-                                                {notif.type === 'friend_connected' &&
-                                                    ' ile artık arkadaşsınız! 🤝'}
-                                                {notif.type === 'message' &&
-                                                    ' sana bir mesaj gönderdi.'}
-                                                {notif.type === 'portal_invite' &&
-                                                    ' seni bir portala davet etti.'}
-                                                {notif.type === 'system' && (
-                                                    <span>{notif.content}</span>
-                                                )}
-                                            </p>
+                                            </div>
+
                                             {(notif.type === 'comment' || notif.type === 'reply') &&
                                                 notif.comment && (
                                                     <p className="notif-text-preview">
@@ -322,40 +377,6 @@ const Notifications = () => {
                                                     "{notif.post.content}"
                                                 </p>
                                             )}
-
-                                            {/* Follow Request Actions - Trust the notification type, but hide if we know it's handled */}
-                                            {notif.type === 'follow_request' && (
-                                                <div className="notif-actions">
-                                                    <button
-                                                        className="notif-btn-primary"
-                                                        onClick={(e) =>
-                                                            handleAccept(
-                                                                e,
-                                                                notif.sender._id,
-                                                                notif._id
-                                                            )
-                                                        }
-                                                    >
-                                                        Onayla
-                                                    </button>
-                                                    <button
-                                                        className="notif-btn-secondary"
-                                                        onClick={(e) =>
-                                                            handleDecline(
-                                                                e,
-                                                                notif.sender._id,
-                                                                notif._id
-                                                            )
-                                                        }
-                                                    >
-                                                        Reddet
-                                                    </button>
-                                                </div>
-                                            )}
-
-                                            <span className="notif-time">
-                                                {formatDate(notif.createdAt)}
-                                            </span>
                                         </div>
 
                                         {notif.post && notif.post.media && (
