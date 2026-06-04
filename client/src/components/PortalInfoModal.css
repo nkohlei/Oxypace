@@ -181,12 +181,28 @@
     overflow-y: auto;
 }
 
+.bottom-sheet-handle-wrapper {
+    width: 100%;
+    padding: 12px 0 6px;
+    cursor: grab;
+    touch-action: none; /* Enforce touch-action none for drag area on mobile */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.bottom-sheet-handle-wrapper:active {
+    cursor: grabbing;
+}
 .bottom-sheet-handle {
     width: 40px;
     height: 4px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 2px;
-    margin: 12px auto;
+    margin: 0 auto;
+    transition: background 0.2s;
+}
+.bottom-sheet-handle-wrapper:active .bottom-sheet-handle {
+    background: rgba(255, 255, 255, 0.5);
 }
 
 @keyframes slideUp {

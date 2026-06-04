@@ -1,11 +1,44 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Users, Info, Calendar, ShieldCheck, Globe } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
 import './PortalInfoModal.css';
 
 const PortalInfoModal = ({ portal, onClose, isMobile }) => {
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const touchStartY = useRef(0);
+    const touchCurrentY = useRef(0);
+
     if (!portal) return null;
+
+    const handleTouchStart = (e) => {
+        touchStartY.current = e.touches[0].clientY;
+        touchCurrentY.current = e.touches[0].clientY;
+        setIsDragging(true);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        const currentY = e.touches[0].clientY;
+        touchCurrentY.current = currentY;
+        const diffY = currentY - touchStartY.current;
+        if (diffY > 0) {
+            setDragOffset(diffY);
+        } else {
+            setDragOffset(0);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (!isDragging) return;
+        setIsDragging(false);
+        const diffY = touchCurrentY.current - touchStartY.current;
+        if (diffY > 100) {
+            onClose();
+        }
+        setDragOffset(0);
+    };
 
     const formattedDate = new Date(portal.createdAt).toLocaleDateString('tr-TR', {
         year: 'numeric',
@@ -75,8 +108,22 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
     if (isMobile) {
         return (
             <div className="bottom-sheet-overlay" onClick={onClose}>
-                <div className="bottom-sheet-content" onClick={e => e.stopPropagation()}>
-                    <div className="bottom-sheet-handle" />
+                <div 
+                    className="bottom-sheet-content" 
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                >
+                    <div 
+                        className="bottom-sheet-handle-wrapper"
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        <div className="bottom-sheet-handle" />
+                    </div>
                     {content}
                 </div>
             </div>
