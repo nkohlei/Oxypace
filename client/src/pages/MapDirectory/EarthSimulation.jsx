@@ -6,6 +6,7 @@ import SubHeader from '../../components/SubHeader';
 import SEO from '../../components/SEO';
 import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
+import { getImageUrl } from '../../utils/imageUtils';
 
 export default function EarthSimulation() {
     const earthCanvasRef = useRef(null);
@@ -404,22 +405,32 @@ export default function EarthSimulation() {
                             <>
                                 {/* Banner */}
                                 <div className="map-portal-card-banner">
-                                    {portalDetail.banner ? (
-                                        <img src={portalDetail.banner} alt="" className="map-portal-banner-img" />
-                                    ) : (
-                                        <div className="map-portal-banner-fallback" />
-                                    )}
+                                    <img 
+                                        src={getImageUrl(portalDetail.banner) || '/assets/default-cover.png'} 
+                                        alt="" 
+                                        className="map-portal-banner-img" 
+                                        onError={(e) => { e.target.src = '/assets/default-cover.png'; }}
+                                    />
                                     <div className="map-portal-banner-gradient" />
                                 </div>
 
                                 {/* Avatar + Name row */}
                                 <div className="map-portal-card-identity">
-                                    <div className="map-portal-card-avatar-wrap">
+                                    <div className="map-portal-card-avatar-wrap" style={{ position: 'relative', width: '52px', height: '52px' }}>
                                         {portalDetail.avatar ? (
-                                            <img src={portalDetail.avatar} alt={portalDetail.name} className="map-portal-card-avatar" />
-                                        ) : (
-                                            <div className="map-portal-card-avatar-letter">{portalDetail.name[0]}</div>
-                                        )}
+                                            <img 
+                                                src={getImageUrl(portalDetail.avatar)} 
+                                                alt={portalDetail.name} 
+                                                className="map-portal-card-avatar" 
+                                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                            />
+                                        ) : null}
+                                        <div 
+                                            className="map-portal-card-avatar-letter"
+                                            style={{ display: portalDetail.avatar ? 'none' : 'flex', position: 'absolute', inset: 0 }}
+                                        >
+                                            {(portalDetail.name || '?')[0].toUpperCase()}
+                                        </div>
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <h2 className="map-portal-card-title">{portalDetail.name}</h2>
@@ -462,13 +473,22 @@ export default function EarthSimulation() {
                                 {/* Owner info */}
                                 {portalDetail.owner && (
                                     <div className="map-portal-owner-row">
-                                        {portalDetail.owner.profile?.avatar ? (
-                                            <img src={portalDetail.owner.profile.avatar} alt="" className="map-portal-owner-avatar" />
-                                        ) : (
-                                            <div className="map-portal-owner-avatar map-portal-owner-letter">
+                                        <div style={{ position: 'relative', width: '30px', height: '30px', flexShrink: 0 }}>
+                                            {portalDetail.owner.profile?.avatar ? (
+                                                <img 
+                                                    src={getImageUrl(portalDetail.owner.profile.avatar)} 
+                                                    alt="" 
+                                                    className="map-portal-owner-avatar" 
+                                                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                                />
+                                            ) : null}
+                                            <div 
+                                                className="map-portal-owner-avatar map-portal-owner-letter"
+                                                style={{ display: portalDetail.owner.profile?.avatar ? 'none' : 'flex', position: 'absolute', inset: 0 }}
+                                            >
                                                 {(portalDetail.owner.profile?.displayName || portalDetail.owner.username || '?')[0].toUpperCase()}
                                             </div>
-                                        )}
+                                        </div>
                                         <div>
                                             <span className="map-portal-owner-label">Kurucu</span>
                                             <span className="map-portal-owner-name">{portalDetail.owner.profile?.displayName || portalDetail.owner.username}</span>
