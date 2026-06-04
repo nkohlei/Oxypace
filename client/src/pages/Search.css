@@ -204,7 +204,7 @@
 /* Card Grid (Discord Style) */
 .modern-portals-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
     padding-bottom: 40px;
     width: 100%;
@@ -587,6 +587,63 @@
     .card-footer {
         margin-top: 8px !important;
     }
+
+    /* Desktop User Search Results: Horizontal Row of Avatars with Name Below */
+    .users-list {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 24px !important;
+        justify-content: flex-start !important;
+        max-width: 100% !important;
+    }
+    .user-result-modern {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        width: 110px !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        flex-shrink: 0 !important;
+        transition: transform 0.2s !important;
+    }
+    .user-result-modern:hover {
+        transform: translateY(-4px) !important;
+        background: transparent !important;
+        border: none !important;
+    }
+    .result-avatar,
+    .result-avatar-placeholder {
+        width: 64px !important;
+        height: 64px !important;
+        border-radius: 50% !important;
+    }
+    .result-info {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+    .result-name {
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+    }
+    .result-username {
+        font-size: 0.75rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+    }
 }
 
 @media (max-width: 768px) {
@@ -661,6 +718,43 @@
     }
     .private-badge {
         font-size: 0.7rem !important;
+    }
+
+    /* Mobile User Search Results: Horizontal list row stacked vertically */
+    .users-list {
+        flex-direction: column !important;
+        gap: 12px !important;
+        max-width: 100% !important;
+    }
+    .user-result-modern {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 10px 14px !important;
+        background-color: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        width: 100% !important;
+    }
+    .result-avatar,
+    .result-avatar-placeholder {
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 50% !important;
+        flex-shrink: 0 !important;
+    }
+    .result-info {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    .result-name {
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+    }
+    .result-username {
+        font-size: 0.85rem !important;
     }
 }
 
