@@ -26,7 +26,7 @@ const Inbox = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef(null);
-    const [media, setMedia] = useState(null);
+    const [media, setMedia] = useState([]);
     const [replyingTo, setReplyingTo] = useState(null);
     const [showNewMessageModal, setShowNewMessageModal] = useState(false); // Modal State
     const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -89,14 +89,10 @@ const Inbox = () => {
     }, [socket, selectedUser, user]);
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages, media, replyingTo]);
-
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 50);
-    };
+        if (selectedUser) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }
+    }, [selectedUser, messages, media, replyingTo]);
 
     const fetchConversations = async () => {
         try {
@@ -159,91 +155,105 @@ const Inbox = () => {
     };
 
     const handleFileSelect = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (file.size > 1024 * 1024 * 1024) {
-                alert("Dosya boyutu 1 GB'dan büyük olamaz.");
-                return;
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                if (file.size > 1024 * 1024 * 1024) {
+                    alert("Dosya boyutu 1 GB'dan büyük olamaz.");
+                    return;
+                }
             }
-            setMedia(file);
+            setMedia((prev) => [...prev, ...files]);
         }
     };
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if ((!newMessage.trim() && !media) || !selectedUser) return;
+        if ((!newMessage.trim() && media.length === 0) || !selectedUser) return;
 
         if (!selectedUser._id) {
             alert('Hata: Kullanıcı ID bulunamadı.');
             return;
         }
 
-        const optimisticMessage = {
-            _id: Date.now().toString(),
-            sender: { _id: user._id, username: user.username, profile: user.profile },
-            recipient: {
-                _id: selectedUser._id,
-                username: selectedUser.username,
-                profile: selectedUser.profile,
-            },
-            content: newMessage,
-            media: media ? URL.createObjectURL(media) : null,
-            mediaType: media?.type,
-            createdAt: new Date().toISOString(),
-            isOptimistic: true,
-            replyTo: replyingTo,
-        };
-
-        setMessages((prev) => [...prev, optimisticMessage]);
-
         const tempContent = newMessage;
-        const tempMedia = media;
+        const tempMediaList = [...media];
         const tempReplyTo = replyingTo;
 
         setNewMessage('');
-        setMedia(null);
+        setMedia([]);
         setReplyingTo(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (videoInputRef.current) videoInputRef.current.value = '';
+        if (gifInputRef.current) gifInputRef.current.value = '';
 
-        try {
-            let mediaKey = null;
-            if (tempMedia) {
-                // Direct upload to R2
-                mediaKey = await uploadFile(tempMedia, 'message', selectedUser._id);
-            }
-
-            const messageData = {
-                recipientId: selectedUser._id,
-                content: tempContent,
-                replyToId: tempReplyTo ? tempReplyTo._id : undefined,
+        const sendOneMessage = async (content, fileObj, replyTo) => {
+            const optimisticId = Date.now().toString() + Math.random().toString();
+            const optimisticMessage = {
+                _id: optimisticId,
+                sender: { _id: user._id, username: user.username, profile: user.profile },
+                recipient: {
+                    _id: selectedUser._id,
+                    username: selectedUser.username,
+                    profile: selectedUser.profile,
+                },
+                content: content,
+                media: fileObj ? URL.createObjectURL(fileObj) : null,
+                mediaType: fileObj?.type,
+                createdAt: new Date().toISOString(),
+                isOptimistic: true,
+                replyTo: replyTo,
             };
 
-            if (mediaKey) {
-                messageData.mediaKey = mediaKey;
-            }
+            setMessages((prev) => [...prev, optimisticMessage]);
 
-            const response = await axios.post('/api/messages', messageData);
-
-
-            setMessages((prev) => {
-                const responseId = String(response.data._id);
-                const alreadyExists = prev.some((m) => String(m._id) === responseId);
-                
-                if (alreadyExists) {
-                    // Socket already added the real message, just remove the optimistic one
-                    return prev.filter((msg) => String(msg._id) !== String(optimisticMessage._id));
-                } else {
-                    // Replace optimistic message with the real one
-                    return prev.map((msg) => (String(msg._id) === String(optimisticMessage._id) ? response.data : msg));
+            try {
+                let mediaKey = null;
+                if (fileObj) {
+                    mediaKey = await uploadFile(fileObj, 'message', selectedUser._id);
                 }
-            });
-        } catch (err) {
-            console.error('Failed to send message:', err);
-            setMessages((prev) => prev.filter((msg) => msg._id !== optimisticMessage._id));
-            alert('Mesaj gönderilemedi.');
-            setNewMessage(tempContent);
-            setMedia(tempMedia);
-            setReplyingTo(tempReplyTo);
+
+                const messageData = {
+                    recipientId: selectedUser._id,
+                    content: content,
+                    replyToId: replyTo ? replyTo._id : undefined,
+                };
+
+                if (mediaKey) {
+                    messageData.mediaKey = mediaKey;
+                }
+
+                const response = await axios.post('/api/messages', messageData);
+
+                setMessages((prev) => {
+                    const responseId = String(response.data._id);
+                    const alreadyExists = prev.some((m) => String(m._id) === responseId);
+                    
+                    if (alreadyExists) {
+                        return prev.filter((msg) => String(msg._id) !== String(optimisticId));
+                    } else {
+                        return prev.map((msg) => (String(msg._id) === String(optimisticId) ? response.data : msg));
+                    }
+                });
+            } catch (err) {
+                console.error('Failed to send message:', err);
+                setMessages((prev) => prev.filter((msg) => msg._id !== optimisticId));
+                alert('Mesaj gönderilemedi.');
+            }
+        };
+
+        try {
+            if (tempMediaList.length === 0) {
+                await sendOneMessage(tempContent, null, tempReplyTo);
+            } else {
+                for (let i = 0; i < tempMediaList.length; i++) {
+                    const file = tempMediaList[i];
+                    const content = i === 0 ? tempContent : '';
+                    await sendOneMessage(content, file, i === 0 ? tempReplyTo : null);
+                }
+            }
+        } catch (error) {
+            console.error('Error sending message sequence:', error);
         }
     };
 
@@ -450,23 +460,6 @@ const Inbox = () => {
                                         </span>
                                     )}
                                 </div>
-                                <button
-                                    className="chat-header-info-btn"
-                                    onClick={() => navigate(`/profile/${selectedUser.username}`)}
-                                >
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        width="24"
-                                        height="24"
-                                    >
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                                    </svg>
-                                </button>
                             </div>
 
                             <div className="messages-container">
@@ -527,24 +520,25 @@ const Inbox = () => {
                             ) : (
                                 <form onSubmit={handleSendMessage} className="message-form">
                                     <div className="message-input-wrapper">
-                                        {media && (
-                                            <div className="selected-media-pill">
-                                                <div className="media-pill-icon">
-                                                    {media.type.startsWith('image') ? '🖼️' : '🎥'}
-                                                </div>
-                                                <span className="media-pill-name">{media.name}</span>
-                                                <button 
-                                                    type="button" 
-                                                    className="remove-media-btn"
-                                                    onClick={() => {
-                                                        setMedia(null);
-                                                        if (fileInputRef.current) fileInputRef.current.value = '';
-                                                        if (videoInputRef.current) videoInputRef.current.value = '';
-                                                        if (gifInputRef.current) gifInputRef.current.value = '';
-                                                    }}
-                                                >
-                                                    ×
-                                                </button>
+                                        {media && media.length > 0 && (
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginRight: '12px' }}>
+                                                {media.map((file, idx) => (
+                                                    <div key={idx} className="selected-media-pill">
+                                                        <div className="media-pill-icon">
+                                                            {file.type.startsWith('image') ? '🖼️' : '🎥'}
+                                                        </div>
+                                                        <span className="media-pill-name">{file.name}</span>
+                                                        <button 
+                                                            type="button" 
+                                                            className="remove-media-btn"
+                                                            onClick={() => {
+                                                                setMedia((prev) => prev.filter((_, i) => i !== idx));
+                                                            }}
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                         {/* Plus / Upload Button */}
@@ -663,7 +657,8 @@ const Inbox = () => {
                                             type="file"
                                             ref={fileInputRef}
                                             style={{ display: 'none' }}
-                                            accept="image/*,video/*,.gif"
+                                            accept="image/*,video/*"
+                                            multiple
                                             onChange={handleFileSelect}
                                         />
 
@@ -671,7 +666,8 @@ const Inbox = () => {
                                             type="file"
                                             ref={videoInputRef}
                                             style={{ display: 'none' }}
-                                            accept="video/*"
+                                            accept="image/*,video/*"
+                                            multiple
                                             onChange={handleFileSelect}
                                         />
 
@@ -679,13 +675,14 @@ const Inbox = () => {
                                             type="file"
                                             ref={gifInputRef}
                                             style={{ display: 'none' }}
-                                            accept="image/gif"
+                                            accept="image/*,video/*"
+                                            multiple
                                             onChange={handleFileSelect}
                                         />
 
                                         <input
                                             type="text"
-                                            placeholder={`@${selectedUser.username} kullanıcısına mesaj gönder`}
+                                            placeholder="Mesaj"
                                             value={newMessage}
                                             onChange={(e) => setNewMessage(e.target.value)}
                                             onKeyDown={(e) => {
@@ -696,26 +693,26 @@ const Inbox = () => {
                                             }}
                                         />
 
-                                        {/* Right Side Icons */}
+                                        {/* Right Side Action - Send Button */}
                                         <div className="input-right-actions">
                                             <button
-                                                type="button"
-                                                className="input-action-btn"
-                                                title="Emoji (Yakında)"
+                                                type="submit"
+                                                className="send-message-btn"
+                                                title="Gönder"
+                                                disabled={(!newMessage.trim() && media.length === 0)}
                                             >
                                                 <svg
-                                                    width="24"
-                                                    height="24"
+                                                    width="20"
+                                                    height="20"
                                                     viewBox="0 0 24 24"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
                                                 >
-                                                    <smile cx="12" cy="12" r="10"></smile>
-                                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                                                 </svg>
                                             </button>
                                         </div>
@@ -765,3 +762,4 @@ const Inbox = () => {
 };
 
 export default Inbox;
+

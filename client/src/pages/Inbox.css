@@ -592,6 +592,31 @@
     font-size: 20px;
 }
 
+/* Send Message Button */
+.send-message-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary-cyan);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    border-radius: 50%;
+}
+
+.send-message-btn:hover:not(:disabled) {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+}
+
+.send-message-btn:disabled {
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
 /* Plus Menu Popover */
 .inbox-container .plus-menu {
     position: absolute;
