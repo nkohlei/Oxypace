@@ -32,6 +32,16 @@ export const AuthProvider = ({ children }) => {
         }
     }, [token, user]);
 
+    useEffect(() => {
+        if (user && user._id) {
+            if (user.securityQuestionsConfigured) {
+                localStorage.setItem(`isSecurityConfigured_${user._id}`, 'true');
+            } else if (localStorage.getItem(`isSecurityConfigured_${user._id}`) === 'true') {
+                setUser(prev => prev ? { ...prev, securityQuestionsConfigured: true } : prev);
+            }
+        }
+    }, [user]);
+
     const fetchUser = async (authToken = token) => {
         try {
             const response = await axios.get('/api/users/me', {
@@ -39,7 +49,11 @@ export const AuthProvider = ({ children }) => {
                     Authorization: `Bearer ${authToken}`,
                 },
             });
-            setUser(response.data);
+            const userData = response.data;
+            if (userData && userData._id && localStorage.getItem(`isSecurityConfigured_${userData._id}`) === 'true') {
+                userData.securityQuestionsConfigured = true;
+            }
+            setUser(userData);
         } catch (error) {
             console.error('Failed to fetch user:', error);
             // Only logout if it's a 401 (Unauthorized) to avoid logout on network errors
@@ -54,6 +68,9 @@ export const AuthProvider = ({ children }) => {
     const login = (newToken, userData) => {
         localStorage.setItem('token', newToken);
         setToken(newToken);
+        if (userData && userData._id && localStorage.getItem(`isSecurityConfigured_${userData._id}`) === 'true') {
+            userData.securityQuestionsConfigured = true;
+        }
         setUser(userData);
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     };
@@ -68,7 +85,22 @@ export const AuthProvider = ({ children }) => {
     };
 
     const updateUser = (userData) => {
-        setUser(userData);
+        setUser(prevUser => {
+            if (!prevUser) return userData;
+            const localKey = userData?._id ? `isSecurityConfigured_${userData._id}` : (prevUser?._id ? `isSecurityConfigured_${prevUser._id}` : null);
+            const isLocalConfigured = localKey ? localStorage.getItem(localKey) === 'true' : false;
+            
+            const prevConfigured = prevUser.securityQuestionsConfigured || isLocalConfigured;
+            const newConfigured = userData?.securityQuestionsConfigured !== undefined 
+                ? userData.securityQuestionsConfigured 
+                : prevConfigured;
+
+            return {
+                ...prevUser,
+                ...userData,
+                securityQuestionsConfigured: newConfigured
+            };
+        });
     };
 
     // Axios global response interceptor to detect if client IP or authenticated user is banned

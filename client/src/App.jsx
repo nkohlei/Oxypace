@@ -274,10 +274,13 @@ const AppLayout = () => {
 
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
-            {user && user.securityQuestionsConfigured === false && (
+            {user && user.securityQuestionsConfigured === false && localStorage.getItem(`isSecurityConfigured_${user._id}`) !== 'true' && (
                 <SecurityQuestionsModal 
                     user={user} 
                     onCompleted={(questions) => {
+                        if (user._id) {
+                            localStorage.setItem(`isSecurityConfigured_${user._id}`, 'true');
+                        }
                         updateUser({
                             ...user,
                             securityQuestionsConfigured: true,
