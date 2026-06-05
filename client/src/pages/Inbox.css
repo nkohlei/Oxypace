@@ -635,7 +635,7 @@
     gap: 4px;
     width: 150px;
     box-shadow: none;
-    z-index: 1000;
+    z-index: 9999 !important;
     animation: slideUpMenu 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: bottom left;
 }

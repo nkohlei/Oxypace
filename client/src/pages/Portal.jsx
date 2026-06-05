@@ -81,13 +81,19 @@ const Portal = () => {
                 setShowPlusMenu(false);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('click', handleClickOutside);
         document.addEventListener('touchstart', handleClickOutside);
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
         };
     }, [showPlusMenu]);
+
+    useEffect(() => {
+        return () => {
+            setShowPlusMenu(false);
+        };
+    }, []);
 
     useEffect(() => {
         if (location.state?.quotedPost) {
@@ -1438,8 +1444,9 @@ const Portal = () => {
                                                                                 ref={plusButtonRef}
                                                                                 className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
                                                                                 onClick={(e) => {
+                                                                                    e.preventDefault();
                                                                                     e.stopPropagation();
-                                                                                    setShowPlusMenu(!showPlusMenu);
+                                                                                    setShowPlusMenu(prev => !prev);
                                                                                 }}
                                                                                 style={{
                                                                                     backgroundColor: '#383a40',

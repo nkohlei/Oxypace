@@ -49,13 +49,19 @@ const Inbox = () => {
                 setShowPlusMenu(false);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('click', handleClickOutside);
         document.addEventListener('touchstart', handleClickOutside);
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
         };
     }, [showPlusMenu]);
+
+    useEffect(() => {
+        return () => {
+            setShowPlusMenu(false);
+        };
+    }, []);
 
     const scrollToBottom = () => {
         if (messagesContainerRef.current) {
@@ -603,8 +609,9 @@ const Inbox = () => {
                                             type="button"
                                             className={`upload-btn ${showPlusMenu ? 'active' : ''}`}
                                             onClick={(e) => {
+                                                e.preventDefault();
                                                 e.stopPropagation();
-                                                setShowPlusMenu(!showPlusMenu);
+                                                setShowPlusMenu(prev => !prev);
                                             }}
                                             title="Yükle"
                                         >

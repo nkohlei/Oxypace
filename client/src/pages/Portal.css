@@ -199,7 +199,7 @@
         bottom: 100% !important;
         top: auto !important;
         left: 16px !important;
-        z-index: 1000 !important;
+        z-index: 9999 !important;
         margin-bottom: 8px !important;
         margin-top: 0 !important;
         animation: slideUp 0.2s ease-out !important;
@@ -249,7 +249,7 @@
     gap: 4px;
     box-shadow: none;
     border: var(--glass-border);
-    z-index: 1000;
+    z-index: 9999 !important;
     animation: slideDown 0.2s ease-out;
 }
 
