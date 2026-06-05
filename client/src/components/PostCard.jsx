@@ -226,7 +226,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
     const handleDelete = async () => {
         try {
-            await axios.delete(`/api/posts/${post._id}`);
+            const token = localStorage.getItem('token');
+            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+            await axios.delete(`/api/posts/${post._id}`, config);
             setShowDeleteConfirm(false);
             if (onDelete) {
                 onDelete(post._id);

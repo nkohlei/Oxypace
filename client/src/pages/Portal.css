@@ -162,7 +162,7 @@
     border: none;
     box-shadow: none;
     flex-shrink: 0;
-    z-index: 20;
+    z-index: 60;
     position: relative;
     order: -1;
     /* Force to top of the flex column */
@@ -196,11 +196,13 @@
     }
 
     .discord-layout .plus-menu {
-        bottom: 100%;
-        top: auto;
-        left: 16px;
-        z-index: 101;
-        margin-bottom: 8px;
+        bottom: 100% !important;
+        top: auto !important;
+        left: 16px !important;
+        z-index: 1000 !important;
+        margin-bottom: 8px !important;
+        margin-top: 0 !important;
+        animation: slideUp 0.2s ease-out !important;
     }
 }
 
@@ -231,10 +233,11 @@
 /* Plus Menu Popover */
 .discord-layout .plus-menu {
     position: absolute;
-    bottom: 100%;
-    top: auto;
+    bottom: auto;
+    top: 100%;
     left: 0;
-    margin-bottom: 8px;
+    margin-top: 8px;
+    margin-bottom: 0;
     width: 150px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -246,8 +249,19 @@
     gap: 4px;
     box-shadow: none;
     border: var(--glass-border);
-    z-index: 100;
-    animation: slideUp 0.2s ease-out;
+    z-index: 1000;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes slideUp {

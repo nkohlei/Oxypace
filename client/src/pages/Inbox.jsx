@@ -34,6 +34,28 @@ const Inbox = () => {
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
+    const plusMenuRef = useRef(null);
+    const plusButtonRef = useRef(null);
+
+    useEffect(() => {
+        if (!showPlusMenu) return;
+        const handleClickOutside = (event) => {
+            if (
+                plusMenuRef.current && 
+                !plusMenuRef.current.contains(event.target) && 
+                plusButtonRef.current && 
+                !plusButtonRef.current.contains(event.target)
+            ) {
+                setShowPlusMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [showPlusMenu]);
 
     const scrollToBottom = () => {
         if (messagesContainerRef.current) {
@@ -577,9 +599,13 @@ const Inbox = () => {
                                         )}
                                         {/* Plus / Upload Button */}
                                         <button
+                                            ref={plusButtonRef}
                                             type="button"
                                             className={`upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                            onClick={() => setShowPlusMenu(!showPlusMenu)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowPlusMenu(!showPlusMenu);
+                                            }}
                                             title="Yükle"
                                         >
                                             <svg
@@ -594,14 +620,10 @@ const Inbox = () => {
 
                                         {/* Plus Menu Popover */}
                                         {showPlusMenu && (
-                                            <>
-                                                <div
-                                                    style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                                                    onClick={() => setShowPlusMenu(false)}
-                                                />
-                                                <div
-                                                    className="plus-menu"
-                                                >
+                                            <div
+                                                ref={plusMenuRef}
+                                                className="plus-menu"
+                                            >
                                                     <div
                                                         className="plus-menu-item"
                                                         onClick={() => {
@@ -683,8 +705,7 @@ const Inbox = () => {
                                                         </div>
                                                         GIF
                                                     </div>
-                                                </div>
-                                            </>
+                                            </div>
                                         )}
 
                                         <input

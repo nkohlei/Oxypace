@@ -560,14 +560,9 @@ function App() {
                 if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
                     if (Capacitor.isNativePlatform()) {
                         e.preventDefault();
-                        if (href.includes('auth/google') || href.includes('accounts.google.com') || href.includes('twitter.com') || href.includes('x.com')) {
-                            // Direct opening via safe native browser to avoid disallowed_useragent or empty iframe loading issues
-                            Browser.open({ url: href });
-                        } else {
-                            // Dispatch event to show our premium custom in-app browser
-                            const openEvent = new CustomEvent('open-inapp-browser', { detail: { url: href } });
-                            window.dispatchEvent(openEvent);
-                        }
+                        // Direct opening via safe native browser (Custom Tabs / SafariViewController)
+                        // to avoid disallowed_useragent and other WebView security policy violations.
+                        Browser.open({ url: href });
                     }
                 }
             }

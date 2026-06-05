@@ -6,6 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import './Notifications.css';
+import { useGlobalStore } from '../store/useGlobalStore';
 
 const Notifications = () => {
     const navigate = useNavigate();
@@ -16,6 +17,7 @@ const Notifications = () => {
     const [activeFilter, setActiveFilter] = useState('all');
     const [handlingRequests, setHandlingRequests] = useState({}); // { [notifId]: 'accept' | 'decline' }
     const { socket } = useSocket();
+    const setUnreadNotificationsCount = useGlobalStore((state) => state.setUnreadNotificationsCount);
 
     const handleAccept = async (e, senderId, notifId) => {
         e.preventDefault();
@@ -83,9 +85,14 @@ const Notifications = () => {
     const handleDelete = async (e, id) => {
         e.preventDefault();
         e.stopPropagation();
+        const notifToDelete = notifications.find(n => n._id === id);
+        const wasUnread = notifToDelete && !notifToDelete.read;
         try {
             await axios.delete(`/api/notifications/${id}`);
             setNotifications((prev) => prev.filter((n) => n._id !== id));
+            if (wasUnread) {
+                setUnreadNotificationsCount(Math.max(0, useGlobalStore.getState().unreadNotificationsCount - 1));
+            }
         } catch (error) {
             console.error('Delete notification error:', error);
         }
@@ -97,6 +104,7 @@ const Notifications = () => {
         try {
             await axios.delete('/api/notifications');
             setNotifications([]);
+            setUnreadNotificationsCount(0);
         } catch (err) {
             console.error('Tüm bildirimleri silme hatası:', err);
         }
@@ -122,6 +130,7 @@ const Notifications = () => {
         try {
             const response = await axios.get('/api/notifications');
             setNotifications(response.data.notifications);
+            setUnreadNotificationsCount(response.data.unreadCount || 0);
 
             if (response.data.notifications.some((n) => !n.read)) {
                 handleMarkAllRead();
@@ -138,6 +147,7 @@ const Notifications = () => {
         try {
             await axios.put('/api/notifications/read');
             setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            setUnreadNotificationsCount(0);
         } catch (err) {
             console.error('Mark all read error:', err);
         }

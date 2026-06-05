@@ -156,11 +156,15 @@ export const useGlobalStore = create(
                 usersCache: { ...state.usersCache, [userId]: { ...state.usersCache[userId], ...fullDocument } }
             })),
 
+            unreadNotificationsCount: 0,
+            setUnreadNotificationsCount: (count) => set({ unreadNotificationsCount: count }),
+
             resetStore: () => set({
                 unreadPostsByPortal: {},
                 unreadPostsByChannel: {},
                 posts: [],
-                currentUser: null
+                currentUser: null,
+                unreadNotificationsCount: 0
             })
         }),
         {

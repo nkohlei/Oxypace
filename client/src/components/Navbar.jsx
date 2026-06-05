@@ -9,6 +9,7 @@ import { useSocket } from '../context/SocketContext';
 import { useUI } from '../context/UIContext';
 import './Navbar.css';
 import UserAvatar from './UserAvatar';
+import { useGlobalStore } from '../store/useGlobalStore';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const location = useLocation();
@@ -27,7 +28,8 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     }
 
     const [showMenu, setShowMenu] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const unreadCount = useGlobalStore((state) => state.unreadNotificationsCount);
+    const setUnreadCount = useGlobalStore((state) => state.setUnreadNotificationsCount);
     const [adminPendingCount, setAdminPendingCount] = useState(0);
     const [hidden, setHidden] = useState(false);
     const menuRef = useRef(null);

@@ -17,14 +17,12 @@ export const downloadFile = async (url, filename) => {
         }
 
         if (Capacitor.isNativePlatform()) {
-            // Check storage permissions safely
+            // Check storage permissions safely (non-blocking for Android DownloadManager)
             try {
-                let permStatus = await Filesystem.checkPermissions();
-                if (permStatus.publicStorage !== 'granted') {
-                    permStatus = await Filesystem.requestPermissions();
-                    if (permStatus.publicStorage !== 'granted' && Capacitor.getPlatform() === 'android') {
-                        alert('Dosya indirmek için depolama iznine ihtiyacımız var.');
-                        return;
+                if (Capacitor.getPlatform() !== 'android') {
+                    let permStatus = await Filesystem.checkPermissions();
+                    if (permStatus.publicStorage !== 'granted') {
+                        await Filesystem.requestPermissions();
                     }
                 }
             } catch (err) {

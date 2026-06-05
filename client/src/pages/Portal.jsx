@@ -66,6 +66,28 @@ const Portal = () => {
     const [mediaFile, setMediaFile] = useState(null);
     const [quotedPost, setQuotedPost] = useState(null);
     const [showPortalInfo, setShowPortalInfo] = useState(false);
+    const plusMenuRef = useRef(null);
+    const plusButtonRef = useRef(null);
+
+    useEffect(() => {
+        if (!showPlusMenu) return;
+        const handleClickOutside = (event) => {
+            if (
+                plusMenuRef.current && 
+                !plusMenuRef.current.contains(event.target) && 
+                plusButtonRef.current && 
+                !plusButtonRef.current.contains(event.target)
+            ) {
+                setShowPlusMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [showPlusMenu]);
 
     useEffect(() => {
         if (location.state?.quotedPost) {
@@ -1204,16 +1226,7 @@ const Portal = () => {
                                                                         <div className="channel-input-area">
                                                                         {/* Plus Menu Popover */}
                                                                         {showPlusMenu && (
-                                                                            <>
-                                                                                <div
-                                                                                    style={{
-                                                                                        position: 'fixed',
-                                                                                        inset: 0,
-                                                                                        zIndex: 90,
-                                                                                    }}
-                                                                                    onClick={() => setShowPlusMenu(false)}
-                                                                                />
-                                                                                <div className="plus-menu">
+                                                                            <div className="plus-menu" ref={plusMenuRef}>
                                                                                     <div
                                                                                         className="plus-menu-item"
                                                                                         onClick={() => {
@@ -1311,8 +1324,7 @@ const Portal = () => {
                                                                                         YouTube
                                                                                     </div>
                                                                                 </div>
-                                                                            </>
-                                                                        )}
+                                                                            )}
                                                                         <input
                                                                             type="file"
                                                                             ref={fileInputRef}
@@ -1423,10 +1435,12 @@ const Portal = () => {
 
                                                                         <div className="message-input-wrapper">
                                                                             <button
+                                                                                ref={plusButtonRef}
                                                                                 className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                                                                onClick={() =>
-                                                                                    setShowPlusMenu(!showPlusMenu)
-                                                                                }
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setShowPlusMenu(!showPlusMenu);
+                                                                                }}
                                                                                 style={{
                                                                                     backgroundColor: '#383a40',
                                                                                     borderRadius: '50%',

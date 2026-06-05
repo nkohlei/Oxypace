@@ -108,6 +108,9 @@ const PortalSidebar = () => {
 
     const handleTouchMove = (e) => {
         if (!isReordering || draggedIndex === null) return;
+        if (e.cancelable) {
+            e.preventDefault();
+        }
         
         const touch = e.touches[0];
         const element = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -285,6 +288,7 @@ const PortalSidebar = () => {
 
                 .sidebar-item.reordering {
                     cursor: grab;
+                    touch-action: none;
                 }
                 .sidebar-item.reordering:active {
                     cursor: grabbing;
