@@ -621,10 +621,9 @@
 /* Plus Menu Popover */
 .inbox-container .plus-menu {
     position: absolute;
-    bottom: 100%; /* Open upwards above the input */
-    top: auto;
-    left: 20px;
-    margin-bottom: 8px;
+    bottom: calc(100% + 10px);
+    left: 0;
+    margin-bottom: 0;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);

@@ -33,7 +33,7 @@ const Inbox = () => {
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
-    const gifInputRef = useRef(null);
+    const docInputRef = useRef(null);
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
 
@@ -229,7 +229,7 @@ const Inbox = () => {
         setReplyingTo(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (videoInputRef.current) videoInputRef.current.value = '';
-        if (gifInputRef.current) gifInputRef.current.value = '';
+        if (docInputRef.current) docInputRef.current.value = '';
 
         const sendOneMessage = async (content, fileObj, replyTo) => {
             const optimisticId = Date.now().toString() + Math.random().toString();
@@ -613,11 +613,12 @@ const Inbox = () => {
                                                 height="20"
                                                 viewBox="0 0 24 24"
                                                 fill="currentColor"
+                                                style={{ pointerEvents: 'none' }}
                                             >
-                                                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
+                                                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" style={{ pointerEvents: 'none' }} />
                                             </svg>
                                         </button>
-
+ 
                                         {/* Plus Menu Popover */}
                                         {showPlusMenu && (
                                             <div
@@ -690,47 +691,53 @@ const Inbox = () => {
                                                     <div
                                                         className="plus-menu-item"
                                                         onClick={() => {
-                                                            gifInputRef.current.click();
+                                                            docInputRef.current.click();
                                                             setShowPlusMenu(false);
                                                         }}
                                                     >
-                                                        <div
-                                                            className="plus-menu-icon"
-                                                            style={{
-                                                                fontWeight: 800,
-                                                                fontSize: '10px',
-                                                            }}
-                                                        >
-                                                            GIF
+                                                        <div className="plus-menu-icon">
+                                                            <svg
+                                                                width="20"
+                                                                height="20"
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2"
+                                                            >
+                                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                            </svg>
                                                         </div>
-                                                        GIF
+                                                        Dosya
                                                     </div>
                                             </div>
                                         )}
-
+ 
                                         <input
                                             type="file"
                                             ref={fileInputRef}
                                             style={{ display: 'none' }}
-                                            accept="image/*,video/*"
+                                            accept="image/*"
                                             multiple
                                             onChange={handleFileSelect}
                                         />
-
+ 
                                         <input
                                             type="file"
                                             ref={videoInputRef}
                                             style={{ display: 'none' }}
-                                            accept="image/*,video/*"
+                                            accept="video/*"
                                             multiple
                                             onChange={handleFileSelect}
                                         />
-
+ 
                                         <input
                                             type="file"
-                                            ref={gifInputRef}
+                                            ref={docInputRef}
                                             style={{ display: 'none' }}
-                                            accept="image/*,video/*"
+                                            accept="*/*"
                                             multiple
                                             onChange={handleFileSelect}
                                         />
