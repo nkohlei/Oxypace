@@ -42,12 +42,9 @@ const Inbox = () => {
         let active = true;
         const handleClickOutside = (event) => {
             if (!active) return;
-            if (
-                plusMenuRef.current && 
-                !plusMenuRef.current.contains(event.target) && 
-                plusButtonRef.current && 
-                !plusButtonRef.current.contains(event.target)
-            ) {
+            const clickedMenu = event.target.closest('.plus-menu');
+            const clickedButton = event.target.closest('.upload-btn');
+            if (!clickedMenu && !clickedButton) {
                 setShowPlusMenu(false);
             }
         };
