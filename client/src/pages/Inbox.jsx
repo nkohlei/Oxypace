@@ -73,6 +73,10 @@ const Inbox = () => {
         };
     }, []);
 
+    useEffect(() => {
+        setShowPlusMenu(false);
+    }, [selectedUser]);
+
     const scrollToBottom = () => {
         if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;

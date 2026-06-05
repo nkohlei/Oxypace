@@ -106,6 +106,10 @@ const Portal = () => {
     }, []);
 
     useEffect(() => {
+        setShowPlusMenu(false);
+    }, [currentChannel, id]);
+
+    useEffect(() => {
         if (location.state?.quotedPost) {
             setQuotedPost(location.state.quotedPost);
             // Clean up state to prevent re-triggering on manual refresh
