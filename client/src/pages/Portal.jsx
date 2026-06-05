@@ -71,7 +71,9 @@ const Portal = () => {
 
     useEffect(() => {
         if (!showPlusMenu) return;
+        let active = true;
         const handleClickOutside = (event) => {
+            if (!active) return;
             if (
                 plusMenuRef.current && 
                 !plusMenuRef.current.contains(event.target) && 
@@ -81,9 +83,17 @@ const Portal = () => {
                 setShowPlusMenu(false);
             }
         };
-        document.addEventListener('click', handleClickOutside);
-        document.addEventListener('touchstart', handleClickOutside);
+
+        const timer = setTimeout(() => {
+            if (active) {
+                document.addEventListener('click', handleClickOutside);
+                document.addEventListener('touchstart', handleClickOutside);
+            }
+        }, 0);
+
         return () => {
+            active = false;
+            clearTimeout(timer);
             document.removeEventListener('click', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
         };
