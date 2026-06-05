@@ -69,28 +69,27 @@ const Inbox = () => {
         });
     }, []);
 
-    // Close menu on outside click (mousedown to beat race conditions)
+    // Close menu on outside click/tap
     useEffect(() => {
         if (!showPlusMenu) return;
 
         const handleClickOutside = (e) => {
-            // Check if click is inside the portal menu or the trigger button
-            if (plusMenuRef.current && plusMenuRef.current.contains(e.target)) return;
-            if (plusButtonRef.current && plusButtonRef.current.contains(e.target)) return;
-            setShowPlusMenu(false);
+            const clickedMenu = e.target.closest('.inbox-plus-menu-portal');
+            const clickedButton = e.target.closest('.upload-btn');
+            if (!clickedMenu && !clickedButton) {
+                setShowPlusMenu(false);
+            }
         };
 
-        // Use requestAnimationFrame to ensure the listener is added
-        // AFTER the current click event has finished propagating
-        const raf = requestAnimationFrame(() => {
-            document.addEventListener('mousedown', handleClickOutside, true);
-            document.addEventListener('touchstart', handleClickOutside, true);
-        });
+        const timer = setTimeout(() => {
+            document.addEventListener('click', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }, 0);
 
         return () => {
-            cancelAnimationFrame(raf);
-            document.removeEventListener('mousedown', handleClickOutside, true);
-            document.removeEventListener('touchstart', handleClickOutside, true);
+            clearTimeout(timer);
+            document.removeEventListener('click', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
         };
     }, [showPlusMenu]);
 
