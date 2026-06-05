@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
@@ -58,6 +59,7 @@ const Portal = () => {
     const [nsfwConfirmed, setNsfwConfirmed] = useState(false); // +18 age gate state
 
     const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [showYoutubeInput, setShowYoutubeInput] = useState(false);
     const fileInputRef = useRef(null);
@@ -69,12 +71,30 @@ const Portal = () => {
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
 
+    // Toggle handler for the plus button (opens downward)
+    const handlePlusToggle = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowPlusMenu(prev => {
+            if (!prev) {
+                if (plusButtonRef.current) {
+                    const rect = plusButtonRef.current.getBoundingClientRect();
+                    setMenuPosition({
+                        top: rect.bottom + 8, // Opens downward
+                        left: rect.left,
+                    });
+                }
+            }
+            return !prev;
+        });
+    }, []);
+
     useEffect(() => {
         if (!showPlusMenu) return;
         let active = true;
         const handleClickOutside = (event) => {
             if (!active) return;
-            const clickedMenu = event.target.closest('.plus-menu');
+            const clickedMenu = event.target.closest('.plus-menu') || event.target.closest('.portal-plus-menu-portal');
             const clickedButton = event.target.closest('.upload-btn');
             if (!clickedMenu && !clickedButton) {
                 setShowPlusMenu(false);
@@ -1241,9 +1261,17 @@ const Portal = () => {
 
                                                                     {user && isMember ? (
                                                                         <div className="channel-input-area">
-                                                                        {/* Plus Menu Popover */}
-                                                                        {showPlusMenu && (
-                                                                            <div className="plus-menu" ref={plusMenuRef}>
+                                                                        {showPlusMenu && createPortal(
+                                                                            <div
+                                                                                className="plus-menu portal-plus-menu-portal"
+                                                                                ref={plusMenuRef}
+                                                                                style={{
+                                                                                    position: 'fixed',
+                                                                                    top: menuPosition.top,
+                                                                                    left: menuPosition.left,
+                                                                                    zIndex: 99999,
+                                                                                }}
+                                                                            >
                                                                                     <div
                                                                                         className="plus-menu-item"
                                                                                         onClick={() => {
@@ -1340,7 +1368,8 @@ const Portal = () => {
                                                                                         </div>
                                                                                         YouTube
                                                                                     </div>
-                                                                                </div>
+                                                                                </div>,
+                                                                                document.body
                                                                             )}
                                                                         <input
                                                                             type="file"
@@ -1454,11 +1483,7 @@ const Portal = () => {
                                                                             <button
                                                                                 ref={plusButtonRef}
                                                                                 className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                                                                onClick={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    e.stopPropagation();
-                                                                                    setShowPlusMenu(prev => !prev);
-                                                                                }}
+                                                                                onClick={handlePlusToggle}
                                                                                 style={{
                                                                                     backgroundColor: '#383a40',
                                                                                     borderRadius: '50%',
