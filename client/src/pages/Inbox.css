@@ -618,62 +618,57 @@
     opacity: 0.5;
 }
 
-/* Plus Menu Popover */
-.inbox-container .message-input-wrapper .plus-menu {
-    position: absolute !important;
-    bottom: calc(100% + 12px) !important;
-    top: auto !important;
-    left: 0 !important;
-    margin-bottom: 0 !important;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: var(--glass-border);
+/* Plus Menu Popover — rendered via React Portal at document.body level */
+.inbox-plus-menu-portal {
+    background: var(--glass-bg, rgba(30, 31, 34, 0.95));
+    backdrop-filter: var(--glass-blur, blur(12px));
+    -webkit-backdrop-filter: var(--glass-blur, blur(12px));
+    border: var(--glass-border, 1px solid rgba(255,255,255,0.08));
     border-radius: 12px;
     padding: 6px;
     display: flex;
     flex-direction: column;
     gap: 4px;
     width: 150px;
-    box-shadow: none;
-    z-index: 9999 !important;
-    animation: slideUpMenu 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: inboxSlideUpMenu 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     transform-origin: bottom left;
+    pointer-events: auto;
 }
 
-@keyframes slideUpMenu {
+@keyframes inboxSlideUpMenu {
     from {
         opacity: 0;
-        transform: translateY(10px) scale(0.95);
+        transform: translateY(calc(-100% + 10px)) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(-100%) scale(1);
     }
 }
 
-.inbox-container .plus-menu-item {
+.inbox-plus-menu-portal .plus-menu-item {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 8px 10px;
     border-radius: 8px;
-    color: var(--text-primary);
+    color: var(--text-primary, #e0e0e0);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s;
 }
 
-.inbox-container .plus-menu-item:hover {
-    background: var(--bg-hover);
+.inbox-plus-menu-portal .plus-menu-item:hover {
+    background: var(--bg-hover, rgba(255,255,255,0.06));
 }
 
-.inbox-container .plus-menu-icon {
+.inbox-plus-menu-portal .plus-menu-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary-cyan);
+    color: var(--primary-cyan, #22d3ee);
 }
 
 /* System No-Reply Notice */

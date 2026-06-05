@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
@@ -31,45 +32,74 @@ const Inbox = () => {
     const [replyingTo, setReplyingTo] = useState(null);
     const [showNewMessageModal, setShowNewMessageModal] = useState(false); // Modal State
     const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
     const docInputRef = useRef(null);
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
 
+    // Compute menu position from button's bounding rect
+    const computeMenuPosition = useCallback(() => {
+        if (plusButtonRef.current) {
+            const rect = plusButtonRef.current.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.top - 8, // 8px gap above the button
+                left: rect.left,
+            });
+        }
+    }, []);
+
+    // Toggle handler for the plus button
+    const handlePlusToggle = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowPlusMenu(prev => {
+            if (!prev) {
+                // Opening: compute position now
+                if (plusButtonRef.current) {
+                    const rect = plusButtonRef.current.getBoundingClientRect();
+                    setMenuPosition({
+                        top: rect.top - 8,
+                        left: rect.left,
+                    });
+                }
+            }
+            return !prev;
+        });
+    }, []);
+
+    // Close menu on outside click (mousedown to beat race conditions)
     useEffect(() => {
         if (!showPlusMenu) return;
-        let active = true;
-        const handleClickOutside = (event) => {
-            if (!active) return;
-            const clickedMenu = event.target.closest('.plus-menu');
-            const clickedButton = event.target.closest('.upload-btn');
-            if (!clickedMenu && !clickedButton) {
-                setShowPlusMenu(false);
-            }
+
+        const handleClickOutside = (e) => {
+            // Check if click is inside the portal menu or the trigger button
+            if (plusMenuRef.current && plusMenuRef.current.contains(e.target)) return;
+            if (plusButtonRef.current && plusButtonRef.current.contains(e.target)) return;
+            setShowPlusMenu(false);
         };
 
-        const timer = setTimeout(() => {
-            if (active) {
-                document.addEventListener('click', handleClickOutside);
-                document.addEventListener('touchstart', handleClickOutside);
-            }
-        }, 0);
+        // Use requestAnimationFrame to ensure the listener is added
+        // AFTER the current click event has finished propagating
+        const raf = requestAnimationFrame(() => {
+            document.addEventListener('mousedown', handleClickOutside, true);
+            document.addEventListener('touchstart', handleClickOutside, true);
+        });
 
         return () => {
-            active = false;
-            clearTimeout(timer);
-            document.removeEventListener('click', handleClickOutside);
-            document.removeEventListener('touchstart', handleClickOutside);
+            cancelAnimationFrame(raf);
+            document.removeEventListener('mousedown', handleClickOutside, true);
+            document.removeEventListener('touchstart', handleClickOutside, true);
         };
     }, [showPlusMenu]);
 
+    // Reset on unmount
     useEffect(() => {
-        return () => {
-            setShowPlusMenu(false);
-        };
+        return () => setShowPlusMenu(false);
     }, []);
 
+    // Reset when switching conversations
     useEffect(() => {
         setShowPlusMenu(false);
     }, [selectedUser]);
@@ -619,11 +649,7 @@ const Inbox = () => {
                                             ref={plusButtonRef}
                                             type="button"
                                             className={`upload-btn ${showPlusMenu ? 'active' : ''}`}
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setShowPlusMenu(prev => !prev);
-                                            }}
+                                            onClick={handlePlusToggle}
                                             title="Yükle"
                                         >
                                             <svg
@@ -636,12 +662,19 @@ const Inbox = () => {
                                                 <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" style={{ pointerEvents: 'none' }} />
                                             </svg>
                                         </button>
- 
-                                        {/* Plus Menu Popover */}
-                                        {showPlusMenu && (
+
+                                        {/* Plus Menu Popover — rendered via Portal to escape overflow:hidden ancestors */}
+                                        {showPlusMenu && createPortal(
                                             <div
                                                 ref={plusMenuRef}
-                                                className="plus-menu"
+                                                className="inbox-plus-menu-portal"
+                                                style={{
+                                                    position: 'fixed',
+                                                    top: menuPosition.top,
+                                                    left: menuPosition.left,
+                                                    transform: 'translateY(-100%)',
+                                                    zIndex: 99999,
+                                                }}
                                             >
                                                     <div
                                                         className="plus-menu-item"
@@ -730,7 +763,8 @@ const Inbox = () => {
                                                         </div>
                                                         Dosya
                                                     </div>
-                                            </div>
+                                            </div>,
+                                            document.body
                                         )}
  
                                         <input
