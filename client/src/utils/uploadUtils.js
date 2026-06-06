@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 
 /**
  * Uploads a file directly to Cloudflare R2 using a presigned URL.
@@ -20,10 +21,21 @@ export const uploadFile = async (file, purpose = 'post', portalId = null) => {
       portalId
     });
 
+    let uploadBody = file;
+    if (Capacitor.isNativePlatform()) {
+      // Convert File/Blob to ArrayBuffer to ensure clean binary transfer on Capacitor Android WebView
+      uploadBody = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
     // 2. Upload directly to R2 using PUT
     const response = await fetch(uploadUrl, {
       method: 'PUT',
-      body: file,
+      body: uploadBody,
       headers: {
         'Content-Type': file.type
       },

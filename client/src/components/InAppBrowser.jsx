@@ -4,6 +4,7 @@ import { Browser } from '@capacitor/browser';
 import { Share } from '@capacitor/share';
 import { Clipboard } from '@capacitor/clipboard';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 const InAppBrowser = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -50,6 +51,20 @@ const InAppBrowser = () => {
         if (iframe) {
             iframe.src = url;
         }
+    };
+
+    const handleOpenExternal = async () => {
+        try {
+            if (Capacitor.isNativePlatform()) {
+                await App.openUrl({ url });
+            } else {
+                window.open(url, '_blank');
+            }
+        } catch (e) {
+            console.error('External browser open error:', e);
+            window.open(url, '_blank');
+        }
+        setShowMenu(false);
     };
 
     const handleOpenInSystemBrowser = async () => {
@@ -116,6 +131,11 @@ const InAppBrowser = () => {
                 </div>
 
                 <div style={styles.actions}>
+                    {Capacitor.isNativePlatform() && (
+                        <button onClick={handleOpenExternal} style={styles.chromeBtn}>
+                            Chrome'da Aç
+                        </button>
+                    )}
                     <button onClick={handleRefresh} style={styles.iconBtn} aria-label="Yenile">
                         <RefreshCw size={18} color="#aaa" />
                     </button>
@@ -126,9 +146,9 @@ const InAppBrowser = () => {
 
                         {showMenu && (
                             <div style={styles.dropdown}>
-                                <button onClick={handleOpenInSystemBrowser} style={styles.menuItem}>
+                                <button onClick={handleOpenExternal} style={styles.menuItem}>
                                     <ExternalLink size={16} />
-                                    <span>Chrome'da Görüntüle</span>
+                                    <span>Chrome'da Aç</span>
                                 </button>
                                 <button onClick={handleShare} style={styles.menuItem}>
                                     <Share2 size={16} />
@@ -158,6 +178,21 @@ const InAppBrowser = () => {
 };
 
 const styles = {
+    chromeBtn: {
+        backgroundColor: '#1d9bf0',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '6px',
+        padding: '6px 12px',
+        fontSize: '12px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        marginRight: '8px',
+        outline: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px'
+    },
     overlay: {
         position: 'fixed',
         top: 0,

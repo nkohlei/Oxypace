@@ -85,9 +85,10 @@ const YouTubeFacade = ({ media }) => {
 
 
 const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
-    const { user, updateUser } = useAuth(); // Destructure updateUser
+    const { user, updateUser, token: authContextToken } = useAuth(); // Destructure updateUser and token
 
     const navigate = useNavigate();
+
 
     const [saved, setSaved] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
@@ -226,8 +227,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
     const handleDelete = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+            const activeToken = authContextToken || localStorage.getItem('token');
+            const config = activeToken ? { headers: { Authorization: `Bearer ${activeToken}` } } : {};
             await axios.delete(`/api/posts/${post._id}`, config);
             setShowDeleteConfirm(false);
             if (onDelete) {

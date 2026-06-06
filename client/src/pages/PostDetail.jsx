@@ -30,7 +30,7 @@ import QuotedPost from '../components/QuotedPost';
 const PostDetail = () => {
     const { postId } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, token: authContextToken } = useAuth();
     const { socket, connected } = useSocket();
     
     const [post, setPost] = useState(null);
@@ -123,7 +123,9 @@ const PostDetail = () => {
     const handleDelete = async () => {
         if (window.confirm('Bu gönderiyi silmek istediğinizden emin misiniz?')) {
             try {
-                await axios.delete(`/api/posts/${postId}`);
+                const activeToken = authContextToken || localStorage.getItem('token');
+                const config = activeToken ? { headers: { Authorization: `Bearer ${activeToken}` } } : {};
+                await axios.delete(`/api/posts/${postId}`, config);
                 navigate(-1);
             } catch (err) {
                 console.error('Delete error:', err);

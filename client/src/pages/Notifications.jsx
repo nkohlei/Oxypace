@@ -105,6 +105,7 @@ const Notifications = () => {
             await axios.delete('/api/notifications');
             setNotifications([]);
             setUnreadNotificationsCount(0);
+            useGlobalStore.getState().setUnreadNotificationsCount(0);
         } catch (err) {
             console.error('Tüm bildirimleri silme hatası:', err);
         }
@@ -148,6 +149,7 @@ const Notifications = () => {
             await axios.put('/api/notifications/read');
             setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
             setUnreadNotificationsCount(0);
+            useGlobalStore.getState().setUnreadNotificationsCount(0);
         } catch (err) {
             console.error('Mark all read error:', err);
         }
@@ -224,15 +226,15 @@ const Notifications = () => {
                             <h1>Bildirimler</h1>
                         </div>
                         <div className="notifications-header-actions">
-                            {notifications.some((n) => !n.read) && (
-                                <button className="mark-read-btn" onClick={handleMarkAllRead}>
-                                    Tümünü Okundu İşaretle
-                                </button>
-                            )}
                             {notifications.length > 0 && (
-                                <button className="clear-all-btn" onClick={handleDeleteAllNotifications}>
-                                    Tümünü Temizle
-                                </button>
+                                <>
+                                    <button className="mark-read-btn" onClick={handleMarkAllRead}>
+                                        Tümünü Oku
+                                    </button>
+                                    <button className="clear-all-btn" onClick={handleDeleteAllNotifications}>
+                                        Tümünü Sil
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>
