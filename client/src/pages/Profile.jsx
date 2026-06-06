@@ -317,7 +317,8 @@ const Profile = () => {
         }
 
         // Bypass cropper for GIFs to preserve animation
-        if (file.type === 'image/gif') {
+        const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+        if (isGif) {
             uploadImage(file, 'avatar');
             e.target.value = '';
             return;
@@ -342,7 +343,8 @@ const Profile = () => {
         }
 
         // Bypass cropper for GIFs to preserve animation
-        if (file.type === 'image/gif') {
+        const isGifCover = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+        if (isGifCover) {
             uploadImage(file, 'cover');
             e.target.value = '';
             return;

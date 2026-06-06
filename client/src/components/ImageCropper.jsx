@@ -26,8 +26,10 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
     const [cropSize, setCropSize] = useState(() => {
         if (mode === 'avatar') {
             return { width: 220, height: 220 }; // Initial 1:1 size
+        } else if (mode === 'cover') {
+            return { width: 360, height: 160 }; // Profile banner aspect ratio 2.25 (450x200)
         } else {
-            return { width: 390, height: 130 }; // Initial 3:1 size (e.g. cover banner)
+            return { width: 350, height: 160 }; // Portal banner aspect ratio 2.1875 (350x160)
         }
     });
 
@@ -280,7 +282,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             const deltaX = clientX - resizeStart.x;
             const deltaY = clientY - resizeStart.y;
 
-            const targetRatio = mode === 'avatar' ? 1.0 : (3 / 1);
+            const targetRatio = mode === 'avatar' ? 1.0 : (mode === 'cover' ? 2.25 : (350 / 160));
             let newWidth = resizeStart.width;
 
             // Bidirectional adjustments because crop box is always centered via translate(-50%, -50%)
