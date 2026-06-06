@@ -11,8 +11,27 @@ import { Capacitor } from '@capacitor/core';
 export const uploadFile = async (file, purpose = 'post', portalId = null) => {
   if (!file) return null;
 
+  const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
+
   try {
-    // 1. Get Presigned URL from Backend
+    if (isNative) {
+      // Direct FormData upload via backend endpoint to bypass client-side CORS blocks on R2 bucket
+      const formData = new FormData();
+      formData.append('media', file);
+      if (portalId) {
+        formData.append('portalId', portalId);
+      }
+      
+      const response = await axios.post('/api/media/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      return response.data.mediaKey;
+    }
+
+    // Web / Desktop browser direct upload flow
     const { data: { uploadUrl, mediaKey } } = await axios.post('/api/media/presigned-url', {
       fileName: file.name || `${purpose}.jpg`,
       fileType: file.type,
@@ -21,21 +40,9 @@ export const uploadFile = async (file, purpose = 'post', portalId = null) => {
       portalId
     });
 
-    let uploadBody = file;
-    if (Capacitor.isNativePlatform()) {
-      // Convert File/Blob to ArrayBuffer to ensure clean binary transfer on Capacitor Android WebView
-      uploadBody = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = (e) => reject(e);
-        reader.readAsArrayBuffer(file);
-      });
-    }
-
-    // 2. Upload directly to R2 using PUT
     const response = await fetch(uploadUrl, {
       method: 'PUT',
-      body: uploadBody,
+      body: file,
       headers: {
         'Content-Type': file.type
       },
@@ -48,7 +55,7 @@ export const uploadFile = async (file, purpose = 'post', portalId = null) => {
 
     return mediaKey;
   } catch (error) {
-    console.error('Direct Upload Error:', error);
+    console.error('Upload Error:', error);
     throw new Error(error.message || 'Dosya yüklenemedi. Lütfen tekrar deneyin.');
   }
 };

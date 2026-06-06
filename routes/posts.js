@@ -565,8 +565,9 @@ router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        // Check if user is the author
-        if (post.author.toString() !== req.user._id.toString()) {
+        // Check if user is the author or an admin
+        const authorId = post.author && post.author._id ? post.author._id.toString() : (post.author ? post.author.toString() : '');
+        if (authorId !== req.user._id.toString() && !req.user.isAdmin) {
             return res.status(403).json({ message: 'Not authorized to delete this post' });
         }
 

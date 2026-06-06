@@ -75,6 +75,34 @@ router.post('/presigned-url', auth, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/media/upload
+ * @desc    Direct File Upload to Cloudflare R2 via Backend (Bypasses CORS on client side)
+ * @access  Private
+ */
+router.post('/upload', auth, (req, res, next) => {
+    upload.single('media')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ message: `Upload error: ${err.message}` });
+        } else if (err) {
+            return res.status(400).json({ message: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Lütfen yüklenecek bir dosya seçin.' });
+        }
+        res.json({
+            mediaKey: req.file.key,
+        });
+    } catch (error) {
+        console.error('Direct upload error:', error);
+        res.status(500).json({ message: 'Dosya yükleme başarısız oldu.' });
+    }
+});
+
+/**
  * @route   GET /api/media/*
  */
 router.get('/*', async (req, res) => {

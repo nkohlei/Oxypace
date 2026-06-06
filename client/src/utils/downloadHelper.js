@@ -29,37 +29,45 @@ export const downloadFile = async (url, filename) => {
                 console.warn("Permission handling check/request error:", err);
             }
 
+            const saveFileViaFilesystem = async () => {
+                try {
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = async () => {
+                        const base64data = reader.result;
+                        try {
+                            await Filesystem.writeFile({
+                                path: `Oxypace/${filename}`,
+                                data: base64data,
+                                directory: Directory.Documents,
+                                recursive: true
+                            });
+                            alert('Başarıyla indirildi: Belgeler/Oxypace klasörüne kaydedildi.');
+                        } catch (err) {
+                            console.error("Capacitor write error:", err);
+                            alert("Dosya kaydedilirken hata oluştu.");
+                        }
+                    };
+                } catch (fetchErr) {
+                    console.error("Fetch media for fallback failed:", fetchErr);
+                    alert("Dosya indirilirken bağlantı hatası oluştu.");
+                }
+            };
+
             if (Capacitor.getPlatform() === 'android') {
                 try {
                     await Downloader.downloadFile({ url, filename });
-                    // Optional toast or alert
                     alert('İndirme başlatıldı. Durumu bildirim çubuğundan takip edebilirsiniz.');
                 } catch (err) {
-                    console.error("Downloader plugin error:", err);
-                    alert("İndirme başlatılamadı.");
+                    console.warn("Downloader plugin failed, using Filesystem write fallback:", err);
+                    await saveFileViaFilesystem();
                 }
             } else {
                 // iOS or other native platforms: Write to local documents folder
-                const response = await fetch(url);
-                const blob = await response.blob();
-                
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = async () => {
-                    const base64data = reader.result;
-                    try {
-                        await Filesystem.writeFile({
-                            path: `Oxypace/${filename}`,
-                            data: base64data,
-                            directory: Directory.Documents,
-                            recursive: true
-                        });
-                        alert('Başarıyla indirildi: Belgeler/Oxypace klasörüne kaydedildi.');
-                    } catch (err) {
-                        console.error("Capacitor write error:", err);
-                        alert("Dosya kaydedilirken hata oluştu.");
-                    }
-                };
+                await saveFileViaFilesystem();
             }
         } else {
             // Web Desktop Download
