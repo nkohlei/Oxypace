@@ -316,14 +316,6 @@ const Profile = () => {
             return;
         }
 
-        // Bypass cropper for GIFs to preserve animation
-        const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
-        if (isGif) {
-            uploadImage(file, 'avatar');
-            e.target.value = '';
-            return;
-        }
-
         const reader = new FileReader();
         reader.onload = () => {
             setCropperImage(reader.result);
@@ -339,14 +331,6 @@ const Profile = () => {
 
         if (file.size > 15 * 1024 * 1024) {
             setError("Kapak resmi 15MB'dan küçük olmalıdır.");
-            return;
-        }
-
-        // Bypass cropper for GIFs to preserve animation
-        const isGifCover = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
-        if (isGifCover) {
-            uploadImage(file, 'cover');
-            e.target.value = '';
             return;
         }
 

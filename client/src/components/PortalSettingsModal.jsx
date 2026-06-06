@@ -367,15 +367,6 @@ const PortalSettingsModal = ({
         const file = e.target.files[0];
         if (!file) return;
 
-        // Bypass cropper for GIFs
-        const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
-        if (isGif) {
-            const mode = target === 'avatar' ? 'avatar' : 'banner';
-            uploadImage(file, mode);
-            e.target.value = '';
-            return;
-        }
-
         const reader = new FileReader();
         reader.onload = () => {
             setCropperImage(reader.result);
