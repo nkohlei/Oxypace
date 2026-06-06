@@ -346,11 +346,17 @@ export const VoiceProvider = ({ children }) => {
         // Ensure video is negotiated in the SDP from the start, even if the camera is off initially.
         const hasVideoTrack = localStreamRef.current && localStreamRef.current.getVideoTracks().length > 0;
         if (!hasVideoTrack) {
-            try {
-                pc.addTransceiver('video', { direction: 'sendrecv' });
-                console.log(`[WebRTC] Added video transceiver for ${targetUserId} to pre-negotiate video track`);
-            } catch (transceiverErr) {
-                console.warn(`[WebRTC] Failed to add video transceiver:`, transceiverErr);
+            // Avoid duplicate transceiver creation: check if a video transceiver already exists (e.g. created by remote offer)
+            const hasVideoTransceiver = pc.getTransceivers().some(t => t.receiver.track.kind === 'video');
+            if (!hasVideoTransceiver) {
+                try {
+                    pc.addTransceiver('video', { direction: 'sendrecv' });
+                    console.log(`[WebRTC] Added video transceiver for ${targetUserId} to pre-negotiate video track`);
+                } catch (transceiverErr) {
+                    console.warn(`[WebRTC] Failed to add video transceiver:`, transceiverErr);
+                }
+            } else {
+                console.log(`[WebRTC] Video transceiver already exists for ${targetUserId}, skipping addTransceiver`);
             }
         }
 
@@ -859,9 +865,8 @@ export const VoiceProvider = ({ children }) => {
                 
                 // Set/replace track on all active peer connections without renegotiating SDP
                 peerConnectionsRef.current.forEach(pc => {
-                    const senders = pc.getSenders();
-                    const videoSender = senders.find(s => s.track?.kind === 'video') || 
-                                        senders.find(s => s.track === null); // Find the transceiver's video sender
+                    const videoTransceiver = pc.getTransceivers().find(t => t.receiver.track.kind === 'video');
+                    const videoSender = videoTransceiver ? videoTransceiver.sender : null;
                     if (videoSender) {
                         videoSender.replaceTrack(track).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
@@ -882,8 +887,8 @@ export const VoiceProvider = ({ children }) => {
 
                 // Set track to null on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
-                    const senders = pc.getSenders();
-                    const videoSender = senders.find(s => s.track === track || s.track?.kind === 'video');
+                    const videoTransceiver = pc.getTransceivers().find(t => t.receiver.track.kind === 'video');
+                    const videoSender = videoTransceiver ? videoTransceiver.sender : null;
                     if (videoSender) {
                         videoSender.replaceTrack(null).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (OFF):", e);
