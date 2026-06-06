@@ -176,21 +176,26 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
             cropArea.height / activeImg.height
         );
         
-        let targetZoom = zoom;
-        if (zoom < minZoom) {
-            targetZoom = minZoom;
-            setZoom(minZoom);
-        }
-
-        const clampedPosition = clampPosition(
-            position,
-            { width: activeImg.width, height: activeImg.height },
-            targetZoom,
-            cropArea
-        );
-
-        setPosition(clampedPosition);
-    }, [cropSize, zoom, rotatedImageObj, imageObj, position, getCropArea]);
+        // Use a functional update for setZoom to avoid dependency on zoom
+        setZoom(prevZoom => {
+            let targetZoom = prevZoom;
+            if (prevZoom < minZoom) {
+                targetZoom = minZoom;
+            }
+            
+            // Inside the same render phase, we also clamp the position using targetZoom
+            setPosition(prevPosition => {
+                return clampPosition(
+                    prevPosition,
+                    { width: activeImg.width, height: activeImg.height },
+                    targetZoom,
+                    cropArea
+                );
+            });
+            
+            return targetZoom;
+        });
+    }, [cropSize, rotatedImageObj, imageObj, getCropArea]);
 
     // Mouse/Touch sürükleme başlat
     const handleDragStart = (e) => {
@@ -662,24 +667,30 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
                     )}
 
                     {/* Rotation controls */}
-                    <div className="cropper-rotation-bar">
-                        <button
-                            className="rotation-btn"
-                            onClick={() => setRotation((prev) => prev - 90)}
-                            title="Sola 90 Derece Döndür"
-                        >
-                            <RotateCcw size={16} />
-                            <span>🔄 Sola Döndür</span>
-                        </button>
-                        <button
-                            className="rotation-btn"
-                            onClick={() => setRotation((prev) => prev + 90)}
-                            title="Sağa 90 Derece Döndür"
-                        >
-                            <RotateCw size={16} />
-                            <span>🔄 Sağa Döndür</span>
-                        </button>
-                    </div>
+                    {isGif ? (
+                        <div className="cropper-gif-warning" style={{ fontSize: '13px', color: '#10b981', textAlign: 'center', margin: '8px 0', fontWeight: '500' }}>
+                            ℹ️ GIF animasyonlarının bozulmaması için döndürme seçeneği devre dışıdır.
+                        </div>
+                    ) : (
+                        <div className="cropper-rotation-bar">
+                            <button
+                                className="rotation-btn"
+                                onClick={() => setRotation((prev) => prev - 90)}
+                                title="Sola 90 Derece Döndür"
+                            >
+                                <RotateCcw size={16} />
+                                <span>🔄 Sola Döndür</span>
+                            </button>
+                            <button
+                                className="rotation-btn"
+                                onClick={() => setRotation((prev) => prev + 90)}
+                                title="Sağa 90 Derece Döndür"
+                            >
+                                <RotateCw size={16} />
+                                <span>🔄 Sağa Döndür</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions */}
