@@ -355,7 +355,7 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
         }
 
         const posts = await Post.find(query)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .populate({
                 path: 'quotedPost',
                 populate: [
