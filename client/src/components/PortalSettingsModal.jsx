@@ -29,6 +29,7 @@ const PortalSettingsModal = ({
     // Cropping State
     const [cropperImage, setCropperImage] = useState(null);
     const [cropperMode, setCropperMode] = useState(null); // 'avatar' or 'cover'
+    const [selectedFile, setSelectedFile] = useState(null);
 
     // Channel State
     const [newChannelName, setNewChannelName] = useState('');
@@ -367,6 +368,7 @@ const PortalSettingsModal = ({
         const file = e.target.files[0];
         if (!file) return;
 
+        setSelectedFile(file);
         const reader = new FileReader();
         reader.onload = () => {
             setCropperImage(reader.result);
@@ -376,18 +378,37 @@ const PortalSettingsModal = ({
         e.target.value = ''; // Reset input
     };
 
-    const handleCropComplete = async (blob) => {
-        const mode = cropperMode; // 'avatar' or 'banner' (mapped from 'cover' in render check if needed, but here it's set as string)
+    const handleCropComplete = async (result) => {
+        const mode = cropperMode; // 'avatar' or 'banner'
         setCropperImage(null);
         setCropperMode(null);
+        setSelectedFile(null);
 
-        if (!blob) return;
-        await uploadImage(blob, mode);
+        if (!result) return;
+
+        if (typeof result === 'string') {
+            const endpoint = mode === 'avatar' 
+                ? `/api/portals/${portal._id}/avatar` 
+                : `/api/portals/${portal._id}/banner`;
+            try {
+                setLoading(true);
+                const response = await axios.post(endpoint, { mediaKey: result });
+                onUpdate(response.data);
+            } catch (err) {
+                console.error('Error saving processed GIF:', err);
+                alert('GIF kaydedilemedi');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            await uploadImage(result, mode);
+        }
     };
 
     const handleCropCancel = () => {
         setCropperImage(null);
         setCropperMode(null);
+        setSelectedFile(null);
     };
 
     // --- Channel Handlers ---
@@ -1724,6 +1745,8 @@ const PortalSettingsModal = ({
                 cropperImage && (
                     <ImageCropper
                         image={cropperImage}
+                        file={selectedFile}
+                        portalId={portal._id}
                         mode={cropperMode}
                         onComplete={handleCropComplete}
                         onCancel={handleCropCancel}

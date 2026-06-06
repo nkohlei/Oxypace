@@ -59,6 +59,7 @@ const Profile = () => {
     // Cropping State
     const [cropperImage, setCropperImage] = useState(null);
     const [cropperMode, setCropperMode] = useState(null); // 'avatar' or 'cover'
+    const [selectedFile, setSelectedFile] = useState(null);
 
     // Image Modal State
     const [showImageModal, setShowImageModal] = useState(false);
@@ -316,6 +317,7 @@ const Profile = () => {
             return;
         }
 
+        setSelectedFile(file);
         const reader = new FileReader();
         reader.onload = () => {
             setCropperImage(reader.result);
@@ -334,6 +336,7 @@ const Profile = () => {
             return;
         }
 
+        setSelectedFile(file);
         const reader = new FileReader();
         reader.onload = () => {
             setCropperImage(reader.result);
@@ -343,18 +346,54 @@ const Profile = () => {
         e.target.value = ''; // Reset input
     };
 
-    const handleCropComplete = async (blob) => {
+    const handleCropComplete = async (result) => {
         const mode = cropperMode;
         setCropperImage(null);
         setCropperMode(null);
+        setSelectedFile(null);
 
-        if (!blob) return;
-        await uploadImage(blob, mode);
+        if (!result) return;
+
+        if (typeof result === 'string') {
+            const endpoint = mode === 'avatar' ? '/api/users/me/avatar' : '/api/users/me/cover';
+            try {
+                setLoading(true);
+                const response = await axios.post(endpoint, { mediaKey: result });
+                const updatedUser = {
+                    ...currentUser,
+                    profile: { ...currentUser.profile },
+                };
+                if (mode === 'avatar') {
+                    updatedUser.profile.avatar = response.data.avatar;
+                    setProfileUser((prev) => ({
+                        ...prev,
+                        profile: { ...prev.profile, avatar: response.data.avatar },
+                    }));
+                    setSuccess('Profil fotoğrafı güncellendi!');
+                } else {
+                    updatedUser.profile.coverImage = response.data.coverImage;
+                    setProfileUser((prev) => ({
+                        ...prev,
+                        profile: { ...prev.profile, coverImage: response.data.coverImage },
+                    }));
+                    setSuccess('Kapak resmi güncellendi!');
+                }
+                updateUser(updatedUser);
+            } catch (err) {
+                console.error('Error saving processed GIF:', err);
+                setError('GIF kaydedilemedi');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            await uploadImage(result, mode);
+        }
     };
 
     const handleCropCancel = () => {
         setCropperImage(null);
         setCropperMode(null);
+        setSelectedFile(null);
     };
 
     const handleSubmit = async (e) => {
@@ -1538,6 +1577,8 @@ const Profile = () => {
             {cropperImage && (
                 <ImageCropper
                     image={cropperImage}
+                    file={selectedFile}
+                    portalId={currentUser?._id}
                     mode={cropperMode}
                     onComplete={handleCropComplete}
                     onCancel={handleCropCancel}

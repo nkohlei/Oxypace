@@ -4,6 +4,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { protect as auth } from '../middleware/auth.js';
 
 import axios from 'axios';
+import sharp from 'sharp';
 import r2 from '../config/r2.js';
 import fs from 'fs';
 import path from 'path';
@@ -71,6 +72,94 @@ router.post('/presigned-url', auth, async (req, res) => {
     } catch (error) {
         console.error('Presigned URL Generation Error:', error);
         res.status(500).json({ message: 'Failed to generate upload URL' });
+    }
+});
+
+/**
+ * @route   POST /api/media/process-gif
+ * @desc    Crop and rotate animated GIF on backend using sharp (preserves animation)
+ * @access  Private
+ */
+router.post('/process-gif', auth, async (req, res) => {
+    try {
+        const { mediaKey, sourceX, sourceY, sourceWidth, sourceHeight, rotation, purpose } = req.body;
+
+        if (!mediaKey) {
+            return res.status(400).json({ message: 'mediaKey is required' });
+        }
+
+        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+
+        // 1. Get original GIF from R2
+        const getCommand = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: mediaKey,
+        });
+
+        const r2Response = await r2.send(getCommand);
+        
+        // Convert stream to Buffer
+        const chunks = [];
+        for await (const chunk of r2Response.Body) {
+            chunks.push(chunk);
+        }
+        const inputBuffer = Buffer.concat(chunks);
+
+        // 2. Process with sharp (animated: true preserves frames)
+        let sharpImg = sharp(inputBuffer, { animated: true });
+
+        // Rotate first (using sharp's rotation)
+        const normalizedAngle = ((rotation % 360) + 360) % 360;
+        if (normalizedAngle !== 0) {
+            sharpImg = sharpImg.rotate(normalizedAngle);
+        }
+
+        // Sharp requires integer values
+        const cropLeft = Math.max(0, Math.round(sourceX));
+        const cropTop = Math.max(0, Math.round(sourceY));
+        const cropWidth = Math.max(1, Math.round(sourceWidth));
+        const cropHeight = Math.max(1, Math.round(sourceHeight));
+
+        // Get metadata of rotated image to prevent boundary overflow
+        const rotatedBuffer = await sharpImg.toBuffer();
+        const metadata = await sharp(rotatedBuffer).metadata();
+        
+        const finalLeft = Math.min(cropLeft, (metadata.width || cropWidth) - 1);
+        const finalTop = Math.min(cropTop, (metadata.height || cropHeight) - 1);
+        const finalWidth = Math.min(cropWidth, (metadata.width || cropWidth) - finalLeft);
+        const finalHeight = Math.min(cropHeight, (metadata.height || cropHeight) - finalTop);
+
+        sharpImg = sharp(rotatedBuffer, { animated: true }).extract({
+            left: finalLeft,
+            top: finalTop,
+            width: finalWidth,
+            height: finalHeight,
+        });
+
+        const outputBuffer = await sharpImg.toBuffer();
+
+        // 3. Upload processed GIF to R2
+        const ext = path.extname(mediaKey) || '.gif';
+        const folder = purpose === 'avatar' ? 'avatars' : 'banners';
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const processedKey = `${folder}/${purpose || 'cropped'}-${uniqueSuffix}${ext}`;
+
+        const putCommand = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: processedKey,
+            ContentType: 'image/gif',
+            Body: outputBuffer,
+        });
+
+        await r2.send(putCommand);
+
+        res.json({
+            mediaKey: processedKey,
+        });
+
+    } catch (error) {
+        console.error('Process GIF Error:', error);
+        res.status(500).json({ message: 'GIF processing failed' });
     }
 });
 

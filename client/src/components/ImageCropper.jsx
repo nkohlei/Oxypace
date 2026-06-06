@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { loadImage, cropImage, clampPosition } from '../utils/cropperUtils';
 import { X, RotateCcw, RotateCw } from 'lucide-react';
+import axios from 'axios';
+import { uploadFile } from '../utils/uploadUtils';
 import './ImageCropper.css';
 
 /**
@@ -9,7 +11,7 @@ import './ImageCropper.css';
  * Avatar: Sabit 1:1 kilitli aspect ratio, slider/wheel zoom, sürükle-bırak, köşe tutamaçları ile yeniden boyutlandırma
  * Cover: Sabit 3:1 kilitli aspect ratio, wheel zoom, sürükle-bırak, köşe tutamaçları ile yeniden boyutlandırma
  */
-const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) => {
+const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCancel, title }) => {
     const containerRef = useRef(null);
     const [imageObj, setImageObj] = useState(null);
     const [rotatedImageObj, setRotatedImageObj] = useState(null);
@@ -456,12 +458,39 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
         setProcessing(true);
         try {
-            const cropArea = getCropArea();
-            const outputSize = getOutputSize();
+            const isGif = file && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'));
 
-            const blob = await cropImage(activeImg, cropArea, zoom, position, outputSize, 0);
+            if (isGif) {
+                // 1. Upload original GIF to R2
+                const uploadPurpose = mode === 'avatar' ? 'avatar' : 'cover';
+                const originalMediaKey = await uploadFile(file, uploadPurpose, portalId);
 
-            onComplete(blob);
+                // 2. Call backend process-gif endpoint to crop and rotate animated GIF
+                const cropArea = getCropArea();
+                const sourceX = (cropArea.x - position.x) / zoom;
+                const sourceY = (cropArea.y - position.y) / zoom;
+                const sourceWidth = cropArea.width / zoom;
+                const sourceHeight = cropArea.height / zoom;
+
+                const response = await axios.post('/api/media/process-gif', {
+                    mediaKey: originalMediaKey,
+                    sourceX,
+                    sourceY,
+                    sourceWidth,
+                    sourceHeight,
+                    rotation,
+                    purpose: uploadPurpose,
+                });
+
+                // 3. Return the processed mediaKey to parent
+                onComplete(response.data.mediaKey);
+            } else {
+                // Standard image flow using canvas
+                const cropArea = getCropArea();
+                const outputSize = getOutputSize();
+                const blob = await cropImage(activeImg, cropArea, zoom, position, outputSize, 0);
+                onComplete(blob);
+            }
         } catch (err) {
             console.error('Kırpma hatası:', err);
             alert('Görsel işlenirken bir hata oluştu');
