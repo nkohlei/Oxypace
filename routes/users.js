@@ -367,7 +367,7 @@ router.get('/search', protect, async (req, res) => {
             _id: { $ne: req.user._id }, // Exclude current user
             'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
         })
-            .select('username profile.displayName profile.avatar verificationBadge')
+            .select('username profile.displayName profile.avatar verificationBadge customBadge')
             .limit(20);
 
         res.json(users);
@@ -384,7 +384,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
             .select(
-                'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge joinedPortals following followers followRequests isDeleted'
+                'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge customBadge joinedPortals following followers followRequests isDeleted'
             )
             .populate('joinedPortals', 'name avatar badges isVerified privacy members allowedUsers owner admins');
 

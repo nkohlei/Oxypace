@@ -1,7 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/imageUtils';
 import { Youtube, ExternalLink } from 'lucide-react';
-import Badge from './Badge';
+import UserBadges from './UserBadges';
 import { extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 
@@ -77,7 +77,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                     )}
                     <div className="quoted-author-info">
                         <span className="quoted-author-name">{author.profile?.displayName || author.username}</span>
-                        <Badge type={author.verificationBadge} size={14} />
+                        <UserBadges user={author} size={14} />
                         <span className="quoted-author-username">@{author.username}</span>
                         <span className="quoted-dot">·</span>
                         <span className="quoted-time">{getTimeAgo(quotedPost.createdAt)}</span>

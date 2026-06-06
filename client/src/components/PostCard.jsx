@@ -7,8 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
-import Badge from './Badge';
 import UserAvatar from './UserAvatar';
+import UserBadges from './UserBadges';
 import { linkifyText, truncateAndLinkifyText, extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import { Capacitor } from '@capacitor/core';
@@ -390,7 +390,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                     Silinmiş Kullanıcı
                                 </span>
                             )}
-                            <Badge type={author.verificationBadge} size={16} />
+                            <UserBadges user={author} size={16} />
                             <span className="author-username">@{author.username}</span>
                         </Link>
                         <span className="post-time">· {formatDate(post.createdAt)}</span>

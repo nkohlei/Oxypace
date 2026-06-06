@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import { getImageUrl } from '../utils/imageUtils';
-import Badge from '../components/Badge';
+import UserBadges from '../components/UserBadges';
 import Footer from '../components/Footer';
 import ShareModal from '../components/ShareModal';
 import SEO from '../components/SEO';
@@ -205,7 +205,7 @@ const PostDetail = () => {
                                 <div className="pd-author-meta">
                                     <span className="pd-display-name">
                                         {post.author?.profile?.displayName || post.author?.username}
-                                        <Badge type={post.author?.verificationBadge} />
+                                        <UserBadges user={post.author} size={18} />
                                     </span>
                                     <span className="pd-username">@{post.author?.username}</span>
                                 </div>

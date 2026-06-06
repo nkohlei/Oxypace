@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import Badge from '../components/Badge';
+import UserBadges from '../components/UserBadges';
 import './CommentDetail.css';
 
 const CommentDetail = () => {
@@ -212,7 +212,7 @@ const CommentDetail = () => {
                                     <span className="author-name">
                                         {comment.author?.profile?.displayName ||
                                             comment.author?.username}
-                                        <Badge type={comment.author?.verificationBadge} />
+                                        <UserBadges user={comment.author} size={18} />
                                     </span>
                                     <span className="author-username">
                                         @{comment.author?.username}
@@ -356,7 +356,7 @@ const CommentDetail = () => {
                                                 >
                                                     {reply.author?.profile?.displayName ||
                                                         reply.author?.username}
-                                                    <Badge type={reply.author?.verificationBadge} />
+                                                    <UserBadges user={reply.author} size={14} />
                                                 </Link>
                                                 <span className="reply-author-username">
                                                     @{reply.author?.username}

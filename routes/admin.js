@@ -8,6 +8,9 @@ import SystemSettings from '../models/SystemSettings.js';
 import BannedIP from '../models/BannedIP.js';
 import jwt from 'jsonwebtoken';
 import transporter from '../config/email.js';
+import CustomBadge from '../models/CustomBadge.js';
+import { DeleteObjectCommand } from '@aws-sdk/client-s3';
+import r2 from '../config/r2.js';
 
 const router = express.Router();
 
@@ -142,7 +145,7 @@ router.get('/users', protect, admin, async (req, res) => {
         }
 
         const users = await User.find(query)
-            .select('username email profile verificationBadge isVerified isBanned banReason banExpiresAt isShadowbanned lastIP createdAt')
+            .select('username email profile verificationBadge customBadge isVerified isBanned banReason banExpiresAt isShadowbanned lastIP createdAt')
             .sort({ createdAt: -1 })
             .limit(50); // Limit to avoid massive payloads
 
@@ -893,6 +896,110 @@ router.put('/users/:id/recover-reject', protect, admin, async (req, res) => {
         res.json({ message: 'Hesap kurtarma talebi reddedildi ve kullanıcı bilgilendirildi.', user });
     } catch (error) {
         console.error('Recover reject error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   GET /api/admin/custom-badges
+// @desc    Get all custom badges
+// @access  Private/Admin
+router.get('/custom-badges', protect, admin, async (req, res) => {
+    try {
+        const badges = await CustomBadge.find().sort({ createdAt: -1 });
+        res.json(badges);
+    } catch (error) {
+        console.error('Fetch custom badges error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/custom-badges
+// @desc    Add a new custom badge
+// @access  Private/Admin
+router.post('/custom-badges', protect, admin, async (req, res) => {
+    try {
+        const { name, url, key } = req.body;
+        if (!name || !url || !key) {
+            return res.status(400).json({ message: 'Lütfen rozet adı, görsel URL ve anahtarını belirtin.' });
+        }
+
+        const badge = await CustomBadge.create({ name, url, key });
+        res.status(201).json(badge);
+    } catch (error) {
+        console.error('Create custom badge error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   DELETE /api/admin/custom-badges/:id
+// @desc    Delete custom badge
+// @access  Private/Admin
+router.delete('/custom-badges/:id', protect, admin, async (req, res) => {
+    try {
+        const badge = await CustomBadge.findById(req.params.id);
+        if (!badge) {
+            return res.status(404).json({ message: 'Rozet bulunamadı.' });
+        }
+
+        // Delete from R2
+        if (badge.key) {
+            try {
+                const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+                await r2.send(new DeleteObjectCommand({
+                    Bucket: bucketName,
+                    Key: badge.key
+                }));
+                console.log(`Deleted custom badge image from R2: ${badge.key}`);
+            } catch (r2Err) {
+                console.error('Failed to delete badge image from R2:', r2Err);
+            }
+        }
+
+        await badge.deleteOne();
+        res.json({ message: 'Rozet başarıyla silindi.' });
+    } catch (error) {
+        console.error('Delete custom badge error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/users/:id/custom-badge
+// @desc    Assign custom badge to a user
+// @access  Private/Admin
+router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
+    try {
+        const { url, name } = req.body;
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        user.customBadge = {
+            url: url || '',
+            name: name || ''
+        };
+
+        await user.save();
+
+        // Create notification for user
+        if (url && name) {
+            try {
+                const systemEnabled = user.settings?.notifications?.system !== false;
+                if (systemEnabled) {
+                    await Notification.create({
+                        recipient: user._id,
+                        type: 'system',
+                        content: `Tebrikler! Hesabınıza "${name}" özel rozeti tanımlandı.`,
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Custom badge notification error:', notifErr);
+            }
+        }
+
+        res.json({ message: 'Kullanıcı özel rozeti güncellendi.', user });
+    } catch (error) {
+        console.error('Assign custom badge error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

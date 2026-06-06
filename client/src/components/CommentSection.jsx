@@ -5,7 +5,7 @@ import { uploadFile } from '../utils/uploadUtils';
 
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
-import Badge from './Badge';
+import UserBadges from './UserBadges';
 import UserAvatar from './UserAvatar';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
@@ -307,7 +307,7 @@ const CommentSection = ({ postId }) => {
                             style={safeAuthor._id === 'deleted' ? { cursor: 'default' } : {}}
                         >
                             {safeAuthor.profile?.displayName || safeAuthor.username}
-                            <Badge type={safeAuthor.verificationBadge} />
+                            <UserBadges user={safeAuthor} size={14} />
                         </Link>
                         <span className="comment-author-username">@{safeAuthor.username}</span>
                         <span className="comment-time">· {formatDate(comment.createdAt)}</span>

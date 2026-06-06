@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import Badge from './Badge';
+import UserBadges from './UserBadges';
 import { useAuth } from '../context/AuthContext';
 import { X, Link2, Share2, MessageCircle, Twitter, Facebook, Mail } from 'lucide-react';
 import './ShareModal.css';
@@ -180,7 +180,7 @@ const ShareModal = ({ postId, onClose }) => {
                                         <div className="user-text">
                                             <span className="user-name">
                                                 {user.profile?.displayName || user.username}{' '}
-                                                <Badge type={user.verificationBadge} />
+                                                <UserBadges user={user} size={14} />
                                             </span>
                                             <span className="user-username">@{user.username}</span>
                                         </div>

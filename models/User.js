@@ -45,6 +45,16 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: 'none',
         },
+        customBadge: {
+            url: {
+                type: String,
+                default: '',
+            },
+            name: {
+                type: String,
+                default: '',
+            },
+        },
         verificationRequest: {
             status: {
                 type: String,

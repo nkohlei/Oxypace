@@ -15,7 +15,7 @@ const router = express.Router();
 router.get('/:commentId', optionalProtect, mongoIdValidation('commentId'), async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.commentId)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge isShadowbanned isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isShadowbanned isDeleted')
             .populate('post', '_id content');
 
         if (!comment) {
@@ -61,7 +61,7 @@ router.get('/:commentId/replies', optionalProtect, mongoIdValidation('commentId'
         }
 
         const replies = await Comment.find(query)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .sort({ createdAt: 1 })
             .skip(skip)
             .limit(limit);
@@ -160,7 +160,7 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
                         'newNotification',
                         await notification.populate(
                             'sender',
-                            'username profile.displayName profile.avatar verificationBadge isDeleted'
+                            'username profile.displayName profile.avatar verificationBadge customBadge isDeleted'
                         )
                     );
             }
@@ -168,7 +168,7 @@ router.post('/post/:postId', protect, mongoIdValidation('postId'), commentValida
 
         await comment.populate(
             'author',
-            'username profile.displayName profile.avatar verificationBadge isDeleted'
+            'username profile.displayName profile.avatar verificationBadge customBadge isDeleted'
         );
         res.status(201).json(comment);
     } catch (error) {
@@ -236,7 +236,7 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
                         'newNotification',
                         await notification.populate(
                             'sender',
-                            'username profile.displayName profile.avatar verificationBadge isDeleted'
+                            'username profile.displayName profile.avatar verificationBadge customBadge isDeleted'
                         )
                     );
             }
@@ -244,7 +244,7 @@ router.post('/comment/:commentId', protect, mongoIdValidation('commentId'), comm
 
         await reply.populate(
             'author',
-            'username profile.displayName profile.avatar verificationBadge isDeleted'
+            'username profile.displayName profile.avatar verificationBadge customBadge isDeleted'
         );
         res.status(201).json(reply);
     } catch (error) {
@@ -278,7 +278,7 @@ router.get('/post/:postId', optionalProtect, mongoIdValidation('postId'), async 
         }
 
         const comments = await Comment.find(query)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -321,7 +321,7 @@ router.get('/comment/:commentId/replies', optionalProtect, mongoIdValidation('co
         }
 
         const replies = await Comment.find(query)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .sort({ createdAt: 1 }) // Oldest first for replies
             .skip(skip)
             .limit(limit);
@@ -426,13 +426,13 @@ router.get('/user/:userId', protect, mongoIdValidation('userId'), async (req, re
         const skip = (page - 1) * limit;
 
         const comments = await Comment.find({ author: req.params.userId })
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge')
             .populate({
                 path: 'post',
                 select: 'content media author',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar verificationBadge isDeleted',
+                    select: 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted',
                 },
             })
             .sort({ createdAt: -1 })

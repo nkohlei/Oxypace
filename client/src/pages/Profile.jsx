@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 // SubHeader removed
 import Badge from '../components/Badge';
+import UserBadges from '../components/UserBadges';
 import ImageCropper from '../components/ImageCropper';
 import ProfileImageModal from '../components/ProfileImageModal';
 import SEO from '../components/SEO';
@@ -742,7 +743,7 @@ const Profile = () => {
                                             </span>
                                         )}
                                         <div className="badge-alignment-container">
-                                            <Badge type={profileUser?.verificationBadge} />
+                                            <UserBadges user={profileUser} size={18} />
                                         </div>
                                     </div>
                                     <span className="profile-username-tag">
@@ -1045,7 +1046,7 @@ const Profile = () => {
                                                                     <span className="post-author-name">
                                                                         {post.author?.profile?.displayName || post.author?.username || profileUser?.profile?.displayName || profileUser?.username || 'Silinmiş Kullanıcı'}
                                                                     </span>
-                                                                    <Badge type={post.author?.verificationBadge || profileUser?.verificationBadge} size={14} />
+                                                                    <UserBadges user={post.author || profileUser} size={14} />
                                                                     <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
                                                                 </Link>
                                                                 <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>

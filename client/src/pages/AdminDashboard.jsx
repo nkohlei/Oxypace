@@ -7,7 +7,10 @@ import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Home, Pencil, Trash2 } from 'lucide-react';
 import Badge from '../components/Badge';
+import UserBadges from '../components/UserBadges';
 import UserAvatar from '../components/UserAvatar';
+import ImageCropper from '../components/ImageCropper';
+import { uploadFile } from '../utils/uploadUtils';
 import './AdminDashboard.css';
 
 // Modern Modal Component for Reason Entry + Duration Picker
@@ -786,7 +789,9 @@ const UserDetailModal = ({
     handleUserShadowbanToggle,
     isOxypace,
     handleApproveRecovery,
-    handleRejectRecovery
+    handleRejectRecovery,
+    customBadges = [],
+    handleCustomBadgeAssign
 }) => {
     if (!isOpen || !user) return null;
 
@@ -809,7 +814,7 @@ const UserDetailModal = ({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <strong style={{ fontSize: '16px', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 {user.profile?.displayName || user.username}
-                                <Badge type={user.verificationBadge} size={18} />
+                                <UserBadges user={user} size={18} />
                             </strong>
                             <span style={{ fontSize: '13px', color: '#888' }}>@{user.username}</span>
                             <span style={{ fontSize: '12px', color: '#666' }}>{user.email}</span>
@@ -858,6 +863,35 @@ const UserDetailModal = ({
                                 return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
                             })()}
                         </select>
+                    </div>
+
+                    {/* Custom Badge Assignment */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Özel İkon Rozeti (Yönetici Rozeti)</h4>
+                        <select
+                            className="badge-select"
+                            value={user.customBadge?.url || ''}
+                            onChange={(e) => {
+                                const selectedUrl = e.target.value;
+                                const selectedBadge = customBadges.find(b => b.url === selectedUrl);
+                                handleCustomBadgeAssign(user._id, selectedBadge ? selectedBadge.url : '', selectedBadge ? selectedBadge.name : '');
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                        >
+                            <option value="">Rozet Yok</option>
+                            {customBadges.map((badge) => (
+                                <option key={badge._id} value={badge.url}>
+                                    {badge.name}
+                                </option>
+                            ))}
+                        </select>
+                        {user.customBadge?.url && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                                <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
+                                <img src={user.customBadge.url} alt={user.customBadge.name} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                                <span style={{ fontSize: '13px', color: '#fff' }}>{user.customBadge.name}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Security Info (IP & Device info) */}
@@ -1031,6 +1065,18 @@ const AdminDashboard = () => {
     const [portals, setPortals] = useState([]);
     const [searchTermPortal, setSearchTermPortal] = useState('');
 
+    // Custom badges state
+    const [customBadges, setCustomBadges] = useState([]);
+    const [customBadgeName, setCustomBadgeName] = useState('');
+    const [customBadgeUploadedKey, setCustomBadgeUploadedKey] = useState('');
+    const [customBadgeUploadedUrl, setCustomBadgeUploadedUrl] = useState('');
+    const [uploadingCustomBadge, setUploadingCustomBadge] = useState(false);
+
+    // Cropper State for Custom Badges
+    const [customBadgeCropperImage, setCustomBadgeCropperImage] = useState(null);
+    const [customBadgeCropperFile, setCustomBadgeCropperFile] = useState(null);
+    const [customBadgeCropperAspectRatio, setCustomBadgeCropperAspectRatio] = useState(1.0);
+
     // Reports State (Oxypace Only)
     const [reports, setReports] = useState([]);
     const [reportFilter, setReportFilter] = useState('pending');
@@ -1092,6 +1138,169 @@ const AdminDashboard = () => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
 
+    const analyzeImageFile = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        resolve({ isTransparent: false, aspectRatio: 1 });
+                        return;
+                    }
+                    ctx.drawImage(img, 0, 0);
+                    try {
+                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                        let isTransparent = false;
+                        for (let i = 3; i < imgData.length; i += 4) {
+                            if (imgData[i] < 255) {
+                                isTransparent = true;
+                                break;
+                            }
+                        }
+                        resolve({ isTransparent, aspectRatio: img.width / img.height });
+                    } catch (err) {
+                        resolve({ isTransparent: false, aspectRatio: img.width / img.height });
+                    }
+                };
+                img.onerror = () => resolve({ isTransparent: false, aspectRatio: 1 });
+                img.src = e.target.result;
+            };
+            reader.onerror = () => resolve({ isTransparent: false, aspectRatio: 1 });
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const fetchCustomBadges = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/custom-badges');
+            setCustomBadges(data);
+        } catch (err) {
+            setError('Özel rozetler yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCustomBadgeFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingCustomBadge(true);
+        try {
+            const { isTransparent, aspectRatio } = await analyzeImageFile(file);
+            const reader = new FileReader();
+            reader.onload = () => {
+                setCustomBadgeCropperImage(reader.result);
+                setCustomBadgeCropperFile(file);
+                setCustomBadgeCropperAspectRatio(isTransparent ? aspectRatio : 1.0);
+                setUploadingCustomBadge(false);
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error('Image analysis error:', err);
+            setUploadingCustomBadge(false);
+        }
+    };
+
+    const handleCustomBadgeCropComplete = async (croppedResult) => {
+        setCustomBadgeCropperImage(null);
+        setUploadingCustomBadge(true);
+        try {
+            let mediaKey;
+            if (typeof croppedResult === 'string') {
+                mediaKey = croppedResult;
+            } else {
+                mediaKey = await uploadFile(croppedResult, 'avatar');
+            }
+
+            setCustomBadgeUploadedKey(mediaKey);
+            setCustomBadgeUploadedUrl(getImageUrl(mediaKey));
+            alert('Görsel başarıyla yüklendi.');
+        } catch (err) {
+            alert('Görsel yüklenirken hata oluştu.');
+        } finally {
+            setUploadingCustomBadge(false);
+        }
+    };
+
+    const handleSaveCustomBadge = async (e) => {
+        e.preventDefault();
+        if (!customBadgeName.trim()) {
+            alert('Lütfen rozet ismi girin.');
+            return;
+        }
+        if (!customBadgeUploadedUrl) {
+            alert('Lütfen rozet görseli yükleyin.');
+            return;
+        }
+
+        try {
+            await axios.post('/api/admin/custom-badges', {
+                name: customBadgeName.trim(),
+                url: customBadgeUploadedUrl,
+                key: customBadgeUploadedKey
+            });
+            setCustomBadgeName('');
+            setCustomBadgeUploadedUrl('');
+            setCustomBadgeUploadedKey('');
+            fetchCustomBadges();
+            alert('Özel rozet başarıyla eklendi.');
+        } catch (err) {
+            alert(err.response?.data?.message || 'Rozet kaydedilemedi.');
+        }
+    };
+
+    const handleDeleteCustomBadge = async (badgeId) => {
+        if (!window.confirm('Bu özel rozeti silmek istediğinize emin misiniz?')) return;
+        try {
+            await axios.delete(`/api/admin/custom-badges/${badgeId}`);
+            fetchCustomBadges();
+            alert('Rozet silindi.');
+        } catch (err) {
+            alert('Rozet silinemedi.');
+        }
+    };
+
+    const handleCustomBadgeAssign = async (userId, badgeUrl, badgeName) => {
+        try {
+            const { data } = await axios.post(`/api/admin/users/${userId}/custom-badge`, {
+                url: badgeUrl,
+                name: badgeName
+            });
+            setUsers(
+                users.map((u) =>
+                    u._id === userId
+                        ? { ...u, customBadge: { url: badgeUrl, name: badgeName } }
+                        : u
+                )
+            );
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, customBadge: { url: badgeUrl, name: badgeName } } : prev);
+            alert('Özel rozet kullanıcıya atandı.');
+        } catch (err) {
+            alert('Rozet atanamadı.');
+        }
+    };
+
+    useEffect(() => {
+        const loadCustomBadges = async () => {
+            try {
+                const { data } = await axios.get('/api/admin/custom-badges');
+                setCustomBadges(data);
+            } catch (err) {
+                console.error('Failed to load custom badges on mount:', err);
+            }
+        };
+        if (isAdmin) {
+            loadCustomBadges();
+        }
+    }, [isAdmin]);
+
     const fetchRecoveryRequests = async () => {
         setLoading(true);
         try {
@@ -1117,6 +1326,8 @@ const AdminDashboard = () => {
             fetchReports();
         } else if (activeTab === 'badges') {
             fetchAllBadges();
+        } else if (activeTab === 'custom-badges') {
+            fetchCustomBadges();
         } else if (activeTab === 'feedback') {
             fetchFeedbacks();
         } else if (activeTab === 'ipbans') {
@@ -1863,6 +2074,12 @@ const AdminDashboard = () => {
                     onClick={() => setActiveTab('badges')}
                 >
                     Rozetler
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'custom-badges' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('custom-badges')}
+                >
+                    Özel İkon Rozetler
                 </button>
                 {isOxypace && (
                     <button
@@ -2698,6 +2915,118 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 )}
+
+                {activeTab === 'custom-badges' && (
+                    <div className="custom-badges-section fade-in">
+                        <div className="section-header-modern">
+                            <div className="header-left">
+                                <h2>🛡️ Özel İkon Rozetler (Yönetici Rozetleri)</h2>
+                                <p>Sistem genelinde kullanıcılara atanabilecek özel ikon/resim rozetler yükleyin ve yönetin.</p>
+                            </div>
+                        </div>
+
+                        <div className="custom-badges-layout" style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '30px', marginTop: '20px' }}>
+                            {/* Left Side: Create / Upload form */}
+                            <div className="custom-badge-form-card" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '24px', backdropFilter: 'blur(20px)' }}>
+                                <h3 style={{ color: '#fff', marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>Yeni Rozet Ekle</h3>
+                                <form onSubmit={handleSaveCustomBadge} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px', fontWeight: '500' }}>Rozet Adı</label>
+                                        <input
+                                            type="text"
+                                            className="reason-input-modern"
+                                            style={{ padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', fontSize: '14px', width: '100%' }}
+                                            placeholder="Örn: Top Donör, Moderatör"
+                                            value={customBadgeName}
+                                            onChange={(e) => setCustomBadgeName(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px', fontWeight: '500' }}>Rozet Görseli (Görsel veya GIF)</label>
+                                        <input
+                                            type="file"
+                                            accept="image/png, image/jpeg, image/gif"
+                                            onChange={handleCustomBadgeFileSelect}
+                                            style={{ display: 'none' }}
+                                            id="custom-badge-file-input"
+                                            disabled={uploadingCustomBadge}
+                                        />
+                                        <label
+                                            htmlFor="custom-badge-file-input"
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                height: '120px',
+                                                border: '2px dashed rgba(255, 255, 255, 0.15)',
+                                                borderRadius: '12px',
+                                                cursor: uploadingCustomBadge ? 'not-allowed' : 'pointer',
+                                                background: 'rgba(0, 0, 0, 0.2)',
+                                                transition: '0.2s ease',
+                                                gap: '8px',
+                                                color: '#bbb',
+                                                fontSize: '13px'
+                                            }}
+                                            className="custom-badge-upload-label"
+                                        >
+                                            {uploadingCustomBadge ? (
+                                                <span>Yükleniyor / Analiz Ediliyor...</span>
+                                            ) : customBadgeUploadedUrl ? (
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                                    <img src={customBadgeUploadedUrl} alt="Preview" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                                                    <span style={{ fontSize: '11px', color: '#4ade80' }}>Değiştirmek için tıklayın</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <span style={{ fontSize: '24px' }}>📁</span>
+                                                    <span>Dosya Seç (PNG/GIF)</span>
+                                                </>
+                                            )}
+                                        </label>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className="btn-modern-primary"
+                                        style={{ width: '100%', padding: '12px', fontSize: '14px', marginTop: '10px' }}
+                                        disabled={uploadingCustomBadge || !customBadgeUploadedUrl}
+                                    >
+                                        Kaydet
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Right Side: List of custom badges */}
+                            <div className="custom-badges-list-card" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '24px', backdropFilter: 'blur(20px)' }}>
+                                <h3 style={{ color: '#fff', marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>Aktif Özel Rozetler</h3>
+                                {loading ? (
+                                    <div className="admin-loading">Yükleniyor...</div>
+                                ) : customBadges.length === 0 ? (
+                                    <p className="no-data">Yüklenmiş özel rozet bulunmamaktadır.</p>
+                                ) : (
+                                    <div className="custom-badges-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
+                                        {customBadges.map((badge) => (
+                                            <div key={badge._id} className="custom-badge-item-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', position: 'relative', gap: '12px' }}>
+                                                <button
+                                                    onClick={() => handleDeleteCustomBadge(badge._id)}
+                                                    style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff4b4b', cursor: 'pointer' }}
+                                                    title="Sil"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                                <img src={badge.url} alt={badge.name} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                                                <div style={{ color: '#fff', fontSize: '14px', fontWeight: '600', textAlign: 'center' }}>{badge.name}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
 
@@ -2766,7 +3095,22 @@ const AdminDashboard = () => {
                 isOxypace={isOxypace}
                 handleApproveRecovery={handleApproveRecovery}
                 handleRejectRecovery={handleRejectRecovery}
+                customBadges={customBadges}
+                handleCustomBadgeAssign={handleCustomBadgeAssign}
             />
+
+            {/* Image Cropper Modal for Custom Badges */}
+            {customBadgeCropperImage && (
+                <ImageCropper
+                    image={customBadgeCropperImage}
+                    file={customBadgeCropperFile}
+                    mode="badge"
+                    aspectRatio={customBadgeCropperAspectRatio}
+                    onComplete={handleCustomBadgeCropComplete}
+                    onCancel={() => setCustomBadgeCropperImage(null)}
+                    title="Özel Rozet Görseli Kırpıcı"
+                />
+            )}
 
 
             {/* Badge Creator/Editor Modal */}

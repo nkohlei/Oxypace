@@ -6,6 +6,7 @@ import SubHeader from '../components/SubHeader';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
+import UserBadges from '../components/UserBadges';
 import './Search.css';
 
 const Search = () => {
@@ -384,7 +385,7 @@ const Search = () => {
                                                 <div className="result-info">
                                                     <span className="result-name">
                                                         {user.profile?.displayName || user.username}
-                                                        <Badge type={user.verificationBadge} />
+                                                        <UserBadges user={user} size={16} />
                                                     </span>
                                                     <span className="result-username">
                                                         @{user.username}

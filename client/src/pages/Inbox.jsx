@@ -11,7 +11,7 @@ import SubHeader from '../components/SubHeader';
 import MessageBubble from '../components/MessageBubble';
 import NewMessageModal from '../components/NewMessageModal';
 import { getImageUrl } from '../utils/imageUtils';
-import Badge from '../components/Badge';
+import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
 import './Inbox.css';
 
@@ -506,7 +506,7 @@ const Inbox = () => {
                                                         {conv.user.profile?.displayName ||
                                                             conv.user.username}
                                                     </span>
-                                                    <Badge type={conv.user.verificationBadge} />
+                                                    <UserBadges user={conv.user} size={16} />
                                                 </div>
                                                 <span className="conv-time">
                                                     {formatTime(conv.lastMessage.createdAt)}
@@ -554,7 +554,7 @@ const Inbox = () => {
                                 >
                                     <span className="chat-header-name">
                                         {selectedUser.profile?.displayName || selectedUser.username}
-                                        <Badge type={selectedUser.verificationBadge} />
+                                        <UserBadges user={selectedUser} size={18} />
                                     </span>
                                     {selectedUser.username && (
                                         <span className="chat-header-joined">

@@ -11,7 +11,7 @@ import './ImageCropper.css';
  * Avatar: Sabit 1:1 kilitli aspect ratio, slider/wheel zoom, sürükle-bırak, köşe tutamaçları ile yeniden boyutlandırma
  * Cover: Sabit 3:1 kilitli aspect ratio, wheel zoom, sürükle-bırak, köşe tutamaçları ile yeniden boyutlandırma
  */
-const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCancel, title }) => {
+const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCancel, title, aspectRatio }) => {
     const isGif = file && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif') || (typeof image === 'string' && image.startsWith('data:image/gif')));
     const containerRef = useRef(null);
     const [imageObj, setImageObj] = useState(null);
@@ -27,6 +27,13 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
 
     // Resizable crop area size
     const [cropSize, setCropSize] = useState(() => {
+        if (aspectRatio) {
+            if (aspectRatio >= 1) {
+                return { width: 220, height: Math.round(220 / aspectRatio) };
+            } else {
+                return { width: Math.round(220 * aspectRatio), height: 220 };
+            }
+        }
         if (mode === 'avatar') {
             return { width: 220, height: 220 }; // Initial 1:1 size
         } else if (mode === 'cover') {
@@ -292,7 +299,7 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
             const deltaX = clientX - resizeStart.x;
             const deltaY = clientY - resizeStart.y;
 
-            const targetRatio = mode === 'avatar' ? 1.0 : (mode === 'cover' ? 2.25 : (350 / 160));
+            const targetRatio = aspectRatio || (mode === 'avatar' ? 1.0 : (mode === 'cover' ? 2.25 : (350 / 160)));
             let newWidth = resizeStart.width;
 
             // Bidirectional adjustments because crop box is always centered via translate(-50%, -50%)

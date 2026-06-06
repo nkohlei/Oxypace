@@ -246,6 +246,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 joinedPortals: user.joinedPortals,
                 isAdmin: user.isAdmin,
                 verificationBadge: user.verificationBadge,
+                customBadge: user.customBadge,
                 securityQuestionsConfigured: user.securityAnswers && user.securityAnswers.length >= 2,
             },
         });
@@ -427,6 +428,7 @@ router.post('/google/complete', async (req, res) => {
                 joinedPortals: [],
                 isAdmin: user.isAdmin,
                 verificationBadge: user.verificationBadge,
+                customBadge: user.customBadge,
             },
         });
     } catch (error) {
@@ -547,6 +549,7 @@ router.post('/maintenance-login', async (req, res) => {
                 joinedPortals: user.joinedPortals,
                 isAdmin: user.isAdmin,
                 verificationBadge: user.verificationBadge,
+                customBadge: user.customBadge,
             },
         });
     } catch (error) {

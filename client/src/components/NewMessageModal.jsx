@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import Badge from './Badge';
+import UserBadges from './UserBadges';
 import { X } from 'lucide-react';
 
 const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
@@ -361,8 +361,8 @@ const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
                                             }}
                                         >
                                             {user.profile?.displayName || user.username}
+                                            <UserBadges user={user} size={14} />
                                         </span>
-                                        <Badge type={user.verificationBadge} />
                                     </div>
                                     <span
                                         style={{ fontSize: '13px', color: 'var(--text-secondary)' }}

@@ -143,7 +143,7 @@ router.post(
             const populatedPost = await Post.findById(post._id)
                 .populate({
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted'
+                    select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted'
                 })
                 .populate('portal')
                 .populate({
@@ -151,7 +151,7 @@ router.post(
                     populate: [
                         { 
                             path: 'author', 
-                            select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' 
+                            select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' 
                         },
                         { 
                             path: 'portal', 
@@ -162,7 +162,7 @@ router.post(
                             populate: [
                                 { 
                                     path: 'author', 
-                                    select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' 
+                                    select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' 
                                 },
                                 { 
                                     path: 'portal', 
@@ -194,7 +194,7 @@ router.post(
                             const io = req.app.get('io');
                             if (io) {
                                 const populatedNotif = await Notification.findById(newNotif._id)
-                                    .populate('sender', 'username profile.displayName profile.avatar verificationBadge')
+                                    .populate('sender', 'username profile.displayName profile.avatar verificationBadge customBadge')
                                     .populate('post', 'content media')
                                     .populate('comment', 'content');
                                 io.to(originalPost.author._id.toString()).emit('newNotification', populatedNotif);
@@ -274,17 +274,17 @@ router.get('/', optionalProtect, async (req, res) => {
             .limit(limit + 10)
             .populate(
                 'author',
-                'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted'
+                'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted'
             )
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                         ]
                     }
@@ -341,17 +341,17 @@ router.get('/', optionalProtect, async (req, res) => {
 router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge settings.privacy isShadowbanned isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isShadowbanned isDeleted')
             .populate('portal', 'privacy members blockedUsers allowedUsers')
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                         ]
                     }
@@ -501,17 +501,17 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('author', 'username profile.displayName profile.avatar verificationBadge isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .populate('portal', 'name avatar channels privacy') // Include privacy for secondary checks if needed
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                         ]
                     }
@@ -616,7 +616,7 @@ router.put('/:id/pin', protect, mongoIdValidation('id'), async (req, res) => {
         // Populate author for frontend update
         await post.populate(
             'author',
-            'username profile.displayName profile.avatar verificationBadge settings.privacy isDeleted'
+            'username profile.displayName profile.avatar verificationBadge customBadge settings.privacy isDeleted'
         );
 
         res.json(post);
