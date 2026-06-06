@@ -151,23 +151,34 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
         }
     }, [rotatedImageObj]);
 
-    // Recalculate position when crop size changes (cover/avatar mode resize)
+    // Recalculate position and zoom when crop size changes (cover/avatar mode resize)
     useEffect(() => {
         const activeImg = rotatedImageObj || imageObj;
         if (!activeImg) return;
 
         const cropArea = getCropArea();
+        
+        // Enforce strict minZoom so crop area never exceeds the image boundaries
+        const minZoom = Math.max(
+            cropArea.width / activeImg.width,
+            cropArea.height / activeImg.height
+        );
+        
+        let targetZoom = zoom;
+        if (zoom < minZoom) {
+            targetZoom = minZoom;
+            setZoom(minZoom);
+        }
+
         const clampedPosition = clampPosition(
             position,
             { width: activeImg.width, height: activeImg.height },
-            zoom,
+            targetZoom,
             cropArea
         );
 
-        if (clampedPosition.x !== position.x || clampedPosition.y !== position.y) {
-            setPosition(clampedPosition);
-        }
-    }, [cropSize]);
+        setPosition(clampedPosition);
+    }, [cropSize, zoom, rotatedImageObj, imageObj, position, getCropArea]);
 
     // Mouse/Touch sürükleme başlat
     const handleDragStart = (e) => {
@@ -233,7 +244,7 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
         });
     };
 
-    // Calculate the maximum allowed crop size based on image bounds
+    // Calculate the maximum allowed crop size based on container bounds (up to 90%)
     const getMaxCropSize = useCallback(() => {
         const activeImg = rotatedImageObj || imageObj;
         if (!activeImg || !containerRef.current) {
@@ -243,35 +254,15 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
         const container = containerRef.current;
         const containerRect = container.getBoundingClientRect();
 
-        // Scaled image dimensions
-        const scaledWidth = activeImg.width * zoom;
-        const scaledHeight = activeImg.height * zoom;
-
-        // Image bounds in container coordinates
-        const imageLeft = position.x;
-        const imageTop = position.y;
-        const imageRight = position.x + scaledWidth;
-        const imageBottom = position.y + scaledHeight;
-
-        // Crop area center
-        const cropCenterX = containerRect.width / 2;
-        const cropCenterY = containerRect.height / 2;
-
-        // Max dimensions such that crop stays within image
-        const maxWidth = Math.min(
-            (cropCenterX - imageLeft) * 2,
-            (imageRight - cropCenterX) * 2
-        );
-        const maxHeight = Math.min(
-            (cropCenterY - imageTop) * 2,
-            (imageBottom - cropCenterY) * 2
-        );
+        // Let the crop box occupy up to 90% of the container
+        const maxWidth = containerRect.width * 0.9;
+        const maxHeight = containerRect.height * 0.9;
 
         return {
-            width: Math.max(MIN_CROP_WIDTH, maxWidth),
-            height: Math.max(MIN_CROP_HEIGHT, maxHeight),
+            width: maxWidth,
+            height: maxHeight,
         };
-    }, [rotatedImageObj, imageObj, zoom, position]);
+    }, [rotatedImageObj, imageObj]);
 
     const handleResizeMove = useCallback(
         (e) => {
@@ -372,7 +363,7 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
                 cropArea.height / activeImg.height
             );
 
-            const absoluteMinZoom = minZoomForCrop * 0.9;
+            const absoluteMinZoom = minZoomForCrop;
             const maxZoom = 12;
 
             const newZoom = zoom * (1 + delta);
@@ -389,15 +380,12 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
                 y: cropCenterY - imageCenterY * clampedZoom,
             };
 
-            let finalPosition = newPosition;
-            if (clampedZoom >= minZoomForCrop) {
-                finalPosition = clampPosition(
-                    newPosition,
-                    { width: activeImg.width, height: activeImg.height },
-                    clampedZoom,
-                    cropArea
-                );
-            }
+            const finalPosition = clampPosition(
+                newPosition,
+                { width: activeImg.width, height: activeImg.height },
+                clampedZoom,
+                cropArea
+            );
 
             setZoom(clampedZoom);
             setPosition(finalPosition);

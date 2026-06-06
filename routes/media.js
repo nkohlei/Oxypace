@@ -108,8 +108,18 @@ router.post('/process-gif', auth, async (req, res) => {
         // 2. Process with sharp (animated: true preserves frames)
         let sharpImg = sharp(inputBuffer, { animated: true });
 
-        // Rotate first (using sharp's rotation)
+        // Retrieve metadata of the input image first
+        const metadata = await sharp(inputBuffer).metadata();
+        const originalWidth = metadata.width || 1;
+        const originalHeight = metadata.height || 1;
+
+        // Calculate dimensions after rotation
         const normalizedAngle = ((rotation % 360) + 360) % 360;
+        const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
+        const rotatedWidth = is90or270 ? originalHeight : originalWidth;
+        const rotatedHeight = is90or270 ? originalWidth : originalHeight;
+
+        // Rotate first (using sharp's rotation)
         if (normalizedAngle !== 0) {
             sharpImg = sharpImg.rotate(normalizedAngle);
         }
@@ -120,16 +130,12 @@ router.post('/process-gif', auth, async (req, res) => {
         const cropWidth = Math.max(1, Math.round(sourceWidth));
         const cropHeight = Math.max(1, Math.round(sourceHeight));
 
-        // Get metadata of rotated image to prevent boundary overflow
-        const rotatedBuffer = await sharpImg.toBuffer();
-        const metadata = await sharp(rotatedBuffer).metadata();
-        
-        const finalLeft = Math.min(cropLeft, (metadata.width || cropWidth) - 1);
-        const finalTop = Math.min(cropTop, (metadata.height || cropHeight) - 1);
-        const finalWidth = Math.min(cropWidth, (metadata.width || cropWidth) - finalLeft);
-        const finalHeight = Math.min(cropHeight, (metadata.height || cropHeight) - finalTop);
+        const finalLeft = Math.min(cropLeft, rotatedWidth - 1);
+        const finalTop = Math.min(cropTop, rotatedHeight - 1);
+        const finalWidth = Math.min(cropWidth, rotatedWidth - finalLeft);
+        const finalHeight = Math.min(cropHeight, rotatedHeight - finalTop);
 
-        sharpImg = sharp(rotatedBuffer, { animated: true }).extract({
+        sharpImg = sharpImg.extract({
             left: finalLeft,
             top: finalTop,
             width: finalWidth,
