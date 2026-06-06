@@ -21,6 +21,30 @@ const iceServers = [
     { urls: 'stun:stun4.l.google.com:19302' }
 ];
 
+// Helper to create a 1fps, 16x16 black canvas video track as placeholder
+const createPlaceholderVideoTrack = () => {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 16;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 16, 16);
+        }
+        const stream = canvas.captureStream(1); // 1 Frame Per Second
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+            track.enabled = true;
+            track.isPlaceholder = true; // Mark as placeholder
+            return track;
+        }
+    } catch (e) {
+        console.error("[WebRTC] Failed to create placeholder video track:", e);
+    }
+    return null;
+};
+
 // Helper to prioritize AV1/VP9 video codec in SDP
 const prioritizeVideoCodec = (sdp) => {
     const lines = sdp.split('\r\n');
@@ -343,23 +367,6 @@ export const VoiceProvider = ({ children }) => {
             });
         }
 
-        // Ensure video is negotiated in the SDP from the start, even if the camera is off initially.
-        const hasVideoTrack = localStreamRef.current && localStreamRef.current.getVideoTracks().length > 0;
-        if (!hasVideoTrack) {
-            // Avoid duplicate transceiver creation: check if a video transceiver already exists (e.g. created by remote offer)
-            const hasVideoTransceiver = pc.getTransceivers().some(t => t.receiver.track.kind === 'video');
-            if (!hasVideoTransceiver) {
-                try {
-                    pc.addTransceiver('video', { direction: 'sendrecv' });
-                    console.log(`[WebRTC] Added video transceiver for ${targetUserId} to pre-negotiate video track`);
-                } catch (transceiverErr) {
-                    console.warn(`[WebRTC] Failed to add video transceiver:`, transceiverErr);
-                }
-            } else {
-                console.log(`[WebRTC] Video transceiver already exists for ${targetUserId}, skipping addTransceiver`);
-            }
-        }
-
         // Add local screen share track if currently screen sharing
         if (localState.isScreenSharing && screenStreamRef.current) {
             const screenTrack = screenStreamRef.current.getVideoTracks()[0];
@@ -484,6 +491,17 @@ export const VoiceProvider = ({ children }) => {
             } catch (permErr) {
                 console.error('[WebRTC Log] getUserMedia Error:', permErr);
                 console.warn("Could not get local media permissions:", permErr);
+                
+                // If audio permission fails, create an empty MediaStream
+                localStream = new MediaStream();
+                localStreamRef.current = localStream;
+            }
+
+            // Always add a placeholder video track to ensure the video transceiver/channel is pre-negotiated at join.
+            const placeholderTrack = createPlaceholderVideoTrack();
+            if (placeholderTrack) {
+                localStream.addTrack(placeholderTrack);
+                console.log('[WebRTC] Placeholder video track added to localStream');
             }
 
             // Fetch Token details
@@ -834,16 +852,16 @@ export const VoiceProvider = ({ children }) => {
     }, [localState, activeRoom, user, safeEmit]);
 
     const toggleCamera = useCallback(async () => {
-        // Eagerly initialize localStreamRef if not existing (e.g. microphone setup was blocked/failed)
         if (!localStreamRef.current) {
             localStreamRef.current = new MediaStream();
         }
         
-        let track = localStreamRef.current.getVideoTracks()[0];
+        // Find the active camera track (any video track that is not the placeholder)
+        let cameraTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder);
         const willCameraOn = !localState.isCameraOn;
 
         if (willCameraOn) {
-            if (!track) {
+            if (!cameraTrack) {
                 try {
                     console.log("[WebRTC] Requesting local camera stream...");
                     const videoStream = await navigator.mediaDevices.getUserMedia({
@@ -852,7 +870,7 @@ export const VoiceProvider = ({ children }) => {
                     const videoTrack = videoStream.getVideoTracks()[0];
                     if (videoTrack) {
                         localStreamRef.current.addTrack(videoTrack);
-                        track = videoTrack;
+                        cameraTrack = videoTrack;
                     }
                 } catch (err) {
                     console.error('Failed to start camera dynamically:', err);
@@ -860,37 +878,46 @@ export const VoiceProvider = ({ children }) => {
                 }
             }
 
-            if (track) {
-                track.enabled = true;
+            if (cameraTrack) {
+                cameraTrack.enabled = true;
                 
-                // Set/replace track on all active peer connections without renegotiating SDP
+                // Remove the placeholder track from the local stream
+                const placeholder = localStreamRef.current.getVideoTracks().find(t => t.isPlaceholder);
+                if (placeholder) {
+                    placeholder.stop();
+                    localStreamRef.current.removeTrack(placeholder);
+                }
+
+                // Swap placeholder track with real camera track on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
                     const videoTransceiver = pc.getTransceivers().find(t => t.receiver.track.kind === 'video');
                     const videoSender = videoTransceiver ? videoTransceiver.sender : null;
                     if (videoSender) {
-                        videoSender.replaceTrack(track).catch(e => {
+                        videoSender.replaceTrack(cameraTrack).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
                         });
-                    } else {
-                        // Fallback in case no transceiver existed: add track and renegotiate
-                        pc.addTrack(track, localStreamRef.current);
-                        renegotiateAll();
                     }
                 });
             }
         } else {
             // Turning camera OFF
-            if (track) {
-                track.enabled = false;
-                track.stop(); // Stops the camera light
-                localStreamRef.current.removeTrack(track);
+            if (cameraTrack) {
+                cameraTrack.enabled = false;
+                cameraTrack.stop(); // Stops the camera light
+                localStreamRef.current.removeTrack(cameraTrack);
+            }
 
-                // Set track to null on all active peer connections
+            // Create a new placeholder track
+            const placeholderTrack = createPlaceholderVideoTrack();
+            if (placeholderTrack) {
+                localStreamRef.current.addTrack(placeholderTrack);
+                
+                // Swap camera track with placeholder track on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
                     const videoTransceiver = pc.getTransceivers().find(t => t.receiver.track.kind === 'video');
                     const videoSender = videoTransceiver ? videoTransceiver.sender : null;
                     if (videoSender) {
-                        videoSender.replaceTrack(null).catch(e => {
+                        videoSender.replaceTrack(placeholderTrack).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (OFF):", e);
                         });
                     }
@@ -911,7 +938,7 @@ export const VoiceProvider = ({ children }) => {
             }
             return next;
         });
-    }, [localState, activeRoom, user, safeEmit, renegotiateAll]);
+    }, [localState, activeRoom, user, safeEmit]);
 
     const stopScreenShareAndRevert = useCallback(() => {
         if (screenStreamRef.current) {
