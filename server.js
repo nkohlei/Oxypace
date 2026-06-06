@@ -100,7 +100,7 @@ const corsOptions = {
         }
     },
     credentials: true,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 };
 
