@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
+import UserBadges from '../components/UserBadges';
 import { getImageUrl } from '../utils/imageUtils';
 import '../components/InfoPage.css';
 import './Settings.css';
@@ -584,7 +585,7 @@ const Settings = () => {
                             <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
                                 {profileForm.displayName || user?.profile?.displayName || user?.username}
                             </span>
-                            <Badge type={user?.verificationBadge} />
+                            <UserBadges user={user} size={18} />
                         </div>
                         <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>@{profileForm.username || user?.username}</span>
                     </div>
@@ -749,13 +750,9 @@ const Settings = () => {
                             <h4>Hesabınız Doğrulandı</h4>
                             <p>Tebrikler! Doğrulanmış rozetiniz aktif durumdadır.</p>
                             <div className="badge-display-row" style={{ background: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71' }}>
-                                <span>Aktif Rozet:</span>
+                                <span>Aktif Rozetler:</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}>
-                                    {user.verificationBadge === 'blue' && 'Mavi Tik'}
-                                    {user.verificationBadge === 'gold' && 'Altın Tik'}
-                                    {user.verificationBadge === 'platinum' && 'Platin Tik'}
-                                    {user.verificationBadge === 'special' && 'Özel Tik'}
-                                    <Badge type={user.verificationBadge} size={16} />
+                                    <UserBadges user={user} size={16} />
                                 </div>
                             </div>
                             <div style={{ marginTop: '20px' }}>
