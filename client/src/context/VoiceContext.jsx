@@ -355,6 +355,16 @@ export const VoiceProvider = ({ children }) => {
         // Bind onnegotiationneeded to trigger renegotiation automatically
         pc.onnegotiationneeded = async () => {
             try {
+                // To avoid glare/collision on initial track addition, only the designated offer creator
+                // initiates offers unless the connection is already stable and we are explicitly renegotiating.
+                if (pc.signalingState !== 'stable') {
+                    console.log(`[WebRTC] onnegotiationneeded ignored because signalingState is ${pc.signalingState}`);
+                    return;
+                }
+                if (!isOfferCreator) {
+                    console.log(`[WebRTC] onnegotiationneeded ignored for non-offer creator ${targetUserId}`);
+                    return;
+                }
                 console.log(`[WebRTC] onnegotiationneeded triggered for user ${targetUserId}`);
                 const offer = await pc.createOffer();
                 const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
@@ -670,7 +680,9 @@ export const VoiceProvider = ({ children }) => {
 
         const handleNewIceCandidate = async ({ senderId, candidate }) => {
             console.log(`[Socket] new-ice-candidate received from user: ${senderId}`);
-            const pc = peerConnectionsRef.current.get(senderId);
+            // If peer connection doesn't exist yet (e.g. ICE candidates arrived before the offer),
+            // prepare the peer connection as answerer so we don't drop candidates.
+            const pc = getOrCreatePC(senderId, false);
             if (pc) {
                 try {
                     if (pc.remoteDescription && pc.remoteDescription.type) {
@@ -823,6 +835,9 @@ export const VoiceProvider = ({ children }) => {
                     peerConnectionsRef.current.forEach(pc => {
                         pc.addTrack(videoTrack, localStreamRef.current);
                     });
+                    
+                    // Force WebRTC renegotiation so other peers are notified of the new video track
+                    await renegotiateAll();
                 }
             } catch (err) {
                 console.error('Failed to start camera dynamically:', err);
@@ -1108,7 +1123,7 @@ export const VoiceProvider = ({ children }) => {
 // Global Audio Component for cross-navigation persistence
 const GlobalAudioRenderer = ({ participants, isDeafened }) => {
     return (
-        <div style={{ display: 'none' }}>
+        <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
             {participants.filter(p => !p.isLocal && p.audioTrack).map(p => (
                 <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack.track} muted={isDeafened} />
             ))}
