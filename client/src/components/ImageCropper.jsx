@@ -12,6 +12,7 @@ import './ImageCropper.css';
  * Cover: Sabit 3:1 kilitli aspect ratio, wheel zoom, sürükle-bırak, köşe tutamaçları ile yeniden boyutlandırma
  */
 const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCancel, title }) => {
+    const isGif = file && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif') || (typeof image === 'string' && image.startsWith('data:image/gif')));
     const containerRef = useRef(null);
     const [imageObj, setImageObj] = useState(null);
     const [rotatedImageObj, setRotatedImageObj] = useState(null);
@@ -97,6 +98,18 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
     useEffect(() => {
         if (!imageObj) return;
 
+        const normalizedAngle = ((rotation % 360) + 360) % 360;
+
+        if (isGif) {
+            const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
+            setRotatedImageObj({
+                width: is90or270 ? imageObj.height : imageObj.width,
+                height: is90or270 ? imageObj.width : imageObj.height,
+            });
+            setDisplaySrc(image);
+            return;
+        }
+
         if (rotation === 0) {
             setRotatedImageObj(imageObj);
             setDisplaySrc(image);
@@ -105,7 +118,6 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const normalizedAngle = ((rotation % 360) + 360) % 360;
         const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
         canvas.width = is90or270 ? imageObj.height : imageObj.width;
         canvas.height = is90or270 ? imageObj.width : imageObj.height;
@@ -116,7 +128,7 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
 
         setRotatedImageObj(canvas);
         setDisplaySrc(canvas.toDataURL('image/jpeg', 0.95));
-    }, [imageObj, rotation, image]);
+    }, [imageObj, rotation, image, isGif]);
 
     // Recalculate zoom and position to center/fit when rotatedImageObj or cropSize changes
     const resetImagePosition = useCallback((img) => {
@@ -488,6 +500,40 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
         }
     };
 
+    const getTransformStyle = () => {
+        if (!imageObj) return {};
+
+        if (isGif) {
+            const normalizedAngle = ((rotation % 360) + 360) % 360;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            const scaledWidth = imageObj.width * zoom;
+            const scaledHeight = imageObj.height * zoom;
+
+            if (normalizedAngle === 90) {
+                offsetX = scaledHeight;
+            } else if (normalizedAngle === 180) {
+                offsetX = scaledWidth;
+                offsetY = scaledHeight;
+            } else if (normalizedAngle === 270) {
+                offsetY = scaledWidth;
+            }
+
+            return {
+                transform: `translate(${position.x + offsetX}px, ${position.y + offsetY}px) scale(${zoom}) rotate(${normalizedAngle}deg)`,
+                transformOrigin: '0 0',
+                cursor: isDragging ? 'grabbing' : 'grab',
+            };
+        }
+
+        return {
+            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+            cursor: isDragging ? 'grabbing' : 'grab',
+        };
+    };
+
     const cropAreaSize = getCropAreaSize();
 
     return (
@@ -521,11 +567,7 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
                                     src={displaySrc}
                                     alt="Kırpılacak görsel"
                                     className="cropper-image"
-                                    style={{
-                                        transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-                                        transformOrigin: '0 0',
-                                        cursor: isDragging ? 'grabbing' : 'grab',
-                                    }}
+                                    style={getTransformStyle()}
                                     draggable="false"
                                 />
                             )}
