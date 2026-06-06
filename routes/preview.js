@@ -343,10 +343,21 @@ router.get('/', async (req, res) => {
  * to bypass Twitter CDN's 403 hotlink protection.
  * Supports HTTP Range requests for proper video playback.
  */
+router.options('/video', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+    res.sendStatus(200);
+});
+
 router.get('/video', async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
     const videoUrl = req.query.url;
 
-    if (!videoUrl || !videoUrl.includes('video.twimg.com')) {
+    if (!videoUrl || !(videoUrl.includes('twimg.com') || videoUrl.includes('twitter.com') || videoUrl.includes('x.com'))) {
         return res.status(400).json({ message: 'Invalid video URL' });
     }
 
