@@ -122,18 +122,23 @@ const LinkPreview = ({ url }) => {
                 {/* Tweet Videos */}
                 {data.tweetVideos && data.tweetVideos.length > 0 && (
                     <div className="tweet-card-media">
-                        {data.tweetVideos.map((vid, i) => (
-                            <video
-                                key={i}
-                                src={`/api/preview/video?url=${encodeURIComponent(vid.url)}`}
-                                poster={vid.thumbnail}
-                                controls
-                                playsInline
-                                preload="metadata"
-                                className="tweet-card-video"
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                        ))}
+                        {data.tweetVideos.map((vid, i) => {
+                            const apiBase = axios.defaults.baseURL || '';
+                            const cleanBase = apiBase.replace(/\/$/, '');
+                            const videoUrl = `${cleanBase}/api/preview/video?url=${encodeURIComponent(vid.url)}`;
+                            return (
+                                <video
+                                    key={i}
+                                    src={videoUrl}
+                                    poster={vid.thumbnail}
+                                    controls
+                                    playsInline
+                                    preload="metadata"
+                                    className="tweet-card-video"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            );
+                        })}
                     </div>
                 )}
 
