@@ -26,7 +26,7 @@ export function loadImage(src) {
  * @param {Object} outputSize - Çıktı boyutu {width, height}
  * @returns {Promise<Blob>}
  */
-export async function cropImage(image, crop, zoom, position, outputSize) {
+export async function cropImage(image, crop, zoom, position, outputSize, rotation = 0) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -37,9 +37,28 @@ export async function cropImage(image, crop, zoom, position, outputSize) {
     canvas.width = outputSize.width;
     canvas.height = outputSize.height;
 
+    // rotation !== 0 ise görseli döndürülmüş bir canvas'a çiz
+    let sourceImage = image;
+    if (rotation !== 0) {
+        const rotatedCanvas = document.createElement('canvas');
+        const rCtx = rotatedCanvas.getContext('2d');
+        if (!rCtx) throw new Error('Rotated canvas context oluşturulamadı');
+
+        const normalizedAngle = ((rotation % 360) + 360) % 360;
+        const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
+        rotatedCanvas.width = is90or270 ? image.height : image.width;
+        rotatedCanvas.height = is90or270 ? image.width : image.height;
+
+        rCtx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+        rCtx.rotate((normalizedAngle * Math.PI) / 180);
+        rCtx.drawImage(image, -image.width / 2, -image.height / 2);
+
+        sourceImage = rotatedCanvas;
+    }
+
     // Görselin zoom ve pozisyona göre hesaplanmış kaynak koordinatları
-    const scaledWidth = image.width * zoom;
-    const scaledHeight = image.height * zoom;
+    const scaledWidth = sourceImage.width * zoom;
+    const scaledHeight = sourceImage.height * zoom;
 
     // Kırpma alanının görsel üzerindeki gerçek koordinatları
     const sourceX = (crop.x - position.x) / zoom;
@@ -48,7 +67,7 @@ export async function cropImage(image, crop, zoom, position, outputSize) {
     const sourceHeight = crop.height / zoom;
 
     ctx.drawImage(
-        image,
+        sourceImage,
         sourceX,
         sourceY,
         sourceWidth,

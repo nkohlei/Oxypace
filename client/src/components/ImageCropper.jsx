@@ -1,51 +1,56 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { loadImage, cropImage, clampPosition } from '../utils/cropperUtils';
-import { X } from 'lucide-react';
+import { X, RotateCcw, RotateCw } from 'lucide-react';
 import './ImageCropper.css';
 
 /**
  * ImageCropper - Sıfırdan Canvas API ile görsel kırpma bileşeni
  *
- * Avatar: Sabit 1:1 daire, slider ile zoom
- * Cover: Serbest boyut, kenarlardan resize, mouse wheel zoom
+ * Avatar: Sabit 1:1 kilitli aspect ratio, slider/wheel zoom, sürükle-bırak, köşe tutamaçları ile yeniden boyutlandırma
+ * Cover: Sabit 3:1 kilitli aspect ratio, wheel zoom, sürükle-bırak, köşe tutamaçları ile yeniden boyutlandırma
  */
 const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) => {
     const containerRef = useRef(null);
     const [imageObj, setImageObj] = useState(null);
+    const [rotatedImageObj, setRotatedImageObj] = useState(null);
+    const [displaySrc, setDisplaySrc] = useState(image);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
+    const [rotation, setRotation] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
 
-    // Cover mode: resizable crop area
-    const [cropSize, setCropSize] = useState({ width: 400, height: 225 });
+    // Resizable crop area size
+    const [cropSize, setCropSize] = useState(() => {
+        if (mode === 'avatar') {
+            return { width: 220, height: 220 }; // Initial 1:1 size
+        } else {
+            return { width: 390, height: 130 }; // Initial 3:1 size (e.g. cover banner)
+        }
+    });
+
     const [isResizing, setIsResizing] = useState(false);
     const [resizeHandle, setResizeHandle] = useState(null);
     const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
-    // Min crop sizes for cover mode (no max - dynamically calculated from image)
-    const MIN_CROP_WIDTH = 100;
-    const MIN_CROP_HEIGHT = 60;
+    const MIN_CROP_WIDTH = 120;
+    const MIN_CROP_HEIGHT = mode === 'avatar' ? 120 : 40;
 
     // Mod'a göre kırpma alanı boyutları
     const getCropAreaSize = useCallback(() => {
-        if (mode === 'avatar') {
-            return { width: 200, height: 200 }; // Fixed 1:1
-        } else {
-            return cropSize; // Dynamic for cover
-        }
-    }, [mode, cropSize]);
+        return cropSize;
+    }, [cropSize]);
 
     // Çıktı boyutları - cover mode uses actual crop size ratio
     const getOutputSize = useCallback(() => {
         if (mode === 'avatar') {
-            return { width: 400, height: 400 };
+            return { width: 500, height: 500 };
         } else {
             // High resolution output for sharp header images
             const ratio = cropSize.width / cropSize.height;
-            const targetWidth = 1920; // Full HD width for crisp display
+            const targetWidth = 1200; // Full HD width for crisp display
             return { width: targetWidth, height: Math.round(targetWidth / ratio) };
         }
     }, [mode, cropSize]);
@@ -73,29 +78,9 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         loadImage(image)
             .then((img) => {
                 setImageObj(img);
-
-                const container = containerRef.current;
-                if (container) {
-                    const containerRect = container.getBoundingClientRect();
-                    const cropArea = getCropArea();
-
-                    // Görseli kırpma alanını kaplayacak şekilde zoom
-                    const minZoom = Math.max(
-                        cropArea.width / img.width,
-                        cropArea.height / img.height
-                    );
-
-                    const initialZoom = minZoom * 1.1; // Slightly larger
-                    setZoom(initialZoom);
-
-                    // Center the image
-                    const scaledWidth = img.width * initialZoom;
-                    const scaledHeight = img.height * initialZoom;
-                    setPosition({
-                        x: (containerRect.width - scaledWidth) / 2,
-                        y: (containerRect.height - scaledHeight) / 2,
-                    });
-                }
+                setRotatedImageObj(img);
+                setDisplaySrc(image);
+                setRotation(0);
                 setLoading(false);
             })
             .catch((err) => {
@@ -104,14 +89,73 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             });
     }, [image]);
 
-    // Recalculate position when crop size changes (cover mode)
+    // Rotation effect: Rotate imageObj and update rotatedImageObj & displaySrc
     useEffect(() => {
-        if (!imageObj || mode === 'avatar') return;
+        if (!imageObj) return;
+
+        if (rotation === 0) {
+            setRotatedImageObj(imageObj);
+            setDisplaySrc(image);
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const normalizedAngle = ((rotation % 360) + 360) % 360;
+        const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
+        canvas.width = is90or270 ? imageObj.height : imageObj.width;
+        canvas.height = is90or270 ? imageObj.width : imageObj.height;
+
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((normalizedAngle * Math.PI) / 180);
+        ctx.drawImage(imageObj, -imageObj.width / 2, -imageObj.height / 2);
+
+        setRotatedImageObj(canvas);
+        setDisplaySrc(canvas.toDataURL('image/jpeg', 0.95));
+    }, [imageObj, rotation, image]);
+
+    // Recalculate zoom and position to center/fit when rotatedImageObj or cropSize changes
+    const resetImagePosition = useCallback((img) => {
+        const container = containerRef.current;
+        if (!container || !img) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const cropArea = getCropArea();
+
+        // Görseli kırpma alanını kaplayacak şekilde zoom
+        const minZoom = Math.max(
+            cropArea.width / img.width,
+            cropArea.height / img.height
+        );
+
+        const initialZoom = minZoom * 1.1; // Slightly larger for safe crop border
+        setZoom(initialZoom);
+
+        // Center the image
+        const scaledWidth = img.width * initialZoom;
+        const scaledHeight = img.height * initialZoom;
+        setPosition({
+            x: (containerRect.width - scaledWidth) / 2,
+            y: (containerRect.height - scaledHeight) / 2,
+        });
+    }, [getCropArea]);
+
+    // Reset position only when rotated image object is loaded or changed
+    useEffect(() => {
+        if (rotatedImageObj) {
+            resetImagePosition(rotatedImageObj);
+        }
+    }, [rotatedImageObj]);
+
+    // Recalculate position when crop size changes (cover/avatar mode resize)
+    useEffect(() => {
+        const activeImg = rotatedImageObj || imageObj;
+        if (!activeImg) return;
 
         const cropArea = getCropArea();
         const clampedPosition = clampPosition(
             position,
-            { width: imageObj.width, height: imageObj.height },
+            { width: activeImg.width, height: activeImg.height },
             zoom,
             cropArea
         );
@@ -138,7 +182,8 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
     // Sürükleme
     const handleDragMove = useCallback(
         (e) => {
-            if (!isDragging || !imageObj || isResizing) return;
+            const activeImg = rotatedImageObj || imageObj;
+            if (!isDragging || !activeImg || isResizing) return;
 
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -151,14 +196,14 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             const cropArea = getCropArea();
             const clampedPosition = clampPosition(
                 newPosition,
-                { width: imageObj.width, height: imageObj.height },
+                { width: activeImg.width, height: activeImg.height },
                 zoom,
                 cropArea
             );
 
             setPosition(clampedPosition);
         },
-        [isDragging, imageObj, dragStart, zoom, getCropArea, isResizing]
+        [isDragging, rotatedImageObj, imageObj, dragStart, zoom, getCropArea, isResizing]
     );
 
     // Sürükleme bitir
@@ -166,7 +211,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         setIsDragging(false);
     };
 
-    // Resize handlers for cover mode
+    // Resize handlers for crop mode
     const handleResizeStart = (e, handle) => {
         e.preventDefault();
         e.stopPropagation();
@@ -186,7 +231,8 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
     // Calculate the maximum allowed crop size based on image bounds
     const getMaxCropSize = useCallback(() => {
-        if (!imageObj || !containerRef.current) {
+        const activeImg = rotatedImageObj || imageObj;
+        if (!activeImg || !containerRef.current) {
             return { width: 600, height: 400 };
         }
 
@@ -194,8 +240,8 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         const containerRect = container.getBoundingClientRect();
 
         // Scaled image dimensions
-        const scaledWidth = imageObj.width * zoom;
-        const scaledHeight = imageObj.height * zoom;
+        const scaledWidth = activeImg.width * zoom;
+        const scaledHeight = activeImg.height * zoom;
 
         // Image bounds in container coordinates
         const imageLeft = position.x;
@@ -209,23 +255,24 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
         // Max dimensions such that crop stays within image
         const maxWidth = Math.min(
-            (cropCenterX - imageLeft) * 2, // Left edge constraint
-            (imageRight - cropCenterX) * 2 // Right edge constraint
+            (cropCenterX - imageLeft) * 2,
+            (imageRight - cropCenterX) * 2
         );
         const maxHeight = Math.min(
-            (cropCenterY - imageTop) * 2, // Top edge constraint
-            (imageBottom - cropCenterY) * 2 // Bottom edge constraint
+            (cropCenterY - imageTop) * 2,
+            (imageBottom - cropCenterY) * 2
         );
 
         return {
             width: Math.max(MIN_CROP_WIDTH, maxWidth),
             height: Math.max(MIN_CROP_HEIGHT, maxHeight),
         };
-    }, [imageObj, zoom, position]);
+    }, [rotatedImageObj, imageObj, zoom, position]);
 
     const handleResizeMove = useCallback(
         (e) => {
-            if (!isResizing || !resizeHandle || !imageObj) return;
+            const activeImg = rotatedImageObj || imageObj;
+            if (!isResizing || !resizeHandle || !activeImg) return;
 
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -233,25 +280,32 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             const deltaX = clientX - resizeStart.x;
             const deltaY = clientY - resizeStart.y;
 
+            const targetRatio = mode === 'avatar' ? 1.0 : (3 / 1);
             let newWidth = resizeStart.width;
-            let newHeight = resizeStart.height;
 
-            // Handle different resize directions
-            if (resizeHandle.includes('e')) newWidth += deltaX;
-            if (resizeHandle.includes('w')) newWidth -= deltaX;
-            if (resizeHandle.includes('s')) newHeight += deltaY;
-            if (resizeHandle.includes('n')) newHeight -= deltaY;
+            // Bidirectional adjustments because crop box is always centered via translate(-50%, -50%)
+            if (resizeHandle.includes('e')) {
+                newWidth = resizeStart.width + deltaX * 2;
+            } else if (resizeHandle.includes('w')) {
+                newWidth = resizeStart.width - deltaX * 2;
+            } else {
+                const newHeight = resizeHandle.includes('s')
+                    ? resizeStart.height + deltaY * 2
+                    : resizeStart.height - deltaY * 2;
+                newWidth = newHeight * targetRatio;
+            }
 
             // Get dynamic max based on image bounds
             const maxCrop = getMaxCropSize();
+            const absoluteMaxWidth = Math.min(maxCrop.width, maxCrop.height * targetRatio);
 
-            // Clamp to min and dynamic max
-            newWidth = Math.max(MIN_CROP_WIDTH, Math.min(maxCrop.width, newWidth));
-            newHeight = Math.max(MIN_CROP_HEIGHT, Math.min(maxCrop.height, newHeight));
+            // Clamp width
+            newWidth = Math.max(MIN_CROP_WIDTH, Math.min(absoluteMaxWidth, newWidth));
+            const newHeight = newWidth / targetRatio;
 
             setCropSize({ width: newWidth, height: newHeight });
         },
-        [isResizing, resizeHandle, resizeStart, imageObj, getMaxCropSize]
+        [isResizing, resizeHandle, resizeStart, rotatedImageObj, imageObj, mode, getMaxCropSize]
     );
 
     const handleResizeEnd = () => {
@@ -293,41 +347,33 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         };
     }, [isResizing, handleResizeMove]);
 
-    // Mouse wheel zoom for both modes
+    // Mouse wheel zoom
     const handleWheel = useCallback(
         (e) => {
-            if (!imageObj) return;
+            const activeImg = rotatedImageObj || imageObj;
+            if (!activeImg) return;
 
             e.preventDefault();
 
-            // Larger delta for faster zooming, proportional to current zoom
-            const zoomSpeed = 0.1;
+            const zoomSpeed = 0.08;
             const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
 
             const container = containerRef.current;
             if (!container) return;
 
-            const containerRect = container.getBoundingClientRect();
             const cropArea = getCropArea();
 
-            // Minimum zoom: image should at least cover the crop area
-            // Allow zooming out until the smallest dimension just covers the crop
             const minZoomForCrop = Math.max(
-                cropArea.width / imageObj.width,
-                cropArea.height / imageObj.height
+                cropArea.width / activeImg.width,
+                cropArea.height / activeImg.height
             );
 
-            // Allow slightly more zoom out for flexibility (80% of minimum)
-            const absoluteMinZoom = minZoomForCrop * 0.5;
+            const absoluteMinZoom = minZoomForCrop * 0.9;
+            const maxZoom = 12;
 
-            // Maximum zoom: up to 10x for detailed cropping
-            const maxZoom = 10;
-
-            // Calculate new zoom
             const newZoom = zoom * (1 + delta);
             const clampedZoom = Math.max(absoluteMinZoom, Math.min(maxZoom, newZoom));
 
-            // Zoom değişirken merkezi koru
             const cropCenterX = cropArea.x + cropArea.width / 2;
             const cropCenterY = cropArea.y + cropArea.height / 2;
 
@@ -339,12 +385,11 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                 y: cropCenterY - imageCenterY * clampedZoom,
             };
 
-            // Only clamp position if zoomed in enough to cover crop area
             let finalPosition = newPosition;
             if (clampedZoom >= minZoomForCrop) {
                 finalPosition = clampPosition(
                     newPosition,
-                    { width: imageObj.width, height: imageObj.height },
+                    { width: activeImg.width, height: activeImg.height },
                     clampedZoom,
                     cropArea
                 );
@@ -353,10 +398,10 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
             setZoom(clampedZoom);
             setPosition(finalPosition);
         },
-        [imageObj, zoom, position, getCropArea]
+        [rotatedImageObj, imageObj, zoom, position, getCropArea]
     );
 
-    // Attach wheel listener for all modes
+    // Attach wheel listener
     useEffect(() => {
         const container = containerRef.current;
         if (container) {
@@ -365,17 +410,17 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
         }
     }, [handleWheel]);
 
-    // Zoom slider for avatar mode only
+    // Zoom slider handler
     const handleZoomChange = (e) => {
+        const activeImg = rotatedImageObj || imageObj;
+        if (!activeImg) return;
+
         const newZoom = parseFloat(e.target.value);
-
-        if (!imageObj) return;
-
         const cropArea = getCropArea();
 
         const minZoom = Math.max(
-            cropArea.width / imageObj.width,
-            cropArea.height / imageObj.height
+            cropArea.width / activeImg.width,
+            cropArea.height / activeImg.height
         );
 
         const clampedZoom = Math.max(newZoom, minZoom);
@@ -393,7 +438,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
         const clampedPosition = clampPosition(
             newPosition,
-            { width: imageObj.width, height: imageObj.height },
+            { width: activeImg.width, height: activeImg.height },
             clampedZoom,
             cropArea
         );
@@ -404,14 +449,15 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
 
     // Kırpma uygula
     const handleApply = async () => {
-        if (!imageObj) return;
+        const activeImg = rotatedImageObj || imageObj;
+        if (!activeImg) return;
 
         setProcessing(true);
         try {
             const cropArea = getCropArea();
             const outputSize = getOutputSize();
 
-            const blob = await cropImage(imageObj, cropArea, zoom, position, outputSize);
+            const blob = await cropImage(activeImg, cropArea, zoom, position, outputSize, 0);
 
             onComplete(blob);
         } catch (err) {
@@ -443,13 +489,16 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                     onTouchStart={handleDragStart}
                 >
                     {loading ? (
-                        <div className="cropper-loading">Yükleniyor...</div>
+                        <div className="cropper-loading">
+                            <span className="cropper-spinner"></span>
+                            Yükleniyor...
+                        </div>
                     ) : (
                         <>
                             {/* Görsel */}
-                            {imageObj && (
+                            {displaySrc && (
                                 <img
-                                    src={image}
+                                    src={displaySrc}
                                     alt="Kırpılacak görsel"
                                     className="cropper-image"
                                     style={{
@@ -497,62 +546,79 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                                     height: `${cropAreaSize.height}px`,
                                 }}
                             >
-                                {/* Resize handles for cover mode */}
-                                {mode === 'cover' && (
-                                    <>
-                                        <div
-                                            className="resize-handle resize-n"
-                                            onMouseDown={(e) => handleResizeStart(e, 'n')}
-                                            onTouchStart={(e) => handleResizeStart(e, 'n')}
-                                        />
-                                        <div
-                                            className="resize-handle resize-s"
-                                            onMouseDown={(e) => handleResizeStart(e, 's')}
-                                            onTouchStart={(e) => handleResizeStart(e, 's')}
-                                        />
-                                        <div
-                                            className="resize-handle resize-e"
-                                            onMouseDown={(e) => handleResizeStart(e, 'e')}
-                                            onTouchStart={(e) => handleResizeStart(e, 'e')}
-                                        />
-                                        <div
-                                            className="resize-handle resize-w"
-                                            onMouseDown={(e) => handleResizeStart(e, 'w')}
-                                            onTouchStart={(e) => handleResizeStart(e, 'w')}
-                                        />
-                                        <div
-                                            className="resize-handle resize-corner resize-ne"
-                                            onMouseDown={(e) => handleResizeStart(e, 'ne')}
-                                            onTouchStart={(e) => handleResizeStart(e, 'ne')}
-                                        />
-                                        <div
-                                            className="resize-handle resize-corner resize-nw"
-                                            onMouseDown={(e) => handleResizeStart(e, 'nw')}
-                                            onTouchStart={(e) => handleResizeStart(e, 'nw')}
-                                        />
-                                        <div
-                                            className="resize-handle resize-corner resize-se"
-                                            onMouseDown={(e) => handleResizeStart(e, 'se')}
-                                            onTouchStart={(e) => handleResizeStart(e, 'se')}
-                                        />
-                                        <div
-                                            className="resize-handle resize-corner resize-sw"
-                                            onMouseDown={(e) => handleResizeStart(e, 'sw')}
-                                            onTouchStart={(e) => handleResizeStart(e, 'sw')}
-                                        />
-                                    </>
-                                )}
+                                {/* Resize handles (locked aspect ratio) */}
+                                <>
+                                    <div
+                                        className="resize-handle resize-corner resize-ne"
+                                        onMouseDown={(e) => handleResizeStart(e, 'ne')}
+                                        onTouchStart={(e) => handleResizeStart(e, 'ne')}
+                                    />
+                                    <div
+                                        className="resize-handle resize-corner resize-nw"
+                                        onMouseDown={(e) => handleResizeStart(e, 'nw')}
+                                        onTouchStart={(e) => handleResizeStart(e, 'nw')}
+                                    />
+                                    <div
+                                        className="resize-handle resize-corner resize-se"
+                                        onMouseDown={(e) => handleResizeStart(e, 'se')}
+                                        onTouchStart={(e) => handleResizeStart(e, 'se')}
+                                    />
+                                    <div
+                                        className="resize-handle resize-corner resize-sw"
+                                        onMouseDown={(e) => handleResizeStart(e, 'sw')}
+                                        onTouchStart={(e) => handleResizeStart(e, 'sw')}
+                                    />
+                                </>
                             </div>
 
-                            {/* Zoom hint for all modes */}
+                            {/* Zoom hint */}
                             <div className="cropper-hint">
-                                Yakınlaştırmak için fare tekerleğini kullanın
+                                Yakınlaştırmak için kaydırın veya fare tekerleğini kullanın
                             </div>
                         </>
                     )}
                 </div>
 
-                {/* Slider removed - mouse wheel zoom for all modes */}
+                {/* Controls & Rotation Area */}
+                <div className="cropper-controls-wrapper">
+                    {/* Zoom Slider */}
+                    {rotatedImageObj && (
+                        <div className="cropper-zoom-bar">
+                            <input
+                                type="range"
+                                min={Math.max(
+                                    getCropArea().width / rotatedImageObj.width,
+                                    getCropArea().height / rotatedImageObj.height
+                                )}
+                                max={5}
+                                step={0.01}
+                                value={zoom}
+                                onChange={handleZoomChange}
+                                className="zoom-slider"
+                            />
+                        </div>
+                    )}
+
+                    {/* Rotation controls */}
+                    <div className="cropper-rotation-bar">
+                        <button
+                            className="rotation-btn"
+                            onClick={() => setRotation((prev) => prev - 90)}
+                            title="Sola 90 Derece Döndür"
+                        >
+                            <RotateCcw size={16} />
+                            <span>🔄 Sola Döndür</span>
+                        </button>
+                        <button
+                            className="rotation-btn"
+                            onClick={() => setRotation((prev) => prev + 90)}
+                            title="Sağa 90 Derece Döndür"
+                        >
+                            <RotateCw size={16} />
+                            <span>🔄 Sağa Döndür</span>
+                        </button>
+                    </div>
+                </div>
 
                 {/* Actions */}
                 <div className="cropper-actions">
@@ -564,7 +630,7 @@ const ImageCropper = ({ image, mode = 'avatar', onComplete, onCancel, title }) =
                         onClick={handleApply}
                         disabled={processing || loading}
                     >
-                        {processing ? 'İşleniyor...' : 'Uygula'}
+                        {processing ? 'İşleniyor...' : 'Kaydet'}
                     </button>
                 </div>
             </div>
