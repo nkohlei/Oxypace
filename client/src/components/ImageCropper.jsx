@@ -493,7 +493,8 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
             }
         } catch (err) {
             console.error('Kırpma hatası:', err);
-            alert('Görsel işlenirken bir hata oluştu');
+            const errMsg = err.response?.data?.message || err.message || 'Bilinmeyen hata';
+            alert(`Görsel işlenirken bir hata oluştu: ${errMsg}`);
         } finally {
             setProcessing(false);
         }
