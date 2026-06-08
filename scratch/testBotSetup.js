@@ -17,6 +17,12 @@ async function main() {
     await mongoose.connect(mongoUri);
     console.log('Connected.');
 
+    // Clear existing MovieNewsBot user and history to trigger a clean run
+    console.log('Clearing old MovieNewsBot data to test new translation, filter and scraping rules...');
+    await User.deleteOne({ username: 'MovieNewsBot' });
+    const BotHistory = (await import('../models/BotHistory.js')).default;
+    await BotHistory.deleteMany({ botName: 'MovieNewsBot' });
+
     // Let's check if the portal 69a48a87c86222e58be4972c exists. If not, let's create a test portal to avoid validation errors during run.
     let portal = await Portal.findById('69a48a87c86222e58be4972c');
     if (!portal) {

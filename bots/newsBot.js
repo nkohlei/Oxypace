@@ -94,6 +94,168 @@ export const BOT_CONFIGS = [
 
 let globalIo = null;
 
+// Global Cinema Filter
+export const isGlobalCinemaNews = (item) => {
+    const title = (item.title || '').toLowerCase();
+    const description = (item.contentSnippet || item.content || '').toLowerCase();
+    
+    // Whitelist: Global cinema major themes
+    const positiveKeywords = [
+        'movie', 'film', 'cinema', 'director', 'actor', 'actress', 'trailer', 'sequel', 
+        'box office', 'oscar', 'cannes', 'marvel', 'dc', 'disney', 'netflix', 'warner bros', 
+        'paramount', 'universal', 'sony', 'hbo', 'casting', 'nolan', 'tarantino', 'scorsese', 
+        'spielberg', 'coppola', 'avatar', 'dune', 'star wars', 'blockbuster', 'cannes film festival'
+    ];
+    
+    // Blacklist: Local TV, theatre, books, Broadway, live events, ratings
+    const negativeKeywords = [
+        'broadway', 'tony award', 'tonys', 'theater', 'ratings', 'podcast', 'live show', 
+        'tv ratings', 'tv review', 'stage review', 'book review', 'local news', 'concert',
+        'tony nominations', 'wrestlemania', 'wwe'
+    ];
+    
+    const hasPositive = positiveKeywords.some(keyword => title.includes(keyword) || description.includes(keyword));
+    const hasNegative = negativeKeywords.some(keyword => title.includes(keyword));
+    
+    return hasPositive && !hasNegative;
+};
+
+// Protect specific terms from being mistranslated
+const protectTerms = (text) => {
+    const protectedList = [
+        { word: '60 Minutes', placeholder: '__TERM_60_MINUTES__' },
+        { word: 'The Tonight Show', placeholder: '__TERM_TONIGHT_SHOW__' },
+        { word: 'Saturday Night Live', placeholder: '__TERM_SNL__' },
+        { word: 'Apple TV', placeholder: '__TERM_APPLE_TV__' },
+        { word: 'Prime Video', placeholder: '__TERM_PRIME_VIDEO__' },
+        { word: 'Netflix', placeholder: '__TERM_NETFLIX__' },
+        { word: 'Disney\\+', placeholder: '__TERM_DISNEY_PLUS__' },
+        { word: 'Disney', placeholder: '__TERM_DISNEY__' },
+        { word: 'Warner Bros', placeholder: '__TERM_WARNER_BROS__' },
+        { word: 'HBO Max', placeholder: '__TERM_HBO_MAX__' },
+        { word: 'HBO', placeholder: '__TERM_HBO__' },
+        { word: 'Collider', placeholder: '__TERM_COLLIDER__' },
+        { word: 'Variety', placeholder: '__TERM_VARIETY__' },
+        { word: 'Deadline', placeholder: '__TERM_DEADLINE__' },
+        { word: 'Tony Award', placeholder: '__TERM_TONY__' },
+        { word: 'Tony Awards', placeholder: '__TERM_TONYS__' },
+        { word: 'Cannes Film Festival', placeholder: 'Cannes Film Festivali' }
+    ];
+    
+    let workingText = text;
+    const replacements = [];
+    
+    for (const item of protectedList) {
+        const regex = new RegExp(item.word, 'gi');
+        if (regex.test(workingText)) {
+            workingText = workingText.replace(regex, item.placeholder);
+            replacements.push(item);
+        }
+    }
+    return { text: workingText, replacements };
+};
+
+// Restore protected terms and refine translation mapping
+const restoreTerms = (text, replacements) => {
+    let workingText = text;
+    for (const item of replacements) {
+        // Safe regex escape
+        const cleanPlaceholder = item.placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(cleanPlaceholder, 'g');
+        const originalWord = item.word.replace('\\+', '+');
+        workingText = workingText.replace(regex, originalWord);
+    }
+    
+    // Post-translation jargon refinements
+    const jargonMap = {
+        'Yeniden Yapım': 'Yeniden Çevrim',
+        'yeniden yapımı': 'yeniden çevrimi',
+        'Yeniden yapım': 'Yeniden çevrim',
+        'Devam Filmi': 'Devam Filmi',
+        'devam filmi': 'devam filmi',
+        'Oyuncu Kadrosu': 'Oyuncu Kadrosu',
+        'oyuncu kadrosu': 'oyuncu kadrosu',
+        'Gişe Rekoru': 'Gişe Rekoru',
+        'gişe rekoru': 'gişe rekoru',
+        'Gişe': 'Gişe',
+        'gişe': 'gişe',
+        'Fragmanı': 'Fragmanı',
+        'fragmanı': 'fragmanı',
+        'Dizi Sorumlusu': 'Dizi Sorumlusu',
+        'dizi sorumlusu': 'dizi sorumlusu',
+        '60 Dakikalık Ateşleme': '60 Minutes Programı',
+        '60 dakikalık ateşleme': '60 Minutes programı',
+        'Ateşleme': 'Programı',
+        'ateşleme': 'programı'
+    };
+
+    for (const [eng, tr] of Object.entries(jargonMap)) {
+        const regex = new RegExp(eng, 'g');
+        workingText = workingText.replace(regex, tr);
+    }
+
+    return workingText;
+};
+
+// Translate and Refine wrapper
+const translateAndRefine = async (text) => {
+    if (!text || text.trim() === '') return '';
+    try {
+        const { text: protectedText, replacements } = protectTerms(text);
+        const translated = await translateText(protectedText);
+        return restoreTerms(translated, replacements);
+    } catch (err) {
+        console.error('⚠️ translateAndRefine failed:', err.message);
+        return text;
+    }
+};
+
+// Web page HTML image scraper (og:image / twitter:image / dominant <img>)
+const fetchOgImage = async (url) => {
+    if (!url) return null;
+    try {
+        const response = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            timeout: 5000
+        });
+        const html = response.data;
+        if (!html || typeof html !== 'string') return null;
+
+        // 1. og:image
+        const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || 
+                            html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+        if (ogImageMatch && ogImageMatch[1]) {
+            return ogImageMatch[1];
+        }
+
+        // 2. twitter:image
+        const twitterImageMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+                                  html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
+        if (twitterImageMatch && twitterImageMatch[1]) {
+            return twitterImageMatch[1];
+        }
+
+        // 3. Dominant image tag
+        const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+        let match;
+        const images = [];
+        while ((match = imgRegex.exec(html)) !== null) {
+            const src = match[1];
+            if (src.startsWith('http') && !src.includes('avatar') && !src.includes('logo') && !src.includes('icon') && !src.includes('pixel') && !src.includes('spacer')) {
+                images.push(src);
+            }
+        }
+        if (images.length > 0) {
+            return images[0];
+        }
+    } catch (err) {
+        console.error(`⚠️ Failed web scraper image extraction for URL (${url}):`, err.message);
+    }
+    return null;
+};
+
 // Auto-create bot accounts if they do not exist
 async function ensureBotAccountsExist() {
     console.log('🤖 Checking bot accounts database registration...');
@@ -241,8 +403,14 @@ const checkNewsForBot = async (bot) => {
                 continue;
             }
 
-            console.log(`🔍 [${bot.user.username}] Found ${feed.items.length} items. Checking top 5...`);
-            const itemsToProcess = feed.items.slice(0, 5).reverse();
+            let itemsToProcess = feed.items;
+            if (bot.user.username === 'MovieNewsBot') {
+                itemsToProcess = itemsToProcess.filter(isGlobalCinemaNews);
+                console.log(`🔍 [${bot.user.username}] Filtered down to ${itemsToProcess.length} global cinema items from ${feed.items.length} total items.`);
+            }
+
+            console.log(`🔍 [${bot.user.username}] Found ${itemsToProcess.length} items to evaluate. Checking top 5...`);
+            itemsToProcess = itemsToProcess.slice(0, 5).reverse();
 
             for (const item of itemsToProcess) {
                 await processItem(item, bot);
@@ -281,18 +449,22 @@ const processItem = async (item, bot) => {
         console.log(`🆕 [${bot.user.username}] Processing: ${item.title}`);
         
         // Translate Title & Description
-        const translatedTitle = await translateText(item.title);
+        const translatedTitle = await translateAndRefine(item.title);
         let description = item.contentSnippet || item.content || '';
         description = description.replace(/<[^>]+>/g, '').trim();
         
         if (description.length > 1000) description = description.substring(0, 1000) + '...';
         
-        const translatedDesc = await translateText(description);
+        const translatedDesc = await translateAndRefine(description);
 
         // URL is included in content — LinkPreview card will render it automatically
         const formattedContent = `📢 **${translatedTitle}**\n\n${translatedDesc ? `📝 ${translatedDesc}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
 
-        const imageUrl = extractImage(item);
+        // Scrape for page image first, fallback to feed extraction
+        let imageUrl = await fetchOgImage(item.link);
+        if (!imageUrl) {
+            imageUrl = extractImage(item);
+        }
 
         await BotHistory.create({ guid, botName: bot.user.username });
 
