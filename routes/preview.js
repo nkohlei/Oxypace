@@ -201,13 +201,49 @@ async function fetchGenericPreview(originalUrl) {
 
         if (!html || typeof html !== 'string') return null;
 
-        // Limit HTML size to prevent memory issues
-        const trimmedHtml = html.substring(0, 50000);
+        // Limit HTML size to prevent memory issues (increased to 250KB to include complete head metadata)
+        const trimmedHtml = html.substring(0, 250000);
 
         const { result } = await ogs({ html: trimmedHtml });
 
         const hostname = new URL(originalUrl).hostname.replace('www.', '');
-        let imageUrl = result?.ogImage?.[0]?.url || result?.twitterImage?.[0]?.url || '';
+        
+        let imageUrl = '';
+        if (result?.ogImage) {
+            if (Array.isArray(result.ogImage) && result.ogImage.length > 0) {
+                imageUrl = result.ogImage[0]?.url || result.ogImage[0] || '';
+            } else if (typeof result.ogImage === 'object') {
+                imageUrl = result.ogImage.url || '';
+            } else if (typeof result.ogImage === 'string') {
+                imageUrl = result.ogImage;
+            }
+        }
+
+        if (!imageUrl && result?.twitterImage) {
+            if (Array.isArray(result.twitterImage) && result.twitterImage.length > 0) {
+                imageUrl = result.twitterImage[0]?.url || result.twitterImage[0] || '';
+            } else if (typeof result.twitterImage === 'object') {
+                imageUrl = result.twitterImage.url || '';
+            } else if (typeof result.twitterImage === 'string') {
+                imageUrl = result.twitterImage;
+            }
+        }
+
+        // Regex fallback on full HTML if ogs parsing did not find any image
+        if (!imageUrl) {
+            const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || 
+                                html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+            if (ogImageMatch && ogImageMatch[1]) {
+                imageUrl = ogImageMatch[1];
+            }
+        }
+        if (!imageUrl) {
+            const twitterImageMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+                                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
+            if (twitterImageMatch && twitterImageMatch[1]) {
+                imageUrl = twitterImageMatch[1];
+            }
+        }
 
         // Resolve relative image URLs for external links
         if (imageUrl && !imageUrl.startsWith('http')) {
