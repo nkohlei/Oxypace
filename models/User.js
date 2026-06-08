@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        isBot: {
+            type: Boolean,
+            default: false,
+        },
         isVerified: {
             type: Boolean,
             default: false,
