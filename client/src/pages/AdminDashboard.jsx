@@ -1138,6 +1138,53 @@ const AdminDashboard = () => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
 
+    // Mass Notification State
+    const [massNotifTitle, setMassNotifTitle] = useState('');
+    const [massNotifMessage, setMassNotifMessage] = useState('');
+    const [massNotifInApp, setMassNotifInApp] = useState(true);
+    const [massNotifPush, setMassNotifPush] = useState(false);
+    const [massNotifSending, setMassNotifSending] = useState(false);
+    const [massNotifStatus, setMassNotifStatus] = useState({ type: '', text: '' });
+
+    const handleSendMassNotification = async (e) => {
+        e.preventDefault();
+        if (!massNotifTitle.trim() || !massNotifMessage.trim()) {
+            setMassNotifStatus({ type: 'error', text: 'Lütfen başlık ve mesaj alanlarını doldurun.' });
+            return;
+        }
+        if (!massNotifInApp && !massNotifPush) {
+            setMassNotifStatus({ type: 'error', text: 'Lütfen en az bir gönderim yöntemi seçin.' });
+            return;
+        }
+
+        setMassNotifSending(true);
+        setMassNotifStatus({ type: '', text: '' });
+
+        try {
+            const response = await axios.post('/api/admin/mass-notification', {
+                title: massNotifTitle.trim(),
+                message: massNotifMessage.trim(),
+                inApp: massNotifInApp,
+                push: massNotifPush,
+            });
+
+            setMassNotifStatus({
+                type: 'success',
+                text: response.data.message || 'Toplu bildirim başarıyla gönderildi.'
+            });
+            setMassNotifTitle('');
+            setMassNotifMessage('');
+        } catch (err) {
+            console.error('Send mass notification error:', err);
+            setMassNotifStatus({
+                type: 'error',
+                text: err.response?.data?.message || 'Bildirim gönderilirken bir hata oluştu.'
+            });
+        } finally {
+            setMassNotifSending(false);
+        }
+    };
+
     const analyzeImageFile = (file) => {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -2081,6 +2128,12 @@ const AdminDashboard = () => {
                 >
                     Özel İkon Rozetler
                 </button>
+                <button
+                    className={`admin-tab ${activeTab === 'mass-notification' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('mass-notification')}
+                >
+                    Toplu Bildirim Gönder
+                </button>
                 {isOxypace && (
                     <button
                         className={`admin-tab ${activeTab === 'reports' ? 'active' : ''}`}
@@ -2103,6 +2156,95 @@ const AdminDashboard = () => {
             </div>
 
             <div className="admin-content">
+                {activeTab === 'mass-notification' && (
+                    <div className="mass-notification-container fade-in">
+                        <div className="mass-notification-card">
+                            <div className="mass-notif-header">
+                                <h2>📢 Toplu Bildirim ve Android Push Paneli</h2>
+                                <p>Sistemdeki aktif kullanıcılara in-app bildirim veya Android push bildirimi gönderin.</p>
+                            </div>
+
+                            {massNotifStatus.text && (
+                                <div className={`status-banner ${massNotifStatus.type}`}>
+                                    {massNotifStatus.type === 'success' ? '✅' : '❌'} {massNotifStatus.text}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSendMassNotification} className="mass-notif-form">
+                                <div className="form-group-modern">
+                                    <label className="badge-label">Bildirim Başlığı</label>
+                                    <input
+                                        type="text"
+                                        className="reason-input-modern"
+                                        placeholder="Örn: Önemli Sistem Güncellemesi"
+                                        value={massNotifTitle}
+                                        onChange={(e) => setMassNotifTitle(e.target.value)}
+                                        required
+                                        disabled={massNotifSending}
+                                    />
+                                </div>
+
+                                <div className="form-group-modern">
+                                    <label className="badge-label">Mesaj Metni</label>
+                                    <textarea
+                                        className="reason-input-modern"
+                                        placeholder="Kullanıcılara iletilecek mesaj içeriğini yazın..."
+                                        rows="5"
+                                        value={massNotifMessage}
+                                        onChange={(e) => setMassNotifMessage(e.target.value)}
+                                        required
+                                        disabled={massNotifSending}
+                                    />
+                                </div>
+
+                                <div className="form-group-modern checkboxes-group">
+                                    <label className="badge-label">Gönderim Kanalları</label>
+                                    <div className="checkbox-options-grid">
+                                        <label className={`checkbox-card-label ${massNotifInApp ? 'checked' : ''}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={massNotifInApp}
+                                                onChange={(e) => setMassNotifInApp(e.target.checked)}
+                                                disabled={massNotifSending}
+                                            />
+                                            <div className="checkbox-custom"></div>
+                                            <div className="checkbox-text-content">
+                                                <strong>Web Toplu Bildirim (In-App)</strong>
+                                                <span>Aktif kullanıcıların bildirim sayfasına eklenir, sayaç anlık güncellenir.</span>
+                                            </div>
+                                        </label>
+
+                                        <label className={`checkbox-card-label ${massNotifPush ? 'checked' : ''}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={massNotifPush}
+                                                onChange={(e) => setMassNotifPush(e.target.checked)}
+                                                disabled={massNotifSending}
+                                            />
+                                            <div className="checkbox-custom"></div>
+                                            <div className="checkbox-text-content">
+                                                <strong>Android Mobil Bildirimi (Push)</strong>
+                                                <span>Android APK'ya sahip tüm cihazlara yerel push bildirimi gönderilir.</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="form-actions-modern">
+                                    <button
+                                        type="submit"
+                                        className="btn-modern-primary btn-glow-cyan"
+                                        disabled={massNotifSending}
+                                        style={{ width: '100%', padding: '14px', fontSize: '15px' }}
+                                    >
+                                        {massNotifSending ? 'GÖNDERİLİYOR...' : '📢 BİLDİRİMİ GÖNDER'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'requests' && (
                     // --- REQUESTS TAB ---
                     <div className="requests-section">

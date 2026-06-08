@@ -1004,4 +1004,90 @@ router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
     }
 });
 
+// @route   POST /api/admin/mass-notification
+// @desc    Send mass notification (in-app and/or push) to all active users
+// @access  Private/Admin
+router.post('/mass-notification', protect, admin, async (req, res) => {
+    try {
+        const { title, message, inApp, push } = req.body;
+
+        if (!title || !message) {
+            return res.status(400).json({ message: 'Başlık ve mesaj alanları zorunludur.' });
+        }
+
+        if (!inApp && !push) {
+            return res.status(400).json({ message: 'Lütfen en az bir gönderim yöntemi (Web Bildirimi veya Mobil Bildirim) seçin.' });
+        }
+
+        // Fetch all active users (not deleted, not banned)
+        const activeUsers = await User.find({ isDeleted: { $ne: true }, isBanned: { $ne: true } });
+
+        let inAppCount = 0;
+        let pushCount = 0;
+
+        if (inApp) {
+            // Prepare Notification documents
+            const notifications = activeUsers.map(user => ({
+                recipient: user._id,
+                type: 'system',
+                content: `${title}: ${message}`,
+            }));
+
+            // Batch insert notifications (highly efficient, bypasses individual post-save hooks)
+            const createdNotifs = await Notification.insertMany(notifications);
+            inAppCount = createdNotifs.length;
+
+            // Emit socket updates to online users in real-time
+            const io = req.app.get('io');
+            if (io) {
+                for (const notif of createdNotifs) {
+                    const recipientId = notif.recipient.toString();
+                    // Check if recipient has an active socket room
+                    if (io.sockets.adapter.rooms.has(recipientId)) {
+                        io.to(recipientId).emit('newNotification', notif);
+                    }
+                }
+            }
+        }
+
+        if (push) {
+            // Get all FCM tokens of active users who have push notifications enabled
+            const tokens = [];
+            for (const user of activeUsers) {
+                if (user.fcmTokens && user.fcmTokens.length > 0 && user.settings?.notifications?.push !== false) {
+                    tokens.push(...user.fcmTokens);
+                }
+            }
+
+            const uniqueTokens = [...new Set(tokens)];
+
+            if (uniqueTokens.length > 0) {
+                const { sendPushNotification } = await import('../services/pushService.js');
+                const chunkSize = 500;
+                for (let i = 0; i < uniqueTokens.length; i += chunkSize) {
+                    const chunk = uniqueTokens.slice(i, i + chunkSize);
+                    await sendPushNotification(chunk, {
+                        title: title,
+                        body: message,
+                        data: {
+                            url: '/notifications'
+                        }
+                    });
+                }
+                pushCount = uniqueTokens.length;
+            }
+        }
+
+        res.json({
+            message: 'Toplu bildirim gönderimi başarıyla tamamlandı.',
+            inAppCount,
+            pushCount
+        });
+    } catch (error) {
+        console.error('Send mass notification error:', error);
+        res.status(500).json({ message: 'Toplu bildirim gönderilirken bir hata oluştu.' });
+    }
+});
+
 export default router;
+

@@ -2143,5 +2143,166 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
+/* MASS NOTIFICATION MODULE */
+.mass-notification-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.mass-notification-card {
+    background: rgba(18, 18, 18, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.mass-notif-header {
+    margin-bottom: 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 15px;
+}
+
+.mass-notif-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    background: linear-gradient(135deg, #1d9bf0, #00ba7c);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.mass-notif-header p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0;
+}
+
+.form-group-modern {
+    margin-bottom: 20px;
+}
+
+.form-group-modern label {
+    margin-bottom: 8px;
+}
+
+.checkbox-options-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+@media (min-width: 640px) {
+    .checkbox-options-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.checkbox-card-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.checkbox-card-label:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.checkbox-card-label.checked {
+    background: rgba(29, 155, 240, 0.06);
+    border-color: #1d9bf0;
+}
+
+.checkbox-card-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkbox-custom {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    margin-top: 2px;
+}
+
+.checkbox-card-label:hover .checkbox-custom {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.checkbox-card-label.checked .checkbox-custom {
+    background: #1d9bf0;
+    border-color: #1d9bf0;
+}
+
+.checkbox-card-label.checked .checkbox-custom::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-text-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.checkbox-text-content strong {
+    font-size: 14px;
+    color: #fff;
+}
+
+.checkbox-text-content span {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.status-banner {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.status-banner.success {
+    background: rgba(0, 186, 124, 0.12);
+    color: #00ba7c;
+    border: 1px solid rgba(0, 186, 124, 0.2);
+}
+
+.status-banner.error {
+    background: rgba(249, 24, 128, 0.12);
+    color: #f91880;
+    border: 1px solid rgba(249, 24, 128, 0.2);
+}
+
+
 
 
