@@ -210,51 +210,6 @@ const translateAndRefine = async (text) => {
     }
 };
 
-// Web page HTML image scraper (og:image / twitter:image / dominant <img>)
-const fetchOgImage = async (url) => {
-    if (!url) return null;
-    try {
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            timeout: 5000
-        });
-        const html = response.data;
-        if (!html || typeof html !== 'string') return null;
-
-        // 1. og:image
-        const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || 
-                            html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-        if (ogImageMatch && ogImageMatch[1]) {
-            return ogImageMatch[1];
-        }
-
-        // 2. twitter:image
-        const twitterImageMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
-                                  html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
-        if (twitterImageMatch && twitterImageMatch[1]) {
-            return twitterImageMatch[1];
-        }
-
-        // 3. Dominant image tag
-        const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
-        let match;
-        const images = [];
-        while ((match = imgRegex.exec(html)) !== null) {
-            const src = match[1];
-            if (src.startsWith('http') && !src.includes('avatar') && !src.includes('logo') && !src.includes('icon') && !src.includes('pixel') && !src.includes('spacer')) {
-                images.push(src);
-            }
-        }
-        if (images.length > 0) {
-            return images[0];
-        }
-    } catch (err) {
-        console.error(`⚠️ Failed web scraper image extraction for URL (${url}):`, err.message);
-    }
-    return null;
-};
 
 // Auto-create bot accounts if they do not exist
 async function ensureBotAccountsExist() {
@@ -460,12 +415,6 @@ const processItem = async (item, bot) => {
         // URL is included in content — LinkPreview card will render it automatically
         const formattedContent = `📢 **${translatedTitle}**\n\n${translatedDesc ? `📝 ${translatedDesc}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
 
-        // Scrape for page image first, fallback to feed extraction
-        let imageUrl = await fetchOgImage(item.link);
-        if (!imageUrl) {
-            imageUrl = extractImage(item);
-        }
-
         await BotHistory.create({ guid, botName: bot.user.username });
 
         const newPost = new Post({
@@ -473,8 +422,6 @@ const processItem = async (item, bot) => {
             author: bot.user._id,
             portal: bot.portal._id,
             channel: bot.channel._id.toString(),
-            mediaType: imageUrl ? 'image' : 'none',
-            media: imageUrl || '',
             createdAt: new Date()
         });
 
