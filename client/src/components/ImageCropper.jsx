@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { loadImage, cropImage, clampPosition } from '../utils/cropperUtils';
 import { X, RotateCcw, RotateCw } from 'lucide-react';
-import axios from 'axios';
+import { cropGifClientSide } from '../utils/gifProcessor';
+import { uploadFile } from '../utils/uploadUtils';
 import './ImageCropper.css';
+
 
 /**
  * ImageCropper - Sıfırdan Canvas API ile görsel kırpma bileşeni
@@ -472,32 +474,34 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
             const isGif = file && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'));
 
             if (isGif) {
-                // Send GIF directly to backend via multipart/form-data.
-                // This avoids the R2 upload → R2 download round-trip that caused 504 timeouts.
+                // Client-side GIF processing — no server timeout risk.
+                // 1. Calculate source crop coords in original image space
                 const uploadPurpose = mode === 'avatar' ? 'avatar' : 'cover';
-
                 const cropArea = getCropArea();
                 const sourceX = (cropArea.x - position.x) / zoom;
                 const sourceY = (cropArea.y - position.y) / zoom;
-                const sourceWidth = cropArea.width / zoom;
+                const sourceWidth  = cropArea.width  / zoom;
                 const sourceHeight = cropArea.height / zoom;
 
-                const formData = new FormData();
-                formData.append('gif', file, file.name || 'animated.gif');
-                formData.append('sourceX', String(sourceX));
-                formData.append('sourceY', String(sourceY));
-                formData.append('sourceWidth', String(sourceWidth));
-                formData.append('sourceHeight', String(sourceHeight));
-                formData.append('rotation', String(rotation));
-                formData.append('purpose', uploadPurpose);
+                // 2. Decode all frames, crop each one, re-encode as GIF (runs in browser)
+                const croppedBlob = await cropGifClientSide(
+                    file,
+                    sourceX,
+                    sourceY,
+                    sourceWidth,
+                    sourceHeight
+                );
 
-                const response = await axios.post('/api/media/process-gif', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                    timeout: 60000, // 60s — GIF processing can be heavy
-                });
+                // 3. Upload the cropped GIF directly to R2 via presigned URL
+                const croppedFile = new File(
+                    [croppedBlob],
+                    file.name || 'cropped.gif',
+                    { type: 'image/gif' }
+                );
+                const mediaKey = await uploadFile(croppedFile, uploadPurpose, portalId);
 
-                // Return the processed mediaKey to parent
-                onComplete(response.data.mediaKey);
+                // 4. Return the mediaKey to parent (same as non-GIF flow)
+                onComplete(mediaKey);
             } else {
                 // Standard image flow using canvas
                 const cropArea = getCropArea();
