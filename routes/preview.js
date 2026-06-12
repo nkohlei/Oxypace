@@ -1,6 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import ogs from 'open-graph-scraper-lite';
+import sharp from 'sharp';
 
 import Portal from '../models/Portal.js';
 import User from '../models/User.js';
@@ -483,6 +484,46 @@ router.get('/proxy-image', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).send('Failed to fetch image');
         }
+    }
+});
+
+/**
+ * OG Thumbnail generator to compress and resize images specifically for WhatsApp (max 300KB)
+ */
+router.get('/thumbnail', async (req, res) => {
+    const imageUrl = req.query.url;
+    if (!imageUrl) return res.status(400).send('URL is required');
+
+    try {
+        const response = await axios({
+            method: 'get',
+            url: imageUrl,
+            responseType: 'arraybuffer', // Get as buffer to process with sharp
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0'
+            }
+        });
+
+        const inputBuffer = Buffer.from(response.data);
+        
+        // Resize to maximum 400x400 maintaining aspect ratio and convert to compressed jpeg
+        const processedBuffer = await sharp(inputBuffer)
+            .resize(400, 400, {
+                fit: 'inside',
+                withoutEnlargement: true
+            })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+
+        res.set('Content-Type', 'image/jpeg');
+        res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+        return res.send(processedBuffer);
+
+    } catch (err) {
+        console.error('Thumbnail generation error:', err.message);
+        // Fallback to direct redirect if sharp fails
+        return res.redirect(imageUrl);
     }
 });
 

@@ -50,6 +50,16 @@ function resolveMediaUrl(media) {
 }
 
 /**
+ * WhatsApp için görselin backend'deki sıkıştırma/boyutlandırma endpoint'i üzerinden geçmesini sağlar.
+ */
+function getOGImageUrl(url, isVideo) {
+    if (!url) return DEFAULT_IMAGE;
+    if (isVideo) return url; // Videoları doğrudan geçir
+    if (url.includes('img.youtube.com')) return url; // YouTube thumbnail'larını doğrudan geçir
+    return `${BACKEND_URL}/api/preview/thumbnail?url=${encodeURIComponent(url)}`;
+}
+
+/**
  * YouTube video ID'sini URL'den çıkarır
  */
 function extractYouTubeId(url) {
@@ -305,7 +315,7 @@ router.get('/post/:postId', async (req, res) => {
         const html = buildOGHtml({
             title,
             description,
-            imageUrl,
+            imageUrl: getOGImageUrl(imageUrl, isVideo),
             videoUrl,
             pageUrl,
             type: isVideo ? 'video.other' : 'article',
@@ -373,7 +383,7 @@ router.get('/profile/:username', async (req, res) => {
         const html = buildOGHtml({
             title: displayName,
             description: bio,
-            imageUrl: cover || avatar || DEFAULT_IMAGE,
+            imageUrl: getOGImageUrl(cover || avatar || DEFAULT_IMAGE, false),
             pageUrl,
             type: 'profile',
         });
@@ -447,7 +457,7 @@ router.get('/portal/:portalId', async (req, res) => {
         const html = buildOGHtml({
             title: portal.name,
             description: portal.description || `${portal.name} - Oxypace portali`,
-            imageUrl: banner || avatar || DEFAULT_IMAGE,
+            imageUrl: getOGImageUrl(banner || avatar || DEFAULT_IMAGE, false),
             pageUrl,
             type: 'website',
         });
