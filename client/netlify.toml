@@ -38,6 +38,31 @@
   status = 200
   force = true
 
+# ── OG / Bot Proxy (WhatsApp, Telegram, Facebook Preview) ─────────────────────
+# WhatsApp ve diğer mesajlaşma botları JS çalıştırmaz; sadece OG meta etiketlerini okur.
+# Bot'lar /post/:id, /profile/:username, /portal/:id gibi URL'lere istek attığında
+# Koyeb backend'indeki /og route'una yönlendirilir. Bu kurallar SPA fallback'ten ÖNCE gelir.
+[[redirects]]
+  from = "/post/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/post/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
+[[redirects]]
+  from = "/profile/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/profile/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
+[[redirects]]
+  from = "/portal/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/portal/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
 # ── SPA Fallback ─────────────────────────────────
 # All routes that don't match a static file → serve index.html
 # force = false ensures existing static files (.webp, .png, etc.) are served directly

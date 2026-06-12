@@ -32,6 +32,7 @@ import voiceRoutes from './routes/voice.js';
 import translateRoutes from './routes/translate.js';
 import previewRoutes from './routes/preview.js';
 import reportRoutes from './routes/reports.js';
+import ogRoutes from './routes/og.js';
 
 // Models for Sitemap
 import Portal from './models/Portal.js';
@@ -202,6 +203,57 @@ app.use(passport.session());
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ── OG (Open Graph) Bot Middleware ───────────────────────────────────────────
+// WhatsApp, Telegram, Facebook ve diğer mesajlaşma uygulamaları bir URL
+// paylaşıldığında preview oluşturmak için bot olarak sunucuya GET isteği atar.
+// Bu botlar JavaScript çalıştırmaz — sadece HTML'deki OG meta etiketlerini okur.
+//
+// Bu middleware bot User-Agent'larını tespit eder ve ilgili OG route'una yönlendirir.
+// Normal kullanıcılar etkilenmez; SPA'ya gitmelerine izin verilir.
+
+const BOT_USER_AGENTS = [
+    'whatsapp', 'facebookexternalhit', 'facebot', 'twitterbot', 'telegrambot',
+    'linkedinbot', 'slackbot', 'discordbot', 'pinterest', 'vkshare',
+    'skype', 'viber', 'googlebot', 'bingbot', 'applebot', 'duckduckbot',
+    'baiduspider', 'yandexbot', 'semrushbot', 'ahrefsbot', 'curl/',
+    'python-requests', 'go-http-client', 'ogpreviewfetcher', 'preview',
+    'ia_archiver', 'rogerbot',
+];
+
+const OG_PATH_PATTERNS = [
+    { pattern: /^\/post\/([a-f\d]{24})$/i, route: '/og/post/$1' },
+    { pattern: /^\/profile\/([a-zA-Z0-9_.]+)$/i, route: '/og/profile/$1' },
+    { pattern: /^\/portal\/([a-f\d]{24})$/i, route: '/og/portal/$1' },
+];
+
+app.use((req, res, next) => {
+    // Sadece GET isteklerini kontrol et
+    if (req.method !== 'GET') return next();
+
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
+    const isBot = BOT_USER_AGENTS.some(pattern => ua.includes(pattern));
+
+    if (!isBot) return next();
+
+    // Bot ise path'i OG route'u ile eşleştir
+    for (const { pattern, route } of OG_PATH_PATTERNS) {
+        const match = req.path.match(pattern);
+        if (match) {
+            // Route placeholder'larını gerçek değerlerle değiştir
+            const ogPath = route.replace('$1', match[1]);
+            console.log(`🤖 Bot detected (${ua.substring(0, 40)}...) → Serving OG: ${ogPath}`);
+            req.url = ogPath;
+            return next();
+        }
+    }
+
+    return next();
+});
+
+// OG Meta Injection Routes (bot'lar için)
+app.use('/og', ogRoutes);
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Routes
 app.use('/api/auth', authRoutes);

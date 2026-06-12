@@ -27,6 +27,52 @@ import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from '../components/LinkPreview';
 import QuotedPost from '../components/QuotedPost';
 
+// YouTube video ID'sini URL'den çıkar
+const extractYouTubeId = (url) => {
+    if (!url) return null;
+    const patterns = [
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+};
+
+// Post için SEO meta verilerini hesapla
+const getPostSeoMeta = (post) => {
+    if (!post) return {};
+    const mediaUrl = Array.isArray(post.media) ? post.media[0] : post.media;
+    
+    if (post.mediaType === 'youtube') {
+        const ytId = extractYouTubeId(mediaUrl);
+        return {
+            image: ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : undefined,
+            videoUrl: undefined,
+        };
+    }
+    
+    if (post.mediaType === 'video' && mediaUrl) {
+        return {
+            image: mediaUrl,  // video URL thumbnail olarak
+            videoUrl: mediaUrl,
+        };
+    }
+    
+    if ((post.mediaType === 'image' || post.mediaType === 'gif') && mediaUrl) {
+        return {
+            image: getImageUrl(mediaUrl),
+            videoUrl: undefined,
+        };
+    }
+    
+    return {};
+};
+
 const PostDetail = () => {
     const { postId } = useParams();
     const navigate = useNavigate();
@@ -170,13 +216,22 @@ const PostDetail = () => {
     );
 
     const isOwner = user?._id === post.author?._id;
+    const seoMeta = getPostSeoMeta(post);
+    const authorName = post.author?.profile?.displayName || post.author?.username || 'Oxypace';
 
     return (
         <div className="pd-page-root">
             <SEO
-                title={post.title || `${post.author?.username} gönderisi`}
-                description={post.content?.substring(0, 160) || "Oxypace"}
-                image={post.media && post.media.length > 0 ? getImageUrl(post.media[0]) : undefined}
+                title={`${authorName} bir şey paylaştı`}
+                description={post.content?.substring(0, 160) || 'Oxypace\'te paylaşılan bir gönderi.'}
+                image={seoMeta.image}
+                videoUrl={seoMeta.videoUrl}
+                type={seoMeta.videoUrl ? 'video.other' : 'article'}
+                url={`https://oxypace.netlify.app/post/${postId}`}
+                article={{
+                    publishedTime: post.createdAt,
+                    author: authorName,
+                }}
             />
 
             <Navbar />
