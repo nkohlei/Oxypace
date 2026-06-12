@@ -1,0 +1,145 @@
+let isMaintenanceCached = null;
+let lastFetched = 0;
+
+const BACKEND_URL = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app";
+
+async function getMaintenanceStatus() {
+  const now = Date.now();
+  if (isMaintenanceCached !== null && (now - lastFetched < 5000)) {
+    return isMaintenanceCached;
+  }
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/auth/maintenance-status`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    isMaintenanceCached = !!data.active;
+    lastFetched = now;
+    return isMaintenanceCached;
+  } catch (e) {
+    console.error("Failed to fetch maintenance status in Edge Function:", e);
+    return false;
+  }
+}
+
+function isBot(userAgent) {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  const botPatterns = [
+    "whatsapp",
+    "facebookexternalhit",
+    "facebot",
+    "twitterbot",
+    "telegrambot",
+    "linkedinbot",
+    "slackbot",
+    "discordbot",
+    "pinterest",
+    "vkshare",
+    "skype",
+    "viber",
+    "googlebot",
+    "bingbot",
+    "applebot",
+    "duckduckbot",
+    "baiduspider",
+    "yandexbot",
+    "semrushbot",
+    "ahrefsbot",
+    "curl/",
+    "python-requests",
+    "ia_archiver",
+    "rogerbot",
+    "ogpreviewfetcher",
+  ];
+  return botPatterns.some((pattern) => ua.includes(pattern));
+}
+
+const OG_PATTERNS = [
+  { regex: /^\/post\/([a-f0-9]{24})$/i, path: (m) => `/og/post/${m[1]}` },
+  { regex: /^\/profile\/([a-zA-Z0-9_.]{1,50})$/, path: (m) => `/og/profile/${m[1]}` },
+  { regex: /^\/portal\/([a-f0-9]{24})$/i, path: (m) => `/og/portal/${m[1]}` },
+];
+
+export default async (request, context) => {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  const userAgent = request.headers.get("user-agent") || "";
+
+  // 1. Statik dosya isteklerini doğrudan geçir
+  const isStaticAsset = pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest)$/i);
+  if (isStaticAsset) {
+    return context.next();
+  }
+
+  // 2. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
+  if (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/og/") ||
+    pathname.startsWith("/socket.io/") ||
+    pathname.startsWith("/r2-media/") ||
+    pathname === "/404.html"
+  ) {
+    return context.next();
+  }
+
+  // 3. Gizli erişim parametresi kontrolü (?access=oxypace)
+  if (url.searchParams.get("access") === "oxypace") {
+    context.cookies.set({
+      name: "admin_access",
+      value: "true",
+      path: "/",
+      maxAge: 2592000,
+      secure: true,
+      sameSite: "Lax",
+    });
+
+    url.searchParams.delete("access");
+    return Response.redirect(url.toString(), 307);
+  }
+
+  // 4. BOT TESPİTİ & OG YÖNLENDİRME
+  if (isBot(userAgent)) {
+    for (const { regex, path } of OG_PATTERNS) {
+      const match = pathname.match(regex);
+      if (match) {
+        const ogUrl = `${BACKEND_URL}${path(match)}`;
+        console.log(`[OG Edge] Bot (${userAgent.substring(0, 50)}) → ${ogUrl}`);
+        try {
+          const ogResponse = await fetch(ogUrl, {
+            headers: {
+              "User-Agent": userAgent,
+              "Accept": "text/html",
+            },
+          });
+          const html = await ogResponse.text();
+          return new Response(html, {
+            status: ogResponse.status,
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": "public, max-age=300",
+              "X-OG-Served": "true",
+            },
+          });
+        } catch (fetchErr) {
+          console.error("[OG Edge] Fetch error:", fetchErr.message);
+          return context.next();
+        }
+      }
+    }
+  }
+
+  // 5. Bakım Modu aktif mi kontrol et
+  const isMaintenance = await getMaintenanceStatus();
+  if (!isMaintenance) {
+    return context.next();
+  }
+
+  // 6. Yetki var mı kontrol et
+  const hasAccess = context.cookies.get("admin_access") === "true";
+  if (hasAccess) {
+    return context.next();
+  }
+
+  // 7. Bakım aktifse sahte 404 sayfasına yönlendir
+  return new URL("/404.html", request.url);
+};
