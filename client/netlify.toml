@@ -9,7 +9,7 @@
   edge_functions = "netlify/edge-functions"
 
 # ── Edge Functions ───────────────────────────────
-[[edge-functions]]
+[[edge_functions]]
   path = "/*"
   function = "access-control"
 
