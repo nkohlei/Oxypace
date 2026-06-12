@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { loadImage, cropImage, clampPosition } from '../utils/cropperUtils';
 import { X, RotateCcw, RotateCw } from 'lucide-react';
-import { cropGifClientSide } from '../utils/gifProcessor';
 import { uploadFile } from '../utils/uploadUtils';
 import './ImageCropper.css';
+
 
 
 /**
@@ -474,33 +474,11 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
             const isGif = file && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'));
 
             if (isGif) {
-                // Client-side GIF processing — no server timeout risk.
-                // 1. Calculate source crop coords in original image space
+                // GIF için orijinal dosyayı doğrudan yükle — re-encode YOK.
+                // Re-encode (gif.js) renk paletini bozuyor.
+                // Avatar container'daki CSS object-fit: cover görsel kırpmayı halleder.
                 const uploadPurpose = mode === 'avatar' ? 'avatar' : 'cover';
-                const cropArea = getCropArea();
-                const sourceX = (cropArea.x - position.x) / zoom;
-                const sourceY = (cropArea.y - position.y) / zoom;
-                const sourceWidth  = cropArea.width  / zoom;
-                const sourceHeight = cropArea.height / zoom;
-
-                // 2. Decode all frames, crop each one, re-encode as GIF (runs in browser)
-                const croppedBlob = await cropGifClientSide(
-                    file,
-                    sourceX,
-                    sourceY,
-                    sourceWidth,
-                    sourceHeight
-                );
-
-                // 3. Upload the cropped GIF directly to R2 via presigned URL
-                const croppedFile = new File(
-                    [croppedBlob],
-                    file.name || 'cropped.gif',
-                    { type: 'image/gif' }
-                );
-                const mediaKey = await uploadFile(croppedFile, uploadPurpose, portalId);
-
-                // 4. Return the mediaKey to parent (same as non-GIF flow)
+                const mediaKey = await uploadFile(file, uploadPurpose, portalId);
                 onComplete(mediaKey);
             } else {
                 // Standard image flow using canvas
