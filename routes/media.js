@@ -4,6 +4,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { protect as auth } from '../middleware/auth.js';
 
 import axios from 'axios';
+import multer from 'multer';
 import sharp from 'sharp';
 import r2 from '../config/r2.js';
 import fs from 'fs';
@@ -14,6 +15,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+// Memory storage for GIF processing (no disk write needed)
+const gifUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'image/gif') {
+            cb(null, true);
+        } else {
+            cb(new Error('Sadece GIF dosyaları kabul edilir'), false);
+        }
+    },
+});
 
 /**
  * @route   GET /api/media/*
@@ -77,78 +91,93 @@ router.post('/presigned-url', auth, async (req, res) => {
 
 /**
  * @route   POST /api/media/process-gif
- * @desc    Crop and rotate animated GIF on backend using sharp (preserves animation)
+ * @desc    Crop animated GIF on backend using sharp (preserves animation).
+ *          Accepts file directly via multipart/form-data to avoid a costly
+ *          R2 download round-trip that caused 504 timeouts on Netlify.
  * @access  Private
  */
-router.post('/process-gif', auth, async (req, res) => {
+router.post('/process-gif', auth, (req, res, next) => {
+    gifUpload.single('gif')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ message: `Upload hatası: ${err.message}` });
+        } else if (err) {
+            return res.status(400).json({ message: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
     try {
-        const { mediaKey, sourceX, sourceY, sourceWidth, sourceHeight, rotation, purpose } = req.body;
+        const { sourceX, sourceY, sourceWidth, sourceHeight, rotation, purpose } = req.body;
 
-        if (!mediaKey) {
-            return res.status(400).json({ message: 'mediaKey is required' });
+        // Accept file either as direct upload (multipart) or fallback to R2 key
+        let inputBuffer;
+
+        if (req.file && req.file.buffer) {
+            // Fast path: file sent directly in request body
+            inputBuffer = req.file.buffer;
+        } else if (req.body.mediaKey) {
+            // Fallback: download from R2 (legacy / native app path)
+            const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+            const getCommand = new GetObjectCommand({
+                Bucket: bucketName,
+                Key: req.body.mediaKey,
+            });
+            const r2Response = await r2.send(getCommand);
+            const chunks = [];
+            for await (const chunk of r2Response.Body) {
+                chunks.push(chunk);
+            }
+            inputBuffer = Buffer.concat(chunks);
+        } else {
+            return res.status(400).json({ message: 'GIF dosyası veya mediaKey gerekli' });
         }
 
-        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+        // 1. Process with sharp (animated: true preserves all frames)
+        const sharpInstance = sharp(inputBuffer, { animated: true });
 
-        // 1. Get original GIF from R2
-        const getCommand = new GetObjectCommand({
-            Bucket: bucketName,
-            Key: mediaKey,
-        });
-
-        const r2Response = await r2.send(getCommand);
-        
-        // Convert stream to Buffer
-        const chunks = [];
-        for await (const chunk of r2Response.Body) {
-            chunks.push(chunk);
-        }
-        const inputBuffer = Buffer.concat(chunks);
-
-        // 2. Process with sharp (animated: true preserves frames)
-        let sharpImg = sharp(inputBuffer, { animated: true });
-
-        // Retrieve metadata of the input image first
-        const metadata = await sharp(inputBuffer).metadata();
+        // Reuse the same instance for metadata (avoids double decode)
+        const metadata = await sharpInstance.metadata();
         const originalWidth = metadata.width || 1;
         const originalHeight = metadata.height || 1;
 
-        // Calculate dimensions after rotation
-        const normalizedAngle = ((rotation % 360) + 360) % 360;
+        // Calculate effective dimensions after rotation
+        const normalizedAngle = ((Number(rotation) % 360) + 360) % 360;
         const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
         const rotatedWidth = is90or270 ? originalHeight : originalWidth;
         const rotatedHeight = is90or270 ? originalWidth : originalHeight;
 
-        // Rotate first (using sharp's rotation)
+        // Build processing pipeline
+        let pipeline = sharp(inputBuffer, { animated: true });
+
         if (normalizedAngle !== 0) {
-            sharpImg = sharpImg.rotate(normalizedAngle);
+            pipeline = pipeline.rotate(normalizedAngle);
         }
 
-        // Sharp requires integer values
-        const cropLeft = Math.max(0, Math.round(sourceX));
-        const cropTop = Math.max(0, Math.round(sourceY));
-        const cropWidth = Math.max(1, Math.round(sourceWidth));
-        const cropHeight = Math.max(1, Math.round(sourceHeight));
+        // Clamp crop coordinates to image bounds (sharp requires integers)
+        const cropLeft = Math.max(0, Math.round(Number(sourceX)));
+        const cropTop  = Math.max(0, Math.round(Number(sourceY)));
+        const cropWidth  = Math.max(1, Math.round(Number(sourceWidth)));
+        const cropHeight = Math.max(1, Math.round(Number(sourceHeight)));
 
-        const finalLeft = Math.min(cropLeft, rotatedWidth - 1);
-        const finalTop = Math.min(cropTop, rotatedHeight - 1);
-        const finalWidth = Math.min(cropWidth, rotatedWidth - finalLeft);
+        const finalLeft   = Math.min(cropLeft,  rotatedWidth  - 1);
+        const finalTop    = Math.min(cropTop,   rotatedHeight - 1);
+        const finalWidth  = Math.min(cropWidth,  rotatedWidth  - finalLeft);
         const finalHeight = Math.min(cropHeight, rotatedHeight - finalTop);
 
-        sharpImg = sharpImg.extract({
-            left: finalLeft,
-            top: finalTop,
-            width: finalWidth,
+        pipeline = pipeline.extract({
+            left:   finalLeft,
+            top:    finalTop,
+            width:  finalWidth,
             height: finalHeight,
         });
 
-        const outputBuffer = await sharpImg.toBuffer();
+        const outputBuffer = await pipeline.toBuffer();
 
-        // 3. Upload processed GIF to R2
-        const ext = path.extname(mediaKey) || '.gif';
+        // 2. Upload processed GIF to R2
         const folder = purpose === 'avatar' ? 'avatars' : 'banners';
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const processedKey = `${folder}/${purpose || 'cropped'}-${uniqueSuffix}${ext}`;
+        const processedKey = `${folder}/${purpose || 'cropped'}-${uniqueSuffix}.gif`;
+        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
 
         const putCommand = new PutObjectCommand({
             Bucket: bucketName,
@@ -159,13 +188,11 @@ router.post('/process-gif', auth, async (req, res) => {
 
         await r2.send(putCommand);
 
-        res.json({
-            mediaKey: processedKey,
-        });
+        res.json({ mediaKey: processedKey });
 
     } catch (error) {
         console.error('Process GIF Error:', error);
-        res.status(500).json({ message: 'GIF processing failed' });
+        res.status(500).json({ message: 'GIF işleme başarısız oldu: ' + error.message });
     }
 });
 

@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { loadImage, cropImage, clampPosition } from '../utils/cropperUtils';
 import { X, RotateCcw, RotateCw } from 'lucide-react';
 import axios from 'axios';
-import { uploadFile } from '../utils/uploadUtils';
 import './ImageCropper.css';
 
 /**
@@ -473,28 +472,31 @@ const ImageCropper = ({ image, file, portalId, mode = 'avatar', onComplete, onCa
             const isGif = file && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'));
 
             if (isGif) {
-                // 1. Upload original GIF to R2
+                // Send GIF directly to backend via multipart/form-data.
+                // This avoids the R2 upload → R2 download round-trip that caused 504 timeouts.
                 const uploadPurpose = mode === 'avatar' ? 'avatar' : 'cover';
-                const originalMediaKey = await uploadFile(file, uploadPurpose, portalId);
 
-                // 2. Call backend process-gif endpoint to crop and rotate animated GIF
                 const cropArea = getCropArea();
                 const sourceX = (cropArea.x - position.x) / zoom;
                 const sourceY = (cropArea.y - position.y) / zoom;
                 const sourceWidth = cropArea.width / zoom;
                 const sourceHeight = cropArea.height / zoom;
 
-                const response = await axios.post('/api/media/process-gif', {
-                    mediaKey: originalMediaKey,
-                    sourceX,
-                    sourceY,
-                    sourceWidth,
-                    sourceHeight,
-                    rotation,
-                    purpose: uploadPurpose,
+                const formData = new FormData();
+                formData.append('gif', file, file.name || 'animated.gif');
+                formData.append('sourceX', String(sourceX));
+                formData.append('sourceY', String(sourceY));
+                formData.append('sourceWidth', String(sourceWidth));
+                formData.append('sourceHeight', String(sourceHeight));
+                formData.append('rotation', String(rotation));
+                formData.append('purpose', uploadPurpose);
+
+                const response = await axios.post('/api/media/process-gif', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 60000, // 60s — GIF processing can be heavy
                 });
 
-                // 3. Return the processed mediaKey to parent
+                // Return the processed mediaKey to parent
                 onComplete(response.data.mediaKey);
             } else {
                 // Standard image flow using canvas
