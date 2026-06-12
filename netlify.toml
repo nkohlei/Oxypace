@@ -1,0 +1,95 @@
+# Netlify Configuration at Root for Oxypace SPA
+
+[build]
+  # Build command (defined in package.json at root)
+  command = "npm run build"
+  # Output directory (Vite default is client/dist when built from root)
+  publish = "client/dist"
+  edge_functions = "client/netlify/edge-functions"
+
+# ── Edge Functions ───────────────────────────────
+[[edge-functions]]
+  path = "/*"
+  function = "access-control"
+
+# ── Proxies (ported from vercel.json) ────────────
+[[redirects]]
+  from = "/api/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/r2-media/*"
+  to = "https://pub-094a78010abf4ebf9726834268946cb8.r2.dev/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/socket.io/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/sitemap.xml"
+  status = 200
+  force = true
+
+# ── OG / Bot Proxy (WhatsApp, Telegram, Facebook Preview) ─────────────────────
+# Bot'lar /post/:id, /profile/:username, /portal/:id gibi URL'lere istek attığında
+# Koyeb backend'indeki /og route'una yönlendirilir.
+[[redirects]]
+  from = "/post/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/post/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
+[[redirects]]
+  from = "/profile/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/profile/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
+[[redirects]]
+  from = "/portal/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/portal/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
+# ── SPA Fallback ─────────────────────────────────
+# All routes that don't match a static file → serve index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# ── Security Headers ───
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-DNS-Prefetch-Control = "off"
+
+# ── Cache Control for Static Assets ──────────────
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
