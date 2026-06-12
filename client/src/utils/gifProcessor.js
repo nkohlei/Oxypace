@@ -2,103 +2,138 @@
  * gifProcessor.js
  *
  * Client-side animated GIF crop utility.
- * Uses gifuct-js to decode frames and gif.js to re-encode the cropped result.
- * Everything runs in the browser — no server round-trip, no Netlify timeout.
+ *
+ * Key fixes vs. naive implementation:
+ *  1. Frame compositing uses drawImage (not putImageData) so transparent pixels
+ *     correctly show the previous frame instead of clearing it.
+ *  2. All four GIF disposal methods are handled correctly.
+ *  3. Delay is converted from centiseconds → milliseconds (* 10).
+ *  4. gif.js is configured for maximum quality (quality: 1).
  */
 
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import GIF from 'gif.js';
 
 /**
- * Fetch and parse the GIF into decompressed frames.
- * @param {File} file  The GIF File object selected by the user.
- * @returns {Promise<{ frames: object[], width: number, height: number }>}
- */
-const loadGifFrames = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const gif = parseGIF(arrayBuffer);
-    const frames = decompressFrames(gif, true); // true = patch full frames
-    return {
-        frames,
-        width: gif.lsd.width,
-        height: gif.lsd.height,
-    };
-};
-
-/**
  * Crop every frame of an animated GIF and return a cropped Blob.
  *
- * @param {File}   file       Original GIF file
- * @param {number} cropX      Crop origin X in source image coordinates
- * @param {number} cropY      Crop origin Y in source image coordinates
- * @param {number} cropW      Crop width  in source image coordinates
- * @param {number} cropH      Crop height in source image coordinates
- * @returns {Promise<Blob>}   Cropped animated GIF as a Blob
+ * @param {File}   file    Original GIF file
+ * @param {number} cropX   Crop origin X in source image pixels
+ * @param {number} cropY   Crop origin Y in source image pixels
+ * @param {number} cropW   Crop width  in source image pixels
+ * @param {number} cropH   Crop height in source image pixels
+ * @returns {Promise<Blob>}  Cropped animated GIF blob
  */
 export const cropGifClientSide = (file, cropX, cropY, cropW, cropH) => {
     return new Promise(async (resolve, reject) => {
         try {
-            const { frames, width: gifWidth, height: gifHeight } = await loadGifFrames(file);
+            // ── 1. Parse & decode ────────────────────────────────────────────
+            const arrayBuffer = await file.arrayBuffer();
+            const parsedGif   = parseGIF(arrayBuffer);
+            // buildImagePatches=true → each frame.patch is RGBA for its sub-rect
+            const frames      = decompressFrames(parsedGif, true);
 
-            // Clamp crop to image bounds
+            if (!frames || frames.length === 0) {
+                return reject(new Error('GIF içinde kare bulunamadı'));
+            }
+
+            const gifWidth  = parsedGif.lsd.width;
+            const gifHeight = parsedGif.lsd.height;
+
+            // Clamp crop region to image bounds
             const sx = Math.max(0, Math.round(cropX));
             const sy = Math.max(0, Math.round(cropY));
-            const sw = Math.min(Math.round(cropW), gifWidth  - sx);
-            const sh = Math.min(Math.round(cropH), gifHeight - sy);
+            const sw = Math.min(Math.max(1, Math.round(cropW)), gifWidth  - sx);
+            const sh = Math.min(Math.max(1, Math.round(cropH)), gifHeight - sy);
 
             if (sw <= 0 || sh <= 0) {
                 return reject(new Error('Geçersiz kırpma boyutları'));
             }
 
-            // Canvas for compositing individual frames
-            const frameCanvas  = document.createElement('canvas');
-            frameCanvas.width  = gifWidth;
-            frameCanvas.height = gifHeight;
-            const frameCtx = frameCanvas.getContext('2d');
+            // ── 2. Set up canvases ───────────────────────────────────────────
 
-            // Canvas for the final cropped output
+            // "Accumulator" canvas — tracks the fully composited GIF state
+            const accumCanvas  = document.createElement('canvas');
+            accumCanvas.width  = gifWidth;
+            accumCanvas.height = gifHeight;
+            const accumCtx = accumCanvas.getContext('2d');
+            accumCtx.clearRect(0, 0, gifWidth, gifHeight);
+
+            // Reusable temp canvas for a single sub-frame patch
+            const patchCanvas = document.createElement('canvas');
+            const patchCtx    = patchCanvas.getContext('2d');
+
+            // Output canvas for the cropped region
             const cropCanvas  = document.createElement('canvas');
             cropCanvas.width  = sw;
             cropCanvas.height = sh;
             const cropCtx = cropCanvas.getContext('2d');
 
-            // gif.js encoder — uses a Worker script bundled from node_modules
+            // ── 3. gif.js encoder ────────────────────────────────────────────
             const encoder = new GIF({
-                workers: 2,
-                quality: 10,          // 1 = best, 20 = fastest
-                width:  sw,
-                height: sh,
-                workerScript: '/gif.worker.js', // copied by Vite plugin / public dir
-                transparent: null,
+                workers:      2,
+                quality:      1,      // 1 = best quality, 20 = fastest
+                width:        sw,
+                height:       sh,
+                workerScript: '/gif.worker.js',
+                transparent:  null,
             });
 
-            // Composite each frame onto a full-size canvas, then crop
+            // ── 4. Process each frame ────────────────────────────────────────
+            let savedImageData = null; // for disposal type 3
+
             for (const frame of frames) {
                 const { patch, dims, delay, disposalType } = frame;
 
-                // Clear or keep previous frame based on disposal method
-                if (disposalType === 2) {
-                    frameCtx.clearRect(0, 0, gifWidth, gifHeight);
+                // Before drawing this frame, save state if disposal will be "restore to previous"
+                if (disposalType === 3) {
+                    savedImageData = accumCtx.getImageData(0, 0, gifWidth, gifHeight);
                 }
 
-                // Draw this frame's patch at its offset
+                // Draw the sub-frame patch onto a correctly-sized temp canvas …
+                patchCanvas.width  = dims.width;
+                patchCanvas.height = dims.height;
+                patchCtx.clearRect(0, 0, dims.width, dims.height);
+
                 const imageData = new ImageData(
                     new Uint8ClampedArray(patch),
                     dims.width,
                     dims.height
                 );
-                frameCtx.putImageData(imageData, dims.left, dims.top);
+                patchCtx.putImageData(imageData, 0, 0);
 
-                // Crop the composited frame
+                // … then composite onto the accumulator with drawImage.
+                // drawImage respects alpha — transparent patch pixels reveal the
+                // previous frame, which is what browsers do when rendering GIFs.
+                accumCtx.drawImage(patchCanvas, dims.left, dims.top);
+
+                // Crop the composited frame and hand it to the encoder
                 cropCtx.clearRect(0, 0, sw, sh);
-                cropCtx.drawImage(frameCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+                cropCtx.drawImage(accumCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-                encoder.addFrame(cropCtx, {
-                    copy: true,
-                    delay: delay || 100,
-                });
+                // delay from gifuct-js is in centiseconds; gif.js wants milliseconds
+                const delayMs = (delay || 10) * 10;
+                encoder.addFrame(cropCtx, { copy: true, delay: delayMs });
+
+                // Apply disposal method (affects what the NEXT frame sees)
+                switch (disposalType) {
+                    case 2:
+                        // Restore to background color (clear canvas)
+                        accumCtx.clearRect(0, 0, gifWidth, gifHeight);
+                        break;
+                    case 3:
+                        // Restore to state before this frame
+                        if (savedImageData) {
+                            accumCtx.putImageData(savedImageData, 0, 0);
+                        }
+                        break;
+                    // 0 (unspecified) and 1 (do not dispose): leave accumulator as is
+                    default:
+                        break;
+                }
             }
 
+            // ── 5. Encode & resolve ──────────────────────────────────────────
             encoder.on('finished', (blob) => resolve(blob));
             encoder.on('error',    (err)  => reject(err));
             encoder.render();
