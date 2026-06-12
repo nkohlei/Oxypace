@@ -492,6 +492,32 @@ router.get('/proxy-image', async (req, res) => {
  */
 router.get('/thumbnail', async (req, res) => {
     const imageUrl = req.query.url;
+    const isVideo = req.query.type === 'video';
+
+    if (isVideo) {
+        try {
+            const svgPlayButton = `
+            <svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100%" height="100%" fill="#060913"/>
+              <circle cx="200" cy="180" r="50" fill="#2563eb" opacity="0.9"/>
+              <polygon points="185,155 185,205 225,180" fill="#ffffff"/>
+              <text x="200" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">OXYPACE VIDEO</text>
+              <text x="200" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#94a3b8" text-anchor="middle">Oynatmak için tıklayın</text>
+            </svg>
+            `;
+            const buffer = await sharp(Buffer.from(svgPlayButton))
+                .jpeg({ quality: 85 })
+                .toBuffer();
+
+            res.set('Content-Type', 'image/jpeg');
+            res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+            return res.send(buffer);
+        } catch (svgErr) {
+            console.error('Failed to generate SVG video thumbnail:', svgErr.message);
+            return res.redirect('https://oxypace.netlify.app/logo.png');
+        }
+    }
+
     if (!imageUrl) return res.status(400).send('URL is required');
 
     try {

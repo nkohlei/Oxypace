@@ -53,8 +53,11 @@ function resolveMediaUrl(media) {
  * WhatsApp için görselin backend'deki sıkıştırma/boyutlandırma endpoint'i üzerinden geçmesini sağlar.
  */
 function getOGImageUrl(url, isVideo) {
+    if (isVideo) {
+        // Videolar için dinamik bir oynat butonu görseli oluştur
+        return `${BACKEND_URL}/api/preview/thumbnail?type=video`;
+    }
     if (!url) return DEFAULT_IMAGE;
-    if (isVideo) return url; // Videoları doğrudan geçir
     if (url.includes('img.youtube.com')) return url; // YouTube thumbnail'larını doğrudan geçir
     return `${BACKEND_URL}/api/preview/thumbnail?url=${encodeURIComponent(url)}`;
 }
