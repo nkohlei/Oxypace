@@ -7,6 +7,10 @@ import Portal from '../models/Portal.js';
 import Notification from '../models/Notification.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
 import { postValidation, mongoIdValidation } from '../middleware/validation.js';
+import axios from 'axios';
+import r2 from '../config/r2.js';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { generatePdfThumbnail } from '../utils/pdfHelper.js';
 
 const router = express.Router();
 
@@ -104,25 +108,76 @@ router.post(
                 }
             }
 
-            // Direct Cloud Upload support (Presigned URL)
-            if (req.body.mediaKey) {
-                postData.media = constructProxiedUrl(req.body.mediaKey);
-                // If mediaType isn't provided, try to infer it from extension
-                if (req.body.mediaType) {
-                    postData.mediaType = req.body.mediaType;
-                } else {
-                    const ext = req.body.mediaKey.split('.').pop().toLowerCase();
-                    const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'm4v'];
-                    postData.mediaType = videoExts.includes(ext) ? 'video' : 'image';
-                }
-            } else if (req.file) {
-                postData.media = constructProxiedUrl(req.file.key);
-                console.log('📤 Media Proxied URL (from utility):', postData.media);
+            // PDF File Handling & Generation
+            let pdfKey = null;
+            let pdfName = '';
+            let pdfSize = 0;
 
-                if (req.file.mimetype.includes('video')) {
-                    postData.mediaType = 'video';
-                } else {
-                    postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
+            if (req.body.mediaKey && req.body.mediaKey.split('.').pop().toLowerCase() === 'pdf') {
+                pdfKey = req.body.mediaKey;
+                pdfName = req.body.pdfName || 'Doküman.pdf';
+                pdfSize = Number(req.body.pdfSize) || 0;
+            } else if (req.file && (req.file.mimetype === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf'))) {
+                pdfKey = req.file.key;
+                pdfName = req.file.originalname;
+                pdfSize = req.file.size;
+            }
+
+            if (pdfKey) {
+                postData.mediaType = 'pdf';
+                postData.pdfUrl = constructProxiedUrl(pdfKey);
+                postData.pdfName = pdfName;
+                postData.pdfSize = pdfSize;
+                
+                try {
+                    console.log('📄 [POST Route] PDF detected. Downloading for thumbnail generation...');
+                    const pdfFullUrl = constructProxiedUrl(pdfKey);
+                    const response = await axios.get(pdfFullUrl, { responseType: 'arraybuffer' });
+                    const pdfBuffer = Buffer.from(response.data);
+
+                    console.log('📄 [POST Route] Extracting first page thumbnail...');
+                    const thumbnailBuffer = await generatePdfThumbnail(pdfBuffer);
+
+                    console.log('📄 [POST Route] Uploading PDF thumbnail to Cloudflare R2...');
+                    const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+                    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+                    const thumbnailKey = `posts/${portalId || 'general'}/pdf-thumb-${uniqueSuffix}.jpg`;
+
+                    const putCommand = new PutObjectCommand({
+                        Bucket: bucketName,
+                        Key: thumbnailKey,
+                        ContentType: 'image/jpeg',
+                        Body: thumbnailBuffer,
+                    });
+                    await r2.send(putCommand);
+
+                    postData.pdfThumbnailUrl = constructProxiedUrl(thumbnailKey);
+                    console.log('✅ [POST Route] PDF thumbnail uploaded successfully:', postData.pdfThumbnailUrl);
+                } catch (thumbError) {
+                    console.error('❌ [POST Route] Failed to generate/upload PDF thumbnail:', thumbError);
+                    // Non-blocking fallback: create post even if thumbnail generation fails
+                }
+            } else {
+                // Direct Cloud Upload support (Presigned URL)
+                if (req.body.mediaKey) {
+                    postData.media = constructProxiedUrl(req.body.mediaKey);
+                    // If mediaType isn't provided, try to infer it from extension
+                    if (req.body.mediaType) {
+                        postData.mediaType = req.body.mediaType;
+                    } else {
+                        const ext = req.body.mediaKey.split('.').pop().toLowerCase();
+                        const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'm4v'];
+                        postData.mediaType = videoExts.includes(ext) ? 'video' : 'image';
+                    }
+                } else if (req.file) {
+                    postData.media = constructProxiedUrl(req.file.key);
+                    console.log('📤 Media Proxied URL (from utility):', postData.media);
+
+                    if (req.file.mimetype.includes('video')) {
+                        postData.mediaType = 'video';
+                    } else {
+                        postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
+                    }
                 }
             }
 

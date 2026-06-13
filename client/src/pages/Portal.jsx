@@ -65,6 +65,7 @@ const Portal = () => {
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
+    const pdfInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
     const [quotedPost, setQuotedPost] = useState(null);
     const [showPortalInfo, setShowPortalInfo] = useState(false);
@@ -1356,6 +1357,21 @@ const Portal = () => {
                                                                                     <div
                                                                                         className="plus-menu-item"
                                                                                         onClick={() => {
+                                                                                            pdfInputRef.current.click();
+                                                                                            setShowPlusMenu(false);
+                                                                                        }}
+                                                                                    >
+                                                                                        <div className="plus-menu-icon">
+                                                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                                                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                                                                <polyline points="14 2 14 8 20 8" />
+                                                                                            </svg>
+                                                                                        </div>
+                                                                                        PDF
+                                                                                    </div>
+                                                                                    <div
+                                                                                        className="plus-menu-item"
+                                                                                        onClick={() => {
                                                                                             setShowYoutubeInput(!showYoutubeInput);
                                                                                             setShowPlusMenu(false);
                                                                                         }}
@@ -1391,6 +1407,13 @@ const Portal = () => {
                                                                             onChange={handleFileSelect}
                                                                             style={{ display: 'none' }}
                                                                             accept="image/gif"
+                                                                        />
+                                                                        <input
+                                                                            type="file"
+                                                                            ref={pdfInputRef}
+                                                                            onChange={handleFileSelect}
+                                                                            style={{ display: 'none' }}
+                                                                            accept=".pdf"
                                                                         />
 
                                                                         {showYoutubeInput && (
@@ -1542,7 +1565,9 @@ const Portal = () => {
                                                                                                 ? '🎥'
                                                                                                 : mediaFile.type.includes('gif')
                                                                                                     ? '👾'
-                                                                                                    : '🖼️'}
+                                                                                                    : mediaFile.type === 'application/pdf' || (mediaFile.name && mediaFile.name.toLowerCase().endsWith('.pdf'))
+                                                                                                        ? '📄'
+                                                                                                        : '🖼️'}
                                                                                         </span>
                                                                                     )}
 

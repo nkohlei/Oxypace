@@ -122,6 +122,49 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                     </div>
                 )}
 
+                {quotedPost.pdfUrl && (
+                    <div className="quoted-pdf-preview" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '8px',
+                        marginTop: '8px',
+                        cursor: 'pointer'
+                    }}>
+                        {quotedPost.pdfThumbnailUrl ? (
+                            <img 
+                                src={getImageUrl(quotedPost.pdfThumbnailUrl)} 
+                                alt="" 
+                                style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} 
+                            />
+                        ) : (
+                            <div style={{
+                                width: '40px',
+                                height: '50px',
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                color: '#f87171',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                borderRadius: '4px'
+                            }}>PDF</div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {quotedPost.pdfName || 'Doküman.pdf'}
+                            </span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                {quotedPost.pdfSize ? (quotedPost.pdfSize / (1024 * 1024)).toFixed(2) + ' MB' : '0.00 MB'}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Recursive QuotedPost - Only if depth is low and data exists */}
                 {quotedPost.quotedPost && (
                     <div className="nested-quote-wrapper">

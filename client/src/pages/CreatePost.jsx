@@ -52,7 +52,11 @@ const CreatePost = () => {
                 return;
             }
             setMediaFile(file);
-            setMediaPreview(URL.createObjectURL(file));
+            if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                setMediaPreview({ isPdf: true, name: file.name, size: file.size });
+            } else {
+                setMediaPreview(URL.createObjectURL(file));
+            }
             setYoutubeUrl(''); // Clear YouTube
             setShowYoutubeInput(false);
         }
@@ -198,18 +202,61 @@ const CreatePost = () => {
 
                         {mediaPreview && (
                             <div className="media-preview">
-                                <img src={mediaPreview} alt="Preview" />
-                                <button type="button" onClick={removeMedia} className="remove-btn">
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18" />
-                                        <line x1="6" y1="6" x2="18" y2="18" />
-                                    </svg>
-                                </button>
+                                {mediaPreview.isPdf ? (
+                                    <div className="pdf-upload-preview" style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '16px',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '12px',
+                                        backdropFilter: 'blur(10px)',
+                                        color: '#fff',
+                                        position: 'relative',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        <div className="pdf-icon" style={{
+                                            background: 'rgba(239, 68, 68, 0.2)',
+                                            color: '#f87171',
+                                            padding: '10px 14px',
+                                            borderRadius: '8px',
+                                            fontWeight: 'bold',
+                                            fontSize: '14px'
+                                        }}>PDF</div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 600 }}>{mediaPreview.name}</div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{(mediaPreview.size / (1024 * 1024)).toFixed(2)} MB</div>
+                                        </div>
+                                        <button type="button" onClick={removeMedia} className="remove-btn">
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
+                                                <line x1="18" y1="6" x2="6" y2="18" />
+                                                <line x1="6" y1="6" x2="18" y2="18" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <img src={mediaPreview} alt="Preview" />
+                                        <button type="button" onClick={removeMedia} className="remove-btn">
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
+                                                <line x1="18" y1="6" x2="6" y2="18" />
+                                                <line x1="6" y1="6" x2="18" y2="18" />
+                                            </svg>
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         )}
 
@@ -219,7 +266,7 @@ const CreatePost = () => {
                             <label className="media-btn">
                                 <input
                                     type="file"
-                                    accept="image/*,video/*,.gif"
+                                    accept="image/*,video/*,.gif,.pdf"
                                     onChange={handleFileChange}
                                     style={{ display: 'none' }}
                                 />
@@ -234,7 +281,27 @@ const CreatePost = () => {
                                     <circle cx="8.5" cy="8.5" r="1.5" />
                                     <polyline points="21 15 16 10 5 21" />
                                 </svg>
-                                <span>Fotoğraf</span>
+                                <span>Fotoğraf / Video</span>
+                            </label>
+                            <label className="media-btn">
+                                <input
+                                    type="file"
+                                    accept=".pdf"
+                                    onChange={handleFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                >
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                </svg>
+                                <span>PDF Belgesi</span>
                             </label>
                             <label className="media-btn">
                                 <input

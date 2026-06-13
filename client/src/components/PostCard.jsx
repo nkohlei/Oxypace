@@ -598,6 +598,48 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     return null;
                 })()}
 
+                {/* PDF Document Card */}
+                {post.pdfUrl && (
+                    <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
+                        <a
+                            href={getImageUrl(post.pdfUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="pdf-glass-card"
+                            onClick={(e) => {
+                                if (Capacitor.isNativePlatform()) {
+                                    e.preventDefault();
+                                    window.open(getImageUrl(post.pdfUrl), '_system');
+                                }
+                            }}
+                        >
+                            {post.pdfThumbnailUrl ? (
+                                <div className="pdf-thumbnail-wrapper">
+                                    <img
+                                        src={getImageUrl(post.pdfThumbnailUrl)}
+                                        alt="PDF preview"
+                                        className="pdf-thumbnail"
+                                        loading="lazy"
+                                    />
+                                    <div className="pdf-badge">PDF</div>
+                                </div>
+                            ) : (
+                                <div className="pdf-icon-placeholder">
+                                    <div className="pdf-icon-text">PDF</div>
+                                </div>
+                            )}
+                            <div className="pdf-info">
+                                <span className="pdf-name" title={post.pdfName || 'Doküman.pdf'}>
+                                    {post.pdfName || 'Doküman.pdf'}
+                                </span>
+                                <span className="pdf-size">
+                                    {post.pdfSize ? (post.pdfSize / (1024 * 1024)).toFixed(2) + ' MB' : '0.00 MB'}
+                                </span>
+                            </div>
+                        </a>
+                    </div>
+                )}
+
                 {/* Media */}
                 {post.media && (
                     <div className="post-media" onClick={(e) => e.stopPropagation()}>

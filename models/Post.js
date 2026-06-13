@@ -21,12 +21,28 @@ const postSchema = new mongoose.Schema(
         },
         mediaType: {
             type: String,
-            enum: ['none', 'image', 'gif', 'video', 'youtube'],
+            enum: ['none', 'image', 'gif', 'video', 'youtube', 'pdf'],
             default: 'none',
         },
         media: {
             type: String, // URL to uploaded image/gif
             default: '',
+        },
+        pdfUrl: {
+            type: String,
+            default: '',
+        },
+        pdfThumbnailUrl: {
+            type: String,
+            default: '',
+        },
+        pdfName: {
+            type: String,
+            default: '',
+        },
+        pdfSize: {
+            type: Number,
+            default: 0,
         },
         likes: [
             {
