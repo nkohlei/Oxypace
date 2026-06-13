@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import { useGlobalStore } from '../store/useGlobalStore';
+import { useNavigate } from 'react-router-dom';
 
 const SocketContext = createContext();
 
@@ -16,7 +18,8 @@ export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState([]);
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, updateUser } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Determine Socket URL
@@ -84,6 +87,19 @@ export const SocketProvider = ({ children }) => {
             window.location.reload();
         });
 
+        newSocket.on('tourist_admin_revoked', ({ message }) => {
+            // Zustand global store state update
+            useGlobalStore.setState({ isTouristAdmin: false });
+            
+            // AuthContext user state update
+            updateUser({ isTouristAdmin: false });
+
+            // If user is currently on the admin dashboard, redirect to home page
+            if (window.location.pathname.startsWith('/admin')) {
+                navigate('/');
+            }
+        });
+
         newSocket.on('disconnect', () => {
             setConnected(false);
         });
@@ -93,7 +109,7 @@ export const SocketProvider = ({ children }) => {
         return () => {
             newSocket.close();
         };
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, user, updateUser, navigate]);
 
     const value = {
         socket,

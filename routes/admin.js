@@ -1063,6 +1063,13 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
                         content: 'Turist Admin yetkileriniz geri alındı.',
                     });
                 }
+                
+                const io = req.app.get('io');
+                if (io) {
+                    io.to(user._id.toString()).emit('tourist_admin_revoked', {
+                        message: 'Turist Admin yetkileriniz geri alındı.'
+                    });
+                }
             } catch (notifErr) {
                 console.error('Revocation notification error:', notifErr);
             }

@@ -42,6 +42,14 @@ export const AuthProvider = ({ children }) => {
         }
     }, [user]);
 
+    useEffect(() => {
+        if (user) {
+            useGlobalStore.setState({ isTouristAdmin: !!user.isTouristAdmin });
+        } else {
+            useGlobalStore.setState({ isTouristAdmin: false });
+        }
+    }, [user]);
+
     const fetchUser = async (authToken = token) => {
         try {
             const response = await axios.get('/api/users/me', {

@@ -128,6 +128,8 @@ export const useGlobalStore = create(
             // Auth State
             currentUser: null,
             setCurrentUser: (user) => set({ currentUser: user }),
+            isTouristAdmin: false,
+            setIsTouristAdmin: (val) => set({ isTouristAdmin: val }),
 
             setPosts: (updater) => set((state) => ({
                 posts: typeof updater === 'function' ? updater(state.posts) : updater

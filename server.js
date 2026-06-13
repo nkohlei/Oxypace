@@ -449,6 +449,9 @@ const cleanupExpiredTouristAdmins = async () => {
                         io.to(user._id.toString()).emit('tourist_admin_expired', {
                             message: 'Turist Admin yetkilerinizin süresi doldu.'
                         });
+                        io.to(user._id.toString()).emit('tourist_admin_revoked', {
+                            message: 'Turist Admin yetkilerinizin süresi doldu.'
+                        });
                     }
                 } catch (notifErr) {
                     console.error(`Error notifying expired tourist admin ${user.username}:`, notifErr);
