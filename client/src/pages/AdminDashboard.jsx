@@ -2435,7 +2435,6 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-            <div className="admin-content">
                 {activeTab === 'mass-notification' && (
                     <div className="mass-notification-container fade-in">
                         <div className="mass-notification-card">
