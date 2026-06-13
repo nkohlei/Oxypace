@@ -15,6 +15,7 @@ const CreatePost = () => {
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [showYoutubeInput, setShowYoutubeInput] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [uploadPercentage, setUploadPercentage] = useState(0);
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const location = useLocation(); // Add hook
@@ -78,6 +79,7 @@ const CreatePost = () => {
         }
 
         setLoading(true);
+        setUploadPercentage(0);
 
         try {
             let finalContent = content;
@@ -90,8 +92,14 @@ const CreatePost = () => {
             let youtubeMediaType = null;
 
             if (mediaFile) {
-                mediaKey = await uploadFile(mediaFile, 'post', portalId);
-            } else if (youtubeUrl) {
+                mediaKey = await uploadFile(mediaFile, 'post', portalId, (progress) => {
+                    setUploadPercentage(progress);
+                });
+            } else {
+                setUploadPercentage(100);
+            }
+
+            if (!mediaFile && youtubeUrl) {
                 const videoId = getYoutubeId(youtubeUrl);
                 if (videoId) {
                     youtubeMedia = `https://www.youtube.com/watch?v=${videoId}`;
@@ -133,6 +141,7 @@ const CreatePost = () => {
             setError(err.response?.data?.message || 'Gönderi oluşturulamadı');
         } finally {
             setLoading(false);
+            setUploadPercentage(0);
         }
     };
 
@@ -149,7 +158,17 @@ const CreatePost = () => {
                         onClick={handleSubmit}
                         disabled={loading || (!content.trim() && !mediaFile && !externalUrl.trim() && !youtubeUrl.trim())}
                     >
-                        {loading ? 'Paylaşılıyor...' : 'Paylaş'}
+                        {loading ? (
+                            <>
+                                <div className="compose-spinner-wrapper" style={{ width: '18px', height: '18px', marginRight: '6px' }}>
+                                    <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: '#fff' }} />
+                                    <span className="compose-progress-text" style={{ fontSize: '7px', color: '#fff' }}>
+                                        {uploadPercentage}%
+                                    </span>
+                                </div>
+                                Paylaşılıyor...
+                            </>
+                        ) : 'Paylaş'}
                     </button>
                 }
             />
@@ -173,7 +192,17 @@ const CreatePost = () => {
                             onClick={handleSubmit}
                             disabled={loading || (!content.trim() && !mediaFile && !externalUrl.trim() && !youtubeUrl.trim())}
                         >
-                            {loading ? 'Paylaşılıyor...' : 'Paylaş'}
+                            {loading ? (
+                                <>
+                                    <div className="compose-spinner-wrapper" style={{ width: '18px', height: '18px', marginRight: '6px' }}>
+                                        <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: '#fff' }} />
+                                        <span className="compose-progress-text" style={{ fontSize: '7px', color: '#fff' }}>
+                                            {uploadPercentage}%
+                                        </span>
+                                    </div>
+                                    Paylaşılıyor...
+                                </>
+                            ) : 'Paylaş'}
                         </button>
                     </div>
 

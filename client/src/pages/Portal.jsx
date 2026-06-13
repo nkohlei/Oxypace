@@ -68,6 +68,8 @@ const Portal = () => {
     const pdfInputRef = useRef(null);
     const [mediaFile, setMediaFile] = useState(null);
     const [quotedPost, setQuotedPost] = useState(null);
+    const [uploadPercentage, setUploadPercentage] = useState(0);
+    const [uploadLoading, setUploadLoading] = useState(false);
     const [showPortalInfo, setShowPortalInfo] = useState(false);
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
@@ -329,6 +331,8 @@ const Portal = () => {
         setMessageText('');
         setMediaFile(null);
         setShowPlusMenu(false);
+        setUploadLoading(true);
+        setUploadPercentage(0);
 
         try {
             let mediaKey = null;
@@ -340,7 +344,11 @@ const Portal = () => {
                 youtubeMediaType = 'youtube';
             } else if (currentData.media) {
                 // Direct upload to R2
-                mediaKey = await uploadFile(currentData.media, 'post', id);
+                mediaKey = await uploadFile(currentData.media, 'post', id, (progress) => {
+                    setUploadPercentage(progress);
+                });
+            } else {
+                setUploadPercentage(100);
             }
 
             const postData = {
@@ -399,6 +407,9 @@ const Portal = () => {
             setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
             setMessageText(currentData.content);
             setMediaFile(currentData.media);
+        } finally {
+            setUploadLoading(false);
+            setUploadPercentage(0);
         }
     };
 
@@ -1618,9 +1629,9 @@ const Portal = () => {
                                                                                     className="input-action-btn send-btn"
                                                                                     onClick={handleSendMessage}
                                                                                     disabled={
-                                                                                        isImageChannel
+                                                                                        uploadLoading || (isImageChannel
                                                                                             ? !mediaFile
-                                                                                            : !messageText.trim() && !mediaFile
+                                                                                            : !messageText.trim() && !mediaFile)
                                                                                     }
                                                                                     title="Gönder"
                                                                                     style={{
@@ -1630,22 +1641,31 @@ const Portal = () => {
                                                                                                 : 'var(--text-tertiary)',
                                                                                     }}
                                                                                 >
-                                                                                    <svg
-                                                                                        width="24"
-                                                                                        height="24"
-                                                                                        viewBox="0 0 24 24"
-                                                                                        fill="none"
-                                                                                        stroke="currentColor"
-                                                                                        strokeWidth="2"
-                                                                                    >
-                                                                                        <line
-                                                                                            x1="22"
-                                                                                            y1="2"
-                                                                                            x2="11"
-                                                                                            y2="13"
-                                                                                        ></line>
-                                                                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                                                                    </svg>
+                                                                                    {uploadLoading ? (
+                                                                                        <div className="compose-spinner-wrapper" style={{ width: '20px', height: '20px' }}>
+                                                                                            <div className="compose-spinner" style={{ width: '20px', height: '20px', borderTopColor: 'var(--primary-color)' }} />
+                                                                                            <span className="compose-progress-text" style={{ fontSize: '7px', color: 'var(--text-primary)' }}>
+                                                                                                {uploadPercentage}%
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <svg
+                                                                                            width="24"
+                                                                                            height="24"
+                                                                                            viewBox="0 0 24 24"
+                                                                                            fill="none"
+                                                                                            stroke="currentColor"
+                                                                                            strokeWidth="2"
+                                                                                        >
+                                                                                            <line
+                                                                                                x1="22"
+                                                                                                y1="2"
+                                                                                                x2="11"
+                                                                                                y2="13"
+                                                                                            ></line>
+                                                                                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                                                                        </svg>
+                                                                                    )}
                                                                                 </button>
                                                                             </div>
                                                                         </div>

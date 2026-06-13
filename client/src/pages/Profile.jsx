@@ -53,6 +53,7 @@ const Profile = () => {
     const [composeMedia, setComposeMedia] = useState(null);
     const [composeMediaPreview, setComposeMediaPreview] = useState(null);
     const [composeLoading, setComposeLoading] = useState(false);
+    const [uploadPercentage, setUploadPercentage] = useState(0);
     const [composeFocused, setComposeFocused] = useState(false);
     const composeMediaInputRef = useRef(null);
     const composeBoxRef = useRef(null);
@@ -165,11 +166,16 @@ const Profile = () => {
     const handleProfilePost = async () => {
         if (!composeText.trim() && !composeMedia) return;
         setComposeLoading(true);
+        setUploadPercentage(0);
         try {
             let mediaKey = null;
             if (composeMedia) {
                 // Direct upload to R2
-                mediaKey = await uploadFile(composeMedia, 'post', currentUser._id);
+                mediaKey = await uploadFile(composeMedia, 'post', currentUser._id, (progress) => {
+                    setUploadPercentage(progress);
+                });
+            } else {
+                setUploadPercentage(100);
             }
 
             const postData = {
@@ -203,6 +209,7 @@ const Profile = () => {
             setError('Gönderi paylaşılamadı');
         } finally {
             setComposeLoading(false);
+            setUploadPercentage(0);
         }
     };
 
@@ -956,7 +963,12 @@ const Profile = () => {
                                                                         disabled={composeLoading || (!composeText.trim() && !composeMedia)}
                                                                     >
                                                                         {composeLoading ? (
-                                                                            <div className="compose-spinner" />
+                                                                            <div className="compose-spinner-wrapper">
+                                                                                <div className="compose-spinner" />
+                                                                                <span className="compose-progress-text">
+                                                                                    {uploadPercentage}%
+                                                                                </span>
+                                                                            </div>
                                                                         ) : (
                                                                             <>
                                                                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>

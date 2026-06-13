@@ -534,4 +534,41 @@ input:hover {
     z-index: 5 !important;
 }
 
+/* Real-time Upload Progress Spinner Styles */
+.compose-spinner-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.compose-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--primary-cyan);
+    border-radius: 50%;
+    animation: spin-progress 1s linear infinite;
+    flex-shrink: 0;
+}
+
+.compose-progress-text {
+    position: absolute;
+    font-size: 8px;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'Inter', 'Outfit', sans-serif;
+    user-select: none;
+    line-height: 1;
+    pointer-events: none;
+}
+
+@keyframes spin-progress {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
 
