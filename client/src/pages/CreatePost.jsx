@@ -111,6 +111,10 @@ const CreatePost = () => {
 
             if (mediaKey) {
                 postData.mediaKey = mediaKey;
+                if (mediaFile && (mediaFile.type === 'application/pdf' || mediaFile.name.toLowerCase().endsWith('.pdf'))) {
+                    postData.pdfName = mediaFile.name;
+                    postData.pdfSize = mediaFile.size;
+                }
             } else if (youtubeMedia) {
                 postData.media = youtubeMedia;
                 postData.mediaType = youtubeMediaType;

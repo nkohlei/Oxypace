@@ -352,6 +352,10 @@ const Portal = () => {
 
             if (mediaKey) {
                 postData.mediaKey = mediaKey;
+                if (currentData.media && (currentData.media.type === 'application/pdf' || currentData.media.name.toLowerCase().endsWith('.pdf'))) {
+                    postData.pdfName = currentData.media.name;
+                    postData.pdfSize = currentData.media.size;
+                }
             } else if (youtubeMedia) {
                 postData.media = youtubeMedia;
                 postData.mediaType = youtubeMediaType;
