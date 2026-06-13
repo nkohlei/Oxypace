@@ -256,6 +256,18 @@ const userSchema = new mongoose.Schema(
                 answer: String,
             }
         ],
+        isTouristAdmin: {
+            type: Boolean,
+            default: false,
+        },
+        touristAdminExpiresAt: {
+            type: Date,
+            default: null,
+        },
+        assignedBy: {
+            type: String,
+            default: '',
+        },
     },
     {
         timestamps: true,

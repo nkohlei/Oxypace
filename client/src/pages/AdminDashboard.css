@@ -2303,6 +2303,229 @@
     border: 1px solid rgba(249, 24, 128, 0.2);
 }
 
+/* =============================================
+   TOURIST ADMIN PANELS STYLE
+   ============================================= */
+
+.tourist-admin-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.tourist-admin-card {
+    background: var(--bg-card, #111);
+    border: 1px solid var(--border-subtle, #333);
+    border-radius: 16px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.tourist-admin-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 6px 0;
+}
+
+.tourist-admin-header p {
+    font-size: 14px;
+    color: var(--text-secondary, #888);
+    margin: 0;
+}
+
+.tourist-assign-section, .tourist-list-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.section-subtitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 16px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 10px;
+}
+
+.search-with-btn {
+    display: flex;
+    gap: 12px;
+}
+
+.search-with-btn input {
+    flex: 1;
+}
+
+.search-results-list {
+    margin-top: 16px;
+}
+
+.search-results-list h4 {
+    font-size: 13px;
+    color: #aaa;
+    margin: 0 0 10px 0;
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.result-user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.result-user-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: #555;
+}
+
+.result-user-card.selected {
+    background: rgba(29, 155, 240, 0.1);
+    border-color: #1d9bf0;
+}
+
+.avatar-mini {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.user-info-mini {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.user-info-mini strong {
+    font-size: 13px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-info-mini span {
+    font-size: 11px;
+    color: #888;
+}
+
+.assignment-details-form {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.selected-user-banner {
+    display: flex;
+    justify-content: space-between;
+    background: rgba(29, 155, 240, 0.05);
+    border: 1px solid rgba(29, 155, 240, 0.15);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.selected-user-banner span {
+    color: #888;
+}
+
+.selected-user-banner strong {
+    color: #1d9bf0;
+}
+
+.tourist-admins-table-wrapper {
+    overflow-x: auto;
+}
+
+.tourist-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.tourist-table th, .tourist-table td {
+    padding: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 13px;
+}
+
+.tourist-table th {
+    color: #888;
+    font-weight: 600;
+}
+
+.table-user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.avatar-table {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+}
+
+.user-info-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-info-table strong {
+    color: #fff;
+    font-size: 13px;
+}
+
+.user-info-table span {
+    color: #888;
+    font-size: 11px;
+}
+
+.time-left-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.btn-revoke-tourist {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-revoke-tourist:hover {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+}
+
+
 
 
 

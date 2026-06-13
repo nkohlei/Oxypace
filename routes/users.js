@@ -1071,6 +1071,10 @@ router.delete('/me', protect, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        }
+
         user.isDeleted = true;
         user.deletionReason = req.body.reason || 'Kullanıcı kendi isteğiyle sildi';
         user.recoveryStatus = 'none';

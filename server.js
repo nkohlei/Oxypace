@@ -408,6 +408,58 @@ const repairUserFriendships = async () => {
     }
 };
 
+const cleanupExpiredTouristAdmins = async () => {
+    try {
+        const now = new Date();
+        const expiredUsers = await User.find({
+            isTouristAdmin: true,
+            touristAdminExpiresAt: { $lt: now }
+        });
+
+        if (expiredUsers.length > 0) {
+            console.log(`🧹 Found ${expiredUsers.length} expired tourist admins. Revoking permissions...`);
+            const Notification = await import('./models/Notification.js').then(m => m.default);
+            for (const user of expiredUsers) {
+                user.isTouristAdmin = false;
+                user.touristAdminExpiresAt = null;
+                user.assignedBy = '';
+                await user.save();
+
+                try {
+                    const systemEnabled = user.settings?.notifications?.system !== false;
+                    if (systemEnabled) {
+                        await Notification.create({
+                            recipient: user._id,
+                            type: 'system',
+                            content: 'Turist Admin yetkilerinizin süresi doldu. Standart yetkilere geri döndünüz.',
+                        });
+                    }
+
+                    if (user.fcmTokens && user.fcmTokens.length > 0 && user.settings?.notifications?.push !== false) {
+                        const { sendPushNotification } = await import('./services/pushService.js');
+                        await sendPushNotification(user.fcmTokens, {
+                            title: 'Yetki Süresi Doldu',
+                            body: 'Turist Admin yetkilerinizin süresi doldu.',
+                            data: { url: '/' }
+                        });
+                    }
+
+                    const io = app.get('io');
+                    if (io) {
+                        io.to(user._id.toString()).emit('tourist_admin_expired', {
+                            message: 'Turist Admin yetkilerinizin süresi doldu.'
+                        });
+                    }
+                } catch (notifErr) {
+                    console.error(`Error notifying expired tourist admin ${user.username}:`, notifErr);
+                }
+            }
+        }
+    } catch (err) {
+        console.error('⚠️ Error cleaning up expired tourist admins:', err);
+    }
+};
+
 // Start server
 // Start server only if run directly
 if (process.argv[1] === __filename) {
@@ -421,6 +473,7 @@ if (process.argv[1] === __filename) {
         try {
             await connectDB();
             await repairUserFriendships();
+            await cleanupExpiredTouristAdmins();
         } catch (err) {
             console.error('⚠️ Boot DB connect/repair failed:', err.message);
         }
@@ -438,6 +491,11 @@ if (process.argv[1] === __filename) {
             } catch (error) {
                 console.error('⚠️ Self-ping failed:', error.message);
             }
+        });
+
+        // Expired Tourist Admin Cleanup Cron Job (Runs every minute)
+        cron.schedule('* * * * *', async () => {
+            await cleanupExpiredTouristAdmins();
         });
 
     });

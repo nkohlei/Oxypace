@@ -1138,6 +1138,17 @@ const AdminDashboard = () => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
 
+    // Tourist Admin State
+    const [touristAdmins, setTouristAdmins] = useState([]);
+    const [touristSearchTerm, setTouristSearchTerm] = useState('');
+    const [touristSearchResult, setTouristSearchResult] = useState([]);
+    const [selectedTouristUser, setSelectedTouristUser] = useState(null);
+    const [touristDurationType, setTouristDurationType] = useState('preset'); // 'preset' or 'custom'
+    const [selectedTouristPreset, setSelectedTouristPreset] = useState(2); // hours
+    const [customTouristDate, setCustomTouristDate] = useState('');
+    const [assigningTourist, setAssigningTourist] = useState(false);
+    const [loadingTourist, setLoadingTourist] = useState(false);
+
     // Mass Notification State
     const [massNotifTitle, setMassNotifTitle] = useState('');
     const [massNotifMessage, setMassNotifMessage] = useState('');
@@ -1334,6 +1345,76 @@ const AdminDashboard = () => {
         }
     };
 
+    const fetchTouristAdmins = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/users');
+            setTouristAdmins(data.filter(u => u.isTouristAdmin));
+        } catch (err) {
+            console.error('Failed to load tourist admins:', err);
+            setError('Turist admin listesi yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSearchTouristUser = async (e) => {
+        if (e) e.preventDefault();
+        if (!touristSearchTerm.trim()) return;
+        setLoadingTourist(true);
+        try {
+            const { data } = await axios.get(`/api/admin/users?q=${touristSearchTerm.trim()}`);
+            setTouristSearchResult(data.filter(u => u.username !== 'oxypace'));
+        } catch (err) {
+            alert('Kullanıcı arama başarısız.');
+        } finally {
+            setLoadingTourist(false);
+        }
+    };
+
+    const handleAssignTouristAdmin = async () => {
+        if (!selectedTouristUser) {
+            alert('Lütfen bir kullanıcı seçin.');
+            return;
+        }
+
+        let body = {};
+        if (touristDurationType === 'preset') {
+            body.duration = `${selectedTouristPreset}h`;
+        } else {
+            if (!customTouristDate) {
+                alert('Lütfen geçerli bir tarih seçin.');
+                return;
+            }
+            body.expiresAt = new Date(customTouristDate).toISOString();
+        }
+
+        setAssigningTourist(true);
+        try {
+            const { data } = await axios.post(`/api/admin/users/${selectedTouristUser._id}/tourist-admin`, body);
+            alert(data.message || 'Turist admin başarıyla atandı.');
+            setSelectedTouristUser(null);
+            setTouristSearchTerm('');
+            setTouristSearchResult([]);
+            fetchTouristAdmins();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Turist admin atanamadı.');
+        } finally {
+            setAssigningTourist(false);
+        }
+    };
+
+    const handleRevokeTouristAdmin = async (userId) => {
+        if (!window.confirm('Bu kullanıcının turist admin yetkilerini iptal etmek istediğinize emin misiniz?')) return;
+        try {
+            const { data } = await axios.post(`/api/admin/users/${userId}/tourist-admin`, { revoke: true });
+            alert(data.message || 'Yetkiler başarıyla geri alındı.');
+            fetchTouristAdmins();
+        } catch (err) {
+            alert(err.response?.data?.message || 'İşlem başarısız.');
+        }
+    };
+
     useEffect(() => {
         const loadCustomBadges = async () => {
             try {
@@ -1381,6 +1462,8 @@ const AdminDashboard = () => {
             fetchBannedIps();
         } else if (activeTab === 'system' && isOxypace) {
             fetchMaintenanceStatus();
+        } else if (activeTab === 'tourist-admin' && isOxypace) {
+            fetchTouristAdmins();
         }
     }, [activeTab, isOxypace]);
 
@@ -2153,7 +2236,204 @@ const AdminDashboard = () => {
                         Sistem Ayarları
                     </button>
                 )}
+                {isOxypace && (
+                    <button
+                        className={`admin-tab ${activeTab === 'tourist-admin' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('tourist-admin')}
+                    >
+                        Turist Admin Ata
+                    </button>
+                )}
             </div>
+
+            <div className="admin-content">
+                {activeTab === 'tourist-admin' && isOxypace && (
+                    <div className="tourist-admin-container fade-in">
+                        <div className="tourist-admin-card">
+                            <div className="tourist-admin-header">
+                                <h2>💼 Turist Admin Atama Paneli</h2>
+                                <p>Sadece @oxypace tarafından yönetilen bu modülle kullanıcılara geçici admin yetkileri atayabilirsiniz.</p>
+                            </div>
+
+                            <div className="tourist-assign-section">
+                                <h3 className="section-subtitle">➕ Yeni Turist Admin Yetkilendir</h3>
+                                <form onSubmit={handleSearchTouristUser} className="tourist-search-form">
+                                    <div className="form-group-modern search-with-btn">
+                                        <input
+                                            type="text"
+                                            className="reason-input-modern"
+                                            placeholder="Kullanıcı adı veya email ile ara..."
+                                            value={touristSearchTerm}
+                                            onChange={(e) => setTouristSearchTerm(e.target.value)}
+                                        />
+                                        <button type="submit" className="btn-modern-primary" disabled={loadingTourist}>
+                                            {loadingTourist ? 'Aranıyor...' : 'Ara'}
+                                        </button>
+                                    </div>
+                                </form>
+
+                                {touristSearchResult.length > 0 && (
+                                    <div className="search-results-list">
+                                        <h4>Arama Sonuçları:</h4>
+                                        <div className="results-grid">
+                                            {touristSearchResult.map(u => (
+                                                <div 
+                                                    key={u._id} 
+                                                    className={`result-user-card ${selectedTouristUser?._id === u._id ? 'selected' : ''}`}
+                                                    onClick={() => setSelectedTouristUser(u)}
+                                                >
+                                                    <UserAvatar src={u.profile?.avatar} alt={u.username} className="avatar-mini" />
+                                                    <div className="user-info-mini">
+                                                        <strong>{u.profile?.displayName || u.username}</strong>
+                                                        <span>@{u.username}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedTouristUser && (
+                                    <div className="assignment-details-form fade-in">
+                                        <div className="selected-user-banner">
+                                            <span>Seçilen Kullanıcı:</span>
+                                            <strong>@{selectedTouristUser.username}</strong>
+                                        </div>
+
+                                        <div className="form-group-modern">
+                                            <label className="badge-label">Süre Tipi</label>
+                                            <div className="duration-type-toggle">
+                                                <button
+                                                    type="button"
+                                                    className={`duration-type-btn ${touristDurationType === 'preset' ? 'active' : ''}`}
+                                                    onClick={() => setTouristDurationType('preset')}
+                                                >
+                                                    Hazır Süre
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`duration-type-btn ${touristDurationType === 'custom' ? 'active' : ''}`}
+                                                    onClick={() => setTouristDurationType('custom')}
+                                                >
+                                                    Özel Bitiş Tarihi
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {touristDurationType === 'preset' ? (
+                                            <div className="form-group-modern">
+                                                <label className="badge-label">Hazır Süre Seçin</label>
+                                                <div className="preset-grid">
+                                                    {[
+                                                        { label: '2 Saat', val: 2 },
+                                                        { label: '6 Saat', val: 6 },
+                                                        { label: '12 Saat', val: 12 },
+                                                        { label: '1 Gün (24 Saat)', val: 24 },
+                                                        { label: '3 Gün', val: 72 },
+                                                        { label: '7 Gün', val: 168 }
+                                                    ].map(p => (
+                                                        <button
+                                                            key={p.val}
+                                                            type="button"
+                                                            className={`preset-btn ${selectedTouristPreset === p.val ? 'active' : ''}`}
+                                                            onClick={() => setSelectedTouristPreset(p.val)}
+                                                        >
+                                                            {p.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="form-group-modern">
+                                                <label className="badge-label">Bitiş Tarihi ve Saati</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="custom-date-input"
+                                                    value={customTouristDate}
+                                                    onChange={(e) => setCustomTouristDate(e.target.value)}
+                                                    min={new Date().toISOString().slice(0, 16)}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="form-actions-modern">
+                                            <button
+                                                type="button"
+                                                className="btn-modern-primary btn-glow-cyan"
+                                                onClick={handleAssignTouristAdmin}
+                                                disabled={assigningTourist}
+                                                style={{ width: '100%', padding: '12px' }}
+                                            >
+                                                {assigningTourist ? 'ATANIYOR...' : '💼 TURİST ADMIN OLARAK ATA'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="tourist-list-section">
+                                <h3 className="section-subtitle">👥 Aktif Turist Adminler</h3>
+                                {loading ? (
+                                    <div className="admin-loading">Yükleniyor...</div>
+                                ) : touristAdmins.length === 0 ? (
+                                    <p className="no-data">Şu an aktif hiçbir Turist Admin bulunmamaktadır.</p>
+                                ) : (
+                                    <div className="tourist-admins-table-wrapper">
+                                        <table className="tourist-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Kullanıcı</th>
+                                                    <th>Atayan</th>
+                                                    <th>Bitiş Tarihi</th>
+                                                    <th>Kalan Süre</th>
+                                                    <th>İşlem</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {touristAdmins.map(admin => {
+                                                    const expiresAt = new Date(admin.touristAdminExpiresAt);
+                                                    const timeLeftMs = expiresAt - new Date();
+                                                    let timeLeftStr = 'Süresi doldu';
+                                                    if (timeLeftMs > 0) {
+                                                        const diffHours = Math.floor(timeLeftMs / (1000 * 60 * 60));
+                                                        const diffMins = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+                                                        timeLeftStr = diffHours > 0 ? `${diffHours} sa ${diffMins} dk` : `${diffMins} dk`;
+                                                    }
+                                                    return (
+                                                        <tr key={admin._id}>
+                                                            <td>
+                                                                <div className="table-user-cell">
+                                                                    <UserAvatar src={admin.profile?.avatar} alt={admin.username} className="avatar-table" />
+                                                                    <div className="user-info-table">
+                                                                        <strong>{admin.profile?.displayName || admin.username}</strong>
+                                                                        <span>@{admin.username}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>@{admin.assignedBy || 'oxypace'}</td>
+                                                            <td>{expiresAt.toLocaleString('tr-TR')}</td>
+                                                            <td>
+                                                                <span className="time-left-badge">{timeLeftStr}</span>
+                                                            </td>
+                                                            <td>
+                                                                <button 
+                                                                    onClick={() => handleRevokeTouristAdmin(admin._id)}
+                                                                    className="btn-revoke-tourist"
+                                                                >
+                                                                    Yetkiyi Kaldır
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             <div className="admin-content">
                 {activeTab === 'mass-notification' && (

@@ -145,7 +145,7 @@ router.get('/users', protect, admin, async (req, res) => {
         }
 
         const users = await User.find(query)
-            .select('username email profile verificationBadge customBadge isVerified isBanned banReason banExpiresAt isShadowbanned lastIP createdAt')
+            .select('username email profile verificationBadge customBadge isVerified isBanned banReason banExpiresAt isShadowbanned lastIP createdAt isTouristAdmin touristAdminExpiresAt assignedBy')
             .sort({ createdAt: -1 })
             .limit(50); // Limit to avoid massive payloads
 
@@ -585,6 +585,10 @@ router.put('/users/:id/ban', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
+        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        }
+
         user.isBanned = true;
         user.banReason = reason || 'Topluluk kuralları ihlali';
         user.banExpiresAt = expiresAt ? new Date(expiresAt) : null;
@@ -640,6 +644,10 @@ router.put('/users/:id/shadowban', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
+        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        }
+
         user.isShadowbanned = !!isShadowbanned;
         await user.save();
 
@@ -659,6 +667,10 @@ router.put('/users/:id/unban', protect, admin, async (req, res) => {
 
         if (!user) {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
         }
 
         user.isBanned = false;
@@ -807,6 +819,10 @@ router.put('/users/:id/recover-approve', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
+        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        }
+
         user.isDeleted = false;
         user.recoveryStatus = 'approved';
         await user.save();
@@ -858,6 +874,10 @@ router.put('/users/:id/recover-reject', protect, admin, async (req, res) => {
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
         }
 
         user.recoveryStatus = 'rejected';
@@ -974,6 +994,10 @@ router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
+        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        }
+
         user.customBadge = {
             url: url || '',
             name: name || ''
@@ -1001,6 +1025,113 @@ router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Assign custom badge error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/users/:id/tourist-admin
+// @desc    Assign or revoke Tourist Admin role
+// @access  Private/Admin (Oxypace Only)
+router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
+    try {
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu işlemi sadece baş yönetici yapabilir.' });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        if (user.username === 'oxypace') {
+            return res.status(400).json({ message: 'Baş yöneticiye turist admin rolü atanamaz.' });
+        }
+
+        const { duration, expiresAt, revoke } = req.body;
+
+        if (revoke) {
+            user.isTouristAdmin = false;
+            user.touristAdminExpiresAt = null;
+            user.assignedBy = '';
+            await user.save();
+
+            try {
+                const systemEnabled = user.settings?.notifications?.system !== false;
+                if (systemEnabled) {
+                    await Notification.create({
+                        recipient: user._id,
+                        type: 'system',
+                        content: 'Turist Admin yetkileriniz geri alındı.',
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Revocation notification error:', notifErr);
+            }
+
+            return res.json({ message: 'Turist Admin yetkileri geri alındı.', user });
+        }
+
+        let expiryDate = null;
+        if (expiresAt) {
+            expiryDate = new Date(expiresAt);
+        } else if (duration) {
+            const num = parseInt(duration);
+            const unit = duration.slice(-1);
+            if (unit === 'h') {
+                expiryDate = new Date(Date.now() + num * 60 * 60 * 1000);
+            } else if (unit === 'd') {
+                expiryDate = new Date(Date.now() + num * 24 * 60 * 60 * 1000);
+            } else {
+                return res.status(400).json({ message: 'Geçersiz süre biçimi. Örn: 2h, 1d' });
+            }
+        } else {
+            return res.status(400).json({ message: 'Lütfen bir süre veya bitiş tarihi belirtin.' });
+        }
+
+        user.isTouristAdmin = true;
+        user.touristAdminExpiresAt = expiryDate;
+        user.assignedBy = req.user.username;
+
+        await user.save();
+
+        const messageText = 'Tebrikler! Sınırlı süreliğine Turist Admin olarak atandınız. Yetkileriniz başladı!';
+        
+        try {
+            const systemEnabled = user.settings?.notifications?.system !== false;
+            if (systemEnabled) {
+                await Notification.create({
+                    recipient: user._id,
+                    type: 'system',
+                    content: messageText,
+                });
+            }
+
+            if (user.fcmTokens && user.fcmTokens.length > 0 && user.settings?.notifications?.push !== false) {
+                const { sendPushNotification } = await import('../services/pushService.js');
+                await sendPushNotification(user.fcmTokens, {
+                    title: 'Turist Admin Ataması',
+                    body: messageText,
+                    data: { url: '/admin' }
+                });
+            }
+
+            const io = req.app.get('io');
+            if (io) {
+                const notif = await Notification.findOne({ recipient: user._id }).sort({ createdAt: -1 });
+                if (notif) {
+                    io.to(user._id.toString()).emit('newNotification', notif);
+                }
+                io.to(user._id.toString()).emit('tourist_admin_assigned', {
+                    message: messageText
+                });
+            }
+        } catch (notifErr) {
+            console.error('Notification error during Tourist Admin assignment:', notifErr);
+        }
+
+        res.json({ message: 'Turist Admin başarıyla atandı.', user });
+    } catch (error) {
+        console.error('Assign tourist admin error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
     }
 });
 
