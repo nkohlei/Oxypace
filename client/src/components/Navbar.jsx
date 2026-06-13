@@ -85,8 +85,8 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             };
             fetchUnreadCount();
 
-            // Fetch admin pending items if admin
-            if (user.isAdmin) {
+            // Fetch admin pending items if admin or tourist admin
+            if (user.isAdmin || user.isTouristAdmin) {
                 const fetchAdminCount = async () => {
                     try {
                         const response = await axios.get('/api/admin/pending-count');
@@ -238,7 +238,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                          </div>
                                      </Link>
 
-                                    {user?.username === 'oxypace' && (
+                                    {(user?.isAdmin || user?.isTouristAdmin || user?.username === 'oxypace') && (
                                         <Link
                                             to="/admin"
                                             className="dropdown-item admin-link"

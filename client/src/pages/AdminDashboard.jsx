@@ -1027,7 +1027,7 @@ const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
     const navigate = useNavigate();
     const isOxypace = currentUser && currentUser.username === 'oxypace';
-    const isAdmin = currentUser && (currentUser.isAdmin || currentUser.username === 'oxypace');
+    const isAdmin = currentUser && (currentUser.isAdmin || currentUser.isTouristAdmin || currentUser.username === 'oxypace');
 
     // Forbidden UI for non-admins
     if (!isAdmin) {
@@ -2217,7 +2217,7 @@ const AdminDashboard = () => {
                 >
                     Toplu Bildirim Gönder
                 </button>
-                {isOxypace && (
+                {(isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
                     <button
                         className={`admin-tab ${activeTab === 'reports' ? 'active' : ''}`}
                         onClick={() => setActiveTab('reports')}
@@ -2228,7 +2228,7 @@ const AdminDashboard = () => {
                         }
                     </button>
                 )}
-                {isOxypace && (
+                {(isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
                     <button
                         className={`admin-tab ${activeTab === 'system' ? 'active' : ''}`}
                         onClick={() => setActiveTab('system')}
@@ -2801,7 +2801,7 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {activeTab === 'reports' && isOxypace && (() => {
+                {activeTab === 'reports' && (isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (() => {
                     const getReportReasonLabel = (reason) => {
                         switch (reason) {
                             case 'spam': return { label: 'İstenmeyen İçerik (Spam)', bg: 'rgba(52, 152, 219, 0.15)', text: '#3498db' };
@@ -3306,7 +3306,7 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 )}
-                {activeTab === 'system' && isOxypace && (
+                {activeTab === 'system' && (isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
                     <div className="system-settings-section">
                         <div className="system-card">
                             <div className="system-card-header">

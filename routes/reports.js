@@ -58,7 +58,8 @@ router.post('/', protect, async (req, res) => {
 router.get('/', protect, async (req, res) => {
     try {
         const isOxypace = req.user.username === 'oxypace';
-        if (!isOxypace && req.user.role !== 'admin') {
+        const isAdmin = req.user.isAdmin || req.user.isTouristAdmin;
+        if (!isOxypace && !isAdmin) {
             return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
         }
 
@@ -87,7 +88,8 @@ router.get('/', protect, async (req, res) => {
 router.put('/:id/status', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const isOxypace = req.user.username === 'oxypace';
-        if (!isOxypace && req.user.role !== 'admin') {
+        const isAdmin = req.user.isAdmin || req.user.isTouristAdmin;
+        if (!isOxypace && !isAdmin) {
             return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
         }
 
@@ -119,7 +121,8 @@ router.put('/:id/status', protect, mongoIdValidation('id'), async (req, res) => 
 router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
         const isOxypace = req.user.username === 'oxypace';
-        if (!isOxypace && req.user.role !== 'admin') {
+        const isAdmin = req.user.isAdmin || req.user.isTouristAdmin;
+        if (!isOxypace && !isAdmin) {
             return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
         }
 
