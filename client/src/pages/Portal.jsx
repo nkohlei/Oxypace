@@ -346,6 +346,9 @@ const Portal = () => {
                 // Direct upload to R2
                 mediaKey = await uploadFile(currentData.media, 'post', id, (progress) => {
                     setUploadPercentage(progress);
+                    setPosts((current) =>
+                        current.map((p) => String(p._id) === String(tempId) ? { ...p, uploadProgress: progress } : p)
+                    );
                 });
             } else {
                 setUploadPercentage(100);

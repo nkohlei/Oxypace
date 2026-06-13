@@ -46,7 +46,12 @@ export const uploadFile = async (file, purpose = 'post', portalId = null, onProg
       portalId
     });
 
-    const response = await axios.put(uploadUrl, file, {
+    const cleanAxios = axios.create();
+    if (cleanAxios.defaults.headers.common) {
+      delete cleanAxios.defaults.headers.common['Authorization'];
+    }
+
+    const response = await cleanAxios.put(uploadUrl, file, {
       headers: {
         'Content-Type': file.type
       },
