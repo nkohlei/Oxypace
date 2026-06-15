@@ -84,6 +84,7 @@ import { useUI, UIProvider } from './context/UIContext';
 
 // Native Permission Helper
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 
@@ -116,7 +117,53 @@ const requestNativePermissions = async () => {
                 console.error('Push registration error: ' + JSON.stringify(error));
             });
 
-            await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+                console.log('Push notification received in foreground:', notification);
+                
+                const imageUrl = notification.data?.picture || notification.data?.image || notification.data?.bigPicture;
+                
+                try {
+                    await LocalNotifications.schedule({
+                        notifications: [
+                            {
+                                title: notification.title || 'Yeni Bildirim',
+                                body: notification.body || '',
+                                id: Math.floor(Math.random() * 1000000),
+                                extra: notification.data || {},
+                                ...(imageUrl && {
+                                    attachments: [
+                                        {
+                                            id: 'picture',
+                                            url: imageUrl
+                                        }
+                                    ]
+                                })
+                            }
+                        ]
+                    });
+                } catch (localErr) {
+                    console.error('Error triggering local notification:', localErr);
+                }
+            });
+
+            // Local Notification action listener for routing when clicked in foreground
+            await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+                console.log('Local notification action performed:', action);
+                const data = action.notification?.extra;
+                if (data) {
+                    const { type, targetId, route } = data;
+                    if (route) {
+                        window.location.href = route;
+                    } else if (type === 'message' && targetId) {
+                        window.location.href = `/inbox/${targetId}`;
+                    } else if (type === 'quote' && targetId) {
+                        window.location.href = `/post/${targetId}`;
+                    } else if (type === 'security') {
+                        window.location.href = `/settings?tab=security`;
+                    } else if (type === 'friend_request') {
+                        window.location.href = `/notifications`;
+                    }
+                }
             });
 
             await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {

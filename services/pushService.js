@@ -38,7 +38,18 @@ export const sendPushNotification = async (tokens, payload) => {
             },
             data: {
                 ...(payload.data || {}),
-                ...(payload.image && { image: payload.image, bigPicture: payload.image }),
+                ...(payload.image && { 
+                    image: payload.image, 
+                    bigPicture: payload.image,
+                    picture: payload.image,
+                    style: 'bigpicture',
+                    fcm_options: JSON.stringify({ image: payload.image })
+                }),
+            },
+            android: {
+                notification: {
+                    ...(payload.image && { image: payload.image })
+                }
             },
             tokens: tokens, // Multicast message
         };
