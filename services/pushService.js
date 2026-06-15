@@ -36,10 +36,12 @@ export const sendPushNotification = async (tokens, payload) => {
             notification: {
                 title: payload.title,
                 body: payload.body,
-                ...(absoluteImageUrl && { image: absoluteImageUrl }),
+                // Firebase Admin SDK v13+ uses 'imageUrl' (SDK converts this to 'image' in the REST API)
+                ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
             },
             data: {
                 ...(payload.data || {}),
+                // data fields are used by the foreground pushNotificationReceived listener in App.jsx
                 ...(absoluteImageUrl && { 
                     image: absoluteImageUrl, 
                     bigPicture: absoluteImageUrl,
@@ -50,7 +52,8 @@ export const sendPushNotification = async (tokens, payload) => {
             },
             android: {
                 notification: {
-                    ...(absoluteImageUrl && { image: absoluteImageUrl })
+                    // Firebase Admin SDK v13+ uses 'imageUrl' for android-specific notifications
+                    ...(absoluteImageUrl && { imageUrl: absoluteImageUrl })
                 }
             },
             tokens: tokens, // Multicast message
