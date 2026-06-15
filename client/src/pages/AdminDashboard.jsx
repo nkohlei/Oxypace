@@ -1166,8 +1166,7 @@ const AdminDashboard = () => {
         setUploadingImage(true);
         try {
             const mediaKey = await uploadFile(file, 'post');
-            const fullUrl = getImageUrl(mediaKey);
-            setMassNotifImage(fullUrl);
+            setMassNotifImage(mediaKey);
         } catch (err) {
             console.error('Failed to upload image:', err);
             alert('Görsel yüklenirken bir hata oluştu.');
@@ -2523,7 +2522,7 @@ const AdminDashboard = () => {
                                     {massNotifImage && (
                                         <div style={{ position: 'relative', width: 'fit-content', marginTop: '10px' }}>
                                             <img 
-                                                src={massNotifImage} 
+                                                src={getImageUrl(massNotifImage)} 
                                                 alt="Önizleme" 
                                                 style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }} 
                                             />

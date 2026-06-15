@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
 // Initialize Firebase Admin only if service account is provided in env
 // This ensures the app doesn't crash if the user hasn't set up Firebase yet
@@ -30,25 +31,26 @@ export const sendPushNotification = async (tokens, payload) => {
     }
 
     try {
+        const absoluteImageUrl = payload.image ? constructProxiedUrl(payload.image) : undefined;
         const message = {
             notification: {
                 title: payload.title,
                 body: payload.body,
-                ...(payload.image && { image: payload.image }),
+                ...(absoluteImageUrl && { image: absoluteImageUrl }),
             },
             data: {
                 ...(payload.data || {}),
-                ...(payload.image && { 
-                    image: payload.image, 
-                    bigPicture: payload.image,
-                    picture: payload.image,
+                ...(absoluteImageUrl && { 
+                    image: absoluteImageUrl, 
+                    bigPicture: absoluteImageUrl,
+                    picture: absoluteImageUrl,
                     style: 'bigpicture',
-                    fcm_options: JSON.stringify({ image: payload.image })
+                    fcm_options: JSON.stringify({ image: absoluteImageUrl })
                 }),
             },
             android: {
                 notification: {
-                    ...(payload.image && { image: payload.image })
+                    ...(absoluteImageUrl && { image: absoluteImageUrl })
                 }
             },
             tokens: tokens, // Multicast message
