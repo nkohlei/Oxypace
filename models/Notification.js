@@ -55,6 +55,9 @@ const notificationSchema = new mongoose.Schema(
         link: {
             type: String, // Optional direct link
         },
+        imageUrl: {
+            type: String,
+        },
     },
     {
         timestamps: true,
@@ -110,6 +113,7 @@ notificationSchema.post('save', async function (doc) {
         await sendPushNotification(recipient.fcmTokens, {
             title,
             body,
+            image: doc.imageUrl,
             data: {
                 url: doc.link || '/',
                 notificationId: doc._id.toString()

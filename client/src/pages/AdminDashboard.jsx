@@ -1156,6 +1156,25 @@ const AdminDashboard = () => {
     const [massNotifPush, setMassNotifPush] = useState(false);
     const [massNotifSending, setMassNotifSending] = useState(false);
     const [massNotifStatus, setMassNotifStatus] = useState({ type: '', text: '' });
+    const [massNotifImage, setMassNotifImage] = useState('');
+    const [uploadingImage, setUploadingImage] = useState(false);
+
+    const handleMassNotifFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingImage(true);
+        try {
+            const mediaKey = await uploadFile(file, 'post');
+            const fullUrl = getImageUrl(mediaKey);
+            setMassNotifImage(fullUrl);
+        } catch (err) {
+            console.error('Failed to upload image:', err);
+            alert('Görsel yüklenirken bir hata oluştu.');
+        } finally {
+            setUploadingImage(false);
+        }
+    };
 
     const handleSendMassNotification = async (e) => {
         e.preventDefault();
@@ -1177,6 +1196,7 @@ const AdminDashboard = () => {
                 message: massNotifMessage.trim(),
                 inApp: massNotifInApp,
                 push: massNotifPush,
+                imageUrl: massNotifImage.trim() || undefined,
             });
 
             setMassNotifStatus({
@@ -1185,6 +1205,7 @@ const AdminDashboard = () => {
             });
             setMassNotifTitle('');
             setMassNotifMessage('');
+            setMassNotifImage('');
         } catch (err) {
             console.error('Send mass notification error:', err);
             setMassNotifStatus({
@@ -2474,6 +2495,47 @@ const AdminDashboard = () => {
                                         required
                                         disabled={massNotifSending}
                                     />
+                                </div>
+
+                                <div className="form-group-modern">
+                                    <label className="badge-label">Görsel (Opsiyonel)</label>
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                                        <input
+                                            type="text"
+                                            className="reason-input-modern"
+                                            placeholder="Görsel URL girin veya dosya seçin..."
+                                            value={massNotifImage}
+                                            onChange={(e) => setMassNotifImage(e.target.value)}
+                                            disabled={massNotifSending}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <label className="btn-modern-ghost" style={{ cursor: 'pointer', margin: 0, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '100px', whiteSpace: 'nowrap' }}>
+                                            {uploadingImage ? 'Yükleniyor...' : 'Dosya Seç'}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                style={{ display: 'none' }}
+                                                onChange={handleMassNotifFileSelect}
+                                                disabled={massNotifSending || uploadingImage}
+                                            />
+                                        </label>
+                                    </div>
+                                    {massNotifImage && (
+                                        <div style={{ position: 'relative', width: 'fit-content', marginTop: '10px' }}>
+                                            <img 
+                                                src={massNotifImage} 
+                                                alt="Önizleme" 
+                                                style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }} 
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setMassNotifImage('')}
+                                                style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ff4b4b', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
+                                            >
+                                                &times;
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="form-group-modern checkboxes-group">

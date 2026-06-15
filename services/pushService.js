@@ -34,8 +34,12 @@ export const sendPushNotification = async (tokens, payload) => {
             notification: {
                 title: payload.title,
                 body: payload.body,
+                ...(payload.image && { image: payload.image }),
             },
-            data: payload.data || {},
+            data: {
+                ...(payload.data || {}),
+                ...(payload.image && { image: payload.image, bigPicture: payload.image }),
+            },
             tokens: tokens, // Multicast message
         };
 

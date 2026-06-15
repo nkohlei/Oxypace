@@ -391,7 +391,7 @@ const Notifications = () => {
                                             )}
                                         </div>
 
-                                        {notif.post && notif.post.media && (
+                                        {notif.post && notif.post.media ? (
                                             <div className="notif-post-preview">
                                                 {notif.post.mediaType === 'video' ? (
                                                     <video src={getImageUrl(notif.post.media)} loop muted autoPlay playsInline />
@@ -402,7 +402,14 @@ const Notifications = () => {
                                                     />
                                                 )}
                                             </div>
-                                        )}
+                                        ) : notif.imageUrl ? (
+                                            <div className="notif-post-preview">
+                                                <img
+                                                    src={getImageUrl(notif.imageUrl)}
+                                                    alt="Media"
+                                                />
+                                            </div>
+                                        ) : null}
 
                                         {/* Delete Button */}
                                         <button

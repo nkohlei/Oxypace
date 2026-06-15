@@ -1147,7 +1147,7 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/mass-notification', protect, admin, async (req, res) => {
     try {
-        const { title, message, inApp, push } = req.body;
+        const { title, message, inApp, push, imageUrl } = req.body;
 
         if (!title || !message) {
             return res.status(400).json({ message: 'Başlık ve mesaj alanları zorunludur.' });
@@ -1169,6 +1169,7 @@ router.post('/mass-notification', protect, admin, async (req, res) => {
                 recipient: user._id,
                 type: 'system',
                 content: `${title}: ${message}`,
+                imageUrl: imageUrl || undefined,
             }));
 
             // Batch insert notifications (highly efficient, bypasses individual post-save hooks)
@@ -1207,6 +1208,7 @@ router.post('/mass-notification', protect, admin, async (req, res) => {
                     await sendPushNotification(chunk, {
                         title: title,
                         body: message,
+                        image: imageUrl,
                         data: {
                             url: '/notifications'
                         }
