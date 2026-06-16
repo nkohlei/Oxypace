@@ -1,5 +1,41 @@
 import admin from 'firebase-admin';
-import { constructProxiedUrl } from '../utils/mediaConfig.js';
+import { R2_DOMAIN, PROXY_BASE } from '../utils/mediaConfig.js';
+
+/**
+ * Constructs the image URL for Android push notifications.
+ * Uses the Koyeb proxy URL instead of the direct R2 CDN URL,
+ * because Cloudflare R2 (pub-xxx.r2.dev) is blocked by Türk Telekom.
+ * Koyeb runs on Google Cloud which is NOT blocked.
+ */
+const constructNotifImageUrl = (key) => {
+    if (!key) return null;
+
+    let cleanKey = key;
+
+    // If it's already a direct R2 CDN URL, extract the key part
+    if (cleanKey.startsWith(R2_DOMAIN)) {
+        cleanKey = cleanKey.slice(R2_DOMAIN.length).replace(/^\//, '');
+    }
+
+    // Strip any proxy path prefixes
+    if (cleanKey.includes('/api/media/')) {
+        cleanKey = cleanKey.substring(cleanKey.indexOf('/api/media/') + 11);
+    } else if (cleanKey.includes('/r2-media/')) {
+        cleanKey = cleanKey.substring(cleanKey.indexOf('/r2-media/') + 10);
+    }
+
+    // Decode encoded chars (e.g. %2F → /)
+    try { cleanKey = decodeURIComponent(cleanKey); } catch (e) {}
+
+    // If it's an unrelated external URL (e.g. https://example.com/img.jpg), keep as-is
+    if (cleanKey.startsWith('http')) return cleanKey;
+
+    // Normalize leading slash
+    cleanKey = cleanKey.replace(/^\//, '');
+
+    // Return Koyeb proxy URL — accessible on TTNet without Cloudflare blocking
+    return `${PROXY_BASE}${cleanKey}`;
+};
 
 // Initialize Firebase Admin only if service account is provided in env
 // This ensures the app doesn't crash if the user hasn't set up Firebase yet
@@ -31,7 +67,7 @@ export const sendPushNotification = async (tokens, payload) => {
     }
 
     try {
-        const absoluteImageUrl = payload.image ? constructProxiedUrl(payload.image) : undefined;
+        const absoluteImageUrl = payload.image ? constructNotifImageUrl(payload.image) : undefined;
         const message = {
             notification: {
                 title: payload.title,
