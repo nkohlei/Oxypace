@@ -245,10 +245,10 @@
 }
 
 /* ── Mobile Top Bar ── */
-.admin-mobile-topbar {
+.admin-top-bar {
     display: none;
     align-items: center;
-    gap: 14px;
+    justify-content: space-between;
     padding: 14px 18px;
     background: rgba(10, 10, 18, 0.8);
     backdrop-filter: blur(16px);
@@ -259,45 +259,45 @@
     z-index: 90;
 }
 
-.mobile-topbar-title {
+.admin-mobile-title {
     font-size: 15px;
     font-weight: 700;
     color: #fff;
 }
 
-.sidebar-hamburger {
+.sidebar-mobile-toggle {
+    background: transparent;
+    border: none;
+    color: #fff;
+    cursor: pointer;
     display: flex;
-    flex-direction: column;
-    gap: 5px;
-    width: 36px;
-    height: 36px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.sidebar-mobile-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-close-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
-.sidebar-hamburger:hover {
-    background: rgba(29, 155, 240, 0.15);
-    border-color: rgba(29, 155, 240, 0.4);
-}
-
-.sidebar-hamburger span {
-    display: block;
-    width: 16px;
-    height: 2px;
-    background: #aaa;
-    border-radius: 2px;
-    transition: background 0.2s;
-}
-
-.sidebar-hamburger:hover span {
-    background: #1d9bf0;
+.sidebar-close-btn:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* ── Mobile Backdrop ── */
@@ -319,23 +319,17 @@
 /* ── Content area ── */
 .admin-content {
     flex: 1;
-    padding: 24px 28px;
+    padding: 32px 40px;
     min-width: 0;
     overflow-x: hidden;
 }
 
-/* ── Responsive: Tablet & Mobile ── */
-@media (max-width: 900px) {
-    .admin-sidebar {
-        width: 240px;
-    }
-}
-
-@media (max-width: 768px) {
+/* ── Responsive: Tablet & Mobile Breakpoint (1024px) ── */
+@media (max-width: 1023px) {
     .admin-sidebar {
         position: fixed;
         top: 0;
-        left: -270px;
+        left: -280px;
         height: 100vh;
         width: 260px;
         z-index: 200;
@@ -343,11 +337,15 @@
         box-shadow: 8px 0 40px rgba(0, 0, 0, 0.6);
     }
 
-    .admin-sidebar.sidebar-open {
+    .admin-sidebar.open {
         left: 0;
     }
 
-    .admin-mobile-topbar {
+    .sidebar-close-btn {
+        display: flex;
+    }
+
+    .admin-top-bar {
         display: flex;
     }
 

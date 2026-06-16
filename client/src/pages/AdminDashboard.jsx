@@ -2193,18 +2193,20 @@ const AdminDashboard = () => {
             <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
                     <button
-                        className="admin-home-btn"
+                        className="sidebar-home-btn"
                         onClick={() => navigate('/')}
                         title="Anasayfa"
                     >
-                        <Home size={20} />
+                        <Home size={18} />
                     </button>
-                    <h1 className="admin-title">Yönetici Paneli</h1>
+                    <div className="sidebar-brand">
+                        <span className="sidebar-brand-title">Yönetici Paneli</span>
+                    </div>
                     <button 
                         className="sidebar-close-btn"
                         onClick={() => setSidebarOpen(false)}
                     >
-                        <X size={20} />
+                        <X size={18} />
                     </button>
                 </div>
 
