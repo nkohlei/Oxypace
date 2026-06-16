@@ -1,3 +1,372 @@
+/* =============================================
+   ADMIN LAYOUT — GLASSMORPHISM SIDEBAR SYSTEM
+   ============================================= */
+
+/* ── Root layout wrapper ── */
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+    background: var(--bg-primary, #0a0a0a);
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* ── Glassmorphism Sidebar ── */
+.admin-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 0 24px 0;
+    z-index: 100;
+
+    /* Glassmorphism */
+    background: rgba(10, 10, 18, 0.72);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.4);
+}
+
+.admin-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+.admin-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.admin-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+/* ── Sidebar Header ── */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.sidebar-home-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-home-btn:hover {
+    background: rgba(29, 155, 240, 0.15);
+    border-color: rgba(29, 155, 240, 0.4);
+    color: #1d9bf0;
+    transform: scale(1.06);
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.sidebar-brand-icon {
+    font-size: 20px;
+    line-height: 1;
+    filter: drop-shadow(0 0 8px rgba(29, 155, 240, 0.6));
+    flex-shrink: 0;
+}
+
+.sidebar-brand-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-brand-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Category Blocks ── */
+.sidebar-category {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 10px;
+    margin-top: 4px;
+}
+
+.sidebar-category-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 6px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sidebar-category-label svg {
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+
+/* ── Nav Items ── */
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    text-align: left;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.sidebar-nav-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: transparent;
+    transition: background 0.2s ease;
+}
+
+.sidebar-nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav-item.active {
+    background: rgba(29, 155, 240, 0.14);
+    color: #fff;
+    border-color: rgba(29, 155, 240, 0.25);
+    box-shadow:
+        0 0 20px rgba(29, 155, 240, 0.12),
+        inset 0 0 20px rgba(29, 155, 240, 0.04);
+}
+
+.sidebar-nav-item.active::before {
+    background: linear-gradient(180deg, #1d9bf0, #60a5fa);
+    box-shadow: 0 0 8px rgba(29, 155, 240, 0.5);
+}
+
+.sidebar-nav-item.active .snav-icon {
+    color: #60a5fa;
+    filter: drop-shadow(0 0 6px rgba(29, 155, 240, 0.5));
+}
+
+/* ── Icon & Label inside nav items ── */
+.snav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.snav-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.snav-badge {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+    animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 16px rgba(239, 68, 68, 0.7); }
+}
+
+/* ── Main Wrapper (right side) ── */
+.admin-main-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+/* ── Mobile Top Bar ── */
+.admin-mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: rgba(10, 10, 18, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    position: sticky;
+    top: 0;
+    z-index: 90;
+}
+
+.mobile-topbar-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.sidebar-hamburger {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-hamburger:hover {
+    background: rgba(29, 155, 240, 0.15);
+    border-color: rgba(29, 155, 240, 0.4);
+}
+
+.sidebar-hamburger span {
+    display: block;
+    width: 16px;
+    height: 2px;
+    background: #aaa;
+    border-radius: 2px;
+    transition: background 0.2s;
+}
+
+.sidebar-hamburger:hover span {
+    background: #1d9bf0;
+}
+
+/* ── Mobile Backdrop ── */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 99;
+    animation: fadeInBackdrop 0.25s ease;
+}
+
+@keyframes fadeInBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ── Content area ── */
+.admin-content {
+    flex: 1;
+    padding: 24px 28px;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+/* ── Responsive: Tablet & Mobile ── */
+@media (max-width: 900px) {
+    .admin-sidebar {
+        width: 240px;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-sidebar {
+        position: fixed;
+        top: 0;
+        left: -270px;
+        height: 100vh;
+        width: 260px;
+        z-index: 200;
+        transition: left 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 8px 0 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .admin-sidebar.sidebar-open {
+        left: 0;
+    }
+
+    .admin-mobile-topbar {
+        display: flex;
+    }
+
+    .sidebar-backdrop {
+        display: block;
+    }
+
+    .admin-content {
+        padding: 20px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-content {
+        padding: 16px 12px;
+    }
+}
+
+/* Legacy class kept so old .admin-dashboard references still work */
 .admin-dashboard {
     padding: 24px 28px;
     color: var(--text-primary);
