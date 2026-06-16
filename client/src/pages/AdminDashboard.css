@@ -5,10 +5,10 @@
 /* ── Root layout wrapper ── */
 .admin-layout {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
     background: var(--bg-primary, #0a0a0a);
     position: relative;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 
 /* ── Glassmorphism Sidebar ── */
@@ -16,7 +16,7 @@
     width: 260px;
     flex-shrink: 0;
     height: 100vh;
-    position: sticky;
+    position: relative;
     top: 0;
     left: 0;
     display: flex;
@@ -26,6 +26,8 @@
     overflow-x: hidden;
     padding: 0 0 24px 0;
     z-index: 100;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 
     /* Glassmorphism */
     background: rgba(10, 10, 18, 0.72);
@@ -241,7 +243,8 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    overflow-x: hidden;
+    overflow: hidden;
+    height: 100%;
 }
 
 /* ── Mobile Top Bar ── */
@@ -321,18 +324,24 @@
     flex: 1;
     padding: 32px 40px;
     min-width: 0;
-    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100%;
 }
 
 /* ── Responsive: Tablet & Mobile Breakpoint (1024px) ── */
 @media (max-width: 1023px) {
+    .admin-layout {
+        flex-direction: column;
+    }
+
     .admin-sidebar {
         position: fixed;
         top: 0;
+        bottom: 0;
         left: -280px;
         height: 100vh;
         width: 260px;
-        z-index: 200;
+        z-index: 2000;
         transition: left 0.32s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 8px 0 40px rgba(0, 0, 0, 0.6);
     }

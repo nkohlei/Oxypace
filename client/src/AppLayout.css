@@ -204,3 +204,7 @@
     margin-left: 0 !important;
     width: 100% !important;
 }
+
+.map-page-active .horizontal-layout-container {
+    padding-top: 0 !important;
+}
