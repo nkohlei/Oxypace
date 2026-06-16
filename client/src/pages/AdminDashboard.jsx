@@ -2219,27 +2219,27 @@ const AdminDashboard = () => {
                             className={`sidebar-nav-item ${activeTab === 'requests' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('requests'); setSidebarOpen(false); }}
                         >
-                            <LayoutDashboard size={18} />
-                            <span className="nav-label">Başvurular</span>
-                            {requests.length > 0 && <span className="tab-badge">{requests.length}</span>}
+                            <span className="snav-icon"><LayoutDashboard size={18} /></span>
+                            <span className="snav-label">Başvurular</span>
+                            {requests.length > 0 && <span className="snav-badge">{requests.length}</span>}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'recovery' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('recovery'); setSidebarOpen(false); }}
                         >
-                            <KeyRound size={18} />
-                            <span className="nav-label">Kurtarma Talepleri</span>
-                            {recoveryRequests.length > 0 && <span className="tab-badge">{recoveryRequests.length}</span>}
+                            <span className="snav-icon"><KeyRound size={18} /></span>
+                            <span className="snav-label">Kurtarma Talepleri</span>
+                            {recoveryRequests.length > 0 && <span className="snav-badge">{recoveryRequests.length}</span>}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'feedback' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('feedback'); setSidebarOpen(false); }}
                         >
-                            <ShieldAlert size={18} />
-                            <span className="nav-label">Talepler</span>
-                            {unreadFeedbackCount > 0 && <span className="tab-badge">{unreadFeedbackCount}</span>}
+                            <span className="snav-icon"><ShieldAlert size={18} /></span>
+                            <span className="snav-label">Talepler</span>
+                            {unreadFeedbackCount > 0 && <span className="snav-badge">{unreadFeedbackCount}</span>}
                         </button>
                     </div>
 
@@ -2251,40 +2251,40 @@ const AdminDashboard = () => {
                             className={`sidebar-nav-item ${activeTab === 'users' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
                         >
-                            <Users size={18} />
-                            <span className="nav-label">Kullanıcılar</span>
+                            <span className="snav-icon"><Users size={18} /></span>
+                            <span className="snav-label">Kullanıcılar</span>
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'activity' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('activity'); setSidebarOpen(false); }}
                         >
-                            <Globe size={18} />
-                            <span className="nav-label">Aktif Oturumlar</span>
+                            <span className="snav-icon"><Globe size={18} /></span>
+                            <span className="snav-label">Aktif Oturumlar</span>
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'ipbans' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('ipbans'); setSidebarOpen(false); }}
                         >
-                            <AlertTriangle size={18} />
-                            <span className="nav-label">IP Engelleri</span>
+                            <span className="snav-icon"><AlertTriangle size={18} /></span>
+                            <span className="snav-label">IP Engelleri</span>
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'badges' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('badges'); setSidebarOpen(false); }}
                         >
-                            <Award size={18} />
-                            <span className="nav-label">Rozetler</span>
+                            <span className="snav-icon"><Award size={18} /></span>
+                            <span className="snav-label">Rozetler</span>
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'custom-badges' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('custom-badges'); setSidebarOpen(false); }}
                         >
-                            <FileBadge size={18} />
-                            <span className="nav-label">Özel İkon Rozetler</span>
+                            <span className="snav-icon"><FileBadge size={18} /></span>
+                            <span className="snav-label">Özel İkon Rozetler</span>
                         </button>
                     </div>
 
@@ -2296,8 +2296,8 @@ const AdminDashboard = () => {
                             className={`sidebar-nav-item ${activeTab === 'portals' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('portals'); setSidebarOpen(false); }}
                         >
-                            <Globe size={18} />
-                            <span className="nav-label">Portallar</span>
+                            <span className="snav-icon"><Globe size={18} /></span>
+                            <span className="snav-label">Portallar</span>
                         </button>
 
                         {(isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
@@ -2305,10 +2305,10 @@ const AdminDashboard = () => {
                                 className={`sidebar-nav-item ${activeTab === 'reports' ? 'active' : ''}`}
                                 onClick={() => { setActiveTab('reports'); setSidebarOpen(false); }}
                             >
-                                <ShieldAlert size={18} />
-                                <span className="nav-label">Bildirilenler</span>
+                                <span className="snav-icon"><ShieldAlert size={18} /></span>
+                                <span className="snav-label">Bildirilenler</span>
                                 {reports.filter(r => r.status === 'pending').length > 0 &&
-                                    <span className="tab-badge">{reports.filter(r => r.status === 'pending').length}</span>
+                                    <span className="snav-badge">{reports.filter(r => r.status === 'pending').length}</span>
                                 }
                             </button>
                         )}
@@ -2317,8 +2317,8 @@ const AdminDashboard = () => {
                             className={`sidebar-nav-item ${activeTab === 'mass-notification' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('mass-notification'); setSidebarOpen(false); }}
                         >
-                            <Send size={18} />
-                            <span className="nav-label">Toplu Bildirim Gönder</span>
+                            <span className="snav-icon"><Send size={18} /></span>
+                            <span className="snav-label">Toplu Bildirim Gönder</span>
                         </button>
 
                         {(isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
@@ -2326,8 +2326,8 @@ const AdminDashboard = () => {
                                 className={`sidebar-nav-item ${activeTab === 'system' ? 'active' : ''}`}
                                 onClick={() => { setActiveTab('system'); setSidebarOpen(false); }}
                             >
-                                <Settings size={18} />
-                                <span className="nav-label">Sistem Ayarları</span>
+                                <span className="snav-icon"><Settings size={18} /></span>
+                                <span className="snav-label">Sistem Ayarları</span>
                             </button>
                         )}
                     </div>
@@ -2340,8 +2340,8 @@ const AdminDashboard = () => {
                                 className={`sidebar-nav-item ${activeTab === 'tourist-admin' ? 'active' : ''}`}
                                 onClick={() => { setActiveTab('tourist-admin'); setSidebarOpen(false); }}
                             >
-                                <ShieldCheck size={18} />
-                                <span className="nav-label">Turist Admin Ata</span>
+                                <span className="snav-icon"><ShieldCheck size={18} /></span>
+                                <span className="snav-label">Turist Admin Ata</span>
                             </button>
                         </div>
                     )}
