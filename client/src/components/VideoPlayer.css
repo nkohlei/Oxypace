@@ -190,8 +190,8 @@
 }
 
 .native-player-container:fullscreen .native-controls-ui {
-    bottom: 20px;
-    padding: 0 30px;
+    bottom: 0;
+    padding: 30px 30px 20px;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
