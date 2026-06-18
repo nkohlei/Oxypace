@@ -453,6 +453,7 @@ const CommentSection = ({ postId }) => {
                                     className="comment-media-img"
                                     controls
                                     loop
+                                    onClick={(e) => e.stopPropagation()}
                                 />
                             ) : (
                                 <img

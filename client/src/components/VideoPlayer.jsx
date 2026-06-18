@@ -175,7 +175,8 @@ const VideoPlayer = ({ src, poster, className }) => {
   };
 
   // Videoya Direk Tıklayıp Durdurma/Oynatma
-  const handleVideoClick = () => {
+  const handleVideoClick = (e) => {
+    if (e) e.stopPropagation();
     if (isSettingsOpen) {
       setIsSettingsOpen(false);
       return;
@@ -225,7 +226,7 @@ const VideoPlayer = ({ src, poster, className }) => {
   };
 
   return (
-    <div className={`native-player-container left-aligned v16-scale ${className || ''}`}>
+    <div className={`native-player-container left-aligned v16-scale ${className || ''}`} onClick={(e) => e.stopPropagation()}>
       <video
         ref={videoRef}
         src={src}
