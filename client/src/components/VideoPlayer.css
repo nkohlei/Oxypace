@@ -167,10 +167,19 @@
 .native-player-container:fullscreen {
     width: 100vw;
     height: 100vh;
-    background: #000;
+    background: transparent !important;
+    background-color: transparent !important;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.native-player-container::backdrop {
+    background: #000 !important;
+}
+
+.native-player-container::-webkit-backdrop {
+    background: #000 !important;
 }
 
 .native-player-container:fullscreen .native-video-element {
@@ -183,6 +192,9 @@
 .native-player-container:fullscreen .native-controls-ui {
     bottom: 20px;
     padding: 0 30px;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .native-time-sep {
