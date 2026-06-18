@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { shouldShowTranslation } from '../utils/languageUtils';
 import { Link, useNavigate } from 'react-router-dom';
@@ -26,6 +26,8 @@ import ReportModal from './ReportModal';
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
     const [showIframe, setShowIframe] = useState(false);
+    const containerRef = useRef(null);
+    const iframeRef = useRef(null);
 
     const getVideoId = (url) => {
         try {
@@ -36,10 +38,43 @@ const YouTubeFacade = ({ media }) => {
     };
 
     const videoId = getVideoId(media);
+
+    useEffect(() => {
+        if (!showIframe) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.intersectionRatio < 0.20) {
+                    if (iframeRef.current) {
+                        // Pause Video
+                        iframeRef.current.contentWindow?.postMessage(
+                            JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }),
+                            '*'
+                        );
+                        // Mute Video
+                        iframeRef.current.contentWindow?.postMessage(
+                            JSON.stringify({ event: 'command', func: 'mute', args: '' }),
+                            '*'
+                        );
+                    }
+                }
+            },
+            { threshold: [0, 0.20, 1.0] }
+        );
+
+        if (containerRef.current) {
+            observer.observe(containerRef.current);
+        }
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [showIframe]);
+
     if (!videoId) return null;
 
     return (
-        <div className="youtube-embed-container" style={{
+        <div ref={containerRef} className="youtube-embed-container" style={{
             position: 'relative',
             width: '100%',
             maxWidth: '622px',
@@ -52,7 +87,8 @@ const YouTubeFacade = ({ media }) => {
         }}>
             {showIframe ? (
                 <iframe
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
+                    ref={iframeRef}
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1`}
                     style={{ width: '100%', height: '100%', border: 'none' }}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
