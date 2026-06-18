@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express'; // v2.7 - Added Visual Channels
+import compression from 'compression';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -67,6 +68,7 @@ if (!mongoUri) {
 
 // Initialize Express app
 const app = express();
+app.use(compression());
 // Enable proxy trust for Vercel/Heroku (fixes HTTP/HTTPS redirect loop)
 app.set('trust proxy', 1);
 

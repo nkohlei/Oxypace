@@ -216,7 +216,7 @@ const Home = () => {
                     <div className="hero-gradient-glow"></div>
                     
                     <div className="hero-logo-mask-container">
-                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" />
+                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" decoding="async" />
                     </div>
                 </div>
 
@@ -325,7 +325,7 @@ const Home = () => {
                                         ></div>
                                         <div className="card-icon-wrapper">
                                             {portal.avatar ? (
-                                                <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" loading="lazy" />
+                                                <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" width="48" height="48" loading="lazy" decoding="async" />
                                             ) : (
                                                 <div className="card-icon-placeholder">{portal.name?.substring(0, 2).toUpperCase()}</div>
                                             )}
@@ -359,7 +359,7 @@ const Home = () => {
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
-                                <img src="/oxypace-text-logo1.webp" alt="OXYPACE" className="footer-logo" />
+                                <img src="/oxypace-text-logo1.webp" alt="OXYPACE" className="footer-logo" width="180" height="40" decoding="async" />
                                 <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
                             </div>
                             <div className="footer-links-grid">

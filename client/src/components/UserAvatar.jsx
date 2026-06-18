@@ -40,6 +40,9 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
                 style={{ ...combinedStyle, width: '100%', height: '100%' }}
                 onClick={onClick}
                 loading="lazy"
+                decoding="async"
+                width={typeof size === 'number' ? size : 40}
+                height={typeof size === 'number' ? size : 40}
             />
             {isDeleted && (
                 <div style={{

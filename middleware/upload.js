@@ -1,35 +1,13 @@
 import multer from 'multer';
-import multerS3 from 'multer-s3';
-import r2 from '../config/r2.js';
+import sharp from 'sharp';
 import path from 'path';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import r2 from '../config/r2.js';
 
-const upload = multer({
-    storage: multerS3({
-        s3: r2,
-        bucket: function (req, file, cb) {
-            cb(null, process.env.R2_BUCKET_NAME || 'oxypace');
-        },
-        acl: 'public-read', // R2 doesn't strictly support ACLs the same way but good for compatibility or ignored
-        contentType: multerS3.AUTO_CONTENT_TYPE,
-        key: function (req, file, cb) {
-            // Organize files: folder/filename-timestamp.ext
-            let folder = 'uploads';
+const storage = multer.memoryStorage();
 
-            if (file.fieldname === 'avatar') {
-                folder = 'avatars';
-            } else if (file.fieldname === 'banner' || file.fieldname === 'coverImage') {
-                folder = 'banners';
-            } else if (file.fieldname === 'media') {
-                folder = `posts/${req.body.portalId || 'general'}`;
-            } else if (file.fieldname === 'files') {
-                folder = 'feedback';
-            }
-
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-            const ext = path.extname(file.originalname);
-            cb(null, `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`);
-        },
-    }),
+const multerInstance = multer({
+    storage: storage,
     limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB limit
     fileFilter: (req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
@@ -47,4 +25,101 @@ const upload = multer({
     },
 });
 
-export default upload;
+// Helper to optimize and upload a single file
+async function processAndUploadFile(req, file) {
+    if (!file || !file.buffer) return;
+
+    const isImage = file.mimetype.startsWith('image/') && !file.mimetype.includes('gif');
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    let folder = 'uploads';
+
+    if (file.fieldname === 'avatar') {
+        folder = 'avatars';
+    } else if (file.fieldname === 'banner' || file.fieldname === 'coverImage' || file.fieldname === 'cover') {
+        folder = 'banners';
+    } else if (file.fieldname === 'media') {
+        folder = `posts/${req.body.portalId || 'general'}`;
+    } else if (file.fieldname === 'files') {
+        folder = 'feedback';
+    }
+
+    let uploadBuffer = file.buffer;
+    let contentType = file.mimetype;
+    let key = '';
+
+    if (isImage) {
+        try {
+            let pipeline = sharp(file.buffer);
+            const metadata = await pipeline.metadata();
+            
+            // Limit max width to 1200px
+            if (metadata.width && metadata.width > 1200) {
+                pipeline = pipeline.resize({ width: 1200, withoutEnlargement: true });
+            }
+            
+            // Convert to webp with 75% quality
+            uploadBuffer = await pipeline.webp({ quality: 75 }).toBuffer();
+            contentType = 'image/webp';
+            key = `${folder}/${file.fieldname}-${uniqueSuffix}.webp`;
+            
+            file.mimetype = 'image/webp';
+            file.size = uploadBuffer.length;
+        } catch (err) {
+            console.error('Sharp optimization failed, uploading original image:', err);
+            const ext = path.extname(file.originalname).toLowerCase();
+            key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
+        }
+    } else {
+        const ext = path.extname(file.originalname).toLowerCase();
+        key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
+    }
+
+    // Upload to R2
+    const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+    const putCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        ContentType: contentType,
+        Body: uploadBuffer,
+    });
+
+    await r2.send(putCommand);
+    file.key = key; // Set key for the route to read
+}
+
+const customUpload = {
+    single: (fieldname) => {
+        const multerMiddleware = multerInstance.single(fieldname);
+        return (req, res, next) => {
+            multerMiddleware(req, res, async (err) => {
+                if (err) return next(err);
+                if (req.file) {
+                    try {
+                        await processAndUploadFile(req, req.file);
+                    } catch (uploadErr) {
+                        return next(uploadErr);
+                    }
+                }
+                next();
+            });
+        };
+    },
+    array: (fieldname, maxCount) => {
+        const multerMiddleware = multerInstance.array(fieldname, maxCount);
+        return (req, res, next) => {
+            multerMiddleware(req, res, async (err) => {
+                if (err) return next(err);
+                if (req.files && req.files.length > 0) {
+                    try {
+                        await Promise.all(req.files.map(file => processAndUploadFile(req, file)));
+                    } catch (uploadErr) {
+                        return next(uploadErr);
+                    }
+                }
+                next();
+            });
+        };
+    },
+};
+
+export default customUpload;

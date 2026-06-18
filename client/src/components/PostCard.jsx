@@ -102,6 +102,8 @@ const YouTubeFacade = ({ media }) => {
                         loading="lazy"
                         decoding="async"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        width="622"
+                        height="350"
                     />
                     <div style={{
                         position: 'absolute', inset: 0,
@@ -457,8 +459,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                         {/* Go to post page button */}
                         <button
                             className="post-action-btn"
-                            aria-label="Gnderiyi gster"
-                            title="Gnderiyi Gster"
+                            aria-label="Gönderiyi göster"
+                            title="Gönderiyi Göster"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/post/${post._id}`);
@@ -676,6 +678,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                         alt="PDF preview"
                                         className="pdf-thumbnail"
                                         loading="lazy"
+                                        decoding="async"
+                                        width="150"
+                                        height="200"
                                     />
                                     <div className="pdf-badge">PDF</div>
                                 </div>
@@ -712,6 +717,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 alt="Post media"
                                 loading="lazy"
                                 decoding="async"
+                                width="600"
+                                height="400"
                             />
                         )}
                     </div>

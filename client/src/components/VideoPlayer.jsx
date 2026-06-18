@@ -328,7 +328,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         onCanPlayThrough={() => setIsLoading(false)}
       />
 
-      <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute}>
+      <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
 
@@ -349,7 +349,7 @@ const VideoPlayer = ({ src, poster, className }) => {
 
         <div className="native-bottom-row">
           <div className="native-left-controls">
-            <button className="native-play-pause-btn" onClick={handleVideoClick}>
+            <button className="native-play-pause-btn" onClick={handleVideoClick} aria-label="Oynat / Duraklat">
               {isPaused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}
             </button>
             
@@ -376,6 +376,7 @@ const VideoPlayer = ({ src, poster, className }) => {
               className="native-fullscreen-btn"
               onClick={toggleFullscreen}
               title="Tam Ekran"
+              aria-label="Tam Ekran Yap / Çık"
             >
               <Maximize size={18} />
             </button>
