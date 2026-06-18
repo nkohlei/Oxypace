@@ -64,7 +64,8 @@ router.get('/:commentId/replies', optionalProtect, mongoIdValidation('commentId'
             .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .sort({ createdAt: 1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         const total = await Comment.countDocuments(query);
 
@@ -281,7 +282,8 @@ router.get('/post/:postId', optionalProtect, mongoIdValidation('postId'), async 
             .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         const total = await Comment.countDocuments(query);
 
@@ -324,7 +326,8 @@ router.get('/comment/:commentId/replies', optionalProtect, mongoIdValidation('co
             .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isDeleted')
             .sort({ createdAt: 1 }) // Oldest first for replies
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         const total = await Comment.countDocuments(query);
 
@@ -437,7 +440,8 @@ router.get('/user/:userId', protect, mongoIdValidation('userId'), async (req, re
             })
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         const total = await Comment.countDocuments({ author: req.params.userId });
 

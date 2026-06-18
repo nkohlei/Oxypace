@@ -16,7 +16,7 @@ import AdUnit from '../components/AdUnit';
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import SEO from '../components/SEO';
-import PortalInfoModal from '../components/PortalInfoModal';
+const PortalInfoModal = lazy(() => import('../components/PortalInfoModal'));
 const VoiceChannel = lazy(() => import('../components/VoiceChannel'));
 const ConferenceChannel = lazy(() => import('../components/ConferenceChannel'));
 import { useGlobalStore } from '../store/useGlobalStore';
@@ -1777,11 +1777,13 @@ const Portal = () => {
             )}
 
             {showPortalInfo && (
-                <PortalInfoModal
-                    portal={portal}
-                    onClose={() => setShowPortalInfo(false)}
-                    isMobile={isMobileView}
-                />
+                <Suspense fallback={null}>
+                    <PortalInfoModal
+                        portal={portal}
+                        onClose={() => setShowPortalInfo(false)}
+                        isMobile={isMobileView}
+                    />
+                </Suspense>
             )}
         </div>
     );

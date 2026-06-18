@@ -5,7 +5,12 @@ import { useGlobalStore } from '../store/useGlobalStore';
 export const useRealtimeSync = () => {
     // Rely on the existing authenticated socket from SocketContext
     const { socket, connected } = useSocket();
-    const { addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, addUnreadPost, addUnreadChannelPost } = useGlobalStore();
+    const addPostEvent = useGlobalStore(state => state.addPostEvent);
+    const updatePostEvent = useGlobalStore(state => state.updatePostEvent);
+    const deletePostEvent = useGlobalStore(state => state.deletePostEvent);
+    const updateUserEvent = useGlobalStore(state => state.updateUserEvent);
+    const addUnreadPost = useGlobalStore(state => state.addUnreadPost);
+    const addUnreadChannelPost = useGlobalStore(state => state.addUnreadChannelPost);
 
     useEffect(() => {
         if (!socket || !connected) return;
@@ -46,7 +51,7 @@ export const useRealtimeSync = () => {
             socket.off('global:user_updated');
             socket.off('global:portal_activity');
         };
-    }, [socket, connected, addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, addUnreadPost]);
+    }, [socket, connected, addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, addUnreadPost, addUnreadChannelPost]);
 
     return socket;
 };

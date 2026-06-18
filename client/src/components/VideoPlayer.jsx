@@ -92,7 +92,8 @@ if (typeof window !== 'undefined') {
 
 const VideoPlayer = ({ src, poster, className }) => {
   const videoRef = useRef(null);
-  const { isMuted, setIsMuted } = useGlobalStore();
+  const isMuted = useGlobalStore(state => state.isMuted);
+  const setIsMuted = useGlobalStore(state => state.setIsMuted);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);

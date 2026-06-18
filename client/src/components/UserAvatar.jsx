@@ -39,6 +39,7 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
                 className={`global-user-avatar ${className}`}
                 style={{ ...combinedStyle, width: '100%', height: '100%' }}
                 onClick={onClick}
+                loading="lazy"
             />
             {isDeleted && (
                 <div style={{

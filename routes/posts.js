@@ -344,7 +344,8 @@ router.get('/', optionalProtect, async (req, res) => {
                         ]
                     }
                 ]
-            });
+            })
+            .lean();
 
         if (req.user && !req.user.following) {
             req.user.following = [];
@@ -411,7 +412,8 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
                         ]
                     }
                 ]
-            });
+            })
+            .lean();
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -571,11 +573,12 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
                         ]
                     }
                 ]
-            });
+            })
+            .lean();
 
         // Resolve channel names from portal.channels subdocuments
         const postsWithChannelNames = posts.map(post => {
-            const postObj = post.toObject();
+            const postObj = typeof post.toObject === 'function' ? post.toObject() : post;
             if (postObj.portal && postObj.channel && postObj.channel !== 'general' && postObj.portal.channels) {
                 const matchedChannel = postObj.portal.channels.find(
                     ch => ch._id.toString() === postObj.channel

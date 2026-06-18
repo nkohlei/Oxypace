@@ -371,7 +371,8 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
                 ]
             })
             .sort({ isPinned: -1, pinnedAt: -1, createdAt: -1 })
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         // --- PERSISTENT NOTIFICATION SYNC (Fix for Critical Bug 1) ---
         // When a user successfully fetches posts for a specific channel, mark those notifications as read.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { shouldShowTranslation } from '../utils/languageUtils';
 import { Link, useNavigate } from 'react-router-dom';
@@ -736,4 +736,4 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     );
 };
 
-export default PostCard;
+export default memo(PostCard);

@@ -27,7 +27,8 @@ const ChannelSidebar = ({
     const [showInviteModal, setShowInviteModal] = useState(false);
     const navigate = useNavigate();
     const { isMobileView } = useUI();
-    const { unreadPostsByChannel, clearUnreadForChannel } = useGlobalStore();
+    const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
+    const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();
     const { socket } = useSocket();
     const [onlineCount, setOnlineCount] = useState(() => {

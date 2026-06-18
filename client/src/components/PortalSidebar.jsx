@@ -13,7 +13,10 @@ import './PortalSidebar.css';
 const PortalSidebar = () => {
     const { user, isAuthenticated, updateUser } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
-    const { unreadPostsByPortal, unreadPostsByChannel, clearUnreadForPortal, syncUnreadCounts } = useGlobalStore();
+    const unreadPostsByPortal = useGlobalStore(state => state.unreadPostsByPortal);
+    const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
+    const clearUnreadForPortal = useGlobalStore(state => state.clearUnreadForPortal);
+    const syncUnreadCounts = useGlobalStore(state => state.syncUnreadCounts);
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
