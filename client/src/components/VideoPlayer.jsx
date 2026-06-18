@@ -103,6 +103,22 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Auto-hide controls state & ref
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef(null);
+
+  const startControlsTimeout = (duration = 1500) => {
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    if (isSettingsOpen) return;
+    if (videoRef.current && !videoRef.current.paused) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, duration);
+    }
+  };
+
   // Sync isPaused state with video element
   useEffect(() => {
     const video = videoRef.current;
@@ -148,6 +164,67 @@ const VideoPlayer = ({ src, poster, className }) => {
       mountedVideos.delete(video);
     };
   }, [src]);
+
+  useEffect(() => {
+    if (isPaused) {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    } else {
+      startControlsTimeout(1500);
+    }
+  }, [isPaused]);
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleMouseMove = (e) => {
+    if (isSettingsOpen) {
+      setShowControls(true);
+      return;
+    }
+    if (videoRef.current && videoRef.current.paused) {
+      setShowControls(true);
+      return;
+    }
+
+    // Fullscreen edge detection
+    const isFullscreen = !!document.fullscreenElement;
+    if (isFullscreen) {
+      const edgeThreshold = 10;
+      const isAtEdge = 
+        e.clientX <= edgeThreshold || 
+        e.clientX >= window.innerWidth - edgeThreshold || 
+        e.clientY <= edgeThreshold || 
+        e.clientY >= window.innerHeight - edgeThreshold;
+
+      if (isAtEdge) {
+        setShowControls(false);
+        if (controlsTimeoutRef.current) {
+          clearTimeout(controlsTimeoutRef.current);
+        }
+        return;
+      }
+    }
+
+    setShowControls(true);
+    startControlsTimeout(1500);
+  };
+
+  const handleMouseEnter = () => {
+    if (videoRef.current && videoRef.current.paused) {
+      setShowControls(true);
+      return;
+    }
+    setShowControls(true);
+    startControlsTimeout(1500);
+  };
 
   // Zaman İlerleyişini Yakalama (Bar için)
   const handleTimeUpdate = () => {
@@ -226,7 +303,12 @@ const VideoPlayer = ({ src, poster, className }) => {
   };
 
   return (
-    <div className={`native-player-container left-aligned v16-scale ${className || ''}`} onClick={(e) => e.stopPropagation()}>
+    <div 
+      className={`native-player-container left-aligned v16-scale ${className || ''}`} 
+      onClick={(e) => e.stopPropagation()}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+    >
       <video
         ref={videoRef}
         src={src}
@@ -245,7 +327,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         onCanPlayThrough={() => setIsLoading(false)}
       />
 
-      <button className="native-mute-toggle" onClick={toggleMute}>
+      <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute}>
         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
 
@@ -255,7 +337,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         </div>
       )}
 
-      <div className="native-controls-ui is-always-visible">
+      <div className={`native-controls-ui is-always-visible ${!showControls ? 'controls-hidden' : ''}`}>
         <div className="native-progress-area" onClick={handleScrub}>
           <div className="native-progress-track">
             <div className="native-progress-fill" style={{ width: `${progress}%` }}>

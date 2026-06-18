@@ -70,6 +70,7 @@
     /* Her zaman görünür olması için hover şartları kaldırıldı */
     opacity: 1;
     transform: none;
+    transition: opacity 0.3s ease;
 }
 
 /* PROGRESS BAR (Parlayan mavi yok, standart beyaz/gri) */
@@ -311,4 +312,10 @@
 
 .native-mute-toggle svg {
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+}
+
+/* Smart auto-hide controls style */
+.controls-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
