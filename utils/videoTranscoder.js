@@ -180,10 +180,13 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         console.log(`[VideoTranscoder] Running ${jobs.length} transcoding jobs sequentially with -threads 1 and -preset ultrafast...`);
 
         const results = [];
+        let currentInputPath = localInputPath;
+
         for (const job of jobs) {
             try {
+                console.log(`[VideoTranscoder] Transcoding quality ${job.quality} using input: ${currentInputPath}`);
                 const res = await new Promise((resolve, reject) => {
-                    ffmpeg(localInputPath)
+                    ffmpeg(currentInputPath)
                         .videoCodec('libx264')
                         .outputOptions(job.options)
                         .audioCodec('aac')
@@ -199,7 +202,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                         })
                         .run();
                 });
-                if (res) results.push(res);
+                if (res) {
+                    results.push(res);
+                    // Use this successfully generated lower-resolution version as the input for the next job
+                    currentInputPath = job.path;
+                }
             } catch (jobErr) {
                 console.error(`[VideoTranscoder] Failed during job ${job.quality}:`, jobErr.message);
             }
