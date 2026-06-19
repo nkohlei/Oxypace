@@ -215,11 +215,13 @@ router.post(
             console.log('✅ Post created successfully! ID:', post._id);
             console.log('✅ Post media in DB:', post.media);
 
-            // Trigger video transcoding in the background if mediaType is video
+            // Background video transcoding is disabled. Videos are served directly in high quality, and optimized via frontend-side buffering and controls.
+            /*
             const mediaKeyForTranscode = req.body.mediaKey || (req.file ? req.file.key : null);
             if (mediaKeyForTranscode && post.mediaType === 'video') {
                 transcodeVideoInBackground(post._id, mediaKeyForTranscode);
             }
+            */
 
             // Re-fetch with deep population for nested quotes
             // Using a separate query to ensure fresh data from DB with all relations

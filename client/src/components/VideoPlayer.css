@@ -385,3 +385,10 @@
     opacity: 0 !important;
     pointer-events: none !important;
 }
+
+/* Frontend Low Quality (360p Simulation) Render Throttling */
+.native-video-360p-simulation {
+    filter: blur(0.7px) contrast(0.95) saturate(0.9);
+    image-rendering: low-quality;
+    opacity: 0.96;
+}

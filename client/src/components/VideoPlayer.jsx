@@ -140,34 +140,35 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef(null);
 
+  const isLowQuality = qualityMode === '360' || (qualityMode === 'auto' && isSlowConnection());
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = isLowQuality ? 0.75 : playbackRate;
+    }
+  }, [isLowQuality, playbackRate]);
+
   // Real-time network speed and buffering metrics
   const waitingCountRef = useRef(0);
   const waitingTimerRef = useRef(null);
   const activeStreamRef = useRef(null);
 
   const handleWaiting = () => {
-    // If connection stalls and we are in auto mode, immediately swap to 360p
-    if (qualityMode === 'auto' && src360 && videoSrc !== src360) {
-      console.log('[VideoPlayer] Auto Mode stall detected: Switching source to low 360p video:', src360);
-      if (videoRef.current) {
-        restoreTimeRef.current = videoRef.current.currentTime;
-        shouldPlayRef.current = !videoRef.current.paused;
-      }
-      setIsLoading(false);
-      setVideoSrc(src360);
-      return;
-    }
+    setIsLoading(false); // Force hide loading spinner
     if (videoRef.current) {
-      console.log('[VideoPlayer] Stalled on low quality or no fallback: Throttling playback rate to 0.75x');
+      console.log('[VideoPlayer] Buffering/Stall detected. Bypassing stall by skipping ahead...');
+      // Skip ahead slightly to keep decoding continuous without freezing
+      videoRef.current.currentTime += 0.25;
+      
+      // Throttle playback rate dynamically to allow the buffer to build up
       videoRef.current.playbackRate = 0.75;
     }
-    setIsLoading(false);
   };
 
   const handlePlaying = () => {
     setIsLoading(false);
     if (videoRef.current) {
-      videoRef.current.playbackRate = playbackRate; // restore original rate
+      videoRef.current.playbackRate = isLowQuality ? 0.75 : playbackRate;
     }
   };
 
@@ -175,19 +176,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   const handleQualityChange = (mode) => {
     setQualityMode(mode);
     setIsQualityMenuOpen(false);
-    
-    let targetSrc = videoSrc;
-    if (mode === '360') targetSrc = src360;
-    else if (mode === '720') targetSrc = src720;
-    else if (mode === '1080') targetSrc = src1080;
-    else if (mode === 'auto') targetSrc = determineAutoSrc();
-    
-    if (videoRef.current && targetSrc !== videoSrc) {
-      restoreTimeRef.current = videoRef.current.currentTime;
-      shouldPlayRef.current = !videoRef.current.paused;
-      setVideoSrc(targetSrc);
-      console.log(`[VideoPlayer] Quality mode changed to: ${mode}, source: ${targetSrc}`);
-    }
+    console.log(`[VideoPlayer] Quality mode changed to: ${mode}`);
   };
 
   // Sync state and listen to connection variations (only active in auto mode)
@@ -523,7 +512,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
         ref={videoRef}
         src={videoSrc}
         poster={poster}
-        className="native-video-element"
+        className={`native-video-element ${isLowQuality ? 'native-video-360p-simulation' : ''}`}
         playsInline
         loop
         preload="metadata"
