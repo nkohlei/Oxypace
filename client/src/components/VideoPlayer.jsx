@@ -113,7 +113,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const has1080 = !!(video1080 || qualities?.video1080 || qualities?.p1080 || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
   const has720 = !!(video720 || qualities?.video720 || qualities?.p720);
   const has360 = !!(video360 || qualities?.video360 || qualities?.p360);
-  const has144 = !!(video144 || qualities?.video144 || qualities?.p144 || lowVideoUrl || qualities?.low);
+  const has144 = !!(video144 || qualities?.video144 || qualities?.p144);
 
   let maxResolution = '1080p';
   if (has2160) maxResolution = '2160p';
@@ -157,27 +157,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     { value: 'auto', label: 'Oto' }
   ];
 
-  if (maxResolution === '2160p') {
-    availableQualities.push({ value: '2160', label: '2160p' });
-    availableQualities.push({ value: '1080', label: '1080p' });
-    availableQualities.push({ value: '720', label: '720p' });
-    availableQualities.push({ value: '360', label: '360p' });
-    availableQualities.push({ value: '144', label: '144p' });
-  } else if (maxResolution === '1080p') {
-    availableQualities.push({ value: '1080', label: '1080p' });
-    availableQualities.push({ value: '720', label: '720p' });
-    availableQualities.push({ value: '360', label: '360p' });
-    availableQualities.push({ value: '144', label: '144p' });
-  } else if (maxResolution === '720p') {
-    availableQualities.push({ value: '720', label: '720p' });
-    availableQualities.push({ value: '360', label: '360p' });
-    availableQualities.push({ value: '144', label: '144p' });
-  } else if (maxResolution === '360p') {
-    availableQualities.push({ value: '360', label: '360p' });
-    availableQualities.push({ value: '144', label: '144p' });
-  } else if (maxResolution === '144p') {
-    availableQualities.push({ value: '144', label: '144p' });
-  }
+  if (has2160) availableQualities.push({ value: '2160', label: '2160p' });
+  if (has1080) availableQualities.push({ value: '1080', label: '1080p' });
+  if (has720) availableQualities.push({ value: '720', label: '720p' });
+  if (has360) availableQualities.push({ value: '360', label: '360p' });
+  if (has144) availableQualities.push({ value: '144', label: '144p' });
   
   // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(false);
