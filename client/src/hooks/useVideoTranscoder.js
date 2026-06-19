@@ -4,27 +4,24 @@ import axios from 'axios';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quality ladder — highest first so we generate best quality first
-// Each entry: { label, targetH, bitrate, maxrate, bufsize, audioBitrate }
 // ─────────────────────────────────────────────────────────────────────────────
 const QUALITY_LADDER = [
-    { label: 'p1080', targetH: 1080, bitrate: '2000k', maxrate: '2400k', bufsize: '4000k', audioBitrate: '128k' },
     { label: 'p720',  targetH: 720,  bitrate: '1100k', maxrate: '1300k', bufsize: '2200k', audioBitrate: '128k' },
     { label: 'p360',  targetH: 360,  bitrate: '400k',  maxrate: '450k',  bufsize: '800k',  audioBitrate: '64k'  },
     { label: 'p144',  targetH: 144,  bitrate: '150k',  maxrate: '180k',  bufsize: '300k',  audioBitrate: '64k'  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Detect if SharedArrayBuffer is available (required for FFmpeg WASM threads).
-// Some environments (Capacitor WebView, older browsers) don't expose it.
+// canUseWasm: only blocks Capacitor native platform.
+// SharedArrayBuffer check is REMOVED — we use the single-threaded FFmpeg core
+// which does NOT require SharedArrayBuffer or COOP/COEP headers.
+// Works on Chrome, Firefox, Safari 16+ without any server header changes.
 // ─────────────────────────────────────────────────────────────────────────────
 const canUseWasm = () => {
     try {
-        return (
-            typeof SharedArrayBuffer !== 'undefined' &&
-            !Capacitor.isNativePlatform()
-        );
+        return !Capacitor.isNativePlatform();
     } catch {
-        return false;
+        return true; // Assume web if Capacitor check throws
     }
 };
 
@@ -49,7 +46,6 @@ const getVideoDimensions = (file) =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Upload a single Blob/File to Cloudflare R2 via presigned PUT URL.
-// Returns the R2 key on success.
 // ─────────────────────────────────────────────────────────────────────────────
 const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onProgress) => {
     const { data: { uploadUrl, mediaKey } } = await axios.post('/api/media/presigned-url', {
@@ -61,7 +57,9 @@ const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onPro
     });
 
     const cleanAxios = axios.create();
-    delete cleanAxios.defaults.headers.common?.['Authorization'];
+    if (cleanAxios.defaults.headers.common) {
+        delete cleanAxios.defaults.headers.common['Authorization'];
+    }
 
     await cleanAxios.put(uploadUrl, blob, {
         headers: { 'Content-Type': fileType },
@@ -82,52 +80,44 @@ export function useVideoTranscoder() {
     const ffmpegRef = useRef(null);
     const [isTranscoding, setIsTranscoding] = useState(false);
     const [progress, setProgress]           = useState(0);
-    const [stage, setStage]                 = useState('');   // e.g. "144p üretiliyor..."
+    const [stage, setStage]                 = useState('');
     const [error, setError]                 = useState(null);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Lazy-load FFmpeg WASM only when needed (saves ~31MB for non-video users)
+    // Lazy-load FFmpeg WASM only when needed.
+    // Uses the SINGLE-THREADED core (@ffmpeg/core, not @ffmpeg/core-mt).
+    // This means NO SharedArrayBuffer, NO COOP/COEP headers needed.
     // ─────────────────────────────────────────────────────────────────────────
     const loadFFmpeg = async () => {
         if (ffmpegRef.current) return ffmpegRef.current;
 
         setStage('Video işleyici yükleniyor...');
 
-        // Dynamic import — bundle stays light for everyone else
-        const { FFmpeg }   = await import('@ffmpeg/ffmpeg');
+        const { FFmpeg } = await import('@ffmpeg/ffmpeg');
         const { fetchFile, toBlobURL } = await import('@ffmpeg/util');
 
         const ffmpeg = new FFmpeg();
 
-        // Load the WASM core — use CDN to avoid bundling 31MB into the app
+        // Single-threaded core — works everywhere without special headers
         const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
         await ffmpeg.load({
-            coreURL:   await toBlobURL(`${baseURL}/ffmpeg-core.js`,   'text/javascript'),
-            wasmURL:   await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`,   'text/javascript'),
+            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+            // NO workerURL → single-threaded mode, no SharedArrayBuffer needed
         });
 
+        console.log('[useVideoTranscoder] FFmpeg WASM (single-threaded) loaded.');
         ffmpegRef.current = { ffmpeg, fetchFile };
         return ffmpegRef.current;
     };
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Main entry point: transcode + upload a video file.
-    //
-    // Returns an object:
-    // {
-    //   mediaKey: 'posts/xxx/original-yyy.mp4',   // original R2 key
-    //   videoQualities: { p144: 'url', p360: 'url', p720: 'url', p1080: 'url' }
-    // }
-    //
-    // On mobile (Capacitor) / WASM-unsupported env: uploads original only.
-    // ─────────────────────────────────────────────────────────────────────────
     const transcodeAndUpload = async (file, portalId = null) => {
         setIsTranscoding(true);
         setProgress(0);
         setError(null);
 
         try {
-            // ── Step 1: Upload original immediately (guarantee playback) ──────
+            // ── Step 1: Upload original immediately → guaranteed playback ─────
             setStage('Orijinal video yükleniyor...');
             const originalKey = await uploadBlobToR2(
                 file,
@@ -135,45 +125,54 @@ export function useVideoTranscoder() {
                 file.type || 'video/mp4',
                 'post',
                 portalId,
-                (p) => setProgress(Math.round(p * 0.25)) // 0→25%
+                (p) => setProgress(Math.round(p * 0.2)) // 0→20%
             );
 
             const originalUrl = `/api/media/${originalKey}`;
             const videoQualities = {};
 
-            // Determine which quality label the original falls into
+            // Detect source resolution
             const { width, height } = await getVideoDimensions(file);
+            console.log(`[useVideoTranscoder] Source: ${width}x${height}`);
+
             let originalLabel = 'p144';
             if      (height >= 1080 || width >= 1920) originalLabel = 'p1080';
             else if (height >= 720  || width >= 1280) originalLabel = 'p720';
             else if (height >= 360  || width >= 640 ) originalLabel = 'p360';
 
             videoQualities[originalLabel] = originalUrl;
-            setProgress(25);
+            setProgress(20);
 
-            // ── Step 2: WASM transcoding (web only) ──────────────────────────
+            // ── Step 2: WASM transcoding ──────────────────────────────────────
             if (!canUseWasm()) {
-                // Mobile / WASM-unsupported: return single quality
-                console.log('[useVideoTranscoder] WASM unavailable — returning original only.');
+                console.log('[useVideoTranscoder] Native platform — skipping WASM, returning original only.');
                 setStage('Tamamlandı');
                 setProgress(100);
                 return { mediaKey: originalKey, videoQualities };
             }
 
-            const { ffmpeg, fetchFile } = await loadFFmpeg();
+            let ffmpegInstance, fetchFileUtil;
+            try {
+                const loaded = await loadFFmpeg();
+                ffmpegInstance = loaded.ffmpeg;
+                fetchFileUtil  = loaded.fetchFile;
+            } catch (loadErr) {
+                console.warn('[useVideoTranscoder] FFmpeg WASM load failed, returning original only:', loadErr.message);
+                setStage('Tamamlandı');
+                setProgress(100);
+                return { mediaKey: originalKey, videoQualities };
+            }
 
-            // Register progress handler
-            ffmpeg.on('progress', ({ progress: p }) => {
-                // Map transcode progress into the 25–90% band
-                // Will be recalculated per quality step below
-            });
-
-            // Write source file into FFmpeg virtual FS once
+            // Write source once into FFmpeg virtual FS
             const inputName = 'input.mp4';
-            await ffmpeg.writeFile(inputName, await fetchFile(file));
+            setStage('Video analiz ediliyor...');
+            await ffmpegInstance.writeFile(inputName, await fetchFileUtil(file));
+            setProgress(25);
 
-            // Quality steps strictly below source height
+            // Filter quality steps to only those below source resolution
             const steps = QUALITY_LADDER.filter(q => height > q.targetH);
+            console.log(`[useVideoTranscoder] Will transcode ${steps.length} qualities:`, steps.map(s => s.label));
+
             const totalSteps = steps.length;
 
             for (let i = 0; i < totalSteps; i++) {
@@ -185,16 +184,17 @@ export function useVideoTranscoder() {
 
                 setStage(`${stepLabel} üretiliyor...`);
 
-                // Track per-step transcode progress → map to 25–75% overall
-                ffmpeg.on('progress', ({ progress: p }) => {
-                    const band = 50; // 25–75%
-                    const stepOffset = i / totalSteps;
-                    const stepBand   = band / totalSteps;
-                    setProgress(Math.round(25 + (stepOffset + (p * stepBand / 100)) * 100 / 2));
-                });
+                // Register a fresh progress listener for this step only
+                const progressHandler = ({ progress: p }) => {
+                    // Each step occupies an equal slice of the 25–75% band
+                    const sliceStart = 25 + (i / totalSteps) * 50;
+                    const sliceSize  = 50 / totalSteps;
+                    setProgress(Math.round(sliceStart + p * sliceSize));
+                };
+                ffmpegInstance.on('progress', progressHandler);
 
                 try {
-                    await ffmpeg.exec([
+                    await ffmpegInstance.exec([
                         '-i', inputName,
                         '-vf', `scale=-2:${q.targetH}`,
                         '-vcodec', 'libx264',
@@ -212,35 +212,40 @@ export function useVideoTranscoder() {
                         outputName
                     ]);
 
-                    const data = await ffmpeg.readFile(outputName);
+                    const data = await ffmpegInstance.readFile(outputName);
                     const blob = new Blob([data.buffer], { type: 'video/mp4' });
-                    await ffmpeg.deleteFile(outputName);
+                    await ffmpegInstance.deleteFile(outputName);
 
-                    // Upload this quality
+                    // Upload this quality blob
                     setStage(`${stepLabel} yükleniyor...`);
-                    const stepProgress = 75 + Math.round(((i + 1) / totalSteps) * 20); // 75–95%
+                    const uploadStart = 75 + (i / totalSteps) * 20;
                     const key = await uploadBlobToR2(
                         blob,
                         `video_${q.label}_${Date.now()}.mp4`,
                         'video/mp4',
                         'video-quality',
                         portalId,
-                        () => setProgress(stepProgress)
+                        (p) => setProgress(Math.round(uploadStart + (p / 100) * (20 / totalSteps)))
                     );
+
                     videoQualities[q.label] = `/api/media/${key}`;
+                    console.log(`[useVideoTranscoder] ✅ ${stepLabel} ready: ${key}`);
 
                 } catch (qualityErr) {
-                    console.warn(`[useVideoTranscoder] ${q.label} failed, skipping:`, qualityErr.message);
-                    // Non-fatal: continue with remaining qualities
+                    console.warn(`[useVideoTranscoder] ⚠️ ${stepLabel} failed (non-fatal):`, qualityErr.message);
+                } finally {
+                    // Always remove the listener for this step to prevent stacking
+                    ffmpegInstance.off('progress', progressHandler);
                 }
             }
 
-            // Clean up FFmpeg FS
-            try { await ffmpeg.deleteFile(inputName); } catch (_) {}
+            // Clean up virtual FS
+            try { await ffmpegInstance.deleteFile(inputName); } catch (_) {}
 
             setStage('Tamamlandı');
             setProgress(100);
 
+            console.log('[useVideoTranscoder] 🏁 Done. Quality map:', videoQualities);
             return { mediaKey: originalKey, videoQualities };
 
         } catch (err) {
