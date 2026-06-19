@@ -130,9 +130,15 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
   };
 
   const handleWaiting = () => {
-    // If we waiting/stalling, lower the playback speed to let buffering catch up smoothly
+    // If connection stalls, immediately swap to the low 360p quality video URL
+    if (qualities && qualities.low && videoSrc !== qualities.low) {
+      console.log('[VideoPlayer] Intercepted stall/waiting: Instantly switching source to low 360p video:', qualities.low);
+      setIsLoading(false);
+      setVideoSrc(qualities.low);
+      return;
+    }
     if (videoRef.current) {
-      console.log('[VideoPlayer] Intercepted stall/waiting: Throttling playback rate to 0.75x');
+      console.log('[VideoPlayer] Stalled on low quality or no fallback: Throttling playback rate to 0.75x');
       videoRef.current.playbackRate = 0.75;
     }
     setIsLoading(false);
@@ -207,6 +213,10 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
     let sourceBuffer = null;
     let objectUrl = null;
 
+    // Save currentTime before source changes to keep playing seamlessly
+    const previousTime = video.currentTime;
+    const wasPlaying = !video.paused;
+
     const cleanup = () => {
       active = false;
       if (objectUrl) {
@@ -224,6 +234,18 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
     if (!isMseSupported) {
       console.log('[VideoPlayer] MSE not supported, falling back to direct URL');
       video.src = videoSrc;
+      
+      const restoreDirect = () => {
+        if (previousTime > 0) {
+          video.currentTime = previousTime;
+        }
+        if (wasPlaying) {
+          video.play().catch(() => {});
+        }
+        video.removeEventListener('loadedmetadata', restoreDirect);
+      };
+      video.addEventListener('loadedmetadata', restoreDirect);
+      
       return () => {
         cleanup();
       };
@@ -232,6 +254,17 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
     mediaSource = new MediaSource();
     objectUrl = URL.createObjectURL(mediaSource);
     video.src = objectUrl;
+
+    const restoreMse = () => {
+      if (previousTime > 0) {
+        video.currentTime = previousTime;
+      }
+      if (wasPlaying) {
+        video.play().catch(() => {});
+      }
+      video.removeEventListener('loadedmetadata', restoreMse);
+    };
+    video.addEventListener('loadedmetadata', restoreMse);
 
     const CHUNK_SIZE = 1024 * 1024 * 1.5; // 1.5MB chunks
     let startByte = 0;

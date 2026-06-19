@@ -6,6 +6,83 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import Post from '../models/Post.js';
 import { constructProxiedUrl } from './mediaConfig.js';
+import ffmpeg from 'fluent-ffmpeg';
+
+/**
+ * Transcodes video to 360p low resolution synchronously before upload.
+ */
+export async function processVideoUpload(buffer, folder, fileFieldname, uniqueSuffix) {
+    const tempDir = os.tmpdir();
+    const inputPath = path.join(tempDir, `input-${uniqueSuffix}.mp4`);
+    const out360Path = path.join(tempDir, `low_360p_video-${uniqueSuffix}.mp4`);
+    
+    // Write buffer to temp file
+    fs.writeFileSync(inputPath, buffer);
+
+    try {
+        // Transcode to 360p using fluent-ffmpeg
+        await new Promise((resolve, reject) => {
+            ffmpeg(inputPath)
+                .size('?x360')
+                .videoCodec('libx264')
+                .outputOptions([
+                    '-crf 30',
+                    '-preset fast'
+                ])
+                .audioCodec('aac')
+                .audioBitrate('64k')
+                .output(out360Path)
+                .on('end', () => {
+                    console.log('[VideoTranscoder] 360p transcode finished successfully');
+                    resolve();
+                })
+                .on('error', (err) => {
+                    console.error('[VideoTranscoder] 360p transcode failed:', err);
+                    reject(err);
+                })
+                .run();
+        });
+
+        // Keys for R2
+        const originalKey = `${folder}/${fileFieldname}-${uniqueSuffix}-original.mp4`;
+        const lowKey = `${folder}/${fileFieldname}-${uniqueSuffix}-360p.mp4`;
+
+        // Upload original
+        console.log(`[VideoTranscoder] Uploading original to R2: ${originalKey}`);
+        const putOriginal = new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME || 'oxypace',
+            Key: originalKey,
+            ContentType: 'video/mp4',
+            Body: buffer
+        });
+        await r2.send(putOriginal);
+
+        // Upload 360p
+        console.log(`[VideoTranscoder] Uploading 360p to R2: ${lowKey}`);
+        const buffer360 = fs.readFileSync(out360Path);
+        const put360 = new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME || 'oxypace',
+            Key: lowKey,
+            ContentType: 'video/mp4',
+            Body: buffer360
+        });
+        await r2.send(put360);
+
+        // Cleanup
+        try { fs.unlinkSync(inputPath); } catch(e){}
+        try { fs.unlinkSync(out360Path); } catch(e){}
+
+        return {
+            originalKey,
+            lowKey
+        };
+    } catch (err) {
+        // Cleanup on error
+        try { fs.unlinkSync(inputPath); } catch(e){}
+        try { fs.unlinkSync(out360Path); } catch(e){}
+        throw err;
+    }
+}
 
 /**
  * Runs FFmpeg commands in the background to transcode the uploaded video

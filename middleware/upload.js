@@ -3,6 +3,8 @@ import sharp from 'sharp';
 import path from 'path';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
+import { processVideoUpload } from '../utils/videoTranscoder.js';
+import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
 const storage = multer.memoryStorage();
 
@@ -30,6 +32,7 @@ async function processAndUploadFile(req, file) {
     if (!file || !file.buffer) return;
 
     const isImage = file.mimetype.startsWith('image/') && !file.mimetype.includes('gif');
+    const isVideo = file.mimetype.startsWith('video/');
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     let folder = 'uploads';
 
@@ -69,22 +72,61 @@ async function processAndUploadFile(req, file) {
             const ext = path.extname(file.originalname).toLowerCase();
             key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
         }
+        
+        // Upload to R2
+        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+        const putCommand = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+            ContentType: contentType,
+            Body: uploadBuffer,
+        });
+
+        await r2.send(putCommand);
+        file.key = key; // Set key for the route to read
+    } else if (isVideo) {
+        try {
+            console.log('[Upload Middleware] Processing video transcoding before upload...');
+            const results = await processVideoUpload(file.buffer, folder, file.fieldname, uniqueSuffix);
+            
+            file.key = results.originalKey;
+            file.videoQualities = {
+                high: constructProxiedUrl(results.originalKey),
+                low: constructProxiedUrl(results.lowKey)
+            };
+            file.mimetype = 'video/mp4';
+            file.size = file.buffer.length;
+        } catch (err) {
+            console.error('[Upload Middleware] Video transcoding failed, falling back to direct upload:', err);
+            const ext = path.extname(file.originalname).toLowerCase();
+            key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
+            const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+            const putCommand = new PutObjectCommand({
+                Bucket: bucketName,
+                Key: key,
+                ContentType: file.mimetype,
+                Body: file.buffer,
+            });
+
+            await r2.send(putCommand);
+            file.key = key;
+        }
     } else {
         const ext = path.extname(file.originalname).toLowerCase();
         key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
+        
+        // Upload to R2
+        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+        const putCommand = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+            ContentType: contentType,
+            Body: uploadBuffer,
+        });
+
+        await r2.send(putCommand);
+        file.key = key; // Set key for the route to read
     }
-
-    // Upload to R2
-    const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
-    const putCommand = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-        ContentType: contentType,
-        Body: uploadBuffer,
-    });
-
-    await r2.send(putCommand);
-    file.key = key; // Set key for the route to read
 }
 
 const customUpload = {

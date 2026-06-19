@@ -176,6 +176,9 @@ router.post(
 
                     if (req.file.mimetype.includes('video')) {
                         postData.mediaType = 'video';
+                        if (req.file.videoQualities) {
+                            postData.videoQualities = req.file.videoQualities;
+                        }
                     } else {
                         postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
                     }
