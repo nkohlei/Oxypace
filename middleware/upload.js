@@ -116,7 +116,7 @@ async function processAndUploadFile(req, file) {
             const tempDir = path.join(process.cwd(), 'temp_media');
             fs.mkdirSync(tempDir, { recursive: true });
             
-            const tempFilePath = path.join(tempDir, `${cleanFieldName}-${uniqueSuffix}.mp4`);
+            const tempFilePath = path.join(tempDir, `original_${cleanFieldName}-${uniqueSuffix}.mp4`);
             fs.writeFileSync(tempFilePath, file.buffer);
             
             file.key = originalKey;
