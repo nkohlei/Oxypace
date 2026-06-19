@@ -78,8 +78,10 @@ export const getImageUrl = (path, sizeType = 'original') => {
                 const lastDotIdx = pathPart.lastIndexOf('.');
                 if (lastDotIdx !== -1) {
                     const pathWithoutExt = pathPart.substring(0, lastDotIdx);
-                    // ✅ Apply suffix to avatar, banner, post, r2-media uploads
-                    const hasNewFormat = /-(avatar|banner|cover|media)-\d+/.test(pathWithoutExt) || /-\d{10,}/.test(pathWithoutExt);
+                    // ✅ Apply suffix ONLY to custom user uploads (which contain a timestamp dash e.g. -1781881844 or -avatar-123)
+                    // Explicitly ignore static/legacy avatars named like 'av.XX' or 'av..XX' or 'default'
+                    const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
+                    const hasNewFormat = !isLegacyAvatar && (/-(avatar|banner|cover|media)-\d+/.test(pathWithoutExt) || /-\d{10,}/.test(pathWithoutExt));
                     if (hasNewFormat) {
                         absoluteUrl = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
                     }
