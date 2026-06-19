@@ -651,7 +651,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                 {(() => {
                     const firstUrl = extractFirstUrl(post.content);
                     if (firstUrl) {
-                        return <LinkPreview url={firstUrl} />;
+                        return <LinkPreview url={firstUrl} postId={post._id} />;
                     }
                     return null;
                 })()}
@@ -708,6 +708,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                             <VideoPlayer
                                 src={getImageUrl(post.media)}
                                 qualities={post.videoQualities}
+                                videoUrl={post.videoUrl}
+                                lowVideoUrl={post.lowVideoUrl}
                                 className="post-video-player"
                             />
                         ) : post.mediaType === 'youtube' ? (

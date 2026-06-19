@@ -43,7 +43,7 @@ const QuotePortalModal = ({ portals, onSelect, onClose }) => {
                                 onClick={() => onSelect(portal._id)}
                             >
                                 <img
-                                    src={getImageUrl(portal.avatar)}
+                                    src={getImageUrl(portal.avatar, 'thumbnail')}
                                     alt={portal.name}
                                     className="portal-select-avatar"
                                 />

@@ -79,6 +79,14 @@ const postSchema = new mongoose.Schema(
             high: { type: String, default: '' },
             low: { type: String, default: '' }
         },
+        videoUrl: {
+            type: String,
+            default: '',
+        },
+        lowVideoUrl: {
+            type: String,
+            default: '',
+        },
     },
     {
         timestamps: true,

@@ -1,9 +1,9 @@
 import multer from 'multer';
 import sharp from 'sharp';
 import path from 'path';
+import fs from 'fs';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
-import { processVideoUpload } from '../utils/videoTranscoder.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
 const storage = multer.memoryStorage();
@@ -84,32 +84,53 @@ async function processAndUploadFile(req, file) {
 
         await r2.send(putCommand);
         file.key = key; // Set key for the route to read
+
+        // Special avatar thumbnail generator
+        if (file.fieldname === 'avatar') {
+            try {
+                const thumbnailBuffer = await sharp(file.buffer)
+                    .resize(40, 40)
+                    .webp({ quality: 40 })
+                    .toBuffer();
+                const thumbKey = `${folder}/${file.fieldname}-${uniqueSuffix}-thumbnail.webp`;
+                
+                await r2.send(new PutObjectCommand({
+                    Bucket: bucketName,
+                    Key: thumbKey,
+                    ContentType: 'image/webp',
+                    Body: thumbnailBuffer,
+                }));
+                console.log(`[Upload Middleware] Created avatar thumbnail uploaded: ${thumbKey}`);
+            } catch (thumbErr) {
+                console.error('[Upload Middleware] Failed to create avatar thumbnail:', thumbErr);
+            }
+        }
     } else if (isVideo) {
         try {
-            console.log('[Upload Middleware] Processing video transcoding before upload...');
-            const results = await processVideoUpload(file.buffer, folder, file.fieldname, uniqueSuffix);
+            console.log('[Upload Middleware] Registering video upload locally for background transcoding...');
             
-            file.key = results.originalKey;
+            const cleanFieldName = file.fieldname || 'media';
+            const originalKey = `${folder}/original_${cleanFieldName}-${uniqueSuffix}.mp4`;
+            const lowKey = `${folder}/low_360p_${cleanFieldName}-${uniqueSuffix}.mp4`;
+            
+            const tempDir = path.join(process.cwd(), 'temp_media');
+            fs.mkdirSync(tempDir, { recursive: true });
+            
+            const tempFilePath = path.join(tempDir, `${cleanFieldName}-${uniqueSuffix}.mp4`);
+            fs.writeFileSync(tempFilePath, file.buffer);
+            
+            file.key = originalKey;
             file.videoQualities = {
-                high: constructProxiedUrl(results.originalKey),
-                low: constructProxiedUrl(results.lowKey)
+                high: constructProxiedUrl(originalKey),
+                low: constructProxiedUrl(lowKey)
             };
             file.mimetype = 'video/mp4';
             file.size = file.buffer.length;
+            
+            console.log(`[Upload Middleware] Temp raw video written to ${tempFilePath}`);
         } catch (err) {
-            console.error('[Upload Middleware] Video transcoding failed, falling back to direct upload:', err);
-            const ext = path.extname(file.originalname).toLowerCase();
-            key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
-            const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
-            const putCommand = new PutObjectCommand({
-                Bucket: bucketName,
-                Key: key,
-                ContentType: file.mimetype,
-                Body: file.buffer,
-            });
-
-            await r2.send(putCommand);
-            file.key = key;
+            console.error('[Upload Middleware] Video local save failed:', err);
+            throw err;
         }
     } else {
         const ext = path.extname(file.originalname).toLowerCase();

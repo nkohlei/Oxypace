@@ -90,7 +90,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, poster, className }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className }) => {
   const videoRef = useRef(null);
   const isMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -99,8 +99,12 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   
+  // Resolve source options
+  const highSrc = qualities?.high || videoUrl || src;
+  const lowSrc = qualities?.low || lowVideoUrl || highSrc;
+
   // Quality stream selection
-  const [videoSrc, setVideoSrc] = useState(src);
+  const [videoSrc, setVideoSrc] = useState(highSrc);
   
   // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(false);
@@ -131,10 +135,14 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
 
   const handleWaiting = () => {
     // If connection stalls, immediately swap to the low 360p quality video URL
-    if (qualities && qualities.low && videoSrc !== qualities.low) {
-      console.log('[VideoPlayer] Intercepted stall/waiting: Instantly switching source to low 360p video:', qualities.low);
+    if (lowSrc && videoSrc !== lowSrc) {
+      console.log('[VideoPlayer] Intercepted stall/waiting: Instantly switching source to low 360p video:', lowSrc);
+      if (videoRef.current) {
+        restoreTimeRef.current = videoRef.current.currentTime;
+        shouldPlayRef.current = !videoRef.current.paused;
+      }
       setIsLoading(false);
-      setVideoSrc(qualities.low);
+      setVideoSrc(lowSrc);
       return;
     }
     if (videoRef.current) {
@@ -153,13 +161,13 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
 
   // Sync state and listen to connection variations
   useEffect(() => {
-    if (!qualities || !qualities.low || !qualities.high) {
+    if (!highSrc && !lowSrc) {
       setVideoSrc(src);
       return;
     }
 
     const determineSrc = () => {
-      return isSlowConnection() ? qualities.low : qualities.high;
+      return isSlowConnection() ? lowSrc : highSrc;
     };
 
     setVideoSrc(determineSrc());
@@ -181,19 +189,19 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
         connection.removeEventListener('change', handleConnectionChange);
       };
     }
-  }, [src, qualities]);
+  }, [src, qualities, videoUrl, lowVideoUrl]);
 
   // Periodic network health check to upgrade back to high quality when bandwidth recovers
   useEffect(() => {
-    if (!qualities || !qualities.low || !qualities.high) return;
+    if (!highSrc || !lowSrc) return;
 
     const interval = setInterval(() => {
       const isSlow = isSlowConnection();
       if (!isSlow) {
         setVideoSrc((currentSrc) => {
-          if (currentSrc !== qualities.high) {
+          if (currentSrc !== highSrc) {
             console.log('[VideoPlayer] Network recovered: Upgrading to high quality...');
-            return qualities.high;
+            return highSrc;
           }
           return currentSrc;
         });
@@ -201,7 +209,7 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [qualities]);
+  }, [highSrc, lowSrc]);
 
   const restoreTimeRef = useRef(0);
   const shouldPlayRef = useRef(false);

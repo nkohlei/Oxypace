@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import ogs from 'open-graph-scraper-lite';
 import sharp from 'sharp';
+import mongoose from 'mongoose';
 
 import Portal from '../models/Portal.js';
 import User from '../models/User.js';
@@ -339,12 +340,59 @@ router.get('/', async (req, res) => {
             }
         }
 
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.get('host');
+        const baseUrl = `${protocol}://${host}`;
+
+        // Check if this preview belongs to a bot's post
+        let isBotPost = false;
+        const postId = req.query.postId;
+        if (postId && mongoose.Types.ObjectId.isValid(postId)) {
+            try {
+                const post = await Post.findById(postId).populate('author');
+                if (post && post.author && post.author.isBot) {
+                    isBotPost = true;
+                }
+            } catch (err) {
+                console.error('[Preview] Failed to check bot post status:', err.message);
+            }
+        }
+
+        if (isBotPost && previewData && previewData.image && !previewData.image.includes('r2.dev')) {
+            console.log(`[Preview] Bot post link preview detected. Compressing image: ${previewData.image}`);
+            try {
+                const imgResponse = await axios.get(previewData.image, { responseType: 'arraybuffer', timeout: 8000 });
+                const buffer = Buffer.from(imgResponse.data);
+                
+                const compressedBuffer = await sharp(buffer)
+                    .resize({ width: 400, withoutEnlargement: true })
+                    .webp({ quality: 50 })
+                    .toBuffer();
+                
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+                const key = `previews/bot-link-${postId}-${uniqueSuffix}.webp`;
+                const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+                
+                const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+                const r2 = (await import('../config/r2.js')).default;
+                
+                await r2.send(new PutObjectCommand({
+                    Bucket: bucketName,
+                    Key: key,
+                    ContentType: 'image/webp',
+                    Body: compressedBuffer,
+                }));
+                
+                const r2Url = ensureFullUrl(key, baseUrl);
+                console.log(`[Preview] Bot preview image compressed and uploaded: ${r2Url}`);
+                previewData.image = r2Url;
+            } catch (err) {
+                console.error('[Preview] Failed to compress bot preview image:', err.message);
+            }
+        }
+
         // Final Safety Check: Force Proxy for ANY R2 URL (Internal or Generic)
         if (previewData && previewData.image && previewData.image.includes('r2.dev')) {
-            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-            const host = req.get('host');
-            const baseUrl = `${protocol}://${host}`;
-            
             // If it's already a full R2 URL, proxy it
             if (previewData.image.includes(R2_DOMAIN)) {
                 previewData.image = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.image)}`;
@@ -352,10 +400,6 @@ router.get('/', async (req, res) => {
         }
         
         if (previewData && previewData.avatar && previewData.avatar.includes('r2.dev')) {
-            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-            const host = req.get('host');
-            const baseUrl = `${protocol}://${host}`;
-            
             if (previewData.avatar.includes(R2_DOMAIN)) {
                 previewData.avatar = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.avatar)}`;
             }

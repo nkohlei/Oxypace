@@ -8,7 +8,7 @@ import './LinkPreview.css';
  * For Twitter/X: renders a tweet-styled card with author info, text, media
  * For other sites: renders a generic OG-based preview card
  */
-const LinkPreview = ({ url }) => {
+const LinkPreview = ({ url, postId }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -21,7 +21,7 @@ const LinkPreview = ({ url }) => {
                     targetUrl = `https://${targetUrl}`;
                 }
 
-                const response = await axios.get(`/api/preview?url=${encodeURIComponent(targetUrl)}&refresh=true&t=${Date.now()}`);
+                const response = await axios.get(`/api/preview?url=${encodeURIComponent(targetUrl)}&postId=${postId || ''}&refresh=true&t=${Date.now()}`);
                 if (response.data && (response.data.title || response.data.type === 'tweet')) {
                     setData(response.data);
                 } else {

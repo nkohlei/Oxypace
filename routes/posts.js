@@ -12,6 +12,7 @@ import r2 from '../config/r2.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generatePdfThumbnail } from '../utils/pdfHelper.js';
 import { transcodeVideoInBackground } from '../utils/videoTranscoder.js';
+import path from 'path';
 
 const router = express.Router();
 
@@ -170,6 +171,22 @@ router.post(
                         const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'm4v'];
                         postData.mediaType = videoExts.includes(ext) ? 'video' : 'image';
                     }
+
+                    if (postData.mediaType === 'video') {
+                        const parsedKey = path.parse(req.body.mediaKey);
+                        const folder = parsedKey.dir || 'posts/general';
+                        const baseName = parsedKey.name.replace(/^original_/, '');
+                        const highKey = `${folder}/original_${baseName}.mp4`;
+                        const lowKey = `${folder}/low_360p_${baseName}.mp4`;
+                        
+                        postData.videoQualities = {
+                            high: constructProxiedUrl(highKey),
+                            low: constructProxiedUrl(lowKey)
+                        };
+                        postData.videoUrl = postData.videoQualities.high;
+                        postData.lowVideoUrl = postData.videoQualities.low;
+                        postData.media = postData.videoUrl;
+                    }
                 } else if (req.file) {
                     postData.media = constructProxiedUrl(req.file.key);
                     console.log('📤 Media Proxied URL (from utility):', postData.media);
@@ -178,6 +195,9 @@ router.post(
                         postData.mediaType = 'video';
                         if (req.file.videoQualities) {
                             postData.videoQualities = req.file.videoQualities;
+                            postData.videoUrl = req.file.videoQualities.high;
+                            postData.lowVideoUrl = req.file.videoQualities.low;
+                            postData.media = postData.videoUrl;
                         }
                     } else {
                         postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';

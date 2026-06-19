@@ -439,7 +439,7 @@ const CommentSection = ({ postId }) => {
                         {(() => {
                             const firstUrl = extractFirstUrl(comment.content);
                             if (firstUrl) {
-                                return <LinkPreview url={firstUrl} />;
+                                return <LinkPreview url={firstUrl} postId={postId} />;
                             }
                             return null;
                         })()}

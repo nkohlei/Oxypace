@@ -1100,7 +1100,7 @@ const Profile = () => {
                                                             {(() => {
                                                                 const firstUrl = extractFirstUrl(post.content);
                                                                 if (firstUrl) {
-                                                                    return <div style={{ marginTop: '8px' }}><LinkPreview url={firstUrl} /></div>;
+                                                                    return <div style={{ marginTop: '8px' }}><LinkPreview url={firstUrl} postId={post._id} /></div>;
                                                                 }
                                                                 return null;
                                                             })()}
@@ -1109,7 +1109,7 @@ const Profile = () => {
                                                             {post.media && (
                                                                 <div className="profile-post-media">
                                                                     {post.mediaType === 'video' ? (
-                                                                        <VideoPlayer src={getImageUrl(post.media)} qualities={post.videoQualities} className="post-video-player" />
+                                                                         <VideoPlayer src={getImageUrl(post.media)} qualities={post.videoQualities} videoUrl={post.videoUrl} lowVideoUrl={post.lowVideoUrl} className="post-video-player" />
                                                                     ) : post.mediaType === 'youtube' ? (
                                                                         <div className="profile-post-youtube">
                                                                             <img

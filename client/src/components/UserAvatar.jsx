@@ -35,9 +35,9 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
 
     const getAvatarSizeType = () => {
         if (sizeType) return sizeType;
-        if (!size) return 'original';
+        if (!size) return 'thumbnail';
         const numSize = parseInt(size, 10);
-        if (isNaN(numSize)) return 'original';
+        if (isNaN(numSize)) return 'thumbnail';
         if (numSize <= 48) return 'thumbnail';
         if (numSize <= 150) return 'medium';
         return 'original';
