@@ -1,31 +1,31 @@
-/* Scale Native VideoPlayer v17.1 - Natural Aspect Ratio (YouTube Standard / Anti-Squish) */
+/* Scale Native VideoPlayer v18.0 - True Dynamic Ratio (Twitter/Instagram/YouTube Feed Standard) */
 .native-player-container.v16-scale {
     position: relative;
     width: 100%;
-    max-width: 100%;
-    /* 16:9 outer frame — overridden by naturalDimensions inline style on metadata load */
-    aspect-ratio: 16 / 9;
+    max-width: 650px;
+    /* height: auto — driven entirely by the video's intrinsic dimensions via the <video> element */
+    height: auto;
     margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
-    background: #000;
+    background: #000; /* Only visible during pre-metadata loading moment */
     display: block;
     flex-shrink: 0;
     box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.7);
-    /* NO max-height — frame scale must never collapse at any resolution */
+    /* NO aspect-ratio, NO max-height — container shape is 100% driven by video content */
 }
 
 .native-player-container.v16-scale .native-video-element {
-    display: block;
+    display: block; /* Eliminates the inline baseline gap */
     width: 100% !important;
-    height: 100% !important;
+    /* height: auto — browser uses the video's intrinsic ratio; container follows naturally */
+    height: auto !important;
     max-width: 100% !important;
-    /* contain: video fills frame at its TRUE ratio — never cropped, never squished */
+    /* contain is redundant when height:auto but kept as safety net */
     object-fit: contain !important;
-    /* Cinematic black bars for non-16:9 content — identical to YouTube */
-    background-color: #000000;
     border-radius: 12px;
     cursor: pointer;
+    /* No background: the container's #000 handles pre-load; once playing, no black bars */
 }
 
 /* --- THE REAL LOADER (Tied directly to video data events) --- */

@@ -554,7 +554,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onMouseEnter={handleMouseEnter}
       style={naturalDimensions ? {
         aspectRatio: `${naturalDimensions.width} / ${naturalDimensions.height}`
-      } : { aspectRatio: '16 / 9' }}
+      } : {}}
     >
       <video
         ref={videoRef}
@@ -562,10 +562,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         poster={poster}
         className="native-video-element"
         style={{
+          display: 'block',
           width: '100%',
-          height: '100%',
-          objectFit: 'contain',
-          backgroundColor: '#000000'
+          height: 'auto',
+          objectFit: 'contain'
         }}
         playsInline
         loop
