@@ -5,13 +5,21 @@ import r2 from '../config/r2.js';
 import Post from '../models/Post.js';
 import { constructProxiedUrl } from './mediaConfig.js';
 import axios from 'axios';
+import https from 'https';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 
-// Configure fluent-ffmpeg to use static binaries
-ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobeStatic.path);
+// Configure fluent-ffmpeg to use system binaries in production, static in development
+if (process.env.NODE_ENV === 'production') {
+    ffmpeg.setFfmpegPath('ffmpeg');
+    ffmpeg.setFfprobePath('ffprobe');
+    console.log('[VideoTranscoder] Configured to use system ffmpeg/ffprobe binaries.');
+} else {
+    ffmpeg.setFfmpegPath(ffmpegPath);
+    ffmpeg.setFfprobePath(ffprobeStatic.path);
+    console.log('[VideoTranscoder] Configured to use static ffmpeg/ffprobe binaries.');
+}
 
 /**
  * Runs FFmpeg transcoding in the background.
@@ -45,7 +53,12 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             localInputPath = path.join(process.cwd(), 'temp_media', `download-${baseName}.mp4`);
             fs.mkdirSync(path.dirname(localInputPath), { recursive: true });
             
-            const response = await axios({ method: 'get', url: originalUrl, responseType: 'stream' });
+            const response = await axios({ 
+                method: 'get', 
+                url: originalUrl, 
+                responseType: 'stream',
+                httpsAgent: new https.Agent({ rejectUnauthorized: false })
+            });
             const writer = fs.createWriteStream(localInputPath);
             response.data.pipe(writer);
             await new Promise((resolve, reject) => {
