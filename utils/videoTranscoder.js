@@ -2,11 +2,13 @@ import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import util from 'util';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import Post from '../models/Post.js';
 import { constructProxiedUrl } from './mediaConfig.js';
-import ffmpeg from 'fluent-ffmpeg';
+
+const execPromise = util.promisify(exec);
 
 /**
  * Transcodes video to 360p low resolution synchronously before upload.
@@ -20,28 +22,10 @@ export async function processVideoUpload(buffer, folder, fileFieldname, uniqueSu
     fs.writeFileSync(inputPath, buffer);
 
     try {
-        // Transcode to 360p using fluent-ffmpeg
-        await new Promise((resolve, reject) => {
-            ffmpeg(inputPath)
-                .size('?x360')
-                .videoCodec('libx264')
-                .outputOptions([
-                    '-crf 30',
-                    '-preset fast'
-                ])
-                .audioCodec('aac')
-                .audioBitrate('64k')
-                .output(out360Path)
-                .on('end', () => {
-                    console.log('[VideoTranscoder] 360p transcode finished successfully');
-                    resolve();
-                })
-                .on('error', (err) => {
-                    console.error('[VideoTranscoder] 360p transcode failed:', err);
-                    reject(err);
-                })
-                .run();
-        });
+        // Transcode to 360p using exec
+        const cmd = `ffmpeg -y -i "${inputPath}" -vf "scale=-2:360" -c:v libx264 -crf 30 -preset fast -c:a aac -b:a 64k "${out360Path}"`;
+        console.log(`[VideoTranscoder] Running command: ${cmd}`);
+        await execPromise(cmd);
 
         // Keys for R2
         const originalKey = `${folder}/${fileFieldname}-${uniqueSuffix}-original.mp4`;
@@ -77,6 +61,7 @@ export async function processVideoUpload(buffer, folder, fileFieldname, uniqueSu
             lowKey
         };
     } catch (err) {
+        console.error('[VideoTranscoder] Transcode process failed:', err);
         // Cleanup on error
         try { fs.unlinkSync(inputPath); } catch(e){}
         try { fs.unlinkSync(out360Path); } catch(e){}
