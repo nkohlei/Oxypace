@@ -103,7 +103,7 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
   const [videoSrc, setVideoSrc] = useState(src);
   
   // Gerçek zamanlı donma/yüklenme sensörü
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -114,6 +114,7 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
   // Real-time network speed and buffering metrics
   const waitingCountRef = useRef(0);
   const waitingTimerRef = useRef(null);
+  const activeStreamRef = useRef(null);
 
   const isSlowConnection = () => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -129,29 +130,19 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
   };
 
   const handleWaiting = () => {
-    if (qualities && qualities.low && videoSrc !== qualities.low) {
-      // Instantly swap quality without displaying loading spinner
-      setIsLoading(false);
-      setVideoSrc((currentSrc) => {
-        if (currentSrc !== qualities.low) {
-          console.log('[VideoPlayer] Intercepted stall/waiting: Instantly switching to low quality');
-          if (videoRef.current) {
-            const curTime = videoRef.current.currentTime;
-            const wasPaused = videoRef.current.paused;
-            videoRef.current.src = qualities.low;
-            videoRef.current.load();
-            videoRef.current.currentTime = curTime;
-            if (!wasPaused) {
-              videoRef.current.play().catch(() => {});
-            }
-          }
-          return qualities.low;
-        }
-        return currentSrc;
-      });
-      return;
+    // If we waiting/stalling, lower the playback speed to let buffering catch up smoothly
+    if (videoRef.current) {
+      console.log('[VideoPlayer] Intercepted stall/waiting: Throttling playback rate to 0.75x');
+      videoRef.current.playbackRate = 0.75;
     }
-    setIsLoading(true);
+    setIsLoading(false);
+  };
+
+  const handlePlaying = () => {
+    setIsLoading(false);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate; // restore original rate
+    }
   };
 
   // Sync state and listen to connection variations
@@ -174,16 +165,6 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
         setVideoSrc((currentSrc) => {
           if (currentSrc !== nextSrc) {
             console.log(`[VideoPlayer] Quality switch requested: ${nextSrc}`);
-            if (videoRef.current) {
-              const curTime = videoRef.current.currentTime;
-              const wasPaused = videoRef.current.paused;
-              videoRef.current.src = nextSrc;
-              videoRef.current.load();
-              videoRef.current.currentTime = curTime;
-              if (!wasPaused) {
-                videoRef.current.play().catch(() => {});
-              }
-            }
             return nextSrc;
           }
           return currentSrc;
@@ -206,16 +187,6 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
         setVideoSrc((currentSrc) => {
           if (currentSrc !== qualities.high) {
             console.log('[VideoPlayer] Network recovered: Upgrading to high quality...');
-            if (videoRef.current) {
-              const curTime = videoRef.current.currentTime;
-              const wasPaused = videoRef.current.paused;
-              videoRef.current.src = qualities.high;
-              videoRef.current.load();
-              videoRef.current.currentTime = curTime;
-              if (!wasPaused) {
-                videoRef.current.play().catch(() => {});
-              }
-            }
             return qualities.high;
           }
           return currentSrc;
@@ -225,6 +196,148 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
 
     return () => clearInterval(interval);
   }, [qualities]);
+
+  // Frontend Smart Byte-Range Chunk Downloader
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    let active = true;
+    let mediaSource = null;
+    let sourceBuffer = null;
+    let objectUrl = null;
+
+    const cleanup = () => {
+      active = false;
+      if (objectUrl) {
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch (e) {}
+      }
+    };
+
+    activeStreamRef.current = cleanup;
+
+    // Check MediaSource support
+    const isMseSupported = 'MediaSource' in window && MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+
+    if (!isMseSupported) {
+      console.log('[VideoPlayer] MSE not supported, falling back to direct URL');
+      video.src = videoSrc;
+      return () => {
+        cleanup();
+      };
+    }
+
+    mediaSource = new MediaSource();
+    objectUrl = URL.createObjectURL(mediaSource);
+    video.src = objectUrl;
+
+    const CHUNK_SIZE = 1024 * 1024 * 1.5; // 1.5MB chunks
+    let startByte = 0;
+    let totalBytes = null;
+    let isAppending = false;
+    const queue = [];
+
+    const fetchNextChunk = async () => {
+      if (!active) return;
+      if (totalBytes !== null && startByte >= totalBytes) {
+        if (mediaSource && mediaSource.readyState === 'open' && !isAppending && queue.length === 0) {
+          try {
+            mediaSource.endOfStream();
+          } catch (e) {}
+        }
+        return;
+      }
+
+      // Check if we have buffered enough (e.g. 15 seconds) ahead of the playhead. If so, throttle the request.
+      const bufferedAhead = video.buffered.length > 0 ? (video.buffered.end(video.buffered.length - 1) - video.currentTime) : 0;
+      if (bufferedAhead > 15) {
+        setTimeout(fetchNextChunk, 1000);
+        return;
+      }
+
+      const endByte = totalBytes ? Math.min(startByte + CHUNK_SIZE - 1, totalBytes - 1) : startByte + CHUNK_SIZE - 1;
+
+      try {
+        const response = await fetch(videoSrc, {
+          headers: {
+            'Range': `bytes=${startByte}-${endByte}`,
+            'Cache-Control': 'public, max-age=31536000'
+          },
+          cache: 'force-cache'
+        });
+
+        if (!active) return;
+
+        if (response.status === 200 || response.status === 206) {
+          const contentRange = response.headers.get('content-range');
+          if (contentRange) {
+            const match = contentRange.match(/\/(\d+)/);
+            if (match) {
+              totalBytes = parseInt(match[1], 10);
+            }
+          }
+
+          const buffer = await response.arrayBuffer();
+          if (!active) return;
+
+          startByte += buffer.byteLength;
+          
+          if (sourceBuffer && !sourceBuffer.updating) {
+            isAppending = true;
+            sourceBuffer.appendBuffer(buffer);
+          } else {
+            queue.push(buffer);
+          }
+        } else {
+          throw new Error(`Failed to fetch chunk: ${response.status}`);
+        }
+      } catch (err) {
+        console.error('[VideoPlayer] Chunk fetch error, falling back to direct src:', err);
+        if (active) {
+          video.src = videoSrc;
+        }
+      }
+    };
+
+    mediaSource.addEventListener('sourceopen', () => {
+      if (!active) return;
+      try {
+        sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+        
+        sourceBuffer.addEventListener('updateend', () => {
+          isAppending = false;
+          if (!active) return;
+          if (queue.length > 0) {
+            const next = queue.shift();
+            isAppending = true;
+            sourceBuffer.appendBuffer(next);
+          } else {
+            fetchNextChunk();
+          }
+        });
+
+        sourceBuffer.addEventListener('error', (e) => {
+          console.error('[VideoPlayer] SourceBuffer error, falling back:', e);
+          if (active) {
+            video.src = videoSrc;
+          }
+        });
+
+        fetchNextChunk();
+      } catch (e) {
+        console.error('[VideoPlayer] MediaSource sourcebuffer init failed, falling back:', e);
+        if (active) {
+          video.src = videoSrc;
+        }
+      }
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [videoSrc]);
 
   const startControlsTimeout = (duration = 1500) => {
     if (controlsTimeoutRef.current) {
@@ -302,6 +415,9 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
       }
       if (waitingTimerRef.current) {
         clearTimeout(waitingTimerRef.current);
+      }
+      if (activeStreamRef.current) {
+        activeStreamRef.current();
       }
     };
   }, []);
@@ -433,32 +549,26 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
     >
       <video
         ref={videoRef}
-        src={videoSrc}
         poster={poster}
         className="native-video-element"
         playsInline
         loop
+        preload="metadata"
         crossOrigin="anonymous"
         onClick={handleVideoClick}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
         onWaiting={handleWaiting}
         onStalled={handleWaiting}
-        onLoadStart={() => setIsLoading(true)}
-        onPlaying={() => setIsLoading(false)}
-        onCanPlay={() => setIsLoading(false)}
-        onCanPlayThrough={() => setIsLoading(false)}
+        onLoadStart={() => setIsLoading(false)}
+        onPlaying={handlePlaying}
+        onCanPlay={handlePlaying}
+        onCanPlayThrough={handlePlaying}
       />
 
       <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
-
-      {isLoading && (
-        <div className="native-loader-overlay">
-            <div className="pro-spinner"></div>
-        </div>
-      )}
 
       <div className={`native-controls-ui is-always-visible ${!showControls ? 'controls-hidden' : ''}`}>
         <div className="native-progress-area" onClick={handleScrub}>
