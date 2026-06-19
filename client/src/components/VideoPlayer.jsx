@@ -125,6 +125,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   // Quality selection mode: 'auto' | '2160' | '1080' | '720' | '360' | '144'
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(null);
+
+  useEffect(() => {
+    setAspectRatio(null);
+  }, [src]);
 
   const isSlowConnection = () => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -436,6 +441,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
+      const { videoWidth, videoHeight } = videoRef.current;
+      if (videoWidth && videoHeight && !aspectRatio) {
+        setAspectRatio(videoWidth / videoHeight);
+      }
       if (restoreTimeRef.current > 0) {
         videoRef.current.currentTime = restoreTimeRef.current;
         restoreTimeRef.current = 0;
@@ -517,6 +526,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onClick={(e) => e.stopPropagation()}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
+      style={aspectRatio ? { aspectRatio: `${aspectRatio}` } : undefined}
     >
       <video
         ref={videoRef}
