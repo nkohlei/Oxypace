@@ -203,92 +203,31 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
     return () => clearInterval(interval);
   }, [qualities]);
 
-  // Frontend Smart Byte-Range Chunk Downloader
+  const restoreTimeRef = useRef(0);
+  const shouldPlayRef = useRef(false);
+
+  // Capture current playhead before source swap
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoSrc) return;
-
-    let active = true;
-    let mediaSource = null;
-    let sourceBuffer = null;
-    let objectUrl = null;
-
-    // Save currentTime before source changes to keep playing seamlessly
-    const previousTime = video.currentTime;
-    const wasPlaying = !video.paused;
-
-    const cleanup = () => {
-      active = false;
-      if (objectUrl) {
-        try {
-          URL.revokeObjectURL(objectUrl);
-        } catch (e) {}
-      }
-    };
-
-    activeStreamRef.current = cleanup;
-
-    // Check MediaSource support
-    const isMseSupported = 'MediaSource' in window && MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
-
-    if (!isMseSupported) {
-      console.log('[VideoPlayer] MSE not supported, falling back to direct URL');
-      video.src = videoSrc;
-      
-      const restoreDirect = () => {
-        if (previousTime > 0) {
-          video.currentTime = previousTime;
-        }
-        if (wasPlaying) {
-          video.play().catch(() => {});
-        }
-        video.removeEventListener('loadedmetadata', restoreDirect);
-      };
-      video.addEventListener('loadedmetadata', restoreDirect);
-      
-      return () => {
-        cleanup();
-      };
+    if (!video) return;
+    if (video.currentTime > 0) {
+      restoreTimeRef.current = video.currentTime;
+      shouldPlayRef.current = !video.paused;
     }
+  }, [videoSrc]);
 
-    mediaSource = new MediaSource();
-    objectUrl = URL.createObjectURL(mediaSource);
-    video.src = objectUrl;
+  // Frontend Smart Byte-Range Chunk Downloader & Cacher
+  useEffect(() => {
+    if (!videoSrc) return;
+    let active = true;
 
-    const restoreMse = () => {
-      if (previousTime > 0) {
-        video.currentTime = previousTime;
-      }
-      if (wasPlaying) {
-        video.play().catch(() => {});
-      }
-      video.removeEventListener('loadedmetadata', restoreMse);
-    };
-    video.addEventListener('loadedmetadata', restoreMse);
-
-    const CHUNK_SIZE = 1024 * 1024 * 1.5; // 1.5MB chunks
+    const CHUNK_SIZE = 1024 * 1024 * 1.0; // 1.0MB chunks
     let startByte = 0;
     let totalBytes = null;
-    let isAppending = false;
-    const queue = [];
 
-    const fetchNextChunk = async () => {
+    const prefetchNextChunk = async () => {
       if (!active) return;
-      if (totalBytes !== null && startByte >= totalBytes) {
-        if (mediaSource && mediaSource.readyState === 'open' && !isAppending && queue.length === 0) {
-          try {
-            mediaSource.endOfStream();
-          } catch (e) {}
-        }
-        return;
-      }
-
-      // Check if we have buffered enough (e.g. 15 seconds) ahead of the playhead. If so, throttle the request.
-      const bufferedAhead = video.buffered.length > 0 ? (video.buffered.end(video.buffered.length - 1) - video.currentTime) : 0;
-      if (bufferedAhead > 15) {
-        setTimeout(fetchNextChunk, 1000);
-        return;
-      }
+      if (totalBytes !== null && startByte >= totalBytes) return;
 
       const endByte = totalBytes ? Math.min(startByte + CHUNK_SIZE - 1, totalBytes - 1) : startByte + CHUNK_SIZE - 1;
 
@@ -311,64 +250,19 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
               totalBytes = parseInt(match[1], 10);
             }
           }
-
-          const buffer = await response.arrayBuffer();
-          if (!active) return;
-
-          startByte += buffer.byteLength;
-          
-          if (sourceBuffer && !sourceBuffer.updating) {
-            isAppending = true;
-            sourceBuffer.appendBuffer(buffer);
-          } else {
-            queue.push(buffer);
-          }
-        } else {
-          throw new Error(`Failed to fetch chunk: ${response.status}`);
+          startByte += CHUNK_SIZE;
+          // Fetch next chunk with a slight delay to keep threads free
+          setTimeout(prefetchNextChunk, 500);
         }
       } catch (err) {
-        console.error('[VideoPlayer] Chunk fetch error, falling back to direct src:', err);
-        if (active) {
-          video.src = videoSrc;
-        }
+        console.error('[VideoPlayer] Background prefetch failed:', err);
       }
     };
 
-    mediaSource.addEventListener('sourceopen', () => {
-      if (!active) return;
-      try {
-        sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
-        
-        sourceBuffer.addEventListener('updateend', () => {
-          isAppending = false;
-          if (!active) return;
-          if (queue.length > 0) {
-            const next = queue.shift();
-            isAppending = true;
-            sourceBuffer.appendBuffer(next);
-          } else {
-            fetchNextChunk();
-          }
-        });
-
-        sourceBuffer.addEventListener('error', (e) => {
-          console.error('[VideoPlayer] SourceBuffer error, falling back:', e);
-          if (active) {
-            video.src = videoSrc;
-          }
-        });
-
-        fetchNextChunk();
-      } catch (e) {
-        console.error('[VideoPlayer] MediaSource sourcebuffer init failed, falling back:', e);
-        if (active) {
-          video.src = videoSrc;
-        }
-      }
-    });
+    prefetchNextChunk();
 
     return () => {
-      cleanup();
+      active = false;
     };
   }, [videoSrc]);
 
@@ -449,9 +343,6 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
       if (waitingTimerRef.current) {
         clearTimeout(waitingTimerRef.current);
       }
-      if (activeStreamRef.current) {
-        activeStreamRef.current();
-      }
     };
   }, []);
 
@@ -508,6 +399,19 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
       setDuration(total);
       setProgress((current / total) * 100);
     }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      if (restoreTimeRef.current > 0) {
+        videoRef.current.currentTime = restoreTimeRef.current;
+        restoreTimeRef.current = 0;
+        if (shouldPlayRef.current) {
+          videoRef.current.play().catch(() => {});
+        }
+      }
+    }
+    handleTimeUpdate();
   };
 
   // Bara Tıklayıp İleri Sarma
@@ -582,6 +486,7 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
     >
       <video
         ref={videoRef}
+        src={videoSrc}
         poster={poster}
         className="native-video-element"
         playsInline
@@ -590,7 +495,7 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
         crossOrigin="anonymous"
         onClick={handleVideoClick}
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
         onWaiting={handleWaiting}
         onStalled={handleWaiting}
         onLoadStart={() => setIsLoading(false)}
