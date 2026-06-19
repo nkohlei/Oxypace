@@ -1,7 +1,7 @@
 /* Scale Native VideoPlayer v16.0 - Full Autoplay & True Scale (Pure DOM) */
 .native-player-container.v16-scale {
     position: relative;
-    width: fit-content;
+    width: auto;
     max-width: 100%;
     margin: 12px 0;
     border-radius: 12px;

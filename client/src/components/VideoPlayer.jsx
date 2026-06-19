@@ -553,8 +553,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       style={naturalDimensions ? {
-        width: '100%',
-        maxWidth: naturalDimensions.width,
         aspectRatio: `${naturalDimensions.width} / ${naturalDimensions.height}`
       } : undefined}
     >
