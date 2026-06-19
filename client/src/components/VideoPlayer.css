@@ -1,7 +1,7 @@
 /* Scale Native VideoPlayer v16.0 - Full Autoplay & True Scale (Pure DOM) */
 .native-player-container.v16-scale {
     position: relative;
-    width: 100%;
+    width: fit-content;
     max-width: 100%;
     margin: 12px 0;
     border-radius: 12px;
@@ -9,15 +9,14 @@
     background: #000;
     display: block;
     box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.7);
-    max-height: 350px;
 }
 
-.native-player-container.v16-scale .native-video-element {
+.native-video-element {
     display: block;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    max-height: 350px !important;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 350px;
     object-fit: contain;
     border-radius: 12px;
     background: transparent;

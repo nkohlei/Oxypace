@@ -834,12 +834,11 @@
     margin: 0 auto !important;
     box-shadow: none !important;
     max-width: 100% !important;
-    width: 100% !important;
+    width: fit-content !important;
     background: transparent !important;
 }
 
 .quoted-player .native-video-element {
-    width: 100% !important;
     max-height: var(--quote-max-h) !important;
     object-fit: contain !important;
 }
