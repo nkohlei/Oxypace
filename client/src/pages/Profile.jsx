@@ -643,6 +643,7 @@ const Profile = () => {
                                         alt={profileUser.username}
                                         style={{ width: '100%', height: '100%' }}
                                         isDeleted={profileUser?.isDeleted}
+                                        sizeType="original"
                                     />
                                     {/* Edit button removed from here, now in modal */}
                                 </div>

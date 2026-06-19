@@ -53,11 +53,11 @@ export async function processAndUploadMultiResAvatars(mediaKeyOrFile) {
         .webp({ quality: 80 })
         .toBuffer();
 
-    // Generate thumbnail: 40x40px, WebP, 40% quality (Aggressive micro-downgrade)
+    // Generate thumbnail: 80x80px, WebP, 60% quality (Balanced resolution & file size)
     const thumbnailBuffer = await sharpInstance
         .clone()
-        .resize(40, 40, { fit: 'cover', withoutEnlargement: false })
-        .webp({ quality: 40 })
+        .resize(80, 80, { fit: 'cover', withoutEnlargement: false })
+        .webp({ quality: 60 })
         .toBuffer();
 
     const mediumKey = `${folder}/${baseName}-medium.webp`;

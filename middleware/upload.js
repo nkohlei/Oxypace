@@ -89,8 +89,8 @@ async function processAndUploadFile(req, file) {
         if (file.fieldname === 'avatar') {
             try {
                 const thumbnailBuffer = await sharp(file.buffer)
-                    .resize(40, 40)
-                    .webp({ quality: 40 })
+                    .resize(80, 80)
+                    .webp({ quality: 60 })
                     .toBuffer();
                 const thumbKey = `${folder}/${file.fieldname}-${uniqueSuffix}-thumbnail.webp`;
                 
