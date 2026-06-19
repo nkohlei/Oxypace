@@ -561,6 +561,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         src={videoSrc}
         poster={poster}
         className={`native-video-element ${isLowQuality ? 'native-video-360p-simulation' : ''}`}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain'
+        }}
         playsInline
         loop
         preload="metadata"
