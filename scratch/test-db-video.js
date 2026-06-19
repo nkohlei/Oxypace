@@ -25,6 +25,7 @@ async function run() {
                 console.log(`video720: ${post.video720}`);
                 console.log(`video1080: ${post.video1080}`);
                 console.log(`video2160: ${post.video2160}`);
+                console.log(`transcodeError: ${post.transcodeError}`);
             });
         }
     } catch (err) {

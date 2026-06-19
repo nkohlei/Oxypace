@@ -112,6 +112,10 @@ const postSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        transcodeError: {
+            type: String,
+            default: '',
+        },
     },
     {
         timestamps: true,

@@ -248,5 +248,10 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         
     } catch (err) {
         console.error(`[VideoTranscoder] Background transcode pipeline failed for post ${postId}:`, err.message);
+        try {
+            await Post.findByIdAndUpdate(postId, { transcodeError: `${err.message}\n${err.stack}` });
+        } catch (dbErr) {
+            console.error('Failed to save transcode error to DB:', dbErr);
+        }
     }
 }
