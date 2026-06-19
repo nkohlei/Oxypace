@@ -188,7 +188,7 @@ const Profile = () => {
 
             const res = await axios.post('/api/posts', postData);
 
-            
+
             // Prepend optimistically
             setUserPosts(prev => [{
                 ...res.data,
@@ -280,7 +280,7 @@ const Profile = () => {
 
         try {
             setLoading(true);
-            
+
             // Direct upload to R2
             const mediaKey = await uploadFile(fileOrBlob, mode === 'avatar' ? 'avatar' : 'cover', currentUser._id);
 
@@ -572,7 +572,7 @@ const Profile = () => {
             <main className="app-content profile-page-content">
                 {/* Wide Profile Card */}
                 <div className="profile-card profile-card-horizontal">
-                    <button 
+                    <button
                         className="profile-card-back-btn"
                         onClick={() => navigate(-1)}
                         title="Geri"
@@ -827,605 +827,605 @@ const Profile = () => {
                                     </div>
                                 </div>
                             ) : (
-                            <>
-                            <div className="profile-tabs">
-                                <div
-                                    className={`profile-tab-item ${activeTab === 'posts' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('posts')}
-                                >
-                                    Gönderiler
-                                </div>
-                                <div
-                                    className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('memberships')}
-                                >
-                                    Üyelikler
-                                </div>
-                                <div
-                                    className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('friends')}
-                                >
-                                    Arkadaşlar
-                                </div>
-                                {isOwnProfile ? (
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('wishlist')}
-                                    >
-                                        İstek Listesi
-                                    </div>
-                                ) : (
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'mutual_portals' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('mutual_portals')}
-                                    >
-                                        Ortak Sunucular
-                                    </div>
-                                )}
-                                {isOwnProfile && (
-                                    <div
-                                        className={`profile-tab-item ${activeTab === 'saved' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('saved')}
-                                    >
-                                        Kaydedilenler
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="profile-tab-view">
-                                {/* POSTS TAB */}
-                                {activeTab === 'posts' && (
-                                    <div className="tab-content fade-in">
-                                        {/* Compose Box — own profile only */}
+                                <>
+                                    <div className="profile-tabs">
+                                        <div
+                                            className={`profile-tab-item ${activeTab === 'posts' ? 'active' : ''}`}
+                                            onClick={() => setActiveTab('posts')}
+                                        >
+                                            Gönderiler
+                                        </div>
+                                        <div
+                                            className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
+                                            onClick={() => setActiveTab('memberships')}
+                                        >
+                                            Üyelikler
+                                        </div>
+                                        <div
+                                            className={`profile-tab-item ${activeTab === 'friends' ? 'active' : ''}`}
+                                            onClick={() => setActiveTab('friends')}
+                                        >
+                                            Arkadaşlar
+                                        </div>
+                                        {isOwnProfile ? (
+                                            <div
+                                                className={`profile-tab-item ${activeTab === 'wishlist' ? 'active' : ''}`}
+                                                onClick={() => setActiveTab('wishlist')}
+                                            >
+                                                İstek Listesi
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className={`profile-tab-item ${activeTab === 'mutual_portals' ? 'active' : ''}`}
+                                                onClick={() => setActiveTab('mutual_portals')}
+                                            >
+                                                Ortak Sunucular
+                                            </div>
+                                        )}
                                         {isOwnProfile && (
                                             <div
-                                                ref={composeBoxRef}
-                                                className={`profile-compose-box ${composeFocused ? 'focused' : ''}`}
-                                                onClick={() => { if (!composeFocused) setComposeFocused(true); }}
+                                                className={`profile-tab-item ${activeTab === 'saved' ? 'active' : ''}`}
+                                                onClick={() => setActiveTab('saved')}
                                             >
-                                                <div className="compose-avatar">
-                                                    <UserAvatar
-                                                        src={currentUser?.profile?.avatar}
-                                                        alt="Avatar"
-                                                        size={40}
-                                                    />
-                                                </div>
-                                                <div className="compose-input-area">
-                                                    {!composeFocused ? (
-                                                        <div className="compose-placeholder-trigger">
-                                                            Ne düşünüyorsun?
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <textarea
-                                                                placeholder="Ne düşünüyorsun?"
-                                                                value={composeText}
-                                                                onChange={(e) => setComposeText(e.target.value)}
-                                                                autoFocus
-                                                                rows={3}
-                                                                className="compose-textarea"
+                                                Kaydedilenler
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="profile-tab-view">
+                                        {/* POSTS TAB */}
+                                        {activeTab === 'posts' && (
+                                            <div className="tab-content fade-in">
+                                                {/* Compose Box — own profile only */}
+                                                {isOwnProfile && (
+                                                    <div
+                                                        ref={composeBoxRef}
+                                                        className={`profile-compose-box ${composeFocused ? 'focused' : ''}`}
+                                                        onClick={() => { if (!composeFocused) setComposeFocused(true); }}
+                                                    >
+                                                        <div className="compose-avatar">
+                                                            <UserAvatar
+                                                                src={currentUser?.profile?.avatar}
+                                                                alt="Avatar"
+                                                                size={40}
                                                             />
-                                                            {composeMediaPreview && (
-                                                                <div className="compose-media-preview">
-                                                                    {composeMedia?.type?.startsWith('video') ? (
-                                                                        <video src={composeMediaPreview} className="compose-preview-video" />
-                                                                    ) : (
-                                                                        <img src={composeMediaPreview} alt="Preview" />
-                                                                    )}
-                                                                    <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
-                                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                                                        </svg>
-                                                                    </button>
+                                                        </div>
+                                                        <div className="compose-input-area">
+                                                            {!composeFocused ? (
+                                                                <div className="compose-placeholder-trigger">
+                                                                    Ne düşünüyorsun?
                                                                 </div>
-                                                            )}
-                                                            <div className="compose-actions">
-                                                                <div className="compose-tools">
-                                                                    <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()} title="Fotoğraf / GIF">
-                                                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                                                            <circle cx="8.5" cy="8.5" r="1.5" />
-                                                                            <polyline points="21 15 16 10 5 21" />
-                                                                        </svg>
-                                                                    </button>
-                                                                    <button type="button" className="compose-tool-btn" onClick={() => {
-                                                                        const ta = composeBoxRef.current?.querySelector('.compose-textarea');
-                                                                        if (ta) {
-                                                                            const start = ta.selectionStart;
-                                                                            const end = ta.selectionEnd;
-                                                                            const text = composeText;
-                                                                            setComposeText(text.substring(0, start) + '😀' + text.substring(end));
-                                                                        } else {
-                                                                            setComposeText(prev => prev + '😀');
-                                                                        }
-                                                                    }} title="Emoji">
-                                                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                                            <circle cx="12" cy="12" r="10" />
-                                                                            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                                                                            <line x1="9" y1="9" x2="9.01" y2="9" />
-                                                                            <line x1="15" y1="9" x2="15.01" y2="9" />
-                                                                        </svg>
-                                                                    </button>
-                                                                    <input
-                                                                        ref={composeMediaInputRef}
-                                                                        type="file"
-                                                                        accept="image/*,video/*,.gif"
-                                                                        onChange={handleComposeMediaSelect}
-                                                                        style={{ display: 'none' }}
+                                                            ) : (
+                                                                <>
+                                                                    <textarea
+                                                                        placeholder="Ne düşünüyorsun?"
+                                                                        value={composeText}
+                                                                        onChange={(e) => setComposeText(e.target.value)}
+                                                                        autoFocus
+                                                                        rows={3}
+                                                                        className="compose-textarea"
                                                                     />
-                                                                </div>
-                                                                <div className="compose-right-actions">
-                                                                    <span className="compose-char-count" style={{ opacity: composeText.length > 200 ? 1 : 0 }}>
-                                                                        {composeText.length}/500
-                                                                    </span>
-                                                                    <button
-                                                                        className="compose-submit-btn"
-                                                                        onClick={handleProfilePost}
-                                                                        disabled={composeLoading || (!composeText.trim() && !composeMedia)}
-                                                                    >
-                                                                        {composeLoading ? (
-                                                                            <div className="compose-spinner-wrapper">
-                                                                                <div className="compose-spinner" />
-                                                                                <span className="compose-progress-text">
-                                                                                    {uploadPercentage}%
-                                                                                </span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <>
-                                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
-                                                                                    <line x1="22" y1="2" x2="11" y2="13" />
-                                                                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                                                    {composeMediaPreview && (
+                                                                        <div className="compose-media-preview">
+                                                                            {composeMedia?.type?.startsWith('video') ? (
+                                                                                <video src={composeMediaPreview} className="compose-preview-video" />
+                                                                            ) : (
+                                                                                <img src={composeMediaPreview} alt="Preview" />
+                                                                            )}
+                                                                            <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
+                                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                                                                                 </svg>
-                                                                                Paylaş
-                                                                            </>
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="compose-actions">
+                                                                        <div className="compose-tools">
+                                                                            <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()} title="Fotoğraf / GIF">
+                                                                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                                                                    <polyline points="21 15 16 10 5 21" />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <button type="button" className="compose-tool-btn" onClick={() => {
+                                                                                const ta = composeBoxRef.current?.querySelector('.compose-textarea');
+                                                                                if (ta) {
+                                                                                    const start = ta.selectionStart;
+                                                                                    const end = ta.selectionEnd;
+                                                                                    const text = composeText;
+                                                                                    setComposeText(text.substring(0, start) + '😀' + text.substring(end));
+                                                                                } else {
+                                                                                    setComposeText(prev => prev + '😀');
+                                                                                }
+                                                                            }} title="Emoji">
+                                                                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                                                    <circle cx="12" cy="12" r="10" />
+                                                                                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                                                                                    <line x1="9" y1="9" x2="9.01" y2="9" />
+                                                                                    <line x1="15" y1="9" x2="15.01" y2="9" />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <input
+                                                                                ref={composeMediaInputRef}
+                                                                                type="file"
+                                                                                accept="image/*,video/*,.gif"
+                                                                                onChange={handleComposeMediaSelect}
+                                                                                style={{ display: 'none' }}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="compose-right-actions">
+                                                                            <span className="compose-char-count" style={{ opacity: composeText.length > 200 ? 1 : 0 }}>
+                                                                                {composeText.length}/500
+                                                                            </span>
+                                                                            <button
+                                                                                className="compose-submit-btn"
+                                                                                onClick={handleProfilePost}
+                                                                                disabled={composeLoading || (!composeText.trim() && !composeMedia)}
+                                                                            >
+                                                                                {composeLoading ? (
+                                                                                    <div className="compose-spinner-wrapper">
+                                                                                        <div className="compose-spinner" />
+                                                                                        <span className="compose-progress-text">
+                                                                                            {uploadPercentage}%
+                                                                                        </span>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                                                                                            <line x1="22" y1="2" x2="11" y2="13" />
+                                                                                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                                                                        </svg>
+                                                                                        Paylaş
+                                                                                    </>
+                                                                                )}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Posts Feed */}
+                                                {postsLoading ? (
+                                                    <div className="profile-posts-loading">
+                                                        <div className="spinner" />
+                                                    </div>
+                                                ) : postsError === 'not_found' ? (
+                                                    <div className="empty-tab">
+                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                                        </svg>
+                                                        <p>Henüz gönderi yok.</p>
+                                                    </div>
+                                                ) : postsError ? (
+                                                    <div className="empty-tab">
+                                                        Gönderiler yüklenemedi.
+                                                    </div>
+                                                ) : userPosts.length === 0 ? (
+                                                    <div className="empty-tab">
+                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                                        </svg>
+                                                        <p>Henüz gönderi paylaşılmamış.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="profile-posts-feed">
+                                                        {userPosts.map((post, index) => (
+                                                            <Fragment key={post._id}>
+                                                                <article key={post._id} className="profile-post-card">
+                                                                    {/* Portal/Channel Badge */}
+                                                                    {post.portal && (
+                                                                        <div
+                                                                            className="post-portal-badge"
+                                                                            onClick={() => navigate(`/portal/${post.portal._id || post.portal}`)}
+                                                                        >
+                                                                            <div className="badge-portal-avatar">
+                                                                                {post.portal.avatar ? (
+                                                                                    <img src={getImageUrl(post.portal.avatar)} alt="" />
+                                                                                ) : (
+                                                                                    <div className="badge-avatar-placeholder">
+                                                                                        {(post.portal.name || 'P')?.[0]}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            <span className="badge-portal-name">{post.portal.name || 'Portal'}</span>
+                                                                            {post.channel && (
+                                                                                <>
+                                                                                    <svg className="badge-separator" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                        <polyline points="9 18 15 12 9 6" />
+                                                                                    </svg>
+                                                                                    <span className="badge-channel-name">#{post.channel.name || 'kanal'}</span>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                    {!post.portal && (
+                                                                        <div className="post-portal-badge personal-badge">
+                                                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                                                <circle cx="12" cy="7" r="4" />
+                                                                            </svg>
+                                                                            <span className="badge-portal-name">Kişisel Paylaşım</span>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Post Content */}
+                                                                    <div className="profile-post-body">
+                                                                        <div className="profile-post-header">
+                                                                            <Link to={`/profile/${post.author?.username || profileUser?.username || 'deleted'}`} className="post-author-link">
+                                                                                <span className="post-author-name">
+                                                                                    {post.author?.profile?.displayName || post.author?.username || profileUser?.profile?.displayName || profileUser?.username || 'Silinmiş Kullanıcı'}
+                                                                                </span>
+                                                                                <UserBadges user={post.author || profileUser} size={14} />
+                                                                                <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
+                                                                            </Link>
+                                                                            <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
+                                                                            {isOwnProfile && post.portal && (
+                                                                                <button
+                                                                                    className="go-to-post-btn"
+                                                                                    onClick={() => navigate(`/post/${post._id}`)}
+                                                                                    title="Gönderiye Git"
+                                                                                >
+                                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                                                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                                                                    </svg>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {post.content && (
+                                                                            <div className="profile-post-text">
+                                                                                <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                                                    {(() => {
+                                                                                        const firstUrl = extractFirstUrl(post.content);
+                                                                                        if (post.content.length > 280) {
+                                                                                            return (
+                                                                                                <>
+                                                                                                    {linkifyText(post.content.slice(0, 280), firstUrl)}...
+                                                                                                    <Link to={`/post/${post._id}`} className="read-more-link">devamını gör</Link>
+                                                                                                </>
+                                                                                            );
+                                                                                        }
+                                                                                        return linkifyText(post.content, firstUrl);
+                                                                                    })()}
+                                                                                </p>
+                                                                            </div>
                                                                         )}
-                                                                    </button>
+
+                                                                        {/* URL Box View (Link Preview) */}
+                                                                        {(() => {
+                                                                            const firstUrl = extractFirstUrl(post.content);
+                                                                            if (firstUrl) {
+                                                                                return <div style={{ marginTop: '8px' }}><LinkPreview url={firstUrl} postId={post._id} /></div>;
+                                                                            }
+                                                                            return null;
+                                                                        })()}
+
+                                                                        {/* Media */}
+                                                                        {post.media && (
+                                                                            <div className="profile-post-media">
+                                                                                {post.mediaType === 'video' ? (
+                                                                                    <VideoPlayer
+                                                                                        src={getImageUrl(post.media)}
+                                                                                        qualities={post.videoQualities}
+                                                                                        videoUrl={getImageUrl(post.videoUrl)}
+                                                                                        lowVideoUrl={getImageUrl(post.lowVideoUrl)}
+                                                                                        video360={getImageUrl(post.video360)}
+                                                                                        video720={getImageUrl(post.video720)}
+                                                                                        videoOriginal={getImageUrl(post.videoOriginal)}
+                                                                                        className="post-video-player"
+                                                                                    />
+                                                                                ) : post.mediaType === 'youtube' ? (
+                                                                                    <div className="profile-post-youtube">
+                                                                                        <img
+                                                                                            src={`https://img.youtube.com/vi/${(() => {
+                                                                                                const match = post.media.match(/(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*)/);
+                                                                                                return match ? match[1] : '';
+                                                                                            })()}/hqdefault.jpg`}
+                                                                                            alt="YouTube"
+                                                                                            loading="lazy"
+                                                                                        />
+                                                                                        <div className="youtube-play-overlay">
+                                                                                            <svg viewBox="0 0 68 48" width="48" height="34">
+                                                                                                <path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="red" />
+                                                                                                <path d="M45 24L27 14v20" fill="white" />
+                                                                                            </svg>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <img
+                                                                                        src={getImageUrl(post.media)}
+                                                                                        alt="Post media"
+                                                                                        loading="lazy"
+                                                                                        decoding="async"
+                                                                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                                                                    />
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Post Stats */}
+                                                                        <div className="profile-post-stats">
+                                                                            {post.likeCount > 0 && (
+                                                                                <span className="stat-item">
+                                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="none">
+                                                                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                                                                    </svg>
+                                                                                    {post.likeCount}
+                                                                                </span>
+                                                                            )}
+                                                                            {post.commentCount > 0 && (
+                                                                                <span className="stat-item">
+                                                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                                                                    </svg>
+                                                                                    {post.commentCount}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </article>
+                                                                {index < userPosts.length - 1 && <div className="post-separator" />}
+                                                            </Fragment>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'memberships' && (
+                                            <div className="tab-content fade-in">
+                                                <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
+                                                {profileUser.portalsHidden ? (
+                                                    <div className="locked-portals">
+                                                        <svg
+                                                            width="40"
+                                                            height="40"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="1.5"
+                                                            style={{ marginBottom: '12px', opacity: 0.5 }}
+                                                        >
+                                                            <rect
+                                                                x="3"
+                                                                y="11"
+                                                                width="18"
+                                                                height="11"
+                                                                rx="2"
+                                                                ry="2"
+                                                            ></rect>
+                                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                        </svg>
+                                                        <p>Bu kullanıcının üyelikleri gizli.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="portals-grid">
+                                                        {profileUser.portals?.length > 0 ? (
+                                                            profileUser.portals.map((p) => (
+                                                                <div
+                                                                    key={p._id}
+                                                                    className="portal-item-card"
+                                                                    onClick={() =>
+                                                                        navigate(`/portal/${p._id}`)
+                                                                    }
+                                                                >
+                                                                    <div className="p-avatar">
+                                                                        {p.avatar ? (
+                                                                            <img
+                                                                                src={getImageUrl(p.avatar)}
+                                                                                alt=""
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-avatar-placeholder">
+                                                                                {p.name?.[0]}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="p-name">
+                                                                        {p.name}
+                                                                        <Badge type={p.isVerified ? 'verified' : p.badges?.[0]} size={14} />
+                                                                    </span>
                                                                 </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="empty-tab">
+                                                                Henüz bir portala üye olunmamış.
                                                             </div>
-                                                        </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'friends' && (
+                                            <div className="tab-content fade-in">
+                                                <h4 className="section-header">
+                                                    {isOwnProfile ? 'ARKADAŞLAR' : 'ORTAK ARKADAŞLAR'}
+                                                </h4>
+                                                <div className="friends-grid">
+                                                    {(isOwnProfile
+                                                        ? profileUser.friends   // mutual follows only
+                                                        : profileUser.mutualFriends
+                                                    )?.length > 0 ? (
+                                                        (isOwnProfile
+                                                            ? profileUser.friends
+                                                            : profileUser.mutualFriends
+                                                        ).map((friend) => (
+                                                            <div
+                                                                key={friend._id}
+                                                                className="friend-item-card"
+                                                                onClick={() =>
+                                                                    navigate(`/profile/${friend.username}`)
+                                                                }
+                                                            >
+                                                                <img
+                                                                    src={getImageUrl(
+                                                                        friend.profile?.avatar
+                                                                    )}
+                                                                    alt=""
+                                                                />
+                                                                <span className="f-name">
+                                                                    {friend.username}
+                                                                </span>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="empty-tab">
+                                                            Henüz ekli arkadaş yok.
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Posts Feed */}
-                                        {postsLoading ? (
-                                            <div className="profile-posts-loading">
-                                                <div className="spinner" />
-                                            </div>
-                                        ) : postsError === 'not_found' ? (
-                                            <div className="empty-tab">
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
-                                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                                </svg>
-                                                <p>Henüz gönderi yok.</p>
-                                            </div>
-                                        ) : postsError ? (
-                                            <div className="empty-tab">
-                                                Gönderiler yüklenemedi.
-                                            </div>
-                                        ) : userPosts.length === 0 ? (
-                                            <div className="empty-tab">
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
-                                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                                </svg>
-                                                <p>Henüz gönderi paylaşılmamış.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="profile-posts-feed">
-                                                {userPosts.map((post, index) => (
-                                                    <Fragment key={post._id}>
-                                                    <article key={post._id} className="profile-post-card">
-                                                        {/* Portal/Channel Badge */}
-                                                        {post.portal && (
-                                                            <div
-                                                                className="post-portal-badge"
-                                                                onClick={() => navigate(`/portal/${post.portal._id || post.portal}`)}
-                                                            >
-                                                                <div className="badge-portal-avatar">
-                                                                    {post.portal.avatar ? (
-                                                                        <img src={getImageUrl(post.portal.avatar)} alt="" />
-                                                                    ) : (
-                                                                        <div className="badge-avatar-placeholder">
-                                                                            {(post.portal.name || 'P')?.[0]}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <span className="badge-portal-name">{post.portal.name || 'Portal'}</span>
-                                                                {post.channel && (
-                                                                    <>
-                                                                        <svg className="badge-separator" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                            <polyline points="9 18 15 12 9 6" />
-                                                                        </svg>
-                                                                        <span className="badge-channel-name">#{post.channel.name || 'kanal'}</span>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        {!post.portal && (
-                                                            <div className="post-portal-badge personal-badge">
-                                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                                                    <circle cx="12" cy="7" r="4" />
-                                                                </svg>
-                                                                <span className="badge-portal-name">Kişisel Paylaşım</span>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Post Content */}
-                                                        <div className="profile-post-body">
-                                                            <div className="profile-post-header">
-                                                                <Link to={`/profile/${post.author?.username || profileUser?.username || 'deleted'}`} className="post-author-link">
-                                                                    <span className="post-author-name">
-                                                                        {post.author?.profile?.displayName || post.author?.username || profileUser?.profile?.displayName || profileUser?.username || 'Silinmiş Kullanıcı'}
-                                                                    </span>
-                                                                    <UserBadges user={post.author || profileUser} size={14} />
-                                                                    <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
-                                                                </Link>
-                                                                <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
-                                                                {isOwnProfile && post.portal && (
-                                                                    <button
-                                                                        className="go-to-post-btn"
-                                                                        onClick={() => navigate(`/post/${post._id}`)}
-                                                                        title="Gönderiye Git"
-                                                                    >
-                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                                                            <polyline points="15 3 21 3 21 9"></polyline>
-                                                                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                                                                        </svg>
-                                                                    </button>
-                                                                )}
-                                                            </div>
-
-                                                            {post.content && (
-                                                                <div className="profile-post-text">
-                                                                    <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                                        {(() => {
-                                                                            const firstUrl = extractFirstUrl(post.content);
-                                                                            if (post.content.length > 280) {
-                                                                                return (
-                                                                                    <>
-                                                                                        {linkifyText(post.content.slice(0, 280), firstUrl)}...
-                                                                                        <Link to={`/post/${post._id}`} className="read-more-link">devamını gör</Link>
-                                                                                    </>
-                                                                                );
-                                                                            }
-                                                                            return linkifyText(post.content, firstUrl);
-                                                                        })()}
-                                                                    </p>
-                                                                </div>
-                                                            )}
-
-                                                            {/* URL Box View (Link Preview) */}
-                                                            {(() => {
-                                                                const firstUrl = extractFirstUrl(post.content);
-                                                                if (firstUrl) {
-                                                                    return <div style={{ marginTop: '8px' }}><LinkPreview url={firstUrl} postId={post._id} /></div>;
-                                                                }
-                                                                return null;
-                                                            })()}
-
-                                                            {/* Media */}
-                                                            {post.media && (
-                                                                <div className="profile-post-media">
-                                                                    {post.mediaType === 'video' ? (
-                                                                         <VideoPlayer 
-                                                                            src={getImageUrl(post.media)} 
-                                                                            qualities={post.videoQualities} 
-                                                                            videoUrl={getImageUrl(post.videoUrl)} 
-                                                                            lowVideoUrl={getImageUrl(post.lowVideoUrl)} 
-                                                                            video360={getImageUrl(post.video360)}
-                                                                            video720={getImageUrl(post.video720)}
-                                                                            videoOriginal={getImageUrl(post.videoOriginal)}
-                                                                            className="post-video-player" 
-                                                                        />
-                                                                    ) : post.mediaType === 'youtube' ? (
-                                                                        <div className="profile-post-youtube">
+                                        {activeTab === 'wishlist' && (
+                                            <div className="tab-content fade-in wishlist-split-view">
+                                                <div className="wishlist-column">
+                                                    <h4 className="section-header">
+                                                        PORTAL İSTEKLERİ (ONAY BEKLEYEN)
+                                                    </h4>
+                                                    <div className="portals-grid compact-grid">
+                                                        {currentUser?.outgoingPortalRequests?.length > 0 ? (
+                                                            currentUser.outgoingPortalRequests.map((p) => (
+                                                                <div
+                                                                    key={p._id}
+                                                                    className="portal-item-card pending compact"
+                                                                >
+                                                                    <div className="p-avatar small">
+                                                                        {p.avatar ? (
                                                                             <img
-                                                                                src={`https://img.youtube.com/vi/${(() => {
-                                                                                    const match = post.media.match(/(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*)/);
-                                                                                    return match ? match[1] : '';
-                                                                                })()}/hqdefault.jpg`}
-                                                                                alt="YouTube"
-                                                                                loading="lazy"
+                                                                                src={getImageUrl(p.avatar)}
+                                                                                alt=""
                                                                             />
-                                                                            <div className="youtube-play-overlay">
-                                                                                <svg viewBox="0 0 68 48" width="48" height="34">
-                                                                                    <path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="red" />
-                                                                                    <path d="M45 24L27 14v20" fill="white" />
-                                                                                </svg>
+                                                                        ) : (
+                                                                            <div className="p-avatar-placeholder">
+                                                                                {p.name?.[0]}
                                                                             </div>
-                                                                        </div>
-                                                                    ) : (
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="p-name">{p.name}</span>
+                                                                    <div
+                                                                        className="p-status-dot"
+                                                                        title="Beklemede"
+                                                                    ></div>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="empty-tab">
+                                                                Bekleyen portal isteği yok.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="wishlist-column">
+                                                    <h4 className="section-header">
+                                                        TANIŞMA İSTEKLERİ (GÖNDERİLEN)
+                                                    </h4>
+                                                    <div className="friends-grid compact-grid">
+                                                        {currentUser?.outgoingUserRequests?.length > 0 ? (
+                                                            currentUser.outgoingUserRequests.map((u) => (
+                                                                <div
+                                                                    key={u._id}
+                                                                    className="friend-item-card pending compact"
+                                                                >
+                                                                    <img
+                                                                        src={getImageUrl(u.profile?.avatar)}
+                                                                        alt=""
+                                                                    />
+                                                                    <span className="f-name">
+                                                                        {u.username}
+                                                                    </span>
+                                                                    <div
+                                                                        className="f-status-dot"
+                                                                        title="İstek Gönderildi"
+                                                                    ></div>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="empty-tab">
+                                                                Bekleyen arkadaş isteği yok.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'mutual_portals' && (
+                                            <div className="tab-content fade-in">
+                                                <h4 className="section-header">ORTAK SUNUCULAR</h4>
+                                                <div className="portals-grid">
+                                                    {profileUser.mutualPortals?.length > 0 ? (
+                                                        profileUser.mutualPortals.map((p) => (
+                                                            <div
+                                                                key={p._id}
+                                                                className="portal-item-card"
+                                                                onClick={() => navigate(`/portal/${p._id}`)}
+                                                            >
+                                                                <div className="p-avatar">
+                                                                    {p.avatar ? (
                                                                         <img
-                                                                            src={getImageUrl(post.media)}
-                                                                            alt="Post media"
-                                                                            loading="lazy"
-                                                                            decoding="async"
-                                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                                            src={getImageUrl(p.avatar)}
+                                                                            alt=""
                                                                         />
+                                                                    ) : (
+                                                                        <div className="p-avatar-placeholder">
+                                                                            {p.name?.[0]}
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                            )}
-
-                                                            {/* Post Stats */}
-                                                            <div className="profile-post-stats">
-                                                                {post.likeCount > 0 && (
-                                                                    <span className="stat-item">
-                                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="none">
-                                                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                                                                        </svg>
-                                                                        {post.likeCount}
-                                                                    </span>
-                                                                )}
-                                                                {post.commentCount > 0 && (
-                                                                    <span className="stat-item">
-                                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                                                                        </svg>
-                                                                        {post.commentCount}
-                                                                    </span>
-                                                                )}
+                                                                <span className="p-name">{p.name}</span>
                                                             </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="empty-tab">
+                                                            Ortak sunucu bulunamadı.
                                                         </div>
-                                                    </article>
-                                                        {index < userPosts.length - 1 && <div className="post-separator" />}
-                                                    </Fragment>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {activeTab === 'memberships' && (
-                                    <div className="tab-content fade-in">
-                                        <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
-                                        {profileUser.portalsHidden ? (
-                                            <div className="locked-portals">
-                                                <svg
-                                                    width="40"
-                                                    height="40"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.5"
-                                                    style={{ marginBottom: '12px', opacity: 0.5 }}
-                                                >
-                                                    <rect
-                                                        x="3"
-                                                        y="11"
-                                                        width="18"
-                                                        height="11"
-                                                        rx="2"
-                                                        ry="2"
-                                                    ></rect>
-                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                                </svg>
-                                                <p>Bu kullanıcının üyelikleri gizli.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="portals-grid">
-                                                {profileUser.portals?.length > 0 ? (
-                                                    profileUser.portals.map((p) => (
-                                                        <div
-                                                            key={p._id}
-                                                            className="portal-item-card"
-                                                            onClick={() =>
-                                                                navigate(`/portal/${p._id}`)
-                                                            }
-                                                        >
-                                                            <div className="p-avatar">
-                                                                {p.avatar ? (
-                                                                    <img
-                                                                        src={getImageUrl(p.avatar)}
-                                                                        alt=""
-                                                                    />
-                                                                ) : (
-                                                                    <div className="p-avatar-placeholder">
-                                                                        {p.name?.[0]}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <span className="p-name">
-                                                                {p.name}
-                                                                <Badge type={p.isVerified ? 'verified' : p.badges?.[0]} size={14} />
-                                                            </span>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="empty-tab">
-                                                        Henüz bir portala üye olunmamış.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {activeTab === 'friends' && (
-                                    <div className="tab-content fade-in">
-                                        <h4 className="section-header">
-                                            {isOwnProfile ? 'ARKADAŞLAR' : 'ORTAK ARKADAŞLAR'}
-                                        </h4>
-                                        <div className="friends-grid">
-                                            {(isOwnProfile
-                                                ? profileUser.friends   // mutual follows only
-                                                : profileUser.mutualFriends
-                                            )?.length > 0 ? (
-                                                (isOwnProfile
-                                                    ? profileUser.friends
-                                                    : profileUser.mutualFriends
-                                                ).map((friend) => (
-                                                    <div
-                                                        key={friend._id}
-                                                        className="friend-item-card"
-                                                        onClick={() =>
-                                                            navigate(`/profile/${friend.username}`)
-                                                        }
-                                                    >
-                                                        <img
-                                                            src={getImageUrl(
-                                                                friend.profile?.avatar
-                                                            )}
-                                                            alt=""
-                                                        />
-                                                        <span className="f-name">
-                                                            {friend.username}
-                                                        </span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="empty-tab">
-                                                    Henüz ekli arkadaş yok.
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'wishlist' && (
-                                    <div className="tab-content fade-in wishlist-split-view">
-                                        <div className="wishlist-column">
-                                            <h4 className="section-header">
-                                                PORTAL İSTEKLERİ (ONAY BEKLEYEN)
-                                            </h4>
-                                            <div className="portals-grid compact-grid">
-                                                {currentUser?.outgoingPortalRequests?.length > 0 ? (
-                                                    currentUser.outgoingPortalRequests.map((p) => (
-                                                        <div
-                                                            key={p._id}
-                                                            className="portal-item-card pending compact"
-                                                        >
-                                                            <div className="p-avatar small">
-                                                                {p.avatar ? (
-                                                                    <img
-                                                                        src={getImageUrl(p.avatar)}
-                                                                        alt=""
-                                                                    />
-                                                                ) : (
-                                                                    <div className="p-avatar-placeholder">
-                                                                        {p.name?.[0]}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <span className="p-name">{p.name}</span>
-                                                            <div
-                                                                className="p-status-dot"
-                                                                title="Beklemede"
-                                                            ></div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="empty-tab">
-                                                        Bekleyen portal isteği yok.
-                                                    </div>
-                                                )}
                                             </div>
-                                        </div>
+                                        )}
 
-                                        <div className="wishlist-column">
-                                            <h4 className="section-header">
-                                                TANIŞMA İSTEKLERİ (GÖNDERİLEN)
-                                            </h4>
-                                            <div className="friends-grid compact-grid">
-                                                {currentUser?.outgoingUserRequests?.length > 0 ? (
-                                                    currentUser.outgoingUserRequests.map((u) => (
-                                                        <div
-                                                            key={u._id}
-                                                            className="friend-item-card pending compact"
-                                                        >
-                                                            <img
-                                                                src={getImageUrl(u.profile?.avatar)}
-                                                                alt=""
-                                                            />
-                                                            <span className="f-name">
-                                                                {u.username}
-                                                            </span>
-                                                            <div
-                                                                className="f-status-dot"
-                                                                title="İstek Gönderildi"
-                                                            ></div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="empty-tab">
-                                                        Bekleyen arkadaş isteği yok.
+                                        {activeTab === 'saved' && (
+                                            <div className="tab-content fade-in">
+                                                <h4 className="section-header">KAYDEDİLEN GÖNDERİLER</h4>
+                                                {savedLoading ? (
+                                                    <div className="profile-posts-loading">
+                                                        <div className="spinner" />
                                                     </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'mutual_portals' && (
-                                    <div className="tab-content fade-in">
-                                        <h4 className="section-header">ORTAK SUNUCULAR</h4>
-                                        <div className="portals-grid">
-                                            {profileUser.mutualPortals?.length > 0 ? (
-                                                profileUser.mutualPortals.map((p) => (
-                                                    <div
-                                                        key={p._id}
-                                                        className="portal-item-card"
-                                                        onClick={() => navigate(`/portal/${p._id}`)}
-                                                    >
-                                                        <div className="p-avatar">
-                                                            {p.avatar ? (
-                                                                <img
-                                                                    src={getImageUrl(p.avatar)}
-                                                                    alt=""
+                                                ) : savedPosts.length === 0 ? (
+                                                    <div className="empty-tab">
+                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                                        </svg>
+                                                        <p>Henüz bir gönderi kaydetmedin.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="profile-posts-feed">
+                                                        {savedPosts.map((post, index) => (
+                                                            <Fragment key={post._id}>
+                                                                <PostCard
+                                                                    key={post._id}
+                                                                    post={post}
+                                                                    onUnsave={() => handleUnsave(post._id)}
                                                                 />
-                                                            ) : (
-                                                                <div className="p-avatar-placeholder">
-                                                                    {p.name?.[0]}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <span className="p-name">{p.name}</span>
+                                                                {index < savedPosts.length - 1 && <div className="post-separator" />}
+                                                            </Fragment>
+                                                        ))}
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <div className="empty-tab">
-                                                    Ortak sunucu bulunamadı.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'saved' && (
-                                    <div className="tab-content fade-in">
-                                        <h4 className="section-header">KAYDEDİLEN GÖNDERİLER</h4>
-                                        {savedLoading ? (
-                                            <div className="profile-posts-loading">
-                                                <div className="spinner" />
-                                            </div>
-                                        ) : savedPosts.length === 0 ? (
-                                            <div className="empty-tab">
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
-                                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                                                </svg>
-                                                <p>Henüz bir gönderi kaydetmedin.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="profile-posts-feed">
-                                                {savedPosts.map((post, index) => (
-                                                    <Fragment key={post._id}>
-                                                    <PostCard 
-                                                        key={post._id} 
-                                                        post={post} 
-                                                        onUnsave={() => handleUnsave(post._id)}
-                                                    />
-                                                        {index < savedPosts.length - 1 && <div className="post-separator" />}
-                                                    </Fragment>
-                                                ))}
+                                                )}
                                             </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        </>
-                        )}
+                                </>
+                            )}
                         </section>
                     </div>
 

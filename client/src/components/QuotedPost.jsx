@@ -50,7 +50,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
         if (e.target.closest('.quoted-portal-tag')) return;
         if (e.target.closest('.native-controls-ui')) return;
         if (e.target.closest('.native-mute-toggle')) return;
-        
+
         e.stopPropagation();
         if (quotedPost._id) {
             navigate(`/post/${quotedPost._id}`);
@@ -61,9 +61,9 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
     const isPopulated = quotedPost.author && typeof quotedPost.author === 'object';
     const author = isPopulated ? quotedPost.author : {
         username: 'Kullanıcı',
-        profile: { 
-            displayName: typeof quotedPost === 'string' ? 'Yükleniyor...' : (quotedPost.author ? 'Görüntülenemiyor' : 'Yükleniyor...'), 
-            avatar: null 
+        profile: {
+            displayName: typeof quotedPost === 'string' ? 'Yükleniyor...' : (quotedPost.author ? 'Görüntülenemiyor' : 'Yükleniyor...'),
+            avatar: null
         }
     };
 
@@ -72,10 +72,10 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
             <div className="quoted-post-header">
                 <div className="quoted-header-left">
                     {author.profile?.avatar ? (
-                        <UserAvatar 
-                            src={author.profile.lowResAvatar || author.profile.avatar} 
-                            alt={author.username} 
-                            className="quoted-author-avatar" 
+                        <UserAvatar
+                            src={author.profile.lowResAvatar || author.profile.avatar}
+                            alt={author.username}
+                            className="quoted-author-avatar"
                             size={20}
                             sizeType="thumbnail"
                         />
@@ -92,16 +92,16 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                 </div>
 
                 {quotedPost.portal && (
-                    <Link 
-                        to={`/portal/${quotedPost.portal._id}`} 
+                    <Link
+                        to={`/portal/${quotedPost.portal._id}`}
                         className="quoted-portal-tag"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {quotedPost.portal.avatar && (
-                            <img 
-                                src={getImageUrl(quotedPost.portal.lowResAvatar || quotedPost.portal.avatar, 'thumbnail')} 
-                                alt="" 
-                                className="quoted-portal-icon" 
+                            <img
+                                src={getImageUrl(quotedPost.portal.lowResAvatar || quotedPost.portal.avatar, 'thumbnail')}
+                                alt=""
+                                className="quoted-portal-icon"
                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
                                 onError={(e) => {
                                     const originalUrl = getImageUrl(quotedPost.portal.avatar, 'original');
@@ -124,8 +124,8 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                     <div className="quoted-media-preview">
                         {quotedPost.mediaType === 'video' ? (
                             <div className="quoted-video-wrapper">
-                                <VideoPlayer 
-                                    src={getImageUrl(quotedPost.media)} 
+                                <VideoPlayer
+                                    src={getImageUrl(quotedPost.media)}
                                     qualities={quotedPost.videoQualities}
                                     videoUrl={getImageUrl(quotedPost.videoUrl)}
                                     lowVideoUrl={getImageUrl(quotedPost.lowVideoUrl)}
@@ -159,10 +159,10 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                         cursor: 'pointer'
                     }}>
                         {quotedPost.pdfThumbnailUrl ? (
-                            <img 
-                                src={getImageUrl(quotedPost.pdfThumbnailUrl)} 
-                                alt="" 
-                                style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} 
+                            <img
+                                src={getImageUrl(quotedPost.pdfThumbnailUrl)}
+                                alt=""
+                                style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
                             />
                         ) : (
                             <div style={{

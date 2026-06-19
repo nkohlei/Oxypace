@@ -78,9 +78,14 @@ const postSchema = new mongoose.Schema(
         videoQualities: {
             high: { type: String, default: '' },
             low: { type: String, default: '' },
+            p144: { type: String, default: '' },
             p360: { type: String, default: '' },
             p720: { type: String, default: '' },
             p1080: { type: String, default: '' }
+        },
+        video144: {
+            type: String,
+            default: '',
         },
         video360: {
             type: String,

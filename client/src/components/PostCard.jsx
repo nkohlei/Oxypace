@@ -710,6 +710,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 qualities={post.videoQualities}
                                 videoUrl={getImageUrl(post.videoUrl)}
                                 lowVideoUrl={getImageUrl(post.lowVideoUrl)}
+                                video144={getImageUrl(post.video144)}
                                 video360={getImageUrl(post.video360)}
                                 video720={getImageUrl(post.video720)}
                                 videoOriginal={getImageUrl(post.videoOriginal)}

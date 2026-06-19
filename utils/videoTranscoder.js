@@ -31,6 +31,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         }
         
         const folder = post.portal ? `posts/${post.portal}` : 'posts/general';
+        const key144p = `${folder}/video_144p_${postId}.mp4`;
         const key360p = `${folder}/video_360p_${postId}.mp4`;
         const key720p = `${folder}/video_720p_${postId}.mp4`;
         const keyOriginal = `${folder}/video_original_${postId}.mp4`;
@@ -61,12 +62,52 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         if (!fs.existsSync(localInputPath)) {
             throw new Error(`Local input file does not exist: ${localInputPath}`);
         }
+
+        // --- Step 2: Analyze dimensions with ffprobe ---
+        const metadata = await new Promise((resolve, reject) => {
+            ffmpeg.ffprobe(localInputPath, (err, data) => {
+                if (err) reject(err);
+                else resolve(data);
+            });
+        });
+
+        const videoStream = metadata.streams.find(s => s.codec_type === 'video');
+        const height = videoStream ? parseInt(videoStream.height, 10) : 0;
+        const width = videoStream ? parseInt(videoStream.width, 10) : 0;
+        console.log(`[VideoTranscoder] Video dimensions detected: ${width}x${height}`);
+
+        const has720p = height >= 720 || width >= 1280;
+        const has1080p = height >= 1080 || width >= 1920;
         
         // Temp output paths
+        const temp144pPath = path.join(process.cwd(), 'temp_media', `144p-${postId}.mp4`);
         const temp360pPath = path.join(process.cwd(), 'temp_media', `360p-${postId}.mp4`);
         const temp720pPath = path.join(process.cwd(), 'temp_media', `720p-${postId}.mp4`);
         
-        // --- Step 2: Run transcoding sequentially ---
+        // --- Step 3: Run transcoding sequentially ---
+        console.log(`[VideoTranscoder] Transcoding 144p ultra low resolution (video_144p_${postId}.mp4)...`);
+        await new Promise((resolve, reject) => {
+            ffmpeg(localInputPath)
+                .videoCodec('libx264')
+                .outputOptions([
+                    '-vf scale=256:144',
+                    '-b:v 150k',
+                    '-maxrate 180k',
+                    '-bufsize 300k',
+                    '-preset fast',
+                    '-crf 30'
+                ])
+                .audioCodec('aac')
+                .audioBitrate('64k')
+                .output(temp144pPath)
+                .on('end', resolve)
+                .on('error', (err) => {
+                    console.error('[VideoTranscoder] 144p transcode failed:', err);
+                    reject(err);
+                })
+                .run();
+        });
+
         console.log(`[VideoTranscoder] Transcoding 360p low resolution (video_360p_${postId}.mp4)...`);
         await new Promise((resolve, reject) => {
             ffmpeg(localInputPath)
@@ -90,32 +131,42 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 .run();
         });
 
-        console.log(`[VideoTranscoder] Transcoding 720p standard quality (video_720p_${postId}.mp4)...`);
-        await new Promise((resolve, reject) => {
-            ffmpeg(localInputPath)
-                .videoCodec('libx264')
-                .outputOptions([
-                    '-vf scale=1280:720',
-                    '-b:v 1200k',
-                    '-maxrate 1500k',
-                    '-bufsize 2500k',
-                    '-crf 24',
-                    '-preset fast'
-                ])
-                .audioCodec('aac')
-                .audioBitrate('128k')
-                .output(temp720pPath)
-                .on('end', resolve)
-                .on('error', (err) => {
-                    console.error('[VideoTranscoder] 720p transcode failed:', err);
-                    reject(err);
-                })
-                .run();
-        });
+        if (has720p) {
+            console.log(`[VideoTranscoder] Transcoding 720p standard quality (video_720p_${postId}.mp4)...`);
+            await new Promise((resolve, reject) => {
+                ffmpeg(localInputPath)
+                    .videoCodec('libx264')
+                    .outputOptions([
+                        '-vf scale=1280:720',
+                        '-b:v 1200k',
+                        '-maxrate 1500k',
+                        '-bufsize 2500k',
+                        '-crf 24',
+                        '-preset fast'
+                    ])
+                    .audioCodec('aac')
+                    .audioBitrate('128k')
+                    .output(temp720pPath)
+                    .on('end', resolve)
+                    .on('error', (err) => {
+                        console.error('[VideoTranscoder] 720p transcode failed:', err);
+                        reject(err);
+                    })
+                    .run();
+            });
+        }
         
-        // --- Step 3: Upload all 3 outputs to R2 ---
+        // --- Step 4: Upload all outputs to R2 ---
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
         
+        console.log(`[VideoTranscoder] Uploading video_144p version to R2: ${key144p}`);
+        await r2.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key144p,
+            ContentType: 'video/mp4',
+            Body: fs.readFileSync(temp144pPath)
+        }));
+
         console.log(`[VideoTranscoder] Uploading video_360p version to R2: ${key360p}`);
         await r2.send(new PutObjectCommand({
             Bucket: bucketName,
@@ -124,13 +175,15 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             Body: fs.readFileSync(temp360pPath)
         }));
 
-        console.log(`[VideoTranscoder] Uploading video_720p version to R2: ${key720p}`);
-        await r2.send(new PutObjectCommand({
-            Bucket: bucketName,
-            Key: key720p,
-            ContentType: 'video/mp4',
-            Body: fs.readFileSync(temp720pPath)
-        }));
+        if (has720p) {
+            console.log(`[VideoTranscoder] Uploading video_720p version to R2: ${key720p}`);
+            await r2.send(new PutObjectCommand({
+                Bucket: bucketName,
+                Key: key720p,
+                ContentType: 'video/mp4',
+                Body: fs.readFileSync(temp720pPath)
+            }));
+        }
 
         console.log(`[VideoTranscoder] Uploading video_original version to R2: ${keyOriginal}`);
         await r2.send(new PutObjectCommand({
@@ -140,32 +193,40 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             Body: fs.readFileSync(localInputPath)
         }));
         
+        const url144p = constructProxiedUrl(key144p);
         const url360p = constructProxiedUrl(key360p);
-        const url720p = constructProxiedUrl(key720p);
+        const url720p = has720p ? constructProxiedUrl(key720p) : '';
         const urlOriginal = constructProxiedUrl(keyOriginal);
         
-        // --- Step 4: Update Post in Database ---
-        await Post.findByIdAndUpdate(postId, {
+        // --- Step 5: Update Post in Database ---
+        const updateFields = {
+            video144: url144p,
             video360: url360p,
             video720: url720p,
             videoOriginal: urlOriginal,
             videoUrl: urlOriginal,
-            lowVideoUrl: url360p,
+            lowVideoUrl: url144p,
             media: urlOriginal,
             videoQualities: {
                 high: urlOriginal,
-                low: url360p,
+                low: url144p,
+                p144: url144p,
                 p360: url360p,
                 p720: url720p,
-                p1080: urlOriginal
+                p1080: has1080p ? urlOriginal : ''
             }
-        });
+        };
+
+        await Post.findByIdAndUpdate(postId, updateFields);
         
         console.log(`[VideoTranscoder] ✅ True pixel-drop transcoding pipeline succeeded for post ${postId}`);
         
         // Clean up temp files
+        try { fs.unlinkSync(temp144pPath); } catch(e) {}
         try { fs.unlinkSync(temp360pPath); } catch(e) {}
-        try { fs.unlinkSync(temp720pPath); } catch(e) {}
+        if (has720p) {
+            try { fs.unlinkSync(temp720pPath); } catch(e) {}
+        }
         try { fs.unlinkSync(localInputPath); } catch(e) {}
         
     } catch (err) {

@@ -91,7 +91,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720, videoOriginal, poster, className }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, videoOriginal, poster, className }) => {
   const videoRef = useRef(null);
   const isMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -100,12 +100,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   
-  // Resolve source options for 360p, 720p, 1080p
-  const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || qualities?.low || lowVideoUrl || src);
-  const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || qualities?.medium || src360);
+  // Resolve source options for 144p, 360p, 720p, 1080p
+  const src144 = getImageUrl(video144 || qualities?.video144 || qualities?.p144 || qualities?.low || lowVideoUrl || src);
+  const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || src144);
+  const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || src360);
   const src1080 = getImageUrl(videoOriginal || qualities?.videoOriginal || qualities?.p1080 || qualities?.high || videoUrl || src);
 
-  // Quality selection mode: 'auto' | '360' | '720' | '1080'
+  // Quality selection mode: 'auto' | '144' | '360' | '720' | '1080'
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
 
@@ -123,13 +124,31 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   };
 
   const determineAutoSrc = () => {
-    return isSlowConnection() ? src360 : src1080;
+    if (isSlowConnection()) return src144;
+    if (videoOriginal || qualities?.videoOriginal || qualities?.p1080) return src1080;
+    if (video720 || qualities?.video720 || qualities?.p720) return src720;
+    return src360;
   };
 
   // Quality stream selection
   const [videoSrc, setVideoSrc] = useState(() => {
     return determineAutoSrc();
   });
+
+  const availableQualities = [
+    { value: 'auto', label: 'Oto' },
+    { value: '144', label: '144p' }
+  ];
+
+  if (video360 || qualities?.video360 || qualities?.p360) {
+    availableQualities.push({ value: '360', label: '360p' });
+  }
+  if (video720 || qualities?.video720 || qualities?.p720) {
+    availableQualities.push({ value: '720', label: '720p' });
+  }
+  if (videoOriginal || qualities?.videoOriginal || qualities?.p1080) {
+    availableQualities.push({ value: '1080', label: '1080p' });
+  }
   
   // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(false);
@@ -156,14 +175,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   const handleWaiting = () => {
     setIsLoading(false); // Force hide loading spinner
     
-    // If connection stalls and we are in auto mode, immediately swap to 360p
-    if (qualityMode === 'auto' && src360 && videoSrc !== src360) {
-      console.log('[VideoPlayer] Auto Mode stall detected: Switching source to low 360p video:', src360);
+    // If connection stalls and we are in auto mode, immediately swap to 144p
+    if (qualityMode === 'auto' && src144 && videoSrc !== src144) {
+      console.log('[VideoPlayer] Auto Mode stall detected: Switching source to low 144p video:', src144);
       if (videoRef.current) {
         restoreTimeRef.current = videoRef.current.currentTime;
         shouldPlayRef.current = !videoRef.current.paused;
       }
-      setVideoSrc(src360);
+      setVideoSrc(src144);
       return;
     }
 
@@ -188,7 +207,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
     setIsQualityMenuOpen(false);
     
     let targetSrc = videoSrc;
-    if (mode === '360') targetSrc = src360;
+    if (mode === '144') targetSrc = src144;
+    else if (mode === '360') targetSrc = src360;
     else if (mode === '720') targetSrc = src720;
     else if (mode === '1080') targetSrc = src1080;
     else if (mode === 'auto') targetSrc = determineAutoSrc();
@@ -564,12 +584,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
 
             {isQualityMenuOpen && (
               <div className="native-quality-menu" onClick={(e) => e.stopPropagation()}>
-                {[
-                  { value: 'auto', label: 'Oto' },
-                  { value: '360', label: '360p' },
-                  { value: '720', label: '720p' },
-                  { value: '1080', label: '1080p' }
-                ].map(item => (
+                {availableQualities.map(item => (
                   <div 
                     key={item.value} 
                     className={`quality-item ${qualityMode === item.value ? 'active' : ''}`}
