@@ -531,9 +531,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         ref={videoRef}
         src={videoSrc}
         poster={poster}
-        width={naturalDimensions?.width}
-        height={naturalDimensions?.height}
         className={`native-video-element ${isLowQuality ? 'native-video-360p-simulation' : ''}`}
+        style={naturalDimensions ? {
+          width: naturalDimensions.width,
+          height: 'auto',
+          aspectRatio: `${naturalDimensions.width} / ${naturalDimensions.height}`
+        } : undefined}
         playsInline
         loop
         preload="metadata"
