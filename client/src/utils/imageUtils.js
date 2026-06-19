@@ -78,7 +78,13 @@ export const getImageUrl = (path, sizeType = 'original') => {
                 const lastDotIdx = pathPart.lastIndexOf('.');
                 if (lastDotIdx !== -1) {
                     const pathWithoutExt = pathPart.substring(0, lastDotIdx);
-                    absoluteUrl = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
+                    // ✅ Only apply suffix to NEW-format uploads (fieldname-TIMESTAMP-RANDOM.ext)
+                    // Old-format avatars (e.g. av.47.webp) do NOT have a -thumbnail.webp in R2
+                    const hasNewFormat = /-\d{10,}-\d+$/.test(pathWithoutExt);
+                    if (hasNewFormat) {
+                        absoluteUrl = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
+                    }
+                    // else: use absoluteUrl as-is (original quality for legacy files)
                 }
             }
         }
