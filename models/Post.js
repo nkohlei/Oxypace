@@ -82,6 +82,18 @@ const postSchema = new mongoose.Schema(
             p720: { type: String, default: '' },
             p1080: { type: String, default: '' }
         },
+        video360: {
+            type: String,
+            default: '',
+        },
+        video720: {
+            type: String,
+            default: '',
+        },
+        videoOriginal: {
+            type: String,
+            default: '',
+        },
         videoUrl: {
             type: String,
             default: '',

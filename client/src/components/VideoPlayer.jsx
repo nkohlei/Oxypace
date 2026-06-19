@@ -91,7 +91,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720, videoOriginal, poster, className }) => {
   const videoRef = useRef(null);
   const isMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -101,9 +101,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
   const [isPaused, setIsPaused] = useState(false);
   
   // Resolve source options for 360p, 720p, 1080p
-  const src360 = getImageUrl(qualities?.p360 || qualities?.low || lowVideoUrl || src);
-  const src720 = getImageUrl(qualities?.p720 || qualities?.medium || src360);
-  const src1080 = getImageUrl(qualities?.p1080 || qualities?.high || videoUrl || src);
+  const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || qualities?.low || lowVideoUrl || src);
+  const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || qualities?.medium || src360);
+  const src1080 = getImageUrl(videoOriginal || qualities?.videoOriginal || qualities?.p1080 || qualities?.high || videoUrl || src);
 
   // Quality selection mode: 'auto' | '360' | '720' | '1080'
   const [qualityMode, setQualityMode] = useState('auto');

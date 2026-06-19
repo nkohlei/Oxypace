@@ -29,31 +29,29 @@ async function isFfmpegAvailable() {
  */
 export async function transcodeVideoInBackground(postId, mediaKey) {
     try {
-        console.log(`[VideoTranscoder] Starting background transcode for post ${postId}, key: ${mediaKey}`);
+        console.log(`[VideoTranscoder] Starting background transcode pipeline for post ${postId}, key: ${mediaKey}`);
         
-        // --- Step 1: Check if FFmpeg is available ---
-        const ffmpegReady = await isFfmpegAvailable();
-        if (!ffmpegReady) {
-            console.warn(`[VideoTranscoder] FFmpeg not available on this server. Skipping transcode for post ${postId}.`);
-            console.warn(`[VideoTranscoder] Video is already on R2 as original quality. No action needed.`);
+        // Fetch post to get the portal reference and resolve path folder
+        const post = await Post.findById(postId);
+        if (!post) {
+            console.error(`[VideoTranscoder] Post not found: ${postId}`);
             return;
         }
         
-        // --- Step 2: Prepare paths ---
-        const parsedKey = path.parse(mediaKey);
-        const folder = parsedKey.dir || 'posts/general';
-        const baseName = parsedKey.name;
-        const cleanBaseName = baseName.replace(/^original_/, '');
-        const key360p = `${folder}/video_360p_${cleanBaseName}.mp4`;
-        const key720p = `${folder}/video_720p_${cleanBaseName}.mp4`;
-        const key1080p = `${folder}/video_1080p_${cleanBaseName}.mp4`;
+        const folder = post.portal ? `posts/${post.portal}` : 'posts/general';
+        const key360p = `${folder}/low_360p_${postId}.mp4`;
+        const key720p = `${folder}/mid_720p_${postId}.mp4`;
+        const keyOriginal = `${folder}/original_${postId}.mp4`;
         
-        // --- Step 3: Get the source video (prefer local temp, fallback to R2 download) ---
-        let localInputPath = path.join(process.cwd(), 'temp_media', `${baseName}.mp4`);
-        const isLocal = fs.existsSync(localInputPath);
-        
-        if (!isLocal) {
-            console.log(`[VideoTranscoder] Local file not found. Downloading original from R2...`);
+        // --- Step 1: Resolve the input local file ---
+        let localInputPath = '';
+        if (mediaKey.startsWith('temp_media/')) {
+            localInputPath = path.join(process.cwd(), mediaKey);
+        } else {
+            // Fallback: If mediaKey is already on R2 (e.g. from direct upload), download it first
+            const parsedKey = path.parse(mediaKey);
+            const baseName = parsedKey.name;
+            console.log(`[VideoTranscoder] Local file not found for ${mediaKey}. Downloading original from R2...`);
             const originalUrl = constructProxiedUrl(mediaKey);
             localInputPath = path.join(process.cwd(), 'temp_media', `download-${baseName}.mp4`);
             fs.mkdirSync(path.dirname(localInputPath), { recursive: true });
@@ -68,139 +66,129 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             console.log(`[VideoTranscoder] Download complete: ${localInputPath}`);
         }
         
-        // --- Step 4: Transcode to multi-qualities ---
-        const temp360pPath = path.join(process.cwd(), 'temp_media', `360p-${baseName}.mp4`);
-        const temp720pPath = path.join(process.cwd(), 'temp_media', `720p-${baseName}.mp4`);
-        const temp1080pPath = path.join(process.cwd(), 'temp_media', `1080p-${baseName}.mp4`);
+        if (!fs.existsSync(localInputPath)) {
+            throw new Error(`Local input file does not exist: ${localInputPath}`);
+        }
         
-        // Dynamic import of fluent-ffmpeg to avoid startup crash if package is missing
+        // --- Step 2: Set up FFmpeg paths and import fluent-ffmpeg ---
         let ffmpeg;
         try {
             const mod = await import('fluent-ffmpeg');
             ffmpeg = mod.default || mod;
+            // Explicitly set the FFmpeg binary path
+            ffmpeg.setFfmpegPath('ffmpeg');
         } catch (importErr) {
             console.error('[VideoTranscoder] fluent-ffmpeg import failed:', importErr.message);
-            try { fs.unlinkSync(localInputPath); } catch(e) {}
             return;
         }
         
-        console.log(`[VideoTranscoder] Transcoding 360p low quality for post ${postId}...`);
+        // Temp output paths
+        const temp360pPath = path.join(process.cwd(), 'temp_media', `360p-${postId}.mp4`);
+        const temp720pPath = path.join(process.cwd(), 'temp_media', `720p-${postId}.mp4`);
+        
+        // --- Step 3: Run transcoding concurrently/sequentially ---
+        console.log(`[VideoTranscoder] Transcoding 360p ultra low quality (low_360p_${postId}.mp4)...`);
         await new Promise((resolve, reject) => {
             ffmpeg(localInputPath)
                 .videoCodec('libx264')
                 .size('?x360')
                 .outputOptions([
-                    '-b:v 450k',
-                    '-maxrate 500k',
-                    '-bufsize 1000k',
-                    '-crf 28',
+                    '-b:v 300k',
+                    '-maxrate 350k',
+                    '-bufsize 700k',
+                    '-crf 30',
                     '-preset fast'
                 ])
                 .audioCodec('aac')
                 .audioBitrate('64k')
                 .output(temp360pPath)
                 .on('end', resolve)
-                .on('error', reject)
+                .on('error', (err) => {
+                    console.error('[VideoTranscoder] 360p transcode failed:', err);
+                    reject(err);
+                })
                 .run();
         });
 
-        console.log(`[VideoTranscoder] Transcoding 720p medium quality for post ${postId}...`);
+        console.log(`[VideoTranscoder] Transcoding 720p standard quality (mid_720p_${postId}.mp4)...`);
         await new Promise((resolve, reject) => {
             ffmpeg(localInputPath)
                 .videoCodec('libx264')
                 .size('?x720')
                 .outputOptions([
-                    '-b:v 1200k',
-                    '-maxrate 1500k',
-                    '-bufsize 2000k',
-                    '-crf 24',
+                    '-b:v 1000k',
+                    '-maxrate 1200k',
+                    '-bufsize 1600k',
+                    '-crf 25',
                     '-preset fast'
                 ])
                 .audioCodec('aac')
                 .audioBitrate('128k')
                 .output(temp720pPath)
                 .on('end', resolve)
-                .on('error', reject)
-                .run();
-        });
-
-        console.log(`[VideoTranscoder] Transcoding 1080p high quality for post ${postId}...`);
-        await new Promise((resolve, reject) => {
-            ffmpeg(localInputPath)
-                .videoCodec('libx264')
-                .size('?x1080')
-                .outputOptions([
-                    '-b:v 3000k',
-                    '-maxrate 4000k',
-                    '-bufsize 4000k',
-                    '-crf 22',
-                    '-preset fast'
-                ])
-                .audioCodec('aac')
-                .audioBitrate('192k')
-                .output(temp1080pPath)
-                .on('end', resolve)
-                .on('error', reject)
+                .on('error', (err) => {
+                    console.error('[VideoTranscoder] 720p transcode failed:', err);
+                    reject(err);
+                })
                 .run();
         });
         
-        // --- Step 5: Upload all qualities to R2 ---
+        // --- Step 4: Upload all 3 outputs to R2 ---
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
         
-        console.log(`[VideoTranscoder] Uploading low 360p version to R2: ${key360p}`);
-        const bufferLow = fs.readFileSync(temp360pPath);
+        console.log(`[VideoTranscoder] Uploading low_360p version to R2: ${key360p}`);
         await r2.send(new PutObjectCommand({
             Bucket: bucketName,
             Key: key360p,
             ContentType: 'video/mp4',
-            Body: bufferLow
+            Body: fs.readFileSync(temp360pPath)
         }));
 
-        console.log(`[VideoTranscoder] Uploading medium 720p version to R2: ${key720p}`);
-        const bufferMedium = fs.readFileSync(temp720pPath);
+        console.log(`[VideoTranscoder] Uploading mid_720p version to R2: ${key720p}`);
         await r2.send(new PutObjectCommand({
             Bucket: bucketName,
             Key: key720p,
             ContentType: 'video/mp4',
-            Body: bufferMedium
+            Body: fs.readFileSync(temp720pPath)
         }));
 
-        console.log(`[VideoTranscoder] Uploading high 1080p version to R2: ${key1080p}`);
-        const bufferHigh = fs.readFileSync(temp1080pPath);
+        console.log(`[VideoTranscoder] Uploading original version to R2: ${keyOriginal}`);
         await r2.send(new PutObjectCommand({
             Bucket: bucketName,
-            Key: key1080p,
+            Key: keyOriginal,
             ContentType: 'video/mp4',
-            Body: bufferHigh
+            Body: fs.readFileSync(localInputPath)
         }));
         
         const url360p = constructProxiedUrl(key360p);
         const url720p = constructProxiedUrl(key720p);
-        const url1080p = constructProxiedUrl(key1080p);
+        const urlOriginal = constructProxiedUrl(keyOriginal);
         
-        // --- Step 6: Update Post with the new video qualities ---
+        // --- Step 5: Update Post in Database ---
         await Post.findByIdAndUpdate(postId, {
-            videoUrl: url1080p,
+            video360: url360p,
+            video720: url720p,
+            videoOriginal: urlOriginal,
+            videoUrl: urlOriginal,
             lowVideoUrl: url360p,
+            media: urlOriginal,
             videoQualities: {
-                high: url1080p,
+                high: urlOriginal,
                 low: url360p,
                 p360: url360p,
                 p720: url720p,
-                p1080: url1080p
+                p1080: urlOriginal
             }
         });
         
-        console.log(`[VideoTranscoder] ✅ 360p/720p/1080p transcode succeeded for post ${postId}`);
+        console.log(`[VideoTranscoder] ✅ Mandatory transcoding pipeline succeeded for post ${postId}`);
         
-        // Cleanup temp files
+        // Clean up temp files
         try { fs.unlinkSync(temp360pPath); } catch(e) {}
         try { fs.unlinkSync(temp720pPath); } catch(e) {}
-        try { fs.unlinkSync(temp1080pPath); } catch(e) {}
         try { fs.unlinkSync(localInputPath); } catch(e) {}
         
     } catch (err) {
-        console.error(`[VideoTranscoder] Background transcode failed for post ${postId}:`, err.message);
-        // Non-fatal: original video is still accessible on R2
+        console.error(`[VideoTranscoder] Background transcode pipeline failed for post ${postId}:`, err.message);
     }
 }
