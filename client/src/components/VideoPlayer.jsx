@@ -302,6 +302,32 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     video.load();
   }, [videoSrc]);
 
+  // Robust metadata listener to handle cached video loads and race conditions
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const checkMetadata = () => {
+      if (video.videoWidth && video.videoHeight) {
+        setNaturalDimensions(current => {
+          if (!current || current.width !== video.videoWidth || current.height !== video.videoHeight) {
+            return { width: video.videoWidth, height: video.videoHeight };
+          }
+          return current;
+        });
+      }
+    };
+
+    if (video.readyState >= 1) {
+      checkMetadata();
+    }
+
+    video.addEventListener('loadedmetadata', checkMetadata);
+    return () => {
+      video.removeEventListener('loadedmetadata', checkMetadata);
+    };
+  }, [videoSrc]);
+
 
 
   const startControlsTimeout = (duration = 1500) => {
