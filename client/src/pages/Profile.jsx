@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
+import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -57,6 +58,10 @@ const Profile = () => {
     const [composeFocused, setComposeFocused] = useState(false);
     const composeMediaInputRef = useRef(null);
     const composeBoxRef = useRef(null);
+    const isVideoFileRef = useRef(false);
+
+    // Video transcoder hook (WASM, lazy-loaded)
+    const { transcodeAndUpload } = useVideoTranscoder();
 
     // Cropping State
     const [cropperImage, setCropperImage] = useState(null);
@@ -169,11 +174,21 @@ const Profile = () => {
         setUploadPercentage(0);
         try {
             let mediaKey = null;
+            let videoQualitiesPayload = null;
+
             if (composeMedia) {
-                // Direct upload to R2
-                mediaKey = await uploadFile(composeMedia, 'post', currentUser._id, (progress) => {
-                    setUploadPercentage(progress);
-                });
+                if (isVideoFileRef.current) {
+                    // Browser-side WASM transcode → multi-quality R2 upload
+                    const result = await transcodeAndUpload(composeMedia, currentUser._id);
+                    mediaKey = result.mediaKey;
+                    videoQualitiesPayload = result.videoQualities;
+                    setUploadPercentage(100);
+                } else {
+                    // Image / PDF / GIF
+                    mediaKey = await uploadFile(composeMedia, 'post', currentUser._id, (progress) => {
+                        setUploadPercentage(progress);
+                    });
+                }
             } else {
                 setUploadPercentage(100);
             }
@@ -184,6 +199,10 @@ const Profile = () => {
 
             if (mediaKey) {
                 postData.mediaKey = mediaKey;
+                if (isVideoFileRef.current && videoQualitiesPayload) {
+                    postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                    postData.mediaType = 'video';
+                }
             }
 
             const res = await axios.post('/api/posts', postData);
@@ -221,6 +240,8 @@ const Profile = () => {
             return;
         }
         setComposeMedia(file);
+        isVideoFileRef.current = file.type.startsWith('video/') ||
+            ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(file.name.split('.').pop().toLowerCase());
         setComposeMediaPreview(URL.createObjectURL(file));
         e.target.value = '';
     };

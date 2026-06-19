@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
+import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 
 import PostCard from '../components/PostCard';
 import ChannelSidebar from '../components/ChannelSidebar';
@@ -70,6 +71,10 @@ const Portal = () => {
     const [quotedPost, setQuotedPost] = useState(null);
     const [uploadPercentage, setUploadPercentage] = useState(0);
     const [uploadLoading, setUploadLoading] = useState(false);
+    const isVideoFileRef = useRef(false);
+
+    // Video transcoder hook (WASM, lazy-loaded)
+    const { transcodeAndUpload } = useVideoTranscoder();
     const [showPortalInfo, setShowPortalInfo] = useState(false);
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
@@ -296,6 +301,9 @@ const Portal = () => {
                 return;
             }
             setMediaFile(file);
+            // Track whether the selected file is a video
+            isVideoFileRef.current = file.type.startsWith('video/') ||
+                ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(file.name.split('.').pop().toLowerCase());
             setShowPlusMenu(false);
         }
     };
@@ -338,18 +346,27 @@ const Portal = () => {
             let mediaKey = null;
             let youtubeMedia = null;
             let youtubeMediaType = null;
+            let videoQualitiesPayload = null;
 
             if (isYoutube) {
                 youtubeMedia = currentData.media.url;
                 youtubeMediaType = 'youtube';
             } else if (currentData.media) {
-                // Direct upload to R2
-                mediaKey = await uploadFile(currentData.media, 'post', id, (progress) => {
-                    setUploadPercentage(progress);
-                    setPosts((current) =>
-                        current.map((p) => String(p._id) === String(tempId) ? { ...p, uploadProgress: progress } : p)
-                    );
-                });
+                if (isVideoFileRef.current) {
+                    // Browser-side WASM transcode → multi-quality R2 upload
+                    const result = await transcodeAndUpload(currentData.media, id);
+                    mediaKey = result.mediaKey;
+                    videoQualitiesPayload = result.videoQualities;
+                    setUploadPercentage(100);
+                } else {
+                    // Image / PDF / GIF: existing presigned upload
+                    mediaKey = await uploadFile(currentData.media, 'post', id, (progress) => {
+                        setUploadPercentage(progress);
+                        setPosts((current) =>
+                            current.map((p) => String(p._id) === String(tempId) ? { ...p, uploadProgress: progress } : p)
+                        );
+                    });
+                }
             } else {
                 setUploadPercentage(100);
             }
@@ -363,7 +380,10 @@ const Portal = () => {
 
             if (mediaKey) {
                 postData.mediaKey = mediaKey;
-                if (currentData.media && (currentData.media.type === 'application/pdf' || currentData.media.name.toLowerCase().endsWith('.pdf'))) {
+                if (isVideoFileRef.current && videoQualitiesPayload) {
+                    postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                    postData.mediaType = 'video';
+                } else if (currentData.media && (currentData.media.type === 'application/pdf' || currentData.media.name.toLowerCase().endsWith('.pdf'))) {
                     postData.pdfName = currentData.media.name;
                     postData.pdfSize = currentData.media.size;
                 }
