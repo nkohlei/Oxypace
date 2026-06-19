@@ -11,7 +11,6 @@ import axios from 'axios';
 import r2 from '../config/r2.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generatePdfThumbnail } from '../utils/pdfHelper.js';
-import { transcodeVideoInBackground } from '../utils/videoTranscoder.js';
 import path from 'path';
 
 const router = express.Router();
@@ -215,13 +214,7 @@ router.post(
             console.log('✅ Post created successfully! ID:', post._id);
             console.log('✅ Post media in DB:', post.media);
 
-            // Background video transcoding is disabled. Videos are served directly in high quality, and optimized via frontend-side buffering and controls.
-            /*
-            const mediaKeyForTranscode = req.body.mediaKey || (req.file ? req.file.key : null);
-            if (mediaKeyForTranscode && post.mediaType === 'video') {
-                transcodeVideoInBackground(post._id, mediaKeyForTranscode);
-            }
-            */
+
 
             // Re-fetch with deep population for nested quotes
             // Using a separate query to ensure fresh data from DB with all relations

@@ -101,9 +101,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   const [isPaused, setIsPaused] = useState(false);
   
   // Resolve source options for 360p, 720p, 1080p
-  const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || qualities?.low || lowVideoUrl || src);
-  const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || qualities?.medium || src360);
-  const src1080 = getImageUrl(videoOriginal || qualities?.videoOriginal || qualities?.p1080 || qualities?.high || videoUrl || src);
+  const originalSrc = getImageUrl(videoOriginal || videoUrl || src);
+  const src360 = originalSrc;
+  const src720 = originalSrc;
+  const src1080 = originalSrc;
 
   // Quality selection mode: 'auto' | '360' | '720' | '1080'
   const [qualityMode, setQualityMode] = useState('auto');
@@ -239,55 +240,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
     }
   }, [videoSrc]);
 
-  // Frontend Smart Byte-Range Chunk Downloader & Cacher
-  useEffect(() => {
-    if (!videoSrc) return;
-    let active = true;
 
-    const CHUNK_SIZE = 1024 * 1024 * 1.0; // 1.0MB chunks
-    let startByte = 0;
-    let totalBytes = null;
-
-    const prefetchNextChunk = async () => {
-      if (!active) return;
-      if (totalBytes !== null && startByte >= totalBytes) return;
-
-      const endByte = totalBytes ? Math.min(startByte + CHUNK_SIZE - 1, totalBytes - 1) : startByte + CHUNK_SIZE - 1;
-
-      try {
-        const response = await fetch(videoSrc, {
-          headers: {
-            'Range': `bytes=${startByte}-${endByte}`,
-            'Cache-Control': 'public, max-age=31536000'
-          },
-          cache: 'force-cache'
-        });
-
-        if (!active) return;
-
-        if (response.status === 200 || response.status === 206) {
-          const contentRange = response.headers.get('content-range');
-          if (contentRange) {
-            const match = contentRange.match(/\/(\d+)/);
-            if (match) {
-              totalBytes = parseInt(match[1], 10);
-            }
-          }
-          startByte += CHUNK_SIZE;
-          // Fetch next chunk with a slight delay to keep threads free
-          setTimeout(prefetchNextChunk, 500);
-        }
-      } catch (err) {
-        console.error('[VideoPlayer] Background prefetch failed:', err);
-      }
-    };
-
-    prefetchNextChunk();
-
-    return () => {
-      active = false;
-    };
-  }, [videoSrc]);
 
   const startControlsTimeout = (duration = 1500) => {
     if (controlsTimeoutRef.current) {
