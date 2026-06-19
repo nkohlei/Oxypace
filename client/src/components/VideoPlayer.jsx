@@ -302,7 +302,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const restoreTimeRef = useRef(0);
   const shouldPlayRef = useRef(false);
 
-  // Capture current playhead before source swap
+  // Capture current playhead before source swap and force reload the stream
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -310,6 +310,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       restoreTimeRef.current = video.currentTime;
       shouldPlayRef.current = !video.paused;
     }
+    video.load();
   }, [videoSrc]);
 
 
