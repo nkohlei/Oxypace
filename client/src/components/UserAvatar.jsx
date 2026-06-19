@@ -13,10 +13,15 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
     const handleImageError = (e) => {
         if (!hasError) {
             setHasError(true);
-        } else {
-            e.target.src = DEFAULT_AVATAR;
-            if (onError) onError(e);
+            // Fallback to original resolution avatar if thumbnail/medium fails to load (legacy files)
+            const currentSize = getAvatarSizeType();
+            if (src && currentSize !== 'original') {
+                e.target.src = getImageUrl(src, 'original');
+                return;
+            }
         }
+        e.target.src = DEFAULT_AVATAR;
+        if (onError) onError(e);
     };
 
     const combinedStyle = {
@@ -41,14 +46,17 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
         combinedStyle.contentVisibility = 'auto';
     }
 
-    // Always use 'original' — thumbnail/medium variants cause 404s for legacy avatars.
-    // CSS handles display sizing; no separate R2 thumbnail file is needed.
     const getAvatarSizeType = () => {
-        if (sizeType === 'original') return 'original';
+        if (sizeType) return sizeType;
+        const numSize = parseInt(size, 10);
+        if (!isNaN(numSize)) {
+            if (numSize <= 80) return 'thumbnail';
+            if (numSize <= 300) return 'medium';
+        }
         return 'original';
     };
 
-    const resolvedSrc = src ? (src.startsWith('data:') ? src : getImageUrl(src, 'original')) : DEFAULT_AVATAR;
+    const resolvedSrc = src ? (src.startsWith('data:') ? src : getImageUrl(src, getAvatarSizeType())) : DEFAULT_AVATAR;
     const avatarSrc = isDeleted ? DEFAULT_AVATAR : resolvedSrc;
 
     return (
