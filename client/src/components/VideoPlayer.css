@@ -1,27 +1,33 @@
-/* Scale Native VideoPlayer v16.0 - Full Autoplay & True Scale (Pure DOM) */
+/* Scale Native VideoPlayer v17.0 - Locked Aspect Ratio & Scale (YouTube Standard) */
 .native-player-container.v16-scale {
     position: relative;
-    width: auto;
+    width: 100%;
     max-width: 100%;
+    /* Default 16:9 frame — overridden by naturalDimensions inline style when metadata loads */
+    aspect-ratio: 16 / 9;
     margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
     background: #000;
     display: block;
+    flex-shrink: 0;
     box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.7);
-    max-height: 350px;
+    /* NO max-height — container scale must never collapse regardless of stream resolution */
 }
 
 .native-player-container.v16-scale .native-video-element {
     display: block;
     width: 100% !important;
-    max-width: 100% !important;
     height: 100% !important;
-    max-height: 350px !important;
-    object-fit: contain;
+    max-width: 100% !important;
+    /* object-fit: cover fills the locked frame; stream resolution does NOT affect physical size */
+    object-fit: cover !important;
     border-radius: 12px;
     background: transparent;
     cursor: pointer;
+    /* Prevent browser from applying intrinsic size of the low-res stream */
+    min-width: 0;
+    min-height: 0;
 }
 
 /* --- THE REAL LOADER (Tied directly to video data events) --- */
