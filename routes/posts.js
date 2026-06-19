@@ -173,19 +173,17 @@ router.post(
                     }
 
                     if (postData.mediaType === 'video') {
-                        const parsedKey = path.parse(req.body.mediaKey);
-                        const folder = parsedKey.dir || 'posts/general';
-                        const baseName = parsedKey.name.replace(/^original_/, '');
-                        const highKey = `${folder}/original_${baseName}.mp4`;
-                        const lowKey = `${folder}/low_360p_${baseName}.mp4`;
-                        
+                        // ✅ Use the actual uploaded key directly.
+                        // Presigned URL flow uploads to: posts/portalId/post-xxx.mp4
+                        // DO NOT add "original_" or "low_360p_" prefixes — those files don't exist in R2.
+                        const actualVideoUrl = constructProxiedUrl(req.body.mediaKey);
                         postData.videoQualities = {
-                            high: constructProxiedUrl(highKey),
-                            low: constructProxiedUrl(lowKey)
+                            high: actualVideoUrl,
+                            low: actualVideoUrl  // same URL — no 360p transcoding without FFmpeg on server
                         };
-                        postData.videoUrl = postData.videoQualities.high;
-                        postData.lowVideoUrl = postData.videoQualities.low;
-                        postData.media = postData.videoUrl;
+                        postData.videoUrl = actualVideoUrl;
+                        postData.lowVideoUrl = actualVideoUrl;
+                        postData.media = actualVideoUrl;
                     }
                 } else if (req.file) {
                     postData.media = constructProxiedUrl(req.file.key);
