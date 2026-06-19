@@ -31,10 +31,6 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         }
         
         const folder = post.portal ? `posts/${post.portal}` : 'posts/general';
-        const key144p = `${folder}/video_144p_${postId}.mp4`;
-        const key360p = `${folder}/video_360p_${postId}.mp4`;
-        const key720p = `${folder}/video_720p_${postId}.mp4`;
-        const keyOriginal = `${folder}/video_original_${postId}.mp4`;
         
         // --- Step 1: Resolve the input local file ---
         let localInputPath = '';
@@ -63,33 +59,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             throw new Error(`Local input file does not exist: ${localInputPath}`);
         }
 
-        // --- Step 2: Upload original version immediately & update DB ---
-        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
-        console.log(`[VideoTranscoder] Uploading original version to R2 immediately: ${keyOriginal}`);
-        await r2.send(new PutObjectCommand({
-            Bucket: bucketName,
-            Key: keyOriginal,
-            ContentType: 'video/mp4',
-            Body: fs.readFileSync(localInputPath)
-        }));
-        
-        const urlOriginal = constructProxiedUrl(keyOriginal);
-        
-        // Pre-save original URL to DB immediately so user has access even if transcode fails
-        await Post.findByIdAndUpdate(postId, {
-            videoOriginal: urlOriginal,
-            videoUrl: urlOriginal,
-            media: urlOriginal,
-            videoQualities: {
-                high: urlOriginal,
-                p1080: urlOriginal,
-                low: urlOriginal,
-                p144: urlOriginal,
-                p360: urlOriginal
-            }
-        });
-
-        // --- Step 3: Analyze dimensions with ffprobe ---
+        // --- Step 2: Analyze dimensions with ffprobe first ---
         const metadata = await new Promise((resolve, reject) => {
             ffmpeg.ffprobe(localInputPath, (err, data) => {
                 if (err) reject(err);
@@ -102,73 +72,101 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const width = videoStream ? parseInt(videoStream.width, 10) : 0;
         console.log(`[VideoTranscoder] Video dimensions detected: ${width}x${height}`);
 
-        const has720p = height >= 720 || width >= 1280;
-        const has1080p = height >= 1080 || width >= 1920;
+        // Determine quality category of the original video
+        let maxLabel = '144p';
+        let maxField = 'p144';
+        let maxRootField = 'video144';
+
+        if (height >= 2160 || width >= 3840) {
+            maxLabel = '2160p';
+            maxField = 'p2160';
+            maxRootField = 'video2160';
+        } else if (height >= 1080 || width >= 1920) {
+            maxLabel = '1080p';
+            maxField = 'p1080';
+            maxRootField = 'video1080';
+        } else if (height >= 720 || width >= 1280) {
+            maxLabel = '720p';
+            maxField = 'p720';
+            maxRootField = 'video720';
+        } else if (height >= 360 || width >= 640) {
+            maxLabel = '360p';
+            maxField = 'p360';
+            maxRootField = 'video360';
+        }
+
+        const keyOriginal = `${folder}/video_${maxLabel}_${postId}.mp4`;
+
+        // --- Step 3: Upload original version immediately & update DB ---
+        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+        console.log(`[VideoTranscoder] Uploading original version (${maxLabel}) to R2 immediately: ${keyOriginal}`);
+        await r2.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: keyOriginal,
+            ContentType: 'video/mp4',
+            Body: fs.readFileSync(localInputPath)
+        }));
         
-        // Temp output paths
-        const temp144pPath = path.join(process.cwd(), 'temp_media', `144p-${postId}.mp4`);
-        const temp360pPath = path.join(process.cwd(), 'temp_media', `360p-${postId}.mp4`);
-        const temp720pPath = path.join(process.cwd(), 'temp_media', `720p-${postId}.mp4`);
+        const urlOriginal = constructProxiedUrl(keyOriginal);
         
+        // Pre-save original URL to DB immediately so user has access even if transcode fails
+        const initialQualities = {
+            high: urlOriginal,
+            low: urlOriginal,
+            p144: '',
+            p360: '',
+            p720: '',
+            p1080: '',
+            p2160: ''
+        };
+        initialQualities[maxField] = urlOriginal;
+
+        const initialUpdates = {
+            videoUrl: urlOriginal,
+            media: urlOriginal,
+            videoQualities: initialQualities
+        };
+        initialUpdates[maxRootField] = urlOriginal;
+
+        await Post.findByIdAndUpdate(postId, initialUpdates);
+
         // --- Step 4: Run transcoding processes sequentially ---
-        const results = [];
+        const targets = [
+            { height: 1080, label: '1080p', field: 'p1080', rootField: 'video1080', bitrate: '2000k', maxrate: '2400k', bufsize: '4000k', audio: '128k' },
+            { height: 720, label: '720p', field: 'p720', rootField: 'video720', bitrate: '1100k', maxrate: '1300k', bufsize: '2200k', audio: '128k' },
+            { height: 360, label: '360p', field: 'p360', rootField: 'video360', bitrate: '400k', maxrate: '450k', bufsize: '800k', audio: '64k' },
+            { height: 144, label: '144p', field: 'p144', rootField: 'video144', bitrate: '150k', maxrate: '180k', bufsize: '300k', audio: '64k' }
+        ];
+
         const jobs = [];
-
-        // 144p Job
-        jobs.push({
-            quality: '144p',
-            path: temp144pPath,
-            key: key144p,
-            options: [
-                '-vf scale=256:144',
-                '-pix_fmt yuv420p',
-                '-preset ultrafast',
-                '-threads 1',
-                '-b:v 150k',
-                '-maxrate 180k',
-                '-bufsize 300k'
-            ],
-            audioBitrate: '64k'
-        });
-
-        // 360p Job
-        jobs.push({
-            quality: '360p',
-            path: temp360pPath,
-            key: key360p,
-            options: [
-                '-vf scale=480:360',
-                '-pix_fmt yuv420p',
-                '-preset ultrafast',
-                '-threads 1',
-                '-b:v 400k',
-                '-maxrate 450k',
-                '-bufsize 800k'
-            ],
-            audioBitrate: '64k'
-        });
-
-        // 720p Job (Conditional)
-        if (has720p) {
-            jobs.push({
-                quality: '720p',
-                path: temp720pPath,
-                key: key720p,
-                options: [
-                    '-vf scale=1280:720',
-                    '-pix_fmt yuv420p',
-                    '-preset ultrafast',
-                    '-threads 1',
-                    '-b:v 1100k',
-                    '-maxrate 1300k',
-                    '-bufsize 2200k'
-                ],
-                audioBitrate: '128k'
-            });
+        for (const target of targets) {
+            // Only transcode to resolutions strictly lower than the original's height
+            if (height > target.height) {
+                const tempPath = path.join(process.cwd(), 'temp_media', `${target.label}-${postId}.mp4`);
+                const key = `${folder}/video_${target.label}_${postId}.mp4`;
+                jobs.push({
+                    quality: target.label,
+                    field: target.field,
+                    rootField: target.rootField,
+                    path: tempPath,
+                    key: key,
+                    options: [
+                        `-vf scale=-2:${target.height}`,
+                        '-pix_fmt yuv420p',
+                        '-preset ultrafast',
+                        '-threads 1',
+                        `-b:v ${target.bitrate}`,
+                        `-maxrate ${target.maxrate}`,
+                        `-bufsize ${target.bufsize}`
+                    ],
+                    audioBitrate: target.audio
+                });
+            }
         }
 
         console.log(`[VideoTranscoder] Running ${jobs.length} transcoding jobs sequentially with -threads 1 and -preset ultrafast...`);
 
+        const results = [];
         for (const job of jobs) {
             try {
                 const res = await new Promise((resolve, reject) => {
@@ -180,7 +178,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                         .output(job.path)
                         .on('end', () => {
                             console.log(`[VideoTranscoder] ${job.quality} transcode completed locally.`);
-                            resolve({ quality: job.quality, path: job.path, key: job.key });
+                            resolve({ quality: job.quality, field: job.field, rootField: job.rootField, path: job.path, key: job.key });
                         })
                         .on('error', (err) => {
                             console.error(`[VideoTranscoder] ${job.quality} transcode failed:`, err.message);
@@ -195,11 +193,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         }
         
         // --- Step 5: Upload successfully generated variations and update DB qualities ---
-        const finalQualities = {
-            high: urlOriginal,
-            p1080: has1080p ? urlOriginal : ''
-        };
-        const dbUpdates = {};
+        const finalQualities = { ...initialQualities };
+        const dbUpdates = { videoQualities: finalQualities };
 
         for (const res of results) {
             if (res) {
@@ -212,32 +207,29 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 }));
                 const url = constructProxiedUrl(res.key);
                 
-                if (res.quality === '144p') {
-                    dbUpdates.video144 = url;
-                    dbUpdates.lowVideoUrl = url;
-                    finalQualities.p144 = url;
-                    finalQualities.low = url;
-                } else if (res.quality === '360p') {
-                    dbUpdates.video360 = url;
-                    finalQualities.p360 = url;
-                } else if (res.quality === '720p') {
-                    dbUpdates.video720 = url;
-                    finalQualities.p720 = url;
-                }
+                finalQualities[res.field] = url;
+                dbUpdates[res.rootField] = url;
             }
         }
 
-        dbUpdates.videoQualities = finalQualities;
+        // Determine the lowest available resolution URL to populate low/lowVideoUrl
+        let lowestUrl = urlOriginal;
+        if (finalQualities.p144) lowestUrl = finalQualities.p144;
+        else if (finalQualities.p360) lowestUrl = finalQualities.p360;
+        else if (finalQualities.p720) lowestUrl = finalQualities.p720;
+        else if (finalQualities.p1080) lowestUrl = finalQualities.p1080;
+        else if (finalQualities.p2160) lowestUrl = finalQualities.p2160;
+
+        dbUpdates.lowVideoUrl = lowestUrl;
+        finalQualities.low = lowestUrl;
 
         // Apply final updates to Post record
         await Post.findByIdAndUpdate(postId, dbUpdates);
         console.log(`[VideoTranscoder] ✅ Async transcoding pipeline completed for post ${postId}`);
         
         // Clean up temp files
-        try { fs.unlinkSync(temp144pPath); } catch(e) {}
-        try { fs.unlinkSync(temp360pPath); } catch(e) {}
-        if (has720p) {
-            try { fs.unlinkSync(temp720pPath); } catch(e) {}
+        for (const job of jobs) {
+            try { fs.unlinkSync(job.path); } catch(e) {}
         }
         try { fs.unlinkSync(localInputPath); } catch(e) {}
         

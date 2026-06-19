@@ -129,9 +129,11 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                     qualities={quotedPost.videoQualities}
                                     videoUrl={getImageUrl(quotedPost.videoUrl)}
                                     lowVideoUrl={getImageUrl(quotedPost.lowVideoUrl)}
+                                    video144={getImageUrl(quotedPost.video144)}
                                     video360={getImageUrl(quotedPost.video360)}
                                     video720={getImageUrl(quotedPost.video720)}
-                                    videoOriginal={getImageUrl(quotedPost.videoOriginal)}
+                                    video1080={getImageUrl(quotedPost.video1080)}
+                                    video2160={getImageUrl(quotedPost.video2160)}
                                     className="quoted-player"
                                 />
                             </div>

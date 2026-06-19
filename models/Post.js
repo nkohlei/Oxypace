@@ -81,7 +81,8 @@ const postSchema = new mongoose.Schema(
             p144: { type: String, default: '' },
             p360: { type: String, default: '' },
             p720: { type: String, default: '' },
-            p1080: { type: String, default: '' }
+            p1080: { type: String, default: '' },
+            p2160: { type: String, default: '' }
         },
         video144: {
             type: String,
@@ -95,7 +96,11 @@ const postSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
-        videoOriginal: {
+        video1080: {
+            type: String,
+            default: '',
+        },
+        video2160: {
             type: String,
             default: '',
         },

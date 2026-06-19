@@ -91,7 +91,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, videoOriginal, poster, className }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className }) => {
   const videoRef = useRef(null);
   const isMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -101,13 +101,28 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [isPaused, setIsPaused] = useState(false);
   
 
-  // Resolve source options for 144p, 360p, 720p, 1080p
+  // Resolve source options for 144p, 360p, 720p, 1080p, 2160p
   const src144 = getImageUrl(video144 || qualities?.video144 || qualities?.p144 || qualities?.low || lowVideoUrl || src);
   const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || src144);
   const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || src360);
-  const src1080 = getImageUrl(videoOriginal || qualities?.videoOriginal || qualities?.p1080 || qualities?.high || videoUrl || src);
+  const src1080 = getImageUrl(video1080 || qualities?.video1080 || qualities?.p1080 || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
+  const src2160 = getImageUrl(video2160 || qualities?.video2160 || qualities?.p2160 || src1080);
 
-  // Quality selection mode: 'auto' | '144' | '360' | '720' | '1080'
+  // Determine actual maximum resolution based on available URLs
+  const has2160 = !!(video2160 || qualities?.video2160 || qualities?.p2160);
+  const has1080 = !!(video1080 || qualities?.video1080 || qualities?.p1080 || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
+  const has720 = !!(video720 || qualities?.video720 || qualities?.p720);
+  const has360 = !!(video360 || qualities?.video360 || qualities?.p360);
+  const has144 = !!(video144 || qualities?.video144 || qualities?.p144 || lowVideoUrl || qualities?.low);
+
+  let maxResolution = '1080p';
+  if (has2160) maxResolution = '2160p';
+  else if (has1080) maxResolution = '1080p';
+  else if (has720) maxResolution = '720p';
+  else if (has360) maxResolution = '360p';
+  else if (has144) maxResolution = '144p';
+
+  // Quality selection mode: 'auto' | '2160' | '1080' | '720' | '360' | '144'
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
 
@@ -126,9 +141,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const determineAutoSrc = () => {
     if (isSlowConnection()) return src144;
-    if (videoOriginal || qualities?.videoOriginal || qualities?.p1080) return src1080;
-    if (video720 || qualities?.video720 || qualities?.p720) return src720;
-    return src360;
+    if (maxResolution === '2160p') return src2160;
+    if (maxResolution === '1080p') return src1080;
+    if (maxResolution === '720p') return src720;
+    if (maxResolution === '360p') return src360;
+    return src144;
   };
 
   // Quality stream selection
@@ -137,18 +154,29 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   });
 
   const availableQualities = [
-    { value: 'original', label: 'Orijinal' },
     { value: 'auto', label: 'Oto' }
   ];
 
-  if ((video144 || qualities?.video144 || qualities?.p144) && src144 !== src1080) {
-    availableQualities.push({ value: '144', label: '144p' });
-  }
-  if ((video360 || qualities?.video360 || qualities?.p360) && src360 !== src1080) {
-    availableQualities.push({ value: '360', label: '360p' });
-  }
-  if ((video720 || qualities?.video720 || qualities?.p720) && src720 !== src1080) {
+  if (maxResolution === '2160p') {
+    availableQualities.push({ value: '2160', label: '2160p' });
+    availableQualities.push({ value: '1080', label: '1080p' });
     availableQualities.push({ value: '720', label: '720p' });
+    availableQualities.push({ value: '360', label: '360p' });
+    availableQualities.push({ value: '144', label: '144p' });
+  } else if (maxResolution === '1080p') {
+    availableQualities.push({ value: '1080', label: '1080p' });
+    availableQualities.push({ value: '720', label: '720p' });
+    availableQualities.push({ value: '360', label: '360p' });
+    availableQualities.push({ value: '144', label: '144p' });
+  } else if (maxResolution === '720p') {
+    availableQualities.push({ value: '720', label: '720p' });
+    availableQualities.push({ value: '360', label: '360p' });
+    availableQualities.push({ value: '144', label: '144p' });
+  } else if (maxResolution === '360p') {
+    availableQualities.push({ value: '360', label: '360p' });
+    availableQualities.push({ value: '144', label: '144p' });
+  } else if (maxResolution === '144p') {
+    availableQualities.push({ value: '144', label: '144p' });
   }
   
   // Gerçek zamanlı donma/yüklenme sensörü
@@ -208,11 +236,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setIsQualityMenuOpen(false);
     
     let targetSrc = videoSrc;
-    if (mode === 'original') targetSrc = src1080;
-    else if (mode === '144') targetSrc = src144;
-    else if (mode === '360') targetSrc = src360;
-    else if (mode === '720') targetSrc = src720;
+    if (mode === '2160') targetSrc = src2160;
     else if (mode === '1080') targetSrc = src1080;
+    else if (mode === '720') targetSrc = src720;
+    else if (mode === '360') targetSrc = src360;
+    else if (mode === '144') targetSrc = src144;
     else if (mode === 'auto') targetSrc = determineAutoSrc();
     
     if (videoRef.current && targetSrc !== videoSrc) {
@@ -246,21 +274,22 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         connection.removeEventListener('change', handleConnectionChange);
       };
     }
-  }, [qualityMode, src360, src1080]);
+  }, [qualityMode, src360, src1080, src2160, maxResolution]);
 
   // Periodic network health check to upgrade back to high quality when bandwidth recovers in Auto Mode
   useEffect(() => {
-    if (qualityMode !== 'auto' || !src1080) return;
+    if (qualityMode !== 'auto') return;
 
     const interval = setInterval(() => {
       const isSlow = isSlowConnection();
       if (!isSlow) {
         setVideoSrc((currentSrc) => {
-          if (currentSrc !== src1080) {
+          const nextSrc = determineAutoSrc();
+          if (currentSrc !== nextSrc) {
             console.log('[VideoPlayer] Auto Mode: Network recovered, upgrading to high quality...');
             restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
             shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
-            return src1080;
+            return nextSrc;
           }
           return currentSrc;
         });
@@ -268,7 +297,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [qualityMode, src1080]);
+  }, [qualityMode, src1080, src2160, maxResolution]);
 
   const restoreTimeRef = useRef(0);
   const shouldPlayRef = useRef(false);
