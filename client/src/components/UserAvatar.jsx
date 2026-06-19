@@ -4,20 +4,18 @@ import { getImageUrl } from '../utils/imageUtils';
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888888'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
 
 const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onError, isDeleted, sizeType }) => {
-    const [loadOriginal, setLoadOriginal] = useState(false);
+    const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
-        setLoadOriginal(false);
+        setHasError(false);
     }, [src]);
 
     const handleImageError = (e) => {
-        if (!loadOriginal && src && !src.startsWith('data:')) {
-            setLoadOriginal(true);
+        if (!hasError) {
+            setHasError(true);
         } else {
             e.target.src = DEFAULT_AVATAR;
-            if (onError) {
-                onError(e);
-            }
+            if (onError) onError(e);
         }
     };
 
@@ -43,18 +41,14 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
         combinedStyle.contentVisibility = 'auto';
     }
 
+    // Always use 'original' — thumbnail/medium variants cause 404s for legacy avatars.
+    // CSS handles display sizing; no separate R2 thumbnail file is needed.
     const getAvatarSizeType = () => {
-        if (loadOriginal) return 'original';
-        if (sizeType) return sizeType;
-        if (!size) return 'thumbnail';
-        const numSize = parseInt(size, 10);
-        if (isNaN(numSize)) return 'thumbnail';
-        if (numSize <= 48) return 'thumbnail';
-        if (numSize <= 150) return 'medium';
+        if (sizeType === 'original') return 'original';
         return 'original';
     };
 
-    const resolvedSrc = src ? (src.startsWith('data:') ? src : getImageUrl(src, getAvatarSizeType())) : DEFAULT_AVATAR;
+    const resolvedSrc = src ? (src.startsWith('data:') ? src : getImageUrl(src, 'original')) : DEFAULT_AVATAR;
     const avatarSrc = isDeleted ? DEFAULT_AVATAR : resolvedSrc;
 
     return (
