@@ -5,19 +5,19 @@ import r2 from '../config/r2.js';
 import Post from '../models/Post.js';
 import { constructProxiedUrl } from './mediaConfig.js';
 import axios from 'axios';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
+import ffprobeStatic from 'ffprobe-static';
+
+// Set paths to static binaries
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 /**
  * Checks if FFmpeg is available on the system.
  */
 async function isFfmpegAvailable() {
-    try {
-        const { exec } = await import('child_process');
-        return new Promise((resolve) => {
-            exec('ffmpeg -version', { timeout: 5000 }, (err) => resolve(!err));
-        });
-    } catch {
-        return false;
-    }
+    return true;
 }
 
 /**
@@ -70,17 +70,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             throw new Error(`Local input file does not exist: ${localInputPath}`);
         }
         
-        // --- Step 2: Set up FFmpeg paths and import fluent-ffmpeg ---
-        let ffmpeg;
-        try {
-            const mod = await import('fluent-ffmpeg');
-            ffmpeg = mod.default || mod;
-            // Explicitly set the FFmpeg binary path
-            ffmpeg.setFfmpegPath('ffmpeg');
-        } catch (importErr) {
-            console.error('[VideoTranscoder] fluent-ffmpeg import failed:', importErr.message);
-            return;
-        }
+        // --- Step 2: Set up FFmpeg paths and binaries ---
+        // Handled statically at the top of the file now.
         
         // Temp output paths
         const temp360pPath = path.join(process.cwd(), 'temp_media', `360p-${postId}.mp4`);
