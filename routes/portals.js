@@ -4,6 +4,7 @@ import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
+import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import { mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
@@ -546,13 +547,19 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
             return res.status(403).json({ message: 'Not authorized' });
         }
 
+        let targetAvatarKey = null;
         if (req.body.mediaKey) {
-            portal.avatar = constructProxiedUrl(req.body.mediaKey);
+            targetAvatarKey = req.body.mediaKey;
         } else if (req.file) {
-            portal.avatar = constructProxiedUrl(req.file.key);
-        } else {
+            targetAvatarKey = req.file;
+        }
+
+        if (!targetAvatarKey) {
             return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
         }
+
+        const result = await processAndUploadMultiResAvatars(targetAvatarKey);
+        portal.avatar = result.original;
 
         await portal.save();
         await portal.populate('owner', 'username profile.displayName profile.avatar isDeleted');

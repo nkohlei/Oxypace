@@ -1,4 +1,4 @@
-export const getImageUrl = (path) => {
+export const getImageUrl = (path, sizeType = 'original') => {
     if (!path) return null;
 
     let cleanPath = path;
@@ -24,44 +24,53 @@ export const getImageUrl = (path) => {
         let absoluteUrl = cleanPath;
 
         // 0. QUICK EXIT: If it's already a proxied URL, sanitize and return it
-        // This handles cases where the backend already saved the full proxy URL (e.g. from Vercel)
         if (cleanPath.includes('/api/media/')) {
-            // Strip any legacy domains (like oxypace.vercel.app) and enforce current baseUrl
             const proxyTarget = cleanPath.substring(cleanPath.indexOf('/api/media/') + 11);
             
             // If it's an internal R2 file (not an external URL) and we are on Web, use the fast CDN!
             if (!proxyTarget.startsWith('http') && !isNative && !import.meta.env.DEV) {
-                return `/r2-media/${proxyTarget}`;
+                absoluteUrl = `/r2-media/${proxyTarget}`;
+            } else if (!proxyTarget.startsWith('http') && (isNative || import.meta.env.DEV)) {
+                absoluteUrl = `${r2Domain}/${proxyTarget}`;
+            } else {
+                absoluteUrl = `${baseUrl}/api/media/${proxyTarget}`;
             }
-            
-            // Otherwise, fallback to the external media proxy or native direct URL
-            if (!proxyTarget.startsWith('http') && (isNative || import.meta.env.DEV)) {
-                return `${r2Domain}/${proxyTarget}`;
-            }
-
-            return `${baseUrl}/api/media/${proxyTarget}`;
-        }
-
-        if (absoluteUrl.startsWith('blob:')) return absoluteUrl;
-
-        // 1. Transform Relative Paths to Absolute R2 URLs (or use CDN edge)
-        if (!cleanPath.startsWith('http')) {
+        } else if (cleanPath.startsWith('blob:')) {
+            return cleanPath;
+        } else if (!cleanPath.startsWith('http')) {
             let relativePath = cleanPath;
             if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
             
-            // If on Web (Netlify), use the ultra-fast Edge Proxy for R2 directly! Bypasses Koyeb.
             if (!isNative && !import.meta.env.DEV) {
-                return `/r2-media/${relativePath}`;
+                absoluteUrl = `/r2-media/${relativePath}`;
+            } else {
+                absoluteUrl = `${r2Domain}/${relativePath}`;
             }
-            
-            // If Native or Dev, use the direct R2 domain (Capacitor doesn't need proxy)
-            absoluteUrl = `${r2Domain}/${relativePath}`;
-            return absoluteUrl;
+        } else {
+            // External Media Proxy
+            absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
-        // 2. External Media Proxy (News thumbnails, external GIFs)
-        // Must go through Koyeb's /api/media to bypass CORS/Hotlinking protections
-        return `${baseUrl}/api/media/${encodeURIComponent(absoluteUrl)}`;
+        // Apply optimization suffix (thumbnail/medium) if requested and it's a custom upload
+        if (sizeType && sizeType !== 'original') {
+            const isCustomUpload = absoluteUrl.includes('/avatars/') || absoluteUrl.includes('/banners/') || absoluteUrl.includes('/posts/') || absoluteUrl.includes('/r2-media/') || absoluteUrl.includes(r2Domain);
+            if (isCustomUpload && !absoluteUrl.startsWith('data:') && !absoluteUrl.startsWith('blob:')) {
+                // Strip existing suffixes if any
+                let targetUrl = absoluteUrl.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '');
+                
+                const urlParts = targetUrl.split('?');
+                const pathPart = urlParts[0];
+                const queryPart = urlParts[1] ? `?${urlParts[1]}` : '';
+                
+                const lastDotIdx = pathPart.lastIndexOf('.');
+                if (lastDotIdx !== -1) {
+                    const pathWithoutExt = pathPart.substring(0, lastDotIdx);
+                    absoluteUrl = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
+                }
+            }
+        }
+
+        return absoluteUrl;
     } catch (err) {
         console.error('getImageUrl Error:', err);
         return cleanPath;

@@ -90,7 +90,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, poster, className }) => {
+const VideoPlayer = ({ src, qualities, poster, className }) => {
   const videoRef = useRef(null);
   const isMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -98,6 +98,9 @@ const VideoPlayer = ({ src, poster, className }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  
+  // Quality stream selection
+  const [videoSrc, setVideoSrc] = useState(src);
   
   // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(true);
@@ -107,6 +110,98 @@ const VideoPlayer = ({ src, poster, className }) => {
   // Auto-hide controls state & ref
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef(null);
+
+  // Real-time network speed and buffering metrics
+  const waitingCountRef = useRef(0);
+  const waitingTimerRef = useRef(null);
+
+  const isSlowConnection = () => {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection) {
+      if (connection.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType)) {
+        return true;
+      }
+      if (connection.downlink && connection.downlink < 2) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const handleWaiting = () => {
+    setIsLoading(true);
+    if (!qualities || !qualities.low || !qualities.high) return;
+
+    waitingCountRef.current += 1;
+
+    // Buffer threshold reached: fallback to low resolution
+    if (waitingCountRef.current >= 2) {
+      setVideoSrc((currentSrc) => {
+        if (currentSrc !== qualities.low) {
+          console.log('[VideoPlayer] Downgrading to low quality due to buffering...');
+          if (videoRef.current) {
+            const curTime = videoRef.current.currentTime;
+            const wasPaused = videoRef.current.paused;
+            videoRef.current.src = qualities.low;
+            videoRef.current.load();
+            videoRef.current.currentTime = curTime;
+            if (!wasPaused) {
+              videoRef.current.play().catch(() => {});
+            }
+          }
+          return qualities.low;
+        }
+        return currentSrc;
+      });
+    }
+
+    if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
+    waitingTimerRef.current = setTimeout(() => {
+      waitingCountRef.current = 0;
+    }, 5000);
+  };
+
+  // Sync state and listen to connection variations
+  useEffect(() => {
+    if (!qualities || !qualities.low || !qualities.high) {
+      setVideoSrc(src);
+      return;
+    }
+
+    const determineSrc = () => {
+      return isSlowConnection() ? qualities.low : qualities.high;
+    };
+
+    setVideoSrc(determineSrc());
+
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection) {
+      const handleConnectionChange = () => {
+        const nextSrc = determineSrc();
+        setVideoSrc((currentSrc) => {
+          if (currentSrc !== nextSrc) {
+            console.log(`[VideoPlayer] Quality switch requested: ${nextSrc}`);
+            if (videoRef.current) {
+              const curTime = videoRef.current.currentTime;
+              const wasPaused = videoRef.current.paused;
+              videoRef.current.src = nextSrc;
+              videoRef.current.load();
+              videoRef.current.currentTime = curTime;
+              if (!wasPaused) {
+                videoRef.current.play().catch(() => {});
+              }
+            }
+            return nextSrc;
+          }
+          return currentSrc;
+        });
+      };
+      connection.addEventListener('change', handleConnectionChange);
+      return () => {
+        connection.removeEventListener('change', handleConnectionChange);
+      };
+    }
+  }, [src, qualities]);
 
   const startControlsTimeout = (duration = 1500) => {
     if (controlsTimeoutRef.current) {
@@ -181,6 +276,9 @@ const VideoPlayer = ({ src, poster, className }) => {
     return () => {
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
+      }
+      if (waitingTimerRef.current) {
+        clearTimeout(waitingTimerRef.current);
       }
     };
   }, []);
@@ -312,7 +410,7 @@ const VideoPlayer = ({ src, poster, className }) => {
     >
       <video
         ref={videoRef}
-        src={src}
+        src={videoSrc}
         poster={poster}
         className="native-video-element"
         playsInline
@@ -321,7 +419,7 @@ const VideoPlayer = ({ src, poster, className }) => {
         onClick={handleVideoClick}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
-        onWaiting={() => setIsLoading(true)}
+        onWaiting={handleWaiting}
         onLoadStart={() => setIsLoading(true)}
         onPlaying={() => setIsLoading(false)}
         onCanPlay={() => setIsLoading(false)}

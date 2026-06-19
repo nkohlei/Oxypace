@@ -75,6 +75,10 @@ const postSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Post',
         },
+        videoQualities: {
+            high: { type: String, default: '' },
+            low: { type: String, default: '' }
+        },
     },
     {
         timestamps: true,

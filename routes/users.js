@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
+import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
 import Comment from '../models/Comment.js';
 import Portal from '../models/Portal.js';
 
@@ -613,13 +614,19 @@ router.post(
         try {
             const user = await User.findById(req.user._id);
 
+            let targetAvatarKey = null;
             if (req.body.mediaKey) {
-                user.profile.avatar = constructProxiedUrl(req.body.mediaKey);
+                targetAvatarKey = req.body.mediaKey;
             } else if (req.file) {
-                user.profile.avatar = constructProxiedUrl(req.file.key);
-            } else {
+                targetAvatarKey = req.file;
+            }
+
+            if (!targetAvatarKey) {
                 return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
             }
+
+            const result = await processAndUploadMultiResAvatars(targetAvatarKey);
+            user.profile.avatar = result.original;
 
              await user.save();
 
