@@ -560,11 +560,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         ref={videoRef}
         src={videoSrc}
         poster={poster}
-        className={`native-video-element`}
+        className="native-video-element"
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover'
+          objectFit: 'contain',
+          backgroundColor: '#000000'
         }}
         playsInline
         loop
