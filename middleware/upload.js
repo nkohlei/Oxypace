@@ -107,36 +107,31 @@ async function processAndUploadFile(req, file) {
         }
     } else if (isVideo) {
         try {
-            console.log('[Upload Middleware] Uploading video directly to R2...');
+            console.log('[Upload Middleware] Storing video locally for background transcoding...');
             
             const cleanFieldName = file.fieldname || 'media';
-            const originalKey = `${folder}/original_${cleanFieldName}-${uniqueSuffix}.mp4`;
-            const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+            const tempDir = path.join(process.cwd(), 'temp_media');
+            fs.mkdirSync(tempDir, { recursive: true });
             
-            // Upload original video to R2 immediately — no local temp file dependency
-            await r2.send(new PutObjectCommand({
-                Bucket: bucketName,
-                Key: originalKey,
-                ContentType: 'video/mp4',
-                Body: file.buffer,
-            }));
+            const tempFilename = `temp_${cleanFieldName}-${uniqueSuffix}.mp4`;
+            const tempFilePath = path.join(tempDir, tempFilename);
+            fs.writeFileSync(tempFilePath, file.buffer);
             
-            const originalUrl = constructProxiedUrl(originalKey);
-            file.key = originalKey;
-            // All qualities point to the original URL
+            // Set file.key to point to the local temp file path relative to cwd
+            file.key = `temp_media/${tempFilename}`;
             file.videoQualities = {
-                high: originalUrl,
-                low: originalUrl,
-                p360: originalUrl,
-                p720: originalUrl,
-                p1080: originalUrl
+                high: '',
+                low: '',
+                p360: '',
+                p720: '',
+                p1080: ''
             };
             file.mimetype = 'video/mp4';
             file.size = file.buffer.length;
             
-            console.log(`[Upload Middleware] Video successfully uploaded to R2: ${originalKey}`);
+            console.log(`[Upload Middleware] Temp copy written for background transcoding: ${tempFilePath}`);
         } catch (err) {
-            console.error('[Upload Middleware] Video R2 upload failed:', err);
+            console.error('[Upload Middleware] Video local storage failed:', err);
             throw err;
         }
     } else {

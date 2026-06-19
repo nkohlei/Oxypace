@@ -101,10 +101,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   const [isPaused, setIsPaused] = useState(false);
   
   // Resolve source options for 360p, 720p, 1080p
-  const originalSrc = getImageUrl(videoOriginal || videoUrl || src);
-  const src360 = originalSrc;
-  const src720 = originalSrc;
-  const src1080 = originalSrc;
+  const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || qualities?.low || lowVideoUrl || src);
+  const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || qualities?.medium || src360);
+  const src1080 = getImageUrl(videoOriginal || qualities?.videoOriginal || qualities?.p1080 || qualities?.high || videoUrl || src);
 
   // Quality selection mode: 'auto' | '360' | '720' | '1080'
   const [qualityMode, setQualityMode] = useState('auto');
@@ -156,6 +155,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
 
   const handleWaiting = () => {
     setIsLoading(false); // Force hide loading spinner
+    
+    // If connection stalls and we are in auto mode, immediately swap to 360p
+    if (qualityMode === 'auto' && src360 && videoSrc !== src360) {
+      console.log('[VideoPlayer] Auto Mode stall detected: Switching source to low 360p video:', src360);
+      if (videoRef.current) {
+        restoreTimeRef.current = videoRef.current.currentTime;
+        shouldPlayRef.current = !videoRef.current.paused;
+      }
+      setVideoSrc(src360);
+      return;
+    }
+
     if (videoRef.current) {
       console.log('[VideoPlayer] Buffering/Stall detected. Bypassing stall by skipping ahead...');
       // Skip ahead slightly to keep decoding continuous without freezing
@@ -177,7 +188,19 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
   const handleQualityChange = (mode) => {
     setQualityMode(mode);
     setIsQualityMenuOpen(false);
-    console.log(`[VideoPlayer] Quality mode changed to: ${mode}`);
+    
+    let targetSrc = videoSrc;
+    if (mode === '360') targetSrc = src360;
+    else if (mode === '720') targetSrc = src720;
+    else if (mode === '1080') targetSrc = src1080;
+    else if (mode === 'auto') targetSrc = determineAutoSrc();
+    
+    if (videoRef.current && targetSrc !== videoSrc) {
+      restoreTimeRef.current = videoRef.current.currentTime;
+      shouldPlayRef.current = !videoRef.current.paused;
+      setVideoSrc(targetSrc);
+      console.log(`[VideoPlayer] Quality mode changed to: ${mode}, source: ${targetSrc}`);
+    }
   };
 
   // Sync state and listen to connection variations (only active in auto mode)
