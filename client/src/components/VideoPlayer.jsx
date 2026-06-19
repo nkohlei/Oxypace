@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX, Check, Maximize, Play, Pause } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useGlobalStore } from '../store/useGlobalStore';
+import { getImageUrl } from '../utils/imageUtils';
 import './VideoPlayer.css';
 
 const mountedVideos = new Set();
@@ -100,8 +101,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
   const [isPaused, setIsPaused] = useState(false);
   
   // Resolve source options
-  const highSrc = qualities?.high || videoUrl || src;
-  const lowSrc = qualities?.low || lowVideoUrl || highSrc;
+  const rawHigh = qualities?.high || videoUrl || src;
+  const rawLow = qualities?.low || lowVideoUrl || rawHigh;
+
+  const highSrc = getImageUrl(rawHigh);
+  const lowSrc = getImageUrl(rawLow);
 
   // Quality stream selection
   const [videoSrc, setVideoSrc] = useState(highSrc);
