@@ -388,7 +388,12 @@
 
 /* Frontend Low Quality (360p Simulation) Render Throttling */
 .native-video-360p-simulation {
-    filter: blur(0.7px) contrast(0.95) saturate(0.9);
-    image-rendering: low-quality;
     opacity: 0.96;
+}
+
+.native-video-pixelated {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }

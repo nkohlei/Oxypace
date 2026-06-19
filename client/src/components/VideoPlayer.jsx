@@ -100,6 +100,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   
+  const [playerId] = useState(() => Math.random().toString(36).substring(2, 11));
+
   // Resolve source options for 144p, 360p, 720p, 1080p
   const src144 = getImageUrl(video144 || qualities?.video144 || qualities?.p144 || qualities?.low || lowVideoUrl || src);
   const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || src144);
@@ -160,6 +162,15 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const controlsTimeoutRef = useRef(null);
 
   const isLowQuality = qualityMode === '144' || qualityMode === '360' || (qualityMode === 'auto' && isSlowConnection());
+  const isUsingOriginalFor144 = (qualityMode === '144' || (qualityMode === 'auto' && isSlowConnection())) && (videoSrc === src1080);
+  const isUsingOriginalFor360 = (qualityMode === '360') && (videoSrc === src1080);
+
+  const videoStyle = {};
+  if (isUsingOriginalFor144) {
+    videoStyle.filter = `url(#pixelate-144-${playerId})`;
+  } else if (isUsingOriginalFor360) {
+    videoStyle.filter = `url(#pixelate-360-${playerId})`;
+  }
 
   useEffect(() => {
     if (videoRef.current) {
@@ -507,7 +518,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         ref={videoRef}
         src={videoSrc}
         poster={poster}
-        className={`native-video-element ${isLowQuality ? 'native-video-360p-simulation' : ''}`}
+        className={`native-video-element ${isLowQuality ? 'native-video-360p-simulation native-video-pixelated' : ''}`}
+        style={videoStyle}
         playsInline
         loop
         preload="metadata"
@@ -615,6 +627,24 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           </div>
         </div>
       </div>
+      <svg style={{ display: 'none' }}>
+        <defs>
+          <filter id={`pixelate-144-${playerId}`} x="0" y="0">
+            <feFlood x="0" y="0" height="2" width="2" result="flood" />
+            <feComposite width="12" height="12" in="flood" result="composite" />
+            <feTile in="composite" result="tiled" />
+            <feComposite in="SourceGraphic" in2="tiled" operator="in" />
+            <feMorphology operator="dilate" radius="6" result="final" />
+          </filter>
+          <filter id={`pixelate-360-${playerId}`} x="0" y="0">
+            <feFlood x="0" y="0" height="2" width="2" result="flood" />
+            <feComposite width="6" height="6" in="flood" result="composite" />
+            <feTile in="composite" result="tiled" />
+            <feComposite in="SourceGraphic" in2="tiled" operator="in" />
+            <feMorphology operator="dilate" radius="3" result="final" />
+          </filter>
+        </defs>
+      </svg>
     </div>
   );
 };
