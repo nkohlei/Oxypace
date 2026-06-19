@@ -8,11 +8,12 @@ async function run() {
     try {
         console.log('Connecting to database...');
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log('Connected! Starting transcode...');
+        console.log('Connected! Starting transcode with local dummy video...');
         
+        // We pass the key as 'temp_media/dummy.mp4' so it bypasses R2 download in Step 1
         await transcodeVideoInBackground(
-            '6a35bba84be82c034ba5d261',
-            'posts/698f48ca55ed38a478568561/post-1781906334763-441942657.mp4'
+            '6a35bd3c2fc88e92969740c5',
+            'temp_media/dummy.mp4'
         );
         
         console.log('Transcode function completed execution.');

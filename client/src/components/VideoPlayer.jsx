@@ -191,21 +191,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const isLowQuality = qualityMode === '144' || qualityMode === '360' || (qualityMode === 'auto' && isSlowConnection());
 
   useEffect(() => {
-    console.log('[VideoPlayer Debug] Resolved URLs:', {
-      src144,
-      src360,
-      src720,
-      src1080,
-      src2160,
-      videoSrc,
-      qualityMode,
-      maxResolution,
-      rawQualities: qualities,
-      rawProps: { video144, video360, video720, video1080, video2160, videoOriginal }
-    });
-  }, [src144, src360, src720, src1080, src2160, videoSrc, qualityMode, maxResolution]);
-
-  useEffect(() => {
     if (videoRef.current) {
       videoRef.current.playbackRate = playbackRate;
     }
