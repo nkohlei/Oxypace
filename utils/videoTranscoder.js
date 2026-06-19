@@ -44,7 +44,9 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const folder = parsedKey.dir || 'posts/general';
         const baseName = parsedKey.name;
         const cleanBaseName = baseName.replace(/^original_/, '');
-        const lowKey = `${folder}/low_360p_${cleanBaseName}.mp4`;
+        const key360p = `${folder}/video_360p_${cleanBaseName}.mp4`;
+        const key720p = `${folder}/video_720p_${cleanBaseName}.mp4`;
+        const key1080p = `${folder}/video_1080p_${cleanBaseName}.mp4`;
         
         // --- Step 3: Get the source video (prefer local temp, fallback to R2 download) ---
         let localInputPath = path.join(process.cwd(), 'temp_media', `${baseName}.mp4`);
@@ -66,8 +68,10 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             console.log(`[VideoTranscoder] Download complete: ${localInputPath}`);
         }
         
-        // --- Step 4: Transcode to 360p ---
-        const tempLowPath = path.join(process.cwd(), 'temp_media', `low-${baseName}.mp4`);
+        // --- Step 4: Transcode to multi-qualities ---
+        const temp360pPath = path.join(process.cwd(), 'temp_media', `360p-${baseName}.mp4`);
+        const temp720pPath = path.join(process.cwd(), 'temp_media', `720p-${baseName}.mp4`);
+        const temp1080pPath = path.join(process.cwd(), 'temp_media', `1080p-${baseName}.mp4`);
         
         // Dynamic import of fluent-ffmpeg to avoid startup crash if package is missing
         let ffmpeg;
@@ -94,39 +98,105 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 ])
                 .audioCodec('aac')
                 .audioBitrate('64k')
-                .output(tempLowPath)
+                .output(temp360pPath)
+                .on('end', resolve)
+                .on('error', reject)
+                .run();
+        });
+
+        console.log(`[VideoTranscoder] Transcoding 720p medium quality for post ${postId}...`);
+        await new Promise((resolve, reject) => {
+            ffmpeg(localInputPath)
+                .videoCodec('libx264')
+                .size('?x720')
+                .outputOptions([
+                    '-b:v 1200k',
+                    '-maxrate 1500k',
+                    '-bufsize 2000k',
+                    '-crf 24',
+                    '-preset fast'
+                ])
+                .audioCodec('aac')
+                .audioBitrate('128k')
+                .output(temp720pPath)
+                .on('end', resolve)
+                .on('error', reject)
+                .run();
+        });
+
+        console.log(`[VideoTranscoder] Transcoding 1080p high quality for post ${postId}...`);
+        await new Promise((resolve, reject) => {
+            ffmpeg(localInputPath)
+                .videoCodec('libx264')
+                .size('?x1080')
+                .outputOptions([
+                    '-b:v 3000k',
+                    '-maxrate 4000k',
+                    '-bufsize 4000k',
+                    '-crf 22',
+                    '-preset fast'
+                ])
+                .audioCodec('aac')
+                .audioBitrate('192k')
+                .output(temp1080pPath)
                 .on('end', resolve)
                 .on('error', reject)
                 .run();
         });
         
-        // --- Step 5: Upload 360p to R2 ---
+        // --- Step 5: Upload all qualities to R2 ---
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
-        console.log(`[VideoTranscoder] Uploading low 360p version to R2: ${lowKey}`);
-        const bufferLow = fs.readFileSync(tempLowPath);
+        
+        console.log(`[VideoTranscoder] Uploading low 360p version to R2: ${key360p}`);
+        const bufferLow = fs.readFileSync(temp360pPath);
         await r2.send(new PutObjectCommand({
             Bucket: bucketName,
-            Key: lowKey,
+            Key: key360p,
             ContentType: 'video/mp4',
             Body: bufferLow
         }));
+
+        console.log(`[VideoTranscoder] Uploading medium 720p version to R2: ${key720p}`);
+        const bufferMedium = fs.readFileSync(temp720pPath);
+        await r2.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key720p,
+            ContentType: 'video/mp4',
+            Body: bufferMedium
+        }));
+
+        console.log(`[VideoTranscoder] Uploading high 1080p version to R2: ${key1080p}`);
+        const bufferHigh = fs.readFileSync(temp1080pPath);
+        await r2.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key1080p,
+            ContentType: 'video/mp4',
+            Body: bufferHigh
+        }));
         
-        const lowUrl = constructProxiedUrl(lowKey);
-        const highUrl = constructProxiedUrl(mediaKey); // original is already high quality
+        const url360p = constructProxiedUrl(key360p);
+        const url720p = constructProxiedUrl(key720p);
+        const url1080p = constructProxiedUrl(key1080p);
         
-        // --- Step 6: Update Post with the new low quality URL ---
+        // --- Step 6: Update Post with the new video qualities ---
         await Post.findByIdAndUpdate(postId, {
-            lowVideoUrl: lowUrl,
+            videoUrl: url1080p,
+            lowVideoUrl: url360p,
             videoQualities: {
-                high: highUrl,
-                low: lowUrl
+                high: url1080p,
+                low: url360p,
+                p360: url360p,
+                p720: url720p,
+                p1080: url1080p
             }
         });
         
-        console.log(`[VideoTranscoder] ✅ 360p transcode succeeded for post ${postId}`);
+        console.log(`[VideoTranscoder] ✅ 360p/720p/1080p transcode succeeded for post ${postId}`);
         
         // Cleanup temp files
-        try { fs.unlinkSync(tempLowPath); } catch(e) {}
+        try { fs.unlinkSync(temp360pPath); } catch(e) {}
+        try { fs.unlinkSync(temp720pPath); } catch(e) {}
+        try { fs.unlinkSync(temp1080pPath); } catch(e) {}
         try { fs.unlinkSync(localInputPath); } catch(e) {}
         
     } catch (err) {

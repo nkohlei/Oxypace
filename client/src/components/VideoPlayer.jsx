@@ -100,15 +100,36 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   
-  // Resolve source options
-  const rawHigh = qualities?.high || videoUrl || src;
-  const rawLow = qualities?.low || lowVideoUrl || rawHigh;
+  // Resolve source options for 360p, 720p, 1080p
+  const src360 = getImageUrl(qualities?.p360 || qualities?.low || lowVideoUrl || src);
+  const src720 = getImageUrl(qualities?.p720 || qualities?.medium || src360);
+  const src1080 = getImageUrl(qualities?.p1080 || qualities?.high || videoUrl || src);
 
-  const highSrc = getImageUrl(rawHigh);
-  const lowSrc = getImageUrl(rawLow);
+  // Quality selection mode: 'auto' | '360' | '720' | '1080'
+  const [qualityMode, setQualityMode] = useState('auto');
+  const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
+
+  const isSlowConnection = () => {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection) {
+      if (connection.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType)) {
+        return true;
+      }
+      if (connection.downlink && connection.downlink < 2) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const determineAutoSrc = () => {
+    return isSlowConnection() ? src360 : src1080;
+  };
 
   // Quality stream selection
-  const [videoSrc, setVideoSrc] = useState(highSrc);
+  const [videoSrc, setVideoSrc] = useState(() => {
+    return determineAutoSrc();
+  });
   
   // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(false);
@@ -124,29 +145,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
   const waitingTimerRef = useRef(null);
   const activeStreamRef = useRef(null);
 
-  const isSlowConnection = () => {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (connection) {
-      if (connection.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType)) {
-        return true;
-      }
-      if (connection.downlink && connection.downlink < 2) {
-        return true;
-      }
-    }
-    return false;
-  };
-
   const handleWaiting = () => {
-    // If connection stalls, immediately swap to the low 360p quality video URL
-    if (lowSrc && videoSrc !== lowSrc) {
-      console.log('[VideoPlayer] Intercepted stall/waiting: Instantly switching source to low 360p video:', lowSrc);
+    // If connection stalls and we are in auto mode, immediately swap to 360p
+    if (qualityMode === 'auto' && src360 && videoSrc !== src360) {
+      console.log('[VideoPlayer] Auto Mode stall detected: Switching source to low 360p video:', src360);
       if (videoRef.current) {
         restoreTimeRef.current = videoRef.current.currentTime;
         shouldPlayRef.current = !videoRef.current.paused;
       }
       setIsLoading(false);
-      setVideoSrc(lowSrc);
+      setVideoSrc(src360);
       return;
     }
     if (videoRef.current) {
@@ -163,26 +171,38 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
     }
   };
 
-  // Sync state and listen to connection variations
-  useEffect(() => {
-    if (!highSrc && !lowSrc) {
-      setVideoSrc(src);
-      return;
+  // Quality switching trigger
+  const handleQualityChange = (mode) => {
+    setQualityMode(mode);
+    setIsQualityMenuOpen(false);
+    
+    let targetSrc = videoSrc;
+    if (mode === '360') targetSrc = src360;
+    else if (mode === '720') targetSrc = src720;
+    else if (mode === '1080') targetSrc = src1080;
+    else if (mode === 'auto') targetSrc = determineAutoSrc();
+    
+    if (videoRef.current && targetSrc !== videoSrc) {
+      restoreTimeRef.current = videoRef.current.currentTime;
+      shouldPlayRef.current = !videoRef.current.paused;
+      setVideoSrc(targetSrc);
+      console.log(`[VideoPlayer] Quality mode changed to: ${mode}, source: ${targetSrc}`);
     }
+  };
 
-    const determineSrc = () => {
-      return isSlowConnection() ? lowSrc : highSrc;
-    };
-
-    setVideoSrc(determineSrc());
+  // Sync state and listen to connection variations (only active in auto mode)
+  useEffect(() => {
+    if (qualityMode !== 'auto') return;
 
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (connection) {
       const handleConnectionChange = () => {
-        const nextSrc = determineSrc();
+        const nextSrc = determineAutoSrc();
         setVideoSrc((currentSrc) => {
           if (currentSrc !== nextSrc) {
-            console.log(`[VideoPlayer] Quality switch requested: ${nextSrc}`);
+            console.log(`[VideoPlayer] Auto Mode connection changed. Quality switch requested: ${nextSrc}`);
+            restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
+            shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
             return nextSrc;
           }
           return currentSrc;
@@ -193,19 +213,21 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
         connection.removeEventListener('change', handleConnectionChange);
       };
     }
-  }, [src, qualities, videoUrl, lowVideoUrl]);
+  }, [qualityMode, src360, src1080]);
 
-  // Periodic network health check to upgrade back to high quality when bandwidth recovers
+  // Periodic network health check to upgrade back to high quality when bandwidth recovers in Auto Mode
   useEffect(() => {
-    if (!highSrc || !lowSrc) return;
+    if (qualityMode !== 'auto' || !src1080) return;
 
     const interval = setInterval(() => {
       const isSlow = isSlowConnection();
       if (!isSlow) {
         setVideoSrc((currentSrc) => {
-          if (currentSrc !== highSrc) {
-            console.log('[VideoPlayer] Network recovered: Upgrading to high quality...');
-            return highSrc;
+          if (currentSrc !== src1080) {
+            console.log('[VideoPlayer] Auto Mode: Network recovered, upgrading to high quality...');
+            restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
+            shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
+            return src1080;
           }
           return currentSrc;
         });
@@ -213,7 +235,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [highSrc, lowSrc]);
+  }, [qualityMode, src1080]);
 
   const restoreTimeRef = useRef(0);
   const shouldPlayRef = useRef(false);
@@ -282,7 +304,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-    if (isSettingsOpen) return;
+    if (isSettingsOpen || isQualityMenuOpen) return;
     if (videoRef.current && !videoRef.current.paused) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
@@ -359,7 +381,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
   }, []);
 
   const handleMouseMove = (e) => {
-    if (isSettingsOpen) {
+    if (isSettingsOpen || isQualityMenuOpen) {
       setShowControls(true);
       return;
     }
@@ -441,8 +463,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
   // Videoya Direk Tıklayıp Durdurma/Oynatma
   const handleVideoClick = (e) => {
     if (e) e.stopPropagation();
-    if (isSettingsOpen) {
+    if (isSettingsOpen || isQualityMenuOpen) {
       setIsSettingsOpen(false);
+      setIsQualityMenuOpen(false);
       return;
     }
     if (!videoRef.current) return;
@@ -544,10 +567,23 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
 
           <div className="native-right-controls">
              <button 
+              className={`native-quality-btn ${isQualityMenuOpen ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsQualityMenuOpen(!isQualityMenuOpen);
+                setIsSettingsOpen(false);
+              }}
+              title="Video Kalitesi"
+            >
+              {qualityMode === 'auto' ? 'Oto' : `${qualityMode}p`}
+            </button>
+
+             <button 
               className={`native-speed-text-btn ${isSettingsOpen ? 'active' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsSettingsOpen(!isSettingsOpen);
+                setIsQualityMenuOpen(false);
               }}
               title="Oynatma Hızı"
             >
@@ -562,6 +598,26 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, poster, className 
             >
               <Maximize size={18} />
             </button>
+
+            {isQualityMenuOpen && (
+              <div className="native-quality-menu" onClick={(e) => e.stopPropagation()}>
+                {[
+                  { value: 'auto', label: 'Oto' },
+                  { value: '360', label: '360p' },
+                  { value: '720', label: '720p' },
+                  { value: '1080', label: '1080p' }
+                ].map(item => (
+                  <div 
+                    key={item.value} 
+                    className={`quality-item ${qualityMode === item.value ? 'active' : ''}`}
+                    onClick={() => handleQualityChange(item.value)}
+                  >
+                    <span>{item.label}</span>
+                    {qualityMode === item.value && <Check size={14} />}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {isSettingsOpen && (
               <div className="native-speed-menu" onClick={(e) => e.stopPropagation()}>
