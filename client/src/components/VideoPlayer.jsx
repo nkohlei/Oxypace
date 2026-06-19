@@ -159,7 +159,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef(null);
 
-  const isLowQuality = qualityMode === '360' || (qualityMode === 'auto' && isSlowConnection());
+  const isLowQuality = qualityMode === '144' || qualityMode === '360' || (qualityMode === 'auto' && isSlowConnection());
 
   useEffect(() => {
     if (videoRef.current) {

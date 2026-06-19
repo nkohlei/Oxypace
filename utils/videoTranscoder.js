@@ -90,10 +90,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             ffmpeg(localInputPath)
                 .videoCodec('libx264')
                 .outputOptions([
-                    '-vf scale=256:144',
-                    '-b:v 150k',
-                    '-maxrate 180k',
-                    '-bufsize 300k',
+                    '-vf scale=256:144:flags=neighbor',
+                    '-pix_fmt yuv420p',
+                    '-b:v 100k',
+                    '-maxrate 120k',
+                    '-bufsize 200k',
                     '-preset fast',
                     '-crf 30'
                 ])
@@ -113,10 +114,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             ffmpeg(localInputPath)
                 .videoCodec('libx264')
                 .outputOptions([
-                    '-vf scale=480:360',
-                    '-b:v 400k',
-                    '-maxrate 450k',
-                    '-bufsize 800k',
+                    '-vf scale=480:360:flags=neighbor',
+                    '-pix_fmt yuv420p',
+                    '-b:v 350k',
+                    '-maxrate 400k',
+                    '-bufsize 700k',
                     '-preset fast',
                     '-crf 30'
                 ])
@@ -137,10 +139,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 ffmpeg(localInputPath)
                     .videoCodec('libx264')
                     .outputOptions([
-                        '-vf scale=1280:720',
-                        '-b:v 1200k',
-                        '-maxrate 1500k',
-                        '-bufsize 2500k',
+                        '-vf scale=1280:720:flags=neighbor',
+                        '-pix_fmt yuv420p',
+                        '-b:v 1100k',
+                        '-maxrate 1300k',
+                        '-bufsize 2200k',
                         '-crf 24',
                         '-preset fast'
                     ])
