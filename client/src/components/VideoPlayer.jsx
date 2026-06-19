@@ -144,9 +144,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
 
   useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.playbackRate = isLowQuality ? 0.75 : playbackRate;
+      videoRef.current.playbackRate = playbackRate;
     }
-  }, [isLowQuality, playbackRate]);
+  }, [playbackRate]);
 
   // Real-time network speed and buffering metrics
   const waitingCountRef = useRef(0);
@@ -171,16 +171,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video360, video720
       console.log('[VideoPlayer] Buffering/Stall detected. Bypassing stall by skipping ahead...');
       // Skip ahead slightly to keep decoding continuous without freezing
       videoRef.current.currentTime += 0.25;
-      
-      // Throttle playback rate dynamically to allow the buffer to build up
-      videoRef.current.playbackRate = 0.75;
+      videoRef.current.playbackRate = playbackRate;
     }
   };
 
   const handlePlaying = () => {
     setIsLoading(false);
     if (videoRef.current) {
-      videoRef.current.playbackRate = isLowQuality ? 0.75 : playbackRate;
+      videoRef.current.playbackRate = playbackRate;
     }
   };
 

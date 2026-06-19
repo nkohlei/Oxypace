@@ -73,10 +73,9 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 .videoCodec('libx264')
                 .outputOptions([
                     '-vf scale=480:360',
-                    '-b:v 300k',
-                    '-maxrate 350k',
-                    '-bufsize 600k',
-                    '-r 20',
+                    '-b:v 400k',
+                    '-maxrate 450k',
+                    '-bufsize 800k',
                     '-preset fast',
                     '-crf 30'
                 ])
@@ -95,11 +94,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         await new Promise((resolve, reject) => {
             ffmpeg(localInputPath)
                 .videoCodec('libx264')
-                .size('?x720')
                 .outputOptions([
+                    '-vf scale=1280:720',
                     '-b:v 1200k',
                     '-maxrate 1500k',
-                    '-bufsize 2000k',
+                    '-bufsize 2500k',
                     '-crf 24',
                     '-preset fast'
                 ])
