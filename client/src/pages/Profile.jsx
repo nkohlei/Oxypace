@@ -1110,7 +1110,7 @@ const Profile = () => {
                                                             {post.media && (
                                                                 <div className="profile-post-media">
                                                                     {post.mediaType === 'video' ? (
-                                                                         <VideoPlayer src={getImageUrl(post.media)} qualities={post.videoQualities} videoUrl={post.videoUrl} lowVideoUrl={post.lowVideoUrl} className="post-video-player" />
+                                                                         <VideoPlayer src={getImageUrl(post.media)} qualities={post.videoQualities} videoUrl={getImageUrl(post.videoUrl)} lowVideoUrl={getImageUrl(post.lowVideoUrl)} className="post-video-player" />
                                                                     ) : post.mediaType === 'youtube' ? (
                                                                         <div className="profile-post-youtube">
                                                                             <img

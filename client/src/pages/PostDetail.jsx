@@ -337,7 +337,7 @@ const PostDetail = () => {
                                     {(Array.isArray(post.media) ? post.media : [post.media]).map((m, i) => (
                                         <div key={i} className="pd-media-item">
                                             {post.mediaType === 'video' ? (
-                                                <VideoPlayer src={getImageUrl(m)} qualities={post.videoQualities} videoUrl={post.videoUrl} lowVideoUrl={post.lowVideoUrl} />
+                                                <VideoPlayer src={getImageUrl(m)} qualities={post.videoQualities} videoUrl={getImageUrl(post.videoUrl)} lowVideoUrl={getImageUrl(post.lowVideoUrl)} />
                                             ) : (
                                                 <img src={getImageUrl(m)} alt="" />
                                             )}
