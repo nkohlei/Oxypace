@@ -60,13 +60,22 @@ export async function processAndUploadMultiResAvatars(mediaKeyOrFile) {
         .webp({ quality: 60 })
         .toBuffer();
 
+    // Generate low_res: 150x150px, WebP, 50% quality
+    const lowResBuffer = await sharpInstance
+        .clone()
+        .resize(150, 150, { fit: 'cover', withoutEnlargement: false })
+        .webp({ quality: 50 })
+        .toBuffer();
+
     const mediumKey = `${folder}/${baseName}-medium.webp`;
     const thumbnailKey = `${folder}/${baseName}-thumbnail.webp`;
+    const lowResKey = `${folder}/${baseName}-lowres.webp`;
 
     // Upload variations to R2
     const uploadParams = [
         { Key: mediumKey, Body: mediumBuffer, ContentType: 'image/webp' },
-        { Key: thumbnailKey, Body: thumbnailBuffer, ContentType: 'image/webp' }
+        { Key: thumbnailKey, Body: thumbnailBuffer, ContentType: 'image/webp' },
+        { Key: lowResKey, Body: lowResBuffer, ContentType: 'image/webp' }
     ];
 
     for (const param of uploadParams) {
@@ -82,6 +91,7 @@ export async function processAndUploadMultiResAvatars(mediaKeyOrFile) {
     return {
         original: constructProxiedUrl(originalKey),
         medium: constructProxiedUrl(mediumKey),
-        thumbnail: constructProxiedUrl(thumbnailKey)
+        thumbnail: constructProxiedUrl(thumbnailKey),
+        lowRes: constructProxiedUrl(lowResKey)
     };
 }

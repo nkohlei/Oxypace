@@ -108,7 +108,7 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
             if (io) {
                 const populated = await notification.populate(
                     'sender',
-                    'username profile.displayName profile.avatar verificationBadge'
+                    'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge'
                 );
                 io.to(targetUser._id.toString()).emit('newNotification', populated);
             }
@@ -198,7 +198,7 @@ router.post('/follow/accept/:id', protect, mongoIdValidation('id'), async (req, 
             if (notification) {
                 const populated = await notification.populate(
                     'sender',
-                    'username profile.displayName profile.avatar verificationBadge'
+                    'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge'
                 );
                 io.to(requesterId.toString()).emit('newNotification', populated);
             }
@@ -247,12 +247,12 @@ router.get('/me', protect, async (req, res) => {
         const [user, postCount, outgoingUserRequests, outgoingPortalRequests, ownedPortals] = await Promise.all([
             User.findById(req.user._id)
                 .select('-password -verificationToken')
-                .populate('joinedPortals', 'name avatar')
-                .populate('following', 'username profile.displayName profile.avatar'),
+                .populate('joinedPortals', 'name avatar lowResAvatar')
+                .populate('following', 'username profile.displayName profile.avatar profile.lowResAvatar'),
             Post.countDocuments({ author: req.user._id }),
-            User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar'),
-            Portal.find({ joinRequests: req.user._id }).select('name avatar privacy'),
-            Portal.find({ owner: req.user._id }).select('name avatar')
+            User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar profile.lowResAvatar'),
+            Portal.find({ joinRequests: req.user._id }).select('name avatar lowResAvatar privacy'),
+            Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar')
         ]);
 
         // Pre-build follower ID set for fast lookup
@@ -368,7 +368,7 @@ router.get('/search', protect, async (req, res) => {
             _id: { $ne: req.user._id }, // Exclude current user
             'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
         })
-            .select('username profile.displayName profile.avatar verificationBadge customBadge')
+            .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
             .limit(20);
 
         res.json(users);
@@ -385,9 +385,9 @@ router.get('/:username', optionalProtect, async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
             .select(
-                'username profile.displayName profile.bio profile.avatar profile.coverImage followerCount followingCount createdAt settings verificationBadge customBadge joinedPortals following followers followRequests isDeleted'
+                'username profile.displayName profile.bio profile.avatar profile.lowResAvatar profile.coverImage followerCount followingCount createdAt settings verificationBadge customBadge joinedPortals following followers followRequests isDeleted'
             )
-            .populate('joinedPortals', 'name avatar badges isVerified privacy members allowedUsers owner admins');
+            .populate('joinedPortals', 'name avatar lowResAvatar badges isVerified privacy members allowedUsers owner admins');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -627,12 +627,14 @@ router.post(
 
             const result = await processAndUploadMultiResAvatars(targetAvatarKey);
             user.profile.avatar = result.original;
+            user.profile.lowResAvatar = result.lowRes;
 
              await user.save();
 
             res.json({
                 message: 'Avatar uploaded successfully',
                 avatar: user.profile.avatar,
+                lowResAvatar: user.profile.lowResAvatar,
             });
 
         } catch (error) {

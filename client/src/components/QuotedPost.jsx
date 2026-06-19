@@ -73,7 +73,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                 <div className="quoted-header-left">
                     {author.profile?.avatar ? (
                         <UserAvatar 
-                            src={author.profile.avatar} 
+                            src={author.profile.lowResAvatar || author.profile.avatar} 
                             alt={author.username} 
                             className="quoted-author-avatar" 
                             size={20}
@@ -99,7 +99,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                     >
                         {quotedPost.portal.avatar && (
                             <img 
-                                src={getImageUrl(quotedPost.portal.avatar, 'thumbnail')} 
+                                src={getImageUrl(quotedPost.portal.lowResAvatar || quotedPost.portal.avatar, 'thumbnail')} 
                                 alt="" 
                                 className="quoted-portal-icon" 
                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}

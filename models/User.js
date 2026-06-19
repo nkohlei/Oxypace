@@ -104,6 +104,10 @@ const userSchema = new mongoose.Schema(
                 type: String,
                 default: '',
             },
+            lowResAvatar: {
+                type: String,
+                default: '',
+            },
             coverImage: {
                 type: String,
                 default: '',

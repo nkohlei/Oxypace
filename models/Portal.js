@@ -53,6 +53,10 @@ const portalSchema = new mongoose.Schema(
             type: String, // URL to uploaded image
             default: '',
         },
+        lowResAvatar: {
+            type: String,
+            default: '',
+        },
         banner: {
             type: String,
             default: '',

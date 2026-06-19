@@ -2385,7 +2385,7 @@ const AdminDashboard = () => {
                                                     className={`result-user-card ${selectedTouristUser?._id === u._id ? 'selected' : ''}`}
                                                     onClick={() => setSelectedTouristUser(u)}
                                                 >
-                                                    <UserAvatar src={u.profile?.avatar} alt={u.username} className="avatar-mini" />
+                                                    <UserAvatar src={u.profile?.lowResAvatar || u.profile?.avatar} alt={u.username} className="avatar-mini" />
                                                     <div className="user-info-mini">
                                                         <strong>{u.profile?.displayName || u.username}</strong>
                                                         <span>@{u.username}</span>
@@ -2506,7 +2506,7 @@ const AdminDashboard = () => {
                                                         <tr key={admin._id}>
                                                             <td>
                                                                 <div className="table-user-cell">
-                                                                    <UserAvatar src={admin.profile?.avatar} alt={admin.username} className="avatar-table" />
+                                                                    <UserAvatar src={admin.profile?.lowResAvatar || admin.profile?.avatar} alt={admin.username} className="avatar-table" />
                                                                     <div className="user-info-table">
                                                                         <strong>{admin.profile?.displayName || admin.username}</strong>
                                                                         <span>@{admin.username}</span>
@@ -2799,7 +2799,7 @@ const AdminDashboard = () => {
                                 >
                                     <div className="avatar-wrapper-modern">
                                         <UserAvatar
-                                            src={user.profile?.avatar}
+                                            src={user.profile?.lowResAvatar || user.profile?.avatar}
                                             alt={user.username}
                                             className="admin-user-avatar-img"
                                         />

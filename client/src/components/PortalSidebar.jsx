@@ -206,7 +206,7 @@ const PortalSidebar = () => {
                                     <div className="portal-icon">
                                         {portal.avatar ? (
                                             <img 
-                                                src={failedThumbnails[portal._id] ? getImageUrl(portal.avatar, 'original') : getImageUrl(portal.avatar, 'thumbnail')} 
+                                                src={getImageUrl(portal.lowResAvatar || portal.avatar, failedThumbnails[portal._id] ? 'original' : 'thumbnail')} 
                                                 alt={portal.name} 
                                                 draggable="false" 
                                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}

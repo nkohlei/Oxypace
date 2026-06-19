@@ -393,7 +393,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     onClick={(e) => e.stopPropagation()}
                 >
                     <UserAvatar
-                        src={author.profile?.avatar}
+                        src={author.profile?.lowResAvatar || author.profile?.avatar}
                         alt={author.username}
                         className="author-avatar"
                         size={40}
