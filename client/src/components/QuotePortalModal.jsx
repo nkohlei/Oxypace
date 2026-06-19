@@ -46,6 +46,12 @@ const QuotePortalModal = ({ portals, onSelect, onClose }) => {
                                     src={getImageUrl(portal.avatar, 'thumbnail')}
                                     alt={portal.name}
                                     className="portal-select-avatar"
+                                    onError={(e) => {
+                                        const originalUrl = getImageUrl(portal.avatar, 'original');
+                                        if (e.target.src !== originalUrl) {
+                                            e.target.src = originalUrl;
+                                        }
+                                    }}
                                 />
                                 <span className="portal-select-name">{portal.name}</span>
                                 {portal.privacy === 'private' && <span className="privacy-badge">Gizli</span>}

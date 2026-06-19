@@ -4,6 +4,7 @@ import { Youtube, ExternalLink } from 'lucide-react';
 import UserBadges from './UserBadges';
 import { extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
+import UserAvatar from './UserAvatar';
 
 const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
     const navigate = useNavigate();
@@ -71,11 +72,12 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
             <div className="quoted-post-header">
                 <div className="quoted-header-left">
                     {author.profile?.avatar ? (
-                        <img 
-                            src={getImageUrl(author.profile.avatar, 'thumbnail')} 
+                        <UserAvatar 
+                            src={author.profile.avatar} 
                             alt={author.username} 
                             className="quoted-author-avatar" 
-                            style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                            size={20}
+                            sizeType="thumbnail"
                         />
                     ) : (
                         <div className="quoted-author-placeholder">{author.username?.charAt(0)?.toUpperCase()}</div>
@@ -101,6 +103,12 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                 alt="" 
                                 className="quoted-portal-icon" 
                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                                onError={(e) => {
+                                    const originalUrl = getImageUrl(quotedPost.portal.avatar, 'original');
+                                    if (e.target.src !== originalUrl) {
+                                        e.target.src = originalUrl;
+                                    }
+                                }}
                             />
                         )}
                         <span>{quotedPost.portal.name}</span>

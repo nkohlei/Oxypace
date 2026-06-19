@@ -20,6 +20,11 @@ const PortalSidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [failedThumbnails, setFailedThumbnails] = useState({});
+
+    const handlePortalImageError = (portalId) => {
+        setFailedThumbnails(prev => ({ ...prev, [portalId]: true }));
+    };
     
     // Helper to filter unread counts based on user's muted channels settings
     const getFilteredUnreadCount = (portalId) => {
@@ -201,10 +206,11 @@ const PortalSidebar = () => {
                                     <div className="portal-icon">
                                         {portal.avatar ? (
                                             <img 
-                                                src={getImageUrl(portal.avatar, 'thumbnail')} 
+                                                src={failedThumbnails[portal._id] ? getImageUrl(portal.avatar, 'original') : getImageUrl(portal.avatar, 'thumbnail')} 
                                                 alt={portal.name} 
                                                 draggable="false" 
                                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                                                onError={() => handlePortalImageError(portal._id)}
                                             />
                                         ) : (
                                             <span>{portal.name.substring(0, 2).toUpperCase()}</span>
