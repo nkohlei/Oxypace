@@ -107,29 +107,45 @@ async function processAndUploadFile(req, file) {
         }
     } else if (isVideo) {
         try {
-            console.log('[Upload Middleware] Registering video upload locally for background transcoding...');
+            console.log('[Upload Middleware] Uploading video directly to R2...');
             
             const cleanFieldName = file.fieldname || 'media';
             const originalKey = `${folder}/original_${cleanFieldName}-${uniqueSuffix}.mp4`;
-            const lowKey = `${folder}/low_360p_${cleanFieldName}-${uniqueSuffix}.mp4`;
+            const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
             
-            const tempDir = path.join(process.cwd(), 'temp_media');
-            fs.mkdirSync(tempDir, { recursive: true });
+            // Upload original video to R2 immediately — no local temp file dependency
+            await r2.send(new PutObjectCommand({
+                Bucket: bucketName,
+                Key: originalKey,
+                ContentType: 'video/mp4',
+                Body: file.buffer,
+            }));
             
-            const tempFilePath = path.join(tempDir, `original_${cleanFieldName}-${uniqueSuffix}.mp4`);
-            fs.writeFileSync(tempFilePath, file.buffer);
-            
+            const originalUrl = constructProxiedUrl(originalKey);
             file.key = originalKey;
+            // Both qualities point to the original until background transcoding completes
             file.videoQualities = {
-                high: constructProxiedUrl(originalKey),
-                low: constructProxiedUrl(lowKey)
+                high: originalUrl,
+                low: originalUrl
             };
             file.mimetype = 'video/mp4';
             file.size = file.buffer.length;
             
-            console.log(`[Upload Middleware] Temp raw video written to ${tempFilePath}`);
+            console.log(`[Upload Middleware] Video successfully uploaded to R2: ${originalKey}`);
+            
+            // Also save to local temp for background transcoding (best-effort, non-blocking)
+            try {
+                const tempDir = path.join(process.cwd(), 'temp_media');
+                fs.mkdirSync(tempDir, { recursive: true });
+                const tempFilePath = path.join(tempDir, `original_${cleanFieldName}-${uniqueSuffix}.mp4`);
+                fs.writeFileSync(tempFilePath, file.buffer);
+                console.log(`[Upload Middleware] Temp copy written for transcoding: ${tempFilePath}`);
+            } catch (tempErr) {
+                // Non-fatal: video is already on R2, transcoding will download it if needed
+                console.warn('[Upload Middleware] Could not write temp copy (non-fatal):', tempErr.message);
+            }
         } catch (err) {
-            console.error('[Upload Middleware] Video local save failed:', err);
+            console.error('[Upload Middleware] Video R2 upload failed:', err);
             throw err;
         }
     } else {

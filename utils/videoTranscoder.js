@@ -1,15 +1,28 @@
-import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import Post from '../models/Post.js';
 import { constructProxiedUrl } from './mediaConfig.js';
 import axios from 'axios';
 
 /**
- * Runs FFmpeg commands in the background to transcode the uploaded video
- * to original high quality and low (360p) streams, uploads them to R2, and updates the database.
+ * Checks if FFmpeg is available on the system.
+ */
+async function isFfmpegAvailable() {
+    try {
+        const { exec } = await import('child_process');
+        return new Promise((resolve) => {
+            exec('ffmpeg -version', { timeout: 5000 }, (err) => resolve(!err));
+        });
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Runs FFmpeg transcoding in the background.
+ * If FFmpeg is not available, falls back gracefully and sets low quality to the original.
  * 
  * @param {string} postId - MongoDB ID of the Post
  * @param {string} mediaKey - Cloudflare R2 file key of the original video
@@ -18,27 +31,32 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
     try {
         console.log(`[VideoTranscoder] Starting background transcode for post ${postId}, key: ${mediaKey}`);
         
+        // --- Step 1: Check if FFmpeg is available ---
+        const ffmpegReady = await isFfmpegAvailable();
+        if (!ffmpegReady) {
+            console.warn(`[VideoTranscoder] FFmpeg not available on this server. Skipping transcode for post ${postId}.`);
+            console.warn(`[VideoTranscoder] Video is already on R2 as original quality. No action needed.`);
+            return;
+        }
+        
+        // --- Step 2: Prepare paths ---
         const parsedKey = path.parse(mediaKey);
         const folder = parsedKey.dir || 'posts/general';
         const baseName = parsedKey.name;
+        const cleanBaseName = baseName.replace(/^original_/, '');
+        const lowKey = `${folder}/low_360p_${cleanBaseName}.mp4`;
         
-        // Check if there is a local raw temp file
+        // --- Step 3: Get the source video (prefer local temp, fallback to R2 download) ---
         let localInputPath = path.join(process.cwd(), 'temp_media', `${baseName}.mp4`);
-        let isLocal = fs.existsSync(localInputPath);
+        const isLocal = fs.existsSync(localInputPath);
         
         if (!isLocal) {
-            console.log(`[VideoTranscoder] Local file not found: ${localInputPath}. Downloading from R2...`);
+            console.log(`[VideoTranscoder] Local file not found. Downloading original from R2...`);
             const originalUrl = constructProxiedUrl(mediaKey);
             localInputPath = path.join(process.cwd(), 'temp_media', `download-${baseName}.mp4`);
-            
-            // Ensure directory exists
             fs.mkdirSync(path.dirname(localInputPath), { recursive: true });
             
-            const response = await axios({
-                method: 'get',
-                url: originalUrl,
-                responseType: 'stream'
-            });
+            const response = await axios({ method: 'get', url: originalUrl, responseType: 'stream' });
             const writer = fs.createWriteStream(localInputPath);
             response.data.pipe(writer);
             await new Promise((resolve, reject) => {
@@ -48,31 +66,21 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             console.log(`[VideoTranscoder] Download complete: ${localInputPath}`);
         }
         
-        const tempHighPath = path.join(process.cwd(), 'temp_media', `high-${baseName}.mp4`);
+        // --- Step 4: Transcode to 360p ---
         const tempLowPath = path.join(process.cwd(), 'temp_media', `low-${baseName}.mp4`);
         
-        // Define R2 target keys
-        const cleanBaseName = baseName.replace(/^original_/, '');
-        const highKey = `${folder}/original_${cleanBaseName}.mp4`;
-        const lowKey = `${folder}/low_360p_${cleanBaseName}.mp4`;
+        // Dynamic import of fluent-ffmpeg to avoid startup crash if package is missing
+        let ffmpeg;
+        try {
+            const mod = await import('fluent-ffmpeg');
+            ffmpeg = mod.default || mod;
+        } catch (importErr) {
+            console.error('[VideoTranscoder] fluent-ffmpeg import failed:', importErr.message);
+            try { fs.unlinkSync(localInputPath); } catch(e) {}
+            return;
+        }
         
-        console.log(`[VideoTranscoder] Transcoding high quality MP4 for post ${postId}...`);
-        await new Promise((resolve, reject) => {
-            ffmpeg(localInputPath)
-                .videoCodec('libx264')
-                .outputOptions([
-                    '-crf 23',
-                    '-preset fast'
-                ])
-                .audioCodec('aac')
-                .audioBitrate('128k')
-                .output(tempHighPath)
-                .on('end', resolve)
-                .on('error', reject)
-                .run();
-        });
-        
-        console.log(`[VideoTranscoder] Transcoding low 360p quality MP4 for post ${postId}...`);
+        console.log(`[VideoTranscoder] Transcoding 360p low quality for post ${postId}...`);
         await new Promise((resolve, reject) => {
             ffmpeg(localInputPath)
                 .videoCodec('libx264')
@@ -92,19 +100,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 .run();
         });
         
+        // --- Step 5: Upload 360p to R2 ---
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
-        
-        // Upload high version
-        console.log(`[VideoTranscoder] Uploading high version to R2: ${highKey}`);
-        const bufferHigh = fs.readFileSync(tempHighPath);
-        await r2.send(new PutObjectCommand({
-            Bucket: bucketName,
-            Key: highKey,
-            ContentType: 'video/mp4',
-            Body: bufferHigh
-        }));
-        
-        // Upload low version
         console.log(`[VideoTranscoder] Uploading low 360p version to R2: ${lowKey}`);
         const bufferLow = fs.readFileSync(tempLowPath);
         await r2.send(new PutObjectCommand({
@@ -114,13 +111,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             Body: bufferLow
         }));
         
-        const highUrl = constructProxiedUrl(highKey);
         const lowUrl = constructProxiedUrl(lowKey);
+        const highUrl = constructProxiedUrl(mediaKey); // original is already high quality
         
-        // Update Post document
+        // --- Step 6: Update Post with the new low quality URL ---
         await Post.findByIdAndUpdate(postId, {
-            media: highUrl,
-            videoUrl: highUrl,
             lowVideoUrl: lowUrl,
             videoQualities: {
                 high: highUrl,
@@ -128,27 +123,14 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             }
         });
         
-        console.log(`[VideoTranscoder] Background transcode succeeded for post ${postId}`);
+        console.log(`[VideoTranscoder] ✅ 360p transcode succeeded for post ${postId}`);
         
-        // Clean up temp files
-        try { fs.unlinkSync(tempHighPath); } catch(e){}
-        try { fs.unlinkSync(tempLowPath); } catch(e){}
-        try { fs.unlinkSync(localInputPath); } catch(e){}
-        
-        // If we downloaded it, or if we had a local raw file, we can also delete the raw mediaKey from R2 to not store raw file
-        if (mediaKey !== highKey) {
-            console.log(`[VideoTranscoder] Deleting raw source file from R2: ${mediaKey}`);
-            try {
-                await r2.send(new DeleteObjectCommand({
-                    Bucket: bucketName,
-                    Key: mediaKey
-                }));
-            } catch (err) {
-                console.error(`[VideoTranscoder] Failed to delete raw source from R2:`, err.message);
-            }
-        }
+        // Cleanup temp files
+        try { fs.unlinkSync(tempLowPath); } catch(e) {}
+        try { fs.unlinkSync(localInputPath); } catch(e) {}
         
     } catch (err) {
         console.error(`[VideoTranscoder] Background transcode failed for post ${postId}:`, err.message);
+        // Non-fatal: original video is still accessible on R2
     }
 }
