@@ -35,6 +35,15 @@ export const getImageUrl = (path, sizeType = 'original') => {
             } else {
                 absoluteUrl = `${baseUrl}/api/media/${proxyTarget}`;
             }
+        } else if (cleanPath.startsWith(r2Domain)) {
+            let relativePath = cleanPath.substring(r2Domain.length);
+            if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
+            
+            if (!isNative && !import.meta.env.DEV) {
+                absoluteUrl = `/r2-media/${relativePath}`;
+            } else {
+                absoluteUrl = `${r2Domain}/${relativePath}`;
+            }
         } else if (cleanPath.startsWith('blob:')) {
             return cleanPath;
         } else if (!cleanPath.startsWith('http')) {
