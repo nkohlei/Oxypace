@@ -137,17 +137,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const availableQualities = [
     { value: 'auto', label: 'Oto' },
-    { value: '144', label: '144p' }
+    { value: 'original', label: 'Orijinal' }
   ];
 
+  if (video144 || qualities?.video144 || qualities?.p144) {
+    availableQualities.push({ value: '144', label: '144p' });
+  }
   if (video360 || qualities?.video360 || qualities?.p360) {
     availableQualities.push({ value: '360', label: '360p' });
   }
   if (video720 || qualities?.video720 || qualities?.p720) {
     availableQualities.push({ value: '720', label: '720p' });
-  }
-  if (videoOriginal || qualities?.videoOriginal || qualities?.p1080) {
-    availableQualities.push({ value: '1080', label: '1080p' });
   }
   
   // Gerçek zamanlı donma/yüklenme sensörü
@@ -207,7 +207,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setIsQualityMenuOpen(false);
     
     let targetSrc = videoSrc;
-    if (mode === '144') targetSrc = src144;
+    if (mode === 'original') targetSrc = src1080;
+    else if (mode === '144') targetSrc = src144;
     else if (mode === '360') targetSrc = src360;
     else if (mode === '720') targetSrc = src720;
     else if (mode === '1080') targetSrc = src1080;
