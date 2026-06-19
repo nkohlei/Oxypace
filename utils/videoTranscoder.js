@@ -110,96 +110,92 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const temp360pPath = path.join(process.cwd(), 'temp_media', `360p-${postId}.mp4`);
         const temp720pPath = path.join(process.cwd(), 'temp_media', `720p-${postId}.mp4`);
         
-        // --- Step 4: Run transcoding processes asynchronously (concurrently) ---
-        const transcodePromises = [];
+        // --- Step 4: Run transcoding processes sequentially ---
+        const results = [];
+        const jobs = [];
 
-        console.log(`[VideoTranscoder] Scheduling async transcoding pipelines with -preset ultrafast...`);
-        
         // 144p Job
-        transcodePromises.push(new Promise((resolve, reject) => {
-            ffmpeg(localInputPath)
-                .videoCodec('libx264')
-                .outputOptions([
-                    '-vf scale=256:144:flags=neighbor',
-                    '-pix_fmt yuv420p',
-                    '-preset ultrafast',
-                    '-b:v 100k',
-                    '-maxrate 120k',
-                    '-bufsize 200k',
-                    '-crf 30'
-                ])
-                .audioCodec('aac')
-                .audioBitrate('64k')
-                .output(temp144pPath)
-                .on('end', () => {
-                    console.log(`[VideoTranscoder] 144p transcode completed locally.`);
-                    resolve({ quality: '144p', path: temp144pPath, key: key144p });
-                })
-                .on('error', (err) => {
-                    console.error('[VideoTranscoder] 144p transcode failed:', err.message);
-                    resolve(null); // resolve with null to keep Promise.all going
-                })
-                .run();
-        }));
+        jobs.push({
+            quality: '144p',
+            path: temp144pPath,
+            key: key144p,
+            options: [
+                '-vf scale=256:144:flags=neighbor',
+                '-pix_fmt yuv420p',
+                '-preset ultrafast',
+                '-threads 1',
+                '-b:v 100k',
+                '-maxrate 120k',
+                '-bufsize 200k',
+                '-crf 30'
+            ],
+            audioBitrate: '64k'
+        });
 
         // 360p Job
-        transcodePromises.push(new Promise((resolve, reject) => {
-            ffmpeg(localInputPath)
-                .videoCodec('libx264')
-                .outputOptions([
-                    '-vf scale=480:360:flags=neighbor',
-                    '-pix_fmt yuv420p',
-                    '-preset ultrafast',
-                    '-b:v 350k',
-                    '-maxrate 400k',
-                    '-bufsize 700k',
-                    '-crf 30'
-                ])
-                .audioCodec('aac')
-                .audioBitrate('64k')
-                .output(temp360pPath)
-                .on('end', () => {
-                    console.log(`[VideoTranscoder] 360p transcode completed locally.`);
-                    resolve({ quality: '360p', path: temp360pPath, key: key360p });
-                })
-                .on('error', (err) => {
-                    console.error('[VideoTranscoder] 360p transcode failed:', err.message);
-                    resolve(null);
-                })
-                .run();
-        }));
+        jobs.push({
+            quality: '360p',
+            path: temp360pPath,
+            key: key360p,
+            options: [
+                '-vf scale=480:360:flags=neighbor',
+                '-pix_fmt yuv420p',
+                '-preset ultrafast',
+                '-threads 1',
+                '-b:v 350k',
+                '-maxrate 400k',
+                '-bufsize 700k',
+                '-crf 30'
+            ],
+            audioBitrate: '64k'
+        });
 
         // 720p Job (Conditional)
         if (has720p) {
-            transcodePromises.push(new Promise((resolve, reject) => {
-                ffmpeg(localInputPath)
-                    .videoCodec('libx264')
-                    .outputOptions([
-                        '-vf scale=1280:720:flags=neighbor',
-                        '-pix_fmt yuv420p',
-                        '-preset ultrafast',
-                        '-b:v 1100k',
-                        '-maxrate 1300k',
-                        '-bufsize 2200k',
-                        '-crf 24'
-                    ])
-                    .audioCodec('aac')
-                    .audioBitrate('128k')
-                    .output(temp720pPath)
-                    .on('end', () => {
-                        console.log(`[VideoTranscoder] 720p transcode completed locally.`);
-                        resolve({ quality: '720p', path: temp720pPath, key: key720p });
-                    })
-                    .on('error', (err) => {
-                        console.error('[VideoTranscoder] 720p transcode failed:', err.message);
-                        resolve(null);
-                    })
-                    .run();
-            }));
+            jobs.push({
+                quality: '720p',
+                path: temp720pPath,
+                key: key720p,
+                options: [
+                    '-vf scale=1280:720:flags=neighbor',
+                    '-pix_fmt yuv420p',
+                    '-preset ultrafast',
+                    '-threads 1',
+                    '-b:v 1100k',
+                    '-maxrate 1300k',
+                    '-bufsize 2200k',
+                    '-crf 24'
+                ],
+                audioBitrate: '128k'
+            });
         }
 
-        // Wait for all transcode tasks to finish
-        const results = await Promise.all(transcodePromises);
+        console.log(`[VideoTranscoder] Running ${jobs.length} transcoding jobs sequentially with -threads 1 and -preset ultrafast...`);
+
+        for (const job of jobs) {
+            try {
+                const res = await new Promise((resolve, reject) => {
+                    ffmpeg(localInputPath)
+                        .videoCodec('libx264')
+                        .outputOptions(job.options)
+                        .audioCodec('aac')
+                        .audioBitrate(job.audioBitrate)
+                        .output(job.path)
+                        .on('end', () => {
+                            console.log(`[VideoTranscoder] ${job.quality} transcode completed locally.`);
+                            resolve({ quality: job.quality, path: job.path, key: job.key });
+                        })
+                        .on('error', (err) => {
+                            console.error(`[VideoTranscoder] ${job.quality} transcode failed:`, err.message);
+                            resolve(null); // resolve with null to proceed with remaining jobs
+                        })
+                        .run();
+                });
+                if (res) results.push(res);
+            } catch (jobErr) {
+                console.error(`[VideoTranscoder] Failed during job ${job.quality}:`, jobErr.message);
+            }
+        }
         
         // --- Step 5: Upload successfully generated variations and update DB qualities ---
         const finalQualities = {
