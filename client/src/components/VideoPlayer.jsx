@@ -526,17 +526,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onClick={(e) => e.stopPropagation()}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
+      style={naturalDimensions ? {
+        width: '100%',
+        maxWidth: naturalDimensions.width,
+        aspectRatio: `${naturalDimensions.width} / ${naturalDimensions.height}`
+      } : undefined}
     >
       <video
         ref={videoRef}
         src={videoSrc}
         poster={poster}
         className={`native-video-element ${isLowQuality ? 'native-video-360p-simulation' : ''}`}
-        style={naturalDimensions ? {
-          width: naturalDimensions.width,
-          height: 'auto',
-          aspectRatio: `${naturalDimensions.width} / ${naturalDimensions.height}`
-        } : undefined}
         playsInline
         loop
         preload="metadata"
