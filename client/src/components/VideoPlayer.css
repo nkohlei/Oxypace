@@ -388,6 +388,5 @@
 
 /* Frontend Low Quality (360p Simulation) Render Throttling */
 .native-video-360p-simulation {
-    filter: blur(1.5px) contrast(0.98);
     opacity: 0.96;
 }

@@ -137,17 +137,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   });
 
   const availableQualities = [
-    { value: 'auto', label: 'Oto' },
-    { value: 'original', label: 'Orijinal' }
+    { value: 'original', label: 'Orijinal' },
+    { value: 'auto', label: 'Oto' }
   ];
 
-  if (video144 || qualities?.video144 || qualities?.p144) {
+  if ((video144 || qualities?.video144 || qualities?.p144) && src144 !== src1080) {
     availableQualities.push({ value: '144', label: '144p' });
   }
-  if (video360 || qualities?.video360 || qualities?.p360) {
+  if ((video360 || qualities?.video360 || qualities?.p360) && src360 !== src1080) {
     availableQualities.push({ value: '360', label: '360p' });
   }
-  if (video720 || qualities?.video720 || qualities?.p720) {
+  if ((video720 || qualities?.video720 || qualities?.p720) && src720 !== src1080) {
     availableQualities.push({ value: '720', label: '720p' });
   }
   

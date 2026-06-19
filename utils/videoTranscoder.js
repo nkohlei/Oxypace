@@ -120,14 +120,13 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             path: temp144pPath,
             key: key144p,
             options: [
-                '-vf scale=256:144:flags=neighbor',
+                '-vf scale=256:144',
                 '-pix_fmt yuv420p',
                 '-preset ultrafast',
                 '-threads 1',
-                '-b:v 100k',
-                '-maxrate 120k',
-                '-bufsize 200k',
-                '-crf 30'
+                '-b:v 150k',
+                '-maxrate 180k',
+                '-bufsize 300k'
             ],
             audioBitrate: '64k'
         });
@@ -138,14 +137,13 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             path: temp360pPath,
             key: key360p,
             options: [
-                '-vf scale=480:360:flags=neighbor',
+                '-vf scale=480:360',
                 '-pix_fmt yuv420p',
                 '-preset ultrafast',
                 '-threads 1',
-                '-b:v 350k',
-                '-maxrate 400k',
-                '-bufsize 700k',
-                '-crf 30'
+                '-b:v 400k',
+                '-maxrate 450k',
+                '-bufsize 800k'
             ],
             audioBitrate: '64k'
         });
@@ -157,14 +155,13 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 path: temp720pPath,
                 key: key720p,
                 options: [
-                    '-vf scale=1280:720:flags=neighbor',
+                    '-vf scale=1280:720',
                     '-pix_fmt yuv420p',
                     '-preset ultrafast',
                     '-threads 1',
                     '-b:v 1100k',
                     '-maxrate 1300k',
-                    '-bufsize 2200k',
-                    '-crf 24'
+                    '-bufsize 2200k'
                 ],
                 audioBitrate: '128k'
             });
