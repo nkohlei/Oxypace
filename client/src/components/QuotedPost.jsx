@@ -71,7 +71,12 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
             <div className="quoted-post-header">
                 <div className="quoted-header-left">
                     {author.profile?.avatar ? (
-                        <img src={getImageUrl(author.profile.avatar, 'thumbnail')} alt={author.username} className="quoted-author-avatar" />
+                        <img 
+                            src={getImageUrl(author.profile.avatar, 'thumbnail')} 
+                            alt={author.username} 
+                            className="quoted-author-avatar" 
+                            style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                        />
                     ) : (
                         <div className="quoted-author-placeholder">{author.username?.charAt(0)?.toUpperCase()}</div>
                     )}
@@ -91,7 +96,12 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {quotedPost.portal.avatar && (
-                            <img src={getImageUrl(quotedPost.portal.avatar, 'thumbnail')} alt="" className="quoted-portal-icon" />
+                            <img 
+                                src={getImageUrl(quotedPost.portal.avatar, 'thumbnail')} 
+                                alt="" 
+                                className="quoted-portal-icon" 
+                                style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                            />
                         )}
                         <span>{quotedPost.portal.name}</span>
                         <ExternalLink size={10} />

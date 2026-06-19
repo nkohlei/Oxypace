@@ -200,7 +200,12 @@ const PortalSidebar = () => {
                                 <div className="portal-icon-container">
                                     <div className="portal-icon">
                                         {portal.avatar ? (
-                                            <img src={getImageUrl(portal.avatar, 'thumbnail')} alt={portal.name} draggable="false" />
+                                            <img 
+                                                src={getImageUrl(portal.avatar, 'thumbnail')} 
+                                                alt={portal.name} 
+                                                draggable="false" 
+                                                style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                                            />
                                         ) : (
                                             <span>{portal.name.substring(0, 2).toUpperCase()}</span>
                                         )}

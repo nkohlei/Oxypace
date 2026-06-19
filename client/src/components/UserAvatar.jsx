@@ -27,6 +27,12 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
         combinedStyle.height = typeof size === 'number' ? `${size}px` : size;
     }
 
+    const numSize = parseInt(size, 10);
+    if (!isNaN(numSize) && numSize <= 48) {
+        combinedStyle.imageRendering = '-webkit-optimize-contrast';
+        combinedStyle.contentVisibility = 'auto';
+    }
+
     const getAvatarSizeType = () => {
         if (sizeType) return sizeType;
         if (!size) return 'original';

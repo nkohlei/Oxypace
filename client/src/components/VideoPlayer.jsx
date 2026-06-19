@@ -129,16 +129,12 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
   };
 
   const handleWaiting = () => {
-    setIsLoading(true);
-    if (!qualities || !qualities.low || !qualities.high) return;
-
-    waitingCountRef.current += 1;
-
-    // Buffer threshold reached: fallback to low resolution
-    if (waitingCountRef.current >= 2) {
+    if (qualities && qualities.low && videoSrc !== qualities.low) {
+      // Instantly swap quality without displaying loading spinner
+      setIsLoading(false);
       setVideoSrc((currentSrc) => {
         if (currentSrc !== qualities.low) {
-          console.log('[VideoPlayer] Downgrading to low quality due to buffering...');
+          console.log('[VideoPlayer] Intercepted stall/waiting: Instantly switching to low quality');
           if (videoRef.current) {
             const curTime = videoRef.current.currentTime;
             const wasPaused = videoRef.current.paused;
@@ -153,12 +149,9 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
         }
         return currentSrc;
       });
+      return;
     }
-
-    if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
-    waitingTimerRef.current = setTimeout(() => {
-      waitingCountRef.current = 0;
-    }, 5000);
+    setIsLoading(true);
   };
 
   // Sync state and listen to connection variations
@@ -202,6 +195,36 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
       };
     }
   }, [src, qualities]);
+
+  // Periodic network health check to upgrade back to high quality when bandwidth recovers
+  useEffect(() => {
+    if (!qualities || !qualities.low || !qualities.high) return;
+
+    const interval = setInterval(() => {
+      const isSlow = isSlowConnection();
+      if (!isSlow) {
+        setVideoSrc((currentSrc) => {
+          if (currentSrc !== qualities.high) {
+            console.log('[VideoPlayer] Network recovered: Upgrading to high quality...');
+            if (videoRef.current) {
+              const curTime = videoRef.current.currentTime;
+              const wasPaused = videoRef.current.paused;
+              videoRef.current.src = qualities.high;
+              videoRef.current.load();
+              videoRef.current.currentTime = curTime;
+              if (!wasPaused) {
+                videoRef.current.play().catch(() => {});
+              }
+            }
+            return qualities.high;
+          }
+          return currentSrc;
+        });
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [qualities]);
 
   const startControlsTimeout = (duration = 1500) => {
     if (controlsTimeoutRef.current) {
@@ -420,6 +443,7 @@ const VideoPlayer = ({ src, qualities, poster, className }) => {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
         onWaiting={handleWaiting}
+        onStalled={handleWaiting}
         onLoadStart={() => setIsLoading(true)}
         onPlaying={() => setIsLoading(false)}
         onCanPlay={() => setIsLoading(false)}
