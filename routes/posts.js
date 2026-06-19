@@ -11,7 +11,7 @@ import axios from 'axios';
 import r2 from '../config/r2.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generatePdfThumbnail } from '../utils/pdfHelper.js';
-import { transcodeVideoInBackground } from '../utils/videoTranscoder.js';
+// transcodeVideoInBackground removed — video transcoding is now browser-side (WASM).
 import path from 'path';
 
 const router = express.Router();
@@ -173,17 +173,43 @@ router.post(
                     }
 
                     if (postData.mediaType === 'video') {
-                        // ✅ Use the actual uploaded key directly.
-                        // Presigned URL flow uploads to: posts/portalId/post-xxx.mp4
-                        // DO NOT add "original_" or "low_360p_" prefixes — those files don't exist in R2.
                         const actualVideoUrl = constructProxiedUrl(req.body.mediaKey);
-                        postData.videoQualities = {
-                            high: actualVideoUrl,
-                            low: actualVideoUrl  // same URL — no 360p transcoding without FFmpeg on server
-                        };
-                        postData.videoUrl = actualVideoUrl;
-                        postData.lowVideoUrl = actualVideoUrl;
-                        postData.media = actualVideoUrl;
+
+                        // ── Browser-side transcoding: frontend sends pre-built quality map ──
+                        if (req.body.videoQualities) {
+                            let vq;
+                            try {
+                                vq = typeof req.body.videoQualities === 'string'
+                                    ? JSON.parse(req.body.videoQualities)
+                                    : req.body.videoQualities;
+                            } catch {
+                                vq = {};
+                            }
+
+                            // Populate all quality fields from the browser-generated map
+                            postData.videoQualities = {
+                                high:  vq.p1080 || vq.p720  || actualVideoUrl,
+                                low:   vq.p144  || vq.p360  || actualVideoUrl,
+                                p144:  vq.p144  || '',
+                                p360:  vq.p360  || '',
+                                p720:  vq.p720  || '',
+                                p1080: vq.p1080 || '',
+                                p2160: vq.p2160 || ''
+                            };
+                            postData.video144    = vq.p144  || '';
+                            postData.video360    = vq.p360  || '';
+                            postData.video720    = vq.p720  || '';
+                            postData.video1080   = vq.p1080 || '';
+                            postData.videoUrl    = vq.p1080 || vq.p720 || vq.p360 || vq.p144 || actualVideoUrl;
+                            postData.lowVideoUrl = vq.p144  || vq.p360 || vq.p720 || actualVideoUrl;
+                            postData.media       = postData.videoUrl;
+                        } else {
+                            // Fallback: no quality map — single quality (legacy / mobile native)
+                            postData.videoQualities = { high: actualVideoUrl, low: actualVideoUrl };
+                            postData.videoUrl    = actualVideoUrl;
+                            postData.lowVideoUrl = actualVideoUrl;
+                            postData.media       = actualVideoUrl;
+                        }
                     }
                 } else if (req.file) {
                     postData.media = constructProxiedUrl(req.file.key);
@@ -213,11 +239,8 @@ router.post(
 
             const post = await Post.create(postData);
             console.log('✅ Post created successfully! ID:', post._id);
-            // Trigger video transcoding in the background if mediaType is video
-            const mediaKeyForTranscode = req.body.mediaKey || (req.file ? req.file.key : null);
-            if (mediaKeyForTranscode && post.mediaType === 'video') {
-                transcodeVideoInBackground(post._id, mediaKeyForTranscode);
-            }            // Re-fetch with deep population for nested quotes
+            // NOTE: Video transcoding is now browser-side (WASM). No backend FFmpeg call needed.
+            // Re-fetch with deep population for nested quotes
             // Using a separate query to ensure fresh data from DB with all relations
             const populatedPost = await Post.findById(post._id)
                 .populate({

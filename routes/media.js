@@ -59,6 +59,10 @@ router.post('/presigned-url', auth, async (req, res) => {
             folder = 'banners';
         } else if (purpose === 'post' || purpose === 'message' || purpose === 'comment') {
             folder = req.body.portalId ? `posts/${req.body.portalId}` : 'posts/general';
+        } else if (purpose === 'video-quality') {
+            // Browser-side WASM transcoded quality blobs land here.
+            // Same folder as the parent post video for clean R2 organisation.
+            folder = req.body.portalId ? `posts/${req.body.portalId}` : 'posts/general';
         } else if (purpose === 'feedback') {
             folder = 'feedback';
         }
