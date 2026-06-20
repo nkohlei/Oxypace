@@ -834,13 +834,21 @@
     margin: 0 auto !important;
     box-shadow: none !important;
     max-width: 100% !important;
-    width: fit-content !important;
+    width: 100% !important;
     background: transparent !important;
 }
 
 .quoted-player .native-video-element {
     max-height: var(--quote-max-h) !important;
     object-fit: contain !important;
+}
+
+/* Parent container overflow adjustments for open menus */
+.quoted-media-preview:has(.has-open-menu),
+.quoted-post-container:has(.has-open-menu),
+.quoted-video-wrapper:has(.has-open-menu) {
+    overflow: visible !important;
+    z-index: 99999 !important;
 }
 
 .nested-quote-wrapper {

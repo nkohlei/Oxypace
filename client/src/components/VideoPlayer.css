@@ -435,3 +435,24 @@
 .native-video-360p-simulation {
     opacity: 0.96;
 }
+
+/* Layering and clipping fixes when dropdown menus are open */
+.native-player-container.has-open-menu {
+    overflow: visible !important;
+    z-index: 99999 !important;
+}
+
+.native-player-container.has-open-menu .native-controls-ui {
+    overflow: visible !important;
+    z-index: 99999 !important;
+}
+
+.native-player-container.has-open-menu .native-right-controls {
+    overflow: visible !important;
+    z-index: 99999 !important;
+}
+
+.native-quality-menu,
+.native-speed-menu {
+    z-index: 999999 !important;
+}

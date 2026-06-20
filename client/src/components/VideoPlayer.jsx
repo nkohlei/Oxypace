@@ -477,7 +477,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   return (
     <div
-      className={`native-player-container left-aligned v16-scale ${className || ''}`}
+      className={`native-player-container left-aligned v16-scale ${className || ''} ${isQualityMenuOpen || isSettingsOpen ? 'has-open-menu' : ''}`}
       onClick={e => e.stopPropagation()}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
