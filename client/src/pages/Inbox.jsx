@@ -105,12 +105,12 @@ const Inbox = () => {
         setShowPlusMenu(false);
     }, [selectedUser]);
 
-    const scrollToBottom = () => {
+    const scrollToBottom = useCallback(() => {
         if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
         messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-    };
+    }, []);
 
     useEffect(() => {
         fetchConversations();
@@ -168,12 +168,22 @@ const Inbox = () => {
 
     useLayoutEffect(() => {
         if (selectedUser) {
-            if (messagesContainerRef.current) {
-                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-            }
-            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            scrollToBottom();
+
+            const rafId = requestAnimationFrame(() => {
+                scrollToBottom();
+            });
+
+            const timerId1 = setTimeout(scrollToBottom, 50);
+            const timerId2 = setTimeout(scrollToBottom, 150);
+
+            return () => {
+                cancelAnimationFrame(rafId);
+                clearTimeout(timerId1);
+                clearTimeout(timerId2);
+            };
         }
-    }, [selectedUser, messages, media, replyingTo]);
+    }, [selectedUser, messages, media, replyingTo, scrollToBottom]);
 
     const fetchConversations = async () => {
         try {
@@ -190,6 +200,7 @@ const Inbox = () => {
         try {
             const response = await axios.get(`/api/users/${username}`);
             setSelectedUser(response.data);
+            setMessages([]);
             fetchMessages(response.data._id);
         } catch (err) {
             console.error('Failed to fetch user:', err);
@@ -209,6 +220,7 @@ const Inbox = () => {
 
     const handleConversationClick = (conversation) => {
         setSelectedUser(conversation.user);
+        setMessages([]);
         fetchMessages(conversation.user._id);
     };
 
@@ -219,6 +231,7 @@ const Inbox = () => {
 
     const handleStartNewConversation = (user) => {
         setSelectedUser(user);
+        setMessages([]);
         fetchMessages(user._id);
         setShowNewMessageModal(false);
     };
