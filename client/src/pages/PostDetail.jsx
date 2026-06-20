@@ -104,8 +104,27 @@ const PostDetail = () => {
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [postId]);
+        
+        // Socket listener for real-time updates
+        if (socket && connected) {
+            const handleUpdatePost = (updatedPost) => {
+                if (String(updatedPost._id) === String(postId)) {
+                    console.log('✅ PostDetail real-time update accepted');
+                    setPost(updatedPost);
+                }
+            };
+            socket.on('post:updated', handleUpdatePost);
+            
+            return () => {
+                document.removeEventListener('mousedown', handleClickOutside);
+                socket.off('post:updated', handleUpdatePost);
+            };
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [postId, socket, connected]);
 
     const fetchPost = async () => {
         try {

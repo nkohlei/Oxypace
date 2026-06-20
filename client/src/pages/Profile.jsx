@@ -20,6 +20,7 @@ import LinkPreview from '../components/LinkPreview';
 import { extractFirstUrl } from '../utils/linkify';
 import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
+import { useSocket } from '../context/SocketContext';
 import './Profile.css';
 
 
@@ -27,8 +28,21 @@ const Profile = () => {
     const { username } = useParams();
     const navigate = useNavigate();
     const { user: currentUser, updateUser } = useAuth();
+    const { socket, connected } = useSocket();
     const [profileUser, setProfileUser] = useState(null);
     const [editing, setEditing] = useState(false);
+
+    useEffect(() => {
+        if (socket && connected) {
+            const handleUpdatePost = (updatedPost) => {
+                setUserPosts((prev) => prev.map(p => p._id === updatedPost._id ? updatedPost : p));
+            };
+            socket.on('post:updated', handleUpdatePost);
+            return () => {
+                socket.off('post:updated', handleUpdatePost);
+            };
+        }
+    }, [socket, connected]);
     const [showReportModal, setShowReportModal] = useState(false);
     const [formData, setFormData] = useState({
         displayName: '',

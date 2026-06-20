@@ -167,8 +167,10 @@ const Portal = () => {
         
         const handleNewPost = (newPost) => {
             // BEGİNSE: The "Doorman" check
-            const isTargetPortal = String(newPost.portal) === String(id);
-            const isTargetChannel = String(newPost.channel) === String(currentChannel);
+            const newPostPortalId = newPost.portal?._id || newPost.portal;
+            const newPostChannelId = newPost.channel?._id || newPost.channel;
+            const isTargetPortal = String(newPostPortalId) === String(id);
+            const isTargetChannel = String(newPostChannelId) === String(currentChannel);
 
             if (isTargetPortal && isTargetChannel) {
                 console.log('✅ Realtime Post Accepted for this view');
@@ -190,16 +192,17 @@ const Portal = () => {
                 });
             } else {
                 console.log('🚫 Realtime Post Rejected: Wrong context', {
-                    postPortal: newPost.portal,
+                    postPortal: newPostPortalId,
                     currentPortal: id,
-                    postChannel: newPost.channel,
+                    postChannel: newPostChannelId,
                     currentChannel: currentChannel
                 });
             }
         };
 
         const handleUpdatePost = (updatedPost) => {
-            const isTargetPortal = String(updatedPost.portal) === String(id);
+            const updatedPortalId = updatedPost.portal?._id || updatedPost.portal;
+            const isTargetPortal = String(updatedPortalId) === String(id);
             if (isTargetPortal) {
                 setPosts((prev) => prev.map(p => p._id === updatedPost._id ? updatedPost : p));
             }
