@@ -114,6 +114,7 @@ const io = new Server(httpServer, {
     pingTimeout: 30000,
     pingInterval: 25000,
 });
+global.io = io;
 
 // Push Trigger: efee3de
 app.set('io', io);

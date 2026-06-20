@@ -23,8 +23,6 @@ if (process.env.NODE_ENV === 'production') {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RAM-SAFE UPLOAD: stream file directly to R2 instead of readFileSync.
-// readFileSync on a 100MB video buffers the entire file into Node heap — fatal
-// on a 512 MB Koyeb instance. createReadStream keeps RAM usage near-zero.
 // ─────────────────────────────────────────────────────────────────────────────
 async function uploadFileToR2(localPath, r2Key, bucketName) {
     const fileStream = fs.createReadStream(localPath);
@@ -47,15 +45,6 @@ function safeUnlink(filePath) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORE HARDWARE-OPTIMISED FFmpeg OPTIONS
-//
-//  -threads 1          → single encoder thread; keeps CPU & RAM minimal
-//  -frame-threads 1    → decode one frame at a time (no multi-frame buffering)
-//  -tile-columns 0     → disable parallel tile encoding (VP9/AV1 guard, libx264 no-op but safe)
-//  -preset ultrafast   → fastest x264 compression mode; least RAM per frame
-//  -tune fastdecode    → optimise bitstream for low-cost decoding on mobile/web
-//  -pix_fmt yuv420p    → universal colour space; avoids extra conversion passes
-//
-// All together these cap peak RAM at ~60-80 MB per FFmpeg child process.
 // ─────────────────────────────────────────────────────────────────────────────
 const FFMPEG_RAM_SAFE_FLAGS = [
     '-threads 1',
@@ -69,9 +58,8 @@ const FFMPEG_RAM_SAFE_FLAGS = [
 /**
  * Transcode a single quality level synchronously.
  * Returns the output file path on success, null on failure.
- * Caller is responsible for cleaning up the output file.
  */
-function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, maxrate, bufsize, audioBitrate }) {
+function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, maxrate, bufsize }) {
     return new Promise((resolve) => {
         ffmpeg(inputPath)
             .videoCodec('libx264')
@@ -80,10 +68,9 @@ function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, ma
                 `-vf ${scaleFilter}`,
                 `-b:v ${videoBitrate}`,
                 `-maxrate ${maxrate}`,
-                `-bufsize ${bufsize}`
+                `-bufsize ${bufsize}`,
+                '-c:a copy' // Direct Audio Copy to restore and preserve audio track cleanly
             ])
-            .audioCodec('aac')
-            .audioBitrate(audioBitrate)
             .output(outputPath)
             .on('start', (cmd) => {
                 console.log(`[VideoTranscoder] FFmpeg started: ${cmd.slice(0, 120)}...`);
@@ -101,7 +88,7 @@ function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, ma
 }
 
 /**
- * Runs FFmpeg transcoding in the background with strict 512 MB RAM budget.
+ * Runs FFmpeg transcoding in the background with strict RAM budget.
  *
  * @param {string} postId  - MongoDB ID of the Post
  * @param {string} mediaKey - Cloudflare R2 file key or local temp path
@@ -161,6 +148,14 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const srcWidth  = videoStream ? parseInt(videoStream.width,  10) : 0;
         console.log(`[VideoTranscoder] Source dimensions: ${srcWidth}x${srcHeight}`);
 
+        // Set estimated processing time dynamically based on video duration
+        const duration = metadata.format ? parseFloat(metadata.format.duration || 0) : 0;
+        const estimatedTime = Math.ceil(duration * 1.5) || 60;
+        await Post.findByIdAndUpdate(postId, {
+            isProcessing: true,
+            estimatedTime: estimatedTime
+        });
+
         // ── Step 3: Determine original quality label ──────────────────────────
         let maxLabel     = '144p';
         let maxField     = 'p144';
@@ -199,19 +194,19 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         await Post.findByIdAndUpdate(postId, initialUpdates);
         console.log(`[VideoTranscoder] ✅ Original quality (${maxLabel}) saved to DB. Video is immediately playable.`);
 
+        // Broadcast original update to client via Socket.IO
+        if (global.io) {
+            const updatedPost = await Post.findById(postId)
+                .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
+                .populate('portal');
+            global.io.emit('post:updated', updatedPost);
+        }
+
         // ── Step 5: Sequential low-memory transcoding queue ───────────────────
-        //
-        // Quality ladder — highest to lowest so each job is a downscale.
-        // -vf scale=-2:H  = maintain original aspect ratio; width rounded to even.
-        //
-        // We always transcode FROM THE ORIGINAL (localInputPath) to prevent
-        // chained quality loss AND avoid keeping two temp files open at once.
-        // After each job completes + uploads, we immediately delete the temp file.
-        // ─────────────────────────────────────────────────────────────────────
         const qualityLadder = [
-            { targetH: 720,  label: '720p',  field: 'p720',  rootField: 'video720',  bitrate: '1100k', maxrate: '1300k', bufsize: '2200k', audio: '128k' },
-            { targetH: 360,  label: '360p',  field: 'p360',  rootField: 'video360',  bitrate: '400k',  maxrate: '450k',  bufsize: '800k',  audio: '64k'  },
-            { targetH: 144,  label: '144p',  field: 'p144',  rootField: 'video144',  bitrate: '150k',  maxrate: '180k',  bufsize: '300k',  audio: '64k'  }
+            { targetH: 720,  label: '720p',  field: 'p720',  rootField: 'video720',  bitrate: '1100k', maxrate: '1300k', bufsize: '2200k' },
+            { targetH: 360,  label: '360p',  field: 'p360',  rootField: 'video360',  bitrate: '400k',  maxrate: '450k',  bufsize: '800k'  },
+            { targetH: 144,  label: '144p',  field: 'p144',  rootField: 'video144',  bitrate: '150k',  maxrate: '180k',  bufsize: '300k'  }
         ];
 
         // Filter to only jobs strictly below the source resolution
@@ -219,7 +214,6 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         console.log(`[VideoTranscoder] ${jobs.length} transcode jobs queued (sequential, -threads 1, -preset ultrafast)`);
 
         const finalQualities = { ...initialQualities };
-        const dbUpdates      = { videoQualities: finalQualities };
 
         for (const job of jobs) {
             const tempOut = path.join(process.cwd(), 'temp_media', `${job.label}-${postId}.mp4`);
@@ -228,13 +222,12 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             console.log(`[VideoTranscoder] → Starting ${job.label} transcode...`);
 
             const outputPath = await transcodeQuality({
-                inputPath:    localInputPath,          // always from original — no chained quality loss
+                inputPath:    localInputPath,          // always from original
                 outputPath:   tempOut,
-                scaleFilter:  `scale=-2:${job.targetH}`, // -2 preserves AR with even-width constraint
+                scaleFilter:  `scale=-2:${job.targetH}`, // preserves AR
                 videoBitrate: job.bitrate,
                 maxrate:      job.maxrate,
-                bufsize:      job.bufsize,
-                audioBitrate: job.audio
+                bufsize:      job.bufsize
             });
 
             if (outputPath && fs.existsSync(outputPath)) {
@@ -244,24 +237,31 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                     const url = constructProxiedUrl(r2Key);
 
                     finalQualities[job.field]  = url;
-                    dbUpdates[job.rootField]   = url;
+
+                    const remainingTime = Math.max(0, Math.ceil(estimatedTime * (1 - (jobs.indexOf(job) + 1) / jobs.length)));
 
                     // Flush DB after each quality so partial results survive a crash
-                    await Post.findByIdAndUpdate(postId, {
+                    const updatedPost = await Post.findByIdAndUpdate(postId, {
                         videoQualities: { ...finalQualities },
-                        [job.rootField]: url
-                    });
-                    console.log(`[VideoTranscoder] ✅ ${job.label} written to DB.`);
+                        [job.rootField]: url,
+                        estimatedTime: remainingTime
+                    }, { new: true })
+                    .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
+                    .populate('portal');
+
+                    if (global.io) {
+                        global.io.emit('post:updated', updatedPost);
+                    }
+                    console.log(`[VideoTranscoder] ✅ ${job.label} written to DB & emitted.`);
                 } catch (uploadErr) {
                     console.error(`[VideoTranscoder] Upload failed for ${job.label}:`, uploadErr.message);
                 } finally {
-                    // Immediately free disk + RAM — do NOT wait for next job
                     safeUnlink(outputPath);
                 }
             }
         }
 
-        // ── Step 6: Final DB pass — update low/high pointers ─────────────────
+        // ── Step 6: Final DB pass — update low/high pointers and isProcessing ─
         let lowestUrl = urlOriginal;
         if (finalQualities.p144)  lowestUrl = finalQualities.p144;
         else if (finalQualities.p360)  lowestUrl = finalQualities.p360;
@@ -272,19 +272,35 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         finalQualities.low  = lowestUrl;
         finalQualities.high = urlOriginal;
 
-        await Post.findByIdAndUpdate(postId, {
+        const updatedPost = await Post.findByIdAndUpdate(postId, {
             lowVideoUrl:    lowestUrl,
-            videoQualities: finalQualities
-        });
+            videoQualities: finalQualities,
+            isProcessing:   false,
+            estimatedTime:  0
+        }, { new: true })
+        .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
+        .populate('portal');
+
+        if (global.io) {
+            global.io.emit('post:updated', updatedPost);
+        }
 
         console.log(`[VideoTranscoder] 🏁 Pipeline complete for post ${postId}`);
 
     } catch (err) {
         console.error(`[VideoTranscoder] Pipeline failed for post ${postId}:`, err.message);
         try {
-            await Post.findByIdAndUpdate(postId, {
-                transcodeError: `${err.message}\n${err.stack}`
-            });
+            const updatedPost = await Post.findByIdAndUpdate(postId, {
+                transcodeError: `${err.message}\n${err.stack}`,
+                isProcessing:   false,
+                estimatedTime:  0
+            }, { new: true })
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
+            .populate('portal');
+
+            if (global.io) {
+                global.io.emit('post:updated', updatedPost);
+            }
         } catch (dbErr) {
             console.error('[VideoTranscoder] Failed to save error to DB:', dbErr);
         }

@@ -91,7 +91,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, estimatedTime = 0 }) => {
   const videoRef = useRef(null);
   const isMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -100,6 +100,29 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   
+  const [countdown, setCountdown] = useState(estimatedTime || 0);
+
+  useEffect(() => {
+    setCountdown(estimatedTime || 0);
+  }, [estimatedTime]);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  const formatEstimatedTime = (totalSeconds) => {
+    if (totalSeconds <= 0) return '0 sn';
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes > 0) {
+      return `${minutes} dk ${seconds} sn`;
+    }
+    return `${seconds} sn`;
+  };
 
   // Resolve source options for 144p, 360p, 720p, 1080p, 2160p
   const src144 = getImageUrl(video144 || qualities?.video144 || qualities?.p144 || qualities?.['144p'] || qualities?.low || lowVideoUrl || src);
@@ -126,6 +149,50 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
+
+  // Seamless auto-quality network and playback buffering monitor
+  useEffect(() => {
+    if (qualityMode !== 'auto') return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    let lastTime = 0;
+    let lastCheck = Date.now();
+
+    const interval = setInterval(() => {
+      if (video.paused || video.ended) {
+        lastCheck = Date.now();
+        lastTime = video.currentTime;
+        return;
+      }
+
+      const now = Date.now();
+      const timeDiff = (now - lastCheck) / 1000;
+      const progressDiff = video.currentTime - lastTime;
+
+      // If the video is playing but progress has stalled (buffering) or is lagging behind
+      if (timeDiff > 0.5 && progressDiff < 0.1) {
+        console.log('[VideoPlayer] Seamless Auto-Quality: Stalling detected via progress check. Down-switching quality...');
+        
+        let targetSrc = null;
+        if (videoSrc === src2160 && has1080) targetSrc = src1080;
+        else if (videoSrc === src1080 && has720) targetSrc = src720;
+        else if (videoSrc === src720 && has360) targetSrc = src360;
+        else if (videoSrc === src360 && has144) targetSrc = src144;
+
+        if (targetSrc && targetSrc !== videoSrc) {
+          restoreTimeRef.current = video.currentTime;
+          shouldPlayRef.current = true;
+          setVideoSrc(targetSrc);
+        }
+      }
+
+      lastTime = video.currentTime;
+      lastCheck = now;
+    }, 500); // Check every 500ms for sub-second lag detection
+
+    return () => clearInterval(interval);
+  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, has144, has360, has720, has1080, has2160]);
 
   useEffect(() => {
     setNaturalDimensions(null);
@@ -559,10 +626,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onClick={(e) => e.stopPropagation()}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
-      style={naturalDimensions ? {
-        aspectRatio: `${naturalDimensions.width} / ${naturalDimensions.height}`
-      } : {}}
     >
+      {(isProcessing || countdown > 0) && (
+        <div className="processing-overlay-orange">
+          <span className="processing-dot-orange" />
+          <span>Kaliteler İşleniyor... {countdown > 0 ? `(Tahmini Bitiş: ${formatEstimatedTime(countdown)})` : ''}</span>
+        </div>
+      )}
       <video
         ref={videoRef}
         src={videoSrc}

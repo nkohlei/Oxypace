@@ -199,9 +199,11 @@ const Profile = () => {
 
             if (mediaKey) {
                 postData.mediaKey = mediaKey;
-                if (isVideoFileRef.current && videoQualitiesPayload) {
-                    postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                if (isVideoFileRef.current) {
                     postData.mediaType = 'video';
+                    if (videoQualitiesPayload) {
+                        postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                    }
                 }
             }
 

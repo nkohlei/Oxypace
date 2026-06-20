@@ -135,6 +135,8 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                     video1080={getImageUrl(quotedPost.video1080)}
                                     video2160={getImageUrl(quotedPost.video2160)}
                                     className="quoted-player"
+                                    isProcessing={quotedPost.isProcessing}
+                                    estimatedTime={quotedPost.estimatedTime}
                                 />
                             </div>
                         ) : quotedPost.mediaType === 'youtube' ? (

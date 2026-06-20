@@ -1,10 +1,10 @@
 /* Scale Native VideoPlayer v18.0 - True Dynamic Ratio (Twitter/Instagram/YouTube Feed Standard) */
 .native-player-container.v16-scale {
     position: relative;
-    width: 100%;
+    width: 100% !important;
     max-width: 650px;
-    /* height: auto — driven entirely by the video's intrinsic dimensions via the <video> element */
-    height: auto;
+    height: auto !important;
+    aspect-ratio: auto !important; /* Enforce natural aspect ratio and zero stretch */
     margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
@@ -12,20 +12,58 @@
     display: block;
     flex-shrink: 0;
     box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.7);
-    /* NO aspect-ratio, NO max-height — container shape is 100% driven by video content */
 }
 
 .native-player-container.v16-scale .native-video-element {
     display: block; /* Eliminates the inline baseline gap */
     width: 100% !important;
-    /* height: auto — browser uses the video's intrinsic ratio; container follows naturally */
     height: auto !important;
     max-width: 100% !important;
-    /* contain is redundant when height:auto but kept as safety net */
     object-fit: contain !important;
+    aspect-ratio: auto !important; /* Enforce natural aspect ratio and zero stretch */
     border-radius: 12px;
     cursor: pointer;
-    /* No background: the container's #000 handles pre-load; once playing, no black bars */
+}
+
+/* Glassmorphism Orange Processing Overlay */
+.processing-overlay-orange {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(249, 115, 22, 0.25) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(249, 115, 22, 0.4) !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #ffedd5 !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.processing-dot-orange {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background-color: #f97316 !important;
+  animation: pulse-orange 1.5s infinite ease-in-out !important;
+}
+
+@keyframes pulse-orange {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
 }
 
 /* --- THE REAL LOADER (Tied directly to video data events) --- */

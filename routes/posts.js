@@ -11,7 +11,7 @@ import axios from 'axios';
 import r2 from '../config/r2.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generatePdfThumbnail } from '../utils/pdfHelper.js';
-// transcodeVideoInBackground removed — video transcoding is now browser-side (WASM).
+import { transcodeVideoInBackground } from '../utils/videoTranscoder.js';
 import path from 'path';
 
 const router = express.Router();
@@ -174,50 +174,24 @@ router.post(
 
                     if (postData.mediaType === 'video') {
                         const actualVideoUrl = constructProxiedUrl(req.body.mediaKey);
-
-                        // ── Browser-side transcoding: frontend sends pre-built quality map ──
-                        if (req.body.videoQualities || req.body.qualities) {
-                            let vq;
-                            try {
-                                const rawVq = req.body.videoQualities || req.body.qualities;
-                                vq = typeof rawVq === 'string'
-                                    ? JSON.parse(rawVq)
-                                    : rawVq;
-                            } catch {
-                                vq = {};
-                            }
-
-                            // If qualities format (144p, 360p, 720p, 1080p) is used, map to standard DB keys
-                            const p144Val = vq.p144 || vq['144p'] || '';
-                            const p360Val = vq.p360 || vq['360p'] || '';
-                            const p720Val = vq.p720 || vq['720p'] || '';
-                            const p1080Val = vq.p1080 || vq['1080p'] || '';
-                            const p2160Val = vq.p2160 || vq['2160p'] || '';
-
-                            // Populate all quality fields from the browser-generated map
-                            postData.videoQualities = {
-                                high:  p1080Val || p720Val  || actualVideoUrl,
-                                low:   p144Val  || p360Val  || actualVideoUrl,
-                                p144:  p144Val  || '',
-                                p360:  p360Val  || '',
-                                p720:  p720Val  || '',
-                                p1080: p1080Val || '',
-                                p2160: p2160Val || ''
-                            };
-                            postData.video144    = p144Val  || '';
-                            postData.video360    = p360Val  || '';
-                            postData.video720    = p720Val  || '';
-                            postData.video1080   = p1080Val || '';
-                            postData.videoUrl    = p1080Val || p720Val || p360Val || p144Val || actualVideoUrl;
-                            postData.lowVideoUrl = p144Val  || p360Val || p720Val || actualVideoUrl;
-                            postData.media       = postData.videoUrl;
-                        } else {
-                            // Fallback: no quality map — single quality (legacy / mobile native)
-                            postData.videoQualities = { high: actualVideoUrl, low: actualVideoUrl };
-                            postData.videoUrl    = actualVideoUrl;
-                            postData.lowVideoUrl = actualVideoUrl;
-                            postData.media       = actualVideoUrl;
-                        }
+                        postData.isProcessing = true;
+                        postData.estimatedTime = 60;
+                        postData.videoQualities = {
+                            high:  actualVideoUrl,
+                            low:   actualVideoUrl,
+                            p144:  '',
+                            p360:  '',
+                            p720:  '',
+                            p1080: actualVideoUrl,
+                            p2160: ''
+                        };
+                        postData.video144    = '';
+                        postData.video360    = '';
+                        postData.video720    = '';
+                        postData.video1080   = actualVideoUrl;
+                        postData.videoUrl    = actualVideoUrl;
+                        postData.lowVideoUrl = actualVideoUrl;
+                        postData.media       = actualVideoUrl;
                     }
                 } else if (req.file) {
                     postData.media = constructProxiedUrl(req.file.key);
@@ -225,12 +199,25 @@ router.post(
 
                     if (req.file.mimetype.includes('video')) {
                         postData.mediaType = 'video';
-                        if (req.file.videoQualities) {
-                            postData.videoQualities = req.file.videoQualities;
-                            postData.videoUrl = req.file.videoQualities.high;
-                            postData.lowVideoUrl = req.file.videoQualities.low;
-                            postData.media = postData.videoUrl;
-                        }
+                        const actualVideoUrl = postData.media;
+                        postData.isProcessing = true;
+                        postData.estimatedTime = 60;
+                        postData.videoQualities = {
+                            high:  actualVideoUrl,
+                            low:   actualVideoUrl,
+                            p144:  '',
+                            p360:  '',
+                            p720:  '',
+                            p1080: actualVideoUrl,
+                            p2160: ''
+                        };
+                        postData.video144    = '';
+                        postData.video360    = '';
+                        postData.video720    = '';
+                        postData.video1080   = actualVideoUrl;
+                        postData.videoUrl    = actualVideoUrl;
+                        postData.lowVideoUrl = actualVideoUrl;
+                        postData.media       = actualVideoUrl;
                     } else {
                         postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
                     }
@@ -247,7 +234,16 @@ router.post(
 
             const post = await Post.create(postData);
             console.log('✅ Post created successfully! ID:', post._id);
-            // NOTE: Video transcoding is now browser-side (WASM). No backend FFmpeg call needed.
+
+            if (post.mediaType === 'video') {
+                const videoKey = req.body.mediaKey || (req.file ? req.file.key : null);
+                if (videoKey) {
+                    console.log(`[POST Route] Triggering background transcoding for post ${post._id}`);
+                    transcodeVideoInBackground(post._id.toString(), videoKey).catch(err => {
+                        console.error('Failed to run background transcode:', err);
+                    });
+                }
+            }
             // Re-fetch with deep population for nested quotes
             // Using a separate query to ensure fresh data from DB with all relations
             const populatedPost = await Post.findById(post._id)

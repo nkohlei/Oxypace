@@ -380,9 +380,11 @@ const Portal = () => {
 
             if (mediaKey) {
                 postData.mediaKey = mediaKey;
-                if (isVideoFileRef.current && videoQualitiesPayload) {
-                    postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                if (isVideoFileRef.current) {
                     postData.mediaType = 'video';
+                    if (videoQualitiesPayload) {
+                        postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                    }
                 } else if (currentData.media && (currentData.media.type === 'application/pdf' || currentData.media.name.toLowerCase().endsWith('.pdf'))) {
                     postData.pdfName = currentData.media.name;
                     postData.pdfSize = currentData.media.size;

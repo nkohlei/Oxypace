@@ -347,6 +347,8 @@ const PostDetail = () => {
                                                     video720={getImageUrl(post.video720)}
                                                     video1080={getImageUrl(post.video1080)}
                                                     video2160={getImageUrl(post.video2160)}
+                                                    isProcessing={post.isProcessing}
+                                                    estimatedTime={post.estimatedTime}
                                                 />
                                             ) : (
                                                 <img src={getImageUrl(m)} alt="" />

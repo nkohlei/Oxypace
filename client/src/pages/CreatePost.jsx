@@ -137,10 +137,11 @@ const CreatePost = () => {
 
             if (mediaKey) {
                 postData.mediaKey = mediaKey;
-                if (isVideoRef.current && videoQualitiesPayload) {
-                    // Send full quality map — backend writes to Post model directly
-                    postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                if (isVideoRef.current) {
                     postData.mediaType = 'video';
+                    if (videoQualitiesPayload) {
+                        postData.videoQualities = JSON.stringify(videoQualitiesPayload);
+                    }
                 } else if (mediaFile && (mediaFile.type === 'application/pdf' || mediaFile.name.toLowerCase().endsWith('.pdf'))) {
                     postData.pdfName = mediaFile.name;
                     postData.pdfSize = mediaFile.size;
