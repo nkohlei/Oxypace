@@ -175,7 +175,8 @@ router.post(
                     if (postData.mediaType === 'video') {
                         const actualVideoUrl = constructProxiedUrl(req.body.mediaKey);
                         postData.isProcessing = true;
-                        postData.estimatedTime = 60;
+                        postData.processingProgress = 0;
+                        postData.estimatedTime = 'Hesaplanıyor...';
                         postData.videoQualities = {
                             high:  actualVideoUrl,
                             low:   actualVideoUrl,
@@ -201,7 +202,8 @@ router.post(
                         postData.mediaType = 'video';
                         const actualVideoUrl = postData.media;
                         postData.isProcessing = true;
-                        postData.estimatedTime = 60;
+                        postData.processingProgress = 0;
+                        postData.estimatedTime = 'Hesaplanıyor...';
                         postData.videoQualities = {
                             high:  actualVideoUrl,
                             low:   actualVideoUrl,

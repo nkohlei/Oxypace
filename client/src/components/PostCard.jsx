@@ -717,6 +717,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 video2160={getImageUrl(post.video2160)}
                                 className="post-video-player"
                                 isProcessing={post.isProcessing}
+                                processingProgress={post.processingProgress}
                                 estimatedTime={post.estimatedTime}
                             />
                         ) : post.mediaType === 'youtube' ? (

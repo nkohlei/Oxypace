@@ -118,11 +118,15 @@ const postSchema = new mongoose.Schema(
         },
         isProcessing: {
             type: Boolean,
-            default: false,
+            default: true,
         },
-        estimatedTime: {
+        processingProgress: {
             type: Number,
             default: 0,
+        },
+        estimatedTime: {
+            type: String,
+            default: 'Hesaplanıyor...',
         },
     },
     {

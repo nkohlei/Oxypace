@@ -91,7 +91,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, estimatedTime = 0 }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = "Hesaplanıyor..." }) => {
   const videoRef = useRef(null);
   const restoreTimeRef = useRef(0);
   const shouldPlayRef = useRef(false);
@@ -101,30 +101,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  
-  const [countdown, setCountdown] = useState(estimatedTime || 0);
-
-  useEffect(() => {
-    setCountdown(estimatedTime || 0);
-  }, [estimatedTime]);
-
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [countdown]);
-
-  const formatEstimatedTime = (totalSeconds) => {
-    if (totalSeconds <= 0) return '0 sn';
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    if (minutes > 0) {
-      return `${minutes} dk ${seconds} sn`;
-    }
-    return `${seconds} sn`;
-  };
 
   // Resolve source options for 144p, 360p, 720p, 1080p, 2160p
   const src144 = getImageUrl(video144 || qualities?.video144 || qualities?.p144 || qualities?.['144p'] || qualities?.low || lowVideoUrl || src);
@@ -627,10 +603,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
     >
-      {(isProcessing || countdown > 0) && (
+      {isProcessing && (
         <div className="processing-overlay-orange">
           <span className="processing-dot-orange" />
-          <span>Kaliteler İşleniyor... {countdown > 0 ? `(Tahmini Bitiş: ${formatEstimatedTime(countdown)})` : ''}</span>
+          <span>⚡ Kaliteler Hazırlanıyor (%{processingProgress}) - Kalan: {estimatedTime}</span>
         </div>
       )}
       <video

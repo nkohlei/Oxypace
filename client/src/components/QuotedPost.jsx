@@ -136,6 +136,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                     video2160={getImageUrl(quotedPost.video2160)}
                                     className="quoted-player"
                                     isProcessing={quotedPost.isProcessing}
+                                    processingProgress={quotedPost.processingProgress}
                                     estimatedTime={quotedPost.estimatedTime}
                                 />
                             </div>

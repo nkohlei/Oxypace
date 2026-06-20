@@ -43,23 +43,21 @@ function safeUnlink(filePath) {
     try { fs.unlinkSync(filePath); } catch (_) {}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CORE HARDWARE-OPTIMISED FFmpeg OPTIONS
-// ─────────────────────────────────────────────────────────────────────────────
-const FFMPEG_RAM_SAFE_FLAGS = [
-    '-threads 1',
-    '-frame-threads 1',
-    '-tile-columns 0',
-    '-preset ultrafast',
-    '-tune fastdecode',
-    '-pix_fmt yuv420p'
-];
+const formatEstimatedTime = (totalSeconds) => {
+    if (totalSeconds <= 0) return '0 sn';
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes > 0) {
+        return `${minutes} dk ${seconds} sn`;
+    }
+    return `${seconds} sn`;
+};
 
 /**
  * Transcode a single quality level synchronously.
  * Returns the output file path on success, null on failure.
  */
-function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, maxrate, bufsize }) {
+function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, maxrate, bufsize, onProgress }) {
     return new Promise((resolve) => {
         ffmpeg(inputPath)
             .videoCodec('libx264')
@@ -69,11 +67,16 @@ function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, ma
                 `-b:v ${videoBitrate}`,
                 `-maxrate ${maxrate}`,
                 `-bufsize ${bufsize}`,
-                '-c:a copy' // Direct Audio Copy to restore and preserve audio track cleanly
+                '-c:a aac' // Convert/preserve audio track cleanly as AAC
             ])
             .output(outputPath)
             .on('start', (cmd) => {
                 console.log(`[VideoTranscoder] FFmpeg started: ${cmd.slice(0, 120)}...`);
+            })
+            .on('progress', (progress) => {
+                if (onProgress && progress.percent !== undefined) {
+                    onProgress(progress.percent);
+                }
             })
             .on('end', () => {
                 console.log(`[VideoTranscoder] ✅ Transcode done → ${outputPath}`);
@@ -150,10 +153,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
 
         // Set estimated processing time dynamically based on video duration
         const duration = metadata.format ? parseFloat(metadata.format.duration || 0) : 0;
-        const estimatedTime = Math.ceil(duration * 1.5) || 60;
+        const totalEstimatedTimeSeconds = Math.ceil(duration * 1.5) || 60;
         await Post.findByIdAndUpdate(postId, {
             isProcessing: true,
-            estimatedTime: estimatedTime
+            processingProgress: 0,
+            estimatedTime: formatEstimatedTime(totalEstimatedTimeSeconds)
         });
 
         // ── Step 3: Determine original quality label ──────────────────────────
@@ -214,12 +218,14 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         console.log(`[VideoTranscoder] ${jobs.length} transcode jobs queued (sequential, -threads 1, -preset ultrafast)`);
 
         const finalQualities = { ...initialQualities };
+        let lastUpdatedProgress = 0;
 
         for (const job of jobs) {
             const tempOut = path.join(process.cwd(), 'temp_media', `${job.label}-${postId}.mp4`);
             const r2Key   = `${folder}/video_${job.label}_${postId}.mp4`;
 
             console.log(`[VideoTranscoder] → Starting ${job.label} transcode...`);
+            const jobIndex = jobs.indexOf(job);
 
             const outputPath = await transcodeQuality({
                 inputPath:    localInputPath,          // always from original
@@ -227,7 +233,28 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 scaleFilter:  `scale=-2:${job.targetH}`, // preserves AR
                 videoBitrate: job.bitrate,
                 maxrate:      job.maxrate,
-                bufsize:      job.bufsize
+                bufsize:      job.bufsize,
+                onProgress: async (percent) => {
+                    const overallPercent = Math.min(99, Math.round(((jobIndex + (percent / 100)) / jobs.length) * 100));
+                    // Update DB every 20% progress interval
+                    if (overallPercent - lastUpdatedProgress >= 20) {
+                        lastUpdatedProgress = overallPercent;
+                        const remainingSeconds = Math.max(1, Math.ceil(totalEstimatedTimeSeconds * (1 - overallPercent / 100)));
+                        const formattedRemaining = formatEstimatedTime(remainingSeconds);
+
+                        const updatedPost = await Post.findByIdAndUpdate(postId, {
+                            processingProgress: overallPercent,
+                            estimatedTime: formattedRemaining
+                        }, { new: true })
+                        .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
+                        .populate('portal');
+
+                        if (global.io) {
+                            global.io.emit('post:updated', updatedPost);
+                        }
+                        console.log(`[VideoTranscoder] ⏳ Progress update: ${overallPercent}% - Kalan: ${formattedRemaining}`);
+                    }
+                }
             });
 
             if (outputPath && fs.existsSync(outputPath)) {
@@ -238,13 +265,17 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
 
                     finalQualities[job.field]  = url;
 
-                    const remainingTime = Math.max(0, Math.ceil(estimatedTime * (1 - (jobs.indexOf(job) + 1) / jobs.length)));
+                    const overallPercent = Math.min(99, Math.round(((jobIndex + 1) / jobs.length) * 100));
+                    lastUpdatedProgress = overallPercent;
+                    const remainingSeconds = Math.max(0, Math.ceil(totalEstimatedTimeSeconds * (1 - overallPercent / 100)));
+                    const formattedRemaining = formatEstimatedTime(remainingSeconds);
 
                     // Flush DB after each quality so partial results survive a crash
                     const updatedPost = await Post.findByIdAndUpdate(postId, {
                         videoQualities: { ...finalQualities },
                         [job.rootField]: url,
-                        estimatedTime: remainingTime
+                        processingProgress: overallPercent,
+                        estimatedTime: formattedRemaining
                     }, { new: true })
                     .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
                     .populate('portal');
@@ -276,7 +307,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             lowVideoUrl:    lowestUrl,
             videoQualities: finalQualities,
             isProcessing:   false,
-            estimatedTime:  0
+            processingProgress: 100,
+            estimatedTime:  '0 sn'
         }, { new: true })
         .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
         .populate('portal');
@@ -293,7 +325,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             const updatedPost = await Post.findByIdAndUpdate(postId, {
                 transcodeError: `${err.message}\n${err.stack}`,
                 isProcessing:   false,
-                estimatedTime:  0
+                processingProgress: 0,
+                estimatedTime:  'Hata'
             }, { new: true })
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
             .populate('portal');

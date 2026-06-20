@@ -1144,6 +1144,9 @@ const Profile = () => {
                                                                                         video1080={getImageUrl(post.video1080)}
                                                                                         video2160={getImageUrl(post.video2160)}
                                                                                         className="post-video-player"
+                                                                                        isProcessing={post.isProcessing}
+                                                                                        processingProgress={post.processingProgress}
+                                                                                        estimatedTime={post.estimatedTime}
                                                                                     />
                                                                                 ) : post.mediaType === 'youtube' ? (
                                                                                     <div className="profile-post-youtube">

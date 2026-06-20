@@ -348,6 +348,7 @@ const PostDetail = () => {
                                                     video1080={getImageUrl(post.video1080)}
                                                     video2160={getImageUrl(post.video2160)}
                                                     isProcessing={post.isProcessing}
+                                                    processingProgress={post.processingProgress}
                                                     estimatedTime={post.estimatedTime}
                                                 />
                                             ) : (
