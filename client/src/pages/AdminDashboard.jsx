@@ -2846,13 +2846,13 @@ const AdminDashboard = () => {
                         {/* EDIT BOT CONFIG MODAL */}
                         {editingBot && (
                             <div className="modal-overlay-modern">
-                                <div className="modal-content-modern" style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}>
+                                <div className="modal-content-modern" style={{ maxWidth: '650px' }}>
                                     <div className="modal-header-modern">
                                         <h2>📝 Bot Profili ve Ayarları Düzenle: @{editingBot.username}</h2>
                                         <button className="close-btn-modern" onClick={() => setEditingBot(null)}>&times;</button>
                                     </div>
                                     <form onSubmit={handleUpdateBotProfile}>
-                                        <div className="modal-body-modern" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        <div className="modal-body-modern" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '55vh', overflowY: 'auto' }}>
                                             <div style={{ display: 'flex', gap: '16px' }}>
                                                 <div style={{ flex: 1 }}>
                                                     <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Görünen İsim (Display Name)</label>
