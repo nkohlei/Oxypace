@@ -203,6 +203,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       inactiveEl.removeEventListener('playing', onPlay);
       inactiveEl.removeEventListener('error', onError);
 
+      // ── Time drift correction ────────────────────────────────────────────
+      // Active video has advanced since the snapshot was taken.
+      // Correct the inactive element to the live position right before swap.
+      // Since nearby frames are already buffered, this seek is instant.
+      const liveTime = activeEl.currentTime;
+      const drift = liveTime - inactiveEl.currentTime;
+      if (drift > 0.05) {
+        inactiveEl.currentTime = liveTime;
+        console.log(`[VideoPlayer] Drift corrected: +${drift.toFixed(3)}s → synced to ${liveTime.toFixed(3)}s`);
+      }
+
       const newId = getInactiveId();
       console.log(`[VideoPlayer] Swap complete → now showing ${newId}`);
 
