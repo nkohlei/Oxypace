@@ -203,7 +203,7 @@ const PostDetail = () => {
     const handleDownload = async (e) => {
         if (e && e.stopPropagation) e.stopPropagation();
         if (post.pdfUrl) {
-            const url = getImageUrl(post.pdfUrl);
+            const url = post.pdfUrl;
             const filename = post.pdfName || 'Doküman.pdf';
             await nativeDownloadFile(url, filename);
             setIsMenuOpen(false);
@@ -211,7 +211,7 @@ const PostDetail = () => {
         }
         if (!post.media || post.media.length === 0) return;
         const mediaUrl = Array.isArray(post.media) ? post.media[0] : post.media;
-        const url = getImageUrl(mediaUrl);
+        const url = mediaUrl;
         const filename = url.split('/').pop() || `oxypace_post_${postId}`;
         await nativeDownloadFile(url, filename);
         setIsMenuOpen(false);

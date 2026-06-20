@@ -449,9 +449,21 @@ router.get('/', optionalProtect, async (req, res) => {
 // @access  Public
 router.get('/download', async (req, res) => {
     try {
-        const { url, filename } = req.query;
+        let { url, filename } = req.query;
         if (!url) {
             return res.status(400).json({ message: 'URL is required' });
+        }
+        
+        // Resolve relative proxy paths to absolute R2 domain
+        const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+        if (url.startsWith('/r2-media/')) {
+            url = `${R2_DOMAIN}/${url.substring(10)}`;
+        } else if (url.startsWith('r2-media/')) {
+            url = `${R2_DOMAIN}/${url.substring(9)}`;
+        } else if (url.startsWith('/')) {
+            url = `${R2_DOMAIN}${url}`;
+        } else if (!url.startsWith('http')) {
+            url = `${R2_DOMAIN}/${url}`;
         }
         
         const response = await axios.get(url, { responseType: 'stream' });
