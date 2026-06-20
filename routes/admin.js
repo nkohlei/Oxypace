@@ -12,6 +12,7 @@ import transporter from '../config/email.js';
 import CustomBadge from '../models/CustomBadge.js';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
+import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
 
 const router = express.Router();
 
@@ -1361,7 +1362,27 @@ router.put('/bots/:id/profile', protect, admin, async (req, res) => {
 
         if (displayName !== undefined) botUser.profile.displayName = displayName;
         if (bio !== undefined) botUser.profile.bio = bio;
-        if (avatar !== undefined) botUser.profile.avatar = avatar;
+        if (avatar !== undefined) {
+            botUser.profile.avatar = avatar;
+            try {
+                // Extract R2 key from avatar URL if possible
+                let mediaKey = avatar;
+                if (avatar.includes('/r2-media/')) {
+                    mediaKey = avatar.substring(avatar.indexOf('/r2-media/') + 10);
+                } else if (avatar.includes('/api/media/')) {
+                    mediaKey = decodeURIComponent(avatar.substring(avatar.indexOf('/api/media/') + 11));
+                }
+                
+                // Only optimize if it's on R2 (not a static /system/ fallback or data URI)
+                if (mediaKey && !mediaKey.startsWith('http') && !mediaKey.startsWith('data:') && !mediaKey.startsWith('blob:') && !mediaKey.startsWith('/system/')) {
+                    const result = await processAndUploadMultiResAvatars(mediaKey);
+                    botUser.profile.avatar = result.original;
+                    botUser.profile.lowResAvatar = result.lowRes;
+                }
+            } catch (optErr) {
+                console.error('Failed to optimize bot avatar:', optErr);
+            }
+        }
         if (coverImage !== undefined) botUser.profile.coverImage = coverImage;
 
         await botUser.save();
