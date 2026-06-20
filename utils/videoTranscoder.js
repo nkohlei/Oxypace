@@ -74,7 +74,8 @@ function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, ma
                 '-b:v', videoBitrate,
                 '-maxrate', maxrate,
                 '-bufsize', bufsize,
-                '-c:a', 'aac'
+                '-c:a', 'aac',
+                '-movflags', '+faststart'
             ])
             .output(outputPath)
             .on('start', (cmd) => {

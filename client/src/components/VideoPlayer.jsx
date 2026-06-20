@@ -226,27 +226,21 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const handleWaiting = () => {
     setIsLoading(true);
     
-    // Auto Mode bandwidth degradation
+    // Auto Mode: Drop directly to lowest quality (144p/360p) to guarantee continuous playback
     if (qualityMode === 'auto') {
       if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
       waitingTimerRef.current = setTimeout(() => {
         const activeVideoEl = getActiveRef().current;
         if (activeVideoEl && !activeVideoEl.paused) {
           const currentSrc = activeVideo === 'A' ? srcStateA : srcStateB;
-          let nextSrc = null;
-          let nextLabel = '';
+          const targetSrc = src144 || src360 || src;
           
-          if (currentSrc === src2160 && has1080) { nextSrc = src1080; nextLabel = '1080p'; }
-          else if (currentSrc === src1080 && has720) { nextSrc = src720; nextLabel = '720p'; }
-          else if (currentSrc === src720 && has360) { nextSrc = src360; nextLabel = '360p'; }
-          else if (currentSrc === src360 && has144) { nextSrc = src144; nextLabel = '144p'; }
-          
-          if (nextSrc && nextSrc !== currentSrc) {
-            console.log(`[VideoPlayer] Auto Mode: Stall detected. Downgrading to ${nextLabel}...`);
-            initiateQualitySwap(nextSrc);
+          if (targetSrc && targetSrc !== currentSrc) {
+            console.log(`[VideoPlayer] Auto Mode: Stall confirmed. Dropping directly to lowest quality to prevent buffering.`);
+            initiateQualitySwap(targetSrc);
           }
         }
-      }, 1000);
+      }, 600); // 600ms of stall triggers immediate down-switch to prevent visible buffering
     }
   };
 
@@ -386,6 +380,24 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       restoreTimeRef.current = 0;
     } else {
       handleActivePlaying();
+    }
+  };
+
+  // Seek callback to complete swap even earlier once frames are cached
+  const handleElementSeeked = (elementId) => {
+    const isInactive = elementId !== activeVideo;
+    const targetRef = elementId === 'A' ? videoRefA : videoRefB;
+
+    if (isInactive && targetRef.current) {
+      console.log(`[VideoPlayer] Swap SUCCESS via seeked: Switching active element to ${elementId}`);
+      setActiveVideo(elementId);
+      
+      const previousRef = elementId === 'A' ? videoRefB : videoRefA;
+      if (previousRef.current) {
+        previousRef.current.pause();
+      }
+      setIsLoading(false);
+      restoreTimeRef.current = 0;
     }
   };
 
@@ -619,6 +631,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onPlaying={() => handleElementPlaying('A')}
         onCanPlay={() => handleElementPlaying('A')}
         onCanPlayThrough={() => handleElementPlaying('A')}
+        onSeeked={() => handleElementSeeked('A')}
       />
 
       <video
@@ -652,6 +665,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onPlaying={() => handleElementPlaying('B')}
         onCanPlay={() => handleElementPlaying('B')}
         onCanPlayThrough={() => handleElementPlaying('B')}
+        onSeeked={() => handleElementSeeked('B')}
       />
 
       <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
