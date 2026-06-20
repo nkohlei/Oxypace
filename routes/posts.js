@@ -176,32 +176,40 @@ router.post(
                         const actualVideoUrl = constructProxiedUrl(req.body.mediaKey);
 
                         // ── Browser-side transcoding: frontend sends pre-built quality map ──
-                        if (req.body.videoQualities) {
+                        if (req.body.videoQualities || req.body.qualities) {
                             let vq;
                             try {
-                                vq = typeof req.body.videoQualities === 'string'
-                                    ? JSON.parse(req.body.videoQualities)
-                                    : req.body.videoQualities;
+                                const rawVq = req.body.videoQualities || req.body.qualities;
+                                vq = typeof rawVq === 'string'
+                                    ? JSON.parse(rawVq)
+                                    : rawVq;
                             } catch {
                                 vq = {};
                             }
 
+                            // If qualities format (144p, 360p, 720p, 1080p) is used, map to standard DB keys
+                            const p144Val = vq.p144 || vq['144p'] || '';
+                            const p360Val = vq.p360 || vq['360p'] || '';
+                            const p720Val = vq.p720 || vq['720p'] || '';
+                            const p1080Val = vq.p1080 || vq['1080p'] || '';
+                            const p2160Val = vq.p2160 || vq['2160p'] || '';
+
                             // Populate all quality fields from the browser-generated map
                             postData.videoQualities = {
-                                high:  vq.p1080 || vq.p720  || actualVideoUrl,
-                                low:   vq.p144  || vq.p360  || actualVideoUrl,
-                                p144:  vq.p144  || '',
-                                p360:  vq.p360  || '',
-                                p720:  vq.p720  || '',
-                                p1080: vq.p1080 || '',
-                                p2160: vq.p2160 || ''
+                                high:  p1080Val || p720Val  || actualVideoUrl,
+                                low:   p144Val  || p360Val  || actualVideoUrl,
+                                p144:  p144Val  || '',
+                                p360:  p360Val  || '',
+                                p720:  p720Val  || '',
+                                p1080: p1080Val || '',
+                                p2160: p2160Val || ''
                             };
-                            postData.video144    = vq.p144  || '';
-                            postData.video360    = vq.p360  || '';
-                            postData.video720    = vq.p720  || '';
-                            postData.video1080   = vq.p1080 || '';
-                            postData.videoUrl    = vq.p1080 || vq.p720 || vq.p360 || vq.p144 || actualVideoUrl;
-                            postData.lowVideoUrl = vq.p144  || vq.p360 || vq.p720 || actualVideoUrl;
+                            postData.video144    = p144Val  || '';
+                            postData.video360    = p360Val  || '';
+                            postData.video720    = p720Val  || '';
+                            postData.video1080   = p1080Val || '';
+                            postData.videoUrl    = p1080Val || p720Val || p360Val || p144Val || actualVideoUrl;
+                            postData.lowVideoUrl = p144Val  || p360Val || p720Val || actualVideoUrl;
                             postData.media       = postData.videoUrl;
                         } else {
                             // Fallback: no quality map — single quality (legacy / mobile native)

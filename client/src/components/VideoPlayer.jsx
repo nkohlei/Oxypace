@@ -102,18 +102,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   
 
   // Resolve source options for 144p, 360p, 720p, 1080p, 2160p
-  const src144 = getImageUrl(video144 || qualities?.video144 || qualities?.p144 || qualities?.low || lowVideoUrl || src);
-  const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || src144);
-  const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || src360);
-  const src1080 = getImageUrl(video1080 || qualities?.video1080 || qualities?.p1080 || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
-  const src2160 = getImageUrl(video2160 || qualities?.video2160 || qualities?.p2160 || src1080);
+  const src144 = getImageUrl(video144 || qualities?.video144 || qualities?.p144 || qualities?.['144p'] || qualities?.low || lowVideoUrl || src);
+  const src360 = getImageUrl(video360 || qualities?.video360 || qualities?.p360 || qualities?.['360p'] || src144);
+  const src720 = getImageUrl(video720 || qualities?.video720 || qualities?.p720 || qualities?.['720p'] || src360);
+  const src1080 = getImageUrl(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p'] || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
+  const src2160 = getImageUrl(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p'] || src1080);
 
   // Determine actual maximum resolution based on available URLs
-  const has2160 = !!(video2160 || qualities?.video2160 || qualities?.p2160);
-  const has1080 = !!(video1080 || qualities?.video1080 || qualities?.p1080 || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
-  const has720 = !!(video720 || qualities?.video720 || qualities?.p720);
-  const has360 = !!(video360 || qualities?.video360 || qualities?.p360);
-  const has144 = !!(video144 || qualities?.video144 || qualities?.p144);
+  const has2160 = !!(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p']);
+  const has1080 = !!(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p'] || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
+  const has720 = !!(video720 || qualities?.video720 || qualities?.p720 || qualities?.['720p']);
+  const has360 = !!(video360 || qualities?.video360 || qualities?.p360 || qualities?.['360p']);
+  const has144 = !!(video144 || qualities?.video144 || qualities?.p144 || qualities?.['144p']);
 
   let maxResolution = '1080p';
   if (has2160) maxResolution = '2160p';

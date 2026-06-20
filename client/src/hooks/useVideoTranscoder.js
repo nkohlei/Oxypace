@@ -1,48 +1,5 @@
 import { useRef, useState } from 'react';
-import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Quality ladder — highest first so we generate best quality first
-// ─────────────────────────────────────────────────────────────────────────────
-const QUALITY_LADDER = [
-    { label: 'p720',  targetH: 720,  bitrate: '1100k', maxrate: '1300k', bufsize: '2200k', audioBitrate: '128k' },
-    { label: 'p360',  targetH: 360,  bitrate: '400k',  maxrate: '450k',  bufsize: '800k',  audioBitrate: '64k'  },
-    { label: 'p144',  targetH: 144,  bitrate: '150k',  maxrate: '180k',  bufsize: '300k',  audioBitrate: '64k'  },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// canUseWasm: only blocks Capacitor native platform.
-// SharedArrayBuffer check is REMOVED — we use the single-threaded FFmpeg core
-// which does NOT require SharedArrayBuffer or COOP/COEP headers.
-// Works on Chrome, Firefox, Safari 16+ without any server header changes.
-// ─────────────────────────────────────────────────────────────────────────────
-const canUseWasm = () => {
-    try {
-        return !Capacitor.isNativePlatform();
-    } catch {
-        return true; // Assume web if Capacitor check throws
-    }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Get video dimensions from a File object without fully loading it.
-// ─────────────────────────────────────────────────────────────────────────────
-const getVideoDimensions = (file) =>
-    new Promise((resolve) => {
-        const url = URL.createObjectURL(file);
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        video.onloadedmetadata = () => {
-            URL.revokeObjectURL(url);
-            resolve({ width: video.videoWidth, height: video.videoHeight });
-        };
-        video.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve({ width: 0, height: 0 });
-        };
-        video.src = url;
-    });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Upload a single Blob/File to Cloudflare R2 via presigned PUT URL.
@@ -74,42 +31,134 @@ const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onPro
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Transcode video using pure browser canvas rendering and MediaRecorder.
+// ─────────────────────────────────────────────────────────────────────────────
+const transcodeQuality = (file, targetWidth, targetHeight, bitrate, onProgressStep) => {
+    return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.muted = true;
+        video.playsInline = true;
+        video.style.position = 'fixed';
+        video.style.top = '-9999px';
+        video.style.left = '-9999px';
+        video.style.width = '1px';
+        video.style.height = '1px';
+        video.style.opacity = '0';
+        document.body.appendChild(video);
+
+        let stream = null;
+        let mediaRecorder = null;
+        let animationFrameId = null;
+
+        const cleanup = () => {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch (e) {}
+            }
+            if (video.src) URL.revokeObjectURL(video.src);
+            try { document.body.removeChild(video); } catch (e) {}
+        };
+
+        video.onloadedmetadata = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext('2d');
+
+            const duration = video.duration || 1;
+            
+            // Capture stream at 24fps
+            try {
+                stream = canvas.captureStream(24);
+            } catch (err) {
+                cleanup();
+                return reject(new Error('Canvas captureStream not supported in this browser: ' + err.message));
+            }
+
+            // Optional: Extract audio from video
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    const audioContext = new AudioContextClass();
+                    const source = audioContext.createMediaElementSource(video);
+                    const destination = audioContext.createMediaStreamDestination();
+                    source.connect(destination);
+                    source.connect(audioContext.destination);
+                    const audioTrack = destination.stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        stream.addTrack(audioTrack);
+                    }
+                }
+            } catch (audioErr) {
+                console.warn('Audio capture failed (non-fatal):', audioErr);
+            }
+
+            let mimeType = 'video/webm;codecs=vp9';
+            if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm;codecs=vp8';
+            if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/mp4';
+            
+            const options = { bitsPerSecond: bitrate };
+            if (MediaRecorder.isTypeSupported(mimeType)) {
+                options.mimeType = mimeType;
+            }
+
+            try {
+                mediaRecorder = new MediaRecorder(stream, options);
+            } catch (recErr) {
+                cleanup();
+                return reject(new Error('MediaRecorder initialization failed: ' + recErr.message));
+            }
+
+            const chunks = [];
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) chunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: mimeType.includes('mp4') ? 'video/mp4' : 'video/webm' });
+                cleanup();
+                resolve(blob);
+            };
+
+            video.play().then(() => {
+                mediaRecorder.start();
+
+                const draw = () => {
+                    if (video.paused || video.ended) {
+                        if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+                        return;
+                    }
+                    ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+                    if (onProgressStep) {
+                        const pct = Math.min(99, Math.round((video.currentTime / duration) * 100));
+                        onProgressStep(pct);
+                    }
+                    animationFrameId = requestAnimationFrame(draw);
+                };
+                draw();
+            }).catch((playErr) => {
+                cleanup();
+                reject(playErr);
+            });
+        };
+
+        video.onerror = (err) => {
+            cleanup();
+            reject(new Error('Video loading error: ' + err.message));
+        };
+    });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main hook
 // ─────────────────────────────────────────────────────────────────────────────
 export function useVideoTranscoder() {
-    const ffmpegRef = useRef(null);
     const [isTranscoding, setIsTranscoding] = useState(false);
     const [progress, setProgress]           = useState(0);
     const [stage, setStage]                 = useState('');
     const [error, setError]                 = useState(null);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Lazy-load FFmpeg WASM only when needed.
-    // Uses the SINGLE-THREADED core (@ffmpeg/core, not @ffmpeg/core-mt).
-    // This means NO SharedArrayBuffer, NO COOP/COEP headers needed.
-    // ─────────────────────────────────────────────────────────────────────────
-    const loadFFmpeg = async () => {
-        if (ffmpegRef.current) return ffmpegRef.current;
-
-        setStage('Video işleyici yükleniyor...');
-
-        const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-        const { fetchFile, toBlobURL } = await import('@ffmpeg/util');
-
-        const ffmpeg = new FFmpeg();
-
-        // Single-threaded core — works everywhere without special headers
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-        await ffmpeg.load({
-            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`,   'text/javascript'),
-            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-            // NO workerURL → single-threaded mode, no SharedArrayBuffer needed
-        });
-
-        console.log('[useVideoTranscoder] FFmpeg WASM (single-threaded) loaded.');
-        ffmpegRef.current = { ffmpeg, fetchFile };
-        return ffmpegRef.current;
-    };
 
     const transcodeAndUpload = async (file, portalId = null) => {
         setIsTranscoding(true);
@@ -117,7 +166,7 @@ export function useVideoTranscoder() {
         setError(null);
 
         try {
-            // ── Step 1: Upload original immediately → guaranteed playback ─────
+            // ── Step 1: Upload original immediately → 1080p/Original ─────
             setStage('Orijinal video yükleniyor...');
             const originalKey = await uploadBlobToR2(
                 file,
@@ -125,127 +174,46 @@ export function useVideoTranscoder() {
                 file.type || 'video/mp4',
                 'post',
                 portalId,
-                (p) => setProgress(Math.round(p * 0.2)) // 0→20%
+                (p) => setProgress(Math.round(p * 0.25)) // 0→25%
             );
-
             const originalUrl = `/api/media/${originalKey}`;
-            const videoQualities = {};
+            
+            // ── Step 2: Transcode 144p ──
+            setStage('144p kalitesi üretiliyor...');
+            const blob144 = await transcodeQuality(file, 256, 144, 150000, (p) => setProgress(25 + Math.round(p * 0.15)));
+            setStage('144p kalitesi yükleniyor...');
+            const key144 = await uploadBlobToR2(blob144, `video_144p_${Date.now()}.mp4`, blob144.type, 'video-quality', portalId);
+            const url144 = `/api/media/${key144}`;
+            
+            // ── Step 3: Transcode 360p ──
+            setStage('360p kalitesi üretiliyor...');
+            const blob360 = await transcodeQuality(file, 480, 360, 400000, (p) => setProgress(40 + Math.round(p * 0.2)));
+            setStage('360p kalitesi yükleniyor...');
+            const key360 = await uploadBlobToR2(blob360, `video_360p_${Date.now()}.mp4`, blob360.type, 'video-quality', portalId);
+            const url360 = `/api/media/${key360}`;
 
-            // Detect source resolution
-            const { width, height } = await getVideoDimensions(file);
-            console.log(`[useVideoTranscoder] Source: ${width}x${height}`);
+            // ── Step 4: Transcode 720p ──
+            setStage('720p kalitesi üretiliyor...');
+            const blob720 = await transcodeQuality(file, 1280, 720, 1000000, (p) => setProgress(60 + Math.round(p * 0.2)));
+            setStage('720p kalitesi yükleniyor...');
+            const key720 = await uploadBlobToR2(blob720, `video_720p_${Date.now()}.mp4`, blob720.type, 'video-quality', portalId);
+            const url720 = `/api/media/${key720}`;
 
-            let originalLabel = 'p144';
-            if      (height >= 1080 || width >= 1920) originalLabel = 'p1080';
-            else if (height >= 720  || width >= 1280) originalLabel = 'p720';
-            else if (height >= 360  || width >= 640 ) originalLabel = 'p360';
+            const videoQualities = {
+                "144p": url144,
+                "360p": url360,
+                "720p": url720,
+                "1080p": originalUrl
+            };
 
-            videoQualities[originalLabel] = originalUrl;
-            setProgress(20);
-
-            // ── Step 2: WASM transcoding ──────────────────────────────────────
-            if (!canUseWasm()) {
-                console.log('[useVideoTranscoder] Native platform — skipping WASM, returning original only.');
-                setStage('Tamamlandı');
-                setProgress(100);
-                return { mediaKey: originalKey, videoQualities };
+            // Fail-safe verification: Ensure all 4 tracks are present
+            if (!videoQualities["144p"] || !videoQualities["360p"] || !videoQualities["720p"] || !videoQualities["1080p"]) {
+                throw new Error("Çoklu kalite video hazırlığı başarısız: Tüm 4 kalite kanalı oluşturulamadı.");
             }
 
-            let ffmpegInstance, fetchFileUtil;
-            try {
-                const loaded = await loadFFmpeg();
-                ffmpegInstance = loaded.ffmpeg;
-                fetchFileUtil  = loaded.fetchFile;
-            } catch (loadErr) {
-                console.warn('[useVideoTranscoder] FFmpeg WASM load failed, returning original only:', loadErr.message);
-                setStage('Tamamlandı');
-                setProgress(100);
-                return { mediaKey: originalKey, videoQualities };
-            }
-
-            // Write source once into FFmpeg virtual FS
-            const inputName = 'input.mp4';
-            setStage('Video analiz ediliyor...');
-            await ffmpegInstance.writeFile(inputName, await fetchFileUtil(file));
-            setProgress(25);
-
-            // Filter quality steps to only those below source resolution
-            const steps = QUALITY_LADDER.filter(q => height > q.targetH);
-            console.log(`[useVideoTranscoder] Will transcode ${steps.length} qualities:`, steps.map(s => s.label));
-
-            const totalSteps = steps.length;
-
-            for (let i = 0; i < totalSteps; i++) {
-                const q = steps[i];
-                const outputName = `out_${q.label}.mp4`;
-                const stepLabel  = q.label === 'p144' ? '144p' :
-                                   q.label === 'p360' ? '360p' :
-                                   q.label === 'p720' ? '720p' : '1080p';
-
-                setStage(`${stepLabel} üretiliyor...`);
-
-                // Register a fresh progress listener for this step only
-                const progressHandler = ({ progress: p }) => {
-                    // Each step occupies an equal slice of the 25–75% band
-                    const sliceStart = 25 + (i / totalSteps) * 50;
-                    const sliceSize  = 50 / totalSteps;
-                    setProgress(Math.round(sliceStart + p * sliceSize));
-                };
-                ffmpegInstance.on('progress', progressHandler);
-
-                try {
-                    await ffmpegInstance.exec([
-                        '-i', inputName,
-                        '-vf', `scale=-2:${q.targetH}`,
-                        '-vcodec', 'libx264',
-                        '-preset', 'ultrafast',
-                        '-tune', 'fastdecode',
-                        '-threads', '1',
-                        '-b:v', q.bitrate,
-                        '-maxrate', q.maxrate,
-                        '-bufsize', q.bufsize,
-                        '-acodec', 'aac',
-                        '-b:a', q.audioBitrate,
-                        '-pix_fmt', 'yuv420p',
-                        '-movflags', '+faststart',
-                        '-y',
-                        outputName
-                    ]);
-
-                    const data = await ffmpegInstance.readFile(outputName);
-                    const blob = new Blob([data.buffer], { type: 'video/mp4' });
-                    await ffmpegInstance.deleteFile(outputName);
-
-                    // Upload this quality blob
-                    setStage(`${stepLabel} yükleniyor...`);
-                    const uploadStart = 75 + (i / totalSteps) * 20;
-                    const key = await uploadBlobToR2(
-                        blob,
-                        `video_${q.label}_${Date.now()}.mp4`,
-                        'video/mp4',
-                        'video-quality',
-                        portalId,
-                        (p) => setProgress(Math.round(uploadStart + (p / 100) * (20 / totalSteps)))
-                    );
-
-                    videoQualities[q.label] = `/api/media/${key}`;
-                    console.log(`[useVideoTranscoder] ✅ ${stepLabel} ready: ${key}`);
-
-                } catch (qualityErr) {
-                    console.warn(`[useVideoTranscoder] ⚠️ ${stepLabel} failed (non-fatal):`, qualityErr.message);
-                } finally {
-                    // Always remove the listener for this step to prevent stacking
-                    ffmpegInstance.off('progress', progressHandler);
-                }
-            }
-
-            // Clean up virtual FS
-            try { await ffmpegInstance.deleteFile(inputName); } catch (_) {}
-
-            setStage('Tamamlandı');
             setProgress(100);
-
-            console.log('[useVideoTranscoder] 🏁 Done. Quality map:', videoQualities);
+            setStage('Tamamlandı');
+            console.log('[useVideoTranscoder] Multi-quality transcoding complete:', videoQualities);
             return { mediaKey: originalKey, videoQualities };
 
         } catch (err) {
