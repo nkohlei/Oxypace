@@ -3,6 +3,7 @@ import { protect } from '../middleware/auth.js';
 import { admin } from '../middleware/admin.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import BotConfig from '../models/BotConfig.js';
 import ContactMessage from '../models/ContactMessage.js';
 import SystemSettings from '../models/SystemSettings.js';
 import BannedIP from '../models/BannedIP.js';
@@ -1226,6 +1227,278 @@ router.post('/mass-notification', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Send mass notification error:', error);
         res.status(500).json({ message: 'Toplu bildirim gönderilirken bir hata oluştu.' });
+    }
+});
+
+// @route   GET /api/admin/bots
+// @desc    Get all bot users and their configurations
+// @access  Private/Admin
+router.get('/bots', protect, admin, async (req, res) => {
+    try {
+        const bots = await User.find({ isBot: true }).select('username email profile verificationBadge isBanned createdAt');
+        const configs = await BotConfig.find().populate('defaultPortal', 'name avatar');
+        
+        const configsMap = {};
+        configs.forEach(c => {
+            if (c.bot) {
+                configsMap[c.bot.toString()] = c;
+            }
+        });
+
+        const result = bots.map(bot => {
+            const config = configsMap[bot._id.toString()];
+            return {
+                _id: bot._id,
+                username: bot.username,
+                email: bot.email,
+                profile: bot.profile,
+                verificationBadge: bot.verificationBadge,
+                isBanned: bot.isBanned,
+                createdAt: bot.createdAt,
+                config: config ? {
+                    feeds: config.feeds || [],
+                    defaultPortal: config.defaultPortal,
+                    defaultChannel: config.defaultChannel || 'general'
+                } : { feeds: [], defaultPortal: null, defaultChannel: 'general' }
+            };
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error('Fetch bots error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/bots
+// @desc    Create a new bot user
+// @access  Private/Admin
+router.post('/bots', protect, admin, async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        if (!username || !email || !password) {
+            return res.status(400).json({ message: 'Kullanıcı adı, e-posta ve şifre zorunludur.' });
+        }
+
+        const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Bu kullanıcı adı veya e-posta zaten kullanımda.' });
+        }
+
+        const botUser = new User({
+            email,
+            username,
+            password,
+            profile: {
+                displayName: username,
+                bio: 'Sistem botu.',
+                avatar: '',
+                coverImage: ''
+            },
+            isBot: true,
+            isVerified: true,
+            verificationBadge: 'special'
+        });
+
+        await botUser.save();
+
+        const config = new BotConfig({
+            bot: botUser._id,
+            feeds: [],
+            defaultPortal: null,
+            defaultChannel: 'general'
+        });
+        await config.save();
+
+        res.status(201).json({
+            message: 'Bot hesabı başarıyla oluşturuldu.',
+            bot: {
+                _id: botUser._id,
+                username: botUser.username,
+                email: botUser.email,
+                profile: botUser.profile,
+                isBot: botUser.isBot,
+                config
+            }
+        });
+    } catch (error) {
+        console.error('Create bot error:', error);
+        res.status(500).json({ message: 'Bot oluşturulurken hata oluştu: ' + error.message });
+    }
+});
+
+// @route   DELETE /api/admin/bots/:id
+// @desc    Delete a bot user
+// @access  Private/Admin
+router.delete('/bots/:id', protect, admin, async (req, res) => {
+    try {
+        const botUser = await User.findOne({ _id: req.params.id, isBot: true });
+        if (!botUser) {
+            return res.status(404).json({ message: 'Bot hesabı bulunamadı.' });
+        }
+
+        await User.deleteOne({ _id: botUser._id });
+        await BotConfig.deleteOne({ bot: botUser._id });
+
+        res.json({ message: 'Bot hesabı ve yapılandırması başarıyla silindi.' });
+    } catch (error) {
+        console.error('Delete bot error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/admin/bots/:id/profile
+// @desc    Update bot user profile & config
+// @access  Private/Admin
+router.put('/bots/:id/profile', protect, admin, async (req, res) => {
+    try {
+        const botUser = await User.findOne({ _id: req.params.id, isBot: true });
+        if (!botUser) {
+            return res.status(404).json({ message: 'Bot hesabı bulunamadı.' });
+        }
+
+        const { displayName, bio, avatar, coverImage, feeds, defaultPortal, defaultChannel } = req.body;
+
+        if (displayName !== undefined) botUser.profile.displayName = displayName;
+        if (bio !== undefined) botUser.profile.bio = bio;
+        if (avatar !== undefined) botUser.profile.avatar = avatar;
+        if (coverImage !== undefined) botUser.profile.coverImage = coverImage;
+
+        await botUser.save();
+
+        let config = await BotConfig.findOne({ bot: botUser._id });
+        if (!config) {
+            config = new BotConfig({ bot: botUser._id });
+        }
+
+        if (feeds !== undefined) {
+            if (Array.isArray(feeds)) {
+                config.feeds = feeds.map(f => String(f).trim()).filter(Boolean);
+            }
+        }
+
+        if (defaultPortal !== undefined) {
+            config.defaultPortal = defaultPortal || null;
+        }
+
+        if (defaultChannel !== undefined) {
+            config.defaultChannel = defaultChannel || 'general';
+        }
+
+        await config.save();
+
+        res.json({
+            message: 'Bot profili ve yapılandırması başarıyla güncellendi.',
+            bot: {
+                _id: botUser._id,
+                username: botUser.username,
+                email: botUser.email,
+                profile: botUser.profile,
+                config
+            }
+        });
+    } catch (error) {
+        console.error('Update bot profile error:', error);
+        res.status(500).json({ message: 'Güncelleme hatası: ' + error.message });
+    }
+});
+
+// @route   POST /api/admin/bots/:id/post
+// @desc    Create a post from bot account
+// @access  Private/Admin
+router.post('/bots/:id/post', protect, admin, async (req, res) => {
+    try {
+        const botUser = await User.findOne({ _id: req.params.id, isBot: true });
+        if (!botUser) {
+            return res.status(404).json({ message: 'Bot hesabı bulunamadı.' });
+        }
+
+        const { content, portalId, channel, mediaUrl, mediaType } = req.body;
+        if (!content && !mediaUrl) {
+            return res.status(400).json({ message: 'Gönderi içeriği veya medya alanı zorunludur.' });
+        }
+
+        const Portal = await import('../models/Portal.js').then(m => m.default);
+        const Post = await import('../models/Post.js').then(m => m.default);
+
+        const postData = {
+            author: botUser._id,
+            content: content || '',
+            channel: channel || 'general',
+            isProcessing: false
+        };
+
+        if (portalId) {
+            const portal = await Portal.findById(portalId);
+            if (!portal) {
+                return res.status(404).json({ message: 'Portal bulunamadı.' });
+            }
+            postData.portal = portalId;
+        }
+
+        if (mediaUrl) {
+            postData.media = mediaUrl;
+            postData.mediaType = mediaType || 'image';
+            if (postData.mediaType === 'video') {
+                postData.videoUrl = mediaUrl;
+                postData.videoQualities = {
+                    high: mediaUrl,
+                    low: mediaUrl,
+                    p1080: mediaUrl
+                };
+                postData.video1080 = mediaUrl;
+            }
+        }
+
+        const post = await Post.create(postData);
+
+        const populatedPost = await Post.findById(post._id)
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
+            .populate('portal')
+            .exec();
+
+        await User.findByIdAndUpdate(botUser._id, { $inc: { postCount: 1 } });
+
+        const io = req.app.get('io');
+        if (io) {
+            if (!postData.portal) {
+                io.emit('newPost', populatedPost);
+            } else {
+                io.emit('global:portal_activity', {
+                    portalId: postData.portal.toString(),
+                    channelId: postData.channel.toString(),
+                    postId: post._id.toString()
+                });
+            }
+        }
+
+        if (portalId) {
+            try {
+                const portal = await Portal.findById(portalId);
+                if (portal) {
+                    const memberIds = portal.members.filter(m => m.toString() !== botUser._id.toString());
+                    if (memberIds.length > 0) {
+                        const notificationDocs = memberIds.map(userId => ({
+                            recipient: userId,
+                            sender: botUser._id,
+                            type: 'portal_post',
+                            portal: portalId,
+                            channel: postData.channel,
+                            post: post._id,
+                            read: false
+                        }));
+                        await Notification.insertMany(notificationDocs);
+                    }
+                }
+            } catch (notifyErr) {
+                console.error('Error creating bot portal post notifications:', notifyErr);
+            }
+        }
+
+        res.status(201).json({ message: 'Paylaşım başarıyla yapıldı.', post: populatedPost });
+    } catch (error) {
+        console.error('Bot post error:', error);
+        res.status(500).json({ message: 'Paylaşım yapılırken hata oluştu: ' + error.message });
     }
 });
 

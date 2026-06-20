@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot } from 'lucide-react';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import UserAvatar from '../components/UserAvatar';
@@ -1160,6 +1160,17 @@ const AdminDashboard = () => {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
+    // Bot Management State
+    const [bots, setBots] = useState([]);
+    const [searchTermBot, setSearchTermBot] = useState('');
+    const [botFormOpen, setBotFormOpen] = useState(false);
+    const [newBotData, setNewBotData] = useState({ username: '', email: '', password: '' });
+    const [editingBot, setEditingBot] = useState(null);
+    const [botPostModalOpen, setBotPostModalOpen] = useState(false);
+    const [botPostTarget, setBotPostTarget] = useState(null);
+    const [botPostData, setBotPostData] = useState({ content: '', portalId: '', channel: 'general', mediaUrl: '', mediaType: 'image' });
+    const [feedInput, setFeedInput] = useState('');
+
     const handleMassNotifFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1485,6 +1496,9 @@ const AdminDashboard = () => {
             fetchMaintenanceStatus();
         } else if (activeTab === 'tourist-admin' && isOxypace) {
             fetchTouristAdmins();
+        } else if (activeTab === 'bots') {
+            fetchBots();
+            fetchPortals(); // Load portals for selection/defaults
         }
     }, [activeTab, isOxypace]);
 
@@ -1725,6 +1739,76 @@ const AdminDashboard = () => {
             setError('Kullanıcılar yüklenemedi.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchBots = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/bots');
+            setBots(data);
+        } catch (err) {
+            setError('Botlar yüklenemedi.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateBot = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post('/api/admin/bots', newBotData);
+            setNewBotData({ username: '', email: '', password: '' });
+            setBotFormOpen(false);
+            fetchBots();
+            alert('Bot hesabı oluşturuldu.');
+        } catch (err) {
+            alert(err.response?.data?.message || 'Bot oluşturulamadı.');
+        }
+    };
+
+    const handleDeleteBot = async (id) => {
+        if (!window.confirm('Bu bot hesabını tamamen silmek istediğinize emin misiniz?')) return;
+        try {
+            await axios.delete(`/api/admin/bots/${id}`);
+            fetchBots();
+            alert('Bot başarıyla silindi.');
+        } catch (err) {
+            alert('Bot silinemedi.');
+        }
+    };
+
+    const handleUpdateBotProfile = async (e) => {
+        e.preventDefault();
+        if (!editingBot) return;
+        try {
+            await axios.put(`/api/admin/bots/${editingBot._id}/profile`, {
+                displayName: editingBot.profile.displayName,
+                bio: editingBot.profile.bio,
+                avatar: editingBot.profile.avatar,
+                coverImage: editingBot.profile.coverImage,
+                feeds: editingBot.config.feeds,
+                defaultPortal: editingBot.config.defaultPortal?._id || editingBot.config.defaultPortal || null,
+                defaultChannel: editingBot.config.defaultChannel
+            });
+            setEditingBot(null);
+            fetchBots();
+            alert('Bot profili ve ayarları güncellendi.');
+        } catch (err) {
+            alert('Güncelleme başarısız: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleBotPost = async (e) => {
+        e.preventDefault();
+        if (!botPostTarget) return;
+        try {
+            await axios.post(`/api/admin/bots/${botPostTarget._id}/post`, botPostData);
+            setBotPostModalOpen(false);
+            setBotPostData({ content: '', portalId: '', channel: 'general', mediaUrl: '', mediaType: 'image' });
+            alert('Gönderi bot tarafından başarıyla paylaşıldı.');
+        } catch (err) {
+            alert('Paylaşım başarısız: ' + (err.response?.data?.message || err.message));
         }
     };
 
@@ -2286,6 +2370,14 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><FileBadge size={18} /></span>
                             <span className="snav-label">Özel İkon Rozetler</span>
                         </button>
+
+                        <button
+                            className={`sidebar-nav-item ${activeTab === 'bots' ? 'active' : ''}`}
+                            onClick={() => { setActiveTab('bots'); setSidebarOpen(false); }}
+                        >
+                            <span className="snav-icon"><Bot size={18} /></span>
+                            <span className="snav-label">Bot Yönetimi</span>
+                        </button>
                     </div>
 
                     {/* Category 3: İçerik & Sistem */}
@@ -2665,6 +2757,428 @@ const AdminDashboard = () => {
                                 </div>
                             </form>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'bots' && (
+                    <div className="bots-section fade-in">
+                        <div className="section-header-modern">
+                            <h2>🤖 Bot Hesap Yönetim Merkezi</h2>
+                            <p>Sistemdeki otomatik içerik üreten bot hesaplarını ekleyin, düzenleyin veya paylaşım hedeflerini yönetin.</p>
+                        </div>
+
+                        <div className="filter-controls-modern" style={{ marginBottom: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div className="search-box-modern" style={{ flex: 1, minWidth: '280px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Bot hesaplarında ara..."
+                                    value={searchTermBot}
+                                    onChange={(e) => setSearchTermBot(e.target.value)}
+                                    className="search-input-modern"
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+                            <button 
+                                className="btn-modern-primary btn-glow-cyan"
+                                onClick={() => setBotFormOpen(true)}
+                                style={{ padding: '12px 24px', fontSize: '14px', borderRadius: '8px' }}
+                            >
+                                ➕ Yeni Bot Ekle
+                            </button>
+                        </div>
+
+                        {/* CREATE BOT FORM MODAL */}
+                        {botFormOpen && (
+                            <div className="modal-overlay-modern">
+                                <div className="modal-content-modern" style={{ maxWidth: '500px' }}>
+                                    <div className="modal-header-modern">
+                                        <h2>🤖 Yeni Bot Hesabı Oluştur</h2>
+                                        <button className="close-btn-modern" onClick={() => setBotFormOpen(false)}>&times;</button>
+                                    </div>
+                                    <form onSubmit={handleCreateBot}>
+                                        <div className="modal-body-modern" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div className="form-group-modern">
+                                                <label>Kullanıcı Adı</label>
+                                                <input
+                                                    type="text"
+                                                    value={newBotData.username}
+                                                    onChange={(e) => setNewBotData({ ...newBotData, username: e.target.value })}
+                                                    placeholder="Örn: MovieNewsBot"
+                                                    required
+                                                    className="reason-input-modern"
+                                                    style={{ height: '40px', padding: '10px' }}
+                                                />
+                                            </div>
+                                            <div className="form-group-modern">
+                                                <label>E-posta Adresi</label>
+                                                <input
+                                                    type="email"
+                                                    value={newBotData.email}
+                                                    onChange={(e) => setNewBotData({ ...newBotData, email: e.target.value })}
+                                                    placeholder="Örn: movienews@oxypace.com"
+                                                    required
+                                                    className="reason-input-modern"
+                                                    style={{ height: '40px', padding: '10px' }}
+                                                />
+                                            </div>
+                                            <div className="form-group-modern">
+                                                <label>Şifre</label>
+                                                <input
+                                                    type="password"
+                                                    value={newBotData.password}
+                                                    onChange={(e) => setNewBotData({ ...newBotData, password: e.target.value })}
+                                                    placeholder="Şifre belirleyin"
+                                                    required
+                                                    className="reason-input-modern"
+                                                    style={{ height: '40px', padding: '10px' }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="modal-footer-modern">
+                                            <button type="button" className="btn-modern-ghost" onClick={() => setBotFormOpen(false)}>İptal</button>
+                                            <button type="submit" className="btn-modern-primary btn-glow-cyan">Botu Oluştur</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* EDIT BOT CONFIG MODAL */}
+                        {editingBot && (
+                            <div className="modal-overlay-modern">
+                                <div className="modal-content-modern" style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}>
+                                    <div className="modal-header-modern">
+                                        <h2>📝 Bot Profili ve Ayarları Düzenle: @{editingBot.username}</h2>
+                                        <button className="close-btn-modern" onClick={() => setEditingBot(null)}>&times;</button>
+                                    </div>
+                                    <form onSubmit={handleUpdateBotProfile}>
+                                        <div className="modal-body-modern" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div style={{ display: 'flex', gap: '16px' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Görünen İsim (Display Name)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editingBot.profile?.displayName || ''}
+                                                        onChange={(e) => setEditingBot({
+                                                            ...editingBot,
+                                                            profile: { ...editingBot.profile, displayName: e.target.value }
+                                                        })}
+                                                        className="reason-input-modern"
+                                                        style={{ height: '40px', padding: '10px' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Hakkında Yazısı (Biyografi)</label>
+                                                <textarea
+                                                    value={editingBot.profile?.bio || ''}
+                                                    onChange={(e) => setEditingBot({
+                                                        ...editingBot,
+                                                        profile: { ...editingBot.profile, bio: e.target.value }
+                                                    })}
+                                                    className="reason-input-modern"
+                                                    rows="3"
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '16px' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Profil Resmi URL'si</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editingBot.profile?.avatar || ''}
+                                                        onChange={(e) => setEditingBot({
+                                                            ...editingBot,
+                                                            profile: { ...editingBot.profile, avatar: e.target.value }
+                                                        })}
+                                                        placeholder="/uploads/avatar.png veya resim linki"
+                                                        className="reason-input-modern"
+                                                        style={{ height: '40px', padding: '10px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Kapak Fotoğrafı URL'si</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editingBot.profile?.coverImage || ''}
+                                                        onChange={(e) => setEditingBot({
+                                                            ...editingBot,
+                                                            profile: { ...editingBot.profile, coverImage: e.target.value }
+                                                        })}
+                                                        placeholder="Kapak resmi linki"
+                                                        className="reason-input-modern"
+                                                        style={{ height: '40px', padding: '10px' }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                                                <h3 style={{ fontSize: '15px', color: '#fff', marginBottom: '12px' }}>🎯 Otomatik Paylaşım Hedef Seçimi</h3>
+                                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                                    <div style={{ flex: 1, minWidth: '200px' }}>
+                                                        <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Hedef Portal</label>
+                                                        <select
+                                                            className="badge-select"
+                                                            value={editingBot.config?.defaultPortal?._id || editingBot.config?.defaultPortal || ''}
+                                                            onChange={(e) => setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, defaultPortal: e.target.value }
+                                                            })}
+                                                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px' }}
+                                                        >
+                                                            <option value="">Portal Seçin (Pasif)</option>
+                                                            {portals.map(p => (
+                                                                <option key={p._id} value={p._id}>{p.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: '200px' }}>
+                                                        <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Hedef Kanal (ID veya İsim)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={editingBot.config?.defaultChannel || 'general'}
+                                                            onChange={(e) => setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, defaultChannel: e.target.value }
+                                                            })}
+                                                            placeholder="general veya kanal ID'si"
+                                                            className="reason-input-modern"
+                                                            style={{ height: '40px', padding: '10px' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                                                <h3 style={{ fontSize: '15px', color: '#fff', marginBottom: '12px' }}>📡 Dış Kaynak (API/RSS Feed) Bağlantıları</h3>
+                                                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={feedInput}
+                                                        onChange={(e) => setFeedInput(e.target.value)}
+                                                        placeholder="RSS/API linki girin... (Örn: https://variety.com/feed/)"
+                                                        className="reason-input-modern"
+                                                        style={{ height: '40px', padding: '10px', flex: 1 }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="btn-modern-primary"
+                                                        style={{ height: '40px', padding: '0 16px', background: '#3b82f6' }}
+                                                        onClick={() => {
+                                                            if (!feedInput.trim()) return;
+                                                            const currentFeeds = editingBot.config.feeds || [];
+                                                            if (currentFeeds.includes(feedInput.trim())) {
+                                                                alert('Bu feed zaten ekli.');
+                                                                return;
+                                                            }
+                                                            setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, feeds: [...currentFeeds, feedInput.trim()] }
+                                                            });
+                                                            setFeedInput('');
+                                                        }}
+                                                    >
+                                                        Ekle
+                                                    </button>
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
+                                                    {(editingBot.config?.feeds || []).length === 0 ? (
+                                                        <span style={{ fontSize: '12px', color: '#666' }}>Kayıtlı API/RSS kaynağı bulunamadı.</span>
+                                                    ) : (
+                                                        (editingBot.config?.feeds || []).map((feed, idx) => (
+                                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '6px' }}>
+                                                                <span style={{ fontSize: '13px', color: '#ccc', wordBreak: 'break-all' }}>{feed}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}
+                                                                    onClick={() => {
+                                                                        setEditingBot({
+                                                                            ...editingBot,
+                                                                            config: {
+                                                                                ...editingBot.config,
+                                                                                feeds: (editingBot.config.feeds || []).filter((_, i) => i !== idx)
+                                                                            }
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    Kaldır
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="modal-footer-modern">
+                                            <button type="button" className="btn-modern-ghost" onClick={() => setEditingBot(null)}>İptal</button>
+                                            <button type="submit" className="btn-modern-primary btn-glow-cyan">Değişiklikleri Kaydet</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* POST AS BOT MODAL */}
+                        {botPostModalOpen && botPostTarget && (
+                            <div className="modal-overlay-modern">
+                                <div className="modal-content-modern" style={{ maxWidth: '550px' }}>
+                                    <div className="modal-header-modern">
+                                        <h2>🚀 @{botPostTarget.username} Olarak Gönderi Paylaş</h2>
+                                        <button className="close-btn-modern" onClick={() => setBotPostModalOpen(false)}>&times;</button>
+                                    </div>
+                                    <form onSubmit={handleBotPost}>
+                                        <div className="modal-body-modern" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                                <div style={{ flex: 1, minWidth: '180px' }}>
+                                                    <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Paylaşılacak Portal</label>
+                                                    <select
+                                                        className="badge-select"
+                                                        value={botPostData.portalId}
+                                                        onChange={(e) => setBotPostData({ ...botPostData, portalId: e.target.value })}
+                                                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px' }}
+                                                    >
+                                                        <option value="">Global Akış (Portal Dışı)</option>
+                                                        {portals.map(p => (
+                                                            <option key={p._id} value={p._id}>{p.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: '180px' }}>
+                                                    <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Hedef Kanal</label>
+                                                    <input
+                                                        type="text"
+                                                        value={botPostData.channel}
+                                                        onChange={(e) => setBotPostData({ ...botPostData, channel: e.target.value })}
+                                                        placeholder="general veya kanal ID'si"
+                                                        className="reason-input-modern"
+                                                        style={{ height: '40px', padding: '10px' }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Gönderi İçeriği (Metin)</label>
+                                                <textarea
+                                                    value={botPostData.content}
+                                                    onChange={(e) => setBotPostData({ ...botPostData, content: e.target.value })}
+                                                    placeholder="Gönderi içeriğini yazın..."
+                                                    className="reason-input-modern"
+                                                    rows="4"
+                                                />
+                                            </div>
+
+                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                                                <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Medya/Video Linki (İsteğe Bağlı)</label>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={botPostData.mediaUrl}
+                                                        onChange={(e) => setBotPostData({ ...botPostData, mediaUrl: e.target.value })}
+                                                        placeholder="Video veya görsel URL linki"
+                                                        className="reason-input-modern"
+                                                        style={{ height: '40px', padding: '10px', flex: 1 }}
+                                                    />
+                                                    <select
+                                                        className="badge-select"
+                                                        value={botPostData.mediaType}
+                                                        onChange={(e) => setBotPostData({ ...botPostData, mediaType: e.target.value })}
+                                                        style={{ width: '100px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px' }}
+                                                    >
+                                                        <option value="image">Görsel</option>
+                                                        <option value="video">Video</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="modal-footer-modern">
+                                            <button type="button" className="btn-modern-ghost" onClick={() => setBotPostModalOpen(false)}>İptal</button>
+                                            <button type="submit" className="btn-modern-primary btn-glow-cyan">Gönderiyi Paylaş</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {loading && <div className="admin-loading">Botlar Yükleniyor...</div>}
+
+                        {!loading && bots.length === 0 ? (
+                            <p className="no-data">Sistemde kayıtlı bot hesap bulunamadı.</p>
+                        ) : (
+                            <div className="requests-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                                {bots
+                                    .filter(bot => bot.username.toLowerCase().includes(searchTermBot.toLowerCase()))
+                                    .map(bot => (
+                                        <div key={bot._id} className="request-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)', padding: '20px', borderRadius: '12px' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                                    <img
+                                                        src={bot.profile?.avatar || '/system/deleted-user.png'}
+                                                        alt={bot.username}
+                                                        style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }}
+                                                    />
+                                                    <div>
+                                                        <h3 style={{ fontSize: '16px', color: '#fff', margin: 0 }}>{bot.profile?.displayName || bot.username}</h3>
+                                                        <span style={{ fontSize: '13px', color: '#888' }}>@{bot.username}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: '#ccc', marginBottom: '16px' }}>
+                                                    <div>
+                                                        <span style={{ color: '#666' }}>E-posta: </span>
+                                                        <strong>{bot.email}</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ color: '#666' }}>Biyografi: </span>
+                                                        <span style={{ color: '#aaa' }}>{bot.profile?.bio || 'Biyografi belirtilmemiş.'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ color: '#666' }}>Hedef Portal: </span>
+                                                        <strong style={{ color: '#3b82f6' }}>{bot.config?.defaultPortal?.name || 'Pasif'}</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ color: '#666' }}>Hedef Kanal: </span>
+                                                        <strong>{bot.config?.defaultChannel || 'general'}</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ color: '#666' }}>Kayıtlı Feed: </span>
+                                                        <strong>{(bot.config?.feeds || []).length} Adet</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+                                                <button
+                                                    className="approve-btn"
+                                                    style={{ flex: 1, padding: '8px 12px', fontSize: '12px', background: '#3b82f6' }}
+                                                    onClick={() => {
+                                                        setEditingBot(JSON.parse(JSON.stringify(bot)));
+                                                        setFeedInput('');
+                                                    }}
+                                                >
+                                                    📝 Düzenle
+                                                </button>
+                                                <button
+                                                    className="approve-btn"
+                                                    style={{ flex: 1, padding: '8px 12px', fontSize: '12px', background: '#10b981' }}
+                                                    onClick={() => {
+                                                        setBotPostTarget(bot);
+                                                        setBotPostData({ content: '', portalId: bot.config?.defaultPortal?._id || '', channel: bot.config?.defaultChannel || 'general', mediaUrl: '', mediaType: 'image' });
+                                                        setBotPostModalOpen(true);
+                                                    }}
+                                                >
+                                                    🚀 Paylaş
+                                                </button>
+                                                <button
+                                                    className="reject-btn"
+                                                    style={{ padding: '8px 12px', fontSize: '12px' }}
+                                                    onClick={() => handleDeleteBot(bot._id)}
+                                                >
+                                                    🗑
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+                        )}
                     </div>
                 )}
 

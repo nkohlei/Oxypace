@@ -6,6 +6,7 @@ import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Portal from '../models/Portal.js';
 import BotHistory from '../models/BotHistory.js';
+import BotConfig from '../models/BotConfig.js';
 
 const parser = new Parser();
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
@@ -301,6 +302,8 @@ export default async function startBotLoop(io) {
 
     const runScrapeCycle = async () => {
         console.log(`🕒 [${new Date().toLocaleTimeString()}] Starting Bot Scrape Cycle...`);
+        
+        // 1. Process hardcoded bots
         for (const config of BOT_CONFIGS) {
             try {
                 const user = await User.findOne({ username: config.botUsername });
@@ -340,6 +343,55 @@ export default async function startBotLoop(io) {
             } catch (err) {
                 console.error(`❌ Error processing bot "${config.botUsername}":`, err.message);
             }
+        }
+
+        // 2. Process dynamic bots from database
+        try {
+            const dynamicConfigs = await BotConfig.find().populate('bot');
+            for (const dConfig of dynamicConfigs) {
+                if (!dConfig.bot) continue;
+                if (dConfig.bot.isBanned) {
+                    console.log(`🚫 Skipping banned bot "${dConfig.bot.username}"`);
+                    continue;
+                }
+                if (!dConfig.feeds || dConfig.feeds.length === 0) continue;
+
+                let portal = null;
+                if (dConfig.defaultPortal) {
+                    portal = await Portal.findById(dConfig.defaultPortal);
+                }
+
+                if (!portal) {
+                    // Try to fallback to user's first joined portal if any
+                    if (dConfig.bot.joinedPortals && dConfig.bot.joinedPortals.length > 0) {
+                        portal = await Portal.findById(dConfig.bot.joinedPortals[0]);
+                    }
+                }
+
+                if (!portal) {
+                    console.log(`⚠️ No target portal for dynamic bot "${dConfig.bot.username}". Skipping.`);
+                    continue;
+                }
+
+                let channel = portal.channels.find(c => c._id.toString() === dConfig.defaultChannel || c.name === dConfig.defaultChannel);
+                if (!channel) {
+                    channel = portal.channels.find(c => c.name.toLowerCase() === 'general' || c.name.toLowerCase() === 'genel') || portal.channels[0];
+                }
+
+                if (!channel) {
+                    console.log(`⚠️ No channel available in portal "${portal.name}" for bot "${dConfig.bot.username}". Skipping.`);
+                    continue;
+                }
+
+                await checkNewsForBot({
+                    user: dConfig.bot,
+                    portal,
+                    channel,
+                    feeds: dConfig.feeds
+                });
+            }
+        } catch (dbErr) {
+            console.error('❌ Error processing dynamic bots:', dbErr.message);
         }
     };
 
