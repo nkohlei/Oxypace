@@ -5,6 +5,7 @@ import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
+import UserAvatar from './UserAvatar';
 import { Trash2, Play, Download, ArrowRight } from 'lucide-react';
 import './MessageBubble.css';
 
@@ -126,6 +127,16 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                         <Trash2 size={24} strokeWidth={2} />
                     </button>
                 </div>
+
+                {!isOwn && (
+                    <UserAvatar
+                        src={message.sender?.profile?.lowResAvatar || message.sender?.profile?.avatar}
+                        alt={message.sender?.username}
+                        size={32}
+                        className="message-bubble-avatar"
+                        isDeleted={message.sender?.isDeleted}
+                    />
+                )}
 
                 <div
                     className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''}`}

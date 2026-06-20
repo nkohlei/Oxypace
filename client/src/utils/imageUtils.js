@@ -64,12 +64,12 @@ export const getImageUrl = (path, sizeType = 'original') => {
             absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
-        // Apply optimization suffix (thumbnail/medium) if requested and it's a custom upload
+        // Apply optimization suffix (thumbnail/medium/lowres) if requested and it's a custom upload
         if (sizeType && sizeType !== 'original') {
-            const isCustomUpload = absoluteUrl.includes('/avatars/') || absoluteUrl.includes('/banners/') || absoluteUrl.includes('/posts/') || absoluteUrl.includes('/r2-media/') || absoluteUrl.includes(r2Domain);
+            const isCustomUpload = absoluteUrl.includes('/avatars/') || absoluteUrl.includes('/banners/') || absoluteUrl.includes('/posts/') || absoluteUrl.includes('/r2-media/') || absoluteUrl.includes('/uploads/') || absoluteUrl.includes(r2Domain);
             if (isCustomUpload && !absoluteUrl.startsWith('data:') && !absoluteUrl.startsWith('blob:')) {
                 // Strip existing suffixes if any
-                let targetUrl = absoluteUrl.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '');
+                let targetUrl = absoluteUrl.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '').replace(/-lowres\.webp/g, '');
                 
                 const urlParts = targetUrl.split('?');
                 const pathPart = urlParts[0];
@@ -78,14 +78,12 @@ export const getImageUrl = (path, sizeType = 'original') => {
                 const lastDotIdx = pathPart.lastIndexOf('.');
                 if (lastDotIdx !== -1) {
                     const pathWithoutExt = pathPart.substring(0, lastDotIdx);
-                    // ✅ Apply suffix ONLY to custom user uploads (which contain a timestamp dash e.g. -1781881844 or -avatar-123)
+                    // ✅ Apply suffix to custom user/bot uploads (not legacy avatars like 'av.XX')
                     // Explicitly ignore static/legacy avatars named like 'av.XX' or 'av..XX' or 'default'
                     const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
-                    const hasNewFormat = !isLegacyAvatar && (/-(avatar|banner|cover|media)-\d+/.test(pathWithoutExt) || /-\d{10,}/.test(pathWithoutExt));
-                    if (hasNewFormat) {
+                    if (!isLegacyAvatar) {
                         absoluteUrl = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
                     }
-                    // else: use absoluteUrl as-is (original quality for legacy files)
                 }
             }
         }

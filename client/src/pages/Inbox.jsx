@@ -10,6 +10,7 @@ import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import MessageBubble from '../components/MessageBubble';
 import NewMessageModal from '../components/NewMessageModal';
+import UserAvatar from '../components/UserAvatar';
 import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
@@ -485,19 +486,13 @@ const Inbox = () => {
                                     >
                                         {conv.unreadCount > 0 && <div className="unread-dot"></div>}
                                         <div className="conv-avatar-wrapper">
-                                            {conv.user.profile?.avatar ? (
-                                                <img
-                                                    src={getImageUrl(conv.user.profile.avatar)}
-                                                    alt=""
-                                                    className="conv-avatar"
-                                                />
-                                            ) : (
-                                                <div className="conv-avatar-placeholder">
-                                                    <span style={{ fontWeight: 'bold' }}>
-                                                        {conv.user.username?.[0]?.toUpperCase()}
-                                                    </span>
-                                                </div>
-                                            )}
+                                            <UserAvatar
+                                                src={conv.user.profile?.lowResAvatar || conv.user.profile?.avatar}
+                                                alt={conv.user.username}
+                                                size={52}
+                                                className="conv-avatar"
+                                                isDeleted={conv.user.isDeleted}
+                                            />
                                         </div>
                                         <div className="conv-content">
                                             <div className="conv-header">

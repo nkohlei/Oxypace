@@ -138,13 +138,13 @@ router.post(
             const message = await Message.create(messageData);
 
             const populatedMessage = await Message.findById(message._id)
-                .populate('sender', 'username profile.displayName profile.avatar verificationBadge customBadge createdAt isDeleted')
-                .populate('recipient', 'username profile.displayName profile.avatar verificationBadge customBadge createdAt isDeleted')
+                .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
+                .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
                 .populate({
                     path: 'sharedPost',
                     populate: {
                         path: 'author',
-                        select: 'username profile.displayName profile.avatar isDeleted',
+                        select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
                     },
                 })
                 .populate({
@@ -172,7 +172,7 @@ router.post(
                 if (io) {
                     const populatedNotif = await notification.populate(
                         'sender',
-                        'username profile.displayName profile.avatar verificationBadge customBadge isDeleted'
+                        'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted'
                     );
                     io.to(recipientId).emit('newNotification', populatedNotif);
                 }
@@ -198,13 +198,13 @@ router.get('/conversations', protect, async (req, res) => {
             $or: [{ sender: userId }, { recipient: userId }],
         })
             .sort({ createdAt: -1 })
-            .populate('sender', 'username profile.displayName profile.avatar verificationBadge customBadge createdAt isDeleted')
-            .populate('recipient', 'username profile.displayName profile.avatar verificationBadge customBadge createdAt isDeleted')
+            .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
+            .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
             .populate({
                 path: 'sharedPost',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar isDeleted',
+                    select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
                 },
             })
             .populate({
@@ -269,13 +269,13 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
             ],
         })
             .sort({ createdAt: 1 })
-            .populate('sender', 'username profile.displayName profile.avatar verificationBadge customBadge createdAt isDeleted')
-            .populate('recipient', 'username profile.displayName profile.avatar verificationBadge customBadge createdAt isDeleted')
+            .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
+            .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
             .populate({
                 path: 'sharedPost',
                 populate: {
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar isDeleted',
+                    select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
                 },
             })
             .populate({

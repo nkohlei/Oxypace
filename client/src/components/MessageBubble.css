@@ -27,6 +27,13 @@
     margin-right: 8px;
 }
 
+.message-bubble-avatar {
+    flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 2px;
+    margin-right: 8px;
+}
+
 /* The Bubble Itself */
 .message-bubble {
     max-width: 85%;
