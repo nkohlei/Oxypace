@@ -152,49 +152,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
 
-  // Seamless auto-quality network and playback buffering monitor
-  useEffect(() => {
-    if (qualityMode !== 'auto') return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    let lastTime = 0;
-    let lastCheck = Date.now();
-
-    const interval = setInterval(() => {
-      if (video.paused || video.ended) {
-        lastCheck = Date.now();
-        lastTime = video.currentTime;
-        return;
-      }
-
-      const now = Date.now();
-      const timeDiff = (now - lastCheck) / 1000;
-      const progressDiff = video.currentTime - lastTime;
-
-      // If the video is playing but progress has stalled (buffering) or is lagging behind
-      if (timeDiff > 0.5 && progressDiff < 0.1) {
-        console.log('[VideoPlayer] Seamless Auto-Quality: Stalling detected via progress check. Down-switching quality...');
-        
-        let targetSrc = null;
-        if (videoSrc === src2160 && has1080) targetSrc = src1080;
-        else if (videoSrc === src1080 && has720) targetSrc = src720;
-        else if (videoSrc === src720 && has360) targetSrc = src360;
-        else if (videoSrc === src360 && has144) targetSrc = src144;
-
-        if (targetSrc && targetSrc !== videoSrc) {
-          restoreTimeRef.current = video.currentTime;
-          shouldPlayRef.current = true;
-          setVideoSrc(targetSrc);
-        }
-      }
-
-      lastTime = video.currentTime;
-      lastCheck = now;
-    }, 500); // Check every 500ms for sub-second lag detection
-
-    return () => clearInterval(interval);
-  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, has144, has360, has720, has1080, has2160]);
 
   useEffect(() => {
     setNaturalDimensions(null);
@@ -363,6 +320,50 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     return () => clearInterval(interval);
   }, [qualityMode, src1080, src2160, maxResolution]);
+
+  // Seamless auto-quality network and playback buffering monitor
+  useEffect(() => {
+    if (qualityMode !== 'auto') return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    let lastTime = 0;
+    let lastCheck = Date.now();
+
+    const interval = setInterval(() => {
+      if (video.paused || video.ended) {
+        lastCheck = Date.now();
+        lastTime = video.currentTime;
+        return;
+      }
+
+      const now = Date.now();
+      const timeDiff = (now - lastCheck) / 1000;
+      const progressDiff = video.currentTime - lastTime;
+
+      // If the video is playing but progress has stalled (buffering) or is lagging behind
+      if (timeDiff > 0.5 && progressDiff < 0.1) {
+        console.log('[VideoPlayer] Seamless Auto-Quality: Stalling detected via progress check. Down-switching quality...');
+        
+        let targetSrc = null;
+        if (videoSrc === src2160 && has1080) targetSrc = src1080;
+        else if (videoSrc === src1080 && has720) targetSrc = src720;
+        else if (videoSrc === src720 && has360) targetSrc = src360;
+        else if (videoSrc === src360 && has144) targetSrc = src144;
+
+        if (targetSrc && targetSrc !== videoSrc) {
+          restoreTimeRef.current = video.currentTime;
+          shouldPlayRef.current = true;
+          setVideoSrc(targetSrc);
+        }
+      }
+
+      lastTime = video.currentTime;
+      lastCheck = now;
+    }, 500); // Check every 500ms for sub-second lag detection
+
+    return () => clearInterval(interval);
+  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, has144, has360, has720, has1080, has2160]);
 
   // Capture current playhead before source swap and force reload the stream
   useEffect(() => {
