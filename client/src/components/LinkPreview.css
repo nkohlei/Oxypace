@@ -107,7 +107,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     animation: fadeIn 0.4s ease-out;
-    max-width: 480px;
+    max-width: 420px;
 }
 
 .tweet-card:hover {
@@ -201,7 +201,7 @@
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: 450px;
+    max-height: 380px;
     object-fit: contain;
     border-radius: 10px;
     background: transparent;
@@ -226,7 +226,7 @@
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: 450px;
+    max-height: 380px;
     display: block;
     object-fit: contain;
     background: transparent;
