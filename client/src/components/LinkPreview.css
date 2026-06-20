@@ -190,7 +190,7 @@
 }
 
 .tweet-card-media:not(.tweet-card-media-grid) {
-    background: transparent;
+    background: #000;
     display: flex;
     justify-content: center;
     align-items: center;
