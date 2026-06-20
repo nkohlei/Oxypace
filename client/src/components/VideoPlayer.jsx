@@ -481,6 +481,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onClick={e => e.stopPropagation()}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
+      style={{
+        aspectRatio: naturalDimensions ? `${naturalDimensions.width} / ${naturalDimensions.height}` : undefined,
+        maxWidth: naturalDimensions 
+          ? `min(100%, calc(350px * ${naturalDimensions.width / naturalDimensions.height}))` 
+          : '650px',
+        width: '100%',
+        background: naturalDimensions ? 'transparent' : '#000',
+      }}
     >
       {isProcessing && (
         <div className="processing-overlay-orange">

@@ -180,7 +180,6 @@
     border-radius: 10px;
     overflow: hidden;
     margin-bottom: 8px;
-    background: #000;
 }
 
 .tweet-card-media-img {
@@ -188,7 +187,21 @@
     display: block;
     object-fit: contain;
     max-height: 200px;
-    background: #000;
+}
+
+.tweet-card-media:not(.tweet-card-media-grid) {
+    background: transparent;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.tweet-card-media:not(.tweet-card-media-grid) .tweet-card-media-img {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 300px;
+    object-fit: contain;
+    background: transparent;
 }
 
 .tweet-card-media-grid {
@@ -202,15 +215,18 @@
     aspect-ratio: 1;
     max-height: 140px;
     object-fit: cover;
+    background: #000;
 }
 
 /* Tweet video */
 .tweet-card-video {
-    width: 100%;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 300px;
     display: block;
-    max-height: 240px;
-    background: #000;
-    border-radius: 0;
+    background: transparent;
+    border-radius: 10px;
 }
 
 /* Tweet stats (replies, retweets, likes) */
