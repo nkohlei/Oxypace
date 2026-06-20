@@ -871,6 +871,7 @@
 }
 
 .pdf-glass-card {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -949,6 +950,7 @@
     gap: 4px;
     min-width: 0;
     flex: 1;
+    padding-right: 40px;
 }
 
 .pdf-name {
@@ -963,4 +965,36 @@
 .pdf-size {
     font-size: 12px;
     color: var(--text-muted);
+}
+
+.pdf-download-btn {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 5;
+}
+
+.pdf-download-btn:hover {
+    background: var(--primary-cyan);
+    color: #060913;
+    border-color: var(--primary-cyan);
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+}
+
+.pdf-download-btn svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
 }

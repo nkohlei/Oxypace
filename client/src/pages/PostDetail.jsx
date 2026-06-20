@@ -22,6 +22,7 @@ import {
     Globe
 } from 'lucide-react';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
+import { Capacitor } from '@capacitor/core';
 import './PostDetail.css';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from '../components/LinkPreview';
@@ -199,7 +200,15 @@ const PostDetail = () => {
         }
     };
 
-    const handleDownload = async () => {
+    const handleDownload = async (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (post.pdfUrl) {
+            const url = getImageUrl(post.pdfUrl);
+            const filename = post.pdfName || 'Doküman.pdf';
+            await nativeDownloadFile(url, filename);
+            setIsMenuOpen(false);
+            return;
+        }
         if (!post.media || post.media.length === 0) return;
         const mediaUrl = Array.isArray(post.media) ? post.media[0] : post.media;
         const url = getImageUrl(mediaUrl);
@@ -303,7 +312,7 @@ const PostDetail = () => {
                                             <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
                                             <span>{saved ? 'Kaydedildi' : 'Kaydet'}</span>
                                         </button>
-                                        {post.media && post.media.length > 0 && (
+                                        {((post.media && post.media.length > 0) || post.pdfUrl) && (
                                             <button onClick={handleDownload}>
                                                 <Download size={16} />
                                                 <span>İndir</span>
@@ -346,6 +355,61 @@ const PostDetail = () => {
                                 }
                                 return null;
                             })()}
+
+                            {/* PDF Document Card */}
+                            {post.pdfUrl && (
+                                <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
+                                    <div
+                                        className="pdf-glass-card"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            if (Capacitor.isNativePlatform()) {
+                                                window.open(getImageUrl(post.pdfUrl), '_system');
+                                            } else {
+                                                window.open(getImageUrl(post.pdfUrl), '_blank', 'noopener,noreferrer');
+                                            }
+                                        }}
+                                    >
+                                        {post.pdfThumbnailUrl ? (
+                                            <div className="pdf-thumbnail-wrapper">
+                                                <img
+                                                    src={getImageUrl(post.pdfThumbnailUrl)}
+                                                    alt="PDF preview"
+                                                    className="pdf-thumbnail"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    width="150"
+                                                    height="200"
+                                                />
+                                                <div className="pdf-badge">PDF</div>
+                                            </div>
+                                        ) : (
+                                            <div className="pdf-icon-placeholder">
+                                                <div className="pdf-icon-text">PDF</div>
+                                            </div>
+                                        )}
+                                        <div className="pdf-info">
+                                            <span className="pdf-name" title={post.pdfName || 'Doküman.pdf'}>
+                                                {post.pdfName || 'Doküman.pdf'}
+                                            </span>
+                                            <span className="pdf-size">
+                                                {post.pdfSize ? (post.pdfSize / (1024 * 1024)).toFixed(2) + ' MB' : '0.00 MB'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            className="pdf-download-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDownload(e);
+                                            }}
+                                            aria-label="PDF İndir"
+                                            title="İndir"
+                                        >
+                                            <Download size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {post.quotedPost && (
                                 <QuotedPost quotedPost={post.quotedPost} viewer={user} />

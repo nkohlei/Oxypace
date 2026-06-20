@@ -305,6 +305,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
     const handleDownload = async (e) => {
         if (e) e.stopPropagation();
+        if (post.pdfUrl) {
+            const url = getImageUrl(post.pdfUrl);
+            const filename = post.pdfName || 'Doküman.pdf';
+            await nativeDownloadFile(url, filename);
+            setShowMenu(false);
+            return;
+        }
+
         if (!post.media) return;
 
         const url = getImageUrl(post.media);
@@ -509,7 +517,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                     <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} className="menu-icon-right" />
                                 </button>
                                 
-                                {post.media && (
+                                {(post.media || post.pdfUrl) && (
                                     <button className="menu-item" onClick={handleDownload}>
                                         İndir
                                         <Download size={18} className="menu-icon-right" />
@@ -659,15 +667,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                 {/* PDF Document Card */}
                 {post.pdfUrl && (
                     <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
-                        <a
-                            href={getImageUrl(post.pdfUrl)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <div
                             className="pdf-glass-card"
                             onClick={(e) => {
+                                e.preventDefault();
                                 if (Capacitor.isNativePlatform()) {
-                                    e.preventDefault();
                                     window.open(getImageUrl(post.pdfUrl), '_system');
+                                } else {
+                                    window.open(getImageUrl(post.pdfUrl), '_blank', 'noopener,noreferrer');
                                 }
                             }}
                         >
@@ -697,7 +704,18 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                     {post.pdfSize ? (post.pdfSize / (1024 * 1024)).toFixed(2) + ' MB' : '0.00 MB'}
                                 </span>
                             </div>
-                        </a>
+                            <button
+                                className="pdf-download-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownload(e);
+                                }}
+                                aria-label="PDF İndir"
+                                title="İndir"
+                            >
+                                <Download size={18} />
+                            </button>
+                        </div>
                     </div>
                 )}
 
