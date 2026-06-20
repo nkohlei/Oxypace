@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
@@ -25,9 +25,9 @@ const Saved = () => {
         }
     };
 
-    const handlePostRemoved = (postId) => {
-        setPosts(posts.filter((post) => post._id !== postId));
-    };
+    const handlePostRemoved = useCallback((postId) => {
+        setPosts((prevPosts) => prevPosts.filter((post) => post._id !== postId));
+    }, [setPosts]);
 
     return (
         <div className="app-wrapper">
@@ -69,7 +69,7 @@ const Saved = () => {
                                 <PostCard
                                     key={post._id}
                                     post={post}
-                                    onUnsave={() => handlePostRemoved(post._id)}
+                                    onUnsave={handlePostRemoved}
                                 />
                                     {index < posts.length - 1 && <div className="post-separator" />}
                                 </Fragment>

@@ -253,7 +253,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
             setSaved(response.data.saved);
             if (!response.data.saved && onUnsave) {
-                onUnsave();
+                onUnsave(post._id);
             }
         } catch (error) {
             console.error('Save error:', error);

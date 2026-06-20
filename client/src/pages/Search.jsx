@@ -256,6 +256,10 @@ const Search = () => {
                                                             src={getImageUrl(portal.avatar)}
                                                             alt={portal.name}
                                                             className="card-icon-img"
+                                                            loading="lazy"
+                                                            decoding="async"
+                                                            width="48"
+                                                            height="48"
                                                         />
                                                     ) : (
                                                         <div className="card-icon-placeholder">
@@ -368,6 +372,10 @@ const Search = () => {
                                                         src={getImageUrl(user.profile.avatar)}
                                                         alt={user.username}
                                                         className="result-avatar"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        width="48"
+                                                        height="48"
                                                     />
                                                 ) : (
                                                     <div className="result-avatar-placeholder">

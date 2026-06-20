@@ -174,12 +174,12 @@ const Profile = () => {
         }
     };
 
-    const handleUnsave = (postId) => {
+    const handleUnsave = useCallback((postId) => {
         setSavedPosts(prev => prev.filter(p => p._id !== postId));
         // Also update user context if needed, but the save button in PostCard already does that.
         // If we are using a custom post card here, we might need to handle it.
         // Actually, I'll use PostCard for the saved tab for consistency.
-    };
+    }, [setSavedPosts]);
 
     // Handle profile compose post
     const handleProfilePost = async () => {
@@ -633,7 +633,14 @@ const Profile = () => {
                             {/* Banner INSIDE left column only */}
                             <div className="profile-banner">
                                 {profileUser?.profile?.coverImage ? (
-                                    <img src={getImageUrl(profileUser.profile.coverImage)} alt="Banner" />
+                                    <img
+                                        src={getImageUrl(profileUser.profile.coverImage)}
+                                        alt="Banner"
+                                        loading="lazy"
+                                        decoding="async"
+                                        width="600"
+                                        height="200"
+                                    />
                                 ) : (
                                     <div
                                         className="banner-placeholder"
@@ -947,7 +954,14 @@ const Profile = () => {
                                                                             {composeMedia?.type?.startsWith('video') ? (
                                                                                 <video src={composeMediaPreview} className="compose-preview-video" />
                                                                             ) : (
-                                                                                <img src={composeMediaPreview} alt="Preview" />
+                                                                                <img
+                                                                                    src={composeMediaPreview}
+                                                                                    alt="Preview"
+                                                                                    loading="lazy"
+                                                                                    decoding="async"
+                                                                                    width="200"
+                                                                                    height="150"
+                                                                                />
                                                                             )}
                                                                             <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
                                                                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1061,7 +1075,14 @@ const Profile = () => {
                                                                         >
                                                                             <div className="badge-portal-avatar">
                                                                                 {post.portal.avatar ? (
-                                                                                    <img src={getImageUrl(post.portal.avatar)} alt="" />
+                                                                                    <img
+                                                                                        src={getImageUrl(post.portal.avatar)}
+                                                                                        alt=""
+                                                                                        loading="lazy"
+                                                                                        decoding="async"
+                                                                                        width="24"
+                                                                                        height="24"
+                                                                                    />
                                                                                 ) : (
                                                                                     <div className="badge-avatar-placeholder">
                                                                                         {(post.portal.name || 'P')?.[0]}
@@ -1171,6 +1192,9 @@ const Profile = () => {
                                                                                             })()}/hqdefault.jpg`}
                                                                                             alt="YouTube"
                                                                                             loading="lazy"
+                                                                                            decoding="async"
+                                                                                            width="480"
+                                                                                            height="270"
                                                                                         />
                                                                                         <div className="youtube-play-overlay">
                                                                                             <svg viewBox="0 0 68 48" width="48" height="34">
@@ -1185,6 +1209,8 @@ const Profile = () => {
                                                                                         alt="Post media"
                                                                                         loading="lazy"
                                                                                         decoding="async"
+                                                                                        width="600"
+                                                                                        height="400"
                                                                                         onError={(e) => { e.target.style.display = 'none'; }}
                                                                                     />
                                                                                 )}
@@ -1262,6 +1288,10 @@ const Profile = () => {
                                                                             <img
                                                                                 src={getImageUrl(p.avatar)}
                                                                                 alt=""
+                                                                                loading="lazy"
+                                                                                decoding="async"
+                                                                                width="40"
+                                                                                height="40"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-avatar-placeholder">
@@ -1306,11 +1336,15 @@ const Profile = () => {
                                                                     navigate(`/profile/${friend.username}`)
                                                                 }
                                                             >
-                                                                <img
+                                                                 <img
                                                                     src={getImageUrl(
                                                                         friend.profile?.avatar
                                                                     )}
                                                                     alt=""
+                                                                    loading="lazy"
+                                                                    decoding="async"
+                                                                    width="48"
+                                                                    height="48"
                                                                 />
                                                                 <span className="f-name">
                                                                     {friend.username}
@@ -1344,6 +1378,10 @@ const Profile = () => {
                                                                             <img
                                                                                 src={getImageUrl(p.avatar)}
                                                                                 alt=""
+                                                                                loading="lazy"
+                                                                                decoding="async"
+                                                                                width="32"
+                                                                                height="32"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-avatar-placeholder">

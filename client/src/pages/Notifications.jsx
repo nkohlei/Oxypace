@@ -294,6 +294,10 @@ const Notifications = () => {
                                                 <img
                                                     src={getImageUrl(notif.sender.profile.avatar)}
                                                     alt={notif.sender.username}
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    width="36"
+                                                    height="36"
                                                 />
                                             ) : (
                                                 <div className="notif-avatar-placeholder">
@@ -399,6 +403,10 @@ const Notifications = () => {
                                                     <img
                                                         src={getImageUrl(notif.post.media)}
                                                         alt="Post"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        width="50"
+                                                        height="50"
                                                     />
                                                 )}
                                             </div>
@@ -407,6 +415,10 @@ const Notifications = () => {
                                                 <img
                                                     src={getImageUrl(notif.imageUrl)}
                                                     alt="Media"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    width="50"
+                                                    height="50"
                                                 />
                                             </div>
                                         ) : null}

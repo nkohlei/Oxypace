@@ -103,6 +103,10 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                 alt=""
                                 className="quoted-portal-icon"
                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                                loading="lazy"
+                                decoding="async"
+                                width="16"
+                                height="16"
                                 onError={(e) => {
                                     const originalUrl = getImageUrl(quotedPost.portal.avatar, 'original');
                                     if (e.target.src !== originalUrl) {
@@ -142,11 +146,26 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                             </div>
                         ) : quotedPost.mediaType === 'youtube' ? (
                             <div className="quoted-youtube-wrapper">
-                                <img src={`https://img.youtube.com/vi/${extractFirstUrl(quotedPost.media)}/hqdefault.jpg`} alt="" />
+                                <img
+                                    src={`https://img.youtube.com/vi/${extractFirstUrl(quotedPost.media)}/hqdefault.jpg`}
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                    width="480"
+                                    height="270"
+                                />
                                 <div className="video-badge"><Youtube size={12} /> YouTube</div>
                             </div>
                         ) : (
-                            <img src={getImageUrl(quotedPost.media)} alt="Quoted media" className="quoted-image-element" />
+                            <img
+                                src={getImageUrl(quotedPost.media)}
+                                alt="Quoted media"
+                                className="quoted-image-element"
+                                loading="lazy"
+                                decoding="async"
+                                width="600"
+                                height="400"
+                            />
                         )}
                     </div>
                 )}
@@ -168,6 +187,10 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                 src={getImageUrl(quotedPost.pdfThumbnailUrl)}
                                 alt=""
                                 style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
+                                loading="lazy"
+                                decoding="async"
+                                width="40"
+                                height="50"
                             />
                         ) : (
                             <div style={{

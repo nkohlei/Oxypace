@@ -195,6 +195,10 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                                 : getImageUrl(message.media)
                                         }
                                         alt="Attachment"
+                                        loading="lazy"
+                                        decoding="async"
+                                        width="250"
+                                        height="250"
                                     />
                                 )}
                                 {!message.isOptimistic && (
@@ -234,6 +238,10 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                         src={getImageUrl(displayPost.author?.profile?.avatar)}
                                         alt={displayPost.author?.username}
                                         className="shared-post-avatar"
+                                        loading="lazy"
+                                        decoding="async"
+                                        width="32"
+                                        height="32"
                                     />
                                     <span className="shared-post-username">
                                         @{displayPost.author?.username}
@@ -253,6 +261,10 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                                     : displayPost.media
                                             )}
                                             alt="Shared Post"
+                                            loading="lazy"
+                                            decoding="async"
+                                            width="200"
+                                            height="150"
                                         />
                                     </div>
                                 )}
@@ -288,6 +300,10 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                             src={getImageUrl(displayPortal.avatar)}
                                             alt={displayPortal.name}
                                             className="shared-portal-avatar"
+                                            loading="lazy"
+                                            decoding="async"
+                                            width="40"
+                                            height="40"
                                         />
                                         <div className="portal-badge">P</div>
                                     </div>

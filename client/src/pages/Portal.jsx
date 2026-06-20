@@ -291,10 +291,10 @@ const Portal = () => {
         }
     };
 
-    const triggerToast = (message, type = 'info') => {
+    const triggerToast = useCallback((message, type = 'info') => {
         setToast({ show: true, message, type });
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
-    };
+    }, []);
 
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
@@ -674,11 +674,11 @@ const Portal = () => {
         setMobileChannelOpen(false); // Reset mobile feed state
     }, [id]);
 
-    const handleDeletePost = (postId) => {
+    const handleDeletePost = useCallback((postId) => {
         setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
-    };
+    }, [setPosts]);
 
-    const handlePin = async (postId) => {
+    const handlePin = useCallback(async (postId) => {
         try {
             const res = await axios.put(`/api/posts/${postId}/pin`);
             const updatedPost = res.data;
@@ -697,7 +697,7 @@ const Portal = () => {
             console.error('Pin failed', err);
             triggerToast('Sabitleme işlemi başarısız', 'error');
         }
-    };
+    }, [setPosts, triggerToast]);
 
     const handleJoin = async () => {
         if (!user) {
@@ -1202,6 +1202,10 @@ const Portal = () => {
                                                                     src={getImageUrl(portal.avatar)}
                                                                     alt=""
                                                                     className="privacy-avatar"
+                                                                    loading="lazy"
+                                                                    decoding="async"
+                                                                    width="80"
+                                                                    height="80"
                                                                 />
                                                                 <h2>{portal.name}</h2>
                                                                 <p className="privacy-desc">
@@ -1508,7 +1512,15 @@ const Portal = () => {
                                                                             <div className="input-quoted-preview">
                                                                                 <div className="input-quoted-preview-header">
                                                                                     {quotedPost.author?.profile?.avatar ? (
-                                                                                        <img src={getImageUrl(quotedPost.author.profile.avatar)} alt="" className="quoted-preview-avatar" />
+                                                                                        <img
+                                                                                            src={getImageUrl(quotedPost.author.profile.avatar)}
+                                                                                            alt=""
+                                                                                            className="quoted-preview-avatar"
+                                                                                            loading="lazy"
+                                                                                            decoding="async"
+                                                                                            width="32"
+                                                                                            height="32"
+                                                                                        />
                                                                                     ) : (
                                                                                         <div className="quoted-preview-avatar-placeholder">
                                                                                             {quotedPost.author?.username?.charAt(0).toUpperCase()}
@@ -1537,7 +1549,14 @@ const Portal = () => {
                                                                                                     <span>Video Alıntısı</span>
                                                                                                 </div>
                                                                                             ) : (
-                                                                                                <img src={getImageUrl(quotedPost.media)} alt="" />
+                                                                                                <img
+                                                                    src={getImageUrl(quotedPost.media)}
+                                                                    alt=""
+                                                                    loading="lazy"
+                                                                    decoding="async"
+                                                                    width="120"
+                                                                    height="80"
+                                                                />
                                                                                             )}
                                                                                         </div>
                                                                                     )}
@@ -1595,6 +1614,10 @@ const Portal = () => {
                                                                                                 objectFit: 'cover',
                                                                                                 borderRadius: '4px'
                                                                                             }}
+                                                                                            loading="lazy"
+                                                                                            decoding="async"
+                                                                                            width="40"
+                                                                                            height="30"
                                                                                         />
                                                                                     ) : (
                                                                                         <span
