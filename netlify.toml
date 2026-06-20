@@ -1,11 +1,15 @@
 # Netlify Configuration at Root for Oxypace SPA
 
 [build]
-  # Build command (defined in package.json at root)
-  command = "npm run build"
+  # Build command directly installing client deps and building client without cross-env
+  command = "npm install --prefix client --no-package-lock --legacy-peer-deps && npm run build --prefix client"
   # Output directory (Vite default is client/dist when built from root)
   publish = "client/dist"
   edge_functions = "netlify/edge-functions"
+
+[build.environment]
+  CI = "false"
+  NODE_VERSION = "20"
 
 # ── Edge Functions ───────────────────────────────
 [[edge_functions]]
