@@ -8,6 +8,11 @@
   publish = "dist"
   edge_functions = "netlify/edge-functions"
 
+[build.environment]
+  CI = "false"
+  NODE_VERSION = "20"
+  NODE_OPTIONS = "--max-old-space-size=4096"
+
 # ── Edge Functions ───────────────────────────────
 [[edge_functions]]
   path = "/*"
