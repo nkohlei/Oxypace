@@ -13,6 +13,7 @@ import CustomBadge from '../models/CustomBadge.js';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
+import { escapeRegex } from '../utils/security.js';
 
 const router = express.Router();
 
@@ -143,7 +144,7 @@ router.get('/users', protect, admin, async (req, res) => {
         let query = {};
 
         if (q) {
-            query = { username: { $regex: q, $options: 'i' } };
+            query = { username: { $regex: escapeRegex(q), $options: 'i' } };
         }
 
         const users = await User.find(query)
@@ -252,7 +253,7 @@ router.get('/portals', protect, admin, async (req, res) => {
         let query = {};
 
         if (q) {
-            query = { name: { $regex: q, $options: 'i' } };
+            query = { name: { $regex: escapeRegex(q), $options: 'i' } };
         }
 
         const portals = await import('../models/Portal.js').then(m => m.default.find(query)

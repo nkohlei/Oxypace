@@ -1,4 +1,6 @@
 import SystemSettings from '../models/SystemSettings.js';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 const checkMaintenance = async (req, res, next) => {
     // İlk istekte veritabanından değeri yükleyip önbelleğe alalım
@@ -32,9 +34,21 @@ const checkMaintenance = async (req, res, next) => {
         return next();
     }
 
-    // 4. Çerez kontrolü: Tarayıcısında backdoor çerezi (admin_access=true) olan istekleri geçir
-    if (req.cookies && req.cookies.admin_access === 'true') {
-        return next();
+    // 4. Yetki kontrolü: Token veya çerez içindeki JWT üzerinden admin doğrulaması yap
+    const token = (req.headers.authorization && req.headers.authorization.startsWith('Bearer '))
+        ? req.headers.authorization.split(' ')[1]
+        : (req.cookies && req.cookies.token);
+
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const user = await User.findById(decoded.id);
+            if (user && user.isAdmin) {
+                return next();
+            }
+        } catch (_err) {
+            // Sessizce geç ve 503 döndür
+        }
     }
 
     // Yetkisi olmayan genel API isteklerini 503 Service Unavailable ile engelle

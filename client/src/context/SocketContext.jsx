@@ -59,13 +59,7 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('maintenance_toggle', ({ active }) => {
             if (active) {
-                const getCookie = (name) => {
-                    const value = `; ${document.cookie}`;
-                    const parts = value.split(`; ${name}=`);
-                    if (parts.length === 2) return parts.pop().split(';').shift();
-                };
-                const hasAccess = getCookie('admin_access') === 'true' || localStorage.getItem('admin_access') === 'true';
-                if (!hasAccess) {
+                if (!user || !user.isAdmin) {
                     window.location.reload();
                 }
             }

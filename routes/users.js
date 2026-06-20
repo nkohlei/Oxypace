@@ -2,6 +2,8 @@ import express from 'express';
 import multer from 'multer';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import { profileValidation, mongoIdValidation } from '../middleware/validation.js';
+import { escapeRegex } from '../utils/security.js';
+import bcrypt from 'bcryptjs';
 
 import User from '../models/User.js';
 import Post from '../models/Post.js';
@@ -364,7 +366,7 @@ router.get('/search', protect, async (req, res) => {
         }
 
         const users = await User.find({
-            username: { $regex: q, $options: 'i' },
+            username: { $regex: escapeRegex(q), $options: 'i' },
             _id: { $ne: req.user._id }, // Exclude current user
             'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
         })
@@ -938,6 +940,7 @@ router.put('/security-questions', protect, async (req, res) => {
 
         // Update answers
         const updatedAnswers = [];
+        const salt = await bcrypt.genSalt(10);
         for (let i = 0; i < securityAnswers.length; i++) {
             const item = securityAnswers[i];
             if (item.answer.trim() === '••••••••') {
@@ -948,15 +951,17 @@ router.put('/security-questions', protect, async (req, res) => {
                         answer: existing.answer
                     });
                 } else {
+                    const hashed = await bcrypt.hash(item.answer.trim().toLowerCase(), salt);
                     updatedAnswers.push({
                         question: item.question.trim(),
-                        answer: item.answer.trim()
+                        answer: hashed
                     });
                 }
             } else {
+                const hashed = await bcrypt.hash(item.answer.trim().toLowerCase(), salt);
                 updatedAnswers.push({
                     question: item.question.trim(),
-                    answer: item.answer.trim()
+                    answer: hashed
                 });
             }
         }

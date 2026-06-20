@@ -82,19 +82,54 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 3. Gizli erişim parametresi kontrolü (?access=oxypace)
-  if (url.searchParams.get("access") === "oxypace") {
-    context.cookies.set({
-      name: "admin_access",
-      value: "true",
-      path: "/",
-      maxAge: 2592000,
-      secure: true,
-      sameSite: "Lax",
-    });
+async function verifyJwt(token, secret) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [headerB64, payloadB64, signatureB64] = parts;
+    
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+    
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    
+    const binarySign = Uint8Array.from(atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    const data = encoder.encode(`${headerB64}.${payloadB64}`);
+    const isValid = await crypto.subtle.verify("HMAC", key, binarySign, data);
+    
+    return isValid ? payload : null;
+  } catch (e) {
+    return null;
+  }
+}
 
-    url.searchParams.delete("access");
-    return Response.redirect(url.toString(), 307);
+export default async (request, context) => {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  const userAgent = request.headers.get("user-agent") || "";
+
+  // 1. Statik dosya isteklerini doğrudan geçir
+  const isStaticAsset = pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest)$/i);
+  if (isStaticAsset) {
+    return context.next();
+  }
+
+  // 2. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
+  if (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/og/") ||
+    pathname.startsWith("/socket.io/") ||
+    pathname.startsWith("/r2-media/") ||
+    pathname === "/404.html"
+  ) {
+    return context.next();
   }
 
   // 4. BOT TESPİTİ & OG YÖNLENDİRME
@@ -134,8 +169,19 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 6. Yetki var mı kontrol et
-  const hasAccess = context.cookies.get("admin_access") === "true";
+  // 6. Yetki var mı kontrol et (JWT token üzerinden güvenli doğrulama)
+  const token = context.cookies.get("token");
+  let hasAccess = false;
+  if (token) {
+    const secret = Deno.env.get("JWT_SECRET");
+    if (secret) {
+      const decoded = await verifyJwt(token, secret);
+      if (decoded && decoded.isAdmin === true) {
+        hasAccess = true;
+      }
+    }
+  }
+
   if (hasAccess) {
     return context.next();
   }

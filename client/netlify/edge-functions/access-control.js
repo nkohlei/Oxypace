@@ -93,27 +93,57 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 3. Gizli erişim parametresi kontrolü (?access=oxypace)
-  if (url.searchParams.get("access") === "oxypace") {
-    // 30 gün geçerli admin çerezi ata
-    context.cookies.set({
-      name: "admin_access",
-      value: "true",
-      path: "/",
-      maxAge: 2592000, // 30 gün (saniye)
-      secure: true,
-      sameSite: "Lax",
-    });
+async function verifyJwt(token, secret) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [headerB64, payloadB64, signatureB64] = parts;
+    
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+    
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    
+    const binarySign = Uint8Array.from(atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    const data = encoder.encode(`${headerB64}.${payloadB64}`);
+    const isValid = await crypto.subtle.verify("HMAC", key, binarySign, data);
+    
+    return isValid ? payload : null;
+  } catch (e) {
+    return null;
+  }
+}
 
-    // Parametreyi temizlemek için kullanıcının bulunduğu sayfaya (parametresiz olarak) yönlendir
-    url.searchParams.delete("access");
-    return Response.redirect(url.toString(), 307);
+export default async (request, context) => {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  const userAgent = request.headers.get("user-agent") || "";
+
+  // 1. Statik dosya isteklerini (js, css, resimler vb.) doğrudan geçir
+  const isStaticAsset = pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest)$/i);
+  if (isStaticAsset) {
+    return context.next();
+  }
+
+  // 2. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
+  if (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/og/") ||
+    pathname.startsWith("/socket.io/") ||
+    pathname.startsWith("/r2-media/") ||
+    pathname === "/404.html"
+  ) {
+    return context.next();
   }
 
   // 4. ── BOT TESPİTİ & OG YÖNLENDİRME ──────────────────────────────────────
-  // WhatsApp/Telegram/Facebook botları JS çalıştırmaz; sadece OG meta etiketlerini okur.
-  // Bot User-Agent'ı varsa ve path OG pattern'larından biriyle eşleşiyorsa
-  // backend'deki /og/* route'una fetch et ve yanıtı doğrudan döndür.
   if (isBot(userAgent)) {
     for (const { regex, path } of OG_PATTERNS) {
       const match = pathname.match(regex);
@@ -127,7 +157,6 @@ export default async (request, context) => {
               "Accept": "text/html",
             },
           });
-          // Backend'den gelen HTML'i doğrudan döndür
           const html = await ogResponse.text();
           return new Response(html, {
             status: ogResponse.status,
@@ -139,7 +168,6 @@ export default async (request, context) => {
           });
         } catch (fetchErr) {
           console.error("[OG Edge] Fetch error:", fetchErr.message);
-          // Hata durumunda normal SPA akışına devam et
           return context.next();
         }
       }
@@ -149,11 +177,22 @@ export default async (request, context) => {
   // 5. Bakım Modu aktif mi kontrol et
   const isMaintenance = await getMaintenanceStatus();
   if (!isMaintenance) {
-    return context.next(); // Bakım aktif değilse herkes normal erişebilir
+    return context.next();
   }
 
-  // 6. Bakım aktifse çerez kontrolü yap: Eğer admin_access çerezi varsa siteye normal erişime izin ver
-  const hasAccess = context.cookies.get("admin_access") === "true";
+  // 6. Bakım aktifse çerez kontrolü yap: Eğer token çerezi varsa ve admin ise siteye normal erişime izin ver
+  const token = context.cookies.get("token");
+  let hasAccess = false;
+  if (token) {
+    const secret = Deno.env.get("JWT_SECRET");
+    if (secret) {
+      const decoded = await verifyJwt(token, secret);
+      if (decoded && decoded.isAdmin === true) {
+        hasAccess = true;
+      }
+    }
+  }
+
   if (hasAccess) {
     return context.next();
   }

@@ -24,10 +24,6 @@ export const getClientIp = (req) => {
  */
 export const banCheckMiddleware = async (req, res, next) => {
     try {
-        // 1. BACKDOOR BYPASS: admin_access çerezi true olan yetkili adminler için engeli atla
-        if (req.cookies && req.cookies.admin_access === 'true') {
-            return next();
-        }
 
         // İstisnai yollar: Sağlık kontrolü ve bakım durumu sorgusu engellenmez
         const path = req.path;

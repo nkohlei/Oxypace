@@ -179,11 +179,16 @@ app.use(cookieParser()); // Add cookie-parser middleware
 app.use('/api', banCheckMiddleware); // Global IP and Account Ban check middleware
 app.use('/api', checkMaintenance); // Global maintenance mode check for all API routes
 
+if (!process.env.JWT_SECRET) {
+    console.error('❌ CRITICAL ERROR: JWT_SECRET environment variable is missing.');
+    process.exit(1);
+}
+
 // Session middleware (required for Passport)
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(
     session({
-        secret: process.env.JWT_SECRET || 'fallback-secret',
+        secret: process.env.JWT_SECRET,
         resave: false,
         saveUninitialized: false,
         store: MongoStore.create({

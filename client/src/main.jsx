@@ -42,30 +42,6 @@ window.addEventListener('vite:preloadError', (event) => {
     window.location.reload();
 });
 
-// ── Client-side Access Control Fallback ────────────────────────────────
-const getCookie = (name) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-};
-
-const urlParams = new URLSearchParams(window.location.search);
-let hasAccess = getCookie('admin_access') === 'true' || localStorage.getItem('admin_access') === 'true';
-
-if (urlParams.get('access') === 'oxypace') {
-    // 30 gün geçerli çerez ve localStorage yetkisi ata
-    const date = new Date();
-    date.setTime(date.getTime() + (30 * 24 * 60 * 60 * 1000));
-    document.cookie = `admin_access=true; expires=${date.toUTCString()}; path=/; SameSite=Lax; Secure`;
-    localStorage.setItem('admin_access', 'true');
-    hasAccess = true;
-
-    // URL parametresini temizle
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete('access');
-    window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
-}
-
 const renderApp = () => {
     ReactDOM.createRoot(document.getElementById('root')).render(
         <React.StrictMode>
@@ -92,8 +68,9 @@ const show404Page = () => {
 };
 
 const init = async () => {
-    // 1. Yetki varsa doğrudan uygulamayı başlat
-    if (hasAccess) {
+    // 1. Eğer kullanıcı oturum açmışsa, doğrudan uygulamayı başlat
+    const token = localStorage.getItem('token');
+    if (token) {
         renderApp();
         return;
     }

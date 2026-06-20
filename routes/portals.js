@@ -9,6 +9,7 @@ import { protect, optionalProtect } from '../middleware/auth.js';
 import { mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
 import upload from '../middleware/upload.js';
+import { escapeRegex } from '../utils/security.js';
 
 const router = express.Router();
 
@@ -55,7 +56,7 @@ router.get('/', optionalProtect, async (req, res) => {
         const keyword = req.query.keyword
             ? {
                 name: {
-                    $regex: req.query.keyword,
+                    $regex: escapeRegex(req.query.keyword),
                     $options: 'i',
                 },
             }

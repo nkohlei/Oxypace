@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import passport from 'passport';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import SystemSettings from '../models/SystemSettings.js';
@@ -18,8 +19,8 @@ import {
 const router = express.Router();
 
 // Generate JWT token
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, isAdmin = false) => {
+    return jwt.sign({ id, isAdmin }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
 };
@@ -234,7 +235,14 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         await user.save();
 
         // Generate token
-        const token = generateToken(user._id);
+        const token = generateToken(user._id, user.isAdmin);
+
+        res.cookie('token', token, {
+            httpOnly: false,
+            secure: true,
+            sameSite: 'Lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
 
         res.json({
             token,
@@ -363,7 +371,15 @@ router.post('/google/validate', async (req, res) => {
                 }
             }
 
-            const realToken = generateToken(decoded.id);
+            const realToken = generateToken(decoded.id, user.isAdmin);
+
+            res.cookie('token', realToken, {
+                httpOnly: false,
+                secure: true,
+                sameSite: 'Lax',
+                maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+            });
+
             return res.json({
                 action: 'login',
                 token: realToken,
@@ -416,7 +432,14 @@ router.post('/google/complete', async (req, res) => {
         });
 
         // Generate real auth token
-        const token = generateToken(user._id);
+        const token = generateToken(user._id, user.isAdmin);
+
+        res.cookie('token', token, {
+            httpOnly: false,
+            secure: true,
+            sameSite: 'Lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
 
         res.status(201).json({
             token,
@@ -524,20 +547,27 @@ router.post('/reset-password', newPasswordValidation, async (req, res) => {
 router.post('/maintenance-login', async (req, res) => {
     try {
         const { passphrase } = req.body;
-        const MAINTENANCE_PASSPHRASE = '43o_O00048';
+        const MAINTENANCE_PASSPHRASE = process.env.MAINTENANCE_PASSPHRASE;
 
-        if (!passphrase || passphrase !== MAINTENANCE_PASSPHRASE) {
+        if (!MAINTENANCE_PASSPHRASE || !passphrase || passphrase !== MAINTENANCE_PASSPHRASE) {
             return res.status(401).json({ message: 'Geçersiz erişim parolası' });
         }
 
         // Find the @oxypace account
         const user = await User.findOne({ username: 'oxypace' }).populate('joinedPortals', 'name avatar');
 
-        if (!user) {
-            return res.status(404).json({ message: 'Sistem hesabı bulunamadı' });
+        if (!user || !user.isAdmin) {
+            return res.status(404).json({ message: 'Sistem yöneticisi hesabı bulunamadı veya yetkisiz' });
         }
 
-        const token = generateToken(user._id);
+        const token = generateToken(user._id, user.isAdmin);
+
+        res.cookie('token', token, {
+            httpOnly: false,
+            secure: true,
+            sameSite: 'Lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000
+        });
 
         res.json({
             token,
@@ -657,7 +687,22 @@ router.post('/recover-verify', async (req, res) => {
                 sa => sa.question.trim().toLowerCase() === submitted.question.trim().toLowerCase()
             );
 
-            if (!dbAnswer || dbAnswer.answer.trim().toLowerCase() !== submitted.answer.trim().toLowerCase()) {
+            if (!dbAnswer) {
+                allCorrect = false;
+                break;
+            }
+
+            const cleanSubmitted = submitted.answer.trim().toLowerCase();
+            const cleanDb = dbAnswer.answer.trim();
+            let isAnswerCorrect = false;
+
+            if (cleanDb.startsWith('$2a$') || cleanDb.startsWith('$2b$') || cleanDb.startsWith('$2y$')) {
+                isAnswerCorrect = await bcrypt.compare(cleanSubmitted, cleanDb);
+            } else {
+                isAnswerCorrect = cleanSubmitted === cleanDb.toLowerCase();
+            }
+
+            if (!isAnswerCorrect) {
                 allCorrect = false;
                 break;
             }
@@ -729,7 +774,22 @@ router.post('/recover-request', async (req, res) => {
                 sa => sa.question.trim().toLowerCase() === submitted.question.trim().toLowerCase()
             );
 
-            if (!dbAnswer || dbAnswer.answer.trim().toLowerCase() !== submitted.answer.trim().toLowerCase()) {
+            if (!dbAnswer) {
+                allCorrect = false;
+                break;
+            }
+
+            const cleanSubmitted = submitted.answer.trim().toLowerCase();
+            const cleanDb = dbAnswer.answer.trim();
+            let isAnswerCorrect = false;
+
+            if (cleanDb.startsWith('$2a$') || cleanDb.startsWith('$2b$') || cleanDb.startsWith('$2y$')) {
+                isAnswerCorrect = await bcrypt.compare(cleanSubmitted, cleanDb);
+            } else {
+                isAnswerCorrect = cleanSubmitted === cleanDb.toLowerCase();
+            }
+
+            if (!isAnswerCorrect) {
                 allCorrect = false;
                 break;
             }
