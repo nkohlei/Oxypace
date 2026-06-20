@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import Post from '../models/Post.js';
 import { constructProxiedUrl } from './mediaConfig.js';
@@ -44,12 +44,10 @@ function safeUnlink(filePath) {
 }
 
 const FFMPEG_RAM_SAFE_FLAGS = [
-    '-threads 1',
-    '-frame-threads 1',
-    '-tile-columns 0',
-    '-preset ultrafast',
-    '-tune fastdecode',
-    '-pix_fmt yuv420p'
+    '-threads', '1',
+    '-preset', 'ultrafast',
+    '-tune', 'fastdecode',
+    '-pix_fmt', 'yuv420p'
 ];
 
 const formatEstimatedTime = (totalSeconds) => {
@@ -72,11 +70,11 @@ function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, ma
             .videoCodec('libx264')
             .outputOptions([
                 ...FFMPEG_RAM_SAFE_FLAGS,
-                `-vf ${scaleFilter}`,
-                `-b:v ${videoBitrate}`,
-                `-maxrate ${maxrate}`,
-                `-bufsize ${bufsize}`,
-                '-c:a aac' // Convert/preserve audio track cleanly as AAC
+                '-vf', scaleFilter,
+                '-b:v', videoBitrate,
+                '-maxrate', maxrate,
+                '-bufsize', bufsize,
+                '-c:a', 'aac'
             ])
             .output(outputPath)
             .on('start', (cmd) => {
@@ -128,14 +126,15 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             localInputPath = path.join(process.cwd(), 'temp_media', `download-${baseName}.mp4`);
             fs.mkdirSync(path.dirname(localInputPath), { recursive: true });
 
-            const response = await axios({
-                method: 'get',
-                url: constructProxiedUrl(mediaKey),
-                responseType: 'stream',
-                httpsAgent: new https.Agent({ rejectUnauthorized: false })
-            });
+            console.log(`[VideoTranscoder] Fetching from bucket: ${bucketName}, key: ${mediaKey}`);
+            const response = await r2.send(new GetObjectCommand({
+                Bucket: bucketName,
+                Key: mediaKey
+            }));
+
             const writer = fs.createWriteStream(localInputPath);
-            response.data.pipe(writer);
+            response.Body.pipe(writer);
+
             await new Promise((resolve, reject) => {
                 writer.on('finish', resolve);
                 writer.on('error', reject);
