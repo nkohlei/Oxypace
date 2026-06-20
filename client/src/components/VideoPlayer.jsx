@@ -93,6 +93,8 @@ if (typeof window !== 'undefined') {
 
 const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, estimatedTime = 0 }) => {
   const videoRef = useRef(null);
+  const restoreTimeRef = useRef(0);
+  const shouldPlayRef = useRef(false);
   const isMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
   const [progress, setProgress] = useState(0);
@@ -361,9 +363,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     return () => clearInterval(interval);
   }, [qualityMode, src1080, src2160, maxResolution]);
-
-  const restoreTimeRef = useRef(0);
-  const shouldPlayRef = useRef(false);
 
   // Capture current playhead before source swap and force reload the stream
   useEffect(() => {
