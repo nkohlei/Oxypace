@@ -14,9 +14,9 @@ router.get('/', protect, async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const notifications = await Notification.find({ 
+                const notifications = await Notification.find({ 
             recipient: req.user.id, 
-            type: { $ne: 'portal_post' } 
+            type: { $nin: ['portal_post', 'message'] } 
         })
             .sort({ createdAt: -1 })
             .skip(skip)
@@ -27,12 +27,12 @@ router.get('/', protect, async (req, res) => {
 
         const total = await Notification.countDocuments({ 
             recipient: req.user.id, 
-            type: { $ne: 'portal_post' } 
+            type: { $nin: ['portal_post', 'message'] } 
         });
         const unreadCount = await Notification.countDocuments({
             recipient: req.user.id,
             read: false,
-            type: { $ne: 'portal_post' }
+            type: { $nin: ['portal_post', 'message'] }
         });
 
         res.json({
@@ -71,12 +71,12 @@ router.get('/portal-unreads', protect, async (req, res) => {
 // @access  Private
 router.put('/read', protect, async (req, res) => {
     try {
-        // Mark all generic notifications as read (except portal posts)
+        // Mark all generic notifications as read (except portal posts and messages)
         await Notification.updateMany(
             { 
                 recipient: req.user.id, 
                 read: false,
-                type: { $ne: 'portal_post' } 
+                type: { $nin: ['portal_post', 'message'] } 
             },
             { $set: { read: true } }
         );

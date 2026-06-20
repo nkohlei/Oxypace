@@ -254,6 +254,22 @@ router.get('/conversations', protect, async (req, res) => {
     }
 });
 
+// @route   GET /api/messages/unread-count
+// @desc    Get total unread messages count
+// @access  Private
+router.get('/unread-count', protect, async (req, res) => {
+    try {
+        const count = await Message.countDocuments({
+            recipient: req.user._id,
+            read: false
+        });
+        res.json({ count });
+    } catch (error) {
+        console.error('Get unread messages count error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // @route   GET /api/messages/:userId
 // @desc    Get conversation with a specific user
 // @access  Private

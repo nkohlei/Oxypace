@@ -46,10 +46,16 @@ export const useRealtimeSync = () => {
             }
         });
 
+        socket.on('newMessage', (message) => {
+            // Fetch updated unread messages count
+            useGlobalStore.getState().fetchUnreadMessagesCount();
+        });
+
         return () => {
             socket.off('global:post_deleted');
             socket.off('global:user_updated');
             socket.off('global:portal_activity');
+            socket.off('newMessage');
         };
     }, [socket, connected, addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, addUnreadPost, addUnreadChannelPost]);
 

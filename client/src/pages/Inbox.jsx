@@ -14,6 +14,7 @@ import UserAvatar from '../components/UserAvatar';
 import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
+import { useGlobalStore } from '../store/useGlobalStore';
 import './Inbox.css';
 
 const Inbox = () => {
@@ -210,6 +211,8 @@ const Inbox = () => {
         try {
             const response = await axios.get(`/api/messages/${userId}`);
             setMessages(response.data);
+            // Refresh global unread count
+            useGlobalStore.getState().fetchUnreadMessagesCount();
         } catch (err) {
             console.error('Failed to fetch messages:', err);
         }
@@ -484,7 +487,6 @@ const Inbox = () => {
                                         className={`conversation-item ${conv.unreadCount > 0 ? 'unread' : ''} ${selectedUser?._id === conv.user._id ? 'active' : ''}`}
                                         onClick={() => handleConversationClick(conv)}
                                     >
-                                        {conv.unreadCount > 0 && <div className="unread-dot"></div>}
                                         <div className="conv-avatar-wrapper">
                                             <UserAvatar
                                                 src={conv.user.profile?.lowResAvatar || conv.user.profile?.avatar}

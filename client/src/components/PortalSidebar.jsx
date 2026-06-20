@@ -17,6 +17,8 @@ const PortalSidebar = () => {
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForPortal = useGlobalStore(state => state.clearUnreadForPortal);
     const syncUnreadCounts = useGlobalStore(state => state.syncUnreadCounts);
+    const unreadMessagesCount = useGlobalStore(state => state.unreadMessagesCount);
+    const fetchUnreadMessagesCount = useGlobalStore(state => state.fetchUnreadMessagesCount);
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -59,8 +61,9 @@ const PortalSidebar = () => {
             setOrderedPortals(source.filter((p) => p && p._id && p.name));
             // Sync unread counts from server to ensure offline accuracy
             syncUnreadCounts();
+            fetchUnreadMessagesCount();
         }
-    }, [user?.portals, user?.joinedPortals, syncUnreadCounts]);
+    }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount]);
 
     useEffect(() => {
         // Clear unread status when entering a portal
@@ -172,11 +175,18 @@ const PortalSidebar = () => {
             <div className="portal-sidebar">
                 {/* Top Actions: Messages and Search */}
                 <div
-                    className={`sidebar-item ${isActive('/inbox') ? 'active' : ''}`}
-                    onClick={() => handleNavigation('/inbox')}
+                    className={`sidebar-item ${location.pathname === '/' || location.pathname === '/inbox' ? 'active' : ''}`}
+                    onClick={() => handleNavigation('/')}
                 >
-                    <div className="portal-icon">
-                        <MessageSquare size={20} strokeWidth={2} />
+                    <div className="portal-icon-container">
+                        <div className="portal-icon">
+                            <MessageSquare size={20} strokeWidth={2} />
+                        </div>
+                        {unreadMessagesCount > 0 && (
+                            <div className="unread-badge">
+                                {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                            </div>
+                        )}
                     </div>
                 </div>
 

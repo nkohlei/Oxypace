@@ -10,6 +10,7 @@ export const useGlobalStore = create(
             unreadPostsByChannel: {}, // { [channelId]: [postId1, postId2, ...] }
             isMuted: true, // Default to muted for better initial experience
             usersCache: {},
+            unreadMessagesCount: 0,
 
             setIsMuted: (val) => set({ isMuted: val }),
 
@@ -124,6 +125,17 @@ export const useGlobalStore = create(
                 delete newUnread[channelId];
                 return { unreadPostsByChannel: newUnread };
             }),
+
+            setUnreadMessagesCount: (count) => set({ unreadMessagesCount: count }),
+
+            fetchUnreadMessagesCount: async () => {
+                try {
+                    const response = await axios.get('/api/messages/unread-count');
+                    set({ unreadMessagesCount: response.data.count || 0 });
+                } catch (err) {
+                    console.error('Failed to fetch unread messages count:', err);
+                }
+            },
 
             // Auth State
             currentUser: null,

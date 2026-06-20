@@ -152,16 +152,21 @@
     /* Active indicator */
 }
 
-.unread-dot {
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 10px;
-    height: 10px;
-    background-color: var(--primary-cyan);
-    border-radius: 50%;
-    box-shadow: none;
+.conversation-item.unread {
+    animation: iceBluePulse 2.5s infinite ease-in-out;
+    border-right: none !important;
+}
+
+@keyframes iceBluePulse {
+    0% {
+        background-color: rgba(0, 210, 255, 0.04);
+    }
+    50% {
+        background-color: rgba(0, 210, 255, 0.16);
+    }
+    100% {
+        background-color: rgba(0, 210, 255, 0.04);
+    }
 }
 
 .conv-avatar-wrapper {
