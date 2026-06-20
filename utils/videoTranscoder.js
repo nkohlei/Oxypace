@@ -43,6 +43,15 @@ function safeUnlink(filePath) {
     try { fs.unlinkSync(filePath); } catch (_) {}
 }
 
+const FFMPEG_RAM_SAFE_FLAGS = [
+    '-threads 1',
+    '-frame-threads 1',
+    '-tile-columns 0',
+    '-preset ultrafast',
+    '-tune fastdecode',
+    '-pix_fmt yuv420p'
+];
+
 const formatEstimatedTime = (totalSeconds) => {
     if (totalSeconds <= 0) return '0 sn';
     const minutes = Math.floor(totalSeconds / 60);
