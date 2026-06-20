@@ -2880,34 +2880,80 @@ const AdminDashboard = () => {
                                                     rows="3"
                                                 />
                                             </div>
-                                            <div style={{ display: 'flex', gap: '16px' }}>
+                                            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Profil Resmi URL'si</label>
-                                                    <input
-                                                        type="text"
-                                                        value={editingBot.profile?.avatar || ''}
-                                                        onChange={(e) => setEditingBot({
-                                                            ...editingBot,
-                                                            profile: { ...editingBot.profile, avatar: e.target.value }
-                                                        })}
-                                                        placeholder="/uploads/avatar.png veya resim linki"
-                                                        className="reason-input-modern"
-                                                        style={{ height: '40px', padding: '10px' }}
-                                                    />
+                                                    <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Profil Resmi</label>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <img 
+                                                            src={getImageUrl(editingBot.profile?.avatar) || '/system/deleted-user.png'} 
+                                                            alt="Avatar" 
+                                                            style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', background: '#333' }}
+                                                        />
+                                                        <label className="btn-modern-ghost" style={{ cursor: 'pointer', margin: 0, padding: '8px 12px', fontSize: '12px' }}>
+                                                            {uploadingImage ? 'Yükleniyor...' : 'Görsel Seç'}
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                style={{ display: 'none' }}
+                                                                onChange={async (e) => {
+                                                                    const file = e.target.files[0];
+                                                                    if (!file) return;
+                                                                    setUploadingImage(true);
+                                                                    try {
+                                                                        const mediaKey = await uploadFile(file, 'avatar');
+                                                                        const fullUrl = getImageUrl(mediaKey);
+                                                                        setEditingBot({
+                                                                            ...editingBot,
+                                                                            profile: { ...editingBot.profile, avatar: fullUrl }
+                                                                        });
+                                                                    } catch (err) {
+                                                                        alert('Görsel yüklenemedi: ' + err.message);
+                                                                    } finally {
+                                                                        setUploadingImage(false);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    </div>
                                                 </div>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Kapak Fotoğrafı URL'si</label>
-                                                    <input
-                                                        type="text"
-                                                        value={editingBot.profile?.coverImage || ''}
-                                                        onChange={(e) => setEditingBot({
-                                                            ...editingBot,
-                                                            profile: { ...editingBot.profile, coverImage: e.target.value }
-                                                        })}
-                                                        placeholder="Kapak resmi linki"
-                                                        className="reason-input-modern"
-                                                        style={{ height: '40px', padding: '10px' }}
-                                                    />
+                                                    <label style={{ fontSize: '13px', color: '#888', display: 'block', marginBottom: '6px' }}>Kapak Fotoğrafı</label>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        {editingBot.profile?.coverImage ? (
+                                                            <img 
+                                                                src={getImageUrl(editingBot.profile.coverImage)} 
+                                                                alt="Cover" 
+                                                                style={{ width: '80px', height: '50px', borderRadius: '6px', objectFit: 'cover', background: '#333' }}
+                                                            />
+                                                        ) : (
+                                                            <div style={{ width: '80px', height: '50px', borderRadius: '6px', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#666' }}>Kapak Yok</div>
+                                                        )}
+                                                        <label className="btn-modern-ghost" style={{ cursor: 'pointer', margin: 0, padding: '8px 12px', fontSize: '12px' }}>
+                                                            {uploadingImage ? 'Yükleniyor...' : 'Görsel Seç'}
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                style={{ display: 'none' }}
+                                                                onChange={async (e) => {
+                                                                    const file = e.target.files[0];
+                                                                    if (!file) return;
+                                                                    setUploadingImage(true);
+                                                                    try {
+                                                                        const mediaKey = await uploadFile(file, 'cover');
+                                                                        const fullUrl = getImageUrl(mediaKey);
+                                                                        setEditingBot({
+                                                                            ...editingBot,
+                                                                            profile: { ...editingBot.profile, coverImage: fullUrl }
+                                                                        });
+                                                                    } catch (err) {
+                                                                        alert('Görsel yüklenemedi: ' + err.message);
+                                                                    } finally {
+                                                                        setUploadingImage(false);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -3067,25 +3113,47 @@ const AdminDashboard = () => {
                                             </div>
 
                                             <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                                                <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Medya/Video Linki (İsteğe Bağlı)</label>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <input
-                                                        type="text"
-                                                        value={botPostData.mediaUrl}
-                                                        onChange={(e) => setBotPostData({ ...botPostData, mediaUrl: e.target.value })}
-                                                        placeholder="Video veya görsel URL linki"
-                                                        className="reason-input-modern"
-                                                        style={{ height: '40px', padding: '10px', flex: 1 }}
-                                                    />
-                                                    <select
-                                                        className="badge-select"
-                                                        value={botPostData.mediaType}
-                                                        onChange={(e) => setBotPostData({ ...botPostData, mediaType: e.target.value })}
-                                                        style={{ width: '100px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px' }}
-                                                    >
-                                                        <option value="image">Görsel</option>
-                                                        <option value="video">Video</option>
-                                                    </select>
+                                                <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Medya / Video (İsteğe Bağlı)</label>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    {botPostData.mediaUrl && (
+                                                        <div style={{ fontSize: '12px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            ✓ Dosya Yüklendi ({botPostData.mediaType === 'video' ? 'Video' : 'Görsel'})
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => setBotPostData({ ...botPostData, mediaUrl: '', mediaType: 'image' })}
+                                                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                                                            >
+                                                                [Sil]
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <label className="btn-modern-ghost" style={{ cursor: 'pointer', margin: 0, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        {uploadingImage ? 'Yükleniyor...' : 'Dosya Seç'}
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*,video/*"
+                                                            style={{ display: 'none' }}
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (!file) return;
+                                                                setUploadingImage(true);
+                                                                try {
+                                                                    const purpose = file.type.startsWith('video/') ? 'video' : 'post';
+                                                                    const mediaKey = await uploadFile(file, purpose);
+                                                                    const fullUrl = getImageUrl(mediaKey);
+                                                                    setBotPostData({
+                                                                        ...botPostData,
+                                                                        mediaUrl: fullUrl,
+                                                                        mediaType: file.type.startsWith('video/') ? 'video' : 'image'
+                                                                    });
+                                                                } catch (err) {
+                                                                    alert('Dosya yüklenemedi: ' + err.message);
+                                                                } finally {
+                                                                    setUploadingImage(false);
+                                                                }
+                                                            }}
+                                                        />
+                                                    </label>
                                                 </div>
                                             </div>
                                         </div>
