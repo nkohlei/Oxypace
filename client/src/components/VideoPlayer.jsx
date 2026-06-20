@@ -127,7 +127,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
-
+  const [switchOverlay, setSwitchOverlay] = useState(null);
 
   useEffect(() => {
     setNaturalDimensions(null);
@@ -188,37 +188,58 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, [playbackRate]);
 
   // Real-time network speed and buffering metrics
-  const waitingCountRef = useRef(0);
   const waitingTimerRef = useRef(null);
-  const activeStreamRef = useRef(null);
+
+  // Capture current video frame to prevent black flash
+  const captureVideoFrame = () => {
+    const video = videoRef.current;
+    if (video && video.readyState >= 2 && video.videoWidth && video.videoHeight) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setSwitchOverlay(dataUrl);
+      } catch (e) {
+        console.warn('[VideoPlayer] Canvas frame capture failed (tainted canvas or readyState issue):', e);
+      }
+    }
+  };
 
   const handleWaiting = () => {
     setIsLoading(true);
     
-    // Debounce the auto mode downgrade to avoid aggressive down-switching on minor range requests
-    if (qualityMode === 'auto' && src144 && videoSrc !== src144) {
+    // Step-by-step auto mode downgrade when buffering is detected
+    if (qualityMode === 'auto') {
       if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
       waitingTimerRef.current = setTimeout(() => {
-        if (videoRef.current && videoRef.current.paused === false) { // only if still trying to play
-          console.log('[VideoPlayer] Auto Mode stall confirmed (1.5s): Switching source to low 144p video:', src144);
-          restoreTimeRef.current = videoRef.current.currentTime;
-          shouldPlayRef.current = !videoRef.current.paused;
-          setVideoSrc(src144);
+        const video = videoRef.current;
+        if (video && !video.paused) {
+          let nextSrc = null;
+          let nextLabel = '';
+          
+          if (videoSrc === src2160 && has1080) { nextSrc = src1080; nextLabel = '1080p'; }
+          else if (videoSrc === src1080 && has720) { nextSrc = src720; nextLabel = '720p'; }
+          else if (videoSrc === src720 && has360) { nextSrc = src360; nextLabel = '360p'; }
+          else if (videoSrc === src360 && has144) { nextSrc = src144; nextLabel = '144p'; }
+          
+          if (nextSrc && nextSrc !== videoSrc) {
+            console.log(`[VideoPlayer] Auto Mode: Stall detected. Downgrading to ${nextLabel}...`);
+            captureVideoFrame();
+            restoreTimeRef.current = video.currentTime;
+            shouldPlayRef.current = true;
+            setVideoSrc(nextSrc);
+          }
         }
-      }, 1500);
-      return;
-    }
-
-    if (videoRef.current) {
-      console.log('[VideoPlayer] Buffering/Stall detected. Bypassing stall by skipping ahead...');
-      // Skip ahead slightly to keep decoding continuous without freezing
-      videoRef.current.currentTime += 0.25;
-      videoRef.current.playbackRate = playbackRate;
+      }, 1000); // 1 second buffer limit before step-by-step quality adaptation
     }
   };
 
   const handlePlaying = () => {
     setIsLoading(false);
+    setSwitchOverlay(null); // Clear seamless transition image frame
     if (waitingTimerRef.current) {
       clearTimeout(waitingTimerRef.current);
       waitingTimerRef.current = null;
@@ -242,6 +263,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else if (mode === 'auto') targetSrc = determineAutoSrc();
     
     if (videoRef.current && targetSrc !== videoSrc) {
+      captureVideoFrame();
       restoreTimeRef.current = videoRef.current.currentTime;
       shouldPlayRef.current = !videoRef.current.paused;
       setVideoSrc(targetSrc);
@@ -257,22 +279,20 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (connection) {
       const handleConnectionChange = () => {
         const nextSrc = determineAutoSrc();
-        setVideoSrc((currentSrc) => {
-          if (currentSrc !== nextSrc) {
-            console.log(`[VideoPlayer] Auto Mode connection changed. Quality switch requested: ${nextSrc}`);
-            restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
-            shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
-            return nextSrc;
-          }
-          return currentSrc;
-        });
+        if (nextSrc !== videoSrc) {
+          console.log(`[VideoPlayer] Auto Mode connection changed. Quality switch requested: ${nextSrc}`);
+          captureVideoFrame();
+          restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
+          shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
+          setVideoSrc(nextSrc);
+        }
       };
       connection.addEventListener('change', handleConnectionChange);
       return () => {
         connection.removeEventListener('change', handleConnectionChange);
       };
     }
-  }, [qualityMode, src360, src1080, src2160, maxResolution]);
+  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, maxResolution]);
 
   // Periodic network health check to upgrade back to high quality when bandwidth recovers in Auto Mode
   useEffect(() => {
@@ -281,21 +301,19 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const interval = setInterval(() => {
       const isSlow = isSlowConnection();
       if (!isSlow) {
-        setVideoSrc((currentSrc) => {
-          const nextSrc = determineAutoSrc();
-          if (currentSrc !== nextSrc) {
-            console.log('[VideoPlayer] Auto Mode: Network recovered, upgrading to high quality...');
-            restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
-            shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
-            return nextSrc;
-          }
-          return currentSrc;
-        });
+        const nextSrc = determineAutoSrc();
+        if (nextSrc !== videoSrc) {
+          console.log('[VideoPlayer] Auto Mode: Network recovered, upgrading to high quality...');
+          captureVideoFrame();
+          restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
+          shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
+          setVideoSrc(nextSrc);
+        }
       }
-    }, 4000);
+    }, 6000);
 
     return () => clearInterval(interval);
-  }, [qualityMode, src1080, src2160, maxResolution]);
+  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, maxResolution]);
 
   // Seamless auto-quality network and playback buffering monitor
   useEffect(() => {
@@ -322,12 +340,15 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         console.log('[VideoPlayer] Seamless Auto-Quality: Stalling detected via progress check. Down-switching quality...');
         
         let targetSrc = null;
-        if (videoSrc === src2160 && has1080) targetSrc = src1080;
-        else if (videoSrc === src1080 && has720) targetSrc = src720;
-        else if (videoSrc === src720 && has360) targetSrc = src360;
-        else if (videoSrc === src360 && has144) targetSrc = src144;
+        let targetLabel = '';
+        if (videoSrc === src2160 && has1080) { targetSrc = src1080; targetLabel = '1080p'; }
+        else if (videoSrc === src1080 && has720) { targetSrc = src720; targetLabel = '720p'; }
+        else if (videoSrc === src720 && has360) { targetSrc = src360; targetLabel = '360p'; }
+        else if (videoSrc === src360 && has144) { targetSrc = src144; targetLabel = '144p'; }
 
         if (targetSrc && targetSrc !== videoSrc) {
+          console.log(`[VideoPlayer] Auto Mode: Downgrading to ${targetLabel}...`);
+          captureVideoFrame();
           restoreTimeRef.current = video.currentTime;
           shouldPlayRef.current = true;
           setVideoSrc(targetSrc);
@@ -609,6 +630,23 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           <span>⚡ Kaliteler Hazırlanıyor (%{processingProgress}) - Kalan: {estimatedTime}</span>
         </div>
       )}
+      {switchOverlay && (
+        <img 
+          src={switchOverlay} 
+          alt="" 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            pointerEvents: 'none',
+            zIndex: 3,
+            borderRadius: '12px'
+          }}
+        />
+      )}
       <video
         ref={videoRef}
         src={videoSrc}
@@ -633,6 +671,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onPlaying={handlePlaying}
         onCanPlay={handlePlaying}
         onCanPlayThrough={handlePlaying}
+        onSeeked={() => setSwitchOverlay(null)}
       />
 
       <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
