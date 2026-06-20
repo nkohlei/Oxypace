@@ -167,22 +167,11 @@ const Inbox = () => {
     }, [socket, selectedUser, user]);
 
     useLayoutEffect(() => {
-        if (selectedUser && messages.length > 0) {
+        if (selectedUser) {
             if (messagesContainerRef.current) {
                 messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
             }
-        }
-    }, [selectedUser, messages.length]);
-
-    useEffect(() => {
-        if (selectedUser) {
-            scrollToBottom();
-            const timer = setTimeout(scrollToBottom, 50);
-            const timerLong = setTimeout(scrollToBottom, 150);
-            return () => {
-                clearTimeout(timer);
-                clearTimeout(timerLong);
-            };
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
         }
     }, [selectedUser, messages, media, replyingTo]);
 
