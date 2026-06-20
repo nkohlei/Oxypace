@@ -37,7 +37,7 @@ async function fetchTwitterPreview(originalUrl) {
 
     try {
         const apiUrl = `https://api.fxtwitter.com/${parsed.username}/status/${parsed.statusId}`;
-        const { data } = await axios.get(apiUrl, { timeout: 8000 });
+        const { data } = await axios.get(apiUrl, { timeout: 15000 });
 
         if (!data?.tweet) return null;
 
@@ -189,7 +189,7 @@ async function fetchInternalPreview(urlStr, baseUrl = '') {
 async function fetchGenericPreview(originalUrl) {
     try {
         const { data: html } = await axios.get(originalUrl, {
-            timeout: 8000,
+            timeout: 15000,
             maxRedirects: 5,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
@@ -361,7 +361,7 @@ router.get('/', async (req, res) => {
         if (isBotPost && previewData && previewData.image && !previewData.image.includes('r2.dev')) {
             console.log(`[Preview] Bot post link preview detected. Compressing image: ${previewData.image}`);
             try {
-                const imgResponse = await axios.get(previewData.image, { responseType: 'arraybuffer', timeout: 8000 });
+                const imgResponse = await axios.get(previewData.image, { responseType: 'arraybuffer', timeout: 15000 });
                 const buffer = Buffer.from(imgResponse.data);
                 
                 const compressedBuffer = await sharp(buffer)
@@ -506,7 +506,7 @@ router.get('/proxy-image', async (req, res) => {
             method: 'get',
             url: imageUrl,
             responseType: 'stream',
-            timeout: 10000,
+            timeout: 15000,
             headers: {
                 'User-Agent': 'Mozilla/5.0'
             }
@@ -569,7 +569,7 @@ router.get('/thumbnail', async (req, res) => {
             method: 'get',
             url: imageUrl,
             responseType: 'arraybuffer', // Get as buffer to process with sharp
-            timeout: 10000,
+            timeout: 15000,
             headers: {
                 'User-Agent': 'Mozilla/5.0'
             }

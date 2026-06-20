@@ -19,4 +19,4 @@ COPY . .
 EXPOSE 5000
 
 # Start the application
-CMD ["node", "server.js"]
+CMD ["node", "--max-old-space-size=768", "server.js"]

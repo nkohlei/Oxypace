@@ -5,9 +5,10 @@ docker:
   dockerfile: Dockerfile
 
 run:
-  command: node server.js
+  command: node --max-old-space-size=768 server.js
 env:
   NODE_ENV: production
+  NODE_OPTIONS: --max-old-space-size=768
 regions:
   - fra
 ports:

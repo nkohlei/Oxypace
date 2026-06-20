@@ -191,16 +191,19 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const activeStreamRef = useRef(null);
 
   const handleWaiting = () => {
-    setIsLoading(false); // Force hide loading spinner
+    setIsLoading(true);
     
-    // If connection stalls and we are in auto mode, immediately swap to 144p
+    // Debounce the auto mode downgrade to avoid aggressive down-switching on minor range requests
     if (qualityMode === 'auto' && src144 && videoSrc !== src144) {
-      console.log('[VideoPlayer] Auto Mode stall detected: Switching source to low 144p video:', src144);
-      if (videoRef.current) {
-        restoreTimeRef.current = videoRef.current.currentTime;
-        shouldPlayRef.current = !videoRef.current.paused;
-      }
-      setVideoSrc(src144);
+      if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
+      waitingTimerRef.current = setTimeout(() => {
+        if (videoRef.current && videoRef.current.paused === false) { // only if still trying to play
+          console.log('[VideoPlayer] Auto Mode stall confirmed (1.5s): Switching source to low 144p video:', src144);
+          restoreTimeRef.current = videoRef.current.currentTime;
+          shouldPlayRef.current = !videoRef.current.paused;
+          setVideoSrc(src144);
+        }
+      }, 1500);
       return;
     }
 
@@ -214,6 +217,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const handlePlaying = () => {
     setIsLoading(false);
+    if (waitingTimerRef.current) {
+      clearTimeout(waitingTimerRef.current);
+      waitingTimerRef.current = null;
+    }
     if (videoRef.current) {
       videoRef.current.playbackRate = playbackRate;
     }
