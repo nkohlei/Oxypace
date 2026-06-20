@@ -75,8 +75,6 @@ if (typeof window !== 'undefined') {
   const onFullscreenChange = (e) => {
       handleGlobalScroll(e);
       if (!document.fullscreenElement) {
-          // On mobile native, this setTimeout causes a visual jump. 
-          // We only run it on the web version to prevent browser exit layout shifts.
           if (!Capacitor.isNativePlatform()) {
               setTimeout(() => {
                   window.scrollTo(0, 0);
@@ -92,7 +90,10 @@ if (typeof window !== 'undefined') {
 }
 
 const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = "Hesaplanıyor..." }) => {
-  const videoRef = useRef(null);
+  const videoRefA = useRef(null);
+  const videoRefB = useRef(null);
+  const [activeVideo, setActiveVideo] = useState('A'); // 'A' or 'B'
+  
   const restoreTimeRef = useRef(0);
   const shouldPlayRef = useRef(false);
   const isMuted = useGlobalStore(state => state.isMuted);
@@ -123,15 +124,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   else if (has360) maxResolution = '360p';
   else if (has144) maxResolution = '144p';
 
-  // Quality selection mode: 'auto' | '2160' | '1080' | '720' | '360' | '144'
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
-  const [switchOverlay, setSwitchOverlay] = useState(null);
-
-  useEffect(() => {
-    setNaturalDimensions(null);
-  }, [src]);
 
   const isSlowConnection = () => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -155,10 +150,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     return src144;
   };
 
-  // Quality stream selection
-  const [videoSrc, setVideoSrc] = useState(() => {
-    return determineAutoSrc();
-  });
+  // Video Source States
+  const [srcStateA, setSrcStateA] = useState(() => determineAutoSrc());
+  const [srcStateB, setSrcStateB] = useState('');
+
+  const getActiveRef = () => activeVideo === 'A' ? videoRefA : videoRefB;
+  const getInactiveRef = () => activeVideo === 'A' ? videoRefB : videoRefA;
 
   const availableQualities = [
     { value: 'auto', label: 'Oto' }
@@ -170,7 +167,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   if (has360) availableQualities.push({ value: '360', label: '360p' });
   if (has144) availableQualities.push({ value: '144', label: '144p' });
   
-  // Gerçek zamanlı donma/yüklenme sensörü
   const [isLoading, setIsLoading] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -181,80 +177,92 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const isLowQuality = qualityMode === '144' || qualityMode === '360' || (qualityMode === 'auto' && isSlowConnection());
 
+  // Sync playback rates
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = playbackRate;
-    }
+    if (videoRefA.current) videoRefA.current.playbackRate = playbackRate;
+    if (videoRefB.current) videoRefB.current.playbackRate = playbackRate;
   }, [playbackRate]);
 
-  // Real-time network speed and buffering metrics
+  // Sync volume & mute state
+  useEffect(() => {
+    if (videoRefA.current) videoRefA.current.muted = isMuted;
+    if (videoRefB.current) videoRefB.current.muted = isMuted;
+  }, [isMuted]);
+
   const waitingTimerRef = useRef(null);
 
-  // Capture current video frame to prevent black flash
-  const captureVideoFrame = () => {
-    const video = videoRef.current;
-    if (video && video.readyState >= 2 && video.videoWidth && video.videoHeight) {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        setSwitchOverlay(dataUrl);
-      } catch (e) {
-        console.warn('[VideoPlayer] Canvas frame capture failed (tainted canvas or readyState issue):', e);
-      }
+  // Core quality swapper without pause or black screen (Instant swap)
+  const initiateQualitySwap = (newSrc) => {
+    const activeRef = getActiveRef();
+    const inactiveRef = getInactiveRef();
+    if (!activeRef.current || !inactiveRef.current) {
+      // Fallback if elements not fully mounted
+      if (activeVideo === 'A') setSrcStateA(newSrc);
+      else setSrcStateB(newSrc);
+      return;
     }
+
+    const currentSrc = activeVideo === 'A' ? srcStateA : srcStateB;
+    if (newSrc === currentSrc) return;
+
+    const curTime = activeRef.current.currentTime;
+    const isPlaying = !activeRef.current.paused;
+
+    console.log(`[VideoPlayer] Quality Swap: Active = ${activeVideo}, New Src = ${newSrc}, Time = ${curTime}`);
+
+    // Set src on inactive video element
+    if (activeVideo === 'A') {
+      setSrcStateB(newSrc);
+    } else {
+      setSrcStateA(newSrc);
+    }
+
+    // Capture target state for inactive player to restore
+    restoreTimeRef.current = curTime;
+    shouldPlayRef.current = isPlaying;
+    setIsLoading(true);
   };
 
   const handleWaiting = () => {
     setIsLoading(true);
     
-    // Step-by-step auto mode downgrade when buffering is detected
+    // Auto Mode bandwidth degradation
     if (qualityMode === 'auto') {
       if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
       waitingTimerRef.current = setTimeout(() => {
-        const video = videoRef.current;
-        if (video && !video.paused) {
+        const activeVideoEl = getActiveRef().current;
+        if (activeVideoEl && !activeVideoEl.paused) {
+          const currentSrc = activeVideo === 'A' ? srcStateA : srcStateB;
           let nextSrc = null;
           let nextLabel = '';
           
-          if (videoSrc === src2160 && has1080) { nextSrc = src1080; nextLabel = '1080p'; }
-          else if (videoSrc === src1080 && has720) { nextSrc = src720; nextLabel = '720p'; }
-          else if (videoSrc === src720 && has360) { nextSrc = src360; nextLabel = '360p'; }
-          else if (videoSrc === src360 && has144) { nextSrc = src144; nextLabel = '144p'; }
+          if (currentSrc === src2160 && has1080) { nextSrc = src1080; nextLabel = '1080p'; }
+          else if (currentSrc === src1080 && has720) { nextSrc = src720; nextLabel = '720p'; }
+          else if (currentSrc === src720 && has360) { nextSrc = src360; nextLabel = '360p'; }
+          else if (currentSrc === src360 && has144) { nextSrc = src144; nextLabel = '144p'; }
           
-          if (nextSrc && nextSrc !== videoSrc) {
+          if (nextSrc && nextSrc !== currentSrc) {
             console.log(`[VideoPlayer] Auto Mode: Stall detected. Downgrading to ${nextLabel}...`);
-            captureVideoFrame();
-            restoreTimeRef.current = video.currentTime;
-            shouldPlayRef.current = true;
-            setVideoSrc(nextSrc);
+            initiateQualitySwap(nextSrc);
           }
         }
-      }, 1000); // 1 second buffer limit before step-by-step quality adaptation
+      }, 1000);
     }
   };
 
-  const handlePlaying = () => {
+  const handleActivePlaying = () => {
     setIsLoading(false);
-    setSwitchOverlay(null); // Clear seamless transition image frame
     if (waitingTimerRef.current) {
       clearTimeout(waitingTimerRef.current);
       waitingTimerRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.playbackRate = playbackRate;
-    }
   };
 
-  // Quality switching trigger
   const handleQualityChange = (mode) => {
     setQualityMode(mode);
     setIsQualityMenuOpen(false);
     
-    let targetSrc = videoSrc;
+    let targetSrc = '';
     if (mode === '2160') targetSrc = src2160;
     else if (mode === '1080') targetSrc = src1080;
     else if (mode === '720') targetSrc = src720;
@@ -262,13 +270,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else if (mode === '144') targetSrc = src144;
     else if (mode === 'auto') targetSrc = determineAutoSrc();
     
-    if (videoRef.current && targetSrc !== videoSrc) {
-      captureVideoFrame();
-      restoreTimeRef.current = videoRef.current.currentTime;
-      shouldPlayRef.current = !videoRef.current.paused;
-      setVideoSrc(targetSrc);
-      console.log(`[VideoPlayer] Quality mode changed to: ${mode}, source: ${targetSrc}`);
-    }
+    initiateQualitySwap(targetSrc);
   };
 
   // Sync state and listen to connection variations (only active in auto mode)
@@ -279,12 +281,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (connection) {
       const handleConnectionChange = () => {
         const nextSrc = determineAutoSrc();
-        if (nextSrc !== videoSrc) {
-          console.log(`[VideoPlayer] Auto Mode connection changed. Quality switch requested: ${nextSrc}`);
-          captureVideoFrame();
-          restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
-          shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
-          setVideoSrc(nextSrc);
+        const currentSrc = activeVideo === 'A' ? srcStateA : srcStateB;
+        if (nextSrc !== currentSrc) {
+          console.log(`[VideoPlayer] Auto Mode connection changed. Swapping to: ${nextSrc}`);
+          initiateQualitySwap(nextSrc);
         }
       };
       connection.addEventListener('change', handleConnectionChange);
@@ -292,9 +292,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         connection.removeEventListener('change', handleConnectionChange);
       };
     }
-  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, maxResolution]);
+  }, [qualityMode, activeVideo, srcStateA, srcStateB, src144, src360, src720, src1080, src2160, maxResolution]);
 
-  // Periodic network health check to upgrade back to high quality when bandwidth recovers in Auto Mode
+  // Periodic network health check to upgrade back to high quality in Auto Mode
   useEffect(() => {
     if (qualityMode !== 'auto') return;
 
@@ -302,32 +302,29 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       const isSlow = isSlowConnection();
       if (!isSlow) {
         const nextSrc = determineAutoSrc();
-        if (nextSrc !== videoSrc) {
-          console.log('[VideoPlayer] Auto Mode: Network recovered, upgrading to high quality...');
-          captureVideoFrame();
-          restoreTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
-          shouldPlayRef.current = videoRef.current ? !videoRef.current.paused : false;
-          setVideoSrc(nextSrc);
+        const currentSrc = activeVideo === 'A' ? srcStateA : srcStateB;
+        if (nextSrc !== currentSrc) {
+          console.log('[VideoPlayer] Auto Mode: Bandwidth recovered. Upgrading quality...');
+          initiateQualitySwap(nextSrc);
         }
       }
     }, 6000);
 
     return () => clearInterval(interval);
-  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, maxResolution]);
+  }, [qualityMode, activeVideo, srcStateA, srcStateB, src144, src360, src720, src1080, src2160, maxResolution]);
 
-  // Seamless auto-quality network and playback buffering monitor
+  // Seamless auto-quality network progress stall detector
   useEffect(() => {
     if (qualityMode !== 'auto') return;
-    const video = videoRef.current;
-    if (!video) return;
-
+    
     let lastTime = 0;
     let lastCheck = Date.now();
 
     const interval = setInterval(() => {
-      if (video.paused || video.ended) {
+      const video = getActiveRef().current;
+      if (!video || video.paused || video.ended) {
         lastCheck = Date.now();
-        lastTime = video.currentTime;
+        lastTime = video ? video.currentTime : 0;
         return;
       }
 
@@ -335,92 +332,84 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       const timeDiff = (now - lastCheck) / 1000;
       const progressDiff = video.currentTime - lastTime;
 
-      // If the video is playing but progress has stalled (buffering) or is lagging behind
       if (timeDiff > 0.5 && progressDiff < 0.1) {
-        console.log('[VideoPlayer] Seamless Auto-Quality: Stalling detected via progress check. Down-switching quality...');
-        
+        console.log('[VideoPlayer] Seamless Auto-Quality: Progress check stall detected. Swapping to lower quality...');
+        const currentSrc = activeVideo === 'A' ? srcStateA : srcStateB;
         let targetSrc = null;
-        let targetLabel = '';
-        if (videoSrc === src2160 && has1080) { targetSrc = src1080; targetLabel = '1080p'; }
-        else if (videoSrc === src1080 && has720) { targetSrc = src720; targetLabel = '720p'; }
-        else if (videoSrc === src720 && has360) { targetSrc = src360; targetLabel = '360p'; }
-        else if (videoSrc === src360 && has144) { targetSrc = src144; targetLabel = '144p'; }
+        if (currentSrc === src2160 && has1080) targetSrc = src1080;
+        else if (currentSrc === src1080 && has720) targetSrc = src720;
+        else if (currentSrc === src720 && has360) targetSrc = src360;
+        else if (currentSrc === src360 && has144) targetSrc = src144;
 
-        if (targetSrc && targetSrc !== videoSrc) {
-          console.log(`[VideoPlayer] Auto Mode: Downgrading to ${targetLabel}...`);
-          captureVideoFrame();
-          restoreTimeRef.current = video.currentTime;
-          shouldPlayRef.current = true;
-          setVideoSrc(targetSrc);
+        if (targetSrc && targetSrc !== currentSrc) {
+          initiateQualitySwap(targetSrc);
         }
       }
 
       lastTime = video.currentTime;
       lastCheck = now;
-    }, 500); // Check every 500ms for sub-second lag detection
+    }, 500);
 
     return () => clearInterval(interval);
-  }, [qualityMode, videoSrc, src144, src360, src720, src1080, src2160, has144, has360, has720, has1080, has2160]);
+  }, [qualityMode, activeVideo, srcStateA, srcStateB, src144, src360, src720, src1080, src2160, has144, has360, has720, has1080, has2160]);
 
-  // Capture current playhead before source swap and force reload the stream
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.currentTime > 0) {
-      restoreTimeRef.current = video.currentTime;
-      shouldPlayRef.current = !video.paused;
+  // Handle Event for element load (Seek to matching timestamp on inactive video)
+  const handleElementLoadedMetadata = (elementId) => {
+    const isInactive = elementId !== activeVideo;
+    const targetRef = elementId === 'A' ? videoRefA : videoRefB;
+    
+    // Set Dimensions lock
+    if (targetRef.current && targetRef.current.videoWidth && targetRef.current.videoHeight && !naturalDimensions) {
+      setNaturalDimensions({ width: targetRef.current.videoWidth, height: targetRef.current.videoHeight });
     }
-    video.load();
-  }, [videoSrc]);
 
-  // Robust metadata listener to handle cached video loads and race conditions
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    if (isInactive && targetRef.current && restoreTimeRef.current > 0) {
+      targetRef.current.currentTime = restoreTimeRef.current;
+    }
+  };
 
-    const checkMetadata = () => {
-      if (video.videoWidth && video.videoHeight) {
-        setNaturalDimensions(current => {
-          if (!current || current.width !== video.videoWidth || current.height !== video.videoHeight) {
-            return { width: video.videoWidth, height: video.videoHeight };
-          }
-          return current;
-        });
+  // Handle playing callback on either element to complete the swap cleanly
+  const handleElementPlaying = (elementId) => {
+    const isInactive = elementId !== activeVideo;
+    const targetRef = elementId === 'A' ? videoRefA : videoRefB;
+
+    if (isInactive && targetRef.current) {
+      // Perform Swap instantly!
+      console.log(`[VideoPlayer] Swap SUCCESS: Switching active element to ${elementId}`);
+      setActiveVideo(elementId);
+      
+      const previousRef = elementId === 'A' ? videoRefB : videoRefA;
+      if (previousRef.current) {
+        previousRef.current.pause();
       }
-    };
-
-    if (video.readyState >= 1) {
-      checkMetadata();
+      setIsLoading(false);
+      restoreTimeRef.current = 0;
+    } else {
+      handleActivePlaying();
     }
-
-    video.addEventListener('loadedmetadata', checkMetadata);
-    return () => {
-      video.removeEventListener('loadedmetadata', checkMetadata);
-    };
-  }, [videoSrc]);
-
-
+  };
 
   const startControlsTimeout = (duration = 1500) => {
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
     if (isSettingsOpen || isQualityMenuOpen) return;
-    if (videoRef.current && !videoRef.current.paused) {
+    const activeVideoEl = getActiveRef().current;
+    if (activeVideoEl && !activeVideoEl.paused) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
       }, duration);
     }
   };
 
-  // Sync isPaused state with video element
+  // Keep isPaused state synchronized with active video element
   useEffect(() => {
-    const video = videoRef.current;
+    const video = getActiveRef().current;
     if (!video) return;
 
     const onPlay = () => {
       setIsPaused(false);
-      // Ensure other videos pause when this one plays
+      // Register active element to mountedVideos
       mountedVideos.forEach(v => {
         if (v !== video && !v.paused) v.pause();
       });
@@ -429,42 +418,31 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
-
     setIsPaused(video.paused);
 
     return () => {
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
     };
-  }, []);
+  }, [activeVideo]);
 
-  // Sync video properties
+  // Register active video element to mounted list
   useEffect(() => {
-    if (videoRef.current) {
-        videoRef.current.muted = isMuted;
-        videoRef.current.playbackRate = playbackRate;
-    }
-  }, [isMuted, playbackRate]);
-
-  // Register to global manager
-  useEffect(() => {
-    const video = videoRef.current;
+    const video = getActiveRef().current;
     if (!video) return;
 
     mountedVideos.add(video);
-    handleGlobalScroll(); // Initial check
+    handleGlobalScroll();
 
     return () => {
       mountedVideos.delete(video);
     };
-  }, [src]);
+  }, [activeVideo, srcStateA, srcStateB]);
 
   useEffect(() => {
     if (isPaused) {
       setShowControls(true);
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     } else {
       startControlsTimeout(1500);
     }
@@ -472,12 +450,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   useEffect(() => {
     return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-      if (waitingTimerRef.current) {
-        clearTimeout(waitingTimerRef.current);
-      }
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
     };
   }, []);
 
@@ -486,12 +460,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setShowControls(true);
       return;
     }
-    if (videoRef.current && videoRef.current.paused) {
+    const activeVideoEl = getActiveRef().current;
+    if (activeVideoEl && activeVideoEl.paused) {
       setShowControls(true);
       return;
     }
 
-    // Fullscreen edge detection
     const isFullscreen = !!document.fullscreenElement;
     if (isFullscreen) {
       const edgeThreshold = 10;
@@ -503,9 +477,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
       if (isAtEdge) {
         setShowControls(false);
-        if (controlsTimeoutRef.current) {
-          clearTimeout(controlsTimeoutRef.current);
-        }
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         return;
       }
     }
@@ -515,7 +487,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   };
 
   const handleMouseEnter = () => {
-    if (videoRef.current && videoRef.current.paused) {
+    const activeVideoEl = getActiveRef().current;
+    if (activeVideoEl && activeVideoEl.paused) {
       setShowControls(true);
       return;
     }
@@ -523,11 +496,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     startControlsTimeout(1500);
   };
 
-  // Zaman İlerleyişini Yakalama (Bar için)
   const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
-    const current = videoRef.current.currentTime;
-    const total = videoRef.current.duration;
+    const video = getActiveRef().current;
+    if (!video) return;
+    const current = video.currentTime;
+    const total = video.duration;
     
     setCurrentTime(current);
     if (total > 0) {
@@ -536,36 +509,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
   };
 
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      const { videoWidth, videoHeight } = videoRef.current;
-      if (videoWidth && videoHeight && !naturalDimensions) {
-        setNaturalDimensions({ width: videoWidth, height: videoHeight });
-      }
-      if (restoreTimeRef.current > 0) {
-        videoRef.current.currentTime = restoreTimeRef.current;
-        restoreTimeRef.current = 0;
-        if (shouldPlayRef.current) {
-          videoRef.current.play().catch(() => {});
-        }
-      }
-    }
-    handleTimeUpdate();
-  };
-
-  // Bara Tıklayıp İleri Sarma
   const handleScrub = (e) => {
     if (e) e.stopPropagation();
-    if (!videoRef.current || !duration) return;
+    const video = getActiveRef().current;
+    if (!video || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const clickedProgress = x / rect.width;
     const newTime = clickedProgress * duration;
-    videoRef.current.currentTime = newTime;
+    video.currentTime = newTime;
     setProgress(clickedProgress * 100);
   };
 
-  // Videoya Direk Tıklayıp Durdurma/Oynatma
   const handleVideoClick = (e) => {
     if (e) e.stopPropagation();
     if (isSettingsOpen || isQualityMenuOpen) {
@@ -573,13 +528,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setIsQualityMenuOpen(false);
       return;
     }
-    if (!videoRef.current) return;
-    if (videoRef.current.paused) {
-        videoRef.current.dataset.userPaused = "false";
-        videoRef.current.play().catch(()=>{});
+    const video = getActiveRef().current;
+    if (!video) return;
+    if (video.paused) {
+        video.dataset.userPaused = "false";
+        video.play().catch(()=>{});
     } else {
-        videoRef.current.dataset.userPaused = "true";
-        videoRef.current.pause();
+        video.dataset.userPaused = "true";
+        video.pause();
     }
   };
 
@@ -597,15 +553,15 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const changePlaybackRate = (rate) => {
     setPlaybackRate(rate);
-    if (videoRef.current) videoRef.current.playbackRate = rate;
     setIsSettingsOpen(false);
   };
 
   const toggleFullscreen = (e) => {
     e.stopPropagation();
-    if (!videoRef.current) return;
+    const video = getActiveRef().current;
+    if (!video) return;
     
-    const container = videoRef.current.closest('.native-player-container');
+    const container = video.closest('.native-player-container');
     if (!container) return;
 
     if (!document.fullscreenElement) {
@@ -630,33 +586,25 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           <span>⚡ Kaliteler Hazırlanıyor (%{processingProgress}) - Kalan: {estimatedTime}</span>
         </div>
       )}
-      {switchOverlay && (
-        <img 
-          src={switchOverlay} 
-          alt="" 
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            pointerEvents: 'none',
-            zIndex: 3,
-            borderRadius: '12px'
-          }}
-        />
-      )}
+
+      {/* Dual Video Swap Elements (Stacked absolutely inside the container) */}
       <video
-        ref={videoRef}
-        src={videoSrc}
+        ref={videoRefA}
+        src={srcStateA}
         poster={poster}
         className="native-video-element"
         style={{
           display: 'block',
           width: '100%',
           height: 'auto',
-          objectFit: 'contain'
+          objectFit: 'contain',
+          position: activeVideo === 'A' ? 'relative' : 'absolute',
+          top: 0,
+          left: 0,
+          opacity: activeVideo === 'A' ? 1 : 0,
+          pointerEvents: activeVideo === 'A' ? 'auto' : 'none',
+          zIndex: activeVideo === 'A' ? 1 : 0,
+          transition: 'opacity 0.15s ease-in-out'
         }}
         playsInline
         loop
@@ -664,14 +612,46 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         crossOrigin="anonymous"
         onClick={handleVideoClick}
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
+        onLoadedMetadata={() => handleElementLoadedMetadata('A')}
         onWaiting={handleWaiting}
         onStalled={handleWaiting}
         onLoadStart={() => setIsLoading(false)}
-        onPlaying={handlePlaying}
-        onCanPlay={handlePlaying}
-        onCanPlayThrough={handlePlaying}
-        onSeeked={() => setSwitchOverlay(null)}
+        onPlaying={() => handleElementPlaying('A')}
+        onCanPlay={() => handleElementPlaying('A')}
+        onCanPlayThrough={() => handleElementPlaying('A')}
+      />
+
+      <video
+        ref={videoRefB}
+        src={srcStateB}
+        poster={poster}
+        className="native-video-element"
+        style={{
+          display: 'block',
+          width: '100%',
+          height: 'auto',
+          objectFit: 'contain',
+          position: activeVideo === 'B' ? 'relative' : 'absolute',
+          top: 0,
+          left: 0,
+          opacity: activeVideo === 'B' ? 1 : 0,
+          pointerEvents: activeVideo === 'B' ? 'auto' : 'none',
+          zIndex: activeVideo === 'B' ? 1 : 0,
+          transition: 'opacity 0.15s ease-in-out'
+        }}
+        playsInline
+        loop
+        preload="metadata"
+        crossOrigin="anonymous"
+        onClick={handleVideoClick}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={() => handleElementLoadedMetadata('B')}
+        onWaiting={handleWaiting}
+        onStalled={handleWaiting}
+        onLoadStart={() => setIsLoading(false)}
+        onPlaying={() => handleElementPlaying('B')}
+        onCanPlay={() => handleElementPlaying('B')}
+        onCanPlayThrough={() => handleElementPlaying('B')}
       />
 
       <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
