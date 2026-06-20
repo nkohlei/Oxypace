@@ -70,16 +70,13 @@ export const downloadFile = async (url, filename) => {
                 await saveFileViaFilesystem();
             }
         } else {
-            // Web Desktop Download
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
+            // Web Desktop Download via backend proxy to bypass CORS and force download with custom filename
+            const proxyUrl = `/api/posts/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
             const a = document.createElement('a');
-            a.href = blobUrl;
+            a.href = proxyUrl;
             a.download = filename;
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(blobUrl);
             document.body.removeChild(a);
         }
     } catch (error) {

@@ -444,6 +444,28 @@ router.get('/', optionalProtect, async (req, res) => {
     }
 });
 
+// @route   GET /api/posts/download
+// @desc    Download a file with custom content-disposition filename to bypass CORS on Web
+// @access  Public
+router.get('/download', async (req, res) => {
+    try {
+        const { url, filename } = req.query;
+        if (!url) {
+            return res.status(400).json({ message: 'URL is required' });
+        }
+        
+        const response = await axios.get(url, { responseType: 'stream' });
+        
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename || 'file')}"`);
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+        
+        response.data.pipe(res);
+    } catch (err) {
+        console.error('Download proxy error:', err);
+        res.status(500).json({ message: 'Download failed' });
+    }
+});
+
 // @route   GET /api/posts/:id
 // @desc    Get single post by ID
 // @access  Public (Optional Auth)
