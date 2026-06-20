@@ -71,28 +71,6 @@ const OG_PATTERNS = [
   { regex: /^\/portal\/([a-f0-9]{24})$/i, path: (m) => `/og/portal/${m[1]}` },
 ];
 
-export default async (request, context) => {
-  const url = new URL(request.url);
-  const pathname = url.pathname;
-  const userAgent = request.headers.get("user-agent") || "";
-
-  // 1. Statik dosya isteklerini (js, css, resimler vb.) doğrudan geçir
-  const isStaticAsset = pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest)$/i);
-  if (isStaticAsset) {
-    return context.next();
-  }
-
-  // 2. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
-  if (
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/og/") ||
-    pathname.startsWith("/socket.io/") ||
-    pathname.startsWith("/r2-media/") ||
-    pathname === "/404.html"
-  ) {
-    return context.next();
-  }
-
 async function verifyJwt(token, secret) {
   try {
     const parts = token.split('.');
