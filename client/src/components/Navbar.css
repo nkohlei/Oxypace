@@ -476,13 +476,13 @@ body.dark-mode .logo-text {
     border-top: none;
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 2000;
-    height: 60px;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
 }
 
 @media (max-width: 768px) {
     .navbar {
-        height: 50px;
-        min-height: 50px;
+        height: calc(50px + env(safe-area-inset-top, 0px));
+        min-height: calc(50px + env(safe-area-inset-top, 0px));
     }
 
     .nav-container {

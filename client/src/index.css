@@ -329,6 +329,17 @@ img {
   display: block;
 }
 
+/* Fluid Utility Classes */
+.w-full {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.flex-wrap {
+  flex-wrap: wrap !important;
+}
+
 /* User Request: Global Border Removal & Fully Rounded Buttons (excluding layout bars) */
 button,
 .btn,

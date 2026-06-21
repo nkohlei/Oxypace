@@ -1229,4 +1229,11 @@ input:checked+.slider::before {
         padding: 16px 12px !important;
         border-radius: 12px !important;
     }
+
+    .setting-item, .setting-group, .custom-dropdown-container, .dropdown-trigger {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
 }
