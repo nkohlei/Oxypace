@@ -140,14 +140,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const getInactiveEl = () => (activeVideoRef.current === 'A' ? videoRefB : videoRefA).current;
   const getInactiveId = () => (activeVideoRef.current === 'A' ? 'B' : 'A');
 
-  // Initialise video A with the best src
+  // Initialise video A with the best src and update it when getBestSrc changes
   useEffect(() => {
     const el = videoRefA.current;
-    if (el && !el.src) {
-      el.src = getBestSrc();
-      el.load();
+    if (el) {
+      const bestSrc = getBestSrc();
+      if (bestSrc && el.src !== bestSrc) {
+        el.src = bestSrc;
+        el.load();
+      }
     }
-  }, []);
+  }, [getBestSrc]);
 
   // Sync user quality preferences once loaded
   useEffect(() => {
