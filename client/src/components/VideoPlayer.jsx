@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Volume2, VolumeX, Check, Maximize, Play, Pause } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { StatusBar } from '@capacitor/status-bar';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { getImageUrl } from '../utils/imageUtils';
 import { useAuth } from '../context/AuthContext';
@@ -56,6 +57,18 @@ if (typeof window !== 'undefined') {
     handleGlobalScroll(e);
     if (!document.fullscreenElement && !Capacitor.isNativePlatform()) {
       setTimeout(() => { window.scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }, 10);
+    }
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const isFs = !!document.fullscreenElement;
+        if (isFs) {
+          StatusBar.hide().catch(() => {});
+        } else {
+          StatusBar.show().catch(() => {});
+        }
+      } catch (err) {
+        console.error('StatusBar action failed:', err);
+      }
     }
   };
   document.addEventListener('fullscreenchange', onFullscreenChange);
@@ -467,10 +480,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const handleVideoClick = useCallback((e) => {
     e.stopPropagation();
     if (isSettingsOpen || isQualityMenuOpen) { setIsSettingsOpen(false); setIsQualityMenuOpen(false); return; }
+    
+    // If controls are hidden, the first click should only show them and reset auto-hide timeout
+    if (!showControls) {
+      setShowControls(true);
+      startControlsTimeout(2000);
+      return;
+    }
+    
     const el = getActiveEl(); if (!el) return;
     if (el.paused) { el.dataset.userPaused = 'false'; el.play().catch(() => {}); }
     else           { el.dataset.userPaused = 'true';  el.pause(); }
-  }, [isSettingsOpen, isQualityMenuOpen, activeVideo]);
+  }, [isSettingsOpen, isQualityMenuOpen, activeVideo, showControls, startControlsTimeout]);
 
   const toggleMute = useCallback((e) => { e.stopPropagation(); setIsMuted(!isMuted); }, [isMuted]);
 

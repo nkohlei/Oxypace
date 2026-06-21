@@ -464,3 +464,9 @@
         max-height: 280px; /* Enforce absolute mobile max-height */
     }
 }
+
+/* Adjust mute button position in fullscreen to prevent overlap with status bar / notch */
+.native-player-container:fullscreen .native-mute-toggle,
+.native-player-container:-webkit-full-screen .native-mute-toggle {
+    top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+}
