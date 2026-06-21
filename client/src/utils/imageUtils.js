@@ -11,18 +11,24 @@ export const getImageUrl = (path, sizeType = 'original') => {
         cleanPath = cleanPath.replace('undefined', '');
     }
 
+    const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
+    const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
+    const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : ''))).replace(/\/$/, '');
+
     // 0. STATIC ASSETS: Don't proxy or transform local system assets
     if (cleanPath.startsWith('/system/') || cleanPath.startsWith('system/')) {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
     if (cleanPath.startsWith('/r2-media/') || cleanPath.startsWith('r2-media/')) {
+        if (isNative) {
+            let relativePath = cleanPath;
+            if (relativePath.startsWith('/r2-media/')) relativePath = relativePath.substring(10);
+            else if (relativePath.startsWith('r2-media/')) relativePath = relativePath.substring(9);
+            return `${r2Domain}/${relativePath}`;
+        }
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
-
-    const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
-    const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
-    const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : ''))).replace(/\/$/, '');
 
     try {
         let absoluteUrl = cleanPath;

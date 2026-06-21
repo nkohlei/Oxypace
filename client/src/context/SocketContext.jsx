@@ -35,12 +35,12 @@ export const SocketProvider = ({ children }) => {
         }
 
         const newSocket = io(socketUrl, {
-            transports: ['polling', 'websocket'],
+            transports: isNative ? ['websocket', 'polling'] : ['polling', 'websocket'],
             upgrade: true,
             rememberUpgrade: true,
             forceNew: true,
-            reconnectionAttempts: Infinity,
-            timeout: 20000,
+            reconnectionAttempts: isNative ? 5 : Infinity,
+            timeout: isNative ? 10000 : 20000,
             withCredentials: true,
             secure: true,
         });
