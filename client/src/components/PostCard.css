@@ -189,6 +189,10 @@
     justify-content: flex-start;
 }
 
+.post-media:has(.native-player-container) {
+    max-height: none !important;
+}
+
 .post-media img,
 .post-media video {
     width: auto;

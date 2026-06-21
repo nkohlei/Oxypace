@@ -20,6 +20,7 @@
     width: 100% !important;
     height: 100%;
     max-width: 100% !important;
+    max-height: none !important;
     object-fit: contain !important;
     aspect-ratio: auto; /* Enforce natural aspect ratio and zero stretch */
     border-radius: 12px;

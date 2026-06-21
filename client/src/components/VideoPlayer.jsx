@@ -493,18 +493,21 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
   }
 
-  const videoStyle = (id) => ({
-    display: 'block',
-    width: '100%',
-    height: hasDimensions ? '100%' : 'auto',
-    objectFit: 'contain',
-    position: activeVideo === id ? 'relative' : 'absolute',
-    top: 0, left: 0,
-    opacity: activeVideo === id ? 1 : 0,
-    pointerEvents: activeVideo === id ? 'auto' : 'none',
-    zIndex: activeVideo === id ? 1 : 0,
-    transition: 'opacity 0.08s linear'   // near-instant: just prevents 1-frame black flash
-  });
+  const videoStyle = (id) => {
+    const isActive = activeVideo === id;
+    return {
+      display: 'block',
+      width: '100%',
+      height: hasDimensions ? '100%' : 'auto',
+      objectFit: 'contain',
+      position: hasDimensions ? 'absolute' : (isActive ? 'relative' : 'absolute'),
+      top: 0, left: 0,
+      opacity: isActive ? 1 : 0,
+      pointerEvents: isActive ? 'auto' : 'none',
+      zIndex: isActive ? 1 : 0,
+      transition: 'opacity 0.08s linear'   // near-instant: just prevents 1-frame black flash
+    };
+  };
 
   return (
     <div
