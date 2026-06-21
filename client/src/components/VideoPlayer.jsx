@@ -485,11 +485,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         width: '100%',
       };
     } else {
-      // Normal ratio: use the exact original aspect ratio and transparent background (no black background)
+      // Normal ratio: use the exact original aspect ratio and black background if it is taller than 16:9
       containerStyle = {
         aspectRatio: `${width}/${height}`,
-        background: 'transparent',
-        boxShadow: 'none',
+        background: ratio < 1.7778 ? '#000000' : 'transparent',
+        boxShadow: ratio < 1.7778 ? '0 10px 40px -15px rgba(0, 0, 0, 0.7)' : 'none',
         width: '100%',
       };
     }
