@@ -107,7 +107,7 @@ const Badge = ({ type, size = 20, className = '' }) => {
                     fill="none"
                 />
                 {/* Hidden SVG for gradient reference */}
-                <svg width="0" height="0" style={{ position: 'absolute' }}>
+                <svg style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}>
                     <defs>
                         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stopColor={primaryColor} />
