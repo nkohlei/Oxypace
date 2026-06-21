@@ -22,27 +22,65 @@ export const getImageUrl = (path, sizeType = 'original') => {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
-    if (cleanPath.startsWith('/r2-media/') || cleanPath.startsWith('r2-media/')) {
-        if (isNative) {
-            let relativePath = cleanPath;
-            if (relativePath.startsWith('/r2-media/')) relativePath = relativePath.substring(10);
-            else if (relativePath.startsWith('r2-media/')) relativePath = relativePath.substring(9);
-            return `${r2Domain}/${relativePath}`;
+    // 1. MOBILE NATIVE FLOW: Route EVERYTHING through the backend media proxy for absolute CORS & SSL stability
+    if (isNative) {
+        let relativePath = cleanPath;
+        if (relativePath.includes('/api/media/')) {
+            relativePath = relativePath.substring(relativePath.indexOf('/api/media/') + 11);
+        } else if (relativePath.startsWith(r2Domain)) {
+            relativePath = relativePath.substring(r2Domain.length);
+        } else if (relativePath.startsWith('/r2-media/')) {
+            relativePath = relativePath.substring(10);
+        } else if (relativePath.startsWith('r2-media/')) {
+            relativePath = relativePath.substring(9);
         }
+        if (relativePath.startsWith('/')) {
+            relativePath = relativePath.substring(1);
+        }
+
+        if (relativePath.startsWith('blob:')) {
+            return relativePath;
+        }
+
+        // Apply optimization suffix (thumbnail/medium/lowres) if requested
+        if (sizeType && sizeType !== 'original') {
+            const isCustomUpload = relativePath.includes('avatars/') || relativePath.includes('banners/') || relativePath.includes('posts/') || relativePath.includes('uploads/');
+            if (isCustomUpload && !relativePath.startsWith('data:') && !relativePath.startsWith('blob:')) {
+                let targetPath = relativePath.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '').replace(/-lowres\.webp/g, '');
+                const pathParts = targetPath.split('?');
+                const pathPart = pathParts[0];
+                const queryPart = pathParts[1] ? `?${pathParts[1]}` : '';
+                const lastDotIdx = pathPart.lastIndexOf('.');
+                if (lastDotIdx !== -1) {
+                    const pathWithoutExt = pathPart.substring(0, lastDotIdx);
+                    const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
+                    if (!isLegacyAvatar) {
+                        relativePath = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
+                    }
+                }
+            }
+        }
+
+        if (relativePath.startsWith('http')) {
+            // External url proxying
+            return `${baseUrl}/api/media/${encodeURIComponent(relativePath)}`;
+        }
+        return `${baseUrl}/api/media/${relativePath}`;
+    }
+
+    // 2. WEB FLOW (unchanged)
+    if (cleanPath.startsWith('/r2-media/') || cleanPath.startsWith('r2-media/')) {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
     try {
         let absoluteUrl = cleanPath;
 
-        // 0. QUICK EXIT: If it's already a proxied URL, sanitize and return it
         if (cleanPath.includes('/api/media/')) {
             const proxyTarget = cleanPath.substring(cleanPath.indexOf('/api/media/') + 11);
-            
-            // If it's an internal R2 file (not an external URL) and we are on Web, use the fast CDN!
-            if (!proxyTarget.startsWith('http') && !isNative && !import.meta.env.DEV) {
+            if (!proxyTarget.startsWith('http') && !import.meta.env.DEV) {
                 absoluteUrl = `/r2-media/${proxyTarget}`;
-            } else if (!proxyTarget.startsWith('http') && (isNative || import.meta.env.DEV)) {
+            } else if (!proxyTarget.startsWith('http') && import.meta.env.DEV) {
                 absoluteUrl = `${r2Domain}/${proxyTarget}`;
             } else {
                 absoluteUrl = `${baseUrl}/api/media/${proxyTarget}`;
@@ -50,8 +88,7 @@ export const getImageUrl = (path, sizeType = 'original') => {
         } else if (cleanPath.startsWith(r2Domain)) {
             let relativePath = cleanPath.substring(r2Domain.length);
             if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
-            
-            if (!isNative && !import.meta.env.DEV) {
+            if (!import.meta.env.DEV) {
                 absoluteUrl = `/r2-media/${relativePath}`;
             } else {
                 absoluteUrl = `${r2Domain}/${relativePath}`;
@@ -61,33 +98,26 @@ export const getImageUrl = (path, sizeType = 'original') => {
         } else if (!cleanPath.startsWith('http')) {
             let relativePath = cleanPath;
             if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
-            
-            if (!isNative && !import.meta.env.DEV) {
+            if (!import.meta.env.DEV) {
                 absoluteUrl = `/r2-media/${relativePath}`;
             } else {
                 absoluteUrl = `${r2Domain}/${relativePath}`;
             }
         } else {
-            // External Media Proxy
             absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
-        // Apply optimization suffix (thumbnail/medium/lowres) if requested and it's a custom upload
+        // Apply optimization suffix (thumbnail/medium/lowres) if requested
         if (sizeType && sizeType !== 'original') {
             const isCustomUpload = absoluteUrl.includes('/avatars/') || absoluteUrl.includes('/banners/') || absoluteUrl.includes('/posts/') || absoluteUrl.includes('/r2-media/') || absoluteUrl.includes('/uploads/') || absoluteUrl.includes(r2Domain);
             if (isCustomUpload && !absoluteUrl.startsWith('data:') && !absoluteUrl.startsWith('blob:')) {
-                // Strip existing suffixes if any
                 let targetUrl = absoluteUrl.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '').replace(/-lowres\.webp/g, '');
-                
                 const urlParts = targetUrl.split('?');
                 const pathPart = urlParts[0];
                 const queryPart = urlParts[1] ? `?${urlParts[1]}` : '';
-                
                 const lastDotIdx = pathPart.lastIndexOf('.');
                 if (lastDotIdx !== -1) {
                     const pathWithoutExt = pathPart.substring(0, lastDotIdx);
-                    // ✅ Apply suffix to custom user/bot uploads (not legacy avatars like 'av.XX')
-                    // Explicitly ignore static/legacy avatars named like 'av.XX' or 'av..XX' or 'default'
                     const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
                     if (!isLegacyAvatar) {
                         absoluteUrl = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
