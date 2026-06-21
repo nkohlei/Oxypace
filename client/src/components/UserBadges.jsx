@@ -1,5 +1,6 @@
 import React from 'react';
 import Badge from './Badge';
+import { getImageUrl } from '../utils/imageUtils';
 import './UserBadges.css';
 
 const UserBadges = ({ user, size = 18 }) => {
@@ -17,7 +18,7 @@ const UserBadges = ({ user, size = 18 }) => {
             )}
             {hasCustom && (
                 <img
-                    src={user.customBadge.url}
+                    src={getImageUrl(user.customBadge.url)}
                     alt={user.customBadge.name || 'Özel Rozet'}
                     title={user.customBadge.name || 'Özel Rozet'}
                     className="user-custom-badge"
