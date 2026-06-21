@@ -4,6 +4,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { protect as auth } from '../middleware/auth.js';
 
 import axios from 'axios';
+import upload from '../middleware/upload.js';
 import multer from 'multer';
 import sharp from 'sharp';
 import r2 from '../config/r2.js';
