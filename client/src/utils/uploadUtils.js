@@ -15,17 +15,24 @@ export const uploadFile = async (file, purpose = 'post', portalId = null, onProg
 
   try {
     if (isNative) {
-      // Direct FormData upload via backend endpoint to bypass client-side CORS blocks on R2 bucket
-      const formData = new FormData();
-      formData.append('media', file);
-      if (portalId) {
-        formData.append('portalId', portalId);
-      }
+      const fileToBase64 = (f) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(f);
+        });
+      };
+
+      const base64Data = await fileToBase64(file);
       
-      const response = await axios.post('/api/media/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
+      const response = await axios.post('/api/media/upload', {
+        base64Data,
+        fileName: file.name || `${purpose}-${Date.now()}.jpg`,
+        mimeType: file.type || 'image/jpeg',
+        purpose,
+        portalId
+      }, {
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);

@@ -12,7 +12,7 @@ const multerInstance = multer({
     storage: storage,
     limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB limit
     fileFilter: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
+        const ext = path.extname(file.originalname || '').toLowerCase();
         // Accept images, videos, and PDFs
         if (
             file.mimetype.startsWith('image/') || 
@@ -156,6 +156,41 @@ const customUpload = {
     single: (fieldname) => {
         const multerMiddleware = multerInstance.single(fieldname);
         return (req, res, next) => {
+            // Check if request is JSON with base64 data
+            if (req.body && req.body.base64Data) {
+                (async () => {
+                    try {
+                        const matches = req.body.base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                        let buffer;
+                        let mimeType = req.body.mimeType || 'image/jpeg';
+                        let originalName = req.body.fileName || `${fieldname}-${Date.now()}.jpg`;
+
+                        if (!matches || matches.length !== 3) {
+                            buffer = Buffer.from(req.body.base64Data, 'base64');
+                        } else {
+                            mimeType = matches[1];
+                            buffer = Buffer.from(matches[2], 'base64');
+                            originalName = req.body.fileName || `${fieldname}-${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`;
+                        }
+
+                        req.file = {
+                            fieldname: fieldname,
+                            originalname: originalName,
+                            encoding: '7bit',
+                            mimetype: mimeType,
+                            buffer: buffer,
+                            size: buffer.length
+                        };
+
+                        await processAndUploadFile(req, req.file);
+                        next();
+                    } catch (uploadErr) {
+                        next(uploadErr);
+                    }
+                })();
+                return;
+            }
+
             multerMiddleware(req, res, async (err) => {
                 if (err) return next(err);
                 if (req.file) {

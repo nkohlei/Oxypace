@@ -356,7 +356,8 @@ const PortalSettingsModal = ({
             const res = await axios.post(`/api/portals/${portal._id}/${mode}`, { mediaKey });
             onUpdate(res.data);
         } catch (err) {
-            alert(`${mode} yüklenemedi`);
+            const errMsg = err.response?.data?.message || err.message || 'Bilinmeyen hata';
+            alert(`${mode} yüklenemedi: ${errMsg}`);
         } finally {
             setLoading(false);
         }

@@ -347,7 +347,9 @@ const Profile = () => {
             updateUser(updatedUser);
         } catch (err) {
             console.error('Upload error:', err);
-            setError('Resim yüklenemedi');
+            const errMsg = err.response?.data?.message || err.message || 'Bilinmeyen hata';
+            setError(`Resim yüklenemedi: ${errMsg}`);
+            alert(`Hata: ${errMsg}`);
         } finally {
             setLoading(false);
         }
