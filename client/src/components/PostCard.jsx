@@ -373,7 +373,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                 contentVisibility: showMenu ? 'visible' : 'auto'
             }}
         >
-            {post.isOptimistic && (
+            {post.isOptimistic && !post.media && (
                 <div className="post-card-upload-overlay" style={{
                     position: 'absolute',
                     inset: 0,
@@ -721,7 +721,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                 {/* Media */}
                 {post.media && (
-                    <div className="post-media" onClick={(e) => e.stopPropagation()}>
+                    <div className="post-media" style={{ position: 'relative', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
                         {post.mediaType === 'video' ? (
                             <VideoPlayer
                                 src={getImageUrl(post.media)}
@@ -749,6 +749,26 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 width="600"
                                 height="400"
                             />
+                        )}
+                        {post.isOptimistic && (
+                            <div className="post-card-upload-overlay" style={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(6, 9, 19, 0.45)',
+                                backdropFilter: 'blur(5px)',
+                                zIndex: 10,
+                                borderRadius: '16px'
+                            }}>
+                                <div className="compose-spinner-wrapper" style={{ width: '40px', height: '40px' }}>
+                                    <div className="compose-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255, 255, 255, 0.1)', borderTopColor: 'var(--primary-cyan)' }} />
+                                    <span className="compose-progress-text" style={{ fontSize: '11px', color: '#fff' }}>
+                                        {post.uploadProgress !== undefined ? `${post.uploadProgress}%` : '0%'}
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}

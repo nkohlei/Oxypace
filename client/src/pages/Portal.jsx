@@ -74,7 +74,17 @@ const Portal = () => {
     const isVideoFileRef = useRef(false);
 
     // Video transcoder hook (WASM, lazy-loaded)
-    const { transcodeAndUpload } = useVideoTranscoder();
+    const { transcodeAndUpload, progress: transcodeProgress } = useVideoTranscoder();
+
+    useEffect(() => {
+        if (uploadLoading && isVideoFileRef.current) {
+            setUploadPercentage(transcodeProgress);
+            setPosts((current) =>
+                current.map((p) => p.isOptimistic ? { ...p, uploadProgress: transcodeProgress } : p)
+            );
+        }
+    }, [transcodeProgress, uploadLoading]);
+
     const [showPortalInfo, setShowPortalInfo] = useState(false);
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
