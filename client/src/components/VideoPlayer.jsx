@@ -518,7 +518,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const isTweet = className && className.includes('quoted-player');
 
   let containerStyle = {};
-  if (hasDimensions && !isTweet) {
+  if (isTweet) {
+    containerStyle = {
+      aspectRatio: '16/9',
+      width: '100%',
+    };
+  } else if (hasDimensions) {
     const { width, height } = naturalDimensions;
     const ratio = width / height;
     
@@ -546,12 +551,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const videoStyle = (id) => {
     const isActive = activeVideo === id;
+    const forceAbsolute = hasDimensions || isTweet;
     return {
       display: 'block',
       width: '100%',
-      height: hasDimensions ? '100%' : 'auto',
+      height: forceAbsolute ? '100%' : 'auto',
       objectFit: 'contain',
-      position: hasDimensions ? 'absolute' : (isActive ? 'relative' : 'absolute'),
+      position: forceAbsolute ? 'absolute' : (isActive ? 'relative' : 'absolute'),
       top: 0, left: 0,
       opacity: isActive ? 1 : 0,
       pointerEvents: isActive ? 'auto' : 'none',
