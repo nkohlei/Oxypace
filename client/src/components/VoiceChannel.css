@@ -402,7 +402,7 @@
     /* Back button style positioned at the very top left */
     .vc-mobile-back-btn {
         position: absolute !important;
-        top: 15px !important;
+        top: calc(15px + env(safe-area-inset-top, 0px)) !important;
         left: 15px !important;
         width: 36px !important;
         height: 36px !important;
@@ -422,7 +422,7 @@
     /* Position top-right controls at the very top right, stacked vertically */
     .vc-top-right-controls {
         position: absolute !important;
-        top: 15px !important;
+        top: calc(15px + env(safe-area-inset-top, 0px)) !important;
         right: 15px !important;
         display: flex !important;
         flex-direction: column !important;
