@@ -207,6 +207,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       inactiveEl.removeEventListener('seeked', onSeeked);
       if (wasPlaying) {
         inactiveEl.play().catch(() => {});
+      } else {
+        onPlaying();
       }
     };
 
