@@ -39,7 +39,7 @@ const ForgotPassword = () => {
         <div className="auth-container">
             <div className="auth-card fade-in">
                 <div className="auth-logo">
-                    <img src="/oxypace-text-logo1.webp" alt="oxypace" className="logo-text" />
+                    <img src="/oxypace-text-logo1.png" alt="oxypace" className="logo-text" />
                 </div>
 
                 <div className="auth-header">
