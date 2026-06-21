@@ -721,55 +721,57 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                 {/* Media */}
                 {post.media && (
-                    <div className="post-media" style={{ position: 'relative', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
-                        {post.mediaType === 'video' ? (
-                            <VideoPlayer
-                                src={getImageUrl(post.media)}
-                                qualities={post.videoQualities}
-                                videoUrl={getImageUrl(post.videoUrl)}
-                                lowVideoUrl={getImageUrl(post.lowVideoUrl)}
-                                video144={getImageUrl(post.video144)}
-                                video360={getImageUrl(post.video360)}
-                                video720={getImageUrl(post.video720)}
-                                video1080={getImageUrl(post.video1080)}
-                                video2160={getImageUrl(post.video2160)}
-                                className="post-video-player"
-                                isProcessing={post.isProcessing}
-                                processingProgress={post.processingProgress}
-                                estimatedTime={post.estimatedTime}
-                            />
-                        ) : post.mediaType === 'youtube' ? (
-                            <YouTubeFacade media={post.media} />
-                        ) : (
-                            <img
-                                src={getImageUrl(post.media)}
-                                alt="Post media"
-                                loading="lazy"
-                                decoding="async"
-                                width="600"
-                                height="400"
-                            />
-                        )}
-                        {post.isOptimistic && (
-                            <div className="post-card-upload-overlay" style={{
-                                position: 'absolute',
-                                inset: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'rgba(6, 9, 19, 0.45)',
-                                backdropFilter: 'blur(5px)',
-                                zIndex: 10,
-                                borderRadius: '16px'
-                            }}>
-                                <div className="compose-spinner-wrapper" style={{ width: '40px', height: '40px' }}>
-                                    <div className="compose-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255, 255, 255, 0.1)', borderTopColor: 'var(--primary-cyan)' }} />
-                                    <span className="compose-progress-text" style={{ fontSize: '11px', color: '#fff' }}>
-                                        {post.uploadProgress !== undefined ? `${post.uploadProgress}%` : '0%'}
-                                    </span>
+                    <div className="post-media" onClick={(e) => e.stopPropagation()}>
+                        <div style={{ position: 'relative', width: '100%', maxWidth: '650px' }}>
+                            {post.mediaType === 'video' ? (
+                                <VideoPlayer
+                                    src={getImageUrl(post.media)}
+                                    qualities={post.videoQualities}
+                                    videoUrl={getImageUrl(post.videoUrl)}
+                                    lowVideoUrl={getImageUrl(post.lowVideoUrl)}
+                                    video144={getImageUrl(post.video144)}
+                                    video360={getImageUrl(post.video360)}
+                                    video720={getImageUrl(post.video720)}
+                                    video1080={getImageUrl(post.video1080)}
+                                    video2160={getImageUrl(post.video2160)}
+                                    className="post-video-player"
+                                    isProcessing={post.isProcessing}
+                                    processingProgress={post.processingProgress}
+                                    estimatedTime={post.estimatedTime}
+                                />
+                            ) : post.mediaType === 'youtube' ? (
+                                <YouTubeFacade media={post.media} />
+                            ) : (
+                                <img
+                                    src={getImageUrl(post.media)}
+                                    alt="Post media"
+                                    loading="lazy"
+                                    decoding="async"
+                                    width="600"
+                                    height="400"
+                                />
+                            )}
+                            {post.isOptimistic && (
+                                <div className="post-card-upload-overlay" style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'rgba(6, 9, 19, 0.45)',
+                                    backdropFilter: 'blur(5px)',
+                                    zIndex: 10,
+                                    borderRadius: '16px'
+                                }}>
+                                    <div className="compose-spinner-wrapper" style={{ width: '40px', height: '40px' }}>
+                                        <div className="compose-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255, 255, 255, 0.1)', borderTopColor: 'var(--primary-cyan)' }} />
+                                        <span className="compose-progress-text" style={{ fontSize: '11px', color: '#fff' }}>
+                                            {post.uploadProgress !== undefined ? `${post.uploadProgress}%` : '0%'}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
 
