@@ -860,16 +860,26 @@
     width: 100%;
 }
 
+/* CRITICAL: isTweet mode in VideoPlayer leaves containerStyle={}, so
+   after video metadata loads the video element becomes position:absolute
+   and the container collapses to 0px. We must set aspect-ratio here in
+   CSS so the container always has proper height based on its width. */
 .quoted-player.native-player-container.v16-scale {
-    margin: 0 auto !important;
+    margin: 0 !important;
     box-shadow: none !important;
     max-width: 100% !important;
     width: 100% !important;
-    background: transparent !important;
+    background: #000 !important;
+    aspect-ratio: 16 / 9 !important;
+    max-height: var(--quote-max-h, 300px) !important;
+    border-radius: 8px !important;
 }
 
-.quoted-player .native-video-element {
-    max-height: var(--quote-max-h) !important;
+/* The video elements inside the quoted player - fill the container */
+.quoted-player.native-player-container .native-video-element {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: var(--quote-max-h, 300px) !important;
     object-fit: contain !important;
 }
 

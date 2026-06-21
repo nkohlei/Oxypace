@@ -96,6 +96,7 @@ const PostDetail = () => {
 
     const [showShareModal, setShowShareModal] = useState(false);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
+    const [errorStatus, setErrorStatus] = useState(null);
 
     useEffect(() => {
         fetchPost();
@@ -135,11 +136,14 @@ const PostDetail = () => {
             const config = activeToken ? { headers: { Authorization: `Bearer ${activeToken}` } } : {};
             const response = await axios.get(`/api/posts/${postId}`, config);
             setPost(response.data);
+            setErrorStatus(null);
             // Check if user has saved this post (if user exists)
             // This usually requires a separate check or part of user object, 
             // but for now we rely on the handleSave toggle logic
         } catch (error) {
-            console.error('Failed to fetch post:', error);
+            const status = error.response?.status || 0;
+            console.error('Failed to fetch post:', status, error.response?.data || error.message);
+            setErrorStatus(status);
         } finally {
             setLoading(false);
         }
@@ -283,7 +287,23 @@ const PostDetail = () => {
         <div className="pd-empty-screen">
             <Navbar />
             <div className="pd-empty-content">
-                <h2>Gönderi bulunamadı</h2>
+                {errorStatus === 403 ? (
+                    <>
+                        <h2>Bu gönderiye erişim izniniz yok</h2>
+                        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', marginBottom: '16px' }}>
+                            Bu gönderi özel bir portala ait. Erişmek için üye olmanız gerekiyor.
+                        </p>
+                    </>
+                ) : errorStatus === 401 ? (
+                    <>
+                        <h2>Giriş yapmanız gerekiyor</h2>
+                        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', marginBottom: '16px' }}>
+                            Bu gönderiyi görüntülemek için oturum açın.
+                        </p>
+                    </>
+                ) : (
+                    <h2>Gönderi bulunamadı</h2>
+                )}
                 <button onClick={() => navigate(-1)}>Geri Dön</button>
             </div>
         </div>

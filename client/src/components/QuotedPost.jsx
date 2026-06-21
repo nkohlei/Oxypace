@@ -97,9 +97,14 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
         if (e.target.closest('.native-mute-toggle')) return;
 
         e.stopPropagation();
-        const targetId = activePost?._id || (typeof quotedPost === 'string' ? quotedPost : quotedPost?._id);
-        if (targetId) {
+        // Force toString() to convert any ObjectId objects to plain hex string
+        const rawId = activePost?._id ?? (typeof quotedPost === 'string' ? quotedPost : quotedPost?._id);
+        const targetId = rawId ? String(rawId) : null;
+        // Validate it looks like a MongoDB ObjectId (24 hex chars)
+        if (targetId && /^[0-9a-fA-F]{24}$/.test(targetId)) {
             navigate(`/post/${targetId}`);
+        } else if (targetId) {
+            console.warn('QuotedPost: targetId is not a valid ObjectId, skipping navigation:', targetId);
         }
     };
 
