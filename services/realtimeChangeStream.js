@@ -23,7 +23,15 @@ export const setupChangeStreams = (io) => {
                     if (change.operationType === 'insert') {
                         // Document comes from updateLookup but is NOT populated by default.
                         // We must populate it so clients don't crash expecting an author object.
-                        const newPost = await Post.findById(change.documentKey._id).populate('author', 'username profile verificationBadge');
+                        const newPost = await Post.findById(change.documentKey._id)
+                            .populate('author', 'username profile verificationBadge')
+                            .populate({
+                                path: 'quotedPost',
+                                populate: [
+                                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
+                                    { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers' }
+                                ]
+                            });
                         if (newPost) {
                             // 1. Emit to the specific portal room
                             if (newPost.portal) {
@@ -50,7 +58,15 @@ export const setupChangeStreams = (io) => {
                             }
                         }
                     } else if (change.operationType === 'update') {
-                        const updatedPost = await Post.findById(change.documentKey._id).populate('author', 'username profile verificationBadge');
+                        const updatedPost = await Post.findById(change.documentKey._id)
+                            .populate('author', 'username profile verificationBadge')
+                            .populate({
+                                path: 'quotedPost',
+                                populate: [
+                                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
+                                    { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers' }
+                                ]
+                            });
                         if (updatedPost) {
                             if (updatedPost.portal) {
                                 io.to(`portal:${updatedPost.portal.toString()}`).emit('post:updated', updatedPost);

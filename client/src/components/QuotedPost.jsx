@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/imageUtils';
 import { Youtube, ExternalLink } from 'lucide-react';
@@ -8,9 +10,50 @@ import UserAvatar from './UserAvatar';
 
 const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
     const navigate = useNavigate();
+    const [localPost, setLocalPost] = useState(typeof quotedPost === 'object' ? quotedPost : null);
+    const [loading, setLoading] = useState(false);
+
+    const isString = typeof quotedPost === 'string';
+    const isObjectButUnpopulated = quotedPost && typeof quotedPost === 'object' && !quotedPost.author;
+    const needsFetch = isString || isObjectButUnpopulated;
+
+    useEffect(() => {
+        if (!needsFetch) {
+            setLocalPost(quotedPost);
+            return;
+        }
+
+        const fetchQuotedPost = async () => {
+            const targetId = isString ? quotedPost : quotedPost?._id;
+            if (!targetId) return;
+
+            setLoading(true);
+            try {
+                const res = await axios.get(`/api/posts/${targetId}`);
+                setLocalPost(res.data);
+            } catch (err) {
+                console.error("Failed to fetch quoted post details", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchQuotedPost();
+    }, [quotedPost, needsFetch, isString]);
+
+    const activePost = localPost || (typeof quotedPost === 'object' ? quotedPost : null);
 
     // Prevent infinite recursion (stop at level 2 like Twitter/X)
-    if (!quotedPost || depth > 2) return null;
+    if (!activePost || depth > 2) {
+        if (loading) {
+            return (
+                <div className={`quoted-post-container depth-${depth} loading-quote`} style={{ padding: '16px', textComponent: 'center' }}>
+                    <p className="loading-message" style={{ margin: 0, fontSize: '13px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Yükleniyor...</p>
+                </div>
+            );
+        }
+        return null;
+    }
 
     // Time Ago Helper
     const getTimeAgo = (date) => {
@@ -30,11 +73,11 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
     };
 
     // Privacy Check
-    const portal = quotedPost.portal;
+    const portal = activePost.portal;
     if (portal && (portal.privacy === 'private' || portal.privacy === 'restricted')) {
         const isMember = viewer?._id && portal.members?.some(id => String(id) === String(viewer._id));
         const isAllowed = viewer?._id && portal.allowedUsers?.some(id => String(id) === String(viewer._id));
-        const isAuthor = viewer?._id === (quotedPost.author?._id || quotedPost.author);
+        const isAuthor = viewer?._id === (activePost.author?._id || activePost.author);
 
         if (!isMember && !isAllowed && !isAuthor) {
             return (
@@ -52,17 +95,18 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
         if (e.target.closest('.native-mute-toggle')) return;
 
         e.stopPropagation();
-        if (quotedPost._id) {
-            navigate(`/post/${quotedPost._id}`);
+        const targetId = activePost?._id || (typeof quotedPost === 'string' ? quotedPost : quotedPost?._id);
+        if (targetId) {
+            navigate(`/post/${targetId}`);
         }
     };
 
     // Improved author handling: check for both object structure and ID fallback
-    const isPopulated = quotedPost.author && typeof quotedPost.author === 'object';
-    const author = isPopulated ? quotedPost.author : {
+    const isPopulated = activePost.author && typeof activePost.author === 'object';
+    const author = isPopulated ? activePost.author : {
         username: 'Kullanıcı',
         profile: {
-            displayName: typeof quotedPost === 'string' ? 'Yükleniyor...' : (quotedPost.author ? 'Görüntülenemiyor' : 'Yükleniyor...'),
+            displayName: typeof activePost === 'string' ? 'Yükleniyor...' : (activePost.author ? 'Görüntülenemiyor' : 'Yükleniyor...'),
             avatar: null
         }
     };
@@ -87,19 +131,19 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                         <UserBadges user={author} size={14} />
                         <span className="quoted-author-username">@{author.username}</span>
                         <span className="quoted-dot">·</span>
-                        <span className="quoted-time">{getTimeAgo(quotedPost.createdAt)}</span>
+                        <span className="quoted-time">{getTimeAgo(activePost.createdAt)}</span>
                     </div>
                 </div>
 
-                {quotedPost.portal && (
+                {activePost.portal && (
                     <Link
-                        to={`/portal/${quotedPost.portal._id}`}
+                        to={`/portal/${activePost.portal._id}`}
                         className="quoted-portal-tag"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {quotedPost.portal.avatar && (
+                        {activePost.portal.avatar && (
                             <img
-                                src={getImageUrl(quotedPost.portal.lowResAvatar || quotedPost.portal.avatar, 'thumbnail')}
+                                src={getImageUrl(activePost.portal.lowResAvatar || activePost.portal.avatar, 'thumbnail')}
                                 alt=""
                                 className="quoted-portal-icon"
                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
@@ -108,46 +152,46 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                 width="16"
                                 height="16"
                                 onError={(e) => {
-                                    const originalUrl = getImageUrl(quotedPost.portal.avatar, 'original');
+                                    const originalUrl = getImageUrl(activePost.portal.avatar, 'original');
                                     if (e.target.src !== originalUrl) {
                                         e.target.src = originalUrl;
                                     }
                                 }}
                             />
                         )}
-                        <span>{quotedPost.portal.name}</span>
+                        <span>{activePost.portal.name}</span>
                         <ExternalLink size={10} />
                     </Link>
                 )}
             </div>
             <div className="quoted-post-content">
-                {quotedPost.content && (
-                    <p className="quoted-text">{quotedPost.content.substring(0, 500)}{quotedPost.content.length > 500 ? '...' : ''}</p>
+                {activePost.content && (
+                    <p className="quoted-text">{activePost.content.substring(0, 500)}{activePost.content.length > 500 ? '...' : ''}</p>
                 )}
-                {quotedPost.media && (
+                {activePost.media && (
                     <div className="quoted-media-preview">
-                        {quotedPost.mediaType === 'video' ? (
+                        {activePost.mediaType === 'video' ? (
                             <div className="quoted-video-wrapper">
                                 <VideoPlayer
-                                    src={getImageUrl(quotedPost.media)}
-                                    qualities={quotedPost.videoQualities}
-                                    videoUrl={getImageUrl(quotedPost.videoUrl)}
-                                    lowVideoUrl={getImageUrl(quotedPost.lowVideoUrl)}
-                                    video144={getImageUrl(quotedPost.video144)}
-                                    video360={getImageUrl(quotedPost.video360)}
-                                    video720={getImageUrl(quotedPost.video720)}
-                                    video1080={getImageUrl(quotedPost.video1080)}
-                                    video2160={getImageUrl(quotedPost.video2160)}
+                                    src={getImageUrl(activePost.media)}
+                                    qualities={activePost.videoQualities}
+                                    videoUrl={getImageUrl(activePost.videoUrl)}
+                                    lowVideoUrl={getImageUrl(activePost.lowVideoUrl)}
+                                    video144={getImageUrl(activePost.video144)}
+                                    video360={getImageUrl(activePost.video360)}
+                                    video720={getImageUrl(activePost.video720)}
+                                    video1080={getImageUrl(activePost.video1080)}
+                                    video2160={getImageUrl(activePost.video2160)}
                                     className="quoted-player"
-                                    isProcessing={quotedPost.isProcessing}
-                                    processingProgress={quotedPost.processingProgress}
-                                    estimatedTime={quotedPost.estimatedTime}
+                                    isProcessing={activePost.isProcessing}
+                                    processingProgress={activePost.processingProgress}
+                                    estimatedTime={activePost.estimatedTime}
                                 />
                             </div>
-                        ) : quotedPost.mediaType === 'youtube' ? (
+                        ) : activePost.mediaType === 'youtube' ? (
                             <div className="quoted-youtube-wrapper">
                                 <img
-                                    src={`https://img.youtube.com/vi/${extractFirstUrl(quotedPost.media)}/hqdefault.jpg`}
+                                    src={`https://img.youtube.com/vi/${extractFirstUrl(activePost.media)}/hqdefault.jpg`}
                                     alt=""
                                     loading="lazy"
                                     decoding="async"
@@ -158,7 +202,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                             </div>
                         ) : (
                             <img
-                                src={getImageUrl(quotedPost.media)}
+                                src={getImageUrl(activePost.media)}
                                 alt="Quoted media"
                                 className="quoted-image-element"
                                 loading="lazy"
@@ -170,7 +214,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                     </div>
                 )}
 
-                {quotedPost.pdfUrl && (
+                {activePost.pdfUrl && (
                     <div className="quoted-pdf-preview" style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -182,9 +226,9 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                         marginTop: '8px',
                         cursor: 'pointer'
                     }}>
-                        {quotedPost.pdfThumbnailUrl ? (
+                        {activePost.pdfThumbnailUrl ? (
                             <img
-                                src={getImageUrl(quotedPost.pdfThumbnailUrl)}
+                                src={getImageUrl(activePost.pdfThumbnailUrl)}
                                 alt=""
                                 style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
                                 loading="lazy"
@@ -208,19 +252,19 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                         )}
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {quotedPost.pdfName || 'Doküman.pdf'}
+                                {activePost.pdfName || 'Doküman.pdf'}
                             </span>
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                                {quotedPost.pdfSize ? (quotedPost.pdfSize / (1024 * 1024)).toFixed(2) + ' MB' : '0.00 MB'}
+                                {activePost.pdfSize ? (activePost.pdfSize / (1024 * 1024)).toFixed(2) + ' MB' : '0.00 MB'}
                             </span>
                         </div>
                     </div>
                 )}
 
                 {/* Recursive QuotedPost - Only if depth is low and data exists */}
-                {quotedPost.quotedPost && (
+                {activePost.quotedPost && (
                     <div className="nested-quote-wrapper">
-                        <QuotedPost quotedPost={quotedPost.quotedPost} viewer={viewer} depth={depth + 1} />
+                        <QuotedPost quotedPost={activePost.quotedPost} viewer={viewer} depth={depth + 1} />
                     </div>
                 )}
             </div>
