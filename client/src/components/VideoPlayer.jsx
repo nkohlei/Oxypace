@@ -462,10 +462,41 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
+  // Calculate aspect ratio and styles based on natural dimensions
+  const hasDimensions = naturalDimensions && naturalDimensions.width && naturalDimensions.height;
+  const isTweet = className && className.includes('quoted-player');
+
+  let containerStyle = {};
+  if (hasDimensions && !isTweet) {
+    const { width, height } = naturalDimensions;
+    const ratio = width / height;
+    
+    // Bounds: 9:16 (0.5625) and 16:9 (1.7778)
+    const isAbsurd = ratio < 0.5625 || ratio > 1.7778;
+    
+    if (isAbsurd) {
+      // Absurd ratio: clamp the container to the nearest boundary and show black background
+      const clampedRatio = ratio < 0.5625 ? 0.5625 : 1.7778;
+      containerStyle = {
+        aspectRatio: `${clampedRatio}`,
+        background: '#000000',
+        width: '100%',
+      };
+    } else {
+      // Normal ratio: use the exact original aspect ratio and transparent background (no black background)
+      containerStyle = {
+        aspectRatio: `${width}/${height}`,
+        background: 'transparent',
+        boxShadow: 'none',
+        width: '100%',
+      };
+    }
+  }
+
   const videoStyle = (id) => ({
     display: 'block',
     width: '100%',
-    height: 'auto',
+    height: hasDimensions ? '100%' : 'auto',
     objectFit: 'contain',
     position: activeVideo === id ? 'relative' : 'absolute',
     top: 0, left: 0,
@@ -478,6 +509,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   return (
     <div
       className={`native-player-container left-aligned v16-scale ${className || ''} ${isQualityMenuOpen || isSettingsOpen ? 'has-open-menu' : ''}`}
+      style={containerStyle}
       onClick={e => e.stopPropagation()}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}

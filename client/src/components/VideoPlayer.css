@@ -3,8 +3,8 @@
     position: relative;
     width: 100% !important;
     max-width: 650px;
-    height: auto !important;
-    aspect-ratio: auto !important; /* Enforce natural aspect ratio and zero stretch */
+    height: auto;
+    aspect-ratio: auto; /* Enforce natural aspect ratio and zero stretch */
     margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
@@ -18,10 +18,10 @@
 .native-player-container video {
     display: block !important; /* Eliminates the inline baseline gap */
     width: 100% !important;
-    height: auto !important;
+    height: 100%;
     max-width: 100% !important;
     object-fit: contain !important;
-    aspect-ratio: auto !important; /* Enforce natural aspect ratio and zero stretch */
+    aspect-ratio: auto; /* Enforce natural aspect ratio and zero stretch */
     border-radius: 12px;
     cursor: pointer;
 }
