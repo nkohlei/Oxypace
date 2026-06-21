@@ -372,7 +372,7 @@
   flex-wrap: wrap; gap: 45px; margin-bottom: 45px;
 }
 .advanced-home .footer-brand { flex: 1; min-width: 240px; max-width: 360px; }
-.advanced-home .footer-logo { height: 34px; margin-bottom: 18px; filter: brightness(0.85); }
+.advanced-home .footer-logo { height: 34px; width: auto; object-fit: contain; margin-bottom: 18px; filter: brightness(0.85); }
 .advanced-home .footer-brand p { color: rgba(255,255,255,0.3); line-height: 1.7; font-size: 0.9rem; }
 
 .advanced-home .footer-links-grid { display: flex; gap: 65px; flex-wrap: wrap; }

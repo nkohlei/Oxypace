@@ -359,7 +359,7 @@ const Home = () => {
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
-                                <img src="/oxypace-text-logo1.png" alt="OXYPACE" className="footer-logo" width="180" height="40" decoding="async" />
+                                <img src="/oxypace-text-logo1.png" alt="OXYPACE" className="footer-logo" decoding="async" />
                                 <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
                             </div>
                             <div className="footer-links-grid">
