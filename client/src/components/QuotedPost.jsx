@@ -29,7 +29,9 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
 
             setLoading(true);
             try {
-                const res = await axios.get(`/api/posts/${targetId}`);
+                const activeToken = localStorage.getItem('token');
+                const config = activeToken ? { headers: { Authorization: `Bearer ${activeToken}` } } : {};
+                const res = await axios.get(`/api/posts/${targetId}`, config);
                 setLocalPost(res.data);
             } catch (err) {
                 console.error("Failed to fetch quoted post details", err);

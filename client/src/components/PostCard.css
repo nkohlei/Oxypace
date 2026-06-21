@@ -860,7 +860,7 @@
     width: 100%;
 }
 
-.quoted-player .native-player-container.v16-scale {
+.quoted-player.native-player-container.v16-scale {
     margin: 0 auto !important;
     box-shadow: none !important;
     max-width: 100% !important;

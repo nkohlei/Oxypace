@@ -131,7 +131,9 @@ const PostDetail = () => {
 
     const fetchPost = async () => {
         try {
-            const response = await axios.get(`/api/posts/${postId}`);
+            const activeToken = authContextToken || localStorage.getItem('token');
+            const config = activeToken ? { headers: { Authorization: `Bearer ${activeToken}` } } : {};
+            const response = await axios.get(`/api/posts/${postId}`, config);
             setPost(response.data);
             // Check if user has saved this post (if user exists)
             // This usually requires a separate check or part of user object, 
