@@ -24,7 +24,6 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useSocket } from '../context/SocketContext';
 import { X, Youtube, Search } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
-import ProgressRing from '../components/ProgressRing';
 import './Portal.css';
 
 
@@ -1694,14 +1693,12 @@ const Portal = () => {
                                                                                     }}
                                                                                 >
                                                                                     {uploadLoading ? (
-                                                                                        <ProgressRing 
-                                                                                            progress={uploadPercentage} 
-                                                                                            size={20} 
-                                                                                            strokeWidth={2} 
-                                                                                            color="var(--primary-color)" 
-                                                                                            fontSize="7px" 
-                                                                                            textColor="var(--text-primary)" 
-                                                                                        />
+                                                                                        <div className="compose-spinner-wrapper" style={{ width: '20px', height: '20px' }}>
+                                                                                            <div className="compose-spinner" style={{ width: '20px', height: '20px', borderTopColor: 'var(--primary-color)' }} />
+                                                                                            <span className="compose-progress-text" style={{ fontSize: '7px', color: 'var(--text-primary)' }}>
+                                                                                                {uploadPercentage}%
+                                                                                            </span>
+                                                                                        </div>
                                                                                     ) : (
                                                                                         <svg
                                                                                             width="24"

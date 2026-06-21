@@ -6,7 +6,6 @@ import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
-import ProgressRing from '../components/ProgressRing';
 import './CreatePost.css';
 
 const CreatePost = () => {
@@ -187,15 +186,11 @@ const CreatePost = () => {
                     >
                         {isSubmitting ? (
                             <>
-                                <div style={{ marginRight: '6px', display: 'inline-flex', alignItems: 'center' }}>
-                                    <ProgressRing 
-                                        progress={displayPct} 
-                                        size={18} 
-                                        strokeWidth={2} 
-                                        color="#fff" 
-                                        fontSize="7px" 
-                                        textColor="#fff" 
-                                    />
+                                <div className="compose-spinner-wrapper" style={{ width: '18px', height: '18px', marginRight: '6px' }}>
+                                    <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: '#fff' }} />
+                                    <span className="compose-progress-text" style={{ fontSize: '7px', color: '#fff' }}>
+                                        {displayPct}%
+                                    </span>
                                 </div>
                                 Paylaşılıyor...
                             </>
@@ -220,15 +215,11 @@ const CreatePost = () => {
                         >
                             {isSubmitting ? (
                                 <>
-                                    <div style={{ marginRight: '6px', display: 'inline-flex', alignItems: 'center' }}>
-                                        <ProgressRing 
-                                            progress={displayPct} 
-                                            size={18} 
-                                            strokeWidth={2} 
-                                            color="#fff" 
-                                            fontSize="7px" 
-                                            textColor="#fff" 
-                                        />
+                                    <div className="compose-spinner-wrapper" style={{ width: '18px', height: '18px', marginRight: '6px' }}>
+                                        <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: '#fff' }} />
+                                        <span className="compose-progress-text" style={{ fontSize: '7px', color: '#fff' }}>
+                                            {displayPct}%
+                                        </span>
                                     </div>
                                     Paylaşılıyor...
                                 </>

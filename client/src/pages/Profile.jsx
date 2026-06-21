@@ -21,7 +21,6 @@ import { extractFirstUrl } from '../utils/linkify';
 import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
 import { useSocket } from '../context/SocketContext';
-import ProgressRing from '../components/ProgressRing';
 import './Profile.css';
 
 
@@ -1016,14 +1015,12 @@ const Profile = () => {
                                                                                 disabled={composeLoading || (!composeText.trim() && !composeMedia)}
                                                                             >
                                                                                 {composeLoading ? (
-                                                                                        <ProgressRing 
-                                                                                            progress={uploadPercentage} 
-                                                                                            size={18} 
-                                                                                            strokeWidth={2} 
-                                                                                            color="#fff" 
-                                                                                            fontSize="7px" 
-                                                                                            textColor="#fff" 
-                                                                                        />
+                                                                                    <div className="compose-spinner-wrapper">
+                                                                                        <div className="compose-spinner" />
+                                                                                        <span className="compose-progress-text">
+                                                                                            {uploadPercentage}%
+                                                                                        </span>
+                                                                                    </div>
                                                                                 ) : (
                                                                                     <>
                                                                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>

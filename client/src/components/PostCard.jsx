@@ -22,7 +22,6 @@ import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
 import ReportModal from './ReportModal';
-import ProgressRing from './ProgressRing';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -374,7 +373,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                 contentVisibility: showMenu ? 'visible' : 'auto'
             }}
         >
-            {post.isOptimistic && !post.media && (
+            {post.isOptimistic && (
                 <div className="post-card-upload-overlay" style={{
                     position: 'absolute',
                     inset: 0,
@@ -386,7 +385,12 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     zIndex: 10,
                     borderRadius: 'inherit'
                 }}>
-                    <ProgressRing progress={post.uploadProgress !== undefined ? post.uploadProgress : 0} size={40} />
+                    <div className="compose-spinner-wrapper" style={{ width: '40px', height: '40px' }}>
+                        <div className="compose-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255, 255, 255, 0.1)', borderTopColor: 'var(--primary-cyan)' }} />
+                        <span className="compose-progress-text" style={{ fontSize: '11px', color: '#fff' }}>
+                            {post.uploadProgress !== undefined ? `${post.uploadProgress}%` : '0%'}
+                        </span>
+                    </div>
                 </div>
             )}
             {/* Left Column: Avatar */}
@@ -718,52 +722,34 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                 {/* Media */}
                 {post.media && (
                     <div className="post-media" onClick={(e) => e.stopPropagation()}>
-                        <div className="post-media-wrapper" style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
-                            {post.mediaType === 'video' ? (
-                                <VideoPlayer
-                                    src={getImageUrl(post.media)}
-                                    qualities={post.videoQualities}
-                                    videoUrl={getImageUrl(post.videoUrl)}
-                                    lowVideoUrl={getImageUrl(post.lowVideoUrl)}
-                                    video144={getImageUrl(post.video144)}
-                                    video360={getImageUrl(post.video360)}
-                                    video720={getImageUrl(post.video720)}
-                                    video1080={getImageUrl(post.video1080)}
-                                    video2160={getImageUrl(post.video2160)}
-                                    className="post-video-player"
-                                    isProcessing={post.isProcessing}
-                                    processingProgress={post.processingProgress}
-                                    estimatedTime={post.estimatedTime}
-                                />
-                            ) : post.mediaType === 'youtube' ? (
-                                <YouTubeFacade media={post.media} />
-                            ) : (
-                                <img
-                                    src={getImageUrl(post.media)}
-                                    alt="Post media"
-                                    loading="lazy"
-                                    decoding="async"
-                                    width="600"
-                                    height="400"
-                                    style={{ borderRadius: '16px', display: 'block', maxWidth: '100%', height: 'auto', maxHeight: '350px', objectFit: 'contain' }}
-                                />
-                            )}
-                            {post.isOptimistic && (
-                                <div className="post-media-upload-overlay" style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: 'rgba(6, 9, 19, 0.45)',
-                                    backdropFilter: 'blur(5px)',
-                                    zIndex: 10,
-                                    borderRadius: '16px'
-                                }}>
-                                    <ProgressRing progress={post.uploadProgress !== undefined ? post.uploadProgress : 0} size={40} />
-                                </div>
-                            )}
-                        </div>
+                        {post.mediaType === 'video' ? (
+                            <VideoPlayer
+                                src={getImageUrl(post.media)}
+                                qualities={post.videoQualities}
+                                videoUrl={getImageUrl(post.videoUrl)}
+                                lowVideoUrl={getImageUrl(post.lowVideoUrl)}
+                                video144={getImageUrl(post.video144)}
+                                video360={getImageUrl(post.video360)}
+                                video720={getImageUrl(post.video720)}
+                                video1080={getImageUrl(post.video1080)}
+                                video2160={getImageUrl(post.video2160)}
+                                className="post-video-player"
+                                isProcessing={post.isProcessing}
+                                processingProgress={post.processingProgress}
+                                estimatedTime={post.estimatedTime}
+                            />
+                        ) : post.mediaType === 'youtube' ? (
+                            <YouTubeFacade media={post.media} />
+                        ) : (
+                            <img
+                                src={getImageUrl(post.media)}
+                                alt="Post media"
+                                loading="lazy"
+                                decoding="async"
+                                width="600"
+                                height="400"
+                            />
+                        )}
                     </div>
                 )}
 
