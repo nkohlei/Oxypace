@@ -94,7 +94,8 @@ const corsOptions = {
             allowedOrigins.includes(origin) ||
             origin.endsWith('.vercel.app') ||
             origin.endsWith('.netlify.app') ||
-            origin.includes('localhost')
+            origin.includes('localhost') ||
+            /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)
         ) {
             callback(null, true);
         } else {
