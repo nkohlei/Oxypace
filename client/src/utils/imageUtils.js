@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 export const getImageUrl = (path, sizeType = 'original') => {
     if (!path) return null;
 
@@ -11,7 +13,7 @@ export const getImageUrl = (path, sizeType = 'original') => {
         cleanPath = cleanPath.replace('undefined', '');
     }
 
-    const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
+    const isNative = Capacitor.isNativePlatform();
     const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
     const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : ''))).replace(/\/$/, '');
 

@@ -4,7 +4,9 @@ import App from './App.jsx';
 import './index.css';
 import axios from 'axios';
 
-const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
+import { Capacitor } from '@capacitor/core';
+
+const isNative = Capacitor.isNativePlatform();
 
 // For production web, ALWAYS force relative URL to utilize Netlify Proxy and bypass ISP blocks.
 // For native, use VITE_API_BASE_URL if available, otherwise fallback to Koyeb absolute URL.

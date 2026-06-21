@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 
 const SocketContext = createContext();
 
@@ -23,7 +24,7 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         // Determine Socket URL
-        const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
+        const isNative = Capacitor.isNativePlatform();
         let socketUrl = (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : 'http://localhost:5000'));
 
         // Remove '/api' suffix if present, as Socket.io connects to root
