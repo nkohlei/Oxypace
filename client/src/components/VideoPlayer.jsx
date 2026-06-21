@@ -3,6 +3,7 @@ import { Volume2, VolumeX, Check, Maximize, Play, Pause } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { getImageUrl } from '../utils/imageUtils';
+import { useAuth } from '../context/AuthContext';
 import './VideoPlayer.css';
 
 const mountedVideos = new Set();
@@ -62,8 +63,10 @@ if (typeof window !== 'undefined') {
 }
 
 const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...' }) => {
+  const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
+  const initializedPrefRef = useRef(false);
 
   // Which video is currently displayed to the user
   const activeVideoRef = useRef('A'); // 'A' | 'B' — ref not state to avoid re-render races
@@ -145,6 +148,52 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       el.load();
     }
   }, []);
+
+  // Sync user quality preferences once loaded
+  useEffect(() => {
+    if (!user || initializedPrefRef.current) return;
+    initializedPrefRef.current = true;
+    const pref = user?.settings?.video?.playbackQuality || 'auto';
+    
+    let mode = 'auto';
+    if (pref === 'performance') {
+      if (has2160) mode = '2160';
+      else if (has1080) mode = '1080';
+      else if (has720) mode = '720';
+      else if (has360) mode = '360';
+      else if (has144) mode = '144';
+    } else if (pref === 'saver') {
+      if (has720) mode = '720';
+      else if (has360) mode = '360';
+      else if (has1080) mode = '1080';
+      else if (has144) mode = '144';
+      else if (has2160) mode = '2160';
+    } else if (pref === 'lowest') {
+      if (has144) mode = '144';
+      else if (has360) mode = '360';
+      else if (has720) mode = '720';
+      else if (has1080) mode = '1080';
+      else if (has2160) mode = '2160';
+    } else {
+      mode = 'auto';
+    }
+    
+    setQualityMode(mode);
+    
+    let targetSrc = '';
+    if      (mode === '2160') targetSrc = src2160;
+    else if (mode === '1080') targetSrc = src1080;
+    else if (mode === '720')  targetSrc = src720;
+    else if (mode === '360')  targetSrc = src360;
+    else if (mode === '144')  targetSrc = src144;
+    else                      targetSrc = getBestSrc();
+    
+    const activeEl = getActiveEl();
+    if (activeEl && targetSrc && activeEl.src !== targetSrc && activeEl.currentSrc !== targetSrc) {
+      activeEl.src = targetSrc;
+      activeEl.load();
+    }
+  }, [user, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc]);
 
   // Sync mute & playbackRate to both elements imperatively
   useEffect(() => {

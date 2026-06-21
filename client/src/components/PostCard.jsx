@@ -22,6 +22,7 @@ import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
 import ReportModal from './ReportModal';
+import VideoDownloadModal from './VideoDownloadModal';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -133,6 +134,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showQuoteModal, setShowQuoteModal] = useState(false);
     const [showReportModal, setShowReportModal] = useState(false);
+    const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const MAX_LENGTH = 150;
 
@@ -303,6 +305,34 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
         navigate(`/portal/${portalId}`, { state: { quotedPostId: post._id, quotedPost: post } });
     };
 
+    const getDownloadUrlForQuality = (post, prefQuality) => {
+        const qualities = post.videoQualities || {};
+        const has2160 = !!(post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p']);
+        const has1080 = !!(post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'] || post.videoOriginal || qualities.videoOriginal || qualities.high || post.videoUrl);
+        const has720  = !!(post.video720  || qualities.video720  || qualities.p720  || qualities['720p']);
+        const has360  = !!(post.video360  || qualities.video360  || qualities.p360  || qualities['360p']);
+        const has144  = !!(post.video144  || qualities.video144  || qualities.p144  || qualities['144p']);
+
+        const src144  = post.video144  || qualities.video144  || qualities.p144  || qualities['144p']  || qualities.low || post.lowVideoUrl || post.media;
+        const src360  = post.video360  || qualities.video360  || qualities.p360  || qualities['360p']  || src144;
+        const src720  = post.video720  || qualities.video720  || qualities.p720  || qualities['720p']  || src360;
+        const src1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'] || post.videoOriginal || qualities.videoOriginal || qualities.high || post.videoUrl || post.media;
+        const src2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'] || src1080;
+
+        if (prefQuality === '2160' && has2160) return src2160;
+        if (prefQuality === '1080' && has1080) return src1080;
+        if (prefQuality === '720' && has720) return src720;
+        if (prefQuality === '360' && has360) return src360;
+        if (prefQuality === '144' && has144) return src144;
+
+        if (has2160) return src2160;
+        if (has1080) return src1080;
+        if (has720) return src720;
+        if (has360) return src360;
+        if (has144) return src144;
+        return post.media;
+    };
+
     const handleDownload = async (e) => {
         if (e) e.stopPropagation();
         if (post.pdfUrl) {
@@ -315,9 +345,22 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
         if (!post.media) return;
 
-        const url = post.media;
-        const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;
-        await nativeDownloadFile(url, filename);
+        if (post.mediaType === 'video') {
+            const downloadPref = user?.settings?.video?.downloadQuality || 'ask';
+            if (downloadPref === 'ask') {
+                setShowDownloadModal(true);
+                setShowMenu(false);
+                return;
+            }
+
+            const targetUrl = getDownloadUrlForQuality(post, downloadPref);
+            const filename = targetUrl.split('/').pop() || `oxypace-video-${Date.now()}`;
+            await nativeDownloadFile(getImageUrl(targetUrl), filename);
+        } else {
+            const url = post.media;
+            const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;
+            await nativeDownloadFile(url, filename);
+        }
         setShowMenu(false);
     };
 
@@ -824,6 +867,18 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                     targetId={post._id}
                     targetName={post.content ? (post.content.length > 60 ? post.content.substring(0, 60) + '...' : post.content) : 'Görsel / Video Paylaşımı'}
                     onClose={() => setShowReportModal(false)}
+                />
+            )}
+
+            {showDownloadModal && (
+                <VideoDownloadModal
+                    isOpen={showDownloadModal}
+                    onClose={() => setShowDownloadModal(false)}
+                    post={post}
+                    onDownload={async (url, label) => {
+                        const filename = url.split('/').pop() || `oxypace-video-${Date.now()}`;
+                        await nativeDownloadFile(getImageUrl(url), filename);
+                    }}
                 />
             )}
         </article>

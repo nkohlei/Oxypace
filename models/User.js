@@ -187,6 +187,18 @@ const userSchema = new mongoose.Schema(
                 searchVisibility: { type: Boolean, default: true },
                 readReceipts: { type: Boolean, default: true },
             },
+            video: {
+                playbackQuality: {
+                    type: String,
+                    enum: ['auto', 'performance', 'saver', 'lowest'],
+                    default: 'auto',
+                },
+                downloadQuality: {
+                    type: String,
+                    enum: ['ask', '1080', '720', '360'],
+                    default: 'ask',
+                }
+            }
         },
         lastActive: {
             type: Date,

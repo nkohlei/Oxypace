@@ -34,6 +34,10 @@ const Settings = () => {
         searchVisibility: true,
         readReceipts: true,
     });
+    const [videoSettings, setVideoSettings] = useState({
+        playbackQuality: 'auto',
+        downloadQuality: 'ask',
+    });
 
     // UI State
     const [loading, setLoading] = useState(true);
@@ -189,11 +193,36 @@ const Settings = () => {
             if (response.data.settings) {
                 setNotifications((prev) => ({ ...prev, ...response.data.settings.notifications }));
                 setPrivacy((prev) => ({ ...prev, ...response.data.settings.privacy }));
+                if (response.data.settings.video) {
+                    setVideoSettings((prev) => ({ ...prev, ...response.data.settings.video }));
+                }
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleVideoSelectChange = async (setting, value) => {
+        setVideoSettings((prev) => ({ ...prev, [setting]: value }));
+        try {
+            await axios.put('/api/users/settings', { video: { [setting]: value } });
+            if (user) {
+                updateUser({
+                    ...user,
+                    settings: {
+                        ...user.settings,
+                        video: {
+                            ...(user.settings?.video || {}),
+                            [setting]: value
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Failed to update settings:', error);
+            fetchSettings();
         }
     };
 
@@ -425,6 +454,15 @@ const Settings = () => {
                     <span style={{ fontWeight: 500 }}>Bildirimler</span>
                 </div>
 
+                <div
+                    className={`channel-item ${activeMenu === 'video' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('video')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'video' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'video' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 7a2 2 0 0 0-2.45-1.45L11 8 1 5a2 2 0 0 0-2 2v12a2 2 0 0 0 2.45 1.45L11 16l10 3a2 2 0 0 0 2-2V7z"></path></svg>
+                    <span style={{ fontWeight: 500 }}>Video Ayarları</span>
+                </div>
+
                 <div style={{
                     padding: '24px 8px 8px 8px',
                     color: '#949ba4',
@@ -503,6 +541,10 @@ const Settings = () => {
             case 'notifications':
                 title = "Bildirimler";
                 content = renderNotificationsMenu();
+                break;
+            case 'video':
+                title = "Video Ayarları";
+                content = renderVideoMenu();
                 break;
             case 'danger':
                 title = "Tehlikeli Alan";
@@ -1390,6 +1432,50 @@ const Settings = () => {
                         />
                         <span className="slider"></span>
                     </label>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderVideoMenu = () => (
+        <div className="submenu-content animation-slide-in">
+            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Video Oynatma Kalitesi</h3>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+                        Videolar oynatılırken varsayılan olarak hangi kalitede açılacağını seçin.
+                    </p>
+                    <select
+                        value={videoSettings.playbackQuality || 'auto'}
+                        onChange={(e) => handleVideoSelectChange('playbackQuality', e.target.value)}
+                        className="badge-select"
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px', marginTop: '8px' }}
+                    >
+                        <option value="auto" style={{ backgroundColor: '#18191c', color: 'white' }}>Oto: İnternet hızına göre kaliteyi kendi belirler</option>
+                        <option value="performance" style={{ backgroundColor: '#18191c', color: 'white' }}>Performans: Daima en yüksek kalite</option>
+                        <option value="saver" style={{ backgroundColor: '#18191c', color: 'white' }}>Tasarruf: Dengeli veri kullanımı (360p - 720p)</option>
+                        <option value="lowest" style={{ backgroundColor: '#18191c', color: 'white' }}>En Düşük: Veri tasarrufu için daima en düşük kalite (144p)</option>
+                    </select>
+                </div>
+            </div>
+
+            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Video İndirme Kalitesi</h3>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+                        Video indirmelerinde varsayılan davranışı seçin (Görseller ve GIF'ler orijinal kalitede inmeye devam eder).
+                    </p>
+                    <select
+                        value={videoSettings.downloadQuality || 'ask'}
+                        onChange={(e) => handleVideoSelectChange('downloadQuality', e.target.value)}
+                        className="badge-select"
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px', marginTop: '8px' }}
+                    >
+                        <option value="ask" style={{ backgroundColor: '#18191c', color: 'white' }}>Her Defasında Sor</option>
+                        <option value="1080" style={{ backgroundColor: '#18191c', color: 'white' }}>Daima En Yüksek (1080p / Orijinal)</option>
+                        <option value="720" style={{ backgroundColor: '#18191c', color: 'white' }}>Daima Yüksek (720p)</option>
+                        <option value="360" style={{ backgroundColor: '#18191c', color: 'white' }}>Daima Standart (360p)</option>
+                    </select>
                 </div>
             </div>
         </div>

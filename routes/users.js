@@ -888,7 +888,7 @@ router.get('/:id/following', protect, mongoIdValidation('id'), async (req, res) 
 // @access  Private
 router.put('/settings', protect, async (req, res) => {
     try {
-        const { notifications, privacy } = req.body;
+        const { notifications, privacy, video } = req.body;
         const user = await User.findById(req.user._id);
 
         if (!user.settings) {
@@ -900,12 +900,18 @@ router.put('/settings', protect, async (req, res) => {
         if (!user.settings.privacy) {
             user.settings.privacy = {};
         }
+        if (!user.settings.video) {
+            user.settings.video = {};
+        }
 
         if (notifications) {
             user.settings.notifications = { ...user.settings.notifications, ...notifications };
         }
         if (privacy) {
             user.settings.privacy = { ...user.settings.privacy, ...privacy };
+        }
+        if (video) {
+            user.settings.video = { ...user.settings.video, ...video };
         }
 
         await user.save();
