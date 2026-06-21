@@ -20,6 +20,11 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
     useEffect(() => {
         if (!needsFetch) {
             setLocalPost(quotedPost);
+        }
+    }, [quotedPost, needsFetch]);
+
+    useEffect(() => {
+        if (!needsFetch) {
             return;
         }
 
