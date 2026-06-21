@@ -871,7 +871,8 @@
     width: 100% !important;
     background: #000 !important;
     aspect-ratio: 16 / 9 !important;
-    max-height: var(--quote-max-h, 300px) !important;
+    height: auto !important;
+    max-height: var(--quote-max-h, 200px) !important;
     border-radius: 8px !important;
 }
 
@@ -879,7 +880,7 @@
 .quoted-player.native-player-container .native-video-element {
     width: 100% !important;
     height: 100% !important;
-    max-height: var(--quote-max-h, 300px) !important;
+    max-height: var(--quote-max-h, 200px) !important;
     object-fit: contain !important;
 }
 
