@@ -496,3 +496,88 @@
   width: 22px; height: 22px; transition: color 0.3s, transform 0.3s;
 }
 .floating-scroll-top:hover .scroll-icon { color: #fff; transform: translateY(-2px); }
+
+/* Premium Glassmorphism APK Button */
+.advanced-home .footer-apk-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 200px;
+}
+
+.advanced-home .footer-apk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none !important;
+  cursor: pointer;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Elegant light shimmer effect on hover */
+.advanced-home .footer-apk-btn::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -150%;
+  width: 100%; height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: none;
+}
+
+.advanced-home .footer-apk-btn:hover::after {
+  left: 150%;
+  transition: all 0.85s ease-in-out;
+}
+
+.advanced-home .footer-apk-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px 0 rgba(255, 255, 255, 0.06), 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.advanced-home .footer-apk-btn:active {
+  transform: translateY(-1px);
+}
+
+.advanced-home .apk-icon {
+  margin-right: 10px;
+  color: #a4c639; /* Premium Android Green */
+  filter: drop-shadow(0 0 4px rgba(164, 198, 57, 0.4));
+  transition: all 0.35s ease;
+}
+
+.advanced-home .footer-apk-btn:hover .apk-icon {
+  transform: scale(1.15) rotate(-5deg);
+  filter: drop-shadow(0 0 8px rgba(164, 198, 57, 0.8));
+}
+
+@media (max-width: 900px) {
+  .advanced-home .footer-apk-container {
+    margin: 15px 0 25px;
+    flex: none;
+    width: 100%;
+  }
+}
