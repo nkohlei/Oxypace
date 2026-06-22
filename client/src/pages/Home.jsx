@@ -215,6 +215,10 @@ const Home = () => {
                 }}>
                     <div className="hero-gradient-glow"></div>
                     
+                    <div className="hero-quote-animated">
+                        "The people who are crazy enough to think they can change the world are the ones who do."
+                    </div>
+
                     <div className="hero-logo-mask-container">
                         <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" decoding="async" />
                     </div>
