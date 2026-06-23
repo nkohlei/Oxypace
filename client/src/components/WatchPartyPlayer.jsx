@@ -4,6 +4,29 @@ import { useVoice } from '../context/VoiceContext';
 import { X } from 'lucide-react';
 import './WatchPartyPlayer.css';
 
+const loadHls = () => {
+  return new Promise((resolve, reject) => {
+    if (window.Hls) {
+      resolve(window.Hls);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+    script.onload = () => {
+      if (window.Hls) resolve(window.Hls);
+      else reject(new Error('Hls.js failed to load'));
+    };
+    script.onerror = () => reject(new Error('Hls.js script error'));
+    document.head.appendChild(script);
+  });
+};
+
+const isHls = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].split('#')[0];
+  return cleanUrl.endsWith('.m3u8');
+};
+
 const WatchPartyPlayer = () => {
     const { 
         watchParty, 
@@ -20,6 +43,7 @@ const WatchPartyPlayer = () => {
     const prevIsPlayingRef = useRef(false);
     const [isReady, setIsReady] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [hlsLoaded, setHlsLoaded] = useState(false);
 
     // All participants in the watch party have permissions to play, pause, and seek
     const isHost = true;
@@ -31,6 +55,16 @@ const WatchPartyPlayer = () => {
         lastProgrammaticSeekTimeRef.current = null;
         lastPolledTimeRef.current = null;
         prevIsPlayingRef.current = false;
+
+        if (isHls(watchParty?.url)) {
+            loadHls().then(() => {
+                setHlsLoaded(true);
+            }).catch(err => {
+                console.error("Failed to load Hls.js for WatchPartyPlayer:", err);
+            });
+        } else {
+            setHlsLoaded(false);
+        }
     }, [watchParty?.url]);
 
     // Detect manual seeks via polling to support clicks on YouTube's native progress bar
@@ -165,6 +199,11 @@ const WatchPartyPlayer = () => {
                     config={{
                         youtube: {
                             playerVars: { autoplay: 1, disablekb: 0 }
+                        },
+                        file: {
+                            attributes: {
+                                crossOrigin: isHls(watchParty?.url) || (watchParty?.url && watchParty.url.startsWith('http') && !watchParty.url.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"
+                            }
                         }
                     }}
                 />
