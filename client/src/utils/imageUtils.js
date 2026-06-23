@@ -17,7 +17,7 @@ export const getImageUrl = (path, sizeType = 'original') => {
         const cleanUrlForCheck = cleanPath.split('?')[0].split('#')[0];
         const ext = cleanUrlForCheck.split('.').pop().toLowerCase();
         if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
-            return `https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/${encodeURIComponent(cleanPath)}`;
+            return cleanPath;
         }
     }
 
