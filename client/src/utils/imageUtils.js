@@ -18,10 +18,8 @@ export const getImageUrl = (path, sizeType = 'original') => {
         const ext = cleanUrlForCheck.split('.').pop().toLowerCase();
         
         const isStreamingMedia = ['m3u8', 'mpd'].includes(ext);
-        const supportsNativeHls = typeof document !== 'undefined' && 
-            !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl');
             
-        if (['mp4', 'webm', 'ogg'].includes(ext) || (isStreamingMedia && (supportsNativeHls || Capacitor.isNativePlatform()))) {
+        if (['mp4', 'webm', 'ogg'].includes(ext) || (isStreamingMedia && Capacitor.isNativePlatform())) {
             return cleanPath;
         }
     }
