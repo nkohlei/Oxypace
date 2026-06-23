@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
 import { X } from 'lucide-react';
+import { getImageUrl } from '../utils/imageUtils';
 import './WatchPartyPlayer.css';
 
 const loadHls = () => {
@@ -186,7 +187,7 @@ const WatchPartyPlayer = () => {
             <div className="watch-party-player-container">
                 <ReactPlayer
                     ref={playerRef}
-                    url={watchParty.url}
+                    url={getImageUrl(watchParty.url)}
                     playing={watchParty.isPlaying}
                     controls={isHost}
                     width="100%"
