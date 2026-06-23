@@ -57,7 +57,10 @@ const WatchPartyPlayer = () => {
         lastPolledTimeRef.current = null;
         prevIsPlayingRef.current = false;
 
-        if (isHls(watchParty?.url)) {
+        const supportsNativeHls = typeof document !== 'undefined' && 
+            !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl');
+
+        if (isHls(watchParty?.url) && !supportsNativeHls) {
             loadHls().then(() => {
                 setHlsLoaded(true);
             }).catch(err => {
@@ -165,8 +168,6 @@ const WatchPartyPlayer = () => {
     };
 
     if (!watchParty || !watchParty.url) return null;
-
-    console.log("[Watch Party Player] Playing URL:", watchParty.url, "Resolved via getImageUrl:", getImageUrl(watchParty.url));
 
     if (hasError) {
         return (
