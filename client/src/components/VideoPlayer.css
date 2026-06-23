@@ -4,7 +4,7 @@
     width: 100% !important;
     max-width: 650px;
     height: auto;
-    max-height: 380px; /* Enforce absolute desktop max-height */
+    max-height: 360px; /* Enforce absolute desktop max-height */
     aspect-ratio: auto; /* Enforce natural aspect ratio and zero stretch */
     margin: 12px 0;
     border-radius: 12px;
@@ -461,7 +461,7 @@
 
 @media (max-width: 768px) {
     .native-player-container.v16-scale {
-        max-height: 280px; /* Enforce absolute mobile max-height */
+        max-height: 260px; /* Enforce absolute mobile max-height */
     }
 }
 

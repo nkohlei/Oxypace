@@ -10,6 +10,29 @@ import './VideoPlayer.css';
 const mountedVideos = new Set();
 let scrollTimeout = null;
 
+const loadHls = () => {
+  return new Promise((resolve, reject) => {
+    if (window.Hls) {
+      resolve(window.Hls);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+    script.onload = () => {
+      if (window.Hls) resolve(window.Hls);
+      else reject(new Error('Hls.js failed to load'));
+    };
+    script.onerror = () => reject(new Error('Hls.js script error'));
+    document.head.appendChild(script);
+  });
+};
+
+const isHls = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].split('#')[0];
+  return cleanUrl.endsWith('.m3u8');
+};
+
 const checkCenterVideo = () => {
   if (mountedVideos.size === 0) return;
   const isFs = !!document.fullscreenElement;
@@ -80,6 +103,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
   const initializedPrefRef = useRef(false);
+  const hlsInstanceRef = useRef(null);
 
   // Which video is currently displayed to the user
   const activeVideoRef = useRef('A'); // 'A' | 'B' — ref not state to avoid re-render races
@@ -153,17 +177,74 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const getInactiveEl = () => (activeVideoRef.current === 'A' ? videoRefB : videoRefA).current;
   const getInactiveId = () => (activeVideoRef.current === 'A' ? 'B' : 'A');
 
+  const initHls = useCallback((videoEl, url) => {
+    if (hlsInstanceRef.current) {
+      hlsInstanceRef.current.destroy();
+      hlsInstanceRef.current = null;
+    }
+
+    if (!videoEl || !url) return;
+
+    if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      videoEl.src = url;
+      videoEl.load();
+    } else {
+      loadHls().then((HlsLib) => {
+        if (!HlsLib.isSupported()) {
+          videoEl.src = url;
+          videoEl.load();
+          return;
+        }
+        const hls = new HlsLib({
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+        hls.loadSource(url);
+        hls.attachMedia(videoEl);
+        hlsInstanceRef.current = hls;
+      }).catch(err => {
+        console.error('Failed to load Hls.js, falling back to native src:', err);
+        videoEl.src = url;
+        videoEl.load();
+      });
+    }
+  }, []);
+
+  const setVideoSource = useCallback((el, url) => {
+    if (!el) return;
+    if (isHls(url)) {
+      initHls(el, url);
+    } else {
+      if (hlsInstanceRef.current) {
+        hlsInstanceRef.current.destroy();
+        hlsInstanceRef.current = null;
+      }
+      if (el.src !== url) {
+        el.src = url;
+        el.load();
+      }
+    }
+  }, [initHls]);
+
+  // Clean up HLS instance on unmount
+  useEffect(() => {
+    return () => {
+      if (hlsInstanceRef.current) {
+        hlsInstanceRef.current.destroy();
+      }
+    };
+  }, []);
+
   // Initialise video A with the best src and update it when getBestSrc changes
   useEffect(() => {
     const el = videoRefA.current;
     if (el) {
       const bestSrc = getBestSrc();
-      if (bestSrc && el.src !== bestSrc) {
-        el.src = bestSrc;
-        el.load();
+      if (bestSrc) {
+        setVideoSource(el, bestSrc);
       }
     }
-  }, [getBestSrc]);
+  }, [getBestSrc, setVideoSource]);
 
   // Sync user quality preferences once loaded
   useEffect(() => {
@@ -206,10 +287,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     
     const activeEl = getActiveEl();
     if (activeEl && targetSrc && activeEl.src !== targetSrc && activeEl.currentSrc !== targetSrc) {
-      activeEl.src = targetSrc;
-      activeEl.load();
+      setVideoSource(activeEl, targetSrc);
     }
-  }, [user, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc]);
+  }, [user, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc, setVideoSource]);
 
   // Sync mute & playbackRate to both elements imperatively
   useEffect(() => {
@@ -252,7 +332,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     console.log(`[VideoPlayer] Initiating swap to ${newSrc}, wasPlaying=${wasPlaying}`);
 
     // ── Prepare inactive element ──────────────────────────────────────────
-    inactiveEl.src   = newSrc;
+    setVideoSource(inactiveEl, newSrc);
     inactiveEl.muted = isMuted;
     inactiveEl.playbackRate = playbackRate;
     inactiveEl.loop  = true;
@@ -313,9 +393,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     inactiveEl.addEventListener('playing', onPlaying, { once: true });
     inactiveEl.addEventListener('error', onError, { once: true });
 
-    // Trigger load — play() will be called in onSeeked after position is set
-    inactiveEl.load();
-  }, [isMuted, playbackRate]);
+    // Trigger load (only for non-HLS since initHls handles HLS loading)
+    if (!isHls(newSrc)) {
+      inactiveEl.load();
+    }
+  }, [isMuted, playbackRate, setVideoSource]);
 
   // ─── Auto-quality stall handling ────────────────────────────────────────
   const handleWaiting = useCallback(() => {

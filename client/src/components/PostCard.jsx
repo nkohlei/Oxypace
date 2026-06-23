@@ -700,6 +700,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
 
                 {/* Link Preview (Isolated from media) */}
                 {(() => {
+                    if (post.mediaType === 'videoUrl') return null;
                     const firstUrl = extractFirstUrl(post.content);
                     if (firstUrl) {
                         return <LinkPreview url={firstUrl} postId={post._id} />;
@@ -766,19 +767,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                 {post.media && (
                     <div className="post-media" onClick={(e) => e.stopPropagation()}>
                         <div style={{ position: 'relative', width: '100%', maxWidth: '650px' }}>
-                            {post.mediaType === 'video' ? (
+                            {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
                                 <VideoPlayer
-                                    src={getImageUrl(post.media)}
+                                    src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)}
                                     qualities={post.videoQualities}
-                                    videoUrl={getImageUrl(post.videoUrl)}
-                                    lowVideoUrl={getImageUrl(post.lowVideoUrl)}
-                                    video144={getImageUrl(post.video144)}
-                                    video360={getImageUrl(post.video360)}
-                                    video720={getImageUrl(post.video720)}
-                                    video1080={getImageUrl(post.video1080)}
-                                    video2160={getImageUrl(post.video2160)}
+                                    videoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.videoUrl)}
+                                    lowVideoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.lowVideoUrl)}
+                                    video144={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video144)}
+                                    video360={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video360)}
+                                    video720={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video720)}
+                                    video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)}
+                                    video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)}
                                     className="post-video-player"
-                                    isProcessing={post.isProcessing}
+                                    isProcessing={post.mediaType === 'videoUrl' ? false : post.isProcessing}
                                     processingProgress={post.processingProgress}
                                     estimatedTime={post.estimatedTime}
                                 />

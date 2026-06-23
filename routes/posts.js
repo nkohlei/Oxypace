@@ -67,10 +67,27 @@ router.post(
                 quotedPost: quotedPostId || null,
             };
 
-            // Handle external media (like YouTube)
+            // Handle external media (like YouTube or videoUrl)
             if (media && mediaType) {
                 postData.media = media;
                 postData.mediaType = mediaType;
+            } else if (!req.file && !req.body.mediaKey && content) {
+                // Detect video/live stream URL in the content if no other media is uploaded
+                const urlRegex = /(https?:\/\/[^\s]+)/gi;
+                const matches = content.match(urlRegex);
+                if (matches) {
+                    for (const url of matches) {
+                        try {
+                            const cleanUrl = url.split('?')[0].split('#')[0];
+                            const ext = cleanUrl.split('.').pop().toLowerCase();
+                            if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
+                                postData.media = url;
+                                postData.mediaType = 'videoUrl';
+                                break;
+                            }
+                        } catch (e) {}
+                    }
+                }
             }
 
             if (portalId) {

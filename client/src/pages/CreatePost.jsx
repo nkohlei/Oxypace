@@ -81,7 +81,7 @@ const CreatePost = () => {
         e.preventDefault();
         setError('');
 
-        if (!content && !mediaFile && !youtubeUrl) {
+        if (!content.trim() && !mediaFile && !youtubeUrl && !externalUrl.trim()) {
             setError('Lütfen bir içerik veya medya ekleyin');
             return;
         }
@@ -99,6 +99,25 @@ const CreatePost = () => {
             let videoQualitiesPayload = null;
             let youtubeMedia = null;
             let youtubeMediaType = null;
+            let detectedVideo = null;
+
+            // Detect external video URL
+            if (!mediaFile && !youtubeUrl && finalContent) {
+                const urlRegex = /(https?:\/\/[^\s]+)/gi;
+                const matches = finalContent.match(urlRegex);
+                if (matches) {
+                    for (const url of matches) {
+                        try {
+                            const cleanUrl = url.split('?')[0].split('#')[0];
+                            const ext = cleanUrl.split('.').pop().toLowerCase();
+                            if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
+                                detectedVideo = url;
+                                break;
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
 
             if (mediaFile) {
                 if (isVideoRef.current) {
@@ -149,6 +168,9 @@ const CreatePost = () => {
             } else if (youtubeMedia) {
                 postData.media = youtubeMedia;
                 postData.mediaType = youtubeMediaType;
+            } else if (detectedVideo) {
+                postData.media = detectedVideo;
+                postData.mediaType = 'videoUrl';
             }
 
             await axios.post('/api/posts', postData);
