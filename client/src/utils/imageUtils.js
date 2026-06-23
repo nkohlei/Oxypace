@@ -13,6 +13,14 @@ export const getImageUrl = (path, sizeType = 'original') => {
         cleanPath = cleanPath.replace('undefined', '');
     }
 
+    if (cleanPath.startsWith('http') && !cleanPath.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) {
+        const cleanUrlForCheck = cleanPath.split('?')[0].split('#')[0];
+        const ext = cleanUrlForCheck.split('.').pop().toLowerCase();
+        if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
+            return cleanPath;
+        }
+    }
+
     const isNative = Capacitor.isNativePlatform();
     const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
     const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : ''))).replace(/\/$/, '');
