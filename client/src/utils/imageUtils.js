@@ -117,7 +117,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
                 absoluteUrl = `${r2Domain}/${relativePath}`;
             }
         } else {
-            absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
+            const isStreamingMedia = ['m3u8', 'mpd'].includes(cleanPath.split('?')[0].split('#')[0].split('.').pop().toLowerCase());
+            const targetBaseUrl = isStreamingMedia ? (import.meta.env.VITE_API_BASE_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app').replace(/\/$/, '') : baseUrl;
+            absoluteUrl = `${targetBaseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
         // Apply optimization suffix (thumbnail/medium/lowres) if requested
