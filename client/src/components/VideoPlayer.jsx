@@ -694,7 +694,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         className="native-video-element"
         style={videoStyle('A')}
         playsInline loop preload="auto"
-        crossOrigin="anonymous"
+        crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoClick}
         onTimeUpdate={activeVideo === 'A' ? handleTimeUpdate : undefined}
         onLoadedMetadata={activeVideo === 'A' ? handleLoadedMetadataActive : undefined}
@@ -711,7 +711,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         className="native-video-element"
         style={videoStyle('B')}
         playsInline loop preload="auto"
-        crossOrigin="anonymous"
+        crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoClick}
         onTimeUpdate={activeVideo === 'B' ? handleTimeUpdate : undefined}
         onLoadedMetadata={activeVideo === 'B' ? handleLoadedMetadataActive : undefined}
