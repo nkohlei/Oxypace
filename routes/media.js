@@ -240,17 +240,26 @@ router.get('/*', async (req, res) => {
             return res.status(400).json({ message: 'File path required' });
         }
 
-        // Decode URL if it was encoded (especially for absolute external URLs)
-        try {
-            filePath = decodeURIComponent(filePath);
-        } catch (e) {
-            // If decoding fails, continue with original
-        }
-
-        // Reconstruct query parameters for external URLs to preserve authentication/session tokens
-        if (Object.keys(req.query).length > 0 && (filePath.startsWith('http://') || filePath.startsWith('https://'))) {
-            const queryString = new URLSearchParams(req.query).toString();
-            filePath = filePath.includes('?') ? `${filePath}&${queryString}` : `${filePath}?${queryString}`;
+        // Check if the original URL is proxying an external media URL
+        const mediaPrefix = '/api/media/';
+        const mediaIndex = req.originalUrl.indexOf(mediaPrefix);
+        if (mediaIndex !== -1) {
+            const rawTarget = req.originalUrl.substring(mediaIndex + mediaPrefix.length);
+            if (rawTarget.startsWith('http%3A%2F%2F') || rawTarget.startsWith('https%3A%2F%2F') || rawTarget.startsWith('http://') || rawTarget.startsWith('https://')) {
+                try {
+                    filePath = decodeURIComponent(rawTarget);
+                } catch (e) {
+                    filePath = rawTarget;
+                }
+            } else {
+                try {
+                    filePath = decodeURIComponent(filePath);
+                } catch (e) {}
+            }
+        } else {
+            try {
+                filePath = decodeURIComponent(filePath);
+            } catch (e) {}
         }
 
         // --- CASE 1: EXTERNAL URL PROXYING (News Images, External GIFs) ---

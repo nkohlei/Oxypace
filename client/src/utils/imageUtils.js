@@ -16,7 +16,12 @@ export const getImageUrl = (path, sizeType = 'original') => {
     if (cleanPath.startsWith('http') && !cleanPath.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) {
         const cleanUrlForCheck = cleanPath.split('?')[0].split('#')[0];
         const ext = cleanUrlForCheck.split('.').pop().toLowerCase();
-        if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
+        
+        const isStreamingMedia = ['m3u8', 'mpd'].includes(ext);
+        const supportsNativeHls = typeof document !== 'undefined' && 
+            !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl');
+            
+        if (['mp4', 'webm', 'ogg'].includes(ext) || (isStreamingMedia && (supportsNativeHls || Capacitor.isNativePlatform()))) {
             return cleanPath;
         }
     }
