@@ -247,6 +247,12 @@ router.get('/*', async (req, res) => {
             // If decoding fails, continue with original
         }
 
+        // Reconstruct query parameters for external URLs to preserve authentication/session tokens
+        if (Object.keys(req.query).length > 0 && (filePath.startsWith('http://') || filePath.startsWith('https://'))) {
+            const queryString = new URLSearchParams(req.query).toString();
+            filePath = filePath.includes('?') ? `${filePath}&${queryString}` : `${filePath}?${queryString}`;
+        }
+
         // --- CASE 1: EXTERNAL URL PROXYING (News Images, External GIFs) ---
         if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
             console.log('🌐 Proxying External Media:', filePath);
