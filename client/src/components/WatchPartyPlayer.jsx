@@ -166,6 +166,8 @@ const WatchPartyPlayer = () => {
 
     if (!watchParty || !watchParty.url) return null;
 
+    console.log("[Watch Party Player] Playing URL:", watchParty.url, "Resolved via getImageUrl:", getImageUrl(watchParty.url));
+
     if (hasError) {
         return (
             <div className="watch-party-player-wrapper" style={{ padding: '32px', color: '#ff4444', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
