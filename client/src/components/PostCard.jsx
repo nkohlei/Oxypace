@@ -336,7 +336,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
     const handleDownload = async (e) => {
         if (e) e.stopPropagation();
         if (post.pdfUrl) {
-            const url = post.pdfUrl;
+            const url = getImageUrl(post.pdfUrl);
             const filename = post.pdfName || 'Doküman.pdf';
             await nativeDownloadFile(url, filename);
             setShowMenu(false);
@@ -357,7 +357,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
             const filename = targetUrl.split('/').pop() || `oxypace-video-${Date.now()}`;
             await nativeDownloadFile(getImageUrl(targetUrl), filename);
         } else {
-            const url = post.media;
+            const url = getImageUrl(post.media);
             const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;
             await nativeDownloadFile(url, filename);
         }

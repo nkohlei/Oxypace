@@ -22,7 +22,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     const handleDownload = async (e, url) => {
         e.stopPropagation();
         const filename = url.split('/').pop() || `oxypace-file-${Date.now()}`;
-        await nativeDownloadFile(url, filename);
+        await nativeDownloadFile(getImageUrl(url), filename);
     };
 
     const [showLightbox, setShowLightbox] = React.useState(false);
