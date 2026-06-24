@@ -14,7 +14,7 @@
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write \"**/*.{js,jsx,json,md}\" --ignore-path .gitignore",
-        "mobile:sync": "npm run build && npx cap sync",
+        "mobile:sync": "npm run build && node -e \"const fs = require('fs'); try { fs.rmSync('android/app/src/main/assets/public', { recursive: true, force: true }); } catch(e) {} try { fs.unlinkSync('client/dist/downloads/oxypace.apk'); } catch(e) {}\" && npx cap sync",
         "mobile:assets": "npx capacitor-assets generate --android",
         "mobile:dev": "npx cap run android --live-reload --external",
         "mobile:open:android": "npx cap open android",
