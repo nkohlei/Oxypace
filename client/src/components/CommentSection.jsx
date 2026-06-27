@@ -74,9 +74,9 @@ const CommentSection = ({ postId }) => {
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 1024 * 1024 * 1024) {
-                // 1GB limit
-                alert("Dosya boyutu 1 GB'dan küçük olmalı.");
+            if (file.size > 2 * 1024 * 1024 * 1024) {
+                // 2GB limit
+                alert("Dosya boyutu 2 GB'dan küçük olmalı.");
                 return;
             }
             setSelectedFile(file);

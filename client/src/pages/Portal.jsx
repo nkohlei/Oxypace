@@ -309,8 +309,8 @@ const Portal = () => {
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 1024 * 1024 * 1024) {
-                triggerToast("Dosya boyutu 1 GB'dan büyük olamaz.", 'error');
+            if (file.size > 2 * 1024 * 1024 * 1024) {
+                triggerToast("Dosya boyutu 2 GB'dan büyük olamaz.", 'error');
                 return;
             }
             setMediaFile(file);

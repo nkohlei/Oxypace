@@ -254,8 +254,8 @@ const Inbox = () => {
         if (e.target.files && e.target.files.length > 0) {
             const files = Array.from(e.target.files);
             for (const file of files) {
-                if (file.size > 1024 * 1024 * 1024) {
-                    alert("Dosya boyutu 1 GB'dan büyük olamaz.");
+                if (file.size > 2 * 1024 * 1024 * 1024) {
+                    alert("Dosya boyutu 2 GB'dan büyük olamaz.");
                     return;
                 }
             }

@@ -2,10 +2,6 @@
   "appId": "com.oxypace.app",
   "appName": "Oxypace",
   "webDir": "client/dist",
-  "exclude": [
-    "downloads/**",
-    "**/*.apk"
-  ],
   "server": {
     "androidScheme": "https",
     "cleartext": true,

@@ -46,10 +46,10 @@ router.post('/presigned-url', auth, async (req, res) => {
             return res.status(400).json({ message: 'File name and type are required' });
         }
 
-        // Validate file size (1GB max)
-        const MAX_SIZE = 1024 * 1024 * 1024;
+        // Validate file size (2GB max)
+        const MAX_SIZE = 2 * 1024 * 1024 * 1024;
         if (fileSize && fileSize > MAX_SIZE) {
-            return res.status(400).json({ message: "Dosya boyutu 1 GB'dan büyük olamaz." });
+            return res.status(400).json({ message: "Dosya boyutu 2 GB'dan büyük olamaz." });
         }
 
         // Generate unique key

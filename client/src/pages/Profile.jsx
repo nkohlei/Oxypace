@@ -251,8 +251,8 @@ const Profile = () => {
     const handleComposeMediaSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (file.size > 1024 * 1024 * 1024) {
-            setError("Dosya boyutu 1 GB'dan büyük olamaz.");
+        if (file.size > 2 * 1024 * 1024 * 1024) {
+            setError("Dosya boyutu 2 GB'dan büyük olamaz.");
             return;
         }
         setComposeMedia(file);

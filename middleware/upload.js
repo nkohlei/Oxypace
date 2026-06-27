@@ -10,7 +10,7 @@ const storage = multer.memoryStorage();
 
 const multerInstance = multer({
     storage: storage,
-    limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB limit
+    limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB limit
     fileFilter: (req, file, cb) => {
         const ext = path.extname(file.originalname || '').toLowerCase();
         // Accept images, videos, and PDFs
