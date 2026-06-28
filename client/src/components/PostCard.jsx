@@ -316,9 +316,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
         setShowQuoteModal(true);
     };
 
-    const handlePortalSelect = (portalId) => {
+    const handlePortalSelect = (portalId, channelId) => {
         setShowQuoteModal(false);
-        navigate(`/portal/${portalId}`, { state: { quotedPostId: post._id, quotedPost: post } });
+        navigate(`/portal/${portalId}`, { state: { quotedPostId: post._id, quotedPost: post, selectedChannelId: channelId } });
     };
 
     const getDownloadUrlForQuality = (post, prefQuality) => {

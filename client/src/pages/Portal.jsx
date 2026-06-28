@@ -147,6 +147,9 @@ const Portal = () => {
     useEffect(() => {
         if (location.state?.quotedPost) {
             setQuotedPost(location.state.quotedPost);
+            if (location.state.selectedChannelId) {
+                setCurrentChannel(location.state.selectedChannelId);
+            }
             // Clean up state to prevent re-triggering on manual refresh
             navigate(location.pathname + location.search, { replace: true, state: {} });
         }
