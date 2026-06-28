@@ -550,6 +550,15 @@ router.put('/:id/archive', protect, mongoIdValidation('id'), async (req, res) =>
         post.isArchived = true;
         await post.save();
 
+        // Delete any notifications associated with this post
+        await Notification.deleteMany({ post: post._id });
+
+        // Emit socket event to notify other clients that the post was archived/deleted from active feeds
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('global:post_deleted', { _id: post._id.toString() });
+        }
+
         res.json(post);
     } catch (error) {
         console.error('Archive post error:', error);
