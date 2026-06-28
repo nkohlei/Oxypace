@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
@@ -64,6 +64,7 @@ const Profile = () => {
     const [savedLoading, setSavedLoading] = useState(false);
     const [archivedPosts, setArchivedPosts] = useState([]);
     const [archivedLoading, setArchivedLoading] = useState(false);
+    const [selectedArchivedPortalId, setSelectedArchivedPortalId] = useState(null);
 
     // Profile Compose State
     const [composeText, setComposeText] = useState('');
@@ -164,6 +165,7 @@ const Profile = () => {
         }
         if (activeTab === 'archived' && isOwnProfile) {
             fetchArchivedPosts();
+            setSelectedArchivedPortalId(null);
         }
     }, [profileUser?._id, activeTab, fetchUserPosts, isOwnProfile]);
 
@@ -214,6 +216,32 @@ const Profile = () => {
             }
         });
     }, [userPosts]);
+
+    const groupedArchivedPosts = useMemo(() => {
+        const groups = {};
+        archivedPosts.forEach(post => {
+            const portal = post.portal;
+            const key = portal ? (portal._id || portal) : 'personal';
+            if (!groups[key]) {
+                groups[key] = {
+                    portal: portal ? {
+                        _id: portal._id || portal,
+                        name: portal.name || 'Portal',
+                        avatar: portal.avatar || null
+                    } : null,
+                    posts: []
+                };
+            }
+            groups[key].posts.push(post);
+        });
+        return groups;
+    }, [archivedPosts]);
+
+    useEffect(() => {
+        if (selectedArchivedPortalId && (!groupedArchivedPosts[selectedArchivedPortalId] || groupedArchivedPosts[selectedArchivedPortalId].posts.length === 0)) {
+            setSelectedArchivedPortalId(null);
+        }
+    }, [groupedArchivedPosts, selectedArchivedPortalId]);
 
     // Handle profile compose post
     const handleProfilePost = async () => {
@@ -953,7 +981,10 @@ const Profile = () => {
                                         {isOwnProfile && (
                                             <div
                                                 className={`profile-tab-item ${activeTab === 'archived' ? 'active' : ''}`}
-                                                onClick={() => setActiveTab('archived')}
+                                                onClick={() => {
+                                                    setActiveTab('archived');
+                                                    setSelectedArchivedPortalId(null);
+                                                }}
                                             >
                                                 Arşivlenenler
                                             </div>
@@ -1584,34 +1615,92 @@ const Profile = () => {
 
                                         {activeTab === 'archived' && isOwnProfile && (
                                             <div className="tab-content fade-in">
-                                                <h4 className="section-header">ARŞİVLENEN GÖNDERİLER</h4>
-                                                {archivedLoading ? (
-                                                    <div className="profile-posts-loading">
-                                                        <div className="spinner" />
-                                                    </div>
-                                                ) : archivedPosts.length === 0 ? (
-                                                    <div className="empty-tab">
-                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
-                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                                            <line x1="9" y1="9" x2="15" y2="9" />
-                                                            <line x1="9" y1="13" x2="15" y2="13" />
-                                                            <line x1="9" y1="17" x2="15" y2="17" />
-                                                        </svg>
-                                                        <p>Arşivlenmiş gönderiniz bulunmuyor.</p>
-                                                    </div>
+                                                {selectedArchivedPortalId ? (
+                                                    <>
+                                                        <div className="archived-detail-header">
+                                                            <button 
+                                                                className="archived-back-btn"
+                                                                onClick={() => setSelectedArchivedPortalId(null)}
+                                                                title="Geri"
+                                                            >
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                                                                    <polyline points="12 19 5 12 12 5"></polyline>
+                                                                </svg>
+                                                            </button>
+                                                            <h4 className="section-header" style={{ margin: 0 }}>
+                                                                {selectedArchivedPortalId === 'personal' 
+                                                                    ? 'KİŞİSEL GÖNDERİLER' 
+                                                                    : (groupedArchivedPosts[selectedArchivedPortalId]?.portal?.name?.toUpperCase() || 'PORTAL GÖNDERİLERİ')}
+                                                            </h4>
+                                                        </div>
+                                                        <div className="profile-posts-feed">
+                                                            {groupedArchivedPosts[selectedArchivedPortalId]?.posts.map((post, index) => (
+                                                                <Fragment key={post._id}>
+                                                                    <PostCard
+                                                                        key={post._id}
+                                                                        post={post}
+                                                                        onArchive={handleArchiveFromProfile}
+                                                                    />
+                                                                    {index < groupedArchivedPosts[selectedArchivedPortalId].posts.length - 1 && <div className="post-separator" />}
+                                                                </Fragment>
+                                                            ))}
+                                                        </div>
+                                                    </>
                                                 ) : (
-                                                    <div className="profile-posts-feed">
-                                                        {archivedPosts.map((post, index) => (
-                                                            <Fragment key={post._id}>
-                                                                <PostCard
-                                                                    key={post._id}
-                                                                    post={post}
-                                                                    onArchive={handleArchiveFromProfile}
-                                                                />
-                                                                {index < archivedPosts.length - 1 && <div className="post-separator" />}
-                                                            </Fragment>
-                                                        ))}
-                                                    </div>
+                                                    <>
+                                                        <h4 className="section-header">ARŞİVLENEN GÖNDERİLER</h4>
+                                                        {archivedLoading ? (
+                                                            <div className="profile-posts-loading">
+                                                                <div className="spinner" />
+                                                            </div>
+                                                        ) : archivedPosts.length === 0 ? (
+                                                            <div className="empty-tab">
+                                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                                    <line x1="9" y1="9" x2="15" y2="9" />
+                                                                    <line x1="9" y1="13" x2="15" y2="13" />
+                                                                    <line x1="9" y1="17" x2="15" y2="17" />
+                                                                </svg>
+                                                                <p>Arşivlenmiş gönderiniz bulunmuyor.</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="archived-portals-grid">
+                                                                {Object.keys(groupedArchivedPosts).map((key) => {
+                                                                    const group = groupedArchivedPosts[key];
+                                                                    const isPersonal = key === 'personal';
+                                                                    return (
+                                                                        <div 
+                                                                            key={key} 
+                                                                            className="archived-portal-card"
+                                                                            onClick={() => setSelectedArchivedPortalId(key)}
+                                                                        >
+                                                                            <div className="archived-portal-avatar">
+                                                                                {isPersonal ? (
+                                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                                                        <circle cx="12" cy="7" r="4" />
+                                                                                    </svg>
+                                                                                ) : group.portal?.avatar ? (
+                                                                                    <img src={getImageUrl(group.portal.avatar)} alt="" />
+                                                                                ) : (
+                                                                                    <span>{group.portal?.name?.[0]}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="archived-portal-info">
+                                                                                <span className="archived-portal-name">
+                                                                                    {isPersonal ? 'Kişisel Gönderiler' : group.portal?.name}
+                                                                                </span>
+                                                                                <span className="archived-portal-count">
+                                                                                    {group.posts.length} gönderi
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         )}
