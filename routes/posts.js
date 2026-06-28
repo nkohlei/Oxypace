@@ -384,6 +384,7 @@ router.get('/', optionalProtect, async (req, res) => {
         const shadowbannedUsers = await User.find({ isShadowbanned: true }).distinct('_id');
         const query = {
             portal: { $exists: false },
+            isArchived: { $ne: true },
             $or: [
                 { author: { $nin: shadowbannedUsers } }
             ]
@@ -492,6 +493,91 @@ router.get('/download', async (req, res) => {
     } catch (err) {
         console.error('Download proxy error:', err);
         res.status(500).json({ message: 'Download failed' });
+    }
+});
+
+// @route   GET /api/posts/archived
+// @desc    Get logged in user's archived posts
+// @access  Private
+router.get('/archived', protect, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const posts = await Post.find({ author: req.user._id, isArchived: true })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
+            .populate('portal', 'name avatar channels privacy')
+            .populate({
+                path: 'quotedPost',
+                populate: [
+                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
+                    {
+                        path: 'quotedPost',
+                        populate: [
+                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                            { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                        ]
+                    }
+                ]
+            });
+
+        return res.json(posts);
+    } catch (error) {
+        console.error('Get archived posts error:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/posts/:id/archive
+// @desc    Archive a post
+// @access  Private
+router.put('/:id/archive', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        if (post.author.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to archive this post' });
+        }
+
+        post.isArchived = true;
+        await post.save();
+
+        res.json(post);
+    } catch (error) {
+        console.error('Archive post error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/posts/:id/unarchive
+// @desc    Unarchive a post
+// @access  Private
+router.put('/:id/unarchive', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        if (post.author.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to unarchive this post' });
+        }
+
+        post.isArchived = false;
+        await post.save();
+
+        res.json(post);
+    } catch (error) {
+        console.error('Unarchive post error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
@@ -630,11 +716,11 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
         // --- Portal Privacy Filter ---
         // If the viewer is NOT the author, we must only show posts from portals they have access to
 
-        let query = { author: targetUserId };
+        let query = { author: targetUserId, isArchived: { $ne: true } };
 
         if (!isAuthor) {
             // Find all portals where the target user has posted
-            const userPortalsIds = await Post.find({ author: targetUserId }).distinct('portal');
+            const userPortalsIds = await Post.find({ author: targetUserId, isArchived: { $ne: true } }).distinct('portal');
             
             // Filter these portals by visibility to the current viewer
             const portalQuery = {

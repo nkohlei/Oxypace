@@ -128,6 +128,10 @@ const postSchema = new mongoose.Schema(
             type: String,
             default: 'Hesaplanıyor...',
         },
+        isArchived: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

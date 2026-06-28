@@ -688,6 +688,12 @@ const Portal = () => {
         setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
     }, [setPosts]);
 
+    const handleArchivePost = useCallback((postId, isArchived) => {
+        if (isArchived) {
+            setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
+        }
+    }, [setPosts]);
+
     const handlePin = useCallback(async (postId) => {
         try {
             const res = await axios.put(`/api/posts/${postId}/pin`);
@@ -1281,6 +1287,7 @@ const Portal = () => {
                                                                                 post={post}
                                                                                 onDelete={handleDeletePost}
                                                                                 onPin={handlePin}
+                                                                                onArchive={handleArchivePost}
                                                                                 isAdmin={isAdmin}
                                                                              />
                                                                              {index < posts.length - 1 && <div className="post-separator" />}

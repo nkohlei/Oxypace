@@ -62,6 +62,8 @@ const Profile = () => {
     const [postsError, setPostsError] = useState('');
     const [savedPosts, setSavedPosts] = useState([]);
     const [savedLoading, setSavedLoading] = useState(false);
+    const [archivedPosts, setArchivedPosts] = useState([]);
+    const [archivedLoading, setArchivedLoading] = useState(false);
 
     // Profile Compose State
     const [composeText, setComposeText] = useState('');
@@ -160,6 +162,9 @@ const Profile = () => {
         if (activeTab === 'saved' && isOwnProfile) {
             fetchSavedPosts();
         }
+        if (activeTab === 'archived' && isOwnProfile) {
+            fetchArchivedPosts();
+        }
     }, [profileUser?._id, activeTab, fetchUserPosts, isOwnProfile]);
 
     const fetchSavedPosts = async () => {
@@ -174,12 +179,41 @@ const Profile = () => {
         }
     };
 
+    const fetchArchivedPosts = async () => {
+        setArchivedLoading(true);
+        try {
+            const response = await axios.get('/api/posts/archived');
+            setArchivedPosts(response.data.filter((post) => post !== null));
+        } catch (error) {
+            console.error('Failed to fetch archived posts:', error);
+        } finally {
+            setArchivedLoading(false);
+        }
+    };
+
     const handleUnsave = useCallback((postId) => {
         setSavedPosts(prev => prev.filter(p => p._id !== postId));
         // Also update user context if needed, but the save button in PostCard already does that.
         // If we are using a custom post card here, we might need to handle it.
         // Actually, I'll use PostCard for the saved tab for consistency.
     }, [setSavedPosts]);
+
+    const handleArchiveFromProfile = useCallback((postId, isArchived) => {
+        setUserPosts(prev => prev.filter(p => p._id !== postId));
+        setArchivedPosts(prev => {
+            if (isArchived) {
+                if (!prev.some(p => p._id === postId)) {
+                    const postToArchive = userPosts.find(p => p._id === postId);
+                    if (postToArchive) {
+                        return [{ ...postToArchive, isArchived: true }, ...prev];
+                    }
+                }
+                return prev;
+            } else {
+                return prev.filter(p => p._id !== postId);
+            }
+        });
+    }, [userPosts]);
 
     // Handle profile compose post
     const handleProfilePost = async () => {
@@ -916,6 +950,14 @@ const Profile = () => {
                                                 Kaydedilenler
                                             </div>
                                         )}
+                                        {isOwnProfile && (
+                                            <div
+                                                className={`profile-tab-item ${activeTab === 'archived' ? 'active' : ''}`}
+                                                onClick={() => setActiveTab('archived')}
+                                            >
+                                                Arşivlenenler
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="profile-tab-view">
@@ -1123,18 +1165,52 @@ const Profile = () => {
                                                                                 <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
                                                                             </Link>
                                                                             <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
-                                                                            {isOwnProfile && post.portal && (
-                                                                                <button
-                                                                                    className="go-to-post-btn"
-                                                                                    onClick={() => navigate(`/post/${post._id}`)}
-                                                                                    title="Gönderiye Git"
-                                                                                >
-                                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                                                                        <polyline points="15 3 21 3 21 9"></polyline>
-                                                                                        <line x1="10" y1="14" x2="21" y2="3"></line>
-                                                                                    </svg>
-                                                                                </button>
+                                                                            {isOwnProfile && (
+                                                                                <div className="profile-post-actions-header" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                                    <button
+                                                                                        className="archive-post-btn"
+                                                                                        onClick={async (e) => {
+                                                                                            e.stopPropagation();
+                                                                                            try {
+                                                                                                await axios.put(`/api/posts/${post._id}/archive`);
+                                                                                                setUserPosts(prev => prev.filter(p => p._id !== post._id));
+                                                                                            } catch (err) {
+                                                                                                console.error('Failed to archive post:', err);
+                                                                                            }
+                                                                                        }}
+                                                                                        title="Arşivle"
+                                                                                        style={{
+                                                                                            background: 'none',
+                                                                                            border: 'none',
+                                                                                            color: 'var(--text-muted, #8a8d91)',
+                                                                                            cursor: 'pointer',
+                                                                                            padding: '4px',
+                                                                                            display: 'flex',
+                                                                                            alignItems: 'center',
+                                                                                            justifyContent: 'center',
+                                                                                            transition: 'color 0.2s',
+                                                                                        }}
+                                                                                    >
+                                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                                            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                                                                            <rect x="1" y="3" width="22" height="5"></rect>
+                                                                                            <line x1="10" y1="12" x2="14" y2="12"></line>
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                    {post.portal && (
+                                                                                        <button
+                                                                                            className="go-to-post-btn"
+                                                                                            onClick={() => navigate(`/post/${post._id}`)}
+                                                                                            title="Gönderiye Git"
+                                                                                        >
+                                                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                                                                <polyline points="15 3 21 3 21 9"></polyline>
+                                                                                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                                                                                            </svg>
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
                                                                             )}
                                                                         </div>
 
@@ -1499,6 +1575,40 @@ const Profile = () => {
                                                                     onUnsave={() => handleUnsave(post._id)}
                                                                 />
                                                                 {index < savedPosts.length - 1 && <div className="post-separator" />}
+                                                            </Fragment>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'archived' && isOwnProfile && (
+                                            <div className="tab-content fade-in">
+                                                <h4 className="section-header">ARŞİVLENEN GÖNDERİLER</h4>
+                                                {archivedLoading ? (
+                                                    <div className="profile-posts-loading">
+                                                        <div className="spinner" />
+                                                    </div>
+                                                ) : archivedPosts.length === 0 ? (
+                                                    <div className="empty-tab">
+                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
+                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                                            <line x1="9" y1="9" x2="15" y2="9" />
+                                                            <line x1="9" y1="13" x2="15" y2="13" />
+                                                            <line x1="9" y1="17" x2="15" y2="17" />
+                                                        </svg>
+                                                        <p>Arşivlenmiş gönderiniz bulunmuyor.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="profile-posts-feed">
+                                                        {archivedPosts.map((post, index) => (
+                                                            <Fragment key={post._id}>
+                                                                <PostCard
+                                                                    key={post._id}
+                                                                    post={post}
+                                                                    onArchive={handleArchiveFromProfile}
+                                                                />
+                                                                {index < archivedPosts.length - 1 && <div className="post-separator" />}
                                                             </Fragment>
                                                         ))}
                                                     </div>

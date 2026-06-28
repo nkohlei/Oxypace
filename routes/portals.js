@@ -317,7 +317,7 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             }
         }
 
-        const query = { portal: portalId };
+        const query = { portal: portalId, isArchived: { $ne: true } };
 
         // Channel Filtering Logic: Find the actual channel object to get its exact ID/Name
         let targetChannel = portal.channels.find(

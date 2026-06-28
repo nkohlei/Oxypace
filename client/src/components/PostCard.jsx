@@ -17,7 +17,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
-import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2 } from 'lucide-react';
+import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2, Archive } from 'lucide-react';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
@@ -123,7 +123,7 @@ const YouTubeFacade = ({ media }) => {
 };
 
 
-const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
+const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
     const { user, updateUser, token: authContextToken } = useAuth(); // Destructure updateUser and token
 
     const navigate = useNavigate();
@@ -276,6 +276,22 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
             }
         } catch (error) {
             console.error('Delete error:', error);
+        }
+    };
+
+    const handleArchiveToggle = async (e) => {
+        if (e) e.stopPropagation();
+        try {
+            const activeToken = authContextToken || localStorage.getItem('token');
+            const config = activeToken ? { headers: { Authorization: `Bearer ${activeToken}` } } : {};
+            const endpoint = post.isArchived ? `/api/posts/${post._id}/unarchive` : `/api/posts/${post._id}/archive`;
+            const response = await axios.put(endpoint, {}, config);
+            setShowMenu(false);
+            if (onArchive) {
+                onArchive(post._id, response.data.isArchived);
+            }
+        } catch (error) {
+            console.error('Failed to toggle archive status:', error);
         }
     };
 
@@ -595,17 +611,26 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, isAdmin }) => {
                                 <div className="menu-divider"></div>
 
                                 {isOwnPost && (
-                                    <button
-                                        className="menu-item delete-item"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMenu(false);
-                                            setShowDeleteConfirm(true);
-                                        }}
-                                    >
-                                        Sil
-                                        <Trash2 size={18} className="menu-icon-right" />
-                                    </button>
+                                    <>
+                                        <button
+                                            className="menu-item"
+                                            onClick={handleArchiveToggle}
+                                        >
+                                            {post.isArchived ? 'Arşivden Çıkar' : 'Arşivle'}
+                                            <Archive size={18} className="menu-icon-right" />
+                                        </button>
+                                        <button
+                                            className="menu-item delete-item"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowMenu(false);
+                                                setShowDeleteConfirm(true);
+                                            }}
+                                        >
+                                            Sil
+                                            <Trash2 size={18} className="menu-icon-right" />
+                                        </button>
+                                    </>
                                 )}
                                 <button
                                     className="menu-item delete-item"
