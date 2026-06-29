@@ -292,14 +292,15 @@
 .shared-post-card {
     display: block;
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     margin-bottom: 8px;
     background: var(--bg-card);
     text-decoration: none;
     color: inherit;
     transition: border-color 0.2s;
-    min-width: 200px;
+    width: 320px;
+    max-width: 100%;
 }
 
 .shared-post-card:hover {
@@ -343,11 +344,25 @@
 
 .shared-post-media-preview img {
     width: 100%;
-    height: 120px;
+    height: 180px;
     object-fit: cover;
     display: block;
     margin: 0;
     border-radius: 0;
+}
+
+.shared-post-video-wrapper {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    background: #000;
+    overflow: hidden;
+}
+
+.shared-post-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 /* Shared Portal Card */

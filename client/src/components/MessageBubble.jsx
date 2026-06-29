@@ -313,18 +313,48 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                 )}
                                 {displayPost.media && (
                                     <div className="shared-post-media-preview">
-                                        <img
-                                            src={getImageUrl(
-                                                Array.isArray(displayPost.media)
-                                                    ? displayPost.media[0]
-                                                    : displayPost.media
+                                        {displayPost.mediaType === 'video' || displayPost.mediaType === 'videoUrl' || displayPost.media.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                                            <div className="shared-post-video-wrapper">
+                                                <video
+                                                    src={getImageUrl(displayPost.media)}
+                                                    className="shared-post-video"
+                                                    muted
+                                                    playsInline
+                                                />
+                                                <div className="video-play-overlay">
+                                                    <Play size={24} fill="currentColor" />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <img
+                                                src={getImageUrl(
+                                                    Array.isArray(displayPost.media)
+                                                        ? displayPost.media[0]
+                                                        : displayPost.media
+                                                )}
+                                                alt="Shared Post"
+                                                loading="lazy"
+                                                decoding="async"
+                                            />
+                                        )}
+                                    </div>
+                                )}
+                                {!displayPost.media && displayPost.pdfUrl && (
+                                    <div className="shared-post-media-preview">
+                                        <div className="shared-post-pdf-wrapper">
+                                            {displayPost.pdfThumbnailUrl ? (
+                                                <img
+                                                    src={getImageUrl(displayPost.pdfThumbnailUrl)}
+                                                    alt="PDF Preview"
+                                                    className="shared-post-pdf-thumbnail"
+                                                    style={{ width: '100%', height: '180px', objectFit: 'cover' }}
+                                                />
+                                            ) : (
+                                                <div className="pdf-icon-placeholder" style={{ height: '140px', width: '100%', borderRadius: 0 }}>
+                                                    <div className="pdf-icon-text">PDF</div>
+                                                </div>
                                             )}
-                                            alt="Shared Post"
-                                            loading="lazy"
-                                            decoding="async"
-                                            width="200"
-                                            height="150"
-                                        />
+                                        </div>
                                     </div>
                                 )}
                             </Link>
