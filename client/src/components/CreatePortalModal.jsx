@@ -121,8 +121,13 @@ const CreatePortalModal = ({ onClose }) => {
                     {step === 1 && (
                         <div className="step-content fade-in">
                             <h3 className="step-title">Temel Bilgiler</h3>
+                            
+                            <div className="required-info-badge">
+                                <span>💡 <b>Portal Adı</b> alanı zorunludur. Diğer bilgileri isteğe bağlı olarak doldurabilirsiniz.</span>
+                            </div>
+
                             <div className="form-group">
-                                <label>Portal Adı</label>
+                                <label>Portal Adı <span className="required-badge">Zorunlu</span></label>
                                 <input
                                     type="text"
                                     required
@@ -134,6 +139,9 @@ const CreatePortalModal = ({ onClose }) => {
                                     maxLength={50}
                                     autoFocus
                                 />
+                                {!formData.name.trim() && (
+                                    <span className="input-helper-error">⚠️ İlerlemek için lütfen portal adını belirleyin.</span>
+                                )}
                             </div>
 
                             <div className="form-group">

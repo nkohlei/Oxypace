@@ -291,3 +291,41 @@
 .advanced-modal .close-btn:active {
     transform: scale(0.9) !important;
 }
+
+/* Required Fields & Badges styling */
+.required-info-badge {
+    background: rgba(96, 165, 250, 0.08);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    color: var(--primary-cyan-light);
+    display: flex;
+    align-items: center;
+    line-height: 1.4;
+    animation: fadeIn 0.3s ease;
+}
+
+.required-badge {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 700;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-helper-error {
+    font-size: 0.75rem;
+    color: #f87171;
+    margin-top: 6px;
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
