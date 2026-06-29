@@ -7,6 +7,10 @@ import { messageValidation, mongoIdValidation } from '../middleware/validation.j
 import multer from 'multer';
 import upload from '../middleware/upload.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
+import axios from 'axios';
+import r2 from '../config/r2.js';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { generatePdfThumbnail } from '../utils/pdfHelper.js';
 
 
 const router = express.Router();
@@ -86,13 +90,21 @@ router.post(
     async (req, res) => {
         try {
             const { recipientId, content, postId, portalId, replyToId } = req.body;
+            
+            let mediaName = req.body.mediaName || '';
+            let mediaSize = Number(req.body.mediaSize) || 0;
+            let mediaType = req.body.mediaType || '';
+            let mediaKey = req.body.mediaKey || (req.file ? req.file.key : null);
             let media = undefined;
-            if (req.body.mediaKey) {
-                media = constructProxiedUrl(req.body.mediaKey);
-            } else if (req.file) {
-                media = constructProxiedUrl(req.file.key);
-            }
 
+            if (mediaKey) {
+                media = constructProxiedUrl(mediaKey);
+                if (req.file) {
+                    mediaName = req.file.originalname;
+                    mediaSize = req.file.size;
+                    mediaType = req.file.mimetype;
+                }
+            }
 
             if (!recipientId || (!content && !media && !postId && !portalId)) {
                 return res
@@ -125,11 +137,47 @@ router.post(
                 });
             }
 
+            // Generate PDF thumbnail if applicable
+            let mediaThumbnail = undefined;
+            if (mediaKey && (mediaKey.toLowerCase().endsWith('.pdf') || mediaType === 'application/pdf')) {
+                try {
+                    console.log('📄 [Message Route] PDF detected. Downloading for thumbnail generation...');
+                    const pdfFullUrl = constructProxiedUrl(mediaKey);
+                    const response = await axios.get(pdfFullUrl, { responseType: 'arraybuffer' });
+                    const pdfBuffer = Buffer.from(response.data);
+
+                    console.log('📄 [Message Route] Extracting first page thumbnail...');
+                    const thumbnailBuffer = await generatePdfThumbnail(pdfBuffer);
+
+                    console.log('📄 [Message Route] Uploading PDF thumbnail to Cloudflare R2...');
+                    const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+                    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+                    const thumbnailKey = `messages/pdf-thumb-${uniqueSuffix}.jpg`;
+
+                    const putCommand = new PutObjectCommand({
+                        Bucket: bucketName,
+                        Key: thumbnailKey,
+                        ContentType: 'image/jpeg',
+                        Body: thumbnailBuffer,
+                    });
+                    await r2.send(putCommand);
+
+                    mediaThumbnail = constructProxiedUrl(thumbnailKey);
+                    console.log('✅ [Message Route] PDF thumbnail uploaded successfully:', mediaThumbnail);
+                } catch (thumbError) {
+                    console.error('⚠️ [Message Route] Failed to generate PDF thumbnail:', thumbError);
+                }
+            }
+
             const messageData = {
                 sender: req.user._id,
                 recipient: recipientId,
                 content: content || '',
                 media,
+                mediaName,
+                mediaSize,
+                mediaType,
+                mediaThumbnail,
                 sharedPost: postId,
                 sharedPortal: portalId,
                 replyTo: replyToId,

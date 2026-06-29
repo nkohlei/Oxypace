@@ -295,6 +295,8 @@ const Inbox = () => {
                 },
                 content: content,
                 media: fileObj ? URL.createObjectURL(fileObj) : null,
+                mediaName: fileObj?.name,
+                mediaSize: fileObj?.size,
                 mediaType: fileObj?.type,
                 createdAt: new Date().toISOString(),
                 isOptimistic: true,
@@ -317,6 +319,11 @@ const Inbox = () => {
 
                 if (mediaKey) {
                     messageData.mediaKey = mediaKey;
+                    if (fileObj) {
+                        messageData.mediaName = fileObj.name;
+                        messageData.mediaSize = fileObj.size;
+                        messageData.mediaType = fileObj.type;
+                    }
                 }
 
                 const response = await axios.post('/api/messages', messageData);

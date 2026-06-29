@@ -19,6 +19,18 @@ const messageSchema = new mongoose.Schema({
     media: {
         type: String, // URL to uploaded image
     },
+    mediaName: {
+        type: String,
+    },
+    mediaSize: {
+        type: Number,
+    },
+    mediaThumbnail: {
+        type: String,
+    },
+    mediaType: {
+        type: String,
+    },
     sharedPost: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Post',

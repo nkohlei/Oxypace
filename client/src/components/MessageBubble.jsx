@@ -189,17 +189,36 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                             window.open(getImageUrl(message.media), '_blank', 'noopener,noreferrer');
                                         }}
                                     >
-                                        <div className="pdf-icon-placeholder">
-                                            <div className="pdf-icon-text">
-                                                {message.media.split('.').pop()?.substring(0, 4).toUpperCase() || 'FILE'}
+                                        {message.mediaThumbnail ? (
+                                            <div className="pdf-thumbnail-wrapper">
+                                                <img
+                                                    src={getImageUrl(message.mediaThumbnail)}
+                                                    alt="PDF preview"
+                                                    className="pdf-thumbnail"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    width="150"
+                                                    height="200"
+                                                />
+                                                <div className="pdf-badge">
+                                                    {message.mediaName?.split('.').pop()?.toUpperCase() || 'PDF'}
+                                                </div>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="pdf-icon-placeholder">
+                                                <div className="pdf-icon-text">
+                                                    {message.mediaName?.split('.').pop()?.substring(0, 4).toUpperCase() || 
+                                                     message.media.split('.').pop()?.substring(0, 4).toUpperCase() || 
+                                                     'FILE'}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="pdf-info">
-                                            <span className="pdf-name" title={message.media.split('/').pop() || 'Doküman'}>
-                                                {message.media.split('/').pop() || 'Doküman'}
+                                            <span className="pdf-name" title={message.mediaName || message.media.split('/').pop() || 'Doküman'}>
+                                                {message.mediaName || message.media.split('/').pop() || 'Doküman'}
                                             </span>
                                             <span className="pdf-size">
-                                                Doküman
+                                                {message.mediaSize ? (message.mediaSize / (1024 * 1024)).toFixed(2) + ' MB' : 'Doküman'}
                                             </span>
                                         </div>
                                         <button
