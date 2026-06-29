@@ -2,14 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
+import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
+    const { user } = useAuth();
     const {
         activeRoom,
         connectionState,
@@ -36,6 +38,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         startWatchParty,
         stopWatchParty
     } = useVoice();
+
     const { setMobileChannelOpen } = useUI();
 
     const handleSendMessage = (text) => {
@@ -66,6 +69,12 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
+
+    // Invitation states
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [portalMembers, setPortalMembers] = useState([]);
+    const [invitedUserIds, setInvitedUserIds] = useState([]);
+    const [loadingMembers, setLoadingMembers] = useState(false);
 
     const screenShareIdentity = participants.find(p => p.screenShareTrack)?.identity || null;
 
@@ -107,6 +116,34 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         const interval = setInterval(fetchCount, 10000);
         return () => { isMounted = false; clearInterval(interval); };
     }, [isActiveRoom, portalId, channelId]);
+
+    // Fetch portal members when invite panel is opened
+    useEffect(() => {
+        if (isInviteOpen && portalId) {
+            setLoadingMembers(true);
+            axios.get(`/api/portals/${portalId}`)
+                .then(res => {
+                    if (res.data && res.data.members) {
+                        setPortalMembers(res.data.members.filter(m => m._id.toString() !== user?._id?.toString()));
+                    }
+                })
+                .catch(err => console.error("Error fetching portal members for invite:", err))
+                .finally(() => setLoadingMembers(false));
+        }
+    }, [isInviteOpen, portalId, user]);
+
+    const handleSendInvite = async (targetUserId) => {
+        try {
+            await axios.post('/api/voice/invite', {
+                portalId,
+                channelId,
+                targetUserIds: [targetUserId]
+            });
+            setInvitedUserIds(prev => [...prev, targetUserId]);
+        } catch (error) {
+            console.error("Failed to send call invitation:", error);
+        }
+    };
 
     const handleJoin = () => connectToChannel(portalId, channelId);
     const handleLeave = () => { disconnectFromChannel(); setFocusedIdentity(null); };
@@ -174,12 +211,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         );
     };
 
-    const getCardBackground = (id) => {
-        let hash = 0;
-        for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-        return { background: `linear-gradient(135deg, hsl(${hash % 360}, 50%, 20%), hsl((hash * 13) % 360, 40%, 15%))` };
-    };
-
     if (!isActiveRoom) {
         return (
             <div className="vc-container glass-container lobby-bg">
@@ -224,10 +255,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const carouselClass = carouselItemsCount >= 4 ? 'grid-multi' : 'grid-single';
     const gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
 
-
-
-
-
     return (
         <div className="vc-container glass-container" onClick={handleContainerClick}>
             {isMobile && (
@@ -247,7 +274,14 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 </button>
             )}
             <div className="vc-top-right-controls">
-                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => setIsChatOpen(!isChatOpen)} title="Sohbet">
+                <button 
+                    className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`} 
+                    onClick={() => { setIsInviteOpen(!isInviteOpen); setIsChatOpen(false); }} 
+                    title="Davet Et"
+                >
+                    <UserPlus size={18} />
+                </button>
+                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsInviteOpen(false); }} title="Sohbet">
                     <MessageCircle size={18} />
                 </button>
                 
@@ -289,20 +323,29 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             <WatchPartyPlayer />
                         </div>
                     </>
-                ) : !focusedParticipant ? (
-                    <div className="vc-grid">{participants.map(p => renderParticipantCard(p, 'grid'))}</div>
                 ) : (
                     <>
-                        <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
-                            {participants.filter(p => p.identity !== activeFocusIdentity).map(p => renderParticipantCard(p, 'carousel'))}
+                        {focusedParticipant && (
+                            <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
+                                {participants.filter(p => p.identity !== activeFocusIdentity).map(p => renderParticipantCard(p, 'carousel'))}
+                            </div>
+                        )}
+                        <div className="vc-hero">
+                            {focusedParticipant ? (
+                                renderParticipantCard(focusedParticipant, 'hero')
+                            ) : (
+                                <div className={`vc-grid grid-${Math.min(participants.length, 4)}`}>
+                                    {participants.map(p => renderParticipantCard(p, 'grid'))}
+                                </div>
+                            )}
                         </div>
-                        <div className="vc-hero">{renderParticipantCard(focusedParticipant, 'hero')}</div>
                     </>
                 )}
             </div>
 
-            {isConnected && (
-                <div className={`vc-controls ${(!showControls && isMobile) ? 'controls-hidden' : ''}`}>
+            {/* Bottom Controls Bar */}
+            {showControls && (
+                <div className="vc-controls-bar">
                     <div className="vc-ctrl-section glass-controls">
                         {/* Microphone */}
                         <div className="vc-ctrl-group">
@@ -358,11 +401,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                             type="text" 
                                             placeholder="YouTube, Twitch, Vimeo veya MP4 linki yapıştırın..." 
                                             value={watchUrl} 
-                                            onChange={(e) => setWatchUrl(e.target.value)} 
-                                            className="chat-input glass-input"
-                                            style={{ flex: 1, padding: '6px 64px 6px 12px', fontSize: '12px', width: '100%' }}
+                                            onChange={(e) => setWatchUrl(e.target.value)}
+                                            style={{ width: '100%', padding: '6px 28px 6px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '12px' }}
                                         />
-                                        <div style={{ position: 'absolute', right: '4px', display: 'flex', gap: '4px', zIndex: 5 }}>
+                                        <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '4px' }}>
                                             <button 
                                                 type="button"
                                                 onClick={async () => {
@@ -370,7 +412,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                                         const text = await navigator.clipboard.readText();
                                                         setWatchUrl(text);
                                                     } catch (err) {
-                                                        console.warn("Clipboard access denied", err);
+                                                        console.warn("Could not paste from clipboard", err);
                                                     }
                                                 }}
                                                 style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -438,6 +480,47 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
                 </div>
             )}
+
+            {/* Sidebars container */}
+            <div style={{ position: 'absolute', right: '24px', top: '84px', bottom: '96px', display: 'flex', gap: '16px', zIndex: 100, pointerEvents: 'none' }}>
+                {isInviteOpen && (
+                    <div className="voice-chat-sidebar glass-panel" style={{ width: '280px', pointerEvents: 'auto' }}>
+                        <div className="chat-header">
+                            <h3>Davet Et</h3>
+                            <button className="icon-btn" onClick={() => setIsInviteOpen(false)}><X size={20} /></button>
+                        </div>
+                        <div className="chat-messages custom-scrollbar" style={{ padding: '12px' }}>
+                            {loadingMembers ? (
+                                <div style={{ textAlign: 'center', padding: '20px' }}>Yükleniyor...</div>
+                            ) : portalMembers.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>Davet edilebilecek üye bulunamadı.</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {portalMembers.map(m => {
+                                        const isInvited = invitedUserIds.includes(m._id);
+                                        return (
+                                            <div key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <img src={getImageUrl(m.profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.profile?.displayName || m.username)}`} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />
+                                                    <span style={{ fontSize: '13px', fontWeight: '500', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.profile?.displayName || m.username}</span>
+                                                </div>
+                                                <button 
+                                                    disabled={isInvited}
+                                                    onClick={() => handleSendInvite(m._id)}
+                                                    className={`glass-btn ${isInvited ? '' : 'active'}`}
+                                                    style={{ padding: '4px 10px', fontSize: '11px' }}
+                                                >
+                                                    {isInvited ? 'Davet Edildi' : 'Davet Et'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
 
             <VoiceChatSidebar 
                 messages={chatMessages} 

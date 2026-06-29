@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useVoice } from '../context/VoiceContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -38,8 +39,8 @@ const GlobalVideoPIP = () => {
     const isViewingActiveChannel = location.pathname.includes(`/portal/${activeRoom?.portalId}`) && 
         queryParams.get('channel') === activeRoom?.channelId;
 
-    // We only show PIP when connected and NOT actively viewing the channel view
-    const shouldShow = isConnected && !isViewingActiveChannel;
+    // We only show PIP when connected and NOT actively viewing the channel view and NOT on a native platform (where native System PiP is used in background instead)
+    const shouldShow = isConnected && !isViewingActiveChannel && !Capacitor.isNativePlatform();
 
     // Track active speaker to automatically shift focus
     useEffect(() => {
