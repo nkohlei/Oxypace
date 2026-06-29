@@ -25,6 +25,7 @@ const CreatePortalModal = ({ onClose }) => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showNameError, setShowNameError] = useState(false);
 
     useEffect(() => {
         if (step === 3) {
@@ -34,12 +35,26 @@ const CreatePortalModal = ({ onClose }) => {
         }
     }, [step]);
 
+    const handleNextStep = (e) => {
+        if (e) e.preventDefault();
+        if (step === 1 && !formData.name.trim()) {
+            setShowNameError(true);
+            return;
+        }
+        setShowNameError(false);
+        setStep(step + 1);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Prevent submitting to API if we are not on the last step
         if (step < 3) {
-            if (step === 1 && !formData.name.trim()) return;
+            if (step === 1 && !formData.name.trim()) {
+                setShowNameError(true);
+                return;
+            }
+            setShowNameError(false);
             setStep(step + 1);
             return;
         }
@@ -132,14 +147,17 @@ const CreatePortalModal = ({ onClose }) => {
                                     type="text"
                                     required
                                     value={formData.name}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, name: e.target.value })
-                                    }
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, name: e.target.value });
+                                        if (e.target.value.trim()) {
+                                            setShowNameError(false);
+                                        }
+                                    }}
                                     placeholder="Örn: Yazılım Dünyası"
                                     maxLength={50}
                                     autoFocus
                                 />
-                                {!formData.name.trim() && (
+                                {showNameError && !formData.name.trim() && (
                                     <span className="input-helper-error">⚠️ İlerlemek için lütfen portal adını belirleyin.</span>
                                 )}
                             </div>
@@ -314,11 +332,7 @@ const CreatePortalModal = ({ onClose }) => {
                             <button
                                 type="button"
                                 className="btn-primary"
-                                disabled={step === 1 && !formData.name.trim()}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setStep(step + 1);
-                                }}
+                                onClick={handleNextStep}
                             >
                                 İleri
                             </button>
