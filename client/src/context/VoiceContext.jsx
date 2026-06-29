@@ -15,13 +15,28 @@ export const useVoice = () => {
     return context;
 };
 
-// WebRTC ICE configuration
+// WebRTC ICE configuration (STUN + free public TURN servers for mobile carrier NAT traversal)
 const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' }
+    { urls: 'stun:stun4.l.google.com:19302' },
+    {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+    },
+    {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+    },
+    {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+    }
 ];
 
 // Helper to create a 1fps, 16x16 black canvas video track as placeholder
@@ -48,7 +63,7 @@ const createPlaceholderVideoTrack = () => {
     return null;
 };
 
-// Helper to prioritize AV1/VP9 video codec in SDP
+// Helper to prioritize universally supported H264/VP8 codecs in SDP (prevents black screens/decoding issues on mobile WebViews)
 const prioritizeVideoCodec = (sdp) => {
     const lines = sdp.split('\r\n');
     let mVideoIndex = -1;
@@ -74,10 +89,10 @@ const prioritizeVideoCodec = (sdp) => {
     }
 
     const preferredPayloads = codecs
-        .filter(c => c.name === 'VP9' || c.name === 'AV1')
+        .filter(c => c.name === 'H264' || c.name === 'VP8')
         .sort((a, b) => {
-            if (a.name === 'AV1') return -1;
-            if (b.name === 'AV1') return 1;
+            if (a.name === 'H264') return -1;
+            if (b.name === 'H264') return 1;
             return 0;
         })
         .map(c => c.payloadType);
