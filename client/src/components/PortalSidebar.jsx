@@ -58,12 +58,26 @@ const PortalSidebar = () => {
     useEffect(() => {
         const source = user?.portals || user?.joinedPortals;
         if (source) {
-            setOrderedPortals(source.filter((p) => p && p._id && p.name));
+            const filtered = source.filter((p) => p && p._id && p.name);
+            const currentIdsSorted = [...orderedPortals].map(p => p._id).sort().join(',');
+            const newIdsSorted = filtered.map(p => p._id).sort().join(',');
+            
+            if (currentIdsSorted !== newIdsSorted) {
+                setOrderedPortals(filtered);
+            } else {
+                const updated = orderedPortals.map(op => {
+                    const latest = filtered.find(fp => fp._id === op._id);
+                    return latest ? latest : op;
+                });
+                if (JSON.stringify(orderedPortals) !== JSON.stringify(updated)) {
+                    setOrderedPortals(updated);
+                }
+            }
             // Sync unread counts from server to ensure offline accuracy
             syncUnreadCounts();
             fetchUnreadMessagesCount();
         }
-    }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount]);
+    }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount, orderedPortals]);
 
     useEffect(() => {
         // Clear unread status when entering a portal
