@@ -282,6 +282,45 @@ const AppLayout = () => {
         }
     }, [location.pathname, socket, connected, isLoggedIn]);
 
+    // Listen for incoming voice invite socket events → fire local notification with action buttons
+    useEffect(() => {
+        if (!socket || !isLoggedIn) return;
+
+        const handleVoiceInvite = async (data) => {
+            if (!Capacitor.isNativePlatform()) return;
+            try {
+                const { portalId, channelId, channelName, portalName, senderName, link } = data;
+                const joinLink = link || `/portal/${portalId}?channel=${channelId}&joinVoice=true`;
+                await LocalNotifications.schedule({
+                    notifications: [
+                        {
+                            title: '📞 Görüntülü Sohbet Daveti',
+                            body: `${senderName} seni ${channelName || 'görüntülü sohbet'} odasına davet ediyor!`,
+                            id: Math.floor(Math.random() * 999999) + 1,
+                            actionTypeId: 'VOICE_INVITE',
+                            extra: {
+                                type: 'voice_invite',
+                                route: joinLink,
+                                portalId,
+                                channelId
+                            },
+                            sound: 'default',
+                            smallIcon: 'ic_stat_icon_config_sample',
+                            ongoing: false
+                        }
+                    ]
+                });
+            } catch (err) {
+                console.error('Failed to schedule voice invite notification:', err);
+            }
+        };
+
+        socket.on('voice:incoming-invite', handleVoiceInvite);
+        return () => {
+            socket.off('voice:incoming-invite', handleVoiceInvite);
+        };
+    }, [socket, isLoggedIn]);
+
     // Map and admin pages get a clean full-screen layout — no sidebar, no footer
     const isMapPage = location.pathname === '/map';
     const isAdminPage = location.pathname.startsWith('/admin');

@@ -99,19 +99,8 @@ const ShareModal = ({ postId, onClose }) => {
     // Open native app via custom URI scheme with web fallback
     const openAppOrWeb = (appUri, webUrl) => {
         if (Capacitor.isNativePlatform()) {
-            // Force external system app or system browser launch using target='_system'
-            window.open(appUri, '_system');
-            
-            // Fallback to web URL in system browser (Chrome) if app is not installed
-            const fallbackTimer = setTimeout(() => {
-                window.open(webUrl, '_system');
-            }, 1200);
-            
-            const clearTimer = () => {
-                clearTimeout(fallbackTimer);
-                window.removeEventListener('blur', clearTimer);
-            };
-            window.addEventListener('blur', clearTimer);
+            // Set href so Android shouldOverrideUrlLoading intercepts & launches native app
+            window.location.href = appUri;
         } else {
             window.open(webUrl, '_blank');
         }

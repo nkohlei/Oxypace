@@ -40,11 +40,9 @@ const GlobalVideoPIP = () => {
     const isViewingActiveChannel = location.pathname.includes(`/portal/${activeRoom?.portalId}`) && 
         queryParams.get('channel') === activeRoom?.channelId;
 
-    // Show overlay either on Web when away from channel, OR on Mobile when native PiP mode is active!
-    const shouldShow = isConnected && (
-        (!Capacitor.isNativePlatform() && !isViewingActiveChannel) ||
-        (Capacitor.isNativePlatform() && isInNativePiP)
-    );
+    // Show overlay ONLY on native Android when the system enters PiP mode
+    // Web platform gets NO floating window ever
+    const shouldShow = isConnected && Capacitor.isNativePlatform() && isInNativePiP;
 
     // Listen to native Android PiP state changes from MainActivity
     useEffect(() => {
