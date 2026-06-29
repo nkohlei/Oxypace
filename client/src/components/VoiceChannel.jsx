@@ -343,9 +343,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 )}
             </div>
 
-            {/* Bottom Controls Bar */}
-            {showControls && (
-                <div className="vc-controls-bar">
+            {isConnected && (
+                <div className={`vc-controls ${(!showControls && isMobile) ? 'controls-hidden' : ''}`}>
                     <div className="vc-ctrl-section glass-controls">
                         {/* Microphone */}
                         <div className="vc-ctrl-group">
