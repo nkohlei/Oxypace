@@ -173,3 +173,88 @@
     border-color: var(--text-primary);
     color: var(--text-primary);
 }
+
+/* Step 2 Visuals Uploader */
+.visuals-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.banner-picker-preview {
+    width: 100%;
+    height: 150px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.banner-picker-preview:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary-cyan);
+}
+
+.picker-overlay-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.avatar-picker-wrapper {
+    position: absolute;
+    bottom: -50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.avatar-picker-preview {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background-color: var(--bg-darker);
+    border: 3px solid var(--bg-card);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-picker-preview:hover {
+    border-color: var(--primary-cyan);
+    transform: scale(1.05);
+}
+
+.picker-overlay-text-avatar {
+    font-size: 1.5rem;
+}
+
+.avatar-picker-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* Adjust Step Content spacing in step 2 to allow the floating avatar */
+.step-content {
+    margin-bottom: 20px;
+}
+
+/* Extra space for step 2 */
+.step-content:has(.visuals-upload-container) {
+    margin-bottom: 70px;
+}

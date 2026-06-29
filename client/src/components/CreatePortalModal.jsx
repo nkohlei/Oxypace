@@ -2,28 +2,29 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { uploadFile } from '../utils/uploadUtils';
 import './CreatePortalModal.css';
 
 const CreatePortalModal = ({ onClose }) => {
     const { updateUser, user } = useAuth();
     const navigate = useNavigate();
 
-    const [step, setStep] = useState(1); // 1: Basic, 2: Details, 3: Settings
+    const [step, setStep] = useState(1); // 1: Basic, 2: Visuals, 3: Settings
     const [canSubmit, setCanSubmit] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
         privacy: 'public',
         category: 'general',
-        tags: '',
-        avatar: '', // Text URL for now
-        banner: '', // Text URL for now
     });
+
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [bannerFile, setBannerFile] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState(null);
+    const [bannerPreview, setBannerPreview] = useState(null);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    // Prevent ghost clicks on mobile (where clicking 'Next' triggers 'Submit' instantly)
 
     useEffect(() => {
         if (step === 3) {
@@ -36,7 +37,7 @@ const CreatePortalModal = ({ onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Prevent submitting to API if we are not on the last step (e.g., when user presses Enter)
+        // Prevent submitting to API if we are not on the last step
         if (step < 3) {
             setStep(step + 1);
             return;
@@ -46,14 +47,30 @@ const CreatePortalModal = ({ onClose }) => {
         setError('');
 
         try {
-            // Convert comma separated tags to array if backend supports it
-            // Assuming backend might need string for now or array, keeping as string in form
-            // but let's send as array if we updated backend model.
-            // Current model likely just takes what we send if loose,
-            // but let's stick to the structure.
+            // 1. Create Portal
             const response = await axios.post('/api/portals', formData);
-
             const newPortal = response.data;
+
+            // 2. Upload Avatar if selected
+            if (avatarFile) {
+                try {
+                    const avatarKey = await uploadFile(avatarFile, 'avatar', newPortal._id);
+                    await axios.post(`/api/portals/${newPortal._id}/avatar`, { mediaKey: avatarKey });
+                } catch (err) {
+                    console.error('Avatar upload failed:', err);
+                }
+            }
+
+            // 3. Upload Banner if selected
+            if (bannerFile) {
+                try {
+                    const bannerKey = await uploadFile(bannerFile, 'banner', newPortal._id);
+                    await axios.post(`/api/portals/${newPortal._id}/banner`, { mediaKey: bannerKey });
+                } catch (err) {
+                    console.error('Banner upload failed:', err);
+                }
+            }
+
             const updatedUser = {
                 ...user,
                 joinedPortals: [...(user.joinedPortals || []), newPortal],
@@ -149,49 +166,79 @@ const CreatePortalModal = ({ onClose }) => {
                         </div>
                     )}
 
-                    {/* STEP 2: Visuals & Tags */}
+                    {/* STEP 2: Visuals (Avatar & Banner via Local Files) */}
                     {step === 2 && (
                         <div className="step-content fade-in">
-                            <h3 className="step-title">Görünüm & Etiketler</h3>
-                            <div className="form-group">
-                                <label>Etiketler (Virgül ile ayırın)</label>
-                                <input
-                                    type="text"
-                                    value={formData.tags}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, tags: e.target.value })
-                                    }
-                                    placeholder="örn: react, javascript, kodlama"
-                                />
-                            </div>
+                            <h3 className="step-title">Görünüm Ayarları</h3>
+                            
+                            <div className="visuals-upload-container">
+                                {/* Banner Picker */}
+                                <div 
+                                    className="banner-picker-preview"
+                                    style={{
+                                        backgroundImage: bannerPreview ? `url(${bannerPreview})` : 'none',
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center',
+                                    }}
+                                    onClick={() => document.getElementById('banner-file-input').click()}
+                                >
+                                    {!bannerPreview && (
+                                        <div className="picker-overlay-text">
+                                            <span>📷 Kapak Görseli Ekle</span>
+                                        </div>
+                                    )}
+                                    <input 
+                                        type="file" 
+                                        id="banner-file-input" 
+                                        accept="image/*" 
+                                        style={{ display: 'none' }} 
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                setBannerFile(file);
+                                                setBannerPreview(URL.createObjectURL(file));
+                                            }
+                                        }}
+                                    />
+                                </div>
 
-                            <div className="form-group">
-                                <label>Profil Görseli (URL)</label>
-                                <input
-                                    type="text"
-                                    value={formData.avatar}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, avatar: e.target.value })
-                                    }
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Kapak Görseli (URL)</label>
-                                <input
-                                    type="text"
-                                    value={formData.banner}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, banner: e.target.value })
-                                    }
-                                    placeholder="https://..."
-                                />
+                                {/* Avatar Picker */}
+                                <div className="avatar-picker-wrapper">
+                                    <div 
+                                        className="avatar-picker-preview"
+                                        style={{
+                                            backgroundImage: avatarPreview ? `url(${avatarPreview})` : 'none',
+                                            backgroundSize: 'cover',
+                                            backgroundPosition: 'center',
+                                        }}
+                                        onClick={() => document.getElementById('avatar-file-input').click()}
+                                    >
+                                        {!avatarPreview && (
+                                            <div className="picker-overlay-text-avatar">
+                                                <span>📷</span>
+                                            </div>
+                                        )}
+                                        <input 
+                                            type="file" 
+                                            id="avatar-file-input" 
+                                            accept="image/*" 
+                                            style={{ display: 'none' }} 
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    setAvatarFile(file);
+                                                    setAvatarPreview(URL.createObjectURL(file));
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    <span className="avatar-picker-label">Profil Resmi</span>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* STEP 3: Privacy & Rules (Simplified) */}
+                    {/* STEP 3: Privacy */}
                     {step === 3 && (
                         <div className="step-content fade-in">
                             <h3 className="step-title">Gizlilik Ayarları</h3>
@@ -249,7 +296,7 @@ const CreatePortalModal = ({ onClose }) => {
                                 Geri
                             </button>
                         ) : (
-                            <button type="button" className="btn-cancel" onClick={onClose}>
+                            <button type="button" className="btn-secondary" onClick={onClose}>
                                 İptal
                             </button>
                         )}
@@ -266,7 +313,7 @@ const CreatePortalModal = ({ onClose }) => {
                                 İleri
                             </button>
                         ) : (
-                            <button type="submit" className="btn-submit" disabled={loading || !canSubmit}>
+                            <button type="submit" className="btn-primary" disabled={loading || !canSubmit}>
                                 {loading ? 'Oluşturuluyor...' : 'Tamamla & Oluştur'}
                             </button>
                         )}
