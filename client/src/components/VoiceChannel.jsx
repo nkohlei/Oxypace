@@ -481,45 +481,43 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 </div>
             )}
 
-            {/* Sidebars container */}
-            <div style={{ position: 'absolute', right: '24px', top: '84px', bottom: '96px', display: 'flex', gap: '16px', zIndex: 100, pointerEvents: 'none' }}>
-                {isInviteOpen && (
-                    <div className="voice-chat-sidebar glass-panel" style={{ width: '280px', pointerEvents: 'auto' }}>
-                        <div className="chat-header">
-                            <h3>Davet Et</h3>
-                            <button className="icon-btn" onClick={() => setIsInviteOpen(false)}><X size={20} /></button>
+            {/* Invite Sidebar Modal (Directly in container layout for proper CSS animations) */}
+            <div className={`voice-chat-sidebar glass-panel ${isInviteOpen ? 'open' : ''}`}>
+                <div className="chat-header">
+                    <h3>Davet Et</h3>
+                    <button className="chat-close-btn icon-btn" onClick={() => setIsInviteOpen(false)} title="Kapat">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="chat-messages custom-scrollbar" style={{ padding: '16px' }}>
+                    {loadingMembers ? (
+                        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Yükleniyor...</div>
+                    ) : portalMembers.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Davet edilebilecek üye bulunamadı.</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {portalMembers.map(m => {
+                                const isInvited = invitedUserIds.includes(m._id);
+                                return (
+                                    <div key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <img src={getImageUrl(m.profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.profile?.displayName || m.username)}`} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.profile?.displayName || m.username}</span>
+                                        </div>
+                                        <button 
+                                            disabled={isInvited}
+                                            onClick={() => handleSendInvite(m._id)}
+                                            className={`chat-send-btn glass-btn ${isInvited ? '' : 'active'}`}
+                                            style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '20px' }}
+                                        >
+                                            {isInvited ? 'Davet Edildi' : 'Davet Et'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <div className="chat-messages custom-scrollbar" style={{ padding: '12px' }}>
-                            {loadingMembers ? (
-                                <div style={{ textAlign: 'center', padding: '20px' }}>Yükleniyor...</div>
-                            ) : portalMembers.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>Davet edilebilecek üye bulunamadı.</div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {portalMembers.map(m => {
-                                        const isInvited = invitedUserIds.includes(m._id);
-                                        return (
-                                            <div key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <img src={getImageUrl(m.profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.profile?.displayName || m.username)}`} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />
-                                                    <span style={{ fontSize: '13px', fontWeight: '500', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.profile?.displayName || m.username}</span>
-                                                </div>
-                                                <button 
-                                                    disabled={isInvited}
-                                                    onClick={() => handleSendInvite(m._id)}
-                                                    className={`glass-btn ${isInvited ? '' : 'active'}`}
-                                                    style={{ padding: '4px 10px', fontSize: '11px' }}
-                                                >
-                                                    {isInvited ? 'Davet Edildi' : 'Davet Et'}
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             <VoiceChatSidebar 

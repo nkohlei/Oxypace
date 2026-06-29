@@ -99,13 +99,14 @@ const ShareModal = ({ postId, onClose }) => {
     // Open native app via custom URI scheme with web fallback
     const openAppOrWeb = (appUri, webUrl) => {
         if (Capacitor.isNativePlatform()) {
-            window.location.href = appUri;
-            // Fallback to web URL if app is not installed/handling within 1.5s
-            const fallbackTimer = setTimeout(() => {
-                window.open(webUrl, '_blank');
-            }, 1500);
+            // Force external system app or system browser launch using target='_system'
+            window.open(appUri, '_system');
             
-            // Clear timer if user navigates away (e.g. app actually opened)
+            // Fallback to web URL in system browser (Chrome) if app is not installed
+            const fallbackTimer = setTimeout(() => {
+                window.open(webUrl, '_system');
+            }, 1200);
+            
             const clearTimer = () => {
                 clearTimeout(fallbackTimer);
                 window.removeEventListener('blur', clearTimer);

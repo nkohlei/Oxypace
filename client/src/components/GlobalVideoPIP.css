@@ -338,3 +338,15 @@
         max-width: 80px;
     }
 }
+
+/* Native Android PiP overrides */
+.global-video-pip-window.native-pip {
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
