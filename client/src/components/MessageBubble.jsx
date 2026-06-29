@@ -106,6 +106,10 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
 
     const emojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
 
+    const isVideo = message.media && (message.media.match(/\.(mp4|webm|ogg|mov)$/i) || (message.isOptimistic && message.media.startsWith('blob:') && message.mediaType?.startsWith('video')));
+    const isImage = message.media && (message.media.match(/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i) || (message.isOptimistic && message.media.startsWith('blob:') && message.mediaType?.startsWith('image')));
+    const isDocument = message.media && !isVideo && !isImage;
+
     return (
         <>
             <div
@@ -176,42 +180,78 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
 
                     <div className="message-bubble-content">
                         {message.media && (
-                            <div className="message-media" onClick={toggleLightbox}>
-                                {message.media.match(/\.(mp4|webm|ogg|mov)$/i) || (message.isOptimistic && message.media.startsWith('blob:')) && message.mediaType?.startsWith('video') ? (
-                                    <div className="video-container">
-                                        <video
-                                            src={message.isOptimistic ? message.media : getImageUrl(message.media)}
-                                            className="bubble-video"
-                                        />
-                                        <div className="video-play-overlay">
-                                            <Play size={32} fill="currentColor" />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <img
-                                        src={
-                                            message.isOptimistic
-                                                ? message.media
-                                                : getImageUrl(message.media)
-                                        }
-                                        alt="Attachment"
-                                        loading="lazy"
-                                        decoding="async"
-                                        width="250"
-                                        height="250"
-                                    />
-                                )}
-                                {!message.isOptimistic && (
-                                    <button
-                                        className="msg-download-btn"
-                                        onClick={(e) =>
-                                            handleDownload(e, getImageUrl(message.media))
-                                        }
+                            isDocument ? (
+                                <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
+                                    <div
+                                        className="pdf-glass-card"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            window.open(getImageUrl(message.media), '_blank', 'noopener,noreferrer');
+                                        }}
                                     >
-                                        <Download size={24} strokeWidth={2} />
-                                    </button>
-                                )}
-                            </div>
+                                        <div className="pdf-icon-placeholder">
+                                            <div className="pdf-icon-text">
+                                                {message.media.split('.').pop()?.substring(0, 4).toUpperCase() || 'FILE'}
+                                            </div>
+                                        </div>
+                                        <div className="pdf-info">
+                                            <span className="pdf-name" title={message.media.split('/').pop() || 'Doküman'}>
+                                                {message.media.split('/').pop() || 'Doküman'}
+                                            </span>
+                                            <span className="pdf-size">
+                                                Doküman
+                                            </span>
+                                        </div>
+                                        <button
+                                            className="pdf-download-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDownload(e, message.media);
+                                            }}
+                                            title="İndir"
+                                        >
+                                            <Download size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="message-media" onClick={toggleLightbox}>
+                                    {isVideo ? (
+                                        <div className="video-container">
+                                            <video
+                                                src={message.isOptimistic ? message.media : getImageUrl(message.media)}
+                                                className="bubble-video"
+                                            />
+                                            <div className="video-play-overlay">
+                                                <Play size={32} fill="currentColor" />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <img
+                                            src={
+                                                message.isOptimistic
+                                                    ? message.media
+                                                    : getImageUrl(message.media)
+                                            }
+                                            alt="Attachment"
+                                            loading="lazy"
+                                            decoding="async"
+                                            width="250"
+                                            height="250"
+                                        />
+                                    )}
+                                    {!message.isOptimistic && (
+                                        <button
+                                            className="msg-download-btn"
+                                            onClick={(e) =>
+                                                handleDownload(e, getImageUrl(message.media))
+                                            }
+                                        >
+                                            <Download size={24} strokeWidth={2} />
+                                        </button>
+                                    )}
+                                </div>
+                            )
                         )}
 
                         {message.replyTo && (
