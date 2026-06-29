@@ -28,6 +28,7 @@ const Inbox = () => {
     const [newMessage, setNewMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [messagesLoading, setMessagesLoading] = useState(false);
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
     const [media, setMedia] = useState([]);
@@ -152,35 +153,48 @@ const Inbox = () => {
                 );
             };
 
-            socket.on('newMessage', handleNewMessage);
-            socket.on('messageSent', handleNewMessage);
+            socket.on('message', handleNewMessage);
             socket.on('messageDeleted', handleMessageDeleted);
             socket.on('messageReaction', handleMessageReaction);
 
             return () => {
-                socket.off('newMessage', handleNewMessage);
-                socket.off('messageSent', handleNewMessage);
+                socket.off('message', handleNewMessage);
                 socket.off('messageDeleted', handleMessageDeleted);
                 socket.off('messageReaction', handleMessageReaction);
             };
         }
-    }, [socket, selectedUser, user]);
+    }, [socket, selectedUser, user._id]);
 
     useLayoutEffect(() => {
         if (selectedUser) {
-            scrollToBottom();
+            const container = messagesContainerRef.current;
+            if (!container) return;
 
-            const rafId = requestAnimationFrame(() => {
-                scrollToBottom();
+            let isAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+
+            const handleScroll = () => {
+                isAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+            };
+
+            container.addEventListener('scroll', handleScroll);
+
+            const observer = new MutationObserver(() => {
+                if (isAtBottom) {
+                    scrollToBottom();
+                }
             });
 
-            const timerId1 = setTimeout(scrollToBottom, 50);
-            const timerId2 = setTimeout(scrollToBottom, 150);
+            observer.observe(container, {
+                childList: true,
+                subtree: true,
+            });
+
+            // Initial scroll
+            scrollToBottom();
 
             return () => {
-                cancelAnimationFrame(rafId);
-                clearTimeout(timerId1);
-                clearTimeout(timerId2);
+                container.removeEventListener('scroll', handleScroll);
+                observer.disconnect();
             };
         }
     }, [selectedUser, messages, media, replyingTo, scrollToBottom]);
@@ -208,6 +222,7 @@ const Inbox = () => {
     };
 
     const fetchMessages = async (userId) => {
+        setMessagesLoading(true);
         try {
             const response = await axios.get(`/api/messages/${userId}`);
             setMessages(response.data);
@@ -215,6 +230,8 @@ const Inbox = () => {
             useGlobalStore.getState().fetchUnreadMessagesCount();
         } catch (err) {
             console.error('Failed to fetch messages:', err);
+        } finally {
+            setMessagesLoading(false);
         }
     };
 
@@ -571,16 +588,22 @@ const Inbox = () => {
                             </div>
 
                             <div className="messages-container" ref={messagesContainerRef}>
-                                {messages.map((message) => (
-                                    <MessageBubble
-                                        key={message._id}
-                                        message={message}
-                                        isOwn={message.sender._id === user._id}
-                                        onDelete={handleDeleteMessage}
-                                        onReply={handleReply}
-                                        onReact={handleReact}
-                                    />
-                                ))}
+                                {messagesLoading ? (
+                                    <div className="spinner-container" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px' }}>
+                                        <div className="spinner"></div>
+                                    </div>
+                                ) : (
+                                    messages.map((message) => (
+                                        <MessageBubble
+                                            key={message._id}
+                                            message={message}
+                                            isOwn={message.sender._id === user._id}
+                                            onDelete={handleDeleteMessage}
+                                            onReply={handleReply}
+                                            onReact={handleReact}
+                                        />
+                                    ))
+                                )}
                                 <div ref={messagesEndRef} />
                             </div>
 
