@@ -3,6 +3,7 @@ import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { protect } from '../middleware/auth.js';
 import Portal from '../models/Portal.js';
 import { getVoiceRoomData } from '../sockets/voiceHandler.js';
+import Notification from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -255,6 +256,75 @@ router.post('/rooms/:portalId/:channelId/raise-hand', protect, async (req, res) 
     } catch (error) {
         console.error('Raise hand error:', error);
         res.status(500).json({ message: 'Failed to raise hand' });
+    }
+});
+
+/**
+ * POST /api/voice/invite
+ * Send a video/voice call invitation notification
+ * Body: { portalId, channelId, targetUserIds } (targetUserIds is an array of user IDs)
+ */
+router.post('/invite', protect, async (req, res) => {
+    try {
+        const { portalId, channelId, targetUserIds } = req.body;
+        if (!portalId || !channelId || !targetUserIds || !Array.isArray(targetUserIds)) {
+            return res.status(400).json({ message: 'portalId, channelId, and targetUserIds array are required' });
+        }
+
+        const portal = await Portal.findById(portalId);
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal not found' });
+        }
+
+        const userRole = getUserRole(portal, req.user._id);
+        if (userRole === 'guest') {
+            return res.status(403).json({ message: 'You must be a member to send voice invites' });
+        }
+
+        const channel = portal.channels.id(channelId);
+        if (!channel) {
+            return res.status(404).json({ message: 'Channel not found' });
+        }
+
+        const notifications = [];
+        const io = req.app.get('io');
+
+        for (const targetId of targetUserIds) {
+            if (targetId.toString() === req.user._id.toString()) continue;
+
+            const notification = await Notification.create({
+                recipient: targetId,
+                sender: req.user._id,
+                type: 'voice_invite',
+                portal: portalId,
+                channel: channelId,
+                link: `/portal/${portalId}?channel=${channelId}&joinVoice=true`,
+                content: `${req.user.profile?.displayName || req.user.username} seni ${portal.name} portalındaki ${channel.name} görüntülü konuşma odasına davet etti.`,
+            });
+
+            const populated = await notification.populate('sender', 'username profile.displayName profile.avatar');
+
+            if (io) {
+                io.to(targetId.toString()).emit('newNotification', populated);
+                // Also emit a specific direct call event so the app displays a modal if it's currently open
+                io.to(targetId.toString()).emit('voice:incoming-invite', {
+                    portalId,
+                    channelId,
+                    channelName: channel.name,
+                    portalName: portal.name,
+                    senderName: req.user.profile?.displayName || req.user.username,
+                    senderAvatar: req.user.profile?.avatar || '',
+                    link: `/portal/${portalId}?channel=${channelId}&joinVoice=true`,
+                });
+            }
+
+            notifications.push(populated);
+        }
+
+        res.json({ message: 'Invitations sent successfully', count: notifications.length });
+    } catch (error) {
+        console.error('Voice invite error:', error);
+        res.status(500).json({ message: 'Failed to send invitations' });
     }
 });
 

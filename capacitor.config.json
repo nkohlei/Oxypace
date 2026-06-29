@@ -2,6 +2,9 @@
   "appId": "com.oxypace.app",
   "appName": "Oxypace",
   "webDir": "client/dist",
+  "android": {
+    "adjustMarginsForEdgeToEdge": true
+  },
   "server": {
     "androidScheme": "https",
     "cleartext": true,

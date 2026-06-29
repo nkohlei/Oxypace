@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
+import { Capacitor } from '@capacitor/core';
 import AdUnit from '../components/AdUnit';
 import SEO from '../components/SEO';
 import axios from 'axios';
@@ -367,14 +368,16 @@ const Home = () => {
                                 <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
                             </div>
 
-                            <div className="footer-apk-container">
-                                <a href="/downloads/oxypace.apk" download className="footer-apk-btn">
-                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="apk-icon">
-                                        <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-8.5-6C8.4 2 5.2 4.9 5 8.6h14c-.2-3.7-3.4-6.6-7-6.6zm-2.5 3c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
-                                    </svg>
-                                    <span>Download APK (v1.0.3)</span>
-                                </a>
-                            </div>
+                            {!Capacitor.isNativePlatform() && (
+                                <div className="footer-apk-container">
+                                    <a href="/downloads/oxypace.apk" download className="footer-apk-btn">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="apk-icon">
+                                            <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-8.5-6C8.4 2 5.2 4.9 5 8.6h14c-.2-3.7-3.4-6.6-7-6.6zm-2.5 3c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
+                                        </svg>
+                                        <span>Download APK (v1.0.4)</span>
+                                    </a>
+                                </div>
+                            )}
 
                             <div className="footer-links-grid">
                                 <div className="footer-col">

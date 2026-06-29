@@ -6,6 +6,7 @@ import UserBadges from './UserBadges';
 import { useAuth } from '../context/AuthContext';
 import { X, Link2, Share2, MessageCircle, Twitter, Facebook, Mail } from 'lucide-react';
 import './ShareModal.css';
+import { Capacitor } from '@capacitor/core';
 
 const ShareModal = ({ postId, onClose }) => {
     const { user: currentUser } = useAuth();
@@ -95,28 +96,54 @@ const ShareModal = ({ postId, onClose }) => {
         });
     };
 
+    // Open native app via custom URI scheme with web fallback
+    const openAppOrWeb = (appUri, webUrl) => {
+        if (Capacitor.isNativePlatform()) {
+            window.location.href = appUri;
+            // Fallback to web URL if app is not installed/handling within 1.5s
+            const fallbackTimer = setTimeout(() => {
+                window.open(webUrl, '_blank');
+            }, 1500);
+            
+            // Clear timer if user navigates away (e.g. app actually opened)
+            const clearTimer = () => {
+                clearTimeout(fallbackTimer);
+                window.removeEventListener('blur', clearTimer);
+            };
+            window.addEventListener('blur', clearTimer);
+        } else {
+            window.open(webUrl, '_blank');
+        }
+    };
+
     // External Share Helpers
     const shareToWhatsapp = () => {
         const url = getShareUrl();
-        window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, '_blank');
+        openAppOrWeb(
+            `whatsapp://send?text=${encodeURIComponent(url)}`,
+            `https://wa.me/?text=${encodeURIComponent(url)}`
+        );
     };
 
     const shareToTwitter = () => {
         const url = getShareUrl();
-        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}`, '_blank');
+        openAppOrWeb(
+            `twitter://post?message=${encodeURIComponent(url)}`,
+            `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}`
+        );
     };
 
     const shareToFacebook = () => {
         const url = getShareUrl();
-        window.open(
-            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-            '_blank'
+        openAppOrWeb(
+            `fb://facewebmodal/f?href=${encodeURIComponent(url)}`,
+            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
         );
     };
 
     const shareToEmail = () => {
         const url = getShareUrl();
-        window.location.href = `mailto:?subject=Deepace Post&body=${encodeURIComponent(url)}`;
+        window.location.href = `mailto:?subject=Oxypace Post&body=${encodeURIComponent(url)}`;
     };
 
     const handleSystemShare = async () => {

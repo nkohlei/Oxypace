@@ -210,10 +210,20 @@ router.post(
 
             // Create Notification
             try {
+                let notificationContent = content || '';
+                if (!notificationContent && media) {
+                    notificationContent = '[Medya Dosyası]';
+                } else if (!notificationContent && postId) {
+                    notificationContent = '[Paylaşılan Gönderi]';
+                } else if (!notificationContent && portalId) {
+                    notificationContent = '[Paylaşılan Portal]';
+                }
+
                 const notification = await Notification.create({
                     recipient: recipientId,
                     sender: req.user._id,
                     type: 'message',
+                    content: notificationContent,
                 });
 
                 const io = req.app.get('io');

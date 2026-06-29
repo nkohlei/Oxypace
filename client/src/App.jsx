@@ -76,6 +76,7 @@ import SecurityQuestionsModal from './components/SecurityQuestionsModal';
 import './AppLayout.css';
 import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
+import GlobalVideoPIP from './components/GlobalVideoPIP';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
 const MAINTENANCE_MODE = false;
@@ -107,6 +108,32 @@ const requestNativePermissions = async () => {
         if (pushStatus.receive === 'granted') {
             await PushNotifications.register();
             
+            // Register Action Types for Local Notifications (Voice Invite Join Action)
+            try {
+                await LocalNotifications.registerActionTypes({
+                    types: [
+                        {
+                            id: 'VOICE_INVITE',
+                            actions: [
+                                {
+                                    id: 'join',
+                                    title: 'Katıl',
+                                    foreground: true
+                                },
+                                {
+                                    id: 'dismiss',
+                                    title: 'Kapat',
+                                    foreground: false,
+                                    destructive: true
+                                }
+                            ]
+                        }
+                    ]
+                });
+            } catch (err) {
+                console.warn('Error registering action types:', err);
+            }
+
             // Listeners
             await PushNotifications.addListener('registration', (token) => {
                 // Save token locally to be sent when user logs in
@@ -121,7 +148,8 @@ const requestNativePermissions = async () => {
                 console.log('Push notification received in foreground:', notification);
                 
                 const imageUrl = notification.data?.picture || notification.data?.image || notification.data?.bigPicture;
-                
+                const isVoiceInvite = notification.data?.type === 'voice_invite' || notification.title?.includes('Görüntülü');
+
                 try {
                     await LocalNotifications.schedule({
                         notifications: [
@@ -130,6 +158,7 @@ const requestNativePermissions = async () => {
                                 body: notification.body || '',
                                 id: Math.floor(Math.random() * 1000000),
                                 extra: notification.data || {},
+                                actionTypeId: isVoiceInvite ? 'VOICE_INVITE' : undefined,
                                 ...(imageUrl && {
                                     attachments: [
                                         {
@@ -149,11 +178,14 @@ const requestNativePermissions = async () => {
             // Local Notification action listener for routing when clicked in foreground
             await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
                 console.log('Local notification action performed:', action);
+                if (action.actionId === 'dismiss') return;
+
                 const data = action.notification?.extra;
                 if (data) {
-                    const { type, targetId, route } = data;
-                    if (route) {
-                        window.location.href = route;
+                    const { type, targetId, route, url } = data;
+                    const destination = route || url;
+                    if (destination) {
+                        window.location.href = destination;
                     } else if (type === 'message' && targetId) {
                         window.location.href = `/inbox/${targetId}`;
                     } else if (type === 'quote' && targetId) {
@@ -170,9 +202,10 @@ const requestNativePermissions = async () => {
                 console.log('Push notification action performed:', notification);
                 const data = notification.notification?.data;
                 if (data) {
-                    const { type, targetId, route } = data;
-                    if (route) {
-                        window.location.href = route;
+                    const { type, targetId, route, url } = data;
+                    const destination = route || url;
+                    if (destination) {
+                        window.location.href = destination;
                     } else if (type === 'message' && targetId) {
                         window.location.href = `/inbox/${targetId}`;
                     } else if (type === 'quote' && targetId) {
@@ -509,6 +542,7 @@ const AppLayout = () => {
                 </div>
             </div>
             <InAppBrowser />
+            <GlobalVideoPIP />
         </div>
     );
 };

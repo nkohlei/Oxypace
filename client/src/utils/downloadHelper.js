@@ -1,12 +1,59 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const Downloader = registerPlugin('Downloader');
 
+// Custom top notification toast helper
+const showTopToast = (message) => {
+    const toast = document.createElement('div');
+    toast.className = 'top-download-toast';
+    toast.innerText = message;
+    document.body.appendChild(toast);
+    
+    // Style the toast dynamically to be beautiful, modern glassmorphism
+    Object.assign(toast.style, {
+        position: 'fixed',
+        top: '24px',
+        left: '50%',
+        transform: 'translateX(-50%) translateY(-100px)',
+        background: 'rgba(15, 23, 42, 0.9)',
+        color: '#fff',
+        padding: '14px 28px',
+        borderRadius: '14px',
+        fontSize: '13px',
+        fontWeight: '600',
+        zIndex: '999999',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(20px)',
+        webkitBackdropFilter: 'blur(20px)',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
+        opacity: '0',
+        textAlign: 'center'
+    });
+
+    // Trigger slide down and fade in
+    requestAnimationFrame(() => {
+        toast.style.transform = 'translateX(-50%) translateY(0)';
+        toast.style.opacity = '1';
+    });
+
+    // Dismiss after 1 second (1000ms)
+    setTimeout(() => {
+        toast.style.transform = 'translateX(-50%) translateY(-100px)';
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            if (document.body.contains(toast)) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    }, 1000);
+};
+
 /**
  * Downloads a file on web or native platforms.
- * On Android, it uses the native DownloadManager to show progress in the status bar.
- * On other platforms, it uses Filesystem API or web fallback.
+ * Shows top toasts inside the app and status bar notifications on native device.
  * @param {string} url - The URL of the file to download
  * @param {string} filename - The name of the file to save as
  */
@@ -16,28 +63,58 @@ export const downloadFile = async (url, filename) => {
             filename = url.split('/').pop() || `oxypace-${Date.now()}`;
         }
 
+        // Show start toast
+        showTopToast('İndirme başladı...');
+
         if (Capacitor.isNativePlatform()) {
-            // Check storage permissions safely (non-blocking for Android DownloadManager)
+            const notifId = Math.floor(Math.random() * 1000000);
             try {
-                if (Capacitor.getPlatform() !== 'android') {
-                    let permStatus = await Filesystem.checkPermissions();
-                    if (permStatus.publicStorage !== 'granted') {
-                        await Filesystem.requestPermissions();
-                    }
-                }
+                await LocalNotifications.schedule({
+                    notifications: [
+                        {
+                            title: 'Dosya İndiriliyor',
+                            body: `${filename} indiriliyor...`,
+                            id: notifId
+                        }
+                    ]
+                });
             } catch (err) {
-                console.warn("Permission handling check/request error:", err);
+                console.warn('Could not schedule starting notification', err);
             }
 
-            const saveFileViaFilesystem = async () => {
-                try {
-                    const response = await fetch(url);
-                    const blob = await response.blob();
-                    
-                    const reader = new FileReader();
-                    reader.readAsDataURL(blob);
-                    reader.onloadend = async () => {
-                        const base64data = reader.result;
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = async () => {
+                    const base64data = reader.result;
+                    try {
+                        // Attempt to write to public External storage or Downloads folder
+                        await Filesystem.writeFile({
+                            path: filename,
+                            data: base64data,
+                            directory: Directory.ExternalStorage,
+                            recursive: true
+                        });
+                        
+                        showTopToast('İndirme tamamlandı!');
+                        try {
+                            await LocalNotifications.schedule({
+                                notifications: [
+                                    {
+                                        title: 'İndirme Tamamlandı',
+                                        body: `${filename} başarıyla indirildi.`,
+                                        id: notifId
+                                    }
+                                ]
+                            });
+                        } catch (err) {
+                            console.warn('Could not schedule completion notification', err);
+                        }
+                    } catch (err) {
+                        console.error("Capacitor write error, trying Documents fallback:", err);
                         try {
                             await Filesystem.writeFile({
                                 path: `Oxypace/${filename}`,
@@ -45,29 +122,29 @@ export const downloadFile = async (url, filename) => {
                                 directory: Directory.Documents,
                                 recursive: true
                             });
-                            alert('Başarıyla indirildi: Belgeler/Oxypace klasörüne kaydedildi.');
-                        } catch (err) {
-                            console.error("Capacitor write error:", err);
-                            alert("Dosya kaydedilirken hata oluştu.");
+                            showTopToast('İndirme tamamlandı!');
+                            try {
+                                await LocalNotifications.schedule({
+                                    notifications: [
+                                        {
+                                            title: 'İndirme Tamamlandı',
+                                            body: `${filename} Belgeler/Oxypace klasörüne kaydedildi.`,
+                                            id: notifId
+                                        }
+                                    ]
+                                });
+                            } catch (notifErr) {
+                                console.warn(notifErr);
+                            }
+                        } catch (fallbackErr) {
+                            console.error("All write fallbacks failed:", fallbackErr);
+                            showTopToast('Dosya kaydedilemedi.');
                         }
-                    };
-                } catch (fetchErr) {
-                    console.error("Fetch media for fallback failed:", fetchErr);
-                    alert("Dosya indirilirken bağlantı hatası oluştu.");
-                }
-            };
-
-            if (Capacitor.getPlatform() === 'android') {
-                try {
-                    await Downloader.downloadFile({ url, filename });
-                    alert('İndirme başlatıldı. Durumu bildirim çubuğundan takip edebilirsiniz.');
-                } catch (err) {
-                    console.warn("Downloader plugin failed, using Filesystem write fallback:", err);
-                    await saveFileViaFilesystem();
-                }
-            } else {
-                // iOS or other native platforms: Write to local documents folder
-                await saveFileViaFilesystem();
+                    }
+                };
+            } catch (fetchErr) {
+                console.error("Fetch media failed:", fetchErr);
+                showTopToast('Bağlantı hatası oluştu.');
             }
         } else {
             // Web Desktop Download via backend proxy to bypass CORS and force download with custom filename
@@ -78,9 +155,14 @@ export const downloadFile = async (url, filename) => {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            
+            // Show finished toast for web too!
+            setTimeout(() => {
+                showTopToast('İndirme tamamlandı!');
+            }, 1000);
         }
     } catch (error) {
         console.error('Download helper error:', error);
-        alert('İndirme başarısız oldu.');
+        showTopToast('İndirme başarısız oldu.');
     }
 };

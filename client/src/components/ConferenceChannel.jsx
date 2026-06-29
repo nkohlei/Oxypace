@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
@@ -64,6 +64,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [portalMembers, setPortalMembers] = useState([]);
+    const [loadingMembers, setLoadingMembers] = useState(false);
+    const [invitedUserIds, setInvitedUserIds] = useState([]);
 
     const { socket } = useSocket();
     const { user } = useAuth();
@@ -128,6 +132,43 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     };
     const handleGrant = async (id) => { try { await grantSpeak(portalId, channelId, id); setRaisedHands(prev => prev.filter(h => String(h.userId) !== String(id))); } catch (e) { console.error(e); } };
     const handleRevoke = async (id) => { try { await revokeSpeak(portalId, channelId, id); setRaisedHands(prev => prev.filter(h => String(h.userId) !== String(id))); } catch (e) { console.error(e); } };
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        if (queryParams.get('joinVoice') === 'true' && portalId && channelId && !isConnected && !isConnecting) {
+            connectToChannel(portalId, channelId);
+            // Clean up the URL search params so it doesn't rejoin endlessly if page reloads
+            const newUrl = window.location.pathname + window.location.search.replace(/&?joinVoice=true/g, '').replace(/\?$/, '');
+            window.history.replaceState(null, '', newUrl);
+        }
+    }, [portalId, channelId, isConnected, isConnecting, connectToChannel]);
+
+    useEffect(() => {
+        if (isInviteOpen && portalId) {
+            setLoadingMembers(true);
+            axios.get(`/api/portals/${portalId}`)
+                .then(res => {
+                    if (res.data && res.data.members) {
+                        setPortalMembers(res.data.members.filter(m => m._id.toString() !== user?._id?.toString()));
+                    }
+                })
+                .catch(err => console.error("Error fetching portal members for invite:", err))
+                .finally(() => setLoadingMembers(false));
+        }
+    }, [isInviteOpen, portalId, user]);
+
+    const handleSendInvite = async (targetUserId) => {
+        try {
+            await axios.post('/api/voice/invite', {
+                portalId,
+                channelId,
+                targetUserIds: [targetUserId]
+            });
+            setInvitedUserIds(prev => [...prev, targetUserId]);
+        } catch (error) {
+            console.error("Failed to send call invitation:", error);
+        }
+    };
 
     const renderSpeakerCard = (p, isFocused = false) => {
         const trackToRender = (isFocused && p.screenShareTrack) ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
@@ -195,7 +236,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         {raisedHands.length > 0 && <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', borderRadius: '50%', fontSize: '10px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{raisedHands.length}</span>}
                     </button>
                 )}
-                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsListenersOpen(false); setIsSettingsOpen(false); }} title="Sohbet"><MessageCircle size={18} /></button>
+                <button className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`} onClick={() => { setIsInviteOpen(!isInviteOpen); setIsChatOpen(false); setIsListenersOpen(false); setIsSettingsOpen(false); }} title="Davet Et"><UserPlus size={18} /></button>
+                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsListenersOpen(false); setIsInviteOpen(false); setIsSettingsOpen(false); }} title="Sohbet"><MessageCircle size={18} /></button>
                 
                 {/* More Menu (Arrow on Mobile, Settings on Desktop) */}
                 <div style={{ position: 'relative' }}>
@@ -275,6 +317,43 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+                )}
+                {isInviteOpen && (
+                    <div className="voice-chat-sidebar glass-panel" style={{ width: '280px', pointerEvents: 'auto' }}>
+                        <div className="chat-header">
+                            <h3>Davet Et</h3>
+                            <button className="icon-btn" onClick={() => setIsInviteOpen(false)}><X size={20} /></button>
+                        </div>
+                        <div className="chat-messages custom-scrollbar" style={{ padding: '12px' }}>
+                            {loadingMembers ? (
+                                <div style={{ textAlign: 'center', padding: '20px' }}>Yükleniyor...</div>
+                            ) : portalMembers.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>Davet edilebilecek üye bulunamadı.</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {portalMembers.map(m => {
+                                        const isInvited = invitedUserIds.includes(m._id);
+                                        return (
+                                            <div key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <img src={getImageUrl(m.profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.profile?.displayName || m.username)}`} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />
+                                                    <span style={{ fontSize: '13px', fontWeight: '500', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.profile?.displayName || m.username}</span>
+                                                </div>
+                                                <button 
+                                                    disabled={isInvited}
+                                                    onClick={() => handleSendInvite(m._id)}
+                                                    className={`glass-btn ${isInvited ? '' : 'active'}`}
+                                                    style={{ padding: '4px 10px', fontSize: '11px' }}
+                                                >
+                                                    {isInvited ? 'Davet Edildi' : 'Davet Et'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
