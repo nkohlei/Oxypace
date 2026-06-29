@@ -39,6 +39,7 @@ const CreatePortalModal = ({ onClose }) => {
 
         // Prevent submitting to API if we are not on the last step
         if (step < 3) {
+            if (step === 1 && !formData.name.trim()) return;
             setStep(step + 1);
             return;
         }
@@ -98,11 +99,11 @@ const CreatePortalModal = ({ onClose }) => {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content advanced-modal" onClick={(e) => e.stopPropagation()}>
+                <button className="close-btn" onClick={onClose} aria-label="Kapat">
+                    &times;
+                </button>
                 <div className="modal-header">
                     <h2>Portal Oluştur</h2>
-                    <button className="close-btn" onClick={onClose}>
-                        &times;
-                    </button>
                 </div>
 
                 <div className="progress-bar">
@@ -305,6 +306,7 @@ const CreatePortalModal = ({ onClose }) => {
                             <button
                                 type="button"
                                 className="btn-primary"
+                                disabled={step === 1 && !formData.name.trim()}
                                 onClick={(e) => {
                                     e.preventDefault();
                                     setStep(step + 1);

@@ -258,3 +258,36 @@
 .step-content:has(.visuals-upload-container) {
     margin-bottom: 70px;
 }
+
+/* Close Button Positioning */
+.advanced-modal .close-btn {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-secondary) !important;
+    font-size: 28px !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    z-index: 10 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.advanced-modal .close-btn:hover {
+    color: var(--text-primary) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.advanced-modal .close-btn:active {
+    transform: scale(0.9) !important;
+}
