@@ -23,9 +23,13 @@ const GlobalVideoPIP = () => {
     const [isMinimized, setIsMinimized] = useState(false);
     const [manualFocusId, setManualFocusId] = useState(null);
     const [position, setPosition] = useState({ x: 20, y: 80 }); // Floating position offsets from bottom-right
-    const dragRef = useRef(null);
+    const [showControls, setShowControls] = useState(false);
+    
     const isDragging = useRef(false);
     const dragStart = useRef({ x: 0, y: 0 });
+    const startPosition = useRef({ x: 0, y: 0 });
+    const startTime = useRef(0);
+    const controlsTimeout = useRef(null);
 
     const isConnected = activeRoom && connectionState === 'connected';
     
@@ -45,6 +49,23 @@ const GlobalVideoPIP = () => {
             setManualFocusId(activeSpeaker.identity);
         }
     }, [participants, shouldShow]);
+
+    // Handle auto-hide timer for controls
+    const triggerControlsShow = () => {
+        setShowControls(true);
+        if (controlsTimeout.current) {
+            clearTimeout(controlsTimeout.current);
+        }
+        controlsTimeout.current = setTimeout(() => {
+            setShowControls(false);
+        }, 2000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+        };
+    }, []);
 
     if (!shouldShow) return null;
 
@@ -67,17 +88,34 @@ const GlobalVideoPIP = () => {
     const handleMinimizeToggle = (e) => {
         e.stopPropagation();
         setIsMinimized(!isMinimized);
+        setShowControls(false);
     };
 
-    const handleNavigateToChannel = () => {
+    const handleNavigateToChannel = (e) => {
+        if (e) e.stopPropagation();
         navigate(`/portal/${activeRoom.portalId}?channel=${activeRoom.channelId}`);
     };
 
-    // Drag-to-move handling for the floating window
+    // Drag constraints
+    const constrainPosition = (x, y) => {
+        const minX = 10;
+        const maxX = window.innerWidth - (isMinimized ? 80 : 260); // Constrained to mobile sizes
+        const minY = 10;
+        const maxY = window.innerHeight - (isMinimized ? 80 : 220);
+        return {
+            x: Math.max(minX, Math.min(maxX, x)),
+            y: Math.max(minY, Math.min(maxY, y))
+        };
+    };
+
+    // Mouse events
     const handleMouseDown = (e) => {
-        if (e.target.closest('.pip-controls') || e.target.closest('.pip-member-strip')) return;
+        if (e.target.closest('.pip-controls') || e.target.closest('.pip-member-strip') || e.target.closest('.pip-header-actions')) return;
         isDragging.current = true;
+        startTime.current = Date.now();
+        startPosition.current = { x: e.clientX, y: e.clientY };
         dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+        
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
     };
@@ -86,23 +124,64 @@ const GlobalVideoPIP = () => {
         if (!isDragging.current) return;
         const newX = e.clientX - dragStart.current.x;
         const newY = e.clientY - dragStart.current.y;
-        
-        // Boundaries checks (constrain within viewport)
-        const minX = 10;
-        const maxX = window.innerWidth - (isMinimized ? 80 : 340);
-        const minY = 10;
-        const maxY = window.innerHeight - (isMinimized ? 80 : 260);
-
-        setPosition({
-            x: Math.max(minX, Math.min(maxX, newX)),
-            y: Math.max(minY, Math.min(maxY, newY))
-        });
+        setPosition(constrainPosition(newX, newY));
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e) => {
         isDragging.current = false;
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+
+        // Click detection
+        const elapsed = Date.now() - startTime.current;
+        const dist = Math.hypot(e.clientX - startPosition.current.x, e.clientY - startPosition.current.y);
+        if (elapsed < 200 && dist < 8) {
+            if (isMinimized) {
+                setIsMinimized(false);
+            } else {
+                triggerControlsShow();
+            }
+        }
+    };
+
+    // Touch events (Mobile support)
+    const handleTouchStart = (e) => {
+        if (e.target.closest('.pip-controls') || e.target.closest('.pip-member-strip') || e.target.closest('.pip-header-actions')) return;
+        isDragging.current = true;
+        startTime.current = Date.now();
+        const touch = e.touches[0];
+        startPosition.current = { x: touch.clientX, y: touch.clientY };
+        dragStart.current = { x: touch.clientX - position.x, y: touch.clientY - position.y };
+        
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isDragging.current) return;
+        e.preventDefault(); // Prevents scroll bouncing
+        const touch = e.touches[0];
+        const newX = touch.clientX - dragStart.current.x;
+        const newY = touch.clientY - dragStart.current.y;
+        setPosition(constrainPosition(newX, newY));
+    };
+
+    const handleTouchEnd = (e) => {
+        isDragging.current = false;
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+
+        const elapsed = Date.now() - startTime.current;
+        const touch = e.changedTouches[0];
+        const dist = Math.hypot(touch.clientX - startPosition.current.x, touch.clientY - startPosition.current.y);
+        
+        if (elapsed < 250 && dist < 12) {
+            if (isMinimized) {
+                setIsMinimized(false);
+            } else {
+                triggerControlsShow();
+            }
+        }
     };
 
     const VideoRenderer = ({ participant, className }) => {
@@ -142,13 +221,14 @@ const GlobalVideoPIP = () => {
 
     return (
         <div 
-            className={`global-video-pip-window ${isMinimized ? 'minimized' : ''}`}
+            className={`global-video-pip-window ${isMinimized ? 'minimized' : ''} ${showControls ? 'show-controls' : ''}`}
             style={{ left: `${position.x}px`, top: `${position.y}px` }}
             onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
         >
             {isMinimized ? (
                 // Minimized circular bubble
-                <div className="pip-bubble" onClick={handleMinimizeToggle}>
+                <div className="pip-bubble">
                     <div className="pip-bubble-avatar-wrapper">
                         <img 
                             src={getImageUrl(mainUser?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(mainUser?.name || 'Group')}&background=1e293b&color=fff`} 
@@ -163,7 +243,7 @@ const GlobalVideoPIP = () => {
             ) : (
                 // Full PiP view
                 <div className="pip-full-content">
-                    {/* Header */}
+                    {/* Header - shown on controls state */}
                     <div className="pip-header">
                         <span className="pip-title" onClick={handleNavigateToChannel}>
                             {activeRoom?.channelName || 'Sohbet'}
@@ -179,7 +259,7 @@ const GlobalVideoPIP = () => {
                     </div>
 
                     {/* Main video area */}
-                    <div className="pip-main-video-container" onClick={handleNavigateToChannel}>
+                    <div className="pip-main-video-container">
                         {mainUser ? (
                             <VideoRenderer participant={mainUser} className="pip-main-video" />
                         ) : (
@@ -205,7 +285,7 @@ const GlobalVideoPIP = () => {
                         )}
                     </div>
 
-                    {/* Control Strip */}
+                    {/* Control Strip - shown on controls state */}
                     <div className="pip-controls">
                         <button 
                             className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
@@ -228,7 +308,7 @@ const GlobalVideoPIP = () => {
                     </div>
 
                     {/* Member Strip for manual pinning */}
-                    {remoteParticipants.length > 1 && (
+                    {remoteParticipants.length > 1 && showControls && (
                         <div className="pip-member-strip custom-scrollbar">
                             {remoteParticipants.map(p => (
                                 <div 

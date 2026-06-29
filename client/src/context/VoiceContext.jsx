@@ -3,6 +3,9 @@ import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
 import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
+import { registerPlugin, Capacitor } from '@capacitor/core';
+
+const CallManager = registerPlugin('CallManager');
 
 const VoiceContext = createContext();
 
@@ -535,6 +538,10 @@ export const VoiceProvider = ({ children }) => {
             setConnectionState(ConnectionState.Connected);
             setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
 
+            if (Capacitor.isNativePlatform()) {
+                CallManager.setInCall({ isInCall: true }).catch(err => console.warn(err));
+            }
+
         } catch (err) {
             console.error('Failed to connect via WebRTC:', err);
             setErrorMsg(err.message || 'Bağlantı kurulamadı.');
@@ -573,8 +580,12 @@ export const VoiceProvider = ({ children }) => {
         setParticipants([]);
         setChatMessages([]);
         setPinnedParticipant(null);
-        setRoomStartTime(null);
+        setActiveRoom(null);
         setConnectionState(ConnectionState.Disconnected);
+
+        if (Capacitor.isNativePlatform()) {
+            CallManager.setInCall({ isInCall: false }).catch(err => console.warn(err));
+        }
     }, [activeRoom, user, safeEmit]);
 
     // Handle WebSocket Signaling Events

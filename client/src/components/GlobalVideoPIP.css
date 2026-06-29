@@ -15,6 +15,7 @@
                 border-radius 0.3s ease;
     cursor: grab;
     will-change: left, top;
+    touch-action: none; /* Crucial for touch drag events on mobile */
 }
 
 .global-video-pip-window:active {
@@ -23,8 +24,8 @@
 
 /* Full PiP Mode dimensions */
 .global-video-pip-window:not(.minimized) {
-    width: 320px;
-    height: 240px;
+    width: 280px;
+    height: 210px;
 }
 
 /* Minimized bubble state */
@@ -91,13 +92,21 @@
 }
 
 .pip-header {
-    height: 38px;
+    height: 0px;
+    opacity: 0;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 14px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.4);
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+.show-controls .pip-header {
+    height: 38px;
+    opacity: 1;
 }
 
 .pip-title {
@@ -107,7 +116,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 160px;
+    max-width: 130px;
     cursor: pointer;
 }
 
@@ -180,8 +189,8 @@
     position: absolute;
     bottom: 8px;
     right: 8px;
-    width: 72px;
-    height: 54px;
+    width: 64px;
+    height: 48px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -221,13 +230,21 @@
 
 /* Control strip */
 .pip-controls {
-    height: 38px;
+    height: 0px;
+    opacity: 0;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 16px;
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(0, 0, 0, 0.3);
     border-top: 1px solid rgba(255, 255, 255, 0.04);
+    transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+.show-controls .pip-controls {
+    height: 38px;
+    opacity: 1;
 }
 
 .pip-control-btn {
@@ -270,6 +287,7 @@
     white-space: nowrap;
     border-top: 1px solid rgba(255, 255, 255, 0.04);
     height: 32px;
+    transition: all 0.2s ease;
 }
 
 .pip-member-avatar-wrapper {
@@ -313,7 +331,7 @@
 @media (max-width: 768px) {
     .global-video-pip-window:not(.minimized) {
         width: 200px;
-        height: 160px;
+        height: 150px;
     }
     
     .pip-title {
