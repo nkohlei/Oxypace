@@ -12,8 +12,10 @@ const ShareModal = ({ postId, onClose }) => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]); // Search results
     const [loading, setLoading] = useState(false);
-    const [sendingMap, setSendingMap] = useState({}); // Track sending state per user
+    const [sending, setSending] = useState(false);
+    const [selectedUsers, setSelectedUsers] = useState([]);
     const [showCopyAlert, setShowCopyAlert] = useState(false);
+    const [sentSuccess, setSentSuccess] = useState(false);
 
     useEffect(() => {
         // Prevent background scrolling
@@ -49,24 +51,35 @@ const ShareModal = ({ postId, onClose }) => {
         return () => clearTimeout(timeoutId);
     };
 
-    const handleSend = async (userId) => {
-        setSendingMap((prev) => ({ ...prev, [userId]: true }));
+    const toggleSelectUser = (userId) => {
+        setSelectedUsers((prev) =>
+            prev.includes(userId)
+                ? prev.filter((id) => id !== userId)
+                : [...prev, userId]
+        );
+    };
+
+    const handleSendMultiple = async () => {
+        if (selectedUsers.length === 0) return;
+        setSending(true);
         try {
-            await axios.post('/api/messages', {
-                recipientId: userId,
-                postId: postId,
-            });
-            // Show a mini success indicator or toast? For now, button change is enough or global toast.
-            // Let's toggle state back after a delay to show "Sent"
+            await Promise.all(
+                selectedUsers.map((userId) =>
+                    axios.post('/api/messages', {
+                        recipientId: userId,
+                        postId: postId,
+                    })
+                )
+            );
+            setSentSuccess(true);
             setTimeout(() => {
-                setSendingMap((prev) => ({ ...prev, [userId]: false }));
-                alert('Gönderildi'); // Keep explicit alert or remove for smoother UX? User didn't specify. Keeping alert for feedback.
                 onClose();
-            }, 500);
+            }, 2000);
         } catch (error) {
             console.error('Share failed:', error);
             alert('Gönderilemedi.');
-            setSendingMap((prev) => ({ ...prev, [userId]: false }));
+        } finally {
+            setSending(false);
         }
     };
 
@@ -126,6 +139,25 @@ const ShareModal = ({ postId, onClose }) => {
     const showSearchResults = query.length > 0;
     const listToRender = showSearchResults ? results : friends;
 
+    if (sentSuccess) {
+        return createPortal(
+            <div className="share-modal-overlay" onClick={onClose}>
+                <div className="share-modal success-state" onClick={(e) => e.stopPropagation()}>
+                    <div className="success-content">
+                        <div className="success-icon-circle">
+                            <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                                <circle className="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                                <path className="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                            </svg>
+                        </div>
+                        <h2>Gönderildi</h2>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        );
+    }
+
     return createPortal(
         <div
             className="share-modal-overlay"
@@ -165,59 +197,76 @@ const ShareModal = ({ postId, onClose }) => {
                     ) : showSearchResults ? (
                         /* List Layout for Search */
                         <div className="share-list">
-                            {results.map((user) => (
-                                <div
-                                    key={user._id}
-                                    className="share-user-item"
-                                    onClick={() => handleSend(user._id)}
-                                >
-                                    <div className="user-info">
-                                        <img
-                                            src={getImageUrl(user.profile?.avatar)}
-                                            alt={user.username}
-                                            className="user-avatar"
-                                        />
-                                        <div className="user-text">
-                                            <span className="user-name">
-                                                {user.profile?.displayName || user.username}{' '}
-                                                <UserBadges user={user} size={14} />
-                                            </span>
-                                            <span className="user-username">@{user.username}</span>
-                                        </div>
-                                    </div>
-                                    <button
-                                        className="send-share-btn"
-                                        disabled={sendingMap[user._id]}
+                            {results.map((user) => {
+                                const isSelected = selectedUsers.includes(user._id);
+                                return (
+                                    <div
+                                        key={user._id}
+                                        className={`share-user-item ${isSelected ? 'selected' : ''}`}
+                                        onClick={() => toggleSelectUser(user._id)}
                                     >
-                                        {sendingMap[user._id] ? '...' : 'Gönder'}
-                                    </button>
-                                </div>
-                            ))}
+                                        <div className="user-info">
+                                            <img
+                                                src={getImageUrl(user.profile?.avatar)}
+                                                alt={user.username}
+                                                className="user-avatar"
+                                            />
+                                            <div className="user-text">
+                                                <span className="user-name">
+                                                    {user.profile?.displayName || user.username}{' '}
+                                                    <UserBadges user={user} size={14} />
+                                                </span>
+                                                <span className="user-username">@{user.username}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            className={`send-share-btn ${isSelected ? 'selected' : ''}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleSelectUser(user._id);
+                                            }}
+                                        >
+                                            {isSelected ? 'Seçildi' : 'Seç'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
                         /* Grid Layout for Friends */
                         <div className="share-grid">
-                            {friends.map((user) => (
-                                <div
-                                    key={user._id}
-                                    className="share-user-card"
-                                    onClick={() => handleSend(user._id)}
-                                >
-                                    <div className="avatar-wrapper">
-                                        <img
-                                            src={getImageUrl(user.profile?.avatar)}
-                                            alt={user.username}
-                                            className="user-avatar"
-                                        />
+                            {friends.map((user) => {
+                                const isSelected = selectedUsers.includes(user._id);
+                                return (
+                                    <div
+                                        key={user._id}
+                                        className={`share-user-card ${isSelected ? 'selected' : ''}`}
+                                        onClick={() => toggleSelectUser(user._id)}
+                                    >
+                                        <div className="avatar-wrapper">
+                                            <img
+                                                src={getImageUrl(user.profile?.avatar)}
+                                                alt={user.username}
+                                                className="user-avatar"
+                                            />
+                                        </div>
+                                        <span className="user-name">
+                                            {user.profile?.displayName || user.username}
+                                        </span>
                                     </div>
-                                    <span className="user-name">
-                                        {user.profile?.displayName || user.username}
-                                    </span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
+
+                {selectedUsers.length > 0 && (
+                    <div className="share-action-container">
+                        <button className="share-submit-btn" onClick={handleSendMultiple} disabled={sending}>
+                            {sending ? 'Gönderiliyor...' : `Gönder (${selectedUsers.length})`}
+                        </button>
+                    </div>
+                )}
 
                 {/* Footer Apps */}
                 <div className="share-footer">
