@@ -554,7 +554,12 @@ export const VoiceProvider = ({ children }) => {
             setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
 
             if (Capacitor.isNativePlatform()) {
-                CallManager.setInCall({ isInCall: true }).catch(err => console.warn(err));
+                const joinRoute = `/portal/${portalId}?channel=${channelId}&joinVoice=true`;
+                CallManager.setInCall({
+                    isInCall: true,
+                    channelName: channelName || 'Görüntülü Sohbet',
+                    route: joinRoute
+                }).catch(err => console.warn(err));
             }
 
         } catch (err) {
