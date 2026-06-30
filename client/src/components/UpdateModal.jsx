@@ -56,10 +56,28 @@ const UpdateModal = () => {
         setDismissed(true);
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         if (info?.downloadUrl) {
-            // Use window.location.href so Android shouldOverrideUrlLoading opens Chrome
-            window.open(info.downloadUrl, '_system');
+            if (Capacitor.isNativePlatform()) {
+                try {
+                    // Call the custom native DownloaderPlugin registered on MainActivity
+                    const { registerPlugin } = await import('@capacitor/core');
+                    const Downloader = registerPlugin('Downloader');
+                    await Downloader.downloadFile({
+                        url: info.downloadUrl,
+                        filename: 'oxypace.apk'
+                    });
+                    // Inform the user that the download has started
+                    alert('Yeni güncelleme (oxypace.apk) indiriliyor. Bildirim çubuğundan takip edebilirsiniz.');
+                    setShow(false);
+                    setDismissed(true);
+                } catch (err) {
+                    console.error('Native download failed, falling back to browser:', err);
+                    window.open(info.downloadUrl, '_system');
+                }
+            } else {
+                window.open(info.downloadUrl, '_system');
+            }
         }
     };
 
