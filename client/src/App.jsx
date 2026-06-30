@@ -77,6 +77,7 @@ import './AppLayout.css';
 import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
 import GlobalVideoPIP from './components/GlobalVideoPIP';
+import UpdateModal from './components/UpdateModal';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
 const MAINTENANCE_MODE = false;
@@ -582,6 +583,7 @@ const AppLayout = () => {
             </div>
             <InAppBrowser />
             <GlobalVideoPIP />
+            <UpdateModal />
         </div>
     );
 };

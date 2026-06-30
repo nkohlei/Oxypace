@@ -287,6 +287,17 @@ app.use('/api/translate', translateRoutes);
 app.use('/api/preview', previewRoutes);
 app.use('/api/reports', reportRoutes);
 
+// App version check endpoint (public) - used by clients on startup to detect newer APK
+app.get('/api/app/version', (req, res) => {
+    res.json({
+        latestVersion: '1.0.5',
+        versionCode: 6,
+        downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
+        forceUpdate: false,
+        changelog: 'WhatsApp paylaşım düzeltmesi, görüntülü sohbet davet bildirimleri ve kararlılık iyileştirmeleri.',
+    });
+});
+
 import contactRoutes from './routes/contact.js';
 import feedbackRoutes from './routes/feedback.js';
 
