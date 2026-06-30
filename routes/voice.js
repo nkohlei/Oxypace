@@ -2,8 +2,10 @@ import express from 'express';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { protect } from '../middleware/auth.js';
 import Portal from '../models/Portal.js';
+import User from '../models/User.js';
 import { getVoiceRoomData } from '../sockets/voiceHandler.js';
 import Notification from '../models/Notification.js';
+import { sendPushNotification } from '../utils/firebase.js';
 
 const router = express.Router();
 
@@ -319,6 +321,24 @@ router.post('/invite', protect, async (req, res) => {
             }
 
             notifications.push(populated);
+
+            // Send FCM push notification so the invite arrives even when app is closed/background
+            const targetUser = await User.findById(targetId).select('fcmToken');
+            if (targetUser?.fcmToken) {
+                const joinLink = `/portal/${portalId}?channel=${channelId}&joinVoice=true`;
+                await sendPushNotification(targetUser.fcmToken, {
+                    title: '📞 Görüntülü Sohbet Daveti',
+                    body: `${req.user.profile?.displayName || req.user.username} seni ${channel.name} odasına davet ediyor!`,
+                    data: {
+                        type: 'voice_invite',
+                        route: joinLink,
+                        portalId: String(portalId),
+                        channelId: String(channelId),
+                        channelName: channel.name,
+                        senderName: req.user.profile?.displayName || req.user.username,
+                    }
+                });
+            }
         }
 
         res.json({ message: 'Invitations sent successfully', count: notifications.length });

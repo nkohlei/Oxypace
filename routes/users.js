@@ -15,6 +15,21 @@ import Portal from '../models/Portal.js';
 
 const router = express.Router();
 
+// @route   POST /api/users/fcm-token
+// @desc    Save/update the device FCM push notification token for the logged-in user
+// @access  Private
+router.post('/fcm-token', protect, async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: 'Token is required' });
+        await User.findByIdAndUpdate(req.user._id, { fcmToken: token });
+        res.json({ message: 'FCM token saved' });
+    } catch (err) {
+        console.error('FCM token save error:', err);
+        res.status(500).json({ message: 'Failed to save FCM token' });
+    }
+});
+
 // @route   POST /api/users/follow/:id
 // @desc    Follow/Unfollow user or cancel request
 // @access  Private

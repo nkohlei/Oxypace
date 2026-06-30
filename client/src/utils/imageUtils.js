@@ -24,7 +24,7 @@ export const getImageUrl = (path, sizeType = 'original') => {
 
     const isNative = Capacitor.isNativePlatform();
     const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
-    const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : ''))).replace(/\/$/, '');
+    const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
 
     // 0. STATIC ASSETS: Don't proxy or transform local system assets
     if (cleanPath.startsWith('/system/') || cleanPath.startsWith('system/')) {
