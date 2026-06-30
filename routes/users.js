@@ -22,7 +22,17 @@ router.post('/fcm-token', protect, async (req, res) => {
     try {
         const { token } = req.body;
         if (!token) return res.status(400).json({ message: 'Token is required' });
-        await User.findByIdAndUpdate(req.user._id, { fcmToken: token });
+
+        const user = await User.findById(req.user._id);
+        if (user) {
+            user.fcmToken = token;
+            if (!user.fcmTokens) user.fcmTokens = [];
+            if (!user.fcmTokens.includes(token)) {
+                user.fcmTokens.push(token);
+            }
+            await user.save();
+        }
+
         res.json({ message: 'FCM token saved' });
     } catch (err) {
         console.error('FCM token save error:', err);

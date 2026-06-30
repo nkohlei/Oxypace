@@ -95,13 +95,34 @@ export const sendPushNotification = async (tokens, payload) => {
         
         if (response.failureCount > 0) {
             const failedTokens = [];
-            response.responses.forEach((resp, idx) => {
+            for (let idx = 0; idx < response.responses.length; idx++) {
+                const resp = response.responses[idx];
                 if (!resp.success) {
-                    failedTokens.push(tokens[idx]);
-                    console.warn('Failed to send push to token:', tokens[idx], resp.error);
+                    const token = tokens[idx];
+                    failedTokens.push(token);
+                    console.warn('Failed to send push to token:', token, resp.error);
+                    
+                    // Automatically clean up expired/invalid/unregistered tokens from MongoDB
+                    if (resp.error && (
+                        resp.error.code === 'messaging/registration-token-not-registered' ||
+                        resp.error.message === 'NotRegistered'
+                    )) {
+                        try {
+                            const User = (await import('../models/User.js')).default;
+                            await User.updateMany(
+                                { $or: [{ fcmTokens: token }, { fcmToken: token }] },
+                                { 
+                                    $pull: { fcmTokens: token },
+                                    $unset: { fcmToken: "" }
+                                }
+                            );
+                            console.log(`🧹 Cleaned up unregistered token from database: ${token}`);
+                        } catch (cleanErr) {
+                            console.error('Failed to clean up invalid token from database:', cleanErr);
+                        }
+                    }
                 }
-            });
-            // Optional: You could clean up invalid tokens from DB here by throwing a custom error
+            }
         }
         
         return response;
