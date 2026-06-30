@@ -4,7 +4,7 @@ import axios from 'axios';
 import './UpdateModal.css';
 
 // Current APK version — update this string with each release
-const CURRENT_VERSION = '1.0.5';
+const CURRENT_VERSION = '1.0.6';
 
 /**
  * Compares two semver strings. Returns true if remote > local.

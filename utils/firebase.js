@@ -18,10 +18,13 @@ export const initFirebase = () => {
 };
 
 /**
- * Send a high-priority FCM push notification with optional action buttons.
- * Works even when the app is completely closed.
- * @param {string} fcmToken - Device FCM token
- * @param {object} payload - { title, body, data }
+ * Send a high-priority FCM push notification.
+ * Uses DATA-ONLY payload (no "notification" key) so that
+ * OxypaceMessagingService.onMessageReceived() is called even when the app
+ * is completely closed — this is required for call-style (Katıl/Reddet) notifications.
+ *
+ * @param {string} fcmToken - Device FCM registration token
+ * @param {object} payload  - { title, body, data }
  */
 export const sendPushNotification = async (fcmToken, { title, body, data = {} }) => {
     if (!messaging) {
@@ -33,34 +36,18 @@ export const sendPushNotification = async (fcmToken, { title, body, data = {} })
     try {
         const message = {
             token: fcmToken,
-            notification: {
-                title,
-                body,
-            },
+            // NO "notification" key — data-only so onMessageReceived always fires
             data: {
+                title:  String(title  || ''),
+                body:   String(body   || ''),
                 ...Object.fromEntries(
                     Object.entries(data).map(([k, v]) => [k, String(v)])
                 ),
             },
             android: {
                 priority: 'high',
-                notification: {
-                    channelId: 'voice_invite',
-                    priority: 'max',
-                    sound: 'default',
-                    defaultSound: true,
-                    defaultVibrateTimings: true,
-                    clickAction: 'OPEN_ACTIVITY_1',
-                },
-            },
-            apns: {
-                payload: {
-                    aps: {
-                        sound: 'default',
-                        badge: 1,
-                        contentAvailable: true,
-                    },
-                },
+                // ttl: 30 seconds — auto-expire like a real call invite
+                ttl: '30s',
             },
         };
 
