@@ -34,7 +34,10 @@ import translateRoutes from './routes/translate.js';
 import previewRoutes from './routes/preview.js';
 import reportRoutes from './routes/reports.js';
 import ogRoutes from './routes/og.js';
+import { initFirebase } from './utils/firebase.js';
 
+// Initialize Firebase Admin SDK for FCM push notifications
+initFirebase();
 // Models for Sitemap
 import Portal from './models/Portal.js';
 import User from './models/User.js';
@@ -80,6 +83,8 @@ const allowedOrigins = [
     'http://localhost:3000',
     'https://oxypace.vercel.app',
     'https://oxypace.netlify.app',
+    'https://oxypace.com.tr',
+    'https://www.oxypace.com.tr',
     process.env.CLIENT_URL,
 ].filter(Boolean);
 

@@ -321,7 +321,7 @@ const PostDetail = () => {
                 image={seoMeta.image}
                 videoUrl={seoMeta.videoUrl}
                 type={seoMeta.videoUrl ? 'video.other' : 'article'}
-                url={`https://oxypace.netlify.app/post/${postId}`}
+                url={`https://oxypace.com.tr/post/${postId}`}
                 article={{
                     publishedTime: post.createdAt,
                     author: authorName,

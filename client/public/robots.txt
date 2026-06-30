@@ -23,4 +23,4 @@ Allow: /sitemap.xml
 Disallow: /api/
 
 # Sitemap
-Sitemap: https://oxypace.netlify.app/sitemap.xml
+Sitemap: https://oxypace.com.tr/sitemap.xml

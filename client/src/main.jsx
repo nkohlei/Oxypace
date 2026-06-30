@@ -26,7 +26,7 @@ if (!isNative && !import.meta.env.DEV) {
     axios.defaults.baseURL = baseUrl;
 } else if (!import.meta.env.DEV) {
     console.warn('⚠️ VITE_API_BASE_URL not set! Defaulting to ' + (isNative ? 'production backend' : 'relative proxy') + '.');
-    axios.defaults.baseURL = isNative ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : '';
+    axios.defaults.baseURL = isNative ? 'https://api.oxypace.com.tr' : '';
 }
 
 // Initialize Auth Header from localStorage immediately to prevent race conditions

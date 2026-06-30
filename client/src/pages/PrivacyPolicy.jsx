@@ -22,7 +22,7 @@ const PrivacyPolicy = () => {
                     <section style={{ marginBottom: '30px' }}>
                         <p>
                             Oxypace ("biz", "bizim" veya "Şirket") olarak gizliliğinize derin bir saygı duyuyoruz.
-                            Bu Gizlilik Politikası, web sitemizi (https://oxypace.netlify.app) ve hizmetlerimizi kullandığınızda
+                            Bu Gizlilik Politikası, web sitemizi (https://oxypace.com.tr) ve hizmetlerimizi kullandığınızda
                             kişisel verilerinizin nasıl toplandığını, işlendiğini, paylaşıldığını ve korunduğunu şeffaf bir şekilde açıklamaktadır.
                         </p>
                         <p>

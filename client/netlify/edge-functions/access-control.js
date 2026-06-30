@@ -1,7 +1,7 @@
 let isMaintenanceCached = null;
 let lastFetched = 0;
 
-const BACKEND_URL = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app";
+const BACKEND_URL = "https://api.oxypace.com.tr";
 
 async function getMaintenanceStatus() {
   const now = Date.now();

@@ -27,11 +27,11 @@ const __dirname = path.dirname(__filename);
 
 // ── Sabitler ─────────────────────────────────────────────────────────────────
 
-const SITE_URL = process.env.CLIENT_URL || 'https://oxypace.netlify.app';
+const SITE_URL = process.env.CLIENT_URL || 'https://oxypace.com.tr';
 const SITE_NAME = 'Oxypace';
 const DEFAULT_IMAGE = `${SITE_URL}/logo.png`;
 const R2_PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
-const BACKEND_URL = process.env.BACKEND_URL || 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://api.oxypace.com.tr';
 
 // ── Yardımcı Fonksiyonlar ─────────────────────────────────────────────────────
 

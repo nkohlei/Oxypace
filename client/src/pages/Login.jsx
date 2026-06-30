@@ -164,7 +164,7 @@ const Login = () => {
         const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
         let apiBase = (!isNative && !import.meta.env.DEV)
             ? ''
-            : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app' : 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app'));
+            : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : 'https://api.oxypace.com.tr'));
 
         if (apiBase.endsWith('/')) {
             apiBase = apiBase.slice(0, -1);

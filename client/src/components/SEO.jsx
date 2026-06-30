@@ -34,7 +34,7 @@ export default function SEO({
     article,
     noindex = false
 }) {
-    const siteUrl = 'https://oxypace.netlify.app';
+    const siteUrl = 'https://oxypace.com.tr';
     const defaultImage = `${siteUrl}/logo.png`;
     const metaImage = image || defaultImage;
     const metaUrl = url || (typeof window !== 'undefined' ? window.location.href : siteUrl);

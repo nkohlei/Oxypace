@@ -8,8 +8,11 @@
 // Cloudflare R2 Public Domain (The 'ham' URL) - HARDCODED as per instructions
 export const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
 
-// Koyeb API Proxy Base URL - HARDCODED as per instructions
-export const PROXY_BASE = 'https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/media/';
+// Koyeb API Proxy Base URL - Dynamic with fallback to new domain
+const backendBase = (typeof process !== 'undefined' && process.env.BACKEND_URL) 
+    ? process.env.BACKEND_URL 
+    : 'https://api.oxypace.com.tr';
+export const PROXY_BASE = `${backendBase.replace(/\/$/, '')}/api/media/`;
 
 export const constructProxiedUrl = (key) => {
     if (!key) return null;

@@ -558,7 +558,8 @@ router.get('/thumbnail', async (req, res) => {
             return res.send(buffer);
         } catch (svgErr) {
             console.error('Failed to generate SVG video thumbnail:', svgErr.message);
-            return res.redirect('https://oxypace.netlify.app/logo.png');
+            const clientBase = process.env.CLIENT_URL || 'https://oxypace.com.tr';
+            return res.redirect(`${clientBase.replace(/\/$/, '')}/logo.png`);
         }
     }
 
