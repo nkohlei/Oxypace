@@ -323,21 +323,24 @@ router.post('/invite', protect, async (req, res) => {
             notifications.push(populated);
 
             // Send FCM push notification so the invite arrives even when app is closed/background
-            const targetUser = await User.findById(targetId).select('fcmToken');
-            if (targetUser?.fcmToken) {
+            const targetUser = await User.findById(targetId).select('fcmTokens');
+            if (targetUser?.fcmTokens && targetUser.fcmTokens.length > 0) {
                 const joinLink = `/portal/${portalId}?channel=${channelId}&joinVoice=true`;
-                await sendPushNotification(targetUser.fcmToken, {
-                    title: '📞 Görüntülü Sohbet Daveti',
-                    body: `${req.user.profile?.displayName || req.user.username} seni ${channel.name} odasına davet ediyor!`,
-                    data: {
-                        type: 'voice_invite',
-                        route: joinLink,
-                        portalId: String(portalId),
-                        channelId: String(channelId),
-                        channelName: channel.name,
-                        senderName: req.user.profile?.displayName || req.user.username,
-                    }
-                });
+                // Send push notification to all of target user's registered devices
+                for (const token of targetUser.fcmTokens) {
+                    await sendPushNotification(token, {
+                        title: '📞 Görüntülü Sohbet Daveti',
+                        body: `${req.user.profile?.displayName || req.user.username} seni ${channel.name} odasına davet ediyor!`,
+                        data: {
+                            type: 'voice_invite',
+                            route: joinLink,
+                            portalId: String(portalId),
+                            channelId: String(channelId),
+                            channelName: channel.name,
+                            senderName: req.user.profile?.displayName || req.user.username,
+                        }
+                    });
+                }
             }
         }
 

@@ -69,15 +69,12 @@ export const sendPushNotification = async (tokens, payload) => {
     try {
         const absoluteImageUrl = payload.image ? constructNotifImageUrl(payload.image) : undefined;
         const message = {
-            notification: {
-                title: payload.title,
-                body: payload.body,
-                // Firebase Admin SDK v13+ uses 'imageUrl' (SDK converts this to 'image' in the REST API)
-                ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
-            },
+            // NO standard notification object so Android OS does not intercept it.
+            // This guarantees our native OxypaceMessagingService.onMessageReceived receives it.
             data: {
+                title: String(payload.title || 'Oxypace'),
+                body: String(payload.body || ''),
                 ...(payload.data || {}),
-                // data fields are used by the foreground pushNotificationReceived listener in App.jsx
                 ...(absoluteImageUrl && { 
                     image: absoluteImageUrl, 
                     bigPicture: absoluteImageUrl,
@@ -87,10 +84,7 @@ export const sendPushNotification = async (tokens, payload) => {
                 }),
             },
             android: {
-                notification: {
-                    // Firebase Admin SDK v13+ uses 'imageUrl' for android-specific notifications
-                    ...(absoluteImageUrl && { imageUrl: absoluteImageUrl })
-                }
+                priority: 'high'
             },
             tokens: tokens, // Multicast message
         };
