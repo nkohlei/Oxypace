@@ -290,11 +290,11 @@ app.use('/api/reports', reportRoutes);
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '1.0.6',
-        versionCode: 7,
+        latestVersion: '1.0.7',
+        versionCode: 8,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: false,
-        changelog: 'WhatsApp-tarzı arama bildirimi (Katıl/Reddet butonlu), FCM push düzeltmesi.',
+        changelog: 'Tüm push bildirimlerinin (mesaj, arkadaşlık vb.) native olarak gösterilmesi düzeltildi.',
     });
 });
 
