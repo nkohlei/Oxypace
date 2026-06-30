@@ -4,7 +4,7 @@ import axios from 'axios';
 import './UpdateModal.css';
 
 // Current APK version — update this string with each release
-const CURRENT_VERSION = '1.1.2';
+const CURRENT_VERSION = '1.1.3';
 
 /**
  * Compares two semver strings. Returns true if remote > local.
@@ -74,6 +74,8 @@ const UpdateModal = () => {
                 } catch (err) {
                     console.error('Native download failed, falling back to browser:', err);
                     window.open(info.downloadUrl, '_system');
+                    setShow(false);
+                    setDismissed(true);
                 }
             } else {
                 window.open(info.downloadUrl, '_system');

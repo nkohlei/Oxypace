@@ -290,11 +290,11 @@ app.use('/api/reports', reportRoutes);
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '1.1.2',
-        versionCode: 13,
+        latestVersion: '1.1.3',
+        versionCode: 14,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: false,
-        changelog: '🎙️ Arka plan kesintisiz görüşme ve bildirim çubuğunda canlı arama süresi gösteren ActiveCallService aktif edildi!',
+        changelog: '🎙️ Bildirim çubuğu süre sabitleme iyileştirmesi ve eski APK indirme butonu güvenlik köprüsü eklendi.',
     });
 });
 
