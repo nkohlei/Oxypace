@@ -42,13 +42,15 @@ const constructNotifImageUrl = (key) => {
 let isInitialized = false;
 
 try {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    if (admin.apps.length === 0 && process.env.FIREBASE_SERVICE_ACCOUNT) {
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
         isInitialized = true;
         console.log('📱 Firebase Admin initialized successfully for Push Notifications.');
+    } else if (admin.apps.length > 0) {
+        isInitialized = true;
     } else {
         console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT not found in environment variables. Push notifications will be disabled.');
     }
