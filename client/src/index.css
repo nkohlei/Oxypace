@@ -177,6 +177,8 @@ body.discord-layout-active #root {
   border-radius: 16px;
   box-shadow: none !important;
   transition: background 0.3s ease;
+  transform: translateZ(0);
+  will-change: transform, background;
 }
 
 /* Scrollbar - Hidden globally */
@@ -206,6 +208,8 @@ button,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transform: translateZ(0);
+  will-change: transform, background;
 }
 
 button:hover,
@@ -252,6 +256,8 @@ textarea {
   font-size: 1rem;
   box-shadow: none !important;
   transition: all 0.3s ease;
+  transform: translateZ(0);
+  will-change: transform, background-color;
 }
 
 [data-theme='light'] input,
@@ -383,6 +389,8 @@ button,
   border-radius: 16px;
   position: relative;
   overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .glass-panel::before {

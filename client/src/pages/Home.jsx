@@ -221,7 +221,7 @@ const Home = () => {
                     </div>
 
                     <div className="hero-logo-mask-container">
-                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" decoding="async" />
+                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" fetchpriority="high" loading="eager" decoding="async" />
                     </div>
                 </div>
 
@@ -364,7 +364,7 @@ const Home = () => {
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
-                                <img src="/oxypace-text-logo1.png" alt="OXYPACE" className="footer-logo" decoding="async" />
+                                <img src="/oxypace-text-logo1.webp" alt="OXYPACE" className="footer-logo" width="160" height="37" loading="lazy" decoding="async" />
                                 <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
                             </div>
 

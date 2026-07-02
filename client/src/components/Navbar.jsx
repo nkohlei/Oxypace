@@ -156,8 +156,8 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                 <div className="nav-container">
                     <div className="nav-left">
                         <Link to="/" className="brand-logo">
-                            <img src="/logo.png" alt="Oxypace Logo" className="logo-image" />
-                            <img src="/oxypace-text-logo2.png" alt="oxypace" className="logo-text" />
+                            <img src="/logo.png" alt="Oxypace Logo" className="logo-image" width="38" height="38" decoding="async" />
+                            <img src="/oxypace-text-logo2.webp" alt="oxypace" className="logo-text" width="110" height="25" decoding="async" />
                         </Link>
                     </div>
 

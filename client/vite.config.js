@@ -28,12 +28,24 @@ export default defineConfig({
         minify: 'esbuild',
         rollupOptions: {
             output: {
-                manualChunks: {
-                    // Split vendor chunks for better caching
-                    vendor: ['react', 'react-dom', 'react-router-dom'],
-                    socket: ['socket.io-client'],
-                },
-            },
+                manualChunks(id) {
+                    if (id.includes('node_modules')) {
+                        if (id.includes('three') || id.includes('globe.gl') || id.includes('react-globe.gl')) {
+                            return 'globe-visualization';
+                        }
+                        if (id.includes('@livekit') || id.includes('livekit-client')) {
+                            return 'livekit';
+                        }
+                        if (id.includes('lucide-react')) {
+                            return 'lucide';
+                        }
+                        if (id.includes('socket.io-client')) {
+                            return 'socket';
+                        }
+                        return 'vendor';
+                    }
+                }
+            }
         },
         chunkSizeWarningLimit: 500,
     },
