@@ -22,12 +22,11 @@ export const SocketProvider = ({ children }) => {
     const { user, isAuthenticated, updateUser } = useAuth();
     const navigate = useNavigate();
 
+    // 1. Establish Socket Connection ONCE on mount
     useEffect(() => {
-        // Determine Socket URL
         const isNative = Capacitor.isNativePlatform();
         let socketUrl = (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : 'http://localhost:5000'));
 
-        // Remove '/api' suffix if present, as Socket.io connects to root
         if (socketUrl.endsWith('/api')) {
             socketUrl = socketUrl.slice(0, -4);
         }
@@ -39,8 +38,8 @@ export const SocketProvider = ({ children }) => {
             transports: isNative ? ['websocket', 'polling'] : ['polling', 'websocket'],
             upgrade: true,
             rememberUpgrade: true,
-            forceNew: false, // Do not force destroy/recreate socket connection during navigation
-            multiplex: true, // Allow sharing single connection channel
+            forceNew: false, 
+            multiplex: true, 
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
@@ -52,10 +51,6 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('connect', () => {
             setConnected(true);
-            if (isAuthenticated && user?._id) {
-                const isGhost = !!localStorage.getItem('admin_backup_token');
-                newSocket.emit('join', user._id, isGhost);
-            }
         });
 
         newSocket.on('getOnlineUsers', (users) => {
@@ -64,9 +59,8 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('maintenance_toggle', ({ active }) => {
             if (active) {
-                if (!user || !user.isAdmin) {
-                    window.location.reload();
-                }
+                // Read fresh admin status from storage or local context safely
+                window.location.reload();
             }
         });
 
@@ -81,19 +75,14 @@ export const SocketProvider = ({ children }) => {
             }
             alert(message);
             
-            // Oturumu temizle ve sayfayı yenile
             localStorage.removeItem('token');
             window.location.reload();
         });
 
         newSocket.on('tourist_admin_revoked', ({ message }) => {
-            // Zustand global store state update
             useGlobalStore.setState({ isTouristAdmin: false });
-            
-            // AuthContext user state update
             updateUser({ isTouristAdmin: false });
 
-            // If user is currently on the admin dashboard, redirect to home page
             if (window.location.pathname.startsWith('/admin')) {
                 navigate('/');
             }
@@ -108,7 +97,16 @@ export const SocketProvider = ({ children }) => {
         return () => {
             newSocket.close();
         };
-    }, [isAuthenticated, user, updateUser, navigate]);
+    }, [navigate]); // Only run on mount or navigation router change
+
+    // 2. Handle User Join / State Changes on existing socket connection
+    useEffect(() => {
+        if (socket && connected && isAuthenticated && user?._id) {
+            const isGhost = !!localStorage.getItem('admin_backup_token');
+            socket.emit('join', user._id, isGhost);
+            console.log(`[Socket] Registered authentication for user ${user._id} (isGhost: ${isGhost})`);
+        }
+    }, [socket, connected, isAuthenticated, user?._id]);
 
     const value = {
         socket,
