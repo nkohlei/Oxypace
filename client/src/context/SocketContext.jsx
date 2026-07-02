@@ -39,7 +39,11 @@ export const SocketProvider = ({ children }) => {
             transports: isNative ? ['websocket', 'polling'] : ['polling', 'websocket'],
             upgrade: true,
             rememberUpgrade: true,
-            forceNew: true,
+            forceNew: false, // Do not force destroy/recreate socket connection during navigation
+            multiplex: true, // Allow sharing single connection channel
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
             reconnectionAttempts: isNative ? 5 : Infinity,
             timeout: isNative ? 10000 : 20000,
             withCredentials: true,

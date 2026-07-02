@@ -857,7 +857,15 @@ export const VoiceProvider = ({ children }) => {
         if (!socket) return;
         const handleConnect = () => {
             if (activeRoom) {
-                console.log("[WebRTC Reconnect] Restoring voice channel session:", activeRoom.roomName);
+                console.log("[WebRTC Reconnect] Restoring voice channel session and renegotiating peers:", activeRoom.roomName);
+                
+                // Clear existing peer connections to prevent glare / ice state conflicts on reconnect
+                peerConnectionsRef.current.forEach(pc => pc.close());
+                peerConnectionsRef.current.clear();
+                remoteTracksRef.current.clear();
+                remoteStatesRef.current.clear();
+                candidateQueuesRef.current.clear();
+
                 safeEmit('voice:join', {
                     roomName: activeRoom.roomName,
                     userId: user?._id?.toString(),
