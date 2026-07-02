@@ -137,6 +137,12 @@ export const VoiceProvider = ({ children }) => {
 
     // Additional Voice states
     const [roomStartTime, setRoomStartTime] = useState(null);
+    // Ref to roomStartTime so connectToChannel closure always reads the latest value
+    const roomStartTimeRef = useRef(null);
+    const _setRoomStartTime = (val) => {
+        roomStartTimeRef.current = val;
+        setRoomStartTime(val);
+    };
 
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
@@ -491,7 +497,8 @@ export const VoiceProvider = ({ children }) => {
         setConnectionState(ConnectionState.Connecting);
         setErrorMsg('');
         setChatMessages([]);
-        setRoomStartTime(null);
+        _setRoomStartTime(null);
+
 
         try {
             // Get local audio media (camera/video stream will be requested dynamically when activated)
@@ -529,7 +536,7 @@ export const VoiceProvider = ({ children }) => {
             if (startedAt && serverNow) {
                 const localNow = Date.now();
                 const offset = serverNow - localNow;
-                setRoomStartTime(startedAt - offset);
+                _setRoomStartTime(startedAt - offset);
             }
 
             console.log(`[Socket] Joining signaling room: ${roomName} as user: ${user?._id}`);
@@ -555,12 +562,17 @@ export const VoiceProvider = ({ children }) => {
 
             if (Capacitor.isNativePlatform()) {
                 const joinRoute = `/portal/${portalId}?channel=${channelId}&joinVoice=true`;
+                // roomStartTime is already corrected for server<->client clock offset (set a few lines above).
+                // We pass it to the Android foreground service so its MM:SS counter matches the JS RoomTimer exactly.
+                const nativeStartedAt = roomStartTimeRef.current ?? Date.now();
                 CallManager.setInCall({
                     isInCall: true,
                     channelName: channelName || 'Görüntülü Sohbet',
-                    route: joinRoute
-                }).catch(err => console.warn(err));
+                    route: joinRoute,
+                    startedAt: nativeStartedAt,
+                }).catch(err => console.warn('[CallManager] setInCall error:', err));
             }
+
 
         } catch (err) {
             console.error('Failed to connect via WebRTC:', err);
@@ -618,11 +630,12 @@ export const VoiceProvider = ({ children }) => {
                 if (data.serverNow) {
                     const localNow = Date.now();
                     const offset = data.serverNow - localNow;
-                    setRoomStartTime(data.startedAt - offset);
+                    _setRoomStartTime(data.startedAt - offset);
                 } else {
-                    setRoomStartTime(data.startedAt);
+                    _setRoomStartTime(data.startedAt);
                 }
             }
+
 
             rawParticipantsRef.current = data.participants || [];
             
