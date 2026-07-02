@@ -10,6 +10,32 @@ import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Use
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
+const VideoRenderer = ({ track, isLocal, className }) => {
+    const videoEl = React.useRef(null);
+
+    React.useEffect(() => {
+        const el = videoEl.current;
+        if (el && track) {
+            track.attach(el);
+        }
+        return () => {
+            if (track) {
+                track.detach();
+            }
+        };
+    }, [track]);
+
+    return (
+        <video 
+            ref={videoEl} 
+            className={className} 
+            autoPlay 
+            muted={isLocal} 
+            playsInline 
+        />
+    );
+};
+
 const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const {
         activeRoom,
@@ -176,7 +202,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             <div key={`${p.identity}-speaker`} className={`vc-card role-grid ${p.isSpeaking ? 'speaking' : ''} ${isFocused ? 'focused' : ''}`} onClick={() => setFocusedIdentity(isFocused ? null : p.identity)}>
                 <div className="vc-card-video-area">
                     {trackToRender ? (
-                        <video className="vc-card-video" ref={el => { if (el && trackToRender) trackToRender.attach(el); }} autoPlay muted={p.isLocal} playsInline />
+                        <VideoRenderer className="vc-card-video" track={trackToRender} isLocal={p.isLocal} />
                     ) : (
                         <div className="vc-card-avatar-area" style={getCardBackground(p.identity)}>
                             <img className="vc-card-avatar" src={getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=transparent&color=fff&size=120`} alt="" />

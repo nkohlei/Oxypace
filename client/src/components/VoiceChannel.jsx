@@ -10,6 +10,32 @@ import WatchPartyPlayer from './WatchPartyPlayer';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
 
+const VideoRenderer = ({ track, isLocal, className }) => {
+    const videoEl = React.useRef(null);
+
+    React.useEffect(() => {
+        const el = videoEl.current;
+        if (el && track) {
+            track.attach(el);
+        }
+        return () => {
+            if (track) {
+                track.detach();
+            }
+        };
+    }, [track]);
+
+    return (
+        <video 
+            ref={videoEl} 
+            className={className} 
+            autoPlay 
+            muted={isLocal} 
+            playsInline 
+        />
+    );
+};
+
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const { user } = useAuth();
     const {
@@ -160,12 +186,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 <div className="vc-card-video-area">
                     <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
                     {trackToRender && shouldAttachVideo ? (
-                        <video 
+                        <VideoRenderer 
                             className={`vc-card-video ${isShowingScreen ? 'vc-screenshare-video-contained' : ''}`} 
-                            ref={el => { if (el && trackToRender) trackToRender.attach(el); }} 
-                            autoPlay 
-                            muted={p.isLocal} 
-                            playsInline 
+                            track={trackToRender} 
+                            isLocal={p.isLocal} 
                         />
                     ) : (
                         isShowingScreen ? (
