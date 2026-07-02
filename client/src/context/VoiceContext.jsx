@@ -135,14 +135,29 @@ export const VoiceProvider = ({ children }) => {
     const [availableDevices, setAvailableDevices] = useState({ audioInputs: [], audioOutputs: [], videoInputs: [] });
     const [facingMode, setFacingMode] = useState('user'); // 'user' or 'environment'
 
-    // Additional Voice states
     const [roomStartTime, setRoomStartTime] = useState(null);
+    const [roomDuration, setRoomDuration] = useState(0);
+
     // Ref to roomStartTime so connectToChannel closure always reads the latest value
     const roomStartTimeRef = useRef(null);
     const _setRoomStartTime = (val) => {
         roomStartTimeRef.current = val;
         setRoomStartTime(val);
     };
+
+    useEffect(() => {
+        if (!roomStartTime) {
+            setRoomDuration(0);
+            return;
+        }
+        const update = () => {
+            const diff = Math.floor((Date.now() - roomStartTime) / 1000);
+            setRoomDuration(diff >= 0 ? diff : 0);
+        };
+        update();
+        const interval = setInterval(update, 1000);
+        return () => clearInterval(interval);
+    }, [roomStartTime]);
 
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
@@ -1202,6 +1217,7 @@ export const VoiceProvider = ({ children }) => {
         connectionState,
         participants,
         roomStartTime,
+        roomDuration,
         errorMsg,
         localState,
         chatMessages,

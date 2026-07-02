@@ -1,9 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { useVoice } from '../context/VoiceContext';
 
 const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
-    const [elapsed, setElapsed] = useState('');
+    const { roomDuration, roomStartTime } = useVoice() || {};
+    const [elapsed, setElapsed] = useState('00:00');
 
     useEffect(() => {
+        // If the startedAt corresponds to the active voice room, use global roomDuration
+        if (roomStartTime && startedAt === roomStartTime && typeof roomDuration === 'number') {
+            const diff = roomDuration;
+            const h = Math.floor(diff / 3600);
+            const m = Math.floor((diff % 3600) / 60);
+            const s = diff % 60;
+
+            if (h > 0) {
+                setElapsed(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+            } else {
+                setElapsed(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+            }
+            return;
+        }
+
+        // Fallback to local timer if not active room timer
         if (!startedAt) {
             setElapsed('00:00');
             return;
@@ -32,7 +50,7 @@ const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
         const intervalId = setInterval(updateTimer, 1000);
 
         return () => clearInterval(intervalId);
-    }, [startedAt]);
+    }, [startedAt, roomStartTime, roomDuration]);
 
     const defaultStyle = {
         display: 'flex',

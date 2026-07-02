@@ -21,6 +21,10 @@ export const SocketProvider = ({ children }) => {
     const [onlineUsers, setOnlineUsers] = useState([]);
     const { user, isAuthenticated, updateUser } = useAuth();
     const navigate = useNavigate();
+    const navigateRef = useRef(navigate);
+    useEffect(() => {
+        navigateRef.current = navigate;
+    }, [navigate]);
 
     // 1. Establish Socket Connection ONCE on mount
     useEffect(() => {
@@ -84,7 +88,7 @@ export const SocketProvider = ({ children }) => {
             updateUser({ isTouristAdmin: false });
 
             if (window.location.pathname.startsWith('/admin')) {
-                navigate('/');
+                navigateRef.current('/');
             }
         });
 
@@ -97,7 +101,7 @@ export const SocketProvider = ({ children }) => {
         return () => {
             newSocket.close();
         };
-    }, [navigate]); // Only run on mount or navigation router change
+    }, []); // Only run on mount
 
     // 2. Handle User Join / State Changes on existing socket connection
     useEffect(() => {
