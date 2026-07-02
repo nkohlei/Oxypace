@@ -36,7 +36,10 @@ export const sendPushNotification = async (fcmToken, { title, body, data = {} })
     try {
         const message = {
             token: fcmToken,
-            // NO "notification" key — data-only so onMessageReceived always fires
+            notification: {
+                title: String(title || '📞 Görüntülü Sohbet Daveti'),
+                body: String(body || 'Seni canlı odaya davet ediyor!'),
+            },
             data: {
                 title:  String(title  || ''),
                 body:   String(body   || ''),
@@ -46,13 +49,22 @@ export const sendPushNotification = async (fcmToken, { title, body, data = {} })
             },
             android: {
                 priority: 'high',
-                // ttl: 30 seconds — auto-expire like a real call invite
-                ttl: '30s',
+                ttl: '45s', // 45s call ring duration
+                notification: {
+                    channelId: 'oxypace_voice_invite_v2',
+                    priority: 'max',
+                    visibility: 'public',
+                    sound: 'default',
+                    category: 'call',
+                    sticky: true,
+                    defaultSound: true,
+                    defaultVibrateTimings: true,
+                }
             },
         };
 
         const response = await messaging.send(message);
-        console.log('[Firebase] Push sent successfully:', response);
+        console.log('[Firebase] Push sent successfully with Android call metadata:', response);
         return response;
     } catch (err) {
         console.error('[Firebase] Failed to send push:', err.message);

@@ -577,6 +577,7 @@ export const VoiceProvider = ({ children }) => {
                     startedAt: nativeStartedAt,
                     token: livekitToken,
                     serverUrl: livekitServerUrl,
+                    userId: user?._id?.toString() || '',
                 }).catch(err => console.warn('[CallManager] setInCall error:', err));
             }
 
