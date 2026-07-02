@@ -565,11 +565,18 @@ export const VoiceProvider = ({ children }) => {
                 // roomStartTime is already corrected for server<->client clock offset (set a few lines above).
                 // We pass it to the Android foreground service so its MM:SS counter matches the JS RoomTimer exactly.
                 const nativeStartedAt = roomStartTimeRef.current ?? Date.now();
+                
+                // Extract WebRTC parameters for native LiveKit client fallback in background
+                const livekitToken = response.data.token;
+                const livekitServerUrl = response.data.serverUrl;
+                
                 CallManager.setInCall({
                     isInCall: true,
                     channelName: channelName || 'Görüntülü Sohbet',
                     route: joinRoute,
                     startedAt: nativeStartedAt,
+                    token: livekitToken,
+                    serverUrl: livekitServerUrl,
                 }).catch(err => console.warn('[CallManager] setInCall error:', err));
             }
 
