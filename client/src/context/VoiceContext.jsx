@@ -1238,6 +1238,7 @@ export const VoiceProvider = ({ children }) => {
         <VoiceContext.Provider value={value}>
             {children}
             <GlobalAudioRenderer participants={participants} isDeafened={localState.isDeafened} />
+            <GlobalVideoRenderer participants={participants} localState={localState} />
         </VoiceContext.Provider>
     );
 };
@@ -1251,6 +1252,42 @@ const GlobalAudioRenderer = ({ participants, isDeafened }) => {
             ))}
         </div>
     );
+};
+
+// Global Video Component to keep WebRTC decoders and camera warm/active during cross-navigation
+const GlobalVideoRenderer = ({ participants, localState }) => {
+    const localParticipant = participants.find(p => p.isLocal);
+    const localVideoTrackObj = localParticipant?.videoTrack;
+
+    return (
+        <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+            {/* Local Video Keep-Alive */}
+            {localState.isCameraOn && localVideoTrackObj && (
+                <VideoTrackPlayer key="global-local-video" trackObj={localVideoTrackObj} isLocal={true} />
+            )}
+            {/* Remote Video Keep-Alive (keeps decoders running in background) */}
+            {participants.filter(p => !p.isLocal && p.isCameraOn && p.videoTrack).map(p => (
+                <VideoTrackPlayer key={`global-video-${p.identity}`} trackObj={p.videoTrack} isLocal={false} />
+            ))}
+        </div>
+    );
+};
+
+const VideoTrackPlayer = ({ trackObj, isLocal }) => {
+    const videoEl = useRef(null);
+    useEffect(() => {
+        const el = videoEl.current;
+        if (el && trackObj) {
+            trackObj.attach(el);
+        }
+        return () => {
+            if (trackObj && el) {
+                trackObj.detach(el);
+            }
+        };
+    }, [trackObj]);
+
+    return <video ref={videoEl} autoPlay muted={true} playsInline style={{ width: '1px', height: '1px' }} />;
 };
 
 const AudioTrackPlayer = ({ track, muted }) => {
