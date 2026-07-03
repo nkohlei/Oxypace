@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, Volume2, VolumeX } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import './WatchPartyPlayer.css';
 
@@ -74,6 +74,7 @@ const WatchPartyPlayer = () => {
 
     const playerRef = useRef(null);
     const videoRef = useRef(null);
+    const containerRef = useRef(null);
     const hlsInstanceRef = useRef(null);
     const dashPlayerRef = useRef(null);
     const reconnectTimerRef = useRef(null);
@@ -88,6 +89,7 @@ const WatchPartyPlayer = () => {
     const [reconnectCount, setReconnectCount] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
     const [localMuted, setLocalMuted] = useState(true); // Default to muted for reliable autoplay compliance
+    const [volume, setVolume] = useState(1);
 
     const isHost = true;
     const isLive = watchParty?.isLive || isLiveStream(watchParty?.url);
@@ -101,12 +103,21 @@ const WatchPartyPlayer = () => {
         }, 3000);
     };
 
+    // Apply volume and muted changes to native video element
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.volume = volume;
+            videoRef.current.muted = localMuted;
+        }
+    }, [volume, localMuted]);
+
     // Reset states when the URL changes
     useEffect(() => {
         setHasError(false);
         setIsReady(false);
         setUseProxy(false);
         setLocalMuted(true); // Always start live streams muted for autoplay success
+        setVolume(1);
         lastProgrammaticSeekTimeRef.current = null;
         lastPolledTimeRef.current = null;
         prevIsPlayingRef.current = false;
@@ -345,6 +356,18 @@ const WatchPartyPlayer = () => {
         sendWatchSeek(e);
     };
 
+    const toggleFullscreen = () => {
+        const container = containerRef.current;
+        if (!container) return;
+        if (!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => {
+                console.error("Error attempting to enable fullscreen:", err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
     if (!watchParty || !watchParty.url) return null;
 
     if (hasError) {
@@ -358,7 +381,7 @@ const WatchPartyPlayer = () => {
     }
 
     return (
-        <div className="watch-party-player-wrapper">
+        <div className="watch-party-player-wrapper" ref={containerRef}>
             <div className="watch-party-header">
                 <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte İzle (URL)'}</span>
                 <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
@@ -371,7 +394,7 @@ const WatchPartyPlayer = () => {
                 <video
                     ref={videoRef}
                     className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
-                    controls={false} // Disable seek/pause controls completely for live feeds
+                    controls={false} // Disable standard controls for clean custom overlay layout
                     playsInline
                     autoPlay
                     muted={localMuted}
@@ -379,14 +402,39 @@ const WatchPartyPlayer = () => {
                 />
 
                 {isLive && (
-                    <button 
-                        className="watch-party-volume-btn glass-btn"
-                        onClick={() => setLocalMuted(!localMuted)}
-                        style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px' }}
-                    >
-                        {localMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                        <span>{localMuted ? 'Sesi Aç' : 'Sesi Kapat'}</span>
-                    </button>
+                    <div className="watch-party-live-controls-overlay" style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 20, background: 'rgba(0, 0, 0, 0.6)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(8px)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <button 
+                                className="glass-btn icon-btn"
+                                onClick={() => setLocalMuted(!localMuted)}
+                                style={{ color: '#ffffff', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                            >
+                                {localMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                            </button>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="1" 
+                                step="0.05" 
+                                value={localMuted ? 0 : volume} 
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    setVolume(val);
+                                    if (val > 0) setLocalMuted(false);
+                                    else setLocalMuted(true);
+                                }}
+                                style={{ width: '80px', height: '4px', accentColor: '#10b981', cursor: 'pointer' }}
+                            />
+                        </div>
+                        <button 
+                            className="glass-btn icon-btn"
+                            onClick={toggleFullscreen}
+                            style={{ color: '#ffffff', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                            title="Tam Ekran"
+                        >
+                            <Maximize size={18} />
+                        </button>
+                    </div>
                 )}
 
                 {!isLive && (
