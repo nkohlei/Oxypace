@@ -129,6 +129,19 @@
     animation: pulse-live 1.5s infinite;
 }
 
+.watch-party-volume-btn {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.watch-party-volume-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
+}
+
 @keyframes pulse-live {
     0% { transform: scale(0.9); opacity: 0.6; }
     50% { transform: scale(1.2); opacity: 1; }

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X } from 'lucide-react';
+import { X, Volume2, VolumeX } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import './WatchPartyPlayer.css';
 
@@ -87,6 +87,7 @@ const WatchPartyPlayer = () => {
     const [hasError, setHasError] = useState(false);
     const [reconnectCount, setReconnectCount] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
+    const [localMuted, setLocalMuted] = useState(true); // Default to muted for reliable autoplay compliance
 
     const isHost = true;
     const isLive = watchParty?.isLive || isLiveStream(watchParty?.url);
@@ -105,6 +106,7 @@ const WatchPartyPlayer = () => {
         setHasError(false);
         setIsReady(false);
         setUseProxy(false);
+        setLocalMuted(true); // Always start live streams muted for autoplay success
         lastProgrammaticSeekTimeRef.current = null;
         lastPolledTimeRef.current = null;
         prevIsPlayingRef.current = false;
@@ -140,10 +142,10 @@ const WatchPartyPlayer = () => {
 
         const video = videoRef.current;
         const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
-        const urlIsHls = isHls(watchParty.url) || watchParty.isLive; // Default Hls if not dash
+        const urlIsHls = isHls(watchParty.url) || watchParty.isLive;
         const urlIsDash = isDash(watchParty.url);
 
-        console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy}, urlIsHls: ${urlIsHls}, urlIsDash: ${urlIsDash})`);
+        console.log(`[WatchPartyPlayer] Initializing live stream. URL: ${streamUrl} (useProxy: ${useProxy})`);
 
         if (hlsInstanceRef.current) {
             hlsInstanceRef.current.destroy();
@@ -162,9 +164,7 @@ const WatchPartyPlayer = () => {
                         video.src = streamUrl;
                         video.addEventListener('loadedmetadata', () => {
                             setIsReady(true);
-                            if (watchParty.isPlaying) {
-                                video.play().catch(err => console.warn("Native HLS autoplay blocked", err));
-                            }
+                            video.play().catch(err => console.warn("Native HLS autoplay blocked", err));
                         });
                         video.onerror = (e) => {
                             console.error("Native HLS playback error:", e);
@@ -190,9 +190,7 @@ const WatchPartyPlayer = () => {
                         
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
                             setIsReady(true);
-                            if (watchParty.isPlaying) {
-                                video.play().catch(err => console.warn("Hls.js autoplay blocked", err));
-                            }
+                            video.play().catch(err => console.warn("Hls.js autoplay blocked", err));
                         });
 
                         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -221,7 +219,7 @@ const WatchPartyPlayer = () => {
                     const dashjs = await loadDash();
                     const player = dashjs.MediaPlayer().create();
                     dashPlayerRef.current = player;
-                    player.initialize(video, streamUrl, watchParty.isPlaying);
+                    player.initialize(video, streamUrl, true); // Autoplay true
                     
                     player.on(dashjs.MediaPlayer.events.PLAYBACK_METADATA_LOADED, () => {
                         setIsReady(true);
@@ -260,57 +258,6 @@ const WatchPartyPlayer = () => {
             }
         };
     }, [watchParty?.url, reconnectCount, useProxy, isLive]);
-
-    // Live sync enforcement (keeps all users in the live edge in real time)
-    useEffect(() => {
-        if (!watchParty || !isLive || !videoRef.current) return;
-        const video = videoRef.current;
-
-        if (watchParty.isPlaying) {
-            if (video.paused) {
-                video.play().catch(err => console.warn("Playback failed", err));
-            }
-            let liveEdge = null;
-            if (hlsInstanceRef.current && hlsInstanceRef.current.liveSyncPosition) {
-                liveEdge = hlsInstanceRef.current.liveSyncPosition;
-            } else if (video.seekable && video.seekable.length > 0) {
-                liveEdge = video.seekable.end(video.seekable.length - 1);
-            }
-            if (liveEdge && Math.abs(video.currentTime - liveEdge) > 3) {
-                video.currentTime = liveEdge;
-            }
-        } else {
-            if (!video.paused) {
-                video.pause();
-            }
-        }
-    }, [watchParty?.isPlaying, watchParty?.lastUpdated, watchParty?.url, isLive]);
-
-    // Periodic synchronization check for live streams (keeps stream from drifting)
-    useEffect(() => {
-        if (!watchParty || !isLive || !videoRef.current) return;
-        
-        const interval = setInterval(() => {
-            const video = videoRef.current;
-            if (!video || video.paused || !watchParty.isPlaying) return;
-
-            let liveEdge = null;
-            if (hlsInstanceRef.current && hlsInstanceRef.current.liveSyncPosition) {
-                liveEdge = hlsInstanceRef.current.liveSyncPosition;
-            } else if (dashPlayerRef.current) {
-                liveEdge = dashPlayerRef.current.duration();
-            } else if (video.seekable && video.seekable.length > 0) {
-                liveEdge = video.seekable.end(video.seekable.length - 1);
-            }
-
-            if (liveEdge && Math.abs(video.currentTime - liveEdge) > 3) {
-                console.log(`[WatchPartyPlayer] Syncing client to live edge. Drift: ${Math.abs(video.currentTime - liveEdge).toFixed(1)}s`);
-                video.currentTime = liveEdge;
-            }
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [watchParty?.isPlaying, watchParty?.url, isLive]);
 
     // Standard Video Polling (only for non-live files)
     useEffect(() => {
@@ -398,17 +345,6 @@ const WatchPartyPlayer = () => {
         sendWatchSeek(e);
     };
 
-    // Native Live player controls wrapper
-    const handleNativePlay = () => {
-        if (watchParty && watchParty.isPlaying) return;
-        sendWatchPlay(0);
-    };
-
-    const handleNativePause = () => {
-        if (watchParty && !watchParty.isPlaying) return;
-        sendWatchPause(0);
-    };
-
     if (!watchParty || !watchParty.url) return null;
 
     if (hasError) {
@@ -435,12 +371,23 @@ const WatchPartyPlayer = () => {
                 <video
                     ref={videoRef}
                     className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
-                    controls={isHost}
-                    onPlay={handleNativePlay}
-                    onPause={handleNativePause}
+                    controls={false} // Disable seek/pause controls completely for live feeds
                     playsInline
+                    autoPlay
+                    muted={localMuted}
                     crossOrigin="anonymous"
                 />
+
+                {isLive && (
+                    <button 
+                        className="watch-party-volume-btn glass-btn"
+                        onClick={() => setLocalMuted(!localMuted)}
+                        style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 20, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px' }}
+                    >
+                        {localMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                        <span>{localMuted ? 'Sesi Aç' : 'Sesi Kapat'}</span>
+                    </button>
+                )}
 
                 {!isLive && (
                     <ReactPlayer
