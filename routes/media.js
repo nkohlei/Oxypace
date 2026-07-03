@@ -262,37 +262,66 @@ router.get('/*', async (req, res) => {
             } catch (e) {}
         }
 
-        // --- CASE 1: EXTERNAL URL PROXYING (News Images, External GIFs) ---
+        // --- CASE 1: EXTERNAL URL PROXYING (News Images, External GIFs, Live Streams) ---
         if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
             console.log('🌐 Proxying External Media:', filePath);
+            const isManifest = filePath.includes('.m3u8') || filePath.includes('.mpd');
             const range = req.headers.range;
             
             try {
-                const response = await axios({
-                    method: 'get',
-                    url: filePath,
-                    responseType: 'stream',
-                    timeout: 15000,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                        ...(range ? { 'Range': range } : {})
-                    },
-                    validateStatus: (status) => status < 500
-                });
+                if (isManifest) {
+                    const response = await axios({
+                        method: 'get',
+                        url: filePath,
+                        responseType: 'text',
+                        timeout: 15000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                    });
 
-                // Forward status and essential headers
-                res.status(response.status);
-                res.set('Content-Type', response.headers['content-type'] || 'application/octet-stream');
-                res.set('Content-Length', response.headers['content-length']);
-                res.set('Content-Range', response.headers['content-range']);
-                res.set('Accept-Ranges', response.headers['accept-ranges'] || 'bytes');
-                res.set('Access-Control-Allow-Origin', '*');
-                res.set('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
-                res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-                res.set('Cache-Control', 'public, max-age=31536000, immutable');
-                res.set('Vary', 'Range');
+                    let body = response.data;
+                    
+                    // Rewrite absolute URLs to go through our proxy
+                    const urlRegex = /(https?:\/\/[^\s"']+)/g;
+                    body = body.replace(urlRegex, (matched) => {
+                        return `${req.protocol}://${req.get('host')}/api/media/${encodeURIComponent(matched)}`;
+                    });
 
-                return response.data.pipe(res);
+                    res.status(response.status);
+                    res.set('Content-Type', response.headers['content-type'] || (filePath.includes('.m3u8') ? 'application/vnd.apple.mpegurl' : 'application/dash+xml'));
+                    res.set('Access-Control-Allow-Origin', '*');
+                    res.set('Access-Control-Expose-Headers', '*');
+                    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+                    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+                    return res.send(body);
+                } else {
+                    const response = await axios({
+                        method: 'get',
+                        url: filePath,
+                        responseType: 'stream',
+                        timeout: 15000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                            ...(range ? { 'Range': range } : {})
+                        },
+                        validateStatus: (status) => status < 500
+                    });
+
+                    // Forward status and essential headers
+                    res.status(response.status);
+                    res.set('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+                    res.set('Content-Length', response.headers['content-length']);
+                    res.set('Content-Range', response.headers['content-range']);
+                    res.set('Accept-Ranges', response.headers['accept-ranges'] || 'bytes');
+                    res.set('Access-Control-Allow-Origin', '*');
+                    res.set('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
+                    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+                    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+                    res.set('Vary', 'Range');
+
+                    return response.data.pipe(res);
+                }
             } catch (proxyError) {
                 console.error('❌ External Proxy Failed:', filePath, proxyError.message);
                 return res.status(404).json({ message: 'External media not found' });
