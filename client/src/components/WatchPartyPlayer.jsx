@@ -480,30 +480,22 @@ export const GlobalWatchPartyWrapper = () => {
 
         const updateTarget = () => {
             const el = document.getElementById('watch-party-portal-target');
-            setPortalTarget(el);
+            // Always fallback to the global hidden target so the player is NEVER unmounted
+            setPortalTarget(el || document.getElementById('watch-party-hidden-target'));
         };
 
         updateTarget();
 
-        // Observe DOM for the target container being mounted/unmounted
+        // Observe DOM mutations to catch target container mounts/unmounts instantly
         const observer = new MutationObserver(updateTarget);
         observer.observe(document.body, { childList: true, subtree: true });
 
         return () => observer.disconnect();
     }, [watchParty?.url]);
 
-    if (!watchParty || !watchParty.url) return null;
+    if (!watchParty || !watchParty.url || !portalTarget) return null;
 
-    if (portalTarget) {
-        return ReactDOM.createPortal(<WatchPartyPlayer />, portalTarget);
-    }
-
-    // Keep it mounted but hidden in the background when not viewing the channel room
-    return (
-        <div style={{ display: 'none' }}>
-            <WatchPartyPlayer />
-        </div>
-    );
+    return ReactDOM.createPortal(<WatchPartyPlayer />, portalTarget);
 };
 
 export default WatchPartyPlayer;

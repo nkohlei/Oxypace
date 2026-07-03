@@ -585,6 +585,7 @@ const AppLayout = () => {
             <InAppBrowser />
             <GlobalVideoPIP />
             <GlobalWatchPartyWrapper />
+            <div id="watch-party-hidden-target" style={{ display: 'none' }}></div>
             <UpdateModal />
         </div>
     );
