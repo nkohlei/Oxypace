@@ -1173,9 +1173,9 @@ export const VoiceProvider = ({ children }) => {
         });
     }, []);
 
-    const startWatchParty = useCallback((url) => {
+    const startWatchParty = useCallback((url, isLive = false) => {
         if (activeRoom) {
-            safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url });
+            safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive });
         }
     }, [activeRoom, safeEmit]);
 

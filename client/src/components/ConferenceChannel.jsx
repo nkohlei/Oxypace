@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
@@ -89,6 +89,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [lobbyCount, setLobbyCount] = useState(null);
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
+    const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
+    const [liveWatchUrl, setLiveWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [portalMembers, setPortalMembers] = useState([]);
@@ -417,8 +419,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
                             {/* Medya URL Watch Party Button */}
                             <div className="vc-ctrl-group" style={{ position: 'relative' }}>
-                                <button className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`} onClick={() => setIsWatchInputOpen(!isWatchInputOpen)} title="Birlikte İzle">
-                                    <Link size={22} color={watchParty?.url ? '#ffffff' : '#ef4444'} />
+                                <button className={`vc-ctrl-btn ${watchParty?.url && !watchParty?.isLive ? 'active' : ''}`} onClick={() => { setIsWatchInputOpen(!isWatchInputOpen); setIsLiveWatchInputOpen(false); }} title="Birlikte Video İzle">
+                                    <Link size={22} color={watchParty?.url && !watchParty?.isLive ? '#ffffff' : '#ef4444'} />
                                 </button>
                                 {isWatchInputOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px', zIndex: 999 }}>
@@ -460,8 +462,66 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                         <button 
                                             onClick={() => {
                                                 if (watchUrl.trim()) {
-                                                    startWatchParty(watchUrl.trim());
+                                                    startWatchParty(watchUrl.trim(), false);
                                                     setIsWatchInputOpen(false);
+                                                }
+                                            }}
+                                            className="chat-send-btn glass-btn active"
+                                            style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
+                                        >
+                                            Başlat
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Canlı Yayın Watch Party Button */}
+                            <div className="vc-ctrl-group" style={{ position: 'relative' }}>
+                                <button className={`vc-ctrl-btn ${watchParty?.url && watchParty?.isLive ? 'active' : ''}`} onClick={() => { setIsLiveWatchInputOpen(!isLiveWatchInputOpen); setIsWatchInputOpen(false); }} title="Birlikte Canlı Yayın İzle">
+                                    <Radio size={22} color={watchParty?.url && watchParty?.isLive ? '#ffffff' : '#10b981'} />
+                                </button>
+                                {isLiveWatchInputOpen && (
+                                    <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px', zIndex: 999 }}>
+                                        <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Canlı Yayın Linki (.m3u8 veya .mpd) yapıştırın..." 
+                                                value={liveWatchUrl} 
+                                                onChange={(e) => setLiveWatchUrl(e.target.value)} 
+                                                className="chat-input glass-input"
+                                                style={{ flex: 1, padding: '6px 64px 6px 12px', fontSize: '12px', width: '100%' }}
+                                            />
+                                            <div style={{ position: 'absolute', right: '4px', display: 'flex', gap: '4px', zIndex: 5 }}>
+                                                <button 
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        try {
+                                                            const text = await navigator.clipboard.readText();
+                                                            setLiveWatchUrl(text);
+                                                        } catch (err) {
+                                                            console.warn("Clipboard access denied", err);
+                                                        }
+                                                    }}
+                                                    style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    title="Yapıştır"
+                                                >
+                                                    <Clipboard size={12} />
+                                                </button>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setLiveWatchUrl('')}
+                                                    style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    title="Temizle"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                if (liveWatchUrl.trim()) {
+                                                    startWatchParty(liveWatchUrl.trim(), true);
+                                                    setIsLiveWatchInputOpen(false);
                                                 }
                                             }}
                                             className="chat-send-btn glass-btn active"

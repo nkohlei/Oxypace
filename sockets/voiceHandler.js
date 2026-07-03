@@ -151,7 +151,7 @@ export const initializeVoiceHandler = (io) => {
         });
 
         // ─── Watch Party (YouTube Sync) ───
-        socket.on('voice:watch-start', ({ roomName, url }) => {
+        socket.on('voice:watch-start', ({ roomName, url, isLive }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
@@ -159,10 +159,11 @@ export const initializeVoiceHandler = (io) => {
                     url,
                     isPlaying: false,
                     currentTime: 0,
-                    lastUpdated: Date.now()
+                    lastUpdated: Date.now(),
+                    isLive: !!isLive
                 };
                 io.to(`voice:${roomName}`).emit('voice:watch-state', roomData.watchParty);
-                console.log(`[Watch Party] started in ${roomName} with URL: ${url}`);
+                console.log(`[Watch Party] started in ${roomName} with URL: ${url} (isLive: ${isLive})`);
             }
         });
 

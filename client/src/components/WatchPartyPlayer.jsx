@@ -89,6 +89,7 @@ const WatchPartyPlayer = () => {
     const [useProxy, setUseProxy] = useState(false);
 
     const isHost = true;
+    const isLive = watchParty?.isLive || isLiveStream(watchParty?.url);
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
@@ -114,11 +115,11 @@ const WatchPartyPlayer = () => {
         }
 
         // Clean up native video src if switching to a non-live stream
-        if (!isLiveStream(watchParty?.url) && videoRef.current) {
+        if (!isLive && videoRef.current) {
             videoRef.current.src = "";
             videoRef.current.load();
         }
-    }, [watchParty?.url]);
+    }, [watchParty?.url, isLive]);
 
     // Cleanup timers and player instances on unmount
     useEffect(() => {
@@ -135,14 +136,14 @@ const WatchPartyPlayer = () => {
 
     // Load and initialize HLS/DASH dynamic libraries on stream changes
     useEffect(() => {
-        if (!watchParty?.url || !isLiveStream(watchParty.url) || !videoRef.current) return;
+        if (!watchParty?.url || !isLive || !videoRef.current) return;
 
         const video = videoRef.current;
         const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
-        const urlIsHls = isHls(watchParty.url);
+        const urlIsHls = isHls(watchParty.url) || watchParty.isLive; // Default Hls if not dash
         const urlIsDash = isDash(watchParty.url);
 
-        console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy})`);
+        console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy}, urlIsHls: ${urlIsHls}, urlIsDash: ${urlIsDash})`);
 
         if (hlsInstanceRef.current) {
             hlsInstanceRef.current.destroy();
@@ -155,7 +156,7 @@ const WatchPartyPlayer = () => {
 
         const initPlayer = async () => {
             try {
-                if (urlIsHls) {
+                if (urlIsHls || !urlIsDash) {
                     if (video.canPlayType('application/vnd.apple.mpegurl')) {
                         // Native HLS (iOS Safari / Safari)
                         video.src = streamUrl;
@@ -258,11 +259,11 @@ const WatchPartyPlayer = () => {
                 dashPlayerRef.current = null;
             }
         };
-    }, [watchParty?.url, reconnectCount, useProxy]);
+    }, [watchParty?.url, reconnectCount, useProxy, isLive]);
 
     // Live sync enforcement (keeps all users in the live edge in real time)
     useEffect(() => {
-        if (!watchParty || !isLiveStream(watchParty.url) || !videoRef.current) return;
+        if (!watchParty || !isLive || !videoRef.current) return;
         const video = videoRef.current;
 
         if (watchParty.isPlaying) {
@@ -283,11 +284,11 @@ const WatchPartyPlayer = () => {
                 video.pause();
             }
         }
-    }, [watchParty?.isPlaying, watchParty?.lastUpdated, watchParty?.url]);
+    }, [watchParty?.isPlaying, watchParty?.lastUpdated, watchParty?.url, isLive]);
 
     // Periodic synchronization check for live streams (keeps stream from drifting)
     useEffect(() => {
-        if (!watchParty || !isLiveStream(watchParty.url) || !videoRef.current) return;
+        if (!watchParty || !isLive || !videoRef.current) return;
         
         const interval = setInterval(() => {
             const video = videoRef.current;
@@ -309,11 +310,11 @@ const WatchPartyPlayer = () => {
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [watchParty?.isPlaying, watchParty?.url]);
+    }, [watchParty?.isPlaying, watchParty?.url, isLive]);
 
     // Standard Video Polling (only for non-live files)
     useEffect(() => {
-        if (!isReady || hasError || !playerRef.current || isLiveStream(watchParty?.url)) return;
+        if (!isReady || hasError || !playerRef.current || isLive) return;
 
         const interval = setInterval(() => {
             const player = playerRef.current;
@@ -339,11 +340,11 @@ const WatchPartyPlayer = () => {
         }, 400);
 
         return () => clearInterval(interval);
-    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek]);
+    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isLive]);
 
     // Standard Video Synchronization (only for non-live files)
     useEffect(() => {
-        if (!watchParty || !playerRef.current || !isReady || hasError || isLiveStream(watchParty?.url)) return;
+        if (!watchParty || !playerRef.current || !isReady || hasError || isLive) return;
 
         let expectedTime = watchParty.currentTime;
         if (watchParty.isPlaying && watchParty.lastUpdated) {
@@ -368,7 +369,7 @@ const WatchPartyPlayer = () => {
         }
 
         prevIsPlayingRef.current = watchParty.isPlaying;
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isLive]);
 
     const handlePlay = () => {
         if (isSyncingRef.current) return;
@@ -419,8 +420,6 @@ const WatchPartyPlayer = () => {
             </div>
         );
     }
-
-    const isLive = isLiveStream(watchParty.url);
 
     return (
         <div className="watch-party-player-wrapper">
