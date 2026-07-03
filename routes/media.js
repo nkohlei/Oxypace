@@ -271,6 +271,23 @@ router.get('/*', async (req, res) => {
             try {
                 const parsedUrl = new URL(filePath);
                 const targetOrigin = parsedUrl.origin;
+                
+                // Determine the correct Referer based on the target stream domain to bypass hotlinking protection
+                let targetReferer = targetOrigin + '/';
+                const lowerFilePath = filePath.toLowerCase();
+                if (lowerFilePath.includes('trt') || lowerFilePath.includes('daioncdn')) {
+                    targetReferer = 'https://www.trtizle.com/';
+                } else if (lowerFilePath.includes('kanald')) {
+                    targetReferer = 'https://www.kanald.com.tr/';
+                } else if (lowerFilePath.includes('atv')) {
+                    targetReferer = 'https://www.atv.com.tr/';
+                } else if (lowerFilePath.includes('showtv')) {
+                    targetReferer = 'https://www.showtv.com.tr/';
+                } else if (lowerFilePath.includes('startv')) {
+                    targetReferer = 'https://www.startv.com.tr/';
+                } else if (lowerFilePath.includes('tv8')) {
+                    targetReferer = 'https://www.tv8.com.tr/';
+                }
 
                 if (isManifest) {
                     const response = await axios({
@@ -280,8 +297,7 @@ router.get('/*', async (req, res) => {
                         timeout: 15000,
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                            'Referer': targetOrigin + '/',
-                            'Origin': targetOrigin
+                            'Referer': targetReferer
                         }
                     });
 
@@ -348,8 +364,7 @@ router.get('/*', async (req, res) => {
                         timeout: 15000,
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                            'Referer': targetOrigin + '/',
-                            'Origin': targetOrigin,
+                            'Referer': targetReferer,
                             ...(range ? { 'Range': range } : {})
                         },
                         validateStatus: (status) => status < 500
