@@ -281,12 +281,52 @@ router.get('/*', async (req, res) => {
                     });
 
                     let body = response.data;
-                    
-                    // Rewrite absolute URLs to go through our proxy
-                    const urlRegex = /(https?:\/\/[^\s"']+)/g;
-                    body = body.replace(urlRegex, (matched) => {
-                        return `${req.protocol}://${req.get('host')}/api/media/${encodeURIComponent(matched)}`;
-                    });
+                    const requestHost = req.get('host');
+                    const requestProtocol = req.protocol;
+                    const proxyPrefix = `${requestProtocol}://${requestHost}/api/media/`;
+
+                    if (filePath.includes('.m3u8')) {
+                        const lines = body.split('\n');
+                        const baseUrl = new URL(filePath);
+                        body = lines.map(line => {
+                            const trimmed = line.trim();
+                            if (!trimmed) return line;
+                            if (trimmed.startsWith('#')) {
+                                return line.replace(/(URI=["'])([^"']*)(["'])/g, (match, p1, p2, p3) => {
+                                    try {
+                                        if (p2.startsWith('data:') || p2.includes('/api/media/')) return match;
+                                        const absolute = new URL(p2, baseUrl).href;
+                                        return `${p1}${proxyPrefix}${encodeURIComponent(absolute)}${p3}`;
+                                    } catch (e) {
+                                        return match;
+                                    }
+                                });
+                            } else {
+                                try {
+                                    if (trimmed.includes('/api/media/')) return line;
+                                    const absolute = new URL(trimmed, baseUrl).href;
+                                    return `${proxyPrefix}${encodeURIComponent(absolute)}`;
+                                } catch (e) {
+                                    return line;
+                                }
+                            }
+                        }).join('\n');
+                    } else if (filePath.includes('.mpd')) {
+                        const urlRegex = /(https?:\/\/[^\s"']+)/g;
+                        body = body.replace(urlRegex, (matched) => {
+                            if (matched.includes('/api/media/')) return matched;
+                            return `${proxyPrefix}${encodeURIComponent(matched)}`;
+                        });
+                        
+                        const baseUrl = new URL(filePath);
+                        const proxiedBaseUrl = `${proxyPrefix}${encodeURIComponent(baseUrl.origin + baseUrl.pathname.substring(0, baseUrl.pathname.lastIndexOf('/') + 1))}`;
+                        
+                        if (body.includes('<BaseURL>')) {
+                            body = body.replace(/<BaseURL>[^<]+<\/BaseURL>/g, `<BaseURL>${proxiedBaseUrl}</BaseURL>`);
+                        } else {
+                            body = body.replace(/<MPD([^>]*)>/, `<MPD$1>\n<BaseURL>${proxiedBaseUrl}</BaseURL>`);
+                        }
+                    }
 
                     res.status(response.status);
                     res.set('Content-Type', response.headers['content-type'] || (filePath.includes('.m3u8') ? 'application/vnd.apple.mpegurl' : 'application/dash+xml'));
