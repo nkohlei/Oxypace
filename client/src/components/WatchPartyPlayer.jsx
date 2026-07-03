@@ -86,6 +86,7 @@ const WatchPartyPlayer = () => {
     const [isReady, setIsReady] = useState(false);
     const [hasError, setHasError] = useState(false);
     const [reconnectCount, setReconnectCount] = useState(0);
+    const [useProxy, setUseProxy] = useState(false);
 
     const isHost = true;
 
@@ -102,6 +103,7 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         setHasError(false);
         setIsReady(false);
+        setUseProxy(false);
         lastProgrammaticSeekTimeRef.current = null;
         lastPolledTimeRef.current = null;
         prevIsPlayingRef.current = false;
@@ -136,9 +138,11 @@ const WatchPartyPlayer = () => {
         if (!watchParty?.url || !isLiveStream(watchParty.url) || !videoRef.current) return;
 
         const video = videoRef.current;
-        const proxiedUrl = getProxiedUrl(watchParty.url);
+        const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
         const urlIsHls = isHls(watchParty.url);
         const urlIsDash = isDash(watchParty.url);
+
+        console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy})`);
 
         if (hlsInstanceRef.current) {
             hlsInstanceRef.current.destroy();
@@ -154,7 +158,7 @@ const WatchPartyPlayer = () => {
                 if (urlIsHls) {
                     if (video.canPlayType('application/vnd.apple.mpegurl')) {
                         // Native HLS (iOS Safari / Safari)
-                        video.src = proxiedUrl;
+                        video.src = streamUrl;
                         video.addEventListener('loadedmetadata', () => {
                             setIsReady(true);
                             if (watchParty.isPlaying) {
@@ -163,7 +167,12 @@ const WatchPartyPlayer = () => {
                         });
                         video.onerror = (e) => {
                             console.error("Native HLS playback error:", e);
-                            triggerReconnect();
+                            if (!useProxy) {
+                                console.log("[WatchPartyPlayer] Direct native HLS failed. Falling back to CORS proxy...");
+                                setUseProxy(true);
+                            } else {
+                                triggerReconnect();
+                            }
                         };
                     } else {
                         // Use Hls.js
@@ -175,7 +184,7 @@ const WatchPartyPlayer = () => {
                             backBufferLength: 30
                         });
                         hlsInstanceRef.current = hls;
-                        hls.loadSource(proxiedUrl);
+                        hls.loadSource(streamUrl);
                         hls.attachMedia(video);
                         
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -188,16 +197,21 @@ const WatchPartyPlayer = () => {
                         hls.on(Hls.Events.ERROR, (event, data) => {
                             if (data.fatal) {
                                 console.warn("Fatal Hls.js error encountered:", data);
-                                switch (data.type) {
-                                    case Hls.ErrorTypes.NETWORK_ERROR:
-                                        hls.startLoad();
-                                        break;
-                                    case Hls.ErrorTypes.MEDIA_ERROR:
-                                        hls.recoverMediaError();
-                                        break;
-                                    default:
-                                        triggerReconnect();
-                                        break;
+                                if (!useProxy) {
+                                    console.log("[WatchPartyPlayer] Direct Hls.js failed. Falling back to CORS proxy...");
+                                    setUseProxy(true);
+                                } else {
+                                    switch (data.type) {
+                                        case Hls.ErrorTypes.NETWORK_ERROR:
+                                            hls.startLoad();
+                                            break;
+                                        case Hls.ErrorTypes.MEDIA_ERROR:
+                                            hls.recoverMediaError();
+                                            break;
+                                        default:
+                                            triggerReconnect();
+                                            break;
+                                    }
                                 }
                             }
                         });
@@ -206,7 +220,7 @@ const WatchPartyPlayer = () => {
                     const dashjs = await loadDash();
                     const player = dashjs.MediaPlayer().create();
                     dashPlayerRef.current = player;
-                    player.initialize(video, proxiedUrl, watchParty.isPlaying);
+                    player.initialize(video, streamUrl, watchParty.isPlaying);
                     
                     player.on(dashjs.MediaPlayer.events.PLAYBACK_METADATA_LOADED, () => {
                         setIsReady(true);
@@ -214,12 +228,21 @@ const WatchPartyPlayer = () => {
 
                     player.on(dashjs.MediaPlayer.events.ERROR, (e) => {
                         console.error("Dash.js error encountered:", e);
-                        triggerReconnect();
+                        if (!useProxy) {
+                            console.log("[WatchPartyPlayer] Direct DASH failed. Falling back to CORS proxy...");
+                            setUseProxy(true);
+                        } else {
+                            triggerReconnect();
+                        }
                     });
                 }
             } catch (err) {
                 console.error("Streaming setup error:", err);
-                triggerReconnect();
+                if (!useProxy) {
+                    setUseProxy(true);
+                } else {
+                    triggerReconnect();
+                }
             }
         };
 
@@ -235,7 +258,7 @@ const WatchPartyPlayer = () => {
                 dashPlayerRef.current = null;
             }
         };
-    }, [watchParty?.url, reconnectCount]);
+    }, [watchParty?.url, reconnectCount, useProxy]);
 
     // Live sync enforcement (keeps all users in the live edge in real time)
     useEffect(() => {
