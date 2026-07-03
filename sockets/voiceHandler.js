@@ -28,6 +28,13 @@ export const initializeVoiceHandler = (io) => {
                     participants: new Map(),
                     startedAt: Date.now()
                 });
+            } else {
+                const roomData = voiceRooms.get(roomName);
+                if (roomData.cleanupTimeout) {
+                    clearTimeout(roomData.cleanupTimeout);
+                    roomData.cleanupTimeout = null;
+                    console.log(`[Voice Room] Graceful cleanup timer cancelled for ${roomName} due to user rejoin.`);
+                }
             }
             const roomData = voiceRooms.get(roomName);
             roomData.participants.set(userId, {
@@ -278,9 +285,16 @@ function removeParticipant(io, roomName, userId) {
     const participant = roomData.participants.get(userId);
     roomData.participants.delete(userId);
 
-    // Cleanup empty rooms
+    // Cleanup empty rooms (with a 20s grace period for socket reconnects)
     if (roomData.participants.size === 0) {
-        voiceRooms.delete(roomName);
+        if (roomData.cleanupTimeout) clearTimeout(roomData.cleanupTimeout);
+        roomData.cleanupTimeout = setTimeout(() => {
+            const freshRoomData = voiceRooms.get(roomName);
+            if (freshRoomData && freshRoomData.participants.size === 0) {
+                voiceRooms.delete(roomName);
+                console.log(`[Voice Room] Empty room ${roomName} deleted after grace period.`);
+            }
+        }, 20000);
     } else {
         // Broadcast updated participant list
         const participants = getParticipantList(roomName);
