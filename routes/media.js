@@ -272,21 +272,29 @@ router.get('/*', async (req, res) => {
                 const parsedUrl = new URL(filePath);
                 const targetOrigin = parsedUrl.origin;
                 
-                // Determine the correct Referer based on the target stream domain to bypass hotlinking protection
+                // Determine the correct Referer and Origin based on the target stream domain to bypass hotlinking protection
                 let targetReferer = targetOrigin + '/';
+                let targetOriginHeader = undefined;
                 const lowerFilePath = filePath.toLowerCase();
+                
                 if (lowerFilePath.includes('trt') || lowerFilePath.includes('daioncdn')) {
-                    targetReferer = 'https://www.trtizle.com/';
+                    targetReferer = 'https://www.tabii.com/';
+                    targetOriginHeader = 'https://www.tabii.com';
                 } else if (lowerFilePath.includes('kanald')) {
                     targetReferer = 'https://www.kanald.com.tr/';
+                    targetOriginHeader = 'https://www.kanald.com.tr';
                 } else if (lowerFilePath.includes('atv')) {
                     targetReferer = 'https://www.atv.com.tr/';
+                    targetOriginHeader = 'https://www.atv.com.tr';
                 } else if (lowerFilePath.includes('showtv')) {
                     targetReferer = 'https://www.showtv.com.tr/';
+                    targetOriginHeader = 'https://www.showtv.com.tr';
                 } else if (lowerFilePath.includes('startv')) {
                     targetReferer = 'https://www.startv.com.tr/';
+                    targetOriginHeader = 'https://www.startv.com.tr';
                 } else if (lowerFilePath.includes('tv8')) {
                     targetReferer = 'https://www.tv8.com.tr/';
+                    targetOriginHeader = 'https://www.tv8.com.tr';
                 }
 
                 if (isManifest) {
@@ -296,8 +304,9 @@ router.get('/*', async (req, res) => {
                         responseType: 'text',
                         timeout: 15000,
                         headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                            'Referer': targetReferer
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Referer': targetReferer,
+                            ...(targetOriginHeader ? { 'Origin': targetOriginHeader } : {})
                         }
                     });
 
@@ -363,8 +372,9 @@ router.get('/*', async (req, res) => {
                         responseType: 'stream',
                         timeout: 15000,
                         headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                             'Referer': targetReferer,
+                            ...(targetOriginHeader ? { 'Origin': targetOriginHeader } : {}),
                             ...(range ? { 'Range': range } : {})
                         },
                         validateStatus: (status) => status < 500
