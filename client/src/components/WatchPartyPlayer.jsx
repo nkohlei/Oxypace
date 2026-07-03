@@ -91,6 +91,7 @@ const WatchPartyPlayer = () => {
     const [useProxy, setUseProxy] = useState(false);
     const [localMuted, setLocalMuted] = useState(true); // Default to muted for reliable autoplay compliance
     const [volume, setVolume] = useState(1);
+    const [volumeOpen, setVolumeOpen] = useState(false);
 
     const isHost = true;
     const isLive = watchParty?.isLive || isLiveStream(watchParty?.url);
@@ -402,40 +403,61 @@ const WatchPartyPlayer = () => {
                     crossOrigin="anonymous"
                 />
 
-                {isLive && (
-                    <div className="watch-party-live-controls-overlay" style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 20, background: 'rgba(0, 0, 0, 0.6)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(8px)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <button 
-                                className="glass-btn icon-btn"
-                                onClick={() => setLocalMuted(!localMuted)}
-                                style={{ color: '#ffffff', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
-                            >
-                                {localMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                            </button>
-                            <input 
-                                type="range" 
-                                min="0" 
-                                max="1" 
-                                step="0.05" 
-                                value={localMuted ? 0 : volume} 
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    setVolume(val);
-                                    if (val > 0) setLocalMuted(false);
-                                    else setLocalMuted(true);
-                                }}
-                                style={{ width: '80px', height: '4px', accentColor: '#10b981', cursor: 'pointer' }}
-                            />
-                        </div>
-                        <button 
-                            className="glass-btn icon-btn"
-                            onClick={toggleFullscreen}
-                            style={{ color: '#ffffff', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
-                            title="Tam Ekran"
+                 {isLive && (
+                    <>
+                        {/* Collapsible Vertical Volume Control */}
+                        <div 
+                            className="watch-party-volume-container-modern"
+                            onMouseEnter={() => window.innerWidth > 768 && setVolumeOpen(true)}
+                            onMouseLeave={() => window.innerWidth > 768 && setVolumeOpen(false)}
                         >
-                            <Maximize size={18} />
-                        </button>
-                    </div>
+                            {volumeOpen && (
+                                <div className="watch-party-volume-slider-wrapper">
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max="1" 
+                                        step="0.05" 
+                                        value={localMuted ? 0 : volume} 
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            setVolume(val);
+                                            if (val > 0) setLocalMuted(false);
+                                            else setLocalMuted(true);
+                                        }}
+                                        className="watch-party-volume-slider-vertical"
+                                    />
+                                </div>
+                            )}
+                            <button 
+                                className="watch-party-volume-btn-modern"
+                                onClick={() => {
+                                    if (window.innerWidth <= 768) {
+                                        setVolumeOpen(!volumeOpen);
+                                    } else {
+                                        setLocalMuted(!localMuted);
+                                    }
+                                }}
+                                onDoubleClick={() => {
+                                    setLocalMuted(!localMuted);
+                                }}
+                                title={localMuted ? "Sesi Aç" : "Sesi Kapat"}
+                            >
+                                {localMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                            </button>
+                        </div>
+
+                        {/* Repositioned Fullscreen Button */}
+                        <div className="watch-party-fullscreen-container-modern">
+                            <button 
+                                className="watch-party-fullscreen-btn-modern"
+                                onClick={toggleFullscreen}
+                                title="Tam Ekran"
+                            >
+                                <Maximize size={18} />
+                            </button>
+                        </div>
+                    </>
                 )}
 
                 {!isLive && (
