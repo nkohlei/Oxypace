@@ -69,30 +69,26 @@ const show404Page = () => {
         });
 };
 
-const init = async () => {
-    // 1. Eğer kullanıcı oturum açmışsa, doğrudan uygulamayı başlat
+const init = () => {
+    // 1. Render App immediately to unblock FCP / LCP
+    renderApp();
+
     const token = localStorage.getItem('token');
     if (token) {
-        renderApp();
         return;
     }
 
-    try {
-        // 2. Bakım durumunu API'den sorgula
-        const res = await fetch('/api/auth/maintenance-status');
-        const data = await res.json();
-        
-        if (data.active) {
-            // Bakım aktif ve yetki yoksa sahte 404 sayfasına yönlendir
-            show404Page();
-        } else {
-            // Bakım pasifse uygulamayı normal başlat
-            renderApp();
-        }
-    } catch (err) {
-        // API bağlantı hatası durumunda kullanıcıyı engelleme (fail-safe)
-        renderApp();
-    }
+    // 2. Check maintenance status asynchronously after initial paint
+    fetch('/api/auth/maintenance-status')
+        .then(res => res.json())
+        .then(data => {
+            if (data.active) {
+                show404Page();
+            }
+        })
+        .catch(() => {
+            // Fail-safe
+        });
 };
 
 init();
