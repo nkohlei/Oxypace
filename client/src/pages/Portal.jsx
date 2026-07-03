@@ -225,14 +225,6 @@ const Portal = () => {
         socket.on('post:updated', handleUpdatePost);
 
         return () => {
-            // Leave Portal Room
-            socket.emit('leave_portal', id);
-            
-            // Leave Channel Room if was joined
-            if (currentChannel) {
-                socket.emit('leave_channel', currentChannel);
-            }
-
             socket.off('post:created', handleNewPost);
             socket.off('post:updated', handleUpdatePost);
         };
