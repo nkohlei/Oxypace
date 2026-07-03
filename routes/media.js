@@ -318,6 +318,8 @@ router.get('/*', async (req, res) => {
                     if (filePath.includes('.m3u8')) {
                         const lines = body.split('\n');
                         const baseUrl = new URL(filePath);
+                        const parentSearch = baseUrl.search;
+                        
                         body = lines.map(line => {
                             const trimmed = line.trim();
                             if (!trimmed) return line;
@@ -325,7 +327,11 @@ router.get('/*', async (req, res) => {
                                 return line.replace(/(URI=["'])([^"']*)(["'])/g, (match, p1, p2, p3) => {
                                     try {
                                         if (p2.startsWith('data:') || p2.includes('/api/media/')) return match;
-                                        const absolute = new URL(p2, baseUrl).href;
+                                        const resolvedUrl = new URL(p2, baseUrl);
+                                        if (parentSearch && !resolvedUrl.search) {
+                                            resolvedUrl.search = parentSearch;
+                                        }
+                                        const absolute = resolvedUrl.href;
                                         return `${p1}${proxyPrefix}${encodeURIComponent(absolute)}${p3}`;
                                     } catch (e) {
                                         return match;
@@ -334,7 +340,11 @@ router.get('/*', async (req, res) => {
                             } else {
                                 try {
                                     if (trimmed.includes('/api/media/')) return line;
-                                    const absolute = new URL(trimmed, baseUrl).href;
+                                    const resolvedUrl = new URL(trimmed, baseUrl);
+                                    if (parentSearch && !resolvedUrl.search) {
+                                        resolvedUrl.search = parentSearch;
+                                    }
+                                    const absolute = resolvedUrl.href;
                                     return `${proxyPrefix}${encodeURIComponent(absolute)}`;
                                 } catch (e) {
                                     return line;
@@ -349,7 +359,8 @@ router.get('/*', async (req, res) => {
                         });
                         
                         const baseUrl = new URL(filePath);
-                        const proxiedBaseUrl = `${proxyPrefix}${encodeURIComponent(baseUrl.origin + baseUrl.pathname.substring(0, baseUrl.pathname.lastIndexOf('/') + 1))}`;
+                        const parentSearch = baseUrl.search;
+                        const proxiedBaseUrl = `${proxyPrefix}${encodeURIComponent(baseUrl.origin + baseUrl.pathname.substring(0, baseUrl.pathname.lastIndexOf('/') + 1) + parentSearch)}`;
                         
                         if (body.includes('<BaseURL>')) {
                             body = body.replace(/<BaseURL>[^<]+<\/BaseURL>/g, `<BaseURL>${proxiedBaseUrl}</BaseURL>`);
