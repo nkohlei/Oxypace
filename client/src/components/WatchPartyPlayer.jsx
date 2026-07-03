@@ -110,6 +110,12 @@ const WatchPartyPlayer = () => {
             clearTimeout(reconnectTimerRef.current);
             reconnectTimerRef.current = null;
         }
+
+        // Clean up native video src if switching to a non-live stream
+        if (!isLiveStream(watchParty?.url) && videoRef.current) {
+            videoRef.current.src = "";
+            videoRef.current.load();
+        }
     }, [watchParty?.url]);
 
     // Cleanup timers and player instances on unmount
@@ -404,16 +410,17 @@ const WatchPartyPlayer = () => {
             <div className="watch-party-player-container">
                 {isLive && <div className="watch-party-live-badge">Canlı</div>}
                 
-                {isLive ? (
-                    <video
-                        ref={videoRef}
-                        className="watch-party-native-video"
-                        controls={isHost}
-                        onPlay={handleNativePlay}
-                        onPause={handleNativePause}
-                        playsInline
-                    />
-                ) : (
+                <video
+                    ref={videoRef}
+                    className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
+                    controls={isHost}
+                    onPlay={handleNativePlay}
+                    onPause={handleNativePause}
+                    playsInline
+                    crossOrigin="anonymous"
+                />
+
+                {!isLive && (
                     <ReactPlayer
                         ref={playerRef}
                         url={getImageUrl(watchParty.url)}

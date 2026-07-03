@@ -95,6 +95,10 @@
     background: #000000;
 }
 
+.watch-party-native-video.hidden {
+    display: none !important;
+}
+
 .watch-party-live-badge {
     position: absolute;
     top: 16px;
