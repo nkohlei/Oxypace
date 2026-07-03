@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
 import { X, Volume2, VolumeX, Maximize } from 'lucide-react';
@@ -463,6 +464,44 @@ const WatchPartyPlayer = () => {
                     />
                 )}
             </div>
+        </div>
+    );
+};
+
+export const GlobalWatchPartyWrapper = () => {
+    const { watchParty } = useVoice();
+    const [portalTarget, setPortalTarget] = useState(null);
+
+    useEffect(() => {
+        if (!watchParty || !watchParty.url) {
+            setPortalTarget(null);
+            return;
+        }
+
+        const updateTarget = () => {
+            const el = document.getElementById('watch-party-portal-target');
+            setPortalTarget(el);
+        };
+
+        updateTarget();
+
+        // Observe DOM for the target container being mounted/unmounted
+        const observer = new MutationObserver(updateTarget);
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        return () => observer.disconnect();
+    }, [watchParty?.url]);
+
+    if (!watchParty || !watchParty.url) return null;
+
+    if (portalTarget) {
+        return ReactDOM.createPortal(<WatchPartyPlayer />, portalTarget);
+    }
+
+    // Keep it mounted but hidden in the background when not viewing the channel room
+    return (
+        <div style={{ display: 'none' }}>
+            <WatchPartyPlayer />
         </div>
     );
 };

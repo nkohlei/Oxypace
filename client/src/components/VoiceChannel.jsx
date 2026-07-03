@@ -346,7 +346,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             {participants.map(p => renderParticipantCard(p, 'carousel'))}
                         </div>
                         <div className="vc-hero">
-                            <WatchPartyPlayer />
+                            <div id="watch-party-portal-target" style={{ width: '100%', height: '100%' }}></div>
                         </div>
                     </>
                 ) : (
