@@ -269,6 +269,9 @@ router.get('/*', async (req, res) => {
             const range = req.headers.range;
             
             try {
+                const parsedUrl = new URL(filePath);
+                const targetOrigin = parsedUrl.origin;
+
                 if (isManifest) {
                     const response = await axios({
                         method: 'get',
@@ -276,7 +279,9 @@ router.get('/*', async (req, res) => {
                         responseType: 'text',
                         timeout: 15000,
                         headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                            'Referer': targetOrigin + '/',
+                            'Origin': targetOrigin
                         }
                     });
 
@@ -343,6 +348,8 @@ router.get('/*', async (req, res) => {
                         timeout: 15000,
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                            'Referer': targetOrigin + '/',
+                            'Origin': targetOrigin,
                             ...(range ? { 'Range': range } : {})
                         },
                         validateStatus: (status) => status < 500
