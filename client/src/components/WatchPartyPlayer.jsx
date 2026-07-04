@@ -419,7 +419,6 @@ const WatchPartyPlayer = () => {
                     playsInline
                     autoPlay
                     muted={localMuted}
-                    crossOrigin="anonymous"
                 />
 
                  {isLive && (
@@ -487,7 +486,10 @@ const WatchPartyPlayer = () => {
                         controls={isHost}
                         width="100%"
                         height="100%"
-                        onError={(e) => console.warn("ReactPlayer error logged:", e)}
+                        onError={(e) => {
+                            console.warn("ReactPlayer error logged:", e);
+                            setHasError(true);
+                        }}
                         onReady={() => setIsReady(true)}
                         onPlay={handlePlay}
                         onPause={handlePause}
@@ -495,11 +497,6 @@ const WatchPartyPlayer = () => {
                         config={{
                             youtube: {
                                 playerVars: { autoplay: 1, disablekb: 0 }
-                            },
-                            file: {
-                                attributes: {
-                                    crossOrigin: isHls(watchParty?.url) || (watchParty?.url && watchParty.url.startsWith('http') && !watchParty.url.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"
-                                }
                             }
                         }}
                     />
