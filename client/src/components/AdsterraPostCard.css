@@ -4,7 +4,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: 16px;
+    margin: 12px 16px;
     padding: 16px;
     min-height: 180px;
     background: rgba(255, 255, 255, 0.02) !important;
@@ -38,14 +38,60 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     pointer-events: none;
+    z-index: 5;
 }
 
+/* Constrained responsive wrapper to stabilize size & prevent overflows */
 .adsterra-wrapper {
     width: 100%;
+    max-width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 140px;
+    overflow: hidden;
+    position: relative;
+    z-index: 2;
+}
+
+#container-941148489c50396c6b0278adff4f7c0c {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Ensure injected Adsterra components scale responsively and never stretch */
+#container-941148489c50396c6b0278adff4f7c0c iframe,
+#container-941148489c50396c6b0278adff4f7c0c img,
+#container-941148489c50396c6b0278adff4f7c0c a,
+#container-941148489c50396c6b0278adff4f7c0c div {
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+}
+
+/* Skeleton Shimmer Background directly behind the ad container to prevent CLS */
+.adsterra-skeleton-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg, 
+        rgba(255, 255, 255, 0) 0%, 
+        rgba(255, 255, 255, 0.03) 50%, 
+        rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: adsterraShimmer 1.6s infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+
+@keyframes adsterraShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 .adsterra-placeholder {
@@ -56,6 +102,7 @@
     color: rgba(255, 255, 255, 0.3);
     font-size: 12px;
     font-weight: 500;
+    z-index: 3;
 }
 
 .adsterra-shimmer-circle {
@@ -70,4 +117,52 @@
 @keyframes adsterraSpin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Premium Fallback Placeholder Card */
+.adsterra-fallback-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    text-align: center;
+    padding: 16px;
+    z-index: 3;
+    animation: fadeInAd 0.5s ease;
+}
+
+@keyframes fadeInAd {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.adsterra-fallback-icon {
+    font-size: 32px;
+    background: linear-gradient(135deg, #fbbf24, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: pulseBrand 2s infinite ease-in-out;
+}
+
+@keyframes pulseBrand {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.08); opacity: 1; }
+}
+
+.adsterra-fallback-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f3f4f6;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.adsterra-fallback-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.35);
+    margin: 0;
+    max-width: 300px;
+    line-height: 1.4;
 }
