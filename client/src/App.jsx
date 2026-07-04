@@ -79,6 +79,7 @@ import { Browser } from '@capacitor/browser';
 import GlobalVideoPIP from './components/GlobalVideoPIP';
 import UpdateModal from './components/UpdateModal';
 import { GlobalWatchPartyWrapper } from './components/WatchPartyPlayer';
+import TourGuide from './components/TourGuide';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
 const MAINTENANCE_MODE = false;
@@ -587,6 +588,7 @@ const AppLayout = () => {
             <GlobalWatchPartyWrapper />
             <div id="watch-party-hidden-target" style={{ display: 'none' }}></div>
             <UpdateModal />
+            <TourGuide />
         </div>
     );
 };

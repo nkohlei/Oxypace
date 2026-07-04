@@ -189,6 +189,7 @@ const PortalSidebar = () => {
             <div className="portal-sidebar">
                 {/* Top Actions: Messages and Search */}
                 <div
+                    id="tour-step-messages"
                     className={`sidebar-item ${location.pathname === '/' || location.pathname === '/inbox' ? 'active' : ''}`}
                     onClick={() => handleNavigation('/')}
                 >
@@ -258,6 +259,7 @@ const PortalSidebar = () => {
                 {/* Bottom Actions: Create Portal and Sidebar Toggle */}
                 <div className="sidebar-bottom-actions">
                     <div
+                        id="tour-step-discover"
                         className={`sidebar-item ${isActive('/search') ? 'active' : ''}`}
                         onClick={() => handleNavigation('/search')}
                         style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}

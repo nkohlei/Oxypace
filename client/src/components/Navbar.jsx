@@ -175,6 +175,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                         <div className="header-menu-wrapper" ref={menuRef}>
                             {user ? (
                                 <button
+                                    id="tour-step-profile"
                                     className={`header-icon profile-unified-btn ${showMenu ? 'active' : ''} ${unreadCount > 0 ? 'has-unread' : ''} ${adminPendingCount > 0 ? 'has-admin-unread' : ''}`}
                                     onClick={() => setShowMenu(!showMenu)}
                                     title="Profilim ve Menü"

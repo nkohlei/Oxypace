@@ -38,7 +38,7 @@ const UserBar = ({ currentChannelId }) => {
     if (!user) return null;
 
     return (
-        <div className="user-bar-container" style={{ position: 'relative', flexDirection: 'column', height: 'auto', padding: 0 }}>
+        <div id="tour-step-controls" className="user-bar-container" style={{ position: 'relative', flexDirection: 'column', height: 'auto', padding: 0 }}>
             {/* Voice Connection Panel (Visible when connected) */}
             {showVoiceBar && (
                 <div
