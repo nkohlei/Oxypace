@@ -4,6 +4,26 @@ import App from './App.jsx';
 import './index.css';
 import axios from 'axios';
 
+// Prevent React runtime crashes from third-party scripts (AdSense, extensions, translate) modifying the DOM
+const originalRemoveChild = Node.prototype.removeChild;
+Node.prototype.removeChild = function (child) {
+    if (child.parentNode !== this) {
+        console.warn('removeChild: parentNode mismatch, ignoring to prevent crash', this, child);
+        return child;
+    }
+    return originalRemoveChild.call(this, child);
+};
+
+const originalInsertBefore = Node.prototype.insertBefore;
+Node.prototype.insertBefore = function (newNode, referenceNode) {
+    if (referenceNode && referenceNode.parentNode !== this) {
+        console.warn('insertBefore: referenceNode parentNode mismatch, ignoring to prevent crash', this, referenceNode);
+        return newNode;
+    }
+    return originalInsertBefore.call(this, newNode, referenceNode);
+};
+
+
 import { Capacitor } from '@capacitor/core';
 
 const isNative = Capacitor.isNativePlatform();
