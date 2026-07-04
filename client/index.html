@@ -159,7 +159,8 @@
       var requestIdle = window.requestIdleCallback || function(cb) { return setTimeout(cb, 1); };
       requestIdle(function() {
         setTimeout(function() {
-          if (window.location.pathname.toLowerCase().includes('bot') || window.location.hash.toLowerCase().includes('bot')) {
+          const pathLower = (window.location.pathname + window.location.hash).toLowerCase();
+          if (pathLower.includes('bot') || pathLower.includes('news') || pathLower.includes('gelismeler')) {
             console.log('AdSense bot isolation: blocking global AdSense script load.');
             return;
           }

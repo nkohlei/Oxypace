@@ -22,6 +22,10 @@ Disallow: /portal/*/channel/bot-*
 Disallow: /portal/*/bot-*
 Disallow: /portal/bot-channels
 Disallow: /portal/bot-*
+Disallow: /portal/*/channel/movie-news*
+Disallow: /portal/*/channel/gelismeler*
+Disallow: /portal/*/movie-news*
+Disallow: /portal/*/gelismeler*
 
 # Allow sitemap
 Allow: /sitemap.xml

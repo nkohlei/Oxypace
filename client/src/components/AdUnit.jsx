@@ -4,9 +4,8 @@ const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
     const adRef = useRef(null);
 
     // Bot URL/path isolation check for Google AdSense compliance
-    const isBotPage = typeof window !== 'undefined' && 
-        (window.location.pathname.toLowerCase().includes('bot') || 
-         window.location.hash.toLowerCase().includes('bot'));
+    const pathLower = typeof window !== 'undefined' ? (window.location.pathname + window.location.hash).toLowerCase() : '';
+    const isBotPage = pathLower.includes('bot') || pathLower.includes('news') || pathLower.includes('gelismeler');
 
     if (isBotPage) {
         return null;
