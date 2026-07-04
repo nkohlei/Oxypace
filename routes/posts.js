@@ -423,7 +423,7 @@ router.get('/', optionalProtect, async (req, res) => {
         }
 
         const visiblePosts = posts.filter((post) => {
-            if (!post.author) {
+            if (!post.author || post.author.isDeleted) {
                 return false;
             }
 
@@ -614,7 +614,7 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
             })
             .lean();
 
-        if (!post) {
+        if (!post || (post.author && post.author.isDeleted)) {
             return res.status(404).json({ message: 'Post not found' });
         }
 

@@ -44,6 +44,10 @@ const AuthProcess = () => {
                 sessionStorage.removeItem('auth_intent');
             } catch (error) {
                 console.error('Auth Process Error:', error);
+                if (error.response?.status === 403 && error.response?.data?.isDeleted) {
+                    navigate(`/login?error=AccountDeleted&email=${encodeURIComponent(error.response.data.email)}`);
+                    return;
+                }
                 const msg = error.response?.data?.message || 'AuthFailed';
                 if (intent === 'register' && msg.includes('found')) {
                     navigate('/login?error=AccountExists');

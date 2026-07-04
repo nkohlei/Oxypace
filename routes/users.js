@@ -393,6 +393,7 @@ router.get('/search', protect, async (req, res) => {
         const users = await User.find({
             username: { $regex: escapeRegex(q), $options: 'i' },
             _id: { $ne: req.user._id }, // Exclude current user
+            isDeleted: { $ne: true }, // Exclude deleted users
             'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
         })
             .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
@@ -416,7 +417,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
             )
             .populate('joinedPortals', 'name avatar lowResAvatar badges isVerified privacy members allowedUsers owner admins');
 
-        if (!user) {
+        if (!user || user.isDeleted) {
             return res.status(404).json({ message: 'User not found' });
         }
 
@@ -844,7 +845,7 @@ router.get('/:id/followers', protect, mongoIdValidation('id'), async (req, res) 
     try {
         const user = await User.findById(req.params.id).populate(
             'followers',
-            'username profile.displayName profile.avatar profile.bio'
+            'username profile.displayName profile.avatar profile.bio isDeleted'
         );
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -863,7 +864,7 @@ router.get('/:id/followers', protect, mongoIdValidation('id'), async (req, res) 
             }
         }
 
-        res.json(user.followers.filter(Boolean));
+        res.json(user.followers.filter(f => f && !f.isDeleted));
     } catch (error) {
         console.error('Get followers error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -877,7 +878,7 @@ router.get('/:id/following', protect, mongoIdValidation('id'), async (req, res) 
     try {
         const user = await User.findById(req.params.id).populate(
             'following',
-            'username profile.displayName profile.avatar profile.bio'
+            'username profile.displayName profile.avatar profile.bio isDeleted'
         );
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -901,7 +902,7 @@ router.get('/:id/following', protect, mongoIdValidation('id'), async (req, res) 
             }
         }
 
-        res.json(user.following.filter(Boolean));
+        res.json(user.following.filter(f => f && !f.isDeleted));
     } catch (error) {
         console.error('Get following error:', error);
         res.status(500).json({ message: 'Server error' });

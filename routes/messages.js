@@ -113,7 +113,7 @@ router.post(
             }
 
             const recipient = await User.findById(recipientId);
-            if (!recipient) {
+            if (!recipient || recipient.isDeleted) {
                 return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
             }
 

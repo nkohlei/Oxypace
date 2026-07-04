@@ -356,6 +356,14 @@ router.post('/google/validate', async (req, res) => {
             // Fetch fresh user data with populated portals
             const user = await User.findById(decoded.id).populate('joinedPortals', 'name avatar');
 
+            if (user && user.isDeleted) {
+                return res.status(403).json({
+                    isDeleted: true,
+                    message: 'Bu hesap silinmiştir. Giriş yapabilmek için lütfen kurtarma sihirbazını kullanın.',
+                    email: user.email
+                });
+            }
+
             if (user && user.isBanned) {
                 if (user.banExpiresAt && user.banExpiresAt < new Date()) {
                     user.isBanned = false;

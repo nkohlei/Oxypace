@@ -192,6 +192,8 @@ const Login = () => {
                 setError('Hesap bulunamadı. Lütfen önce kayıt olun.');
             } else if (errorMsg === 'NoUser') {
                 setError('Giriş başarısız. Google hesabınızdan bilgi alınamadı.');
+            } else if (errorMsg === 'AccountDeleted') {
+                setError('Bu hesap silinmiştir. Hesabınızı kurtarmak için lütfen e-posta ve şifrenizle giriş yapmayı deneyin.');
             } else {
                 setError('Giriş başarısız. Lütfen tekrar deneyin.');
             }

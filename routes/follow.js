@@ -17,7 +17,7 @@ router.post('/:userId', protect, async (req, res) => {
         const userToFollow = await User.findById(req.params.userId);
         const currentUser = await User.findById(req.user.id);
 
-        if (!userToFollow) {
+        if (!userToFollow || userToFollow.isDeleted) {
             return res.status(404).json({ message: 'User not found' });
         }
 
