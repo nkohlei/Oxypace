@@ -85,13 +85,17 @@ const TourGuide = () => {
   useEffect(() => {
     if (!isActive) return;
 
+    let timeoutId;
+
     // Check if we entered Step 7
     if (currentStep === 6) {
       const isDropdownOpen = !!document.querySelector('.header-dropdown');
       if (!isDropdownOpen) {
         const btn = document.getElementById('tour-step-profile');
         if (btn) {
-          btn.click();
+          timeoutId = setTimeout(() => {
+            btn.click();
+          }, 0);
         }
       }
     } else {
@@ -100,23 +104,35 @@ const TourGuide = () => {
       if (isDropdownOpen) {
         const btn = document.getElementById('tour-step-profile');
         if (btn) {
-          btn.click();
+          timeoutId = setTimeout(() => {
+            btn.click();
+          }, 0);
         }
       }
     }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [currentStep, isActive]);
 
   // Ensure profile dropdown is closed when closing the tour
   useEffect(() => {
+    let timeoutId;
     if (!isActive) {
       const isDropdownOpen = !!document.querySelector('.header-dropdown');
       if (isDropdownOpen) {
         const btn = document.getElementById('tour-step-profile');
         if (btn) {
-          btn.click();
+          timeoutId = setTimeout(() => {
+            btn.click();
+          }, 0);
         }
       }
     }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [isActive]);
 
   // Handle positioning of card and spotlight dynamically
