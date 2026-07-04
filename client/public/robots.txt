@@ -16,7 +16,7 @@ Disallow: /notifications
 Disallow: /inbox
 Disallow: /create
 
-# Disallow automated bot channels
+# Disallow automated bot channels for general crawlers
 Disallow: /portal/*/bot-channels
 Disallow: /portal/*/channel/bot-*
 Disallow: /portal/*/bot-*
@@ -40,6 +40,71 @@ Allow: /sitemap.xml
 
 # Disallow API except sitemap
 Disallow: /api/
+
+
+# Explicit Rules for Google Search Crawler
+User-agent: Googlebot
+Allow: /
+Allow: /search
+Allow: /portal/
+Allow: /profile/
+Disallow: /admin
+Disallow: /settings
+Disallow: /saved
+Disallow: /notifications
+Disallow: /inbox
+Disallow: /create
+# Disallow automated bot channels
+Disallow: /portal/*/bot-channels
+Disallow: /portal/*/channel/bot-*
+Disallow: /portal/*/bot-*
+Disallow: /portal/bot-channels
+Disallow: /portal/bot-*
+Disallow: /portal/*/channel/movie-news*
+Disallow: /portal/*/channel/gelismeler*
+Disallow: /portal/*/movie-news*
+Disallow: /portal/*/gelismeler*
+Disallow: /portal/*/channel/sports-news*
+Disallow: /portal/*/channel/tech-news*
+Disallow: /portal/*/channel/game-news*
+Disallow: /portal/*/channel/kurdish-news*
+Disallow: /portal/*/sports-news*
+Disallow: /portal/*/tech-news*
+Disallow: /portal/*/game-news*
+Disallow: /portal/*/kurdish-news*
+
+
+# Explicit Rules for Google AdSense Crawler
+User-agent: Mediapartners-Google
+Allow: /
+Allow: /search
+Allow: /portal/
+Allow: /profile/
+Disallow: /admin
+Disallow: /settings
+Disallow: /saved
+Disallow: /notifications
+Disallow: /inbox
+Disallow: /create
+# Disallow automated bot channels
+Disallow: /portal/*/bot-channels
+Disallow: /portal/*/channel/bot-*
+Disallow: /portal/*/bot-*
+Disallow: /portal/bot-channels
+Disallow: /portal/bot-*
+Disallow: /portal/*/channel/movie-news*
+Disallow: /portal/*/channel/gelismeler*
+Disallow: /portal/*/movie-news*
+Disallow: /portal/*/gelismeler*
+Disallow: /portal/*/channel/sports-news*
+Disallow: /portal/*/channel/tech-news*
+Disallow: /portal/*/channel/game-news*
+Disallow: /portal/*/channel/kurdish-news*
+Disallow: /portal/*/sports-news*
+Disallow: /portal/*/tech-news*
+Disallow: /portal/*/game-news*
+Disallow: /portal/*/kurdish-news*
+
 
 # Sitemap
 Sitemap: https://oxypace.com.tr/sitemap.xml

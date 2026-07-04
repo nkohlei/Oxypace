@@ -629,6 +629,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
   }, [isAdPlaying, skipAd]);
 
+  const handleVideoError = useCallback(() => {
+    if (isAdPlaying) {
+      console.warn("Pre-roll ad video failed to load, bypassing ad.");
+      skipAd();
+    }
+  }, [isAdPlaying, skipAd]);
+
   // ─── Event handlers ───────────────────────────────────────────────────
   const handleTimeUpdate = useCallback(() => {
     const el = getActiveEl(); if (!el) return;
@@ -808,6 +815,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onPlaying={activeVideo === 'A' ? handlePlaying : undefined}
         onCanPlay={activeVideo === 'A' ? handlePlaying : undefined}
         onEnded={activeVideo === 'A' ? handleVideoEnded : undefined}
+        onError={activeVideo === 'A' ? handleVideoError : undefined}
       />
 
       {/* VIDEO B */}
@@ -826,6 +834,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onPlaying={activeVideo === 'B' ? handlePlaying : undefined}
         onCanPlay={activeVideo === 'B' ? handlePlaying : undefined}
         onEnded={activeVideo === 'B' ? handleVideoEnded : undefined}
+        onError={activeVideo === 'B' ? handleVideoError : undefined}
       />
 
       {isAdPlaying && (
