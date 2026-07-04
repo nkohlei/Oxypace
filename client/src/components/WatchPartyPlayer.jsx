@@ -463,7 +463,7 @@ const WatchPartyPlayer = () => {
                 {!isLive && (
                     <ReactPlayer
                         ref={playerRef}
-                        url={getImageUrl(watchParty.url)}
+                        url={watchParty.url && watchParty.url.startsWith('http') && ReactPlayer.canPlay(watchParty.url) ? watchParty.url : getImageUrl(watchParty.url)}
                         playing={watchParty.isPlaying}
                         controls={isHost}
                         width="100%"
