@@ -130,6 +130,10 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
+            // Ignore clicks within the onboarding tour components to avoid state conflicts
+            if (event.target.closest('.tour-card') || event.target.closest('.tour-overlay-container')) {
+                return;
+            }
             if (menuRef.current && !menuRef.current.contains(event.target)) {
                 setShowMenu(false);
             }

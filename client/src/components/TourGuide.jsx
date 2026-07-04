@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import './TourGuide.css';
 
@@ -61,6 +62,7 @@ const TourGuide = () => {
   
   const cardRef = useRef(null);
   const resizeTimeoutRef = useRef(null);
+  const location = useLocation();
 
   // Check user agent for search crawlers (Googlebot, Mediapartners-Google)
   const isGoogleBot = typeof navigator !== 'undefined' && 
@@ -135,6 +137,46 @@ const TourGuide = () => {
     };
   }, [isActive]);
 
+  // Clean up tour state when path changes (User transitions pages)
+  useEffect(() => {
+    if (isActive) {
+      handleComplete();
+    }
+  }, [location.pathname]);
+
+  // Close dropdown and clean up completely when component unmounts
+  useEffect(() => {
+    return () => {
+      const isDropdownOpen = !!document.querySelector('.header-dropdown');
+      if (isDropdownOpen) {
+        const btn = document.getElementById('tour-step-profile');
+        if (btn) {
+          btn.click();
+        }
+      }
+    };
+  }, []);
+
+  // Keyboard navigation listeners (ESC/Arrows)
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleComplete();
+      } else if (e.key === 'ArrowRight') {
+        handleNext();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isActive, currentStep]);
+
   // Handle positioning of card and spotlight dynamically
   const updateLayout = () => {
     if (!isActive) return;
@@ -171,13 +213,37 @@ const TourGuide = () => {
 
     const targetRect = targetElement.getBoundingClientRect();
     const padding = 6;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Spotlight layout bounds calculations
+    let spotlightLeft = targetRect.left - padding;
+    let spotlightWidth = targetRect.width + (padding * 2);
+    let spotlightTop = targetRect.top - padding;
+    let spotlightHeight = targetRect.height + (padding * 2);
+
+    // Keep spotlight inside viewport boundaries to prevent negative offsets or horizontal/vertical scrolling
+    if (spotlightLeft < 0) {
+      spotlightWidth += spotlightLeft;
+      spotlightLeft = 0;
+    }
+    if (spotlightLeft + spotlightWidth > viewportWidth) {
+      spotlightWidth = viewportWidth - spotlightLeft;
+    }
+    if (spotlightTop < 0) {
+      spotlightHeight += spotlightTop;
+      spotlightTop = 0;
+    }
+    if (spotlightTop + spotlightHeight > viewportHeight) {
+      spotlightHeight = viewportHeight - spotlightTop;
+    }
 
     // Set Spotlight Style (with soft gradient halo)
     setSpotlightStyle({
-      top: `${targetRect.top - padding}px`,
-      left: `${targetRect.left - padding}px`,
-      width: `${targetRect.width + (padding * 2)}px`,
-      height: `${targetRect.height + (padding * 2)}px`,
+      top: `${spotlightTop}px`,
+      left: `${spotlightLeft}px`,
+      width: `${spotlightWidth}px`,
+      height: `${spotlightHeight}px`,
       display: 'block'
     });
 
@@ -186,8 +252,6 @@ const TourGuide = () => {
     let cardLeft = 0;
     const cardWidth = 320;
     const cardHeight = cardRef.current ? cardRef.current.offsetHeight : 180;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
 
     if (step.preferredPosition === 'right') {
       cardLeft = targetRect.right + 15;
