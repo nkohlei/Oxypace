@@ -1,0 +1,71 @@
+/* CLS Safe External Programmatic Ad Container styles */
+.external-ad-holder-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 16px;
+    padding: 12px;
+    min-height: 250px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+    transition: border-color 0.3s ease;
+}
+
+.external-ad-holder-container:hover {
+    border-color: rgba(96, 165, 250, 0.2);
+}
+
+.external-ad-badge {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+}
+
+.external-ad-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Placeholder loading effect before ad renders */
+.external-ad-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 13px;
+}
+
+.ad-placeholder-shimmer {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.05);
+    border-top-color: rgba(96, 165, 250, 0.4);
+    animation: adSpin 1.2s linear infinite;
+}
+
+@keyframes adSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

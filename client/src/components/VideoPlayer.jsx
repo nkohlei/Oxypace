@@ -5,6 +5,7 @@ import { StatusBar } from '@capacitor/status-bar';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { getImageUrl } from '../utils/imageUtils';
 import { useAuth } from '../context/AuthContext';
+import { adsConfig } from '../config/ads';
 import './VideoPlayer.css';
 
 const mountedVideos = new Set();
@@ -126,6 +127,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef(null);
   const waitingTimerRef = useRef(null);
+  const [isAdPlaying, setIsAdPlaying] = useState(adsConfig.enableAds);
+  const [canSkipAd, setCanSkipAd] = useState(false);
+  const [adCountdown, setAdCountdown] = useState(5);
 
   // --- URL resolution ---
   const src144  = getImageUrl(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']  || qualities?.low || lowVideoUrl || src);
@@ -235,16 +239,86 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     };
   }, []);
 
-  // Initialise video A with the best src and update it when getBestSrc changes
+  // Initialise video A with the best src or ad URL (VAST Parser & Timeout watchdog)
   useEffect(() => {
     const el = videoRefA.current;
-    if (el) {
+    if (!el) return;
+
+    if (adsConfig.enableAds) {
+      setIsAdPlaying(true);
+      setCanSkipAd(false);
+      setAdCountdown(5);
+
+      let bypassed = false;
+
+      // 3-second timeout watchdog to prevent video player hang
+      const watchdog = setTimeout(() => {
+        if (!bypassed) {
+          bypassed = true;
+          console.warn("VAST ad fetch took too long (3s timeout). Bypassing ad.");
+          setIsAdPlaying(false);
+          const bestSrc = getBestSrc();
+          if (bestSrc) {
+            setVideoSource(el, bestSrc);
+          }
+        }
+      }, 3000);
+
+      const loadAd = async () => {
+        let adUrl = adsConfig.preRollAdUrl;
+
+        if (adsConfig.enableProgrammaticAds && adsConfig.EXTERNAL_AD_TAG_URL) {
+          try {
+            const controller = new AbortController();
+            const fetchTimer = setTimeout(() => controller.abort(), 2700);
+
+            const res = await fetch(adsConfig.EXTERNAL_AD_TAG_URL, { signal: controller.signal });
+            clearTimeout(fetchTimer);
+            const xml = await res.text();
+            
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xml, 'text/xml');
+            const mediaFiles = xmlDoc.getElementsByTagName('MediaFile');
+            if (mediaFiles && mediaFiles.length > 0) {
+              const nodeText = mediaFiles[0].textContent || '';
+              if (nodeText.trim()) {
+                adUrl = nodeText.trim();
+              }
+            }
+          } catch (e) {
+            console.warn("VAST load error or blocked by adblock", e);
+          }
+        }
+
+        if (!bypassed) {
+          clearTimeout(watchdog);
+          bypassed = true;
+          if (adUrl) {
+            setVideoSource(el, adUrl);
+          } else {
+            setIsAdPlaying(false);
+            const bestSrc = getBestSrc();
+            if (bestSrc) {
+              setVideoSource(el, bestSrc);
+            }
+          }
+        }
+      };
+
+      loadAd();
+
+      return () => {
+        clearTimeout(watchdog);
+        bypassed = true;
+      };
+    } else {
+      setIsAdPlaying(false);
       const bestSrc = getBestSrc();
       if (bestSrc) {
         setVideoSource(el, bestSrc);
       }
     }
-  }, [getBestSrc, setVideoSource]);
+  }, [src, videoUrl, getBestSrc, setVideoSource]);
 
   // Sync user quality preferences once loaded
   useEffect(() => {
@@ -534,13 +608,43 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else          { startControlsTimeout(1500); }
   }, [isPaused, startControlsTimeout]);
 
+  // ─── Ad control functions ─────────────────────────────────────────────
+  const skipAd = useCallback(() => {
+    setIsAdPlaying(false);
+    setCanSkipAd(false);
+    const el = getActiveEl();
+    if (el) {
+      const bestSrc = getBestSrc();
+      if (bestSrc) {
+        setVideoSource(el, bestSrc);
+        el.currentTime = 0;
+        el.play().catch(() => {});
+      }
+    }
+  }, [getBestSrc, setVideoSource, activeVideo]);
+
+  const handleVideoEnded = useCallback(() => {
+    if (isAdPlaying) {
+      skipAd();
+    }
+  }, [isAdPlaying, skipAd]);
+
   // ─── Event handlers ───────────────────────────────────────────────────
   const handleTimeUpdate = useCallback(() => {
     const el = getActiveEl(); if (!el) return;
     const cur = el.currentTime; const tot = el.duration;
     setCurrentTime(cur);
     if (tot > 0) { setDuration(tot); setProgress((cur / tot) * 100); }
-  }, [activeVideo]);
+
+    if (isAdPlaying) {
+      if (cur >= 5) {
+        setCanSkipAd(true);
+        setAdCountdown(0);
+      } else {
+        setAdCountdown(Math.ceil(5 - cur));
+      }
+    }
+  }, [activeVideo, isAdPlaying]);
 
   const handleLoadedMetadataActive = useCallback(() => {
     const el = getActiveEl(); if (!el) return;
@@ -552,12 +656,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const handleScrub = useCallback((e) => {
     e.stopPropagation();
+    if (isAdPlaying) return; // Lock scrubbing during ad
     const el = getActiveEl(); if (!el || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const frac = (e.clientX - rect.left) / rect.width;
     el.currentTime = frac * duration;
     setProgress(frac * 100);
-  }, [duration, activeVideo]);
+  }, [duration, activeVideo, isAdPlaying]);
 
   const handleVideoClick = useCallback((e) => {
     e.stopPropagation();
@@ -693,7 +798,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         poster={poster}
         className="native-video-element"
         style={videoStyle('A')}
-        playsInline loop preload="auto"
+        playsInline loop={!isAdPlaying} preload="auto"
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoClick}
         onTimeUpdate={activeVideo === 'A' ? handleTimeUpdate : undefined}
@@ -702,6 +807,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onStalled={activeVideo === 'A' ? handleWaiting : undefined}
         onPlaying={activeVideo === 'A' ? handlePlaying : undefined}
         onCanPlay={activeVideo === 'A' ? handlePlaying : undefined}
+        onEnded={activeVideo === 'A' ? handleVideoEnded : undefined}
       />
 
       {/* VIDEO B */}
@@ -710,7 +816,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         poster={poster}
         className="native-video-element"
         style={videoStyle('B')}
-        playsInline loop preload="auto"
+        playsInline loop={!isAdPlaying} preload="auto"
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoClick}
         onTimeUpdate={activeVideo === 'B' ? handleTimeUpdate : undefined}
@@ -719,17 +825,36 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onStalled={activeVideo === 'B' ? handleWaiting : undefined}
         onPlaying={activeVideo === 'B' ? handlePlaying : undefined}
         onCanPlay={activeVideo === 'B' ? handlePlaying : undefined}
+        onEnded={activeVideo === 'B' ? handleVideoEnded : undefined}
       />
+
+      {isAdPlaying && (
+        <div className="ad-overlay-container">
+          <div className="ad-badge-top-left">Sponsorlu Reklam</div>
+          {canSkipAd ? (
+            <button className="ad-skip-btn" onClick={skipAd}>
+              Reklamı Geç
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '4px' }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          ) : (
+            <div className="ad-skip-timer">
+              Reklamı Geçmek İçin Son {adCountdown} saniye...
+            </div>
+          )}
+        </div>
+      )}
 
       <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
 
       <div className={`native-controls-ui is-always-visible ${!showControls ? 'controls-hidden' : ''}`}>
-        <div className="native-progress-area" onClick={handleScrub}>
+        <div className={`native-progress-area ${isAdPlaying ? 'ad-locked' : ''}`} style={isAdPlaying ? { pointerEvents: 'none' } : {}} onClick={handleScrub}>
           <div className="native-progress-track">
             <div className="native-progress-fill" style={{ width: `${progress}%` }}>
-              <div className="native-progress-thumb" />
+              {!isAdPlaying && <div className="native-progress-thumb" />}
             </div>
           </div>
         </div>
@@ -747,21 +872,25 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           </div>
 
           <div className="native-right-controls">
-            <button
-              className={`native-quality-btn ${isQualityMenuOpen ? 'active' : ''}`}
-              onClick={e => { e.stopPropagation(); setIsQualityMenuOpen(v => !v); setIsSettingsOpen(false); }}
-              title="Video Kalitesi"
-            >
-              {qualityMode === 'auto' ? 'Oto' : `${qualityMode}p`}
-            </button>
+            {!isAdPlaying && (
+              <>
+                <button
+                  className={`native-quality-btn ${isQualityMenuOpen ? 'active' : ''}`}
+                  onClick={e => { e.stopPropagation(); setIsQualityMenuOpen(v => !v); setIsSettingsOpen(false); }}
+                  title="Video Kalitesi"
+                >
+                  {qualityMode === 'auto' ? 'Oto' : `${qualityMode}p`}
+                </button>
 
-            <button
-              className={`native-speed-text-btn ${isSettingsOpen ? 'active' : ''}`}
-              onClick={e => { e.stopPropagation(); setIsSettingsOpen(v => !v); setIsQualityMenuOpen(false); }}
-              title="Oynatma Hızı"
-            >
-              {playbackRate === 1 ? '1x' : `${playbackRate}x`}
-            </button>
+                <button
+                  className={`native-speed-text-btn ${isSettingsOpen ? 'active' : ''}`}
+                  onClick={e => { e.stopPropagation(); setIsSettingsOpen(v => !v); setIsQualityMenuOpen(false); }}
+                  title="Oynatma Hızı"
+                >
+                  {playbackRate === 1 ? '1x' : `${playbackRate}x`}
+                </button>
+              </>
+            )}
 
             <button className="native-fullscreen-btn" onClick={toggleFullscreen} title="Tam Ekran" aria-label="Tam Ekran Yap / Çık">
               <Maximize size={18} />

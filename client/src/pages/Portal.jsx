@@ -6,6 +6,9 @@ import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 
 import PostCard from '../components/PostCard';
+import AdPostCard from '../components/AdPostCard';
+import ExternalAdHolder from '../components/ExternalAdHolder';
+import { adsConfig } from '../config/ads';
 import ChannelSidebar from '../components/ChannelSidebar';
 import MembersSidebar from '../components/MembersSidebar';
 import { useAuth } from '../context/AuthContext';
@@ -1275,19 +1278,33 @@ const Portal = () => {
                                                                         )}
 
                                                                         {/* Posts List */}
-                                                                        {Array.isArray(posts) && posts.map((post, index) => (
-                                                                            <Fragment key={post._id}>
-                                                                            <PostCard
-                                                                                key={post._id}
-                                                                                post={post}
-                                                                                onDelete={handleDeletePost}
-                                                                                onPin={handlePin}
-                                                                                onArchive={handleArchivePost}
-                                                                                isAdmin={isAdmin}
-                                                                             />
-                                                                             {index < posts.length - 1 && <div className="post-separator" />}
-                                                                         </Fragment>
-                                                                        ))}
+                                                                        {Array.isArray(posts) && posts.map((post, index) => {
+                                                                            const postNumber = index + 1;
+                                                                            const showAdAfter = adsConfig.enableAds && postNumber % 8 === 0;
+                                                                            return (
+                                                                                <Fragment key={post._id}>
+                                                                                    <PostCard
+                                                                                        key={post._id}
+                                                                                        post={post}
+                                                                                        onDelete={handleDeletePost}
+                                                                                        onPin={handlePin}
+                                                                                        onArchive={handleArchivePost}
+                                                                                        isAdmin={isAdmin}
+                                                                                    />
+                                                                                    {index < posts.length - 1 && <div className="post-separator" />}
+                                                                                    {showAdAfter && (
+                                                                                        <Fragment key={`ad-${post._id}-${index}`}>
+                                                                                            {adsConfig.enableProgrammaticAds ? (
+                                                                                                <ExternalAdHolder />
+                                                                                            ) : (
+                                                                                                <AdPostCard index={Math.floor(postNumber / 8) - 1} />
+                                                                                            )}
+                                                                                            {index < posts.length - 1 && <div className="post-separator" />}
+                                                                                        </Fragment>
+                                                                                    )}
+                                                                                </Fragment>
+                                                                            );
+                                                                        })}
 
                                                                         {/* Infinite Scroll Sentinel */}
                                                                         <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
