@@ -159,6 +159,10 @@
       var requestIdle = window.requestIdleCallback || function(cb) { return setTimeout(cb, 1); };
       requestIdle(function() {
         setTimeout(function() {
+          if (window.location.pathname.toLowerCase().includes('bot') || window.location.hash.toLowerCase().includes('bot')) {
+            console.log('AdSense bot isolation: blocking global AdSense script load.');
+            return;
+          }
           var script = document.createElement('script');
           script.async = true;
           script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107";

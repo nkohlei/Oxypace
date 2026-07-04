@@ -16,6 +16,13 @@ Disallow: /notifications
 Disallow: /inbox
 Disallow: /create
 
+# Disallow automated bot channels
+Disallow: /portal/*/bot-channels
+Disallow: /portal/*/channel/bot-*
+Disallow: /portal/*/bot-*
+Disallow: /portal/bot-channels
+Disallow: /portal/bot-*
+
 # Allow sitemap
 Allow: /sitemap.xml
 

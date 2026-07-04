@@ -3,6 +3,15 @@ import React, { useEffect, useRef } from 'react';
 const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
     const adRef = useRef(null);
 
+    // Bot URL/path isolation check for Google AdSense compliance
+    const isBotPage = typeof window !== 'undefined' && 
+        (window.location.pathname.toLowerCase().includes('bot') || 
+         window.location.hash.toLowerCase().includes('bot'));
+
+    if (isBotPage) {
+        return null;
+    }
+
     useEffect(() => {
         const pushAd = () => {
             try {
