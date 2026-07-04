@@ -394,7 +394,7 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             ).catch(err => console.error('Error marking notifications as read on GET:', err));
         }
 
-        const activePosts = posts.filter(post => post.author && !post.author.isDeleted);
+        const activePosts = posts;
         res.json(activePosts);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });

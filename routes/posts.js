@@ -424,7 +424,7 @@ router.get('/', optionalProtect, async (req, res) => {
 
         const visiblePosts = posts.filter((post) => {
             if (!post.author || post.author.isDeleted) {
-                return false;
+                return true;
             }
 
             // 1. Account is NOT private -> Visible to everyone
@@ -614,7 +614,7 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
             })
             .lean();
 
-        if (!post || (post.author && post.author.isDeleted)) {
+        if (!post) {
             return res.status(404).json({ message: 'Post not found' });
         }
 

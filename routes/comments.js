@@ -18,7 +18,7 @@ router.get('/:commentId', optionalProtect, mongoIdValidation('commentId'), async
             .populate('author', 'username profile.displayName profile.avatar verificationBadge customBadge isShadowbanned isDeleted')
             .populate('post', '_id content');
 
-        if (!comment || (comment.author && comment.author.isDeleted)) {
+        if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });
         }
 
@@ -69,7 +69,7 @@ router.get('/:commentId/replies', optionalProtect, mongoIdValidation('commentId'
 
         const total = await Comment.countDocuments(query);
 
-        const activeReplies = replies.filter(r => r.author && !r.author.isDeleted);
+        const activeReplies = replies;
 
         res.json({
             replies: activeReplies,
