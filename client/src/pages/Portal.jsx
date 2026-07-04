@@ -1392,83 +1392,87 @@ const Portal = () => {
                                                                                         </div>
                                                                                         Görsel
                                                                                     </div>
-                                                                                    <div
-                                                                                        className="plus-menu-item"
-                                                                                        onClick={() => {
-                                                                                            videoInputRef.current.click();
-                                                                                            setShowPlusMenu(false);
-                                                                                        }}
-                                                                                    >
-                                                                                        <div className="plus-menu-icon">
-                                                                                            <svg
-                                                                                                width="20"
-                                                                                                height="20"
-                                                                                                viewBox="0 0 24 24"
-                                                                                                fill="none"
-                                                                                                stroke="currentColor"
-                                                                                                strokeWidth="2"
+                                                                                    {!isImageChannel && (
+                                                                                        <>
+                                                                                            <div
+                                                                                                className="plus-menu-item"
+                                                                                                onClick={() => {
+                                                                                                    videoInputRef.current.click();
+                                                                                                    setShowPlusMenu(false);
+                                                                                                }}
                                                                                             >
-                                                                                                <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                                                                                                <rect
-                                                                                                    x="1"
-                                                                                                    y="5"
-                                                                                                    width="15"
-                                                                                                    height="14"
-                                                                                                    rx="2"
-                                                                                                    ry="2"
-                                                                                                ></rect>
-                                                                                            </svg>
-                                                                                        </div>
-                                                                                        Video
-                                                                                    </div>
-                                                                                    <div
-                                                                                        className="plus-menu-item"
-                                                                                        onClick={() => {
-                                                                                            gifInputRef.current.click();
-                                                                                            setShowPlusMenu(false);
-                                                                                        }}
-                                                                                    >
-                                                                                        <div
-                                                                                            className="plus-menu-icon"
-                                                                                            style={{
-                                                                                                fontWeight: 800,
-                                                                                                fontSize: '10px',
-                                                                                            }}
-                                                                                        >
-                                                                                            GIF
-                                                                                        </div>
-                                                                                        GIF
-                                                                                    </div>
-                                                                                    <div
-                                                                                        className="plus-menu-item"
-                                                                                        onClick={() => {
-                                                                                            pdfInputRef.current.click();
-                                                                                            setShowPlusMenu(false);
-                                                                                        }}
-                                                                                    >
-                                                                                        <div className="plus-menu-icon">
-                                                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                                                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                                                                <polyline points="14 2 14 8 20 8" />
-                                                                                            </svg>
-                                                                                        </div>
-                                                                                        PDF
-                                                                                    </div>
-                                                                                    <div
-                                                                                        className="plus-menu-item"
-                                                                                        onClick={() => {
-                                                                                            setShowYoutubeInput(!showYoutubeInput);
-                                                                                            setShowPlusMenu(false);
-                                                                                        }}
-                                                                                    >
-                                                                                        <div className="plus-menu-icon">
-                                                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                                                                                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
-                                                                                                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" />
-                                                                                            </svg>
-                                                                                        </div>
-                                                                                        YouTube
-                                                                                    </div>
+                                                                                                <div className="plus-menu-icon">
+                                                                                                    <svg
+                                                                                                        width="20"
+                                                                                                        height="20"
+                                                                                                        viewBox="0 0 24 24"
+                                                                                                        fill="none"
+                                                                                                        stroke="currentColor"
+                                                                                                        strokeWidth="2"
+                                                                                                    >
+                                                                                                        <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                                                                                        <rect
+                                                                                                            x="1"
+                                                                                                            y="5"
+                                                                                                            width="15"
+                                                                                                            height="14"
+                                                                                                            rx="2"
+                                                                                                            ry="2"
+                                                                                                        ></rect>
+                                                                                                    </svg>
+                                                                                                </div>
+                                                                                                Video
+                                                                                            </div>
+                                                                                            <div
+                                                                                                className="plus-menu-item"
+                                                                                                onClick={() => {
+                                                                                                    gifInputRef.current.click();
+                                                                                                    setShowPlusMenu(false);
+                                                                                                }}
+                                                                                            >
+                                                                                                <div
+                                                                                                    className="plus-menu-icon"
+                                                                                                    style={{
+                                                                                                        fontWeight: 800,
+                                                                                                        fontSize: '10px',
+                                                                                                    }}
+                                                                                                >
+                                                                                                    GIF
+                                                                                                </div>
+                                                                                                GIF
+                                                                                            </div>
+                                                                                            <div
+                                                                                                className="plus-menu-item"
+                                                                                                onClick={() => {
+                                                                                                    pdfInputRef.current.click();
+                                                                                                    setShowPlusMenu(false);
+                                                                                                }}
+                                                                                            >
+                                                                                                <div className="plus-menu-icon">
+                                                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                                                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                                                                        <polyline points="14 2 14 8 20 8" />
+                                                                                                    </svg>
+                                                                                                </div>
+                                                                                                PDF
+                                                                                            </div>
+                                                                                            <div
+                                                                                                className="plus-menu-item"
+                                                                                                onClick={() => {
+                                                                                                    setShowYoutubeInput(!showYoutubeInput);
+                                                                                                    setShowPlusMenu(false);
+                                                                                                }}
+                                                                                            >
+                                                                                                <div className="plus-menu-icon">
+                                                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                                                                                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+                                                                                                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" />
+                                                                                                    </svg>
+                                                                                                </div>
+                                                                                                YouTube
+                                                                                            </div>
+                                                                                        </>
+                                                                                    )}
                                                                                 </div>,
                                                                                 document.body
                                                                             )}
@@ -1599,6 +1603,28 @@ const Portal = () => {
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {isImageChannel && messageText.trim() && !mediaFile && (
+                                                                            <div className="image-channel-warning" style={{
+                                                                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                                                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                                                color: '#f87171',
+                                                                                padding: '8px 12px',
+                                                                                borderRadius: '8px',
+                                                                                fontSize: '13px',
+                                                                                marginBottom: '8px',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '8px'
+                                                                            }}>
+                                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                                                                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                                                                    <line x1="12" y1="9" x2="12" y2="13" />
+                                                                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                                                                </svg>
+                                                                                <span>Görsel kanallarında paylaşım yapabilmek için mutlaka bir görsel eklemelisiniz.</span>
                                                                             </div>
                                                                         )}
 
