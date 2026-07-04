@@ -56,6 +56,25 @@ const isLiveStream = (url) => {
   return isHls(url) || isDash(url);
 };
 
+const isPlayableExternalUrl = (url) => {
+  if (!url) return false;
+  if (!url.startsWith('http')) return false;
+  if (url.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev') || url.includes('/r2-media/')) {
+    return false;
+  }
+  const lowerUrl = url.toLowerCase();
+  const isPlatform = [
+    'youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv',
+    'soundcloud.com', 'facebook.com', 'dailymotion.com',
+    'wistia.com'
+  ].some(domain => lowerUrl.includes(domain));
+
+  if (isPlatform) return true;
+
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mp3');
+};
+
 const getProxiedUrl = (url) => {
   if (!url) return '';
   if (!url.startsWith('http')) return url;
@@ -463,7 +482,7 @@ const WatchPartyPlayer = () => {
                 {!isLive && (
                     <ReactPlayer
                         ref={playerRef}
-                        url={watchParty.url && watchParty.url.startsWith('http') && ReactPlayer.canPlay(watchParty.url) ? watchParty.url : getImageUrl(watchParty.url)}
+                        url={isPlayableExternalUrl(watchParty?.url) ? watchParty.url : getImageUrl(watchParty?.url)}
                         playing={watchParty.isPlaying}
                         controls={isHost}
                         width="100%"
