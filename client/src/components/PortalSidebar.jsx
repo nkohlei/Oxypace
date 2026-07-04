@@ -270,6 +270,7 @@ const PortalSidebar = () => {
                     </div>
 
                     <div
+                        id="tour-step-create"
                         className="sidebar-item create-action"
                         onClick={() => setShowCreateModal(true)}
                         style={isReordering ? { opacity: 0.3, pointerEvents: 'none' } : {}}
@@ -282,6 +283,7 @@ const PortalSidebar = () => {
                     <div className="sidebar-separator" style={{ margin: '4px auto' }}></div>
                     
                     <div
+                        id="tour-step-reorder"
                         className={`sidebar-item ${isReordering ? 'active' : ''}`}
                         onClick={toggleReorderMode}
                         style={isSaving ? { opacity: 0.5, pointerEvents: 'none' } : {}}

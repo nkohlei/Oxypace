@@ -4,28 +4,52 @@ import './TourGuide.css';
 
 const TOUR_STEPS = [
   {
+    targetId: null,
+    title: 'Oxypace\'e Hoş Geldiniz!',
+    text: 'Oxypace\'e Hoş Geldiniz! Platformumuz, arkadaşlarınızla tamamen eş zamanlı ve senkronize şekilde medya tüketebileceğiniz, özgürce topluluklar kurabileceğiniz yeni nesil bir sosyal portaldır. Gelin, modülleri birlikte keşfedelim!',
+    preferredPosition: 'center'
+  },
+  {
     targetId: 'tour-step-messages',
     title: 'Mesajlar',
-    text: 'Mesajlar: Arkadaşlarınla ve katıldığın odalardaki kişilerle anlık olarak birebir mesajlaşabileceğin alan.',
+    text: 'Mesajlar: Arkadaşlarınızla veya odalardaki kişilerle anlık olarak birebir ya da grup halinde güvenli mesajlaşmalar başlatabileceğiniz paneldir.',
     preferredPosition: 'right'
   },
   {
     targetId: 'tour-step-discover',
-    title: 'Canlı Odalar & Portallar',
-    text: 'Canlı Odalar & Portallar: Canlı yayınları senkronize izleyebileceğin, sesli/görüntülü odalara katılabileceğin ve portal akışlarına erişebileceğin ana merkez.',
+    title: 'Keşfet ve Arama',
+    text: 'Keşfet ve Arama: Platform genelindeki aktif portalları, trending içerikleri ve diğer kullanıcıları arayıp bulabileceğiniz, yeni topluluklar keşfedebileceğiniz arama modülüdür.',
+    preferredPosition: 'right'
+  },
+  {
+    targetId: 'tour-step-create',
+    title: 'Portal Kur',
+    text: 'Portal Kur: Kendi topluluğunuzu, kurallarınızı ve paylaşım alanlarınızı oluşturabileceğiniz, tamamen size ait yeni bir portal alanı inşa etme butonudur.',
+    preferredPosition: 'right'
+  },
+  {
+    targetId: 'tour-step-reorder',
+    title: 'Portal Sıralaması',
+    text: 'Portal Sıralaması: Üye olduğunuz veya yöneticisi olduğunuz portalları, sol menü akışında kendi önceliğinize göre yukarı-aşağı sürükleyerek sıralayabileceğiniz modüldür.',
     preferredPosition: 'right'
   },
   {
     targetId: 'tour-step-controls',
-    title: 'Hızlı Kontroller',
-    text: 'Hızlı Kontroller: Canlı odalardaki ses giriş/çıkış ayarlarını ve mikrofonunu buradan anlık olarak yönetebilirsin.',
+    title: 'Hızlı Ses Ayarları',
+    text: 'Hızlı Ses Ayarları: Canlı odalara katıldığınızda mikrofonunuzu susturabileceğiniz, kulaklık/hoparlör çıkışlarınızı ve profil ses tünellerinizi anlık yönetebileceğiniz alandır.',
     preferredPosition: 'right'
   },
   {
     targetId: 'tour-step-profile',
-    title: 'Kullanıcı Paneli',
-    text: 'Kullanıcı Paneli: Ayarlarına ulaşabilir, destek talebi oluşturabilir veya bildirimlerini buradan kontrol edebilirsin.',
+    title: 'Kullanıcı Kontrol Paneli',
+    text: 'Kullanıcı Kontrol Paneli: Profilinize ait aktif ayarları değiştirebileceğiniz, bildirimlerinizi görüntüleyebileceğiniz ve destek talebi oluşturabileceğiniz yönetim merkezidir.',
     preferredPosition: 'bottom-left'
+  },
+  {
+    targetId: null,
+    title: 'Tebrikler!',
+    text: 'Tebrikler! Oxypace\'in temel modüllerini öğrendiniz. Şimdi canlı odalarda arkadaşlarınızla buluşabilir veya portallarda ilk paylaşımlarınızı yapmaya başlayabilirsiniz. Keyifli vakit geçirmeniz dileğiyle!',
+    preferredPosition: 'center'
   }
 ];
 
@@ -44,14 +68,12 @@ const TourGuide = () => {
 
   // Initialize Tour: check localStorage
   useEffect(() => {
-    // If the user is a Googlebot, we do not auto-run the interactive tour since we just render all modules in DOM.
     if (isGoogleBot) {
       return;
     }
 
     const hasSeenTour = localStorage.getItem('hasSeenTour');
     if (!hasSeenTour) {
-      // Small delay to ensure layout is fully rendered
       const timer = setTimeout(() => {
         setIsActive(true);
       }, 1500);
@@ -59,16 +81,67 @@ const TourGuide = () => {
     }
   }, [isGoogleBot]);
 
+  // Programmatically manage profile dropdown state for Step 7 (Index 6)
+  useEffect(() => {
+    if (!isActive) return;
+
+    // Check if we entered Step 7
+    if (currentStep === 6) {
+      const isDropdownOpen = !!document.querySelector('.header-dropdown');
+      if (!isDropdownOpen) {
+        const btn = document.getElementById('tour-step-profile');
+        if (btn) {
+          btn.click();
+        }
+      }
+    } else {
+      // If we left Step 7, close it if open
+      const isDropdownOpen = !!document.querySelector('.header-dropdown');
+      if (isDropdownOpen) {
+        const btn = document.getElementById('tour-step-profile');
+        if (btn) {
+          btn.click();
+        }
+      }
+    }
+  }, [currentStep, isActive]);
+
+  // Ensure profile dropdown is closed when closing the tour
+  useEffect(() => {
+    if (!isActive) {
+      const isDropdownOpen = !!document.querySelector('.header-dropdown');
+      if (isDropdownOpen) {
+        const btn = document.getElementById('tour-step-profile');
+        if (btn) {
+          btn.click();
+        }
+      }
+    }
+  }, [isActive]);
+
   // Handle positioning of card and spotlight dynamically
   const updateLayout = () => {
     if (!isActive) return;
 
     const step = TOUR_STEPS[currentStep];
+
+    // Center screen fallback (Steps 1 & 8)
+    if (!step.targetId) {
+      setSpotlightStyle({ display: 'none' });
+      setCardStyle({
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        display: 'flex'
+      });
+      return;
+    }
+
     const targetElement = document.getElementById(step.targetId);
 
     if (!targetElement) {
-      // Element not found/visible yet (e.g. loading or route transition). 
-      // Place card in center of screen as a fallback, hide spotlight.
+      // Target element is not currently in the DOM or viewport.
       setSpotlightStyle({ display: 'none' });
       setCardStyle({
         position: 'fixed',
@@ -83,7 +156,7 @@ const TourGuide = () => {
     const targetRect = targetElement.getBoundingClientRect();
     const padding = 6;
 
-    // Set Spotlight Style (with soft glow outline / halo)
+    // Set Spotlight Style (with soft gradient halo)
     setSpotlightStyle({
       top: `${targetRect.top - padding}px`,
       left: `${targetRect.left - padding}px`,
@@ -104,7 +177,6 @@ const TourGuide = () => {
       cardLeft = targetRect.right + 15;
       cardTop = targetRect.top + (targetRect.height - cardHeight) / 2;
 
-      // Adjust boundaries
       if (cardLeft + cardWidth > viewportWidth) {
         cardLeft = viewportWidth - cardWidth - 16;
       }
@@ -116,7 +188,6 @@ const TourGuide = () => {
         cardLeft = 16;
       }
     } else {
-      // Default: Center relative
       cardLeft = targetRect.left + (targetRect.width - cardWidth) / 2;
       cardTop = targetRect.bottom + 15;
     }
@@ -141,7 +212,8 @@ const TourGuide = () => {
 
   // Re-calculate layout when step, activity, or viewport changes
   useEffect(() => {
-    updateLayout();
+    // Add small delay to ensure programmatic DOM changes (like opening the dropdown in step 7) are fully rendered before calculating positions
+    const timer = setTimeout(updateLayout, 100);
 
     const handleResize = () => {
       if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
@@ -152,6 +224,7 @@ const TourGuide = () => {
     window.addEventListener('scroll', updateLayout, true);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', updateLayout, true);
       if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
@@ -177,7 +250,7 @@ const TourGuide = () => {
     setIsActive(false);
   };
 
-  // Render Bot Crawler Content
+  // Render Bot Crawler Content (SEO zengin açıklama metinleri)
   const renderCrawlerContent = () => {
     return (
       <div className="tour-bot-crawler-content" aria-hidden="true">
