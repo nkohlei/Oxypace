@@ -26,6 +26,14 @@ Disallow: /portal/*/channel/movie-news*
 Disallow: /portal/*/channel/gelismeler*
 Disallow: /portal/*/movie-news*
 Disallow: /portal/*/gelismeler*
+Disallow: /portal/*/channel/sports-news*
+Disallow: /portal/*/channel/tech-news*
+Disallow: /portal/*/channel/game-news*
+Disallow: /portal/*/channel/kurdish-news*
+Disallow: /portal/*/sports-news*
+Disallow: /portal/*/tech-news*
+Disallow: /portal/*/game-news*
+Disallow: /portal/*/kurdish-news*
 
 # Allow sitemap
 Allow: /sitemap.xml
