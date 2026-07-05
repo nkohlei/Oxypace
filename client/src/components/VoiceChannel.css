@@ -134,6 +134,54 @@
     }
 }
 
+/* Persistent Watch Party Target Positioning */
+#watch-party-portal-target {
+    z-index: 5;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 769px) {
+    #watch-party-portal-target.watch-party-target-hero {
+        position: absolute;
+        top: 0;
+        left: 260px; /* 240px carousel + 20px gap */
+        right: 80px; /* 80px desktop padding */
+        bottom: 0;
+        height: 100%;
+    }
+    
+    #watch-party-portal-target.watch-party-target-carousel {
+        position: absolute;
+        top: 0;
+        left: 20px; /* padding-left of carousel */
+        width: 212px; /* carousel width minus paddings */
+        height: 160px;
+    }
+}
+
+@media (max-width: 768px) {
+    #watch-party-portal-target.watch-party-target-hero {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: calc(100% - 16px);
+        height: calc(100% - 16px);
+        padding-bottom: 90px;
+        box-sizing: border-box;
+    }
+    
+    #watch-party-portal-target.watch-party-target-carousel {
+        position: absolute;
+        top: 60px;
+        left: 16px;
+        width: 120px;
+        height: 90px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 8px;
+    }
+}
+
 .vc-carousel {
     display: flex;
     flex-direction: column;

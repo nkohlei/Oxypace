@@ -389,29 +389,36 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             </div>
 
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px', position: 'relative' }}>
+                {watchParty && watchParty.url && (
+                    <div 
+                        id="watch-party-portal-target" 
+                        className={focusedParticipant ? 'watch-party-target-carousel' : 'watch-party-target-hero'}
+                        onClick={focusedParticipant ? () => setFocusedIdentity(null) : undefined}
+                        title={focusedParticipant ? "Videoyu Ana Ekrana Al" : undefined}
+                        style={focusedParticipant ? { cursor: 'pointer' } : undefined}
+                    >
+                        {focusedParticipant && (
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'transparent' }} />
+                        )}
+                    </div>
+                )}
+
                 {watchParty && watchParty.url ? (
                     <>
                         <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
                             {focusedParticipant && (
                                 <div 
-                                    className="vc-card role-carousel" 
-                                    style={{ height: '160px', marginBottom: '8px', overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }} 
-                                    onClick={() => setFocusedIdentity(null)}
-                                    title="Videoyu Ana Ekrana Al"
-                                >
-                                    <div id="watch-party-portal-target" style={{ width: '100%', height: '100%' }}></div>
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'transparent' }} />
-                                </div>
+                                    className="watch-party-placeholder-card" 
+                                    style={{ height: '160px', marginBottom: '8px', opacity: 0, pointerEvents: 'none', width: '100%', flexShrink: 0 }} 
+                                />
                             )}
                             {participants.filter(p => !focusedParticipant || p.identity !== focusedParticipant.identity).map(p => 
                                 renderParticipantCard(p, 'carousel', () => handleFocus(p.identity))
                             )}
                         </div>
                         <div className="vc-hero">
-                            {focusedParticipant ? (
+                            {focusedParticipant && (
                                 renderParticipantCard(focusedParticipant, 'hero', () => handleFocus(focusedParticipant.identity))
-                            ) : (
-                                <div id="watch-party-portal-target" style={{ width: '100%', height: '100%' }}></div>
                             )}
                         </div>
                     </>
