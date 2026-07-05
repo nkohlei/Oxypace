@@ -1941,3 +1941,16 @@ img, video, iframe {
     }
 }
 
+/* Collapsible Sidebar & Live Room Centering Integration */
+@media (min-width: 769px) {
+    .discord-split-view.sidebar-collapsed .vc-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .vc-container {
+        transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+}
+
+

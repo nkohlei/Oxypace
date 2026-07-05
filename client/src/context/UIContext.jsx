@@ -12,6 +12,7 @@ export const UIProvider = ({ children }) => {
         typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     );
     const [mobileChannelOpen, setMobileChannelOpen] = useState(false);
+    const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
 
     // Track viewport width for mobile detection
     useEffect(() => {
@@ -34,7 +35,8 @@ export const UIProvider = ({ children }) => {
     return (
         <UIContext.Provider value={{
             isSidebarOpen, toggleSidebar, closeSidebar, openSidebar,
-            isMobileView, mobileChannelOpen, setMobileChannelOpen
+            isMobileView, mobileChannelOpen, setMobileChannelOpen,
+            isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed
         }}>
             {children}
         </UIContext.Provider>

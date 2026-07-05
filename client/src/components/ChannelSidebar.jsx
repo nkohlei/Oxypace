@@ -78,21 +78,44 @@ const ChannelSidebar = ({
 
     return (
         <div
-            className={`channel-sidebar ${className || ''}`}
+            className={`channel-sidebar ${isDesktopSidebarCollapsed ? 'collapsed' : ''} ${className || ''}`}
             style={{
-                // Width is handled by CSS class
-                // Width is handled by CSS class
                 minHeight: '100%',
                 backgroundColor: 'var(--bg-secondary)',
                 display: 'flex',
                 flexDirection: 'column',
                 flexShrink: 0,
-                overflow: 'hidden',
-                borderRight: '1px solid var(--border-subtle)',
+                overflow: 'visible',
+                position: 'relative',
+                borderRight: isDesktopSidebarCollapsed ? 'none' : '1px solid var(--border-subtle)',
             }}
         >
-            <div
-                className="channel-banner-container"
+            {!isMobileView && (
+                <button
+                    className="sidebar-toggle-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed);
+                    }}
+                    title={isDesktopSidebarCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
+                >
+                    {isDesktopSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                </button>
+            )}
+
+            <div className="sidebar-content-wrapper" style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                width: '350px',
+                height: '100%',
+                overflow: 'hidden',
+                transition: 'opacity 0.2s ease, visibility 0.2s ease',
+                opacity: isDesktopSidebarCollapsed ? 0 : 1,
+                visibility: isDesktopSidebarCollapsed ? 'hidden' : 'visible',
+            }}>
+                <div
+                    className="channel-banner-container"
                 onClick={() => onShowPortalInfo && onShowPortalInfo()}
             >
                 <div
@@ -313,14 +336,48 @@ const ChannelSidebar = ({
             }}>
                 © 2026 Oxypace. Tüm hakları saklıdır.
             </div>
+            
+            </div>
 
             <style>{`
             .channel-sidebar {
                 width: 350px;
-                transition: width 0.3s ease, transform 0.3s ease;
+                transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border 0.3s ease;
                 flex-shrink: 0;
                 max-width: 100vw;
-                overflow-x: hidden;
+            }
+            
+            .channel-sidebar.collapsed {
+                width: 0px !important;
+                min-width: 0px !important;
+                border-right: none !important;
+            }
+            
+            .sidebar-toggle-btn {
+                position: absolute;
+                right: -14px;
+                top: 14px;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: rgba(20, 20, 22, 0.95);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: var(--text-primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 1000;
+                transition: all 0.2s ease;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+            
+            .sidebar-toggle-btn:hover {
+                background: var(--primary-color, #6366f1);
+                color: #fff;
+                transform: scale(1.1);
             }
             
             .channel-banner-container {

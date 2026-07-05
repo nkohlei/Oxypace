@@ -40,7 +40,7 @@ const Portal = () => {
     const { user, updateUser, loading: authLoading } = useAuth();
     const { socket, connected } = useSocket();
     const navigate = useNavigate();
-    const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = useUI();
+    const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen, isDesktopSidebarCollapsed } = useUI();
 
     const [portal, setPortal] = useState(null);
     const posts = useGlobalStore((state) => state.posts);
@@ -1015,7 +1015,7 @@ const Portal = () => {
             )}
 
 
-            <div className={`discord-split-view ${isMobileView && mobileChannelOpen ? 'mobile-feed-active' : ''}`}>
+            <div className={`discord-split-view ${isMobileView && mobileChannelOpen ? 'mobile-feed-active' : ''} ${isDesktopSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
                 {user && (
                     <ChannelSidebar
                         portal={portal}
