@@ -747,6 +747,7 @@
     border-radius: 16px;
     padding: 12px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    z-index: 1001 !important;
 }
 
 .vc-device-option {
@@ -769,7 +770,7 @@
     top: 55px;
     right: 0;
     min-width: 180px;
-    z-index: 1000;
+    z-index: 1001 !important;
     padding: 6px;
     background: rgba(15, 15, 18, 0.98);
     backdrop-filter: blur(20px);
