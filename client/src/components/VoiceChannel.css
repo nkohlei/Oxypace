@@ -374,8 +374,33 @@
     top: 24px;
     right: 24px;
     display: flex;
+    flex-direction: column;
     gap: 12px;
     z-index: 100;
+    transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.4s ease;
+}
+
+/* User Idle / Auto-hide styles */
+.vc-container.user-idle .vc-top-right-controls,
+.vc-container.user-idle .vc-controls {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translate(-50%, 15px) !important;
+}
+
+.vc-container.user-idle .vc-top-right-controls {
+    transform: translateY(-15px) !important;
+}
+
+.sidebar-toggle-btn {
+    transition: opacity 0.4s ease, visibility 0.4s ease !important;
+}
+
+.sidebar-toggle-btn.user-idle-btn {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
 /* ─── Mobile Responsiveness ─── */

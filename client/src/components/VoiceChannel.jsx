@@ -97,6 +97,48 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
+    const [isIdle, setIsIdle] = useState(false);
+    const idleTimerRef = useRef(null);
+
+    useEffect(() => {
+        if (!isConnected) {
+            setIsIdle(false);
+            const btn = document.querySelector('.sidebar-toggle-btn');
+            if (btn) btn.classList.remove('user-idle-btn');
+            return;
+        }
+
+        const handleMouseMove = () => {
+            setIsIdle(false);
+            const btn = document.querySelector('.sidebar-toggle-btn');
+            if (btn) btn.classList.remove('user-idle-btn');
+
+            if (idleTimerRef.current) {
+                clearTimeout(idleTimerRef.current);
+            }
+
+            idleTimerRef.current = setTimeout(() => {
+                setIsIdle(true);
+                const btn2 = document.querySelector('.sidebar-toggle-btn');
+                if (btn2) btn2.classList.add('user-idle-btn');
+            }, 3000);
+        };
+
+        handleMouseMove();
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('touchstart', handleMouseMove);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('touchstart', handleMouseMove);
+            if (idleTimerRef.current) {
+                clearTimeout(idleTimerRef.current);
+            }
+            const btn = document.querySelector('.sidebar-toggle-btn');
+            if (btn) btn.classList.remove('user-idle-btn');
+        };
+    }, [isConnected]);
 
     // Invitation states
     const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -282,7 +324,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
 
     return (
-        <div className="vc-container glass-container" onClick={handleContainerClick}>
+        <div className={`vc-container glass-container ${isIdle ? 'user-idle' : ''}`} onClick={handleContainerClick}>
             {isMobile && (
                 <button className="vc-mobile-back-btn" onClick={() => setMobileChannelOpen(false)} title="Geri">
                     <svg

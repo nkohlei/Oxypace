@@ -111,6 +111,50 @@ const WatchPartyPlayer = () => {
     const [localMuted, setLocalMuted] = useState(true); // Default to muted for reliable autoplay compliance
     const [volume, setVolume] = useState(1);
     const [volumeOpen, setVolumeOpen] = useState(false);
+    const [dimensions, setDimensions] = useState({ width: null, height: null });
+    const isResizingRef = useRef(false);
+
+    const startResize = (e, direction) => {
+        e.preventDefault();
+        isResizingRef.current = true;
+        
+        const startWidth = containerRef.current.offsetWidth;
+        const startHeight = containerRef.current.offsetHeight;
+        const startX = e.clientX;
+        const startY = e.clientY;
+
+        const doResize = (moveEvent) => {
+            if (!isResizingRef.current) return;
+            
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+
+            if (direction === 'right') {
+                newWidth = startWidth + (moveEvent.clientX - startX);
+            } else if (direction === 'left') {
+                newWidth = startWidth - (moveEvent.clientX - startX);
+            } else if (direction === 'bottom') {
+                newHeight = startHeight + (moveEvent.clientY - startY);
+            } else if (direction === 'both') {
+                newWidth = startWidth + (moveEvent.clientX - startX);
+                newHeight = startHeight + (moveEvent.clientY - startY);
+            }
+
+            newWidth = Math.max(300, Math.min(newWidth, window.innerWidth - 100));
+            newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 100));
+
+            setDimensions({ width: newWidth, height: newHeight });
+        };
+
+        const stopResize = () => {
+            isResizingRef.current = false;
+            window.removeEventListener('mousemove', doResize);
+            window.removeEventListener('mouseup', stopResize);
+        };
+
+        window.addEventListener('mousemove', doResize);
+        window.addEventListener('mouseup', stopResize);
+    };
 
     const isHost = true;
     const isLive = watchParty?.isLive || isLiveStream(watchParty?.url);
@@ -402,7 +446,21 @@ const WatchPartyPlayer = () => {
     }
 
     return (
-        <div className="watch-party-player-wrapper" ref={containerRef}>
+        <div 
+            className="watch-party-player-wrapper" 
+            ref={containerRef}
+            style={{
+                width: dimensions.width ? `${dimensions.width}px` : '100%',
+                height: dimensions.height ? `${dimensions.height}px` : '100%',
+                flex: dimensions.width ? 'none' : undefined,
+            }}
+        >
+            {/* Resize Handles */}
+            <div className="resize-handle left" onMouseDown={(e) => startResize(e, 'left')} />
+            <div className="resize-handle right" onMouseDown={(e) => startResize(e, 'right')} />
+            <div className="resize-handle bottom" onMouseDown={(e) => startResize(e, 'bottom')} />
+            <div className="resize-handle bottom-right" onMouseDown={(e) => startResize(e, 'both')} />
+
             <div className="watch-party-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte İzle (URL)'}</span>
