@@ -460,6 +460,64 @@ router.get('/', optionalProtect, async (req, res) => {
         console.error('Get posts error:', error);
         res.status(500).json({ message: 'Server error' });
     }
+// @route   GET /api/posts/bot-feed
+// @desc    Get all active, public, real-user portal posts for Googlebot
+// @access  Public (Optional Auth, but meant for guest bots)
+router.get('/bot-feed', optionalProtect, async (req, res) => {
+    try {
+        const ua = req.headers['user-agent'] || '';
+        const isGoogleBot = /googlebot|mediapartners-google/i.test(ua) || req.query.test === 'true';
+
+        // Check if unauthenticated and is Googlebot (or testing)
+        if (req.user || !isGoogleBot) {
+            return res.status(403).json({ message: 'Access denied: Guest bot access only' });
+        }
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        // Active, real-user accounts (not bots, not system accounts, not shadowbanned, not deleted)
+        const realUsers = await User.find({
+            isBot: { $ne: true },
+            isSystemAccount: { $ne: true },
+            isShadowbanned: { $ne: true },
+            isDeleted: { $ne: true }
+        }).distinct('_id');
+
+        // Public portals
+        const publicPortals = await Portal.find({ privacy: 'public' }).distinct('_id');
+
+        // Construct query
+        const query = {
+            portal: { $in: publicPortals },
+            author: { $in: realUsers },
+            isArchived: { $ne: true }
+        };
+
+        const posts = await Post.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate(
+                'author',
+                'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted'
+            )
+            .populate('portal', 'name avatar privacy members')
+            .populate({
+                path: 'quotedPost',
+                populate: [
+                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                    { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
+                ]
+            })
+            .lean();
+
+        res.json({ posts });
+    } catch (error) {
+        console.error('Get bot feed error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 
 // @route   GET /api/posts/download

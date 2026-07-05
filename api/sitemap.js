@@ -40,17 +40,26 @@ export default async function handler(req, res) {
             xml += `<url><loc>${baseUrl}${p.url}</loc><lastmod>${now}</lastmod><changefreq>${p.freq}</changefreq><priority>${p.priority}</priority></url>`;
         });
 
-        // Portals (public only)
+        // Portals (public only, including channels)
+        let publicPortalIds = [];
         try {
             const portals = await Portal.find(
                 { privacy: 'public' },
-                '_id name updatedAt createdAt'
+                '_id name channels updatedAt createdAt'
             ).limit(1000).sort({ updatedAt: -1 }).lean();
 
-            if (portals) portals.forEach(p => {
-                const lastmod = (p.updatedAt || p.createdAt || new Date()).toISOString();
-                xml += `<url><loc>${baseUrl}/portal/${p._id}</loc><lastmod>${lastmod}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`;
-            });
+            if (portals) {
+                publicPortalIds = portals.map(p => p._id);
+                portals.forEach(p => {
+                    const lastmod = (p.updatedAt || p.createdAt || new Date()).toISOString();
+                    xml += `<url><loc>${baseUrl}/portal/${p._id}</loc><lastmod>${lastmod}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`;
+                    if (p.channels && p.channels.length > 0) {
+                        p.channels.forEach(ch => {
+                            xml += `<url><loc>${baseUrl}/portal/${p._id}?channel=${ch._id}</loc><lastmod>${lastmod}</lastmod><changefreq>daily</changefreq><priority>0.85</priority></url>`;
+                        });
+                    }
+                });
+            }
         } catch (e) { console.error('Sitemap Portal Error', e); }
 
         // Users
@@ -66,17 +75,20 @@ export default async function handler(req, res) {
             });
         } catch (e) { console.error('Sitemap User Error', e); }
 
-        // Posts
+        // Posts of Public Portals
         try {
-            const posts = await Post.find(
-                {},
-                '_id updatedAt createdAt'
-            ).limit(2000).sort({ createdAt: -1 }).lean();
+            if (publicPortalIds.length > 0) {
+                const posts = await Post.find(
+                    { portal: { $in: publicPortalIds }, isArchived: { $ne: true } },
+                    '_id portal channel updatedAt createdAt'
+                ).limit(2000).sort({ createdAt: -1 }).lean();
 
-            if (posts) posts.forEach(p => {
-                const lastmod = (p.updatedAt || p.createdAt || new Date()).toISOString();
-                xml += `<url><loc>${baseUrl}/post/${p._id}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`;
-            });
+                if (posts) posts.forEach(p => {
+                    const lastmod = (p.updatedAt || p.createdAt || new Date()).toISOString();
+                    const channelId = p.channel ? (p.channel._id || p.channel) : 'general';
+                    xml += `<url><loc>${baseUrl}/portal/${p.portal}?channel=${channelId}&amp;post=${p._id}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.65</priority></url>`;
+                });
+            }
         } catch (e) { console.error('Sitemap Post Error', e); }
 
         xml += '</urlset>';

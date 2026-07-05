@@ -41,6 +41,7 @@ initFirebase();
 // Models for Sitemap
 import Portal from './models/Portal.js';
 import User from './models/User.js';
+import Post from './models/Post.js';
 
 // Security middleware imports
 import helmetConfig from './middleware/helmet-config.js';
@@ -325,13 +326,38 @@ app.get(['/sitemap.xml', '/api/sitemap.xml'], async (req, res) => {
             xml += `<url><loc>${baseUrl}${p.url}</loc><changefreq>${p.freq}</changefreq><priority>${p.priority}</priority></url>`;
         });
 
-        // Portals
+        // Portals (including channels)
+        let publicPortalIds = [];
         try {
-            const portals = await Portal.find({ privacy: 'public' }, '_id updatedAt').limit(500).sort({ createdAt: -1 }).lean();
-            if (portals) portals.forEach(p => {
-                xml += `<url><loc>${baseUrl}/portal/${p._id}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`;
-            });
+            const portals = await Portal.find({ privacy: 'public' }, '_id channels updatedAt').limit(500).sort({ createdAt: -1 }).lean();
+            if (portals) {
+                publicPortalIds = portals.map(p => p._id);
+                portals.forEach(p => {
+                    xml += `<url><loc>${baseUrl}/portal/${p._id}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`;
+                    if (p.channels && p.channels.length > 0) {
+                        p.channels.forEach(ch => {
+                            xml += `<url><loc>${baseUrl}/portal/${p._id}?channel=${ch._id}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`;
+                        });
+                    }
+                });
+            }
         } catch (e) { console.error('Sitemap Portal Error', e); }
+
+        // Posts of Public Portals
+        try {
+            if (publicPortalIds.length > 0) {
+                const posts = await Post.find({ portal: { $in: publicPortalIds }, isArchived: { $ne: true } })
+                    .limit(1000)
+                    .sort({ createdAt: -1 })
+                    .lean();
+                if (posts) {
+                    posts.forEach(post => {
+                        const channelId = post.channel ? (post.channel._id || post.channel) : 'general';
+                        xml += `<url><loc>${baseUrl}/portal/${post.portal}?channel=${channelId}&amp;post=${post._id}</loc><changefreq>weekly</changefreq><priority>0.65</priority></url>`;
+                    });
+                }
+            }
+        } catch (e) { console.error('Sitemap Post Error', e); }
 
         // Users
         try {

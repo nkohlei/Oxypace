@@ -29,6 +29,30 @@ const Home = () => {
     const [revealedSections, setRevealedSections] = useState(new Set());
     const sectionRefs = useRef([]);
 
+    const [isGoogleBot, setIsGoogleBot] = useState(false);
+    const [botPosts, setBotPosts] = useState([]);
+
+    // Detect Googlebot and fetch the public portal posts (Global Feed)
+    useEffect(() => {
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        const isBot = /googlebot|mediapartners-google/i.test(ua) || window.location.search.includes('bot=true');
+        setIsGoogleBot(isBot);
+
+        if (isBot) {
+            const fetchBotFeed = async () => {
+                try {
+                    const res = await axios.get('/api/posts/bot-feed');
+                    if (res.data && res.data.posts) {
+                        setBotPosts(res.data.posts);
+                    }
+                } catch (err) {
+                    console.error('Error fetching Googlebot feed:', err);
+                }
+            };
+            fetchBotFeed();
+        }
+    }, []);
+
     // Auto-redirect logged-in users
     useEffect(() => {
         if (!loading && user) {
@@ -355,6 +379,62 @@ const Home = () => {
                             </div>
                         </div>
                     </section>
+
+                    {/* GOOGLEBOT GLOBAL FEED */}
+                    {isGoogleBot && botPosts.length > 0 && (
+                        <section className="bot-feed-section" id="bot-feed-section" style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+                            <h2 style={{ fontSize: '2rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Global Akış</h2>
+                            <div className="bot-posts-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {botPosts.map((post) => {
+                                    const channelId = post.channel ? (post.channel._id || post.channel) : 'general';
+                                    return (
+                                        <article 
+                                            key={post._id} 
+                                            className="bot-post-card" 
+                                            id={`post-${post._id}`}
+                                            style={{ 
+                                                background: 'var(--bg-secondary)', 
+                                                border: '1px solid var(--border-color)', 
+                                                borderRadius: '8px', 
+                                                padding: '20px' 
+                                            }}
+                                        >
+                                            <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                <h3 style={{ fontSize: '1.2rem', margin: 0 }}>
+                                                    <a 
+                                                        href={`/portal/${post.portal?._id}?channel=${channelId}&post=${post._id}`}
+                                                        style={{ color: 'var(--accent-primary, #00f0ff)', textDecoration: 'none' }}
+                                                    >
+                                                        {post.author?.profile?.displayName || post.author?.username || 'Kullanıcı'} - {post.portal?.name || 'Portal'}
+                                                    </a>
+                                                </h3>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                                    {new Date(post.createdAt).toLocaleDateString('tr-TR')}
+                                                </span>
+                                            </header>
+                                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0 0 10px 0', whiteSpace: 'pre-wrap' }}>
+                                                {post.content}
+                                            </p>
+                                            {post.media && post.mediaType === 'image' && (
+                                                <img 
+                                                    src={post.media} 
+                                                    alt="Post media" 
+                                                    style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px', marginTop: '10px' }} 
+                                                />
+                                            )}
+                                            {post.media && post.mediaType === 'video' && (
+                                                <video 
+                                                    src={post.media} 
+                                                    controls 
+                                                    style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px', marginTop: '10px' }} 
+                                                />
+                                            )}
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    )}
 
                     <div className="home-footer-ad">
                         <AdUnit slot="1234567890" />
