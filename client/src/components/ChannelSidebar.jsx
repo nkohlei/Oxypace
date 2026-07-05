@@ -11,7 +11,7 @@ import RoomTimer from './RoomTimer';
 import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
-import { UserPlus, Bell, ChevronRight, Volume2, Megaphone, Hash, Info, UserCheck, Image } from 'lucide-react';
+import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image } from 'lucide-react';
 import PortalInfoModal from './PortalInfoModal';
 
 const ChannelSidebar = ({
