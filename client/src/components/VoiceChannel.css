@@ -117,7 +117,6 @@
     flex-direction: row;
     gap: 20px;
     height: 100%;
-    padding-right: 120px !important;
 }
 
 .vc-hero {
@@ -127,6 +126,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding-right: 80px !important;
 }
 
 .vc-carousel {
