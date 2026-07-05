@@ -400,6 +400,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                     title="Videoyu Ana Ekrana Al"
                                 >
                                     <div id="watch-party-portal-target" style={{ width: '100%', height: '100%' }}></div>
+                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'transparent' }} />
                                 </div>
                             )}
                             {participants.filter(p => !focusedParticipant || p.identity !== focusedParticipant.identity).map(p => 
