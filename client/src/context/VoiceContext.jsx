@@ -1137,7 +1137,7 @@ export const VoiceProvider = ({ children }) => {
         playInteractionSound('message');
     }, [activeRoom, user, playInteractionSound, safeEmit]);
 
-    // Handle incoming chat messages via socket
+    // Handle incoming chat messages and history via socket
     useEffect(() => {
         if (!socket) return;
 
@@ -1155,9 +1155,24 @@ export const VoiceProvider = ({ children }) => {
             }
         };
 
+        const handleChatHistory = (history) => {
+            if (Array.isArray(history)) {
+                setChatMessages(history.map(msg => ({
+                    id: Date.now() + Math.random(),
+                    senderName: msg.senderName,
+                    senderId: msg.senderId,
+                    text: msg.text,
+                    timestamp: msg.timestamp || new Date().toISOString(),
+                    isLocal: msg.senderId === user?._id?.toString()
+                })));
+            }
+        };
+
         socket.on('voice:chat-message', handleChatMessage);
+        socket.on('voice:chat-history', handleChatHistory);
         return () => {
             socket.off('voice:chat-message', handleChatMessage);
+            socket.off('voice:chat-history', handleChatHistory);
         };
     }, [socket, user, playInteractionSound]);
 

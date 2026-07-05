@@ -101,6 +101,24 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isIdle, setIsIdle] = useState(false);
     const idleTimerRef = useRef(null);
 
+    const [unreadCount, setUnreadCount] = useState(0);
+    const prevLengthRef = useRef(0);
+
+    useEffect(() => {
+        if (isChatOpen) {
+            setUnreadCount(0);
+        } else {
+            const diff = chatMessages.length - prevLengthRef.current;
+            if (diff > 0 && prevLengthRef.current > 0) {
+                const lastMsg = chatMessages[chatMessages.length - 1];
+                if (lastMsg && !lastMsg.isLocal) {
+                    setUnreadCount(prev => prev + 1);
+                }
+            }
+        }
+        prevLengthRef.current = chatMessages.length;
+    }, [chatMessages, isChatOpen]);
+
     useEffect(() => {
         if (!isConnected) {
             setIsIdle(false);
@@ -356,8 +374,29 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 >
                     <UserPlus size={18} />
                 </button>
-                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsInviteOpen(false); }} title="Sohbet">
+                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} style={{ position: 'relative' }} onClick={() => { setIsChatOpen(!isChatOpen); setIsInviteOpen(false); }} title="Sohbet">
                     <MessageCircle size={18} />
+                    {unreadCount > 0 && (
+                        <span style={{
+                            position: 'absolute',
+                            top: '-2px',
+                            right: '-2px',
+                            background: '#ef4444',
+                            color: 'white',
+                            fontSize: '9px',
+                            fontWeight: '700',
+                            borderRadius: '50%',
+                            width: '14px',
+                            height: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1.5px solid #090a0d',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                        }}>
+                            {unreadCount}
+                        </span>
+                    )}
                 </button>
                 
                 {/* Mobile More Menu Trigger (Arrow) */}

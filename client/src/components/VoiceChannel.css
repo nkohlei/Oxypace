@@ -728,6 +728,7 @@
 /* Chat Sidebar Size */
 .voice-chat-sidebar {
     width: 280px !important;
+    z-index: 1000 !important;
 }
 
 @media (max-width: 768px) {

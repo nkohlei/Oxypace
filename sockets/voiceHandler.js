@@ -26,7 +26,8 @@ export const initializeVoiceHandler = (io) => {
             if (!voiceRooms.has(roomName)) {
                 voiceRooms.set(roomName, {
                     participants: new Map(),
-                    startedAt: Date.now()
+                    startedAt: Date.now(),
+                    chatHistory: []
                 });
             } else {
                 const roomData = voiceRooms.get(roomName);
@@ -47,6 +48,9 @@ export const initializeVoiceHandler = (io) => {
                 isScreenSharing: false
             });
             console.log(`[Backend Debug] voice:join registration: userId: ${userId} successfully mapped to socketId: ${socket.id} in room: ${roomName}`);
+
+            // Send voice chat history to the newly joined client
+            socket.emit('voice:chat-history', roomData.chatHistory || []);
 
             // Store room info on socket for cleanup on disconnect
             if (!socket._voiceRooms) socket._voiceRooms = new Set();
@@ -150,6 +154,21 @@ export const initializeVoiceHandler = (io) => {
         // ─── Broadcast Chat Messages ───
         socket.on('voice:chat-message', ({ roomName, text, senderName, senderId }) => {
             if (!roomName) return;
+            
+            const roomData = voiceRooms.get(roomName);
+            if (roomData) {
+                if (!roomData.chatHistory) roomData.chatHistory = [];
+                roomData.chatHistory.push({
+                    text,
+                    senderName,
+                    senderId,
+                    timestamp: new Date().toISOString()
+                });
+                if (roomData.chatHistory.length > 100) {
+                    roomData.chatHistory.shift();
+                }
+            }
+
             io.to(`voice:${roomName}`).emit('voice:chat-message', {
                 text,
                 senderName,
