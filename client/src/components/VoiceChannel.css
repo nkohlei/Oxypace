@@ -10,15 +10,16 @@
     box-sizing: border-box;
     position: relative;
     overflow: hidden;
+    background: #090a0d !important;
 }
 
 /* Glassmorphism Classes */
 .glass-container {
-    background: transparent;
+    background: #090a0d !important;
 }
 
 .lobby-bg {
-    background: var(--bg-darker) !important;
+    background: #090a0d !important;
 }
 
 .glass-panel {
@@ -122,6 +123,9 @@
     flex: 1;
     min-width: 0;
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .vc-carousel {

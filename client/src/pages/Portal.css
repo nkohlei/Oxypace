@@ -1944,8 +1944,8 @@ img, video, iframe {
 /* Collapsible Sidebar & Live Room Centering Integration */
 @media (min-width: 769px) {
     .discord-split-view.sidebar-collapsed .vc-container {
-        max-width: 1200px;
-        margin: 0 auto;
+        max-width: 100%;
+        margin: 0;
     }
     
     .vc-container {
