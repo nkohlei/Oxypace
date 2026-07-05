@@ -363,29 +363,27 @@ const ChannelSidebar = ({
                 width: 0px !important;
                 min-width: 0px !important;
                 border-right: none !important;
-                transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
             }
             
             .sidebar-toggle-btn {
                 position: absolute;
-                right: -22px;
+                right: -12px;
                 top: 50%;
                 transform: translateY(-50%);
-                width: 22px;
-                height: 120px;
-                border-radius: 0 8px 8px 0;
-                background: rgba(43, 45, 49, 0.95);
+                width: 24px;
+                height: 110px;
+                border-radius: 12px;
+                background: #2b2d31;
                 backdrop-filter: blur(8px);
                 -webkit-backdrop-filter: blur(8px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-left: none;
-                color: var(--text-secondary, #b5bac1);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                color: #dbdee1;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
                 z-index: 1000;
-                transition: all 0.2s ease;
+                transition: background-color 0.2s ease, color 0.2s ease;
                 box-shadow: 4px 0 12px rgba(0,0,0,0.3);
                 padding: 0;
             }
@@ -402,8 +400,8 @@ const ChannelSidebar = ({
             }
             
             .sidebar-toggle-btn:hover {
-                background: #f2f3f5;
-                color: #313338;
+                background: #35373c;
+                color: #ffffff;
             }
             
             .channel-banner-container {
