@@ -371,12 +371,8 @@ const ChannelSidebar = ({
                 top: 10px;
                 width: 24px;
                 height: 140px;
-                border-radius: 0 12px 12px 0;
+                border-radius: 0 16px 16px 0;
                 background: var(--bg-secondary, #2b2d31);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-                border-left: none;
                 color: var(--text-secondary, #dbdee1);
                 display: flex;
                 align-items: center;
@@ -384,8 +380,37 @@ const ChannelSidebar = ({
                 cursor: pointer;
                 z-index: 1000;
                 transition: background-color 0.2s ease, color 0.2s ease;
-                box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+                filter: drop-shadow(4px 0 6px rgba(0, 0, 0, 0.3));
+                border: none;
                 padding: 0;
+            }
+            
+            .sidebar-toggle-btn::before {
+                content: "";
+                position: absolute;
+                top: -16px;
+                right: 0;
+                width: 16px;
+                height: 16px;
+                background: transparent;
+                border-radius: 0 0 16px 0;
+                box-shadow: 8px 8px 0 0 var(--bg-secondary, #2b2d31);
+                pointer-events: none;
+                transition: box-shadow 0.2s ease;
+            }
+            
+            .sidebar-toggle-btn::after {
+                content: "";
+                position: absolute;
+                bottom: -16px;
+                right: 0;
+                width: 16px;
+                height: 16px;
+                background: transparent;
+                border-radius: 0 16px 0 0;
+                box-shadow: 8px -8px 0 0 var(--bg-secondary, #2b2d31);
+                pointer-events: none;
+                transition: box-shadow 0.2s ease;
             }
             
             .sidebar-toggle-btn span {
@@ -397,11 +422,20 @@ const ChannelSidebar = ({
                 letter-spacing: 1.5px;
                 white-space: nowrap;
                 user-select: none;
+                z-index: 2;
             }
             
             .sidebar-toggle-btn:hover {
                 background: #35373c;
                 color: #ffffff;
+            }
+            
+            .sidebar-toggle-btn:hover::before {
+                box-shadow: 8px 8px 0 0 #35373c;
+            }
+            
+            .sidebar-toggle-btn:hover::after {
+                box-shadow: 8px -8px 0 0 #35373c;
             }
             
             .channel-banner-container {
