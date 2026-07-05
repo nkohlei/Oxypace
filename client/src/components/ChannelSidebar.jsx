@@ -111,9 +111,7 @@ const ChannelSidebar = ({
                     }}
                     title={isDesktopSidebarCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
                 >
-                    <span className="toggle-text">
-                        {isDesktopSidebarCollapsed ? "MENÜYÜ GÖSTER" : "MENÜYÜ GİZLE"}
-                    </span>
+                    {isDesktopSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 </button>
             )}
 
@@ -369,60 +367,29 @@ const ChannelSidebar = ({
             
             .sidebar-toggle-btn {
                 position: absolute;
-                right: -24px;
-                top: 50%;
-                transform: translateY(-50%);
-                width: 24px;
-                height: 160px;
-                background: var(--bg-secondary);
-                border: 1px solid var(--border-subtle);
-                border-left: none;
-                border-radius: 0 16px 16px 0;
-                color: var(--text-secondary);
+                right: -14px;
+                top: 14px;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: rgba(20, 20, 22, 0.95);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: var(--text-primary);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
                 z-index: 1000;
                 transition: all 0.2s ease;
-                box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             }
             
             .sidebar-toggle-btn:hover {
-                color: var(--text-primary);
-            }
-
-            .sidebar-toggle-btn .toggle-text {
-                writing-mode: vertical-rl;
-                text-orientation: upright;
-                font-size: 10px;
-                font-weight: 700;
-                letter-spacing: 2px;
-                user-select: none;
-                white-space: nowrap;
-            }
-
-            .sidebar-toggle-btn::before,
-            .sidebar-toggle-btn::after {
-                content: "";
-                position: absolute;
-                left: -1px; /* Align with tab border */
-                width: 16px;
-                height: 16px;
-                background: transparent;
-                pointer-events: none;
-            }
-
-            .sidebar-toggle-btn::before {
-                bottom: 100%;
-                border-bottom-left-radius: 16px;
-                box-shadow: 0 16px 0 0 var(--bg-secondary), 0 16px 0 1px var(--border-subtle);
-            }
-
-            .sidebar-toggle-btn::after {
-                top: 100%;
-                border-top-left-radius: 16px;
-                box-shadow: 0 -16px 0 0 var(--bg-secondary), 0 -16px 0 1px var(--border-subtle);
+                background: var(--primary-color, #6366f1);
+                color: #fff;
+                transform: scale(1.1);
             }
             
 
