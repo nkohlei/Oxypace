@@ -63,7 +63,11 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         selectedVideoInput,
         watchParty,
         startWatchParty,
-        stopWatchParty
+        stopWatchParty,
+        isChatOpen,
+        setIsChatOpen,
+        unreadCount,
+        setUnreadCount
     } = useVoice();
 
     const { setMobileChannelOpen } = useUI();
@@ -86,7 +90,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const isConnecting = isActiveRoom && connectionState === ConnectionState.Connecting;
 
     const [focusedIdentity, setFocusedIdentity] = useState(null);
-    const [isChatOpen, setIsChatOpen] = useState(false);
     const [isMicMenuOpen, setIsMicMenuOpen] = useState(false);
     const [isCameraMenuOpen, setIsCameraMenuOpen] = useState(false);
     const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -101,27 +104,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isIdle, setIsIdle] = useState(false);
     const idleTimerRef = useRef(null);
 
-    const [unreadCount, setUnreadCount] = useState(0);
-    const prevLengthRef = useRef(0);
 
-    useEffect(() => {
-        if (isChatOpen) {
-            setUnreadCount(0);
-        } else {
-            if (prevLengthRef.current === 0) {
-                const initialUnread = chatMessages.filter(msg => !msg.isLocal).length;
-                setUnreadCount(initialUnread);
-            } else {
-                const diff = chatMessages.length - prevLengthRef.current;
-                if (diff > 0) {
-                    const newMsgs = chatMessages.slice(prevLengthRef.current);
-                    const unreadNew = newMsgs.filter(msg => !msg.isLocal).length;
-                    setUnreadCount(prev => prev + unreadNew);
-                }
-            }
-        }
-        prevLengthRef.current = chatMessages.length;
-    }, [chatMessages, isChatOpen]);
 
     useEffect(() => {
         if (!isConnected) {
@@ -540,7 +523,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 <Link size={22} color={watchParty?.url && !watchParty?.isLive ? '#ffffff' : '#ef4444'} />
                             </button>
                             {isWatchInputOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px', zIndex: 999 }}>
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px' }}>
                                     <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <input 
                                             type="text" 
@@ -597,7 +580,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 <Radio size={22} color={watchParty?.url && watchParty?.isLive ? '#ffffff' : '#10b981'} />
                             </button>
                             {isLiveWatchInputOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px', zIndex: 999 }}>
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px' }}>
                                     <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <input 
                                             type="text" 

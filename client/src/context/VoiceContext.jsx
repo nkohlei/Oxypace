@@ -161,6 +161,14 @@ export const VoiceProvider = ({ children }) => {
 
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (isChatOpen) {
+            setUnreadCount(0);
+        }
+    }, [isChatOpen]);
 
     // Watch Party State
     const [watchParty, setWatchParty] = useState(null);
@@ -635,7 +643,9 @@ export const VoiceProvider = ({ children }) => {
         setParticipants([]);
         setChatMessages([]);
         setPinnedParticipant(null);
-        setActiveRoom(null);
+        setWatchParty(null);
+        setIsChatOpen(false);
+        setUnreadCount(0);
         setConnectionState(ConnectionState.Disconnected);
 
         if (Capacitor.isNativePlatform()) {
@@ -1151,6 +1161,9 @@ export const VoiceProvider = ({ children }) => {
                     timestamp: new Date().toISOString(),
                     isLocal: false
                 }]);
+                if (!isChatOpen) {
+                    setUnreadCount(prev => prev + 1);
+                }
                 playInteractionSound('message');
             }
         };
@@ -1165,6 +1178,10 @@ export const VoiceProvider = ({ children }) => {
                     timestamp: msg.timestamp || new Date().toISOString(),
                     isLocal: msg.senderId === user?._id?.toString()
                 })));
+                if (!isChatOpen) {
+                    const unread = history.filter(msg => msg.senderId !== user?._id?.toString()).length;
+                    setUnreadCount(unread);
+                }
             }
         };
 
@@ -1174,7 +1191,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:chat-message', handleChatMessage);
             socket.off('voice:chat-history', handleChatHistory);
         };
-    }, [socket, user, playInteractionSound]);
+    }, [socket, user, playInteractionSound, isChatOpen]);
 
     const grantSpeak = useCallback(async (portalId, channelId, targetUserId) => {
         await axios.post(`/api/voice/rooms/${portalId}/${channelId}/permissions`, {
@@ -1262,7 +1279,11 @@ export const VoiceProvider = ({ children }) => {
         stopWatchParty,
         sendWatchPlay,
         sendWatchPause,
-        sendWatchSeek
+        sendWatchSeek,
+        isChatOpen,
+        setIsChatOpen,
+        unreadCount,
+        setUnreadCount
     };
 
     return (
