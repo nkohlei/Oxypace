@@ -367,17 +367,17 @@ const ChannelSidebar = ({
             
             .sidebar-toggle-btn {
                 position: absolute;
-                right: -12px;
-                top: 50%;
-                transform: translateY(-50%);
+                right: -24px;
+                top: 10px;
                 width: 24px;
-                height: 110px;
-                border-radius: 12px;
-                background: #2b2d31;
+                height: 140px;
+                border-radius: 0 12px 12px 0;
+                background: var(--bg-secondary, #2b2d31);
                 backdrop-filter: blur(8px);
                 -webkit-backdrop-filter: blur(8px);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                color: #dbdee1;
+                border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+                border-left: none;
+                color: var(--text-secondary, #dbdee1);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -394,7 +394,7 @@ const ChannelSidebar = ({
                 font-size: 9px;
                 font-weight: 700;
                 text-transform: uppercase;
-                letter-spacing: 1px;
+                letter-spacing: 1.5px;
                 white-space: nowrap;
                 user-select: none;
             }
