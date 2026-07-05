@@ -370,12 +370,12 @@ const ChannelSidebar = ({
             .sidebar-toggle-btn {
                 position: absolute;
                 right: -24px;
-                top: 14px;
+                top: 0;
                 width: 24px;
-                height: 100px;
+                height: 160px;
                 background: #383a40 !important;
                 border: none !important;
-                border-radius: 0 8px 8px 0;
+                border-radius: 0 !important;
                 color: #dbdee1;
                 display: flex;
                 align-items: center;
