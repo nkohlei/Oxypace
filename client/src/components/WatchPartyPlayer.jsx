@@ -560,32 +560,72 @@ const WatchPartyPlayer = () => {
 
 export const GlobalWatchPartyWrapper = () => {
     const { watchParty } = useVoice();
-    const [portalTarget, setPortalTarget] = useState(null);
+    const [coords, setCoords] = useState(null);
 
     useEffect(() => {
         if (!watchParty || !watchParty.url) {
-            setPortalTarget(null);
+            setCoords(null);
             return;
         }
 
-        const updateTarget = () => {
-            const el = document.getElementById('watch-party-portal-target');
-            // Always fallback to the global hidden target so the player is NEVER unmounted
-            setPortalTarget(el || document.getElementById('watch-party-hidden-target'));
+        const updateCoords = () => {
+            const placeholder = document.getElementById('watch-party-portal-placeholder');
+            if (placeholder) {
+                const rect = placeholder.getBoundingClientRect();
+                setCoords({
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height,
+                    display: 'block'
+                });
+            } else {
+                setCoords({ display: 'none' });
+            }
         };
 
-        updateTarget();
+        updateCoords();
 
         // Observe DOM mutations to catch target container mounts/unmounts instantly
-        const observer = new MutationObserver(updateTarget);
-        observer.observe(document.body, { childList: true, subtree: true });
+        const observer = new MutationObserver(updateCoords);
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
 
-        return () => observer.disconnect();
+        window.addEventListener('resize', updateCoords);
+        window.addEventListener('scroll', updateCoords);
+        
+        const interval = setInterval(updateCoords, 500);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', updateCoords);
+            window.removeEventListener('scroll', updateCoords);
+            clearInterval(interval);
+        };
     }, [watchParty?.url]);
 
-    if (!watchParty || !watchParty.url || !portalTarget) return null;
+    if (!watchParty || !watchParty.url) return null;
 
-    return ReactDOM.createPortal(<WatchPartyPlayer />, portalTarget);
+    const style = coords ? {
+        position: 'fixed',
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        width: `${coords.width}px`,
+        height: `${coords.height}px`,
+        display: coords.display,
+        zIndex: 900,
+        pointerEvents: 'auto',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+    } : { display: 'none' };
+
+    const target = document.getElementById('watch-party-hidden-target');
+    if (!target) return null;
+
+    return ReactDOM.createPortal(
+        <div style={style}>
+            <WatchPartyPlayer />
+        </div>,
+        target
+    );
 };
 
 export default WatchPartyPlayer;

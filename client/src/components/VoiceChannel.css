@@ -135,13 +135,13 @@
 }
 
 /* Persistent Watch Party Target Positioning */
-#watch-party-portal-target {
+#watch-party-portal-placeholder {
     z-index: 5;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (min-width: 769px) {
-    #watch-party-portal-target.watch-party-target-hero {
+    #watch-party-portal-placeholder.watch-party-target-hero {
         position: absolute;
         top: 0;
         left: 260px; /* 240px carousel + 20px gap */
@@ -149,7 +149,7 @@
         bottom: 64px; /* 64px bottom padding matching .vc-viewport */
     }
     
-    #watch-party-portal-target.watch-party-target-carousel {
+    #watch-party-portal-placeholder.watch-party-target-carousel {
         position: absolute;
         top: 0;
         left: 20px; /* padding-left of carousel */
@@ -159,7 +159,7 @@
 }
 
 @media (max-width: 768px) {
-    #watch-party-portal-target.watch-party-target-hero {
+    #watch-party-portal-placeholder.watch-party-target-hero {
         position: absolute;
         top: 8px;
         left: 8px;
@@ -169,7 +169,7 @@
         box-sizing: border-box;
     }
     
-    #watch-party-portal-target.watch-party-target-carousel {
+    #watch-party-portal-placeholder.watch-party-target-carousel {
         position: absolute;
         top: 60px;
         left: 16px;

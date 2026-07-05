@@ -391,7 +391,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '0px', position: 'relative' }}>
                 {watchParty && watchParty.url && (
                     <div 
-                        id="watch-party-portal-target" 
+                        id="watch-party-portal-placeholder" 
                         className={focusedParticipant ? 'watch-party-target-carousel' : 'watch-party-target-hero'}
                         onClick={focusedParticipant ? () => setFocusedIdentity(null) : undefined}
                         title={focusedParticipant ? "Videoyu Ana Ekrana Al" : undefined}
