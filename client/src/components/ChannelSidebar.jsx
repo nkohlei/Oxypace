@@ -103,15 +103,16 @@ const ChannelSidebar = ({
             }}
         >
             {!isMobileView && isLiveRoom && (
-                <button
-                    className="sidebar-toggle-btn"
+                <button 
                     onClick={(e) => {
                         e.stopPropagation();
                         setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed);
-                    }}
-                    title={isDesktopSidebarCollapsed ? "Menüyü Aç" : "Menüyü Gizle"}
+                    }} 
+                    className="absolute top-12 -right-[32px] z-50 flex h-32 w-8 items-center justify-center bg-[#16171d]/90 backdrop-blur-md border-y border-r border-white/10 rounded-r-[24px] shadow-xl hover:bg-[#1a1c24] transition-all duration-300"
                 >
-                    <span>{isDesktopSidebarCollapsed ? "Menüyü Aç" : "Menüyü Gizle"}</span>
+                    <span className="text-[10px] font-medium tracking-[0.2em] text-white/60 select-none [writing-mode:vertical-lr] rotate-180">
+                        {!isDesktopSidebarCollapsed ? "MENÜYÜ GİZLE" : "MENÜYÜ GÖSTER"}
+                    </span>
                 </button>
             )}
 
@@ -365,78 +366,7 @@ const ChannelSidebar = ({
                 border-right: none !important;
             }
             
-            .sidebar-toggle-btn {
-                position: absolute;
-                right: -24px;
-                top: 10px;
-                width: 24px;
-                height: 140px;
-                border-radius: 0 16px 16px 0;
-                background: var(--bg-secondary, #2b2d31);
-                color: var(--text-secondary, #dbdee1);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                z-index: 1000;
-                transition: background-color 0.2s ease, color 0.2s ease;
-                filter: drop-shadow(4px 0 6px rgba(0, 0, 0, 0.3));
-                border: none;
-                padding: 0;
-            }
-            
-            .sidebar-toggle-btn::before {
-                content: "";
-                position: absolute;
-                top: -16px;
-                right: 0;
-                width: 16px;
-                height: 16px;
-                background: transparent;
-                border-radius: 0 0 16px 0;
-                box-shadow: 8px 8px 0 0 var(--bg-secondary, #2b2d31);
-                pointer-events: none;
-                transition: box-shadow 0.2s ease;
-            }
-            
-            .sidebar-toggle-btn::after {
-                content: "";
-                position: absolute;
-                bottom: -16px;
-                right: 0;
-                width: 16px;
-                height: 16px;
-                background: transparent;
-                border-radius: 0 16px 0 0;
-                box-shadow: 8px -8px 0 0 var(--bg-secondary, #2b2d31);
-                pointer-events: none;
-                transition: box-shadow 0.2s ease;
-            }
-            
-            .sidebar-toggle-btn span {
-                writing-mode: vertical-lr;
-                text-orientation: mixed;
-                font-size: 9px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 1.5px;
-                white-space: nowrap;
-                user-select: none;
-                z-index: 2;
-            }
-            
-            .sidebar-toggle-btn:hover {
-                background: #35373c;
-                color: #ffffff;
-            }
-            
-            .sidebar-toggle-btn:hover::before {
-                box-shadow: 8px 8px 0 0 #35373c;
-            }
-            
-            .sidebar-toggle-btn:hover::after {
-                box-shadow: 8px -8px 0 0 #35373c;
-            }
+
             
             .channel-banner-container {
                 height: 160px;
