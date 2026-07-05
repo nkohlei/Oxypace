@@ -108,11 +108,15 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         if (isChatOpen) {
             setUnreadCount(0);
         } else {
-            const diff = chatMessages.length - prevLengthRef.current;
-            if (diff > 0 && prevLengthRef.current > 0) {
-                const lastMsg = chatMessages[chatMessages.length - 1];
-                if (lastMsg && !lastMsg.isLocal) {
-                    setUnreadCount(prev => prev + 1);
+            if (prevLengthRef.current === 0) {
+                const initialUnread = chatMessages.filter(msg => !msg.isLocal).length;
+                setUnreadCount(initialUnread);
+            } else {
+                const diff = chatMessages.length - prevLengthRef.current;
+                if (diff > 0) {
+                    const newMsgs = chatMessages.slice(prevLengthRef.current);
+                    const unreadNew = newMsgs.filter(msg => !msg.isLocal).length;
+                    setUnreadCount(prev => prev + unreadNew);
                 }
             }
         }
