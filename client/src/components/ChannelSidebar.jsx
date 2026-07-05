@@ -102,17 +102,16 @@ const ChannelSidebar = ({
                 borderRight: isDesktopSidebarCollapsed ? 'none' : '1px solid var(--border-subtle)',
             }}
         >
-            {!isMobileView && isLiveRoom && (
-                <button 
+            {!isMobileView && (
+                <button
+                    className="sidebar-toggle-btn"
                     onClick={(e) => {
                         e.stopPropagation();
                         setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed);
-                    }} 
-                    className="absolute top-12 -right-[32px] z-50 flex h-32 w-8 items-center justify-center bg-[#16171d]/90 backdrop-blur-md border-y border-r border-white/10 rounded-r-[24px] shadow-xl hover:bg-[#1a1c24] transition-all duration-300"
+                    }}
+                    title={isDesktopSidebarCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
                 >
-                    <span className="text-[10px] font-medium tracking-[0.2em] text-white/60 select-none [writing-mode:vertical-lr] rotate-180">
-                        {!isDesktopSidebarCollapsed ? "MENÜYÜ GİZLE" : "MENÜYÜ GÖSTER"}
-                    </span>
+                    {isDesktopSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 </button>
             )}
 
@@ -355,7 +354,7 @@ const ChannelSidebar = ({
             <style>{`
             .channel-sidebar {
                 width: 350px;
-                transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), min-width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border 0.3s ease;
+                transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border 0.3s ease;
                 flex-shrink: 0;
                 max-width: 100vw;
             }
@@ -364,6 +363,33 @@ const ChannelSidebar = ({
                 width: 0px !important;
                 min-width: 0px !important;
                 border-right: none !important;
+            }
+            
+            .sidebar-toggle-btn {
+                position: absolute;
+                right: -14px;
+                top: 14px;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: rgba(20, 20, 22, 0.95);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: var(--text-primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 1000;
+                transition: all 0.2s ease;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+            
+            .sidebar-toggle-btn:hover {
+                background: var(--primary-color, #6366f1);
+                color: #fff;
+                transform: scale(1.1);
             }
             
 
