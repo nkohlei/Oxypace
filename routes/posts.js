@@ -460,6 +460,8 @@ router.get('/', optionalProtect, async (req, res) => {
         console.error('Get posts error:', error);
         res.status(500).json({ message: 'Server error' });
     }
+});
+
 // @route   GET /api/posts/bot-feed
 // @desc    Get all active, public, real-user portal posts for Googlebot
 // @access  Public (Optional Auth, but meant for guest bots)
