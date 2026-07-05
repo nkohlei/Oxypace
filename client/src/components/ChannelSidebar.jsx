@@ -26,7 +26,10 @@ const ChannelSidebar = ({
 }) => {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const navigate = useNavigate();
-    const { isMobileView } = useUI();
+    const uiContext = useUI();
+    const { isMobileView } = uiContext || {};
+    const isDesktopSidebarCollapsed = uiContext?.isDesktopSidebarCollapsed || false;
+    const setIsDesktopSidebarCollapsed = uiContext?.setIsDesktopSidebarCollapsed || (() => {});
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();

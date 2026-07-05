@@ -40,7 +40,9 @@ const Portal = () => {
     const { user, updateUser, loading: authLoading } = useAuth();
     const { socket, connected } = useSocket();
     const navigate = useNavigate();
-    const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen, isDesktopSidebarCollapsed } = useUI();
+    const uiContext = useUI();
+    const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = uiContext || {};
+    const isDesktopSidebarCollapsed = uiContext?.isDesktopSidebarCollapsed || false;
 
     const [portal, setPortal] = useState(null);
     const posts = useGlobalStore((state) => state.posts);
