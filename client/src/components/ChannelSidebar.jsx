@@ -373,7 +373,7 @@ const ChannelSidebar = ({
                 top: 14px;
                 width: 24px;
                 height: 160px;
-                background: var(--bg-secondary);
+                background: var(--bg-secondary) !important;
                 border: 1px solid var(--border-subtle);
                 border-left: none;
                 border-radius: 0 16px 16px 0;
@@ -384,20 +384,27 @@ const ChannelSidebar = ({
                 cursor: pointer;
                 z-index: 1000;
                 box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+                transition: color 0.2s ease;
             }
             
             .sidebar-toggle-btn:hover {
                 color: var(--text-primary);
+                background: var(--bg-secondary) !important;
             }
 
             .sidebar-toggle-btn .toggle-text {
                 writing-mode: vertical-rl;
-                text-orientation: upright;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: 700;
                 letter-spacing: 2px;
+                color: var(--text-secondary);
                 user-select: none;
                 white-space: nowrap;
+                transition: color 0.2s ease;
+            }
+
+            .sidebar-toggle-btn:hover .toggle-text {
+                color: var(--text-primary);
             }
 
             .sidebar-toggle-btn::before,
