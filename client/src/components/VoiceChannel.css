@@ -146,8 +146,7 @@
         top: 0;
         left: 260px; /* 240px carousel + 20px gap */
         right: 80px; /* 80px desktop padding */
-        bottom: 0;
-        height: 100%;
+        bottom: 64px; /* 64px bottom padding matching .vc-viewport */
     }
     
     #watch-party-portal-target.watch-party-target-carousel {

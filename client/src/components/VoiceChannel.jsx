@@ -388,7 +388,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 )}
             </div>
 
-            <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px', position: 'relative' }}>
+            <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '0px', position: 'relative' }}>
                 {watchParty && watchParty.url && (
                     <div 
                         id="watch-party-portal-target" 
