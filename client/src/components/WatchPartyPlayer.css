@@ -268,36 +268,44 @@
 .resize-handle:hover {
     background: rgba(0, 210, 255, 0.15);
 }
-
-.resize-handle.left {
-    top: 0;
-    left: 0;
-    width: 6px;
-    height: 100%;
-    cursor: ew-resize;
+/* Watch Party Player inside Carousel Card Override */
+.role-carousel .watch-party-player-wrapper {
+    min-height: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
 }
 
-.resize-handle.right {
-    top: 0;
-    right: 0;
-    width: 6px;
-    height: 100%;
-    cursor: ew-resize;
+.role-carousel .watch-party-header {
+    padding: 6px 10px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
 }
 
-.resize-handle.bottom {
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 6px;
-    cursor: ns-resize;
+.role-carousel .watch-party-title {
+    font-size: 11px !important;
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.resize-handle.bottom-right {
-    bottom: 0;
-    right: 0;
-    width: 12px;
-    height: 12px;
-    cursor: nwse-resize;
-    z-index: 1001;
+.role-carousel .watch-party-live-badge-inline {
+    font-size: 9px !important;
+    padding: 1px 4px !important;
+}
+
+.role-carousel .watch-party-stop-btn {
+    display: none !important;
+}
+
+.role-carousel .watch-party-player-container {
+    flex: 1;
+    min-height: 0 !important;
+    height: calc(100% - 32px) !important;
+}
+
+.role-carousel .watch-party-native-video {
+    object-fit: contain !important;
+    background: #000 !important;
 }
