@@ -525,22 +525,25 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 {watchParty && watchParty.url ? (
                     <>
                         <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
-                            {participants.map(p => (
-                                <div key={p.identity} style={{ position: 'relative', width: '100%', height: '140px', marginBottom: '8px' }}>
-                                    <LayoutCardWrapper
-                                        id={p.identity}
-                                        layouts={panelLayouts}
-                                        setLayouts={setPanelLayouts}
-                                        isLocked={isLayoutLocked}
-                                        onClick={(e) => handleCardClick(p.identity, e)}
-                                    >
-                                        {renderParticipantCard(p, 'carousel', (e) => handleCardClick(p.identity, e))}
-                                    </LayoutCardWrapper>
-                                </div>
-                            ))}
+                            {participants.map(p => {
+                                const isCustom = !!panelLayouts[p.identity];
+                                return (
+                                    <div key={p.identity} style={{ position: isCustom ? 'static' : 'relative', width: '100%', height: '140px', marginBottom: '8px' }}>
+                                        <LayoutCardWrapper
+                                            id={p.identity}
+                                            layouts={panelLayouts}
+                                            setLayouts={setPanelLayouts}
+                                            isLocked={isLayoutLocked}
+                                            onClick={(e) => handleCardClick(p.identity, e)}
+                                        >
+                                            {renderParticipantCard(p, 'carousel', (e) => handleCardClick(p.identity, e))}
+                                        </LayoutCardWrapper>
+                                    </div>
+                                );
+                            })}
                         </div>
                         <div className="vc-hero" style={{ position: 'relative', display: 'flex', gap: '20px', width: '100%', height: '100%' }}>
-                            <div style={{ flex: 1, position: 'relative', height: '100%' }}>
+                            <div style={{ flex: 1, position: panelLayouts['watch-party'] ? 'static' : 'relative', height: '100%' }}>
                                 <LayoutCardWrapper 
                                     id="watch-party" 
                                     layouts={panelLayouts} 
@@ -551,7 +554,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 </LayoutCardWrapper>
                             </div>
                             {focusedParticipant && (
-                                <div style={{ width: '300px', height: '225px', position: 'relative', flexShrink: 0 }}>
+                                <div style={{ width: '300px', height: '225px', position: panelLayouts[focusedParticipant.identity] ? 'static' : 'relative', flexShrink: 0 }}>
                                     <LayoutCardWrapper
                                         id={focusedParticipant.identity}
                                         layouts={panelLayouts}
@@ -569,19 +572,22 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <>
                         {focusedParticipant && (
                             <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
-                                {participants.filter(p => p.identity !== activeFocusIdentity).map(p => (
-                                    <div key={p.identity} style={{ position: 'relative', width: '100%', height: '140px', marginBottom: '8px' }}>
-                                        <LayoutCardWrapper
-                                            id={p.identity}
-                                            layouts={panelLayouts}
-                                            setLayouts={setPanelLayouts}
-                                            isLocked={isLayoutLocked}
-                                            onClick={(e) => handleCardClick(p.identity, e)}
-                                        >
-                                            {renderParticipantCard(p, 'carousel', (e) => handleCardClick(p.identity, e))}
-                                        </LayoutCardWrapper>
-                                    </div>
-                                ))}
+                                {participants.filter(p => p.identity !== activeFocusIdentity).map(p => {
+                                    const isCustom = !!panelLayouts[p.identity];
+                                    return (
+                                        <div key={p.identity} style={{ position: isCustom ? 'static' : 'relative', width: '100%', height: '140px', marginBottom: '8px' }}>
+                                            <LayoutCardWrapper
+                                                id={p.identity}
+                                                layouts={panelLayouts}
+                                                setLayouts={setPanelLayouts}
+                                                isLocked={isLayoutLocked}
+                                                onClick={(e) => handleCardClick(p.identity, e)}
+                                            >
+                                                {renderParticipantCard(p, 'carousel', (e) => handleCardClick(p.identity, e))}
+                                            </LayoutCardWrapper>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                         <div className="vc-hero" style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -597,19 +603,22 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 </LayoutCardWrapper>
                             ) : (
                                 <div className={`vc-grid grid-${Math.min(participants.length, 4)}`} style={{ position: 'relative', width: '100%', height: '100%' }}>
-                                    {participants.map(p => (
-                                        <div key={p.identity} style={{ position: 'relative', width: '100%', height: '100%' }}>
-                                            <LayoutCardWrapper
-                                                id={p.identity}
-                                                layouts={panelLayouts}
-                                                setLayouts={setPanelLayouts}
-                                                isLocked={isLayoutLocked}
-                                                onClick={(e) => handleCardClick(p.identity, e)}
-                                            >
-                                                {renderParticipantCard(p, 'grid', (e) => handleCardClick(p.identity, e))}
-                                            </LayoutCardWrapper>
-                                        </div>
-                                    ))}
+                                    {participants.map(p => {
+                                        const isCustom = !!panelLayouts[p.identity];
+                                        return (
+                                            <div key={p.identity} style={{ position: isCustom ? 'static' : 'relative', width: '100%', height: '100%' }}>
+                                                <LayoutCardWrapper
+                                                    id={p.identity}
+                                                    layouts={panelLayouts}
+                                                    setLayouts={setPanelLayouts}
+                                                    isLocked={isLayoutLocked}
+                                                    onClick={(e) => handleCardClick(p.identity, e)}
+                                                >
+                                                    {renderParticipantCard(p, 'grid', (e) => handleCardClick(p.identity, e))}
+                                                </LayoutCardWrapper>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
