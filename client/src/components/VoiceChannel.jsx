@@ -219,13 +219,12 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const handleJoin = () => connectToChannel(portalId, channelId);
     const handleLeave = () => { disconnectFromChannel(); setFocusedIdentity(null); };
     const handleFocus = (identity) => setFocusedIdentity(focusedIdentity === identity ? null : identity);
-    const handleCardClick = (identity, e) => {
-        if (panelLayouts[identity]) {
-            e.stopPropagation();
-            return;
+
+    useEffect(() => {
+        if (watchParty?.url) {
+            setFocusedIdentity(null);
         }
-        handleFocus(identity);
-    };
+    }, [watchParty?.url]);
 
     const renderParticipantCard = (p, role = 'grid', onClickOverride = null) => {
         const isShowingScreen = p.isScreenSharing;
