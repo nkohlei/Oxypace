@@ -404,13 +404,15 @@ const WatchPartyPlayer = () => {
     return (
         <div className="watch-party-player-wrapper" ref={containerRef}>
             <div className="watch-party-header">
-                <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte İzle (URL)'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte İzle (URL)'}</span>
+                    {isLive && <span className="watch-party-live-badge-inline">Canlı</span>}
+                </div>
                 <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
                     <X size={16} /> <span>Bitir</span>
                 </button>
             </div>
             <div className="watch-party-player-container">
-                {isLive && <div className="watch-party-live-badge">Canlı</div>}
                 
                 <video
                     ref={videoRef}

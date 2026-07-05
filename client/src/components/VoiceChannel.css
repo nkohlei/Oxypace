@@ -854,6 +854,12 @@
     box-shadow: 0 6px 16px rgba(0, 210, 255, 0.25) !important;
 }
 
+@media (min-width: 769px) {
+    .vc-viewport {
+        padding-right: 100px !important;
+    }
+}
+
 .vc-watch-stream-btn:active {
     transform: translateY(1px) !important;
 }

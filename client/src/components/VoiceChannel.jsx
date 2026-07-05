@@ -273,7 +273,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     }
 
     const activeFocusIdentity = focusedIdentity;
-    const focusedParticipant = activeFocusIdentity ? participants.find(p => p.identity === activeFocusIdentity) : null;
+    const focusedParticipant = (activeFocusIdentity && participants.length > 1) ? participants.find(p => p.identity === activeFocusIdentity) : null;
 
     const carouselItemsCount = (watchParty && watchParty.url) 
         ? participants.length 

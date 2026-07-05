@@ -99,31 +99,27 @@
     display: none !important;
 }
 
-.watch-party-live-badge {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    background: rgba(239, 68, 68, 0.85);
+.watch-party-live-badge-inline {
+    background: #ef4444;
     color: #ffffff;
-    padding: 4px 8px;
+    padding: 2px 6px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    display: flex;
+    letter-spacing: 0.5px;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     pointer-events: none;
-    z-index: 10;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
-.watch-party-live-badge::before {
+.watch-party-live-badge-inline::before {
     content: '';
     display: inline-block;
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
     border-radius: 50%;
     background: #ffffff;
     animation: pulse-live 1.5s infinite;
