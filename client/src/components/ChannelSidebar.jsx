@@ -77,6 +77,15 @@ const ChannelSidebar = ({
         type: ch.type || 'text',
     })) : [];
 
+    const activeChannelObj = channels.find(ch => ch.id === currentChannel);
+    const isLiveRoom = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
+
+    useEffect(() => {
+        if (!isLiveRoom && isDesktopSidebarCollapsed) {
+            setIsDesktopSidebarCollapsed(false);
+        }
+    }, [isLiveRoom, isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed]);
+
     const isSelected = (id) => currentChannel === id;
 
     return (
@@ -93,16 +102,16 @@ const ChannelSidebar = ({
                 borderRight: isDesktopSidebarCollapsed ? 'none' : '1px solid var(--border-subtle)',
             }}
         >
-            {!isMobileView && (
+            {!isMobileView && isLiveRoom && (
                 <button
                     className="sidebar-toggle-btn"
                     onClick={(e) => {
                         e.stopPropagation();
                         setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed);
                     }}
-                    title={isDesktopSidebarCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
+                    title={isDesktopSidebarCollapsed ? "Menüyü Aç" : "Menüyü Gizle"}
                 >
-                    {isDesktopSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    <span>{isDesktopSidebarCollapsed ? "Menüyü Aç" : "Menüyü Gizle"}</span>
                 </button>
             )}
 
@@ -345,7 +354,7 @@ const ChannelSidebar = ({
             <style>{`
             .channel-sidebar {
                 width: 350px;
-                transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border 0.3s ease;
+                transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), min-width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border 0.3s ease;
                 flex-shrink: 0;
                 max-width: 100vw;
             }
@@ -354,33 +363,47 @@ const ChannelSidebar = ({
                 width: 0px !important;
                 min-width: 0px !important;
                 border-right: none !important;
+                transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
             }
             
             .sidebar-toggle-btn {
                 position: absolute;
-                right: -14px;
-                top: 14px;
-                width: 28px;
-                height: 28px;
-                border-radius: 50%;
-                background: rgba(20, 20, 22, 0.95);
+                right: -22px;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 22px;
+                height: 120px;
+                border-radius: 0 8px 8px 0;
+                background: rgba(43, 45, 49, 0.95);
                 backdrop-filter: blur(8px);
                 -webkit-backdrop-filter: blur(8px);
                 border: 1px solid rgba(255, 255, 255, 0.1);
-                color: var(--text-primary);
+                border-left: none;
+                color: var(--text-secondary, #b5bac1);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
                 z-index: 1000;
                 transition: all 0.2s ease;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+                padding: 0;
+            }
+            
+            .sidebar-toggle-btn span {
+                writing-mode: vertical-lr;
+                text-orientation: mixed;
+                font-size: 9px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                white-space: nowrap;
+                user-select: none;
             }
             
             .sidebar-toggle-btn:hover {
-                background: var(--primary-color, #6366f1);
-                color: #fff;
-                transform: scale(1.1);
+                background: #f2f3f5;
+                color: #313338;
             }
             
             .channel-banner-container {
