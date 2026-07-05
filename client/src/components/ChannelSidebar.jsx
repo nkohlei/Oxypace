@@ -112,7 +112,7 @@ const ChannelSidebar = ({
                     title={isDesktopSidebarCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
                 >
                     <span className="toggle-text">
-                        {isDesktopSidebarCollapsed ? "MENÜYÜ GÖSTER" : "MENÜYÜ GİZLE"}
+                        {isDesktopSidebarCollapsed ? "GÖSTER" : "GİZLE"}
                     </span>
                 </button>
             )}
@@ -372,10 +372,10 @@ const ChannelSidebar = ({
                 right: -24px;
                 top: 14px;
                 width: 24px;
-                height: 160px;
+                height: 100px;
                 background: #383a40 !important;
                 border: none !important;
-                border-radius: 0 16px 16px 0;
+                border-radius: 0 8px 8px 0;
                 color: #dbdee1;
                 display: flex;
                 align-items: center;
@@ -406,29 +406,6 @@ const ChannelSidebar = ({
 
             .sidebar-toggle-btn:hover .toggle-text {
                 color: #ffffff;
-            }
-
-            .sidebar-toggle-btn::before,
-            .sidebar-toggle-btn::after {
-                content: "";
-                position: absolute;
-                left: 0;
-                width: 16px;
-                height: 16px;
-                background: transparent;
-                pointer-events: none;
-            }
-
-            .sidebar-toggle-btn::before {
-                bottom: 100%;
-                border-bottom-left-radius: 16px;
-                box-shadow: 0 16px 0 0 #383a40;
-            }
-
-            .sidebar-toggle-btn::after {
-                top: 100%;
-                border-top-left-radius: 16px;
-                box-shadow: 0 -16px 0 0 #383a40;
             }
             
 
