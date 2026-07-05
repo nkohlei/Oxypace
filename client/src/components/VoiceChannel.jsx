@@ -36,6 +36,137 @@ const VideoRenderer = ({ track, isLocal, className }) => {
     );
 };
 
+const LayoutCardWrapper = ({ id, children, layouts, setLayouts, isLocked, onClick }) => {
+    const cardRef = React.useRef(null);
+    const layout = layouts[id];
+    const isCustom = !!layout;
+
+    const handleMouseDown = (e, action, direction) => {
+        if (isLocked) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const viewport = document.querySelector('.vc-viewport');
+        if (!viewport) return;
+        const viewportRect = viewport.getBoundingClientRect();
+
+        let startWidth, startHeight, startLeft, startTop;
+        
+        if (layout) {
+            startWidth = layout.width;
+            startHeight = layout.height;
+            startLeft = layout.left;
+            startTop = layout.top;
+        } else {
+            const rect = cardRef.current.getBoundingClientRect();
+            startWidth = rect.width;
+            startHeight = rect.height;
+            startLeft = rect.left - viewportRect.left;
+            startTop = rect.top - viewportRect.top;
+        }
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+
+        const onMouseMove = (moveEvent) => {
+            const dx = moveEvent.clientX - startX;
+            const dy = moveEvent.clientY - startY;
+
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+            let newLeft = startLeft;
+            let newTop = startTop;
+
+            if (action === 'drag') {
+                newLeft = startLeft + dx;
+                newTop = startTop + dy;
+            } else if (action === 'resize') {
+                if (direction.includes('right')) {
+                    newWidth = startWidth + dx;
+                }
+                if (direction.includes('left')) {
+                    newWidth = startWidth - dx;
+                    newLeft = startLeft + dx;
+                }
+                if (direction.includes('bottom')) {
+                    newHeight = startHeight + dy;
+                }
+                if (direction.includes('top')) {
+                    newHeight = startHeight - dy;
+                    newTop = startTop + dy;
+                }
+            }
+
+            newWidth = Math.max(150, newWidth);
+            newHeight = Math.max(120, newHeight);
+
+            setLayouts(prev => ({
+                ...prev,
+                [id]: { left: newLeft, top: newTop, width: newWidth, height: newHeight }
+            }));
+        };
+
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    };
+
+    const style = isCustom ? {
+        position: 'absolute',
+        left: `${layout.left}px`,
+        top: `${layout.top}px`,
+        width: `${layout.width}px`,
+        height: `${layout.height}px`,
+        margin: 0,
+        zIndex: 50,
+    } : {
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+    };
+
+    return (
+        <div 
+            ref={cardRef} 
+            className={`vc-layout-wrapper ${isCustom ? 'custom-placed' : ''}`} 
+            style={style}
+            onClick={(e) => {
+                if (isCustom) {
+                    e.stopPropagation();
+                } else if (onClick) {
+                    onClick(e);
+                }
+            }}
+        >
+            {!isLocked && (
+                <div 
+                    className="vc-drag-handle" 
+                    onMouseDown={(e) => handleMouseDown(e, 'drag')}
+                />
+            )}
+
+            {!isLocked && (
+                <>
+                    <div className="resize-handle left" onMouseDown={(e) => handleMouseDown(e, 'resize', 'left')} />
+                    <div className="resize-handle right" onMouseDown={(e) => handleMouseDown(e, 'resize', 'right')} />
+                    <div className="resize-handle top" onMouseDown={(e) => handleMouseDown(e, 'resize', 'top')} />
+                    <div className="resize-handle bottom" onMouseDown={(e) => handleMouseDown(e, 'resize', 'bottom')} />
+                    <div className="resize-handle top-left" onMouseDown={(e) => handleMouseDown(e, 'resize', 'top-left')} />
+                    <div className="resize-handle top-right" onMouseDown={(e) => handleMouseDown(e, 'resize', 'top-right')} />
+                    <div className="resize-handle bottom-left" onMouseDown={(e) => handleMouseDown(e, 'resize', 'bottom-left')} />
+                    <div className="resize-handle bottom-right" onMouseDown={(e) => handleMouseDown(e, 'resize', 'bottom-right')} />
+                </>
+            )}
+
+            {children}
+        </div>
+    );
+};
+
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const { user } = useAuth();
     const {
@@ -97,6 +228,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
+    const [panelLayouts, setPanelLayouts] = useState({});
+    const [isLayoutLocked, setIsLayoutLocked] = useState(false);
     const [isIdle, setIsIdle] = useState(false);
     const idleTimerRef = useRef(null);
 
@@ -218,15 +351,22 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const handleJoin = () => connectToChannel(portalId, channelId);
     const handleLeave = () => { disconnectFromChannel(); setFocusedIdentity(null); };
     const handleFocus = (identity) => setFocusedIdentity(focusedIdentity === identity ? null : identity);
+    const handleCardClick = (identity, e) => {
+        if (panelLayouts[identity]) {
+            e.stopPropagation();
+            return;
+        }
+        handleFocus(identity);
+    };
 
-    const renderParticipantCard = (p, role = 'grid') => {
+    const renderParticipantCard = (p, role = 'grid', onClickOverride = null) => {
         const isShowingScreen = p.isScreenSharing;
         const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
         const shouldAttachVideo = !isShowingScreen || p.isLocal || watchStreamAccepted;
 
         return (
-            <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={() => handleFocus(p.identity)}>
+            <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={onClickOverride || (() => handleFocus(p.identity))}>
                 <div className="vc-card-video-area">
                     <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
                     {trackToRender && shouldAttachVideo ? (
@@ -381,29 +521,95 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 )}
             </div>
 
-            <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px' }}>
+            <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '20px', position: 'relative' }}>
                 {watchParty && watchParty.url ? (
                     <>
                         <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
-                            {participants.map(p => renderParticipantCard(p, 'carousel'))}
+                            {participants.map(p => (
+                                <div key={p.identity} style={{ position: 'relative', width: '100%', height: '140px', marginBottom: '8px' }}>
+                                    <LayoutCardWrapper
+                                        id={p.identity}
+                                        layouts={panelLayouts}
+                                        setLayouts={setPanelLayouts}
+                                        isLocked={isLayoutLocked}
+                                        onClick={(e) => handleCardClick(p.identity, e)}
+                                    >
+                                        {renderParticipantCard(p, 'carousel', (e) => handleCardClick(p.identity, e))}
+                                    </LayoutCardWrapper>
+                                </div>
+                            ))}
                         </div>
-                        <div className="vc-hero">
-                            <div id="watch-party-portal-target" style={{ width: '100%', height: '100%' }}></div>
+                        <div className="vc-hero" style={{ position: 'relative', display: 'flex', gap: '20px', width: '100%', height: '100%' }}>
+                            <div style={{ flex: 1, position: 'relative', height: '100%' }}>
+                                <LayoutCardWrapper 
+                                    id="watch-party" 
+                                    layouts={panelLayouts} 
+                                    setLayouts={setPanelLayouts} 
+                                    isLocked={isLayoutLocked}
+                                >
+                                    <div id="watch-party-portal-target" style={{ width: '100%', height: '100%' }}></div>
+                                </LayoutCardWrapper>
+                            </div>
+                            {focusedParticipant && (
+                                <div style={{ width: '300px', height: '225px', position: 'relative', flexShrink: 0 }}>
+                                    <LayoutCardWrapper
+                                        id={focusedParticipant.identity}
+                                        layouts={panelLayouts}
+                                        setLayouts={setPanelLayouts}
+                                        isLocked={isLayoutLocked}
+                                        onClick={(e) => handleCardClick(focusedParticipant.identity, e)}
+                                    >
+                                        {renderParticipantCard(focusedParticipant, 'hero', (e) => handleCardClick(focusedParticipant.identity, e))}
+                                    </LayoutCardWrapper>
+                                </div>
+                            )}
                         </div>
                     </>
                 ) : (
                     <>
                         {focusedParticipant && (
                             <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
-                                {participants.filter(p => p.identity !== activeFocusIdentity).map(p => renderParticipantCard(p, 'carousel'))}
+                                {participants.filter(p => p.identity !== activeFocusIdentity).map(p => (
+                                    <div key={p.identity} style={{ position: 'relative', width: '100%', height: '140px', marginBottom: '8px' }}>
+                                        <LayoutCardWrapper
+                                            id={p.identity}
+                                            layouts={panelLayouts}
+                                            setLayouts={setPanelLayouts}
+                                            isLocked={isLayoutLocked}
+                                            onClick={(e) => handleCardClick(p.identity, e)}
+                                        >
+                                            {renderParticipantCard(p, 'carousel', (e) => handleCardClick(p.identity, e))}
+                                        </LayoutCardWrapper>
+                                    </div>
+                                ))}
                             </div>
                         )}
-                        <div className="vc-hero">
+                        <div className="vc-hero" style={{ position: 'relative', width: '100%', height: '100%' }}>
                             {focusedParticipant ? (
-                                renderParticipantCard(focusedParticipant, 'hero')
+                                <LayoutCardWrapper
+                                    id={focusedParticipant.identity}
+                                    layouts={panelLayouts}
+                                    setLayouts={setPanelLayouts}
+                                    isLocked={isLayoutLocked}
+                                    onClick={(e) => handleCardClick(focusedParticipant.identity, e)}
+                                >
+                                    {renderParticipantCard(focusedParticipant, 'hero', (e) => handleCardClick(focusedParticipant.identity, e))}
+                                </LayoutCardWrapper>
                             ) : (
-                                <div className={`vc-grid grid-${Math.min(participants.length, 4)}`}>
-                                    {participants.map(p => renderParticipantCard(p, 'grid'))}
+                                <div className={`vc-grid grid-${Math.min(participants.length, 4)}`} style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                    {participants.map(p => (
+                                        <div key={p.identity} style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                            <LayoutCardWrapper
+                                                id={p.identity}
+                                                layouts={panelLayouts}
+                                                setLayouts={setPanelLayouts}
+                                                isLocked={isLayoutLocked}
+                                                onClick={(e) => handleCardClick(p.identity, e)}
+                                            >
+                                                {renderParticipantCard(p, 'grid', (e) => handleCardClick(p.identity, e))}
+                                            </LayoutCardWrapper>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -595,6 +801,35 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 </div>
                             </>
                         )}
+                    </div>
+                    <div className="vc-ctrl-section glass-controls" style={{ gap: '8px' }}>
+                        <button 
+                            className={`vc-ctrl-btn ${isLayoutLocked ? 'active' : ''}`} 
+                            onClick={() => setIsLayoutLocked(!isLayoutLocked)}
+                            title={isLayoutLocked ? "Düzeni Kilitle" : "Düzen Kilidini Aç"}
+                            style={{ background: isLayoutLocked ? '#23a559' : 'rgba(255, 255, 255, 0.05)' }}
+                        >
+                            {isLayoutLocked ? (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                </svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                                </svg>
+                            )}
+                        </button>
+                        <button 
+                            className="vc-ctrl-btn" 
+                            onClick={() => setPanelLayouts({})} 
+                            title="Düzeni Sıfırla"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                            </svg>
+                        </button>
                     </div>
 
                     <div className="vc-ctrl-section glass-controls leave-section">

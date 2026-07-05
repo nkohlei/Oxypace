@@ -446,21 +446,7 @@ const WatchPartyPlayer = () => {
     }
 
     return (
-        <div 
-            className="watch-party-player-wrapper" 
-            ref={containerRef}
-            style={{
-                width: dimensions.width ? `${dimensions.width}px` : '100%',
-                height: dimensions.height ? `${dimensions.height}px` : '100%',
-                flex: dimensions.width ? 'none' : undefined,
-            }}
-        >
-            {/* Resize Handles */}
-            <div className="resize-handle left" onMouseDown={(e) => startResize(e, 'left')} />
-            <div className="resize-handle right" onMouseDown={(e) => startResize(e, 'right')} />
-            <div className="resize-handle bottom" onMouseDown={(e) => startResize(e, 'bottom')} />
-            <div className="resize-handle bottom-right" onMouseDown={(e) => startResize(e, 'both')} />
-
+        <div className="watch-party-player-wrapper" ref={containerRef}>
             <div className="watch-party-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte İzle (URL)'}</span>
