@@ -396,7 +396,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             {focusedParticipant && (
                                 <div 
                                     className="vc-card role-carousel" 
-                                    style={{ height: '140px', marginBottom: '8px', overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }} 
+                                    style={{ height: '160px', marginBottom: '8px', overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }} 
                                     onClick={() => setFocusedIdentity(null)}
                                     title="Videoyu Ana Ekrana Al"
                                 >
