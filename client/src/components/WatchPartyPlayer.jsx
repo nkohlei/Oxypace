@@ -108,8 +108,14 @@ const WatchPartyPlayer = () => {
     const [hasError, setHasError] = useState(false);
     const [reconnectCount, setReconnectCount] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
-    const [localMuted, setLocalMuted] = useState(true); // Default to muted for reliable autoplay compliance
-    const [volume, setVolume] = useState(1);
+    const [localMuted, setLocalMuted] = useState(() => {
+        const saved = localStorage.getItem('watchPartyMuted');
+        return saved !== null ? saved === 'true' : false; // Default to unmuted (false)
+    });
+    const [volume, setVolume] = useState(() => {
+        const saved = localStorage.getItem('watchPartyVolume');
+        return saved !== null ? parseFloat(saved) : 0.5; // Default to 50% (0.5)
+    });
     const [volumeOpen, setVolumeOpen] = useState(false);
     const [dimensions, setDimensions] = useState({ width: null, height: null });
     const isResizingRef = useRef(false);
@@ -168,12 +174,14 @@ const WatchPartyPlayer = () => {
         }, 3000);
     };
 
-    // Apply volume and muted changes to native video element
+    // Apply volume and muted changes to native video element and save to localStorage
     useEffect(() => {
         if (videoRef.current) {
             videoRef.current.volume = volume;
             videoRef.current.muted = localMuted;
         }
+        localStorage.setItem('watchPartyVolume', volume.toString());
+        localStorage.setItem('watchPartyMuted', localMuted.toString());
     }, [volume, localMuted]);
 
     // Reset states when the URL changes
@@ -181,8 +189,6 @@ const WatchPartyPlayer = () => {
         setHasError(false);
         setIsReady(false);
         setUseProxy(false);
-        setLocalMuted(true); // Always start live streams muted for autoplay success
-        setVolume(1);
         lastProgrammaticSeekTimeRef.current = null;
         lastPolledTimeRef.current = null;
         prevIsPlayingRef.current = false;
