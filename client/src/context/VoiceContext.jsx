@@ -1105,18 +1105,26 @@ export const VoiceProvider = ({ children }) => {
             stopScreenShareAndRevert();
         } else {
             try {
+                const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
+                const audioConstraints = {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    channelCount: 2
+                };
+                if (supportedConstraints.restrictOwnAudio) {
+                    audioConstraints.restrictOwnAudio = true;
+                }
+
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({
                     video: {
                         width: { ideal: 1920 },
                         height: { ideal: 1080 },
                         frameRate: { ideal: 30, max: 60 }
                     },
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                        channelCount: 2
-                    }
+                    audio: audioConstraints,
+                    selfBrowserSurface: "exclude",
+                    systemAudio: "include"
                 });
                 screenStreamRef.current = screenStream;
                 const videoTrack = screenStream.getVideoTracks()[0];
