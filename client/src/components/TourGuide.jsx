@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './TourGuide.css';
 
 const TOUR_STEPS = [
@@ -55,6 +56,8 @@ const TOUR_STEPS = [
 ];
 
 const TourGuide = () => {
+  const { isLoggedIn, token } = useAuth();
+  const loggedIn = isLoggedIn || !!token;
   const [currentStep, setCurrentStep] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [spotlightStyle, setSpotlightStyle] = useState({ display: 'none' });
@@ -68,20 +71,46 @@ const TourGuide = () => {
   const isGoogleBot = typeof navigator !== 'undefined' && 
     /googlebot|mediapartners-google/i.test(navigator.userAgent);
 
+  // Define public routes where tour shouldn't show (landing pages, public info, login/register)
+  const publicRoutes = [
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-email',
+    '/onboarding',
+    '/auth/process',
+    '/auth/google/success',
+    '/privacy',
+    '/terms',
+    '/contact'
+  ];
+
+  const isPublicRoute = publicRoutes.includes(location.pathname);
+  const isHomePageAndNotLoggedIn = location.pathname === '/' && !loggedIn;
+  const shouldShowTour = !isPublicRoute && !isHomePageAndNotLoggedIn && (loggedIn || isGoogleBot);
+
+  // Close tour if route changes to a public/unauthorized page or user logs out
+  useEffect(() => {
+    if (!shouldShowTour && isActive) {
+      setIsActive(false);
+    }
+  }, [shouldShowTour, isActive]);
+
   // Initialize Tour: check localStorage
   useEffect(() => {
-    if (isGoogleBot) {
+    if (isGoogleBot || !shouldShowTour) {
       return;
     }
 
-    const hasSeenTour = localStorage.getItem('hasSeenTour');
+    const hasSeenTour = localStorage.getItem('hasSeenTour_v2');
     if (!hasSeenTour) {
       const timer = setTimeout(() => {
         setIsActive(true);
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [isGoogleBot]);
+  }, [isGoogleBot, shouldShowTour]);
 
   // Programmatically manage profile dropdown state for Step 7 (Index 6)
   useEffect(() => {
@@ -326,7 +355,7 @@ const TourGuide = () => {
   };
 
   const handleComplete = () => {
-    localStorage.setItem('hasSeenTour', 'true');
+    localStorage.setItem('hasSeenTour_v2', 'true');
     setIsActive(false);
   };
 
@@ -345,10 +374,10 @@ const TourGuide = () => {
   };
 
   if (isGoogleBot) {
-    return renderCrawlerContent();
+    return shouldShowTour ? renderCrawlerContent() : null;
   }
 
-  if (!isActive) return null;
+  if (!shouldShowTour || !isActive) return null;
 
   const currentStepData = TOUR_STEPS[currentStep];
 

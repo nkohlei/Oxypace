@@ -274,6 +274,7 @@ export const VoiceProvider = ({ children }) => {
 
             // Independent screenshare card
             if (localState.isScreenSharing && localScreenTrack) {
+                const localScreenAudioTrack = screenStreamRef.current?.getAudioTracks()[0] || null;
                 list.push({
                     identity: `${localUserId}-screen`,
                     name: `${user?.profile?.displayName || user?.username || 'Sen'} (Ekran)`,
@@ -285,7 +286,7 @@ export const VoiceProvider = ({ children }) => {
                     isScreenSharing: true,
                     isSpeaking: false,
                     videoTrack: null,
-                    audioTrack: null,
+                    audioTrack: localScreenAudioTrack ? makeTrackObject(localScreenAudioTrack) : null,
                     screenShareTrack: makeTrackObject(localScreenTrack),
                 });
             }
@@ -327,7 +328,7 @@ export const VoiceProvider = ({ children }) => {
                     isScreenSharing: true,
                     isSpeaking: false,
                     videoTrack: null,
-                    audioTrack: null,
+                    audioTrack: rTracks.screenAudio ? makeTrackObject(rTracks.screenAudio) : null,
                     screenShareTrack: makeTrackObject(rTracks.screen),
                 });
             }
@@ -417,9 +418,35 @@ export const VoiceProvider = ({ children }) => {
         // Add local screen share track if currently screen sharing
         if (localState.isScreenSharing && screenStreamRef.current) {
             const screenTrack = screenStreamRef.current.getVideoTracks()[0];
+            const screenAudioTrack = screenStreamRef.current.getAudioTracks()[0];
             if (screenTrack) {
-                pc.addTrack(screenTrack, screenStreamRef.current);
+                const sender = pc.addTrack(screenTrack, screenStreamRef.current);
+                if (sender) {
+                    try {
+                        sender.degradationPreference = 'maintain-resolution';
+                    } catch (e) {
+                        console.warn("[WebRTC] Failed to set degradationPreference:", e);
+                    }
+                    try {
+                        const params = sender.getParameters();
+                        if (!params.encodings) {
+                            params.encodings = [{}];
+                        }
+                        params.encodings.forEach(enc => {
+                            enc.maxBitrate = 5000000; // 5 Mbps for high quality
+                            enc.priority = 'high';
+                            enc.networkPriority = 'high';
+                        });
+                        sender.setParameters(params);
+                    } catch (e) {
+                        console.warn("[WebRTC] Failed to set sender parameters:", e);
+                    }
+                }
                 console.log(`[WebRTC] Added independent screen track to peer connection for ${targetUserId}`);
+            }
+            if (screenAudioTrack) {
+                pc.addTrack(screenAudioTrack, screenStreamRef.current);
+                console.log(`[WebRTC] Added independent screen audio track to peer connection for ${targetUserId}`);
             }
         }
 
@@ -485,7 +512,19 @@ export const VoiceProvider = ({ children }) => {
             const tracks = remoteTracksRef.current.get(targetUserId);
 
             if (event.track.kind === 'audio') {
-                tracks.audio = event.track;
+                const isScreenAudio = stream.id.includes('screen') || 
+                                     (tracks.camStreamId && stream.id !== tracks.camStreamId);
+                
+                if (isScreenAudio) {
+                    tracks.screenAudio = event.track;
+                    console.log(`[WebRTC] remote screenAudioTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
+                } else {
+                    if (!tracks.camStreamId) {
+                        tracks.camStreamId = stream.id;
+                    }
+                    tracks.audio = event.track;
+                    console.log(`[WebRTC] remote audioTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
+                }
             } else if (event.track.kind === 'video') {
                 // Determine if screenshare: check content hint, stream ID string, track ID difference, or custom stream ID mismatch
                 const isScreen = event.track.contentHint === 'text' || 
@@ -1032,14 +1071,16 @@ export const VoiceProvider = ({ children }) => {
         }
 
         const localCamVideoTrack = localStreamRef.current?.getVideoTracks()[0];
+        const localMicAudioTrack = localStreamRef.current?.getAudioTracks()[0];
 
         peerConnectionsRef.current.forEach(pc => {
             const senders = pc.getSenders();
-            const screenSender = senders.find(s => s.track && s.track.kind === 'video' && s.track !== localCamVideoTrack);
-            if (screenSender) {
-                pc.removeTrack(screenSender);
-                console.log(`[WebRTC] Removed independent screen track from peer connection`);
-            }
+            senders.forEach(s => {
+                if (s.track && s.track !== localCamVideoTrack && s.track !== localMicAudioTrack) {
+                    pc.removeTrack(s);
+                    console.log(`[WebRTC] Removed independent screenshare track (${s.track.kind}) from peer connection`);
+                }
+            });
         });
 
         renegotiateAll();
@@ -1065,17 +1106,53 @@ export const VoiceProvider = ({ children }) => {
         } else {
             try {
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { frameRate: 60 },
-                    audio: true
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 30, max: 60 }
+                    },
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        channelCount: 2
+                    }
                 });
                 screenStreamRef.current = screenStream;
                 const videoTrack = screenStream.getVideoTracks()[0];
+                const audioTrack = screenStream.getAudioTracks()[0];
+
                 if (videoTrack) {
                     videoTrack.contentHint = 'text';
 
                     peerConnectionsRef.current.forEach(pc => {
-                        pc.addTrack(videoTrack, screenStream);
-                        console.log(`[WebRTC] Added independent screen track to peer connection`);
+                        const sender = pc.addTrack(videoTrack, screenStream);
+                        if (sender) {
+                            try {
+                                sender.degradationPreference = 'maintain-resolution';
+                            } catch (e) {
+                                console.warn("[WebRTC] Failed to set degradationPreference:", e);
+                            }
+                            try {
+                                const params = sender.getParameters();
+                                if (!params.encodings) {
+                                    params.encodings = [{}];
+                                }
+                                params.encodings.forEach(enc => {
+                                    enc.maxBitrate = 5000000; // 5 Mbps for high quality
+                                    enc.priority = 'high';
+                                    enc.networkPriority = 'high';
+                                });
+                                sender.setParameters(params);
+                            } catch (e) {
+                                console.warn("[WebRTC] Failed to set sender parameters:", e);
+                            }
+                        }
+
+                        if (audioTrack) {
+                            pc.addTrack(audioTrack, screenStream);
+                            console.log(`[WebRTC] Added independent screen audio track to peer connection`);
+                        }
                     });
 
                     renegotiateAll();
