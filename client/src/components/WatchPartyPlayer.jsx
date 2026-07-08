@@ -4,6 +4,7 @@ import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
 import { X, Volume2, VolumeX, Maximize } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
+import VideoPlayer from './VideoPlayer';
 import './WatchPartyPlayer.css';
 
 const loadHls = () => {
@@ -163,7 +164,7 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isLive = !!watchParty?.isLive;
+    const isLive = !!watchParty?.isLive && !isPlatformUrl(watchParty?.url);
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
@@ -531,26 +532,38 @@ const WatchPartyPlayer = () => {
                 )}
 
                 {!isLive && (
-                    <ReactPlayer
-                        ref={playerRef}
-                        url={isPlatformUrl(watchParty?.url) ? watchParty.url : getImageUrl(watchParty?.url)}
-                        playing={watchParty.isPlaying}
-                        controls={isHost}
-                        width="100%"
-                        height="100%"
-                        onError={(e) => {
-                            console.warn("ReactPlayer error logged:", e);
-                        }}
-                        onReady={() => setIsReady(true)}
-                        onPlay={handlePlay}
-                        onPause={handlePause}
-                        onSeek={handleSeek}
-                        config={{
-                            youtube: {
-                                playerVars: { autoplay: 1, disablekb: 0 }
-                            }
-                        }}
-                    />
+                    isPlatformUrl(watchParty?.url) ? (
+                        <ReactPlayer
+                            ref={playerRef}
+                            url={watchParty.url}
+                            playing={watchParty.isPlaying}
+                            controls={isHost}
+                            width="100%"
+                            height="100%"
+                            onError={(e) => {
+                                console.warn("ReactPlayer error logged:", e);
+                            }}
+                            onReady={() => setIsReady(true)}
+                            onPlay={handlePlay}
+                            onPause={handlePause}
+                            onSeek={handleSeek}
+                            config={{
+                                youtube: {
+                                    playerVars: { autoplay: 1, disablekb: 0 }
+                                }
+                            }}
+                        />
+                    ) : (
+                        <VideoPlayer
+                            src={watchParty.url}
+                            watchParty={watchParty}
+                            onReady={() => setIsReady(true)}
+                            onPlay={handlePlay}
+                            onPause={handlePause}
+                            onSeek={handleSeek}
+                            className="watch-party-custom-videoplayer"
+                        />
+                    )
                 )}
             </div>
         </div>
@@ -611,7 +624,7 @@ export const GlobalWatchPartyWrapper = () => {
         width: `${coords.width}px`,
         height: `${coords.height}px`,
         display: coords.display,
-        zIndex: 9999,
+        zIndex: 100,
         pointerEvents: 'auto',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     } : { display: 'none' };

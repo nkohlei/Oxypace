@@ -332,10 +332,7 @@ router.get('/*', async (req, res) => {
                                             resolvedUrl.search = parentSearch;
                                         }
                                         const absolute = resolvedUrl.href;
-                                        if (absolute.includes('.m3u8') || absolute.includes('.key')) {
-                                            return `${p1}${proxyPrefix}${encodeURIComponent(absolute)}${p3}`;
-                                        }
-                                        return `${p1}${absolute}${p3}`;
+                                        return `${p1}${proxyPrefix}${encodeURIComponent(absolute)}${p3}`;
                                     } catch (e) {
                                         return match;
                                     }
@@ -348,10 +345,7 @@ router.get('/*', async (req, res) => {
                                         resolvedUrl.search = parentSearch;
                                     }
                                     const absolute = resolvedUrl.href;
-                                    if (absolute.includes('.m3u8')) {
-                                        return `${proxyPrefix}${encodeURIComponent(absolute)}`;
-                                    }
-                                    return absolute; // Let browser fetch segment directly
+                                    return `${proxyPrefix}${encodeURIComponent(absolute)}`;
                                 } catch (e) {
                                     return line;
                                 }

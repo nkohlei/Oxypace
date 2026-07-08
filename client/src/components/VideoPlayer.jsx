@@ -99,7 +99,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...' }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, onReady, onPlay, onPause, onSeek }) => {
   const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
@@ -127,9 +127,48 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef(null);
   const waitingTimerRef = useRef(null);
-  const [isAdPlaying, setIsAdPlaying] = useState(adsConfig.enableAds);
+  const [isAdPlaying, setIsAdPlaying] = useState(adsConfig.enableAds && !watchParty);
   const [canSkipAd, setCanSkipAd] = useState(false);
   const [adCountdown, setAdCountdown] = useState(5);
+
+  const lastProgrammaticSeekTimeRef = useRef(null);
+  const isSyncingRef = useRef(false);
+  const prevIsPlayingRef = useRef(false);
+
+  useEffect(() => {
+    if (!watchParty) return;
+    const el = getActiveEl();
+    if (!el) return;
+
+    if (watchParty.isPlaying && el.paused) {
+      el.play().catch(() => {});
+      setIsPaused(false);
+    } else if (!watchParty.isPlaying && !el.paused) {
+      el.pause();
+      setIsPaused(true);
+    }
+
+    let expectedTime = watchParty.currentTime;
+    if (watchParty.isPlaying && watchParty.lastUpdated) {
+        const elapsed = (Date.now() - watchParty.lastUpdated) / 1000;
+        expectedTime += elapsed;
+    }
+
+    const timeDiff = Math.abs(el.currentTime - expectedTime);
+    const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
+    const threshold = isPlayTransition ? 0.1 : (watchParty.isPlaying ? 0.8 : 0.3);
+
+    if (timeDiff > threshold) {
+        isSyncingRef.current = true;
+        lastProgrammaticSeekTimeRef.current = expectedTime;
+        el.currentTime = expectedTime;
+        setTimeout(() => {
+            isSyncingRef.current = false;
+        }, 500);
+    }
+
+    prevIsPlayingRef.current = watchParty.isPlaying;
+  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.lastUpdated, activeVideo]);
 
   // --- URL resolution ---
   const src144  = getImageUrl(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']  || qualities?.low || lowVideoUrl || src);
@@ -244,7 +283,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const el = videoRefA.current;
     if (!el) return;
 
-    if (adsConfig.enableAds) {
+    if (adsConfig.enableAds && !watchParty) {
       setIsAdPlaying(true);
       setCanSkipAd(false);
       setAdCountdown(5);
@@ -659,7 +698,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setNaturalDimensions({ width: el.videoWidth, height: el.videoHeight });
     }
     handleTimeUpdate();
-  }, [activeVideo, naturalDimensions, handleTimeUpdate]);
+    if (watchParty && onReady) {
+      onReady();
+    }
+  }, [activeVideo, naturalDimensions, handleTimeUpdate, watchParty, onReady]);
 
   const handleScrub = useCallback((e) => {
     e.stopPropagation();
@@ -667,9 +709,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const el = getActiveEl(); if (!el || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const frac = (e.clientX - rect.left) / rect.width;
-    el.currentTime = frac * duration;
+    const targetTime = frac * duration;
+    if (watchParty) {
+      if (onSeek) onSeek(targetTime);
+      return;
+    }
+    el.currentTime = targetTime;
     setProgress(frac * 100);
-  }, [duration, activeVideo, isAdPlaying]);
+  }, [duration, activeVideo, isAdPlaying, watchParty, onSeek]);
 
   const handleVideoClick = useCallback((e) => {
     e.stopPropagation();
@@ -683,9 +730,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
     
     const el = getActiveEl(); if (!el) return;
+    if (watchParty) {
+      if (el.paused) {
+        if (onPlay) onPlay(el.currentTime);
+      } else {
+        if (onPause) onPause(el.currentTime);
+      }
+      return;
+    }
     if (el.paused) { el.dataset.userPaused = 'false'; el.play().catch(() => {}); }
     else           { el.dataset.userPaused = 'true';  el.pause(); }
-  }, [isSettingsOpen, isQualityMenuOpen, activeVideo, showControls, startControlsTimeout]);
+  }, [isSettingsOpen, isQualityMenuOpen, activeVideo, showControls, startControlsTimeout, watchParty, onPlay, onPause]);
 
   const toggleMute = useCallback((e) => { e.stopPropagation(); setIsMuted(!isMuted); }, [isMuted]);
 
