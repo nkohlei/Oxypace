@@ -540,7 +540,6 @@ const WatchPartyPlayer = () => {
                         height="100%"
                         onError={(e) => {
                             console.warn("ReactPlayer error logged:", e);
-                            setHasError(true);
                         }}
                         onReady={() => setIsReady(true)}
                         onPlay={handlePlay}
