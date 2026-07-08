@@ -1958,11 +1958,12 @@ img, video, iframe {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 24px;
-    background: transparent;
+    padding: 10px 24px;
+    background: rgba(0, 210, 255, 0.04);
     user-select: none;
-    animation: fadeIn 0.2s ease-out;
-    margin-top: 4px;
+    margin-top: 8px;
+    border-radius: 8px;
+    animation: iceBluePulse 2.5s infinite ease-in-out;
 }
 
 .typing-avatars-group {
@@ -1997,6 +1998,21 @@ img, video, iframe {
 
 .portal-typing-indicator .typing-text strong {
     color: var(--text-primary);
+}
+
+@keyframes iceBluePulse {
+    0% {
+        background-color: rgba(0, 210, 255, 0.04);
+        box-shadow: 0 0 4px rgba(0, 210, 255, 0.05);
+    }
+    50% {
+        background-color: rgba(0, 210, 255, 0.12);
+        box-shadow: 0 0 12px rgba(0, 210, 255, 0.15);
+    }
+    100% {
+        background-color: rgba(0, 210, 255, 0.04);
+        box-shadow: 0 0 4px rgba(0, 210, 255, 0.05);
+    }
 }
 
 

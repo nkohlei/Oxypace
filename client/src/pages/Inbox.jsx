@@ -224,7 +224,7 @@ const Inbox = () => {
     useEffect(() => {
         if (!socket || !selectedUser) return;
 
-        if (newMessage.trim().length > 0) {
+        if (newMessage.trim().length > 0 || media.length > 0) {
             if (!isTypingSent) {
                 setIsTypingSent(true);
                 socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: true });
@@ -235,7 +235,7 @@ const Inbox = () => {
                 setIsTypingSent(false);
             }
         }
-    }, [newMessage, selectedUser?._id, socket]);
+    }, [newMessage, media, selectedUser?._id, socket, isTypingSent]);
 
     useEffect(() => {
         return () => {

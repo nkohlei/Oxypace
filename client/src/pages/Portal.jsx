@@ -364,7 +364,7 @@ const Portal = () => {
     useEffect(() => {
         if (!socket || !id) return;
 
-        if (messageText.trim().length > 0) {
+        if (messageText.trim().length > 0 || mediaFile !== null) {
             if (!isTypingSent) {
                 setIsTypingSent(true);
                 socket.emit('portal_typing', { portalId: id, isTyping: true });
@@ -375,7 +375,7 @@ const Portal = () => {
                 setIsTypingSent(false);
             }
         }
-    }, [messageText, id, socket]);
+    }, [messageText, mediaFile, id, socket, isTypingSent]);
 
     useEffect(() => {
         return () => {

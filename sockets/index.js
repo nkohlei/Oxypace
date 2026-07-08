@@ -29,6 +29,12 @@ export const initializeSocket = (io) => {
     // Store user socket connections (socket.id -> userId)
     const userSockets = new Map();
 
+    // Store active typing states (recipientId -> Set of senderIds)
+    const activeTypingDMs = new Map();
+
+    // Store active typing states (portalId -> Map of userId -> userDetails)
+    const activeTypingPortals = new Map();
+
     const getOnlineUsersList = () => {
         return Array.from(new Set(userSockets.values()));
     };
@@ -71,6 +77,14 @@ export const initializeSocket = (io) => {
             if (!socket.isGhost) {
                 io.emit('getOnlineUsers', getOnlineUsersList());
                 io.emit('user_status_change', { userId, status: 'online' });
+
+                // Send existing DM typers typing to this user
+                const dmTypers = activeTypingDMs.get(userId);
+                if (dmTypers) {
+                    for (const senderId of dmTypers) {
+                        socket.emit('dm_typing_update', { senderId, isTyping: true });
+                    }
+                }
             }
         });
 
@@ -101,6 +115,32 @@ export const initializeSocket = (io) => {
                 const isStillOnline = Array.from(userSockets.values()).includes(userId);
                 if (!isStillOnline) {
                     console.log(`👋 User ${userId} is now fully offline`);
+
+                    // Clean up typing indicators in DMs for this user
+                    for (const [recipientId, senderSet] of activeTypingDMs.entries()) {
+                        if (senderSet.has(userId)) {
+                            senderSet.delete(userId);
+                            io.to(recipientId).emit('dm_typing_update', { senderId: userId, isTyping: false });
+                            if (senderSet.size === 0) {
+                                activeTypingDMs.delete(recipientId);
+                            }
+                        }
+                    }
+
+                    // Clean up typing indicators in portals for this user
+                    for (const [portalId, typersMap] of activeTypingPortals.entries()) {
+                        if (typersMap.has(userId)) {
+                            typersMap.delete(userId);
+                            io.to(`portal:${portalId}`).emit('portal_typing_update', {
+                                portalId,
+                                userId,
+                                isTyping: false
+                            });
+                            if (typersMap.size === 0) {
+                                activeTypingPortals.delete(portalId);
+                            }
+                        }
+                    }
 
                     // Presence kaydını anında bellekten/Redis'ten kaldır ve adminleri güncelle
                     try {
@@ -173,9 +213,24 @@ export const initializeSocket = (io) => {
 
         // Direct Message (DM) Typing Indicator
         socket.on('dm_typing', ({ recipientId, isTyping }) => {
-            if (socket.user?._id) {
+            const senderId = socket.user?._id?.toString();
+            if (senderId) {
+                if (isTyping) {
+                    if (!activeTypingDMs.has(recipientId)) {
+                        activeTypingDMs.set(recipientId, new Set());
+                    }
+                    activeTypingDMs.get(recipientId).add(senderId);
+                } else {
+                    const dmTypers = activeTypingDMs.get(recipientId);
+                    if (dmTypers) {
+                        dmTypers.delete(senderId);
+                        if (dmTypers.size === 0) {
+                            activeTypingDMs.delete(recipientId);
+                        }
+                    }
+                }
                 io.to(recipientId).emit('dm_typing_update', {
-                    senderId: socket.user._id,
+                    senderId,
                     isTyping
                 });
             }
@@ -183,13 +238,33 @@ export const initializeSocket = (io) => {
 
         // Portal Feed Typing Indicator
         socket.on('portal_typing', ({ portalId, isTyping }) => {
-            if (socket.user?._id) {
+            const userId = socket.user?._id?.toString();
+            if (userId) {
+                const displayName = socket.user.profile?.displayName || socket.user.username;
+                const avatar = socket.user.profile?.avatar || '';
+                const username = socket.user.username;
+
+                if (isTyping) {
+                    if (!activeTypingPortals.has(portalId)) {
+                        activeTypingPortals.set(portalId, new Map());
+                    }
+                    activeTypingPortals.get(portalId).set(userId, { username, displayName, avatar });
+                } else {
+                    const portalTypers = activeTypingPortals.get(portalId);
+                    if (portalTypers) {
+                        portalTypers.delete(userId);
+                        if (portalTypers.size === 0) {
+                            activeTypingPortals.delete(portalId);
+                        }
+                    }
+                }
+
                 io.to(`portal:${portalId}`).emit('portal_typing_update', {
                     portalId,
-                    userId: socket.user._id,
-                    username: socket.user.username,
-                    displayName: socket.user.profile?.displayName || socket.user.username,
-                    avatar: socket.user.profile?.avatar || '',
+                    userId,
+                    username,
+                    displayName,
+                    avatar,
                     isTyping
                 });
             }
@@ -201,6 +276,21 @@ export const initializeSocket = (io) => {
         socket.on('join_portal', (portalId) => {
             socket.join(`portal:${portalId}`);
             console.log(`📡 Socket ${socket.id} joined portal room: ${portalId}`);
+
+            // Send existing typers in this portal to the newly joined socket
+            const portalTypers = activeTypingPortals.get(portalId);
+            if (portalTypers) {
+                for (const [userId, details] of portalTypers.entries()) {
+                    socket.emit('portal_typing_update', {
+                        portalId,
+                        userId,
+                        username: details.username,
+                        displayName: details.displayName,
+                        avatar: details.avatar,
+                        isTyping: true
+                    });
+                }
+            }
             
             const room = io.sockets.adapter.rooms.get(`portal:${portalId}`);
             const onlineCount = room ? room.size : 0;
