@@ -227,12 +227,30 @@ const Portal = () => {
             }
         };
 
+        const handleUserStatusChange = ({ userId, status, lastActive }) => {
+            setPortal((prev) => {
+                if (!prev || !prev.members) return prev;
+                const updatedMembers = prev.members.map((member) => {
+                    const memberId = member._id || member.id || member;
+                    if (String(memberId) === String(userId)) {
+                        if (typeof member === 'object' && member !== null) {
+                            return { ...member, lastActive: lastActive || new Date() };
+                        }
+                    }
+                    return member;
+                });
+                return { ...prev, members: updatedMembers };
+            });
+        };
+
         socket.on('post:created', handleNewPost);
         socket.on('post:updated', handleUpdatePost);
+        socket.on('user_status_change', handleUserStatusChange);
 
         return () => {
             socket.off('post:created', handleNewPost);
             socket.off('post:updated', handleUpdatePost);
+            socket.off('user_status_change', handleUserStatusChange);
         };
     }, [socket, connected, id, currentChannel]);
 

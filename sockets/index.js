@@ -26,8 +26,12 @@ const startPresenceBroadcast = (io) => {
 };
 
 export const initializeSocket = (io) => {
-    // Store user socket connections
+    // Store user socket connections (socket.id -> userId)
     const userSockets = new Map();
+
+    const getOnlineUsersList = () => {
+        return Array.from(new Set(userSockets.values()));
+    };
 
     io.on('connection', (socket) => {
         console.log(`✅ Socket connected: ${socket.id}`);
@@ -51,7 +55,7 @@ export const initializeSocket = (io) => {
             }
 
             if (!socket.isGhost) {
-                userSockets.set(userId, socket.id);
+                userSockets.set(socket.id, userId);
             }
             socket.join(userId);
             console.log(`👤 User ${userId} joined${socket.isGhost ? ' (Ghost/Hidden)' : ''}`);
@@ -65,7 +69,8 @@ export const initializeSocket = (io) => {
             }
 
             if (!socket.isGhost) {
-                io.emit('getOnlineUsers', Array.from(userSockets.keys()));
+                io.emit('getOnlineUsers', getOnlineUsersList());
+                io.emit('user_status_change', { userId, status: 'online' });
             }
         });
 
@@ -87,11 +92,15 @@ export const initializeSocket = (io) => {
                 console.log(`👋 Ghost connection ${socket.id} disconnected`);
                 return;
             }
-            // Remove user from map
-            for (const [userId, socketId] of userSockets.entries()) {
-                if (socketId === socket.id) {
-                    userSockets.delete(userId);
-                    console.log(`👋 User ${userId} disconnected`);
+            
+            const userId = userSockets.get(socket.id);
+            if (userId) {
+                userSockets.delete(socket.id);
+                console.log(`👋 Socket disconnected: ${socket.id} for user ${userId}`);
+
+                const isStillOnline = Array.from(userSockets.values()).includes(userId);
+                if (!isStillOnline) {
+                    console.log(`👋 User ${userId} is now fully offline`);
 
                     // Presence kaydını anında bellekten/Redis'ten kaldır ve adminleri güncelle
                     try {
@@ -106,15 +115,16 @@ export const initializeSocket = (io) => {
                     }
 
                     // Update the user's lastActive time in the database
+                    const lastActive = new Date();
                     try {
-                        await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+                        await User.findByIdAndUpdate(userId, { lastActive });
                     } catch (err) {
                         console.error('Error updating status on disconnect:', err);
                     }
 
-                    // Broadcast online users
-                    io.emit('getOnlineUsers', Array.from(userSockets.keys()));
-                    break;
+                    // Broadcast online users and status change
+                    io.emit('getOnlineUsers', getOnlineUsersList());
+                    io.emit('user_status_change', { userId, status: 'offline', lastActive });
                 }
             }
         });

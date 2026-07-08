@@ -33,34 +33,13 @@ const ChannelSidebar = ({
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();
-    const { socket } = useSocket();
-    const [onlineCount, setOnlineCount] = useState(() => {
-        const total = portal?.membersCount || portal?.members?.length || 0;
-        return total > 0 ? Math.max(1, Math.floor(total * 0.12)) : 1;
-    });
+    const { socket, onlineUsers } = useSocket();
 
-    useEffect(() => {
-        if (!socket || !portal?._id) return;
-
-        // Initialize state to fallback / estimate when portal changes
-        const total = portal.membersCount || portal.members?.length || 0;
-        setOnlineCount(total > 0 ? Math.max(1, Math.floor(total * 0.12)) : 1);
-
-        const handlePresenceUpdate = (data) => {
-            if (String(data.portalId) === String(portal._id)) {
-                setOnlineCount(data.onlineCount);
-            }
-        };
-
-        socket.on('portal_presence_update', handlePresenceUpdate);
-        
-        // Ask for the current room size immediately
-        socket.emit('get_portal_presence', portal._id);
-
-        return () => {
-            socket.off('portal_presence_update', handlePresenceUpdate);
-        };
-    }, [socket, portal?._id]);
+    // Calculate real online count from portal.members and onlineUsers list
+    const onlineCount = (portal?.members || []).filter((member) => {
+        const memberId = member._id || member.id || member;
+        return onlineUsers.includes(String(memberId));
+    }).length;
 
     // Clear unread count for the active channel
     useEffect(() => {
