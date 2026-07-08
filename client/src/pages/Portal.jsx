@@ -522,7 +522,7 @@ const Portal = () => {
         if (id && currentChannel && portal && isSameId(portal._id, id)) {
             fetchChannelPosts();
         }
-    }, [id, currentChannel, portal]);
+    }, [id, currentChannel, portal?._id]);
 
     // Scroll to specific post when loaded
     useEffect(() => {
