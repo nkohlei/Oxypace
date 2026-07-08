@@ -173,6 +173,15 @@ export const VoiceProvider = ({ children }) => {
     // Watch Party State
     const [watchParty, setWatchParty] = useState(null);
 
+    const [userVolume, setUserVolume] = useState(() => {
+        const saved = localStorage.getItem('voiceUserVolume');
+        return saved !== null ? parseFloat(saved) : 1.0;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('voiceUserVolume', userVolume.toString());
+    }, [userVolume]);
+
     // WebRTC connection references
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
@@ -1368,24 +1377,26 @@ export const VoiceProvider = ({ children }) => {
         isChatOpen,
         setIsChatOpen,
         unreadCount,
-        setUnreadCount
+        setUnreadCount,
+        userVolume,
+        setUserVolume
     };
 
     return (
         <VoiceContext.Provider value={value}>
             {children}
-            <GlobalAudioRenderer participants={participants} isDeafened={localState.isDeafened} />
+            <GlobalAudioRenderer participants={participants} isDeafened={localState.isDeafened} userVolume={userVolume} />
             <GlobalVideoRenderer participants={participants} localState={localState} />
         </VoiceContext.Provider>
     );
 };
 
 // Global Audio Component for cross-navigation persistence
-const GlobalAudioRenderer = ({ participants, isDeafened }) => {
+const GlobalAudioRenderer = ({ participants, isDeafened, userVolume }) => {
     return (
         <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
             {participants.filter(p => !p.isLocal && p.audioTrack).map(p => (
-                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack.track} muted={isDeafened} />
+                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack.track} muted={isDeafened} volume={userVolume} />
             ))}
         </div>
     );
@@ -1427,7 +1438,7 @@ const VideoTrackPlayer = ({ trackObj, isLocal }) => {
     return <video ref={videoEl} autoPlay muted={true} playsInline style={{ width: '1px', height: '1px' }} />;
 };
 
-const AudioTrackPlayer = ({ track, muted }) => {
+const AudioTrackPlayer = ({ track, muted, volume }) => {
     const audioEl = useRef(null);
     useEffect(() => {
         if (audioEl.current && track) {
@@ -1443,6 +1454,12 @@ const AudioTrackPlayer = ({ track, muted }) => {
             audioEl.current.muted = muted;
         }
     }, [muted]);
+
+    useEffect(() => {
+        if (audioEl.current) {
+            audioEl.current.volume = volume;
+        }
+    }, [volume]);
 
     return <audio ref={audioEl} autoPlay playsInline />;
 };

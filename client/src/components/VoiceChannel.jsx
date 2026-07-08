@@ -67,7 +67,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         isChatOpen,
         setIsChatOpen,
         unreadCount,
-        setUnreadCount
+        setUnreadCount,
+        userVolume,
+        setUserVolume
     } = useVoice();
 
     const { setMobileChannelOpen } = useUI();
@@ -148,6 +150,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
     // Invitation states
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [isVolumeOpen, setIsVolumeOpen] = useState(false);
     const [portalMembers, setPortalMembers] = useState([]);
     const [invitedUserIds, setInvitedUserIds] = useState([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
@@ -356,12 +359,12 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             <div className="vc-top-right-controls">
                 <button 
                     className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`} 
-                    onClick={() => { setIsInviteOpen(!isInviteOpen); setIsChatOpen(false); }} 
+                    onClick={() => { setIsInviteOpen(!isInviteOpen); setIsChatOpen(false); setIsVolumeOpen(false); }} 
                     title="Davet Et"
                 >
                     <UserPlus size={18} />
                 </button>
-                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} style={{ position: 'relative' }} onClick={() => { setIsChatOpen(!isChatOpen); setIsInviteOpen(false); }} title="Sohbet">
+                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} style={{ position: 'relative' }} onClick={() => { setIsChatOpen(!isChatOpen); setIsInviteOpen(false); setIsVolumeOpen(false); }} title="Sohbet">
                     <MessageCircle size={18} />
                     {unreadCount > 0 && (
                         <span style={{
@@ -385,6 +388,38 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         </span>
                     )}
                 </button>
+                
+                {/* Volume Slider Group */}
+                <div style={{ position: 'relative' }}>
+                    <button 
+                        className={`vc-ctrl-btn ${isVolumeOpen ? 'active' : ''}`} 
+                        onClick={() => { setIsVolumeOpen(!isVolumeOpen); setIsChatOpen(false); setIsInviteOpen(false); }} 
+                        title="Kullanıcı Ses Düzeyi"
+                    >
+                        <Volume2 size={18} />
+                    </button>
+                    {isVolumeOpen && (
+                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', top: '100%', right: '0', marginTop: '12px', padding: '12px 8px', minWidth: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', zIndex: 1001 }}>
+                            <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-muted)' }}>SES</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="1" 
+                                step="0.05" 
+                                value={userVolume} 
+                                onChange={(e) => setUserVolume(parseFloat(e.target.value))} 
+                                style={{
+                                    WebkitAppearance: 'slider-vertical',
+                                    width: '8px',
+                                    height: '80px',
+                                    padding: '0',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                            <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-primary)' }}>{Math.round(userVolume * 100)}%</span>
+                        </div>
+                    )}
+                </div>
                 
                 {/* Mobile More Menu Trigger (Arrow) */}
                 {isMobile && (
