@@ -211,6 +211,40 @@ const Inbox = () => {
         }
     }, [selectedUser, messages, media, replyingTo, scrollToBottom]);
 
+    // Unconditional scroll to bottom when messages are loaded or user changes
+    useEffect(() => {
+        if (selectedUser && !messagesLoading) {
+            setTimeout(() => {
+                scrollToBottom();
+            }, 100);
+        }
+    }, [selectedUser, messagesLoading, scrollToBottom]);
+
+    // Direct Message Typing Indicator Persistence
+    useEffect(() => {
+        if (!socket || !selectedUser) return;
+
+        if (newMessage.trim().length > 0) {
+            if (!isTypingSent) {
+                setIsTypingSent(true);
+                socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: true });
+            }
+        } else {
+            if (isTypingSent) {
+                socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: false });
+                setIsTypingSent(false);
+            }
+        }
+    }, [newMessage, selectedUser?._id, socket]);
+
+    useEffect(() => {
+        return () => {
+            if (socket && selectedUser && isTypingSent) {
+                socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: false });
+            }
+        };
+    }, [selectedUser?._id, socket, isTypingSent]);
+
     const fetchConversations = async () => {
         try {
             const response = await axios.get('/api/messages/conversations');
@@ -292,32 +326,11 @@ const Inbox = () => {
         }
     };
 
-    const handleTyping = () => {
-        if (!socket || !selectedUser) return;
-        
-        if (!isTypingSent) {
-            setIsTypingSent(true);
-            socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: true });
-        }
-
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-        }
-
-        typingTimeoutRef.current = setTimeout(() => {
-            socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: false });
-            setIsTypingSent(false);
-        }, 2000);
-    };
-
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if ((!newMessage.trim() && media.length === 0) || !selectedUser) return;
 
         // Clear typing indicator instantly on send
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-        }
         if (socket && selectedUser) {
             socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: false });
         }
@@ -656,21 +669,19 @@ const Inbox = () => {
                                         />
                                     ))
                                 )}
+                                {/* DM Typing Indicator inside scroll container */}
+                                {selectedUser && typingUsers[selectedUser._id] && (
+                                    <div className="dm-typing-indicator" style={{ margin: '10px 0 20px 0' }}>
+                                        <div className="typing-bubble">
+                                            <span className="dot"></span>
+                                            <span className="dot"></span>
+                                            <span className="dot"></span>
+                                        </div>
+                                        <span className="typing-text">{selectedUser.profile?.displayName || selectedUser.username} yazıyor...</span>
+                                    </div>
+                                )}
                                 <div ref={messagesEndRef} />
                             </div>
-
-
-                            {/* DM Typing Indicator */}
-                            {selectedUser && typingUsers[selectedUser._id] && (
-                                <div className="dm-typing-indicator">
-                                    <div className="typing-bubble">
-                                        <span className="dot"></span>
-                                        <span className="dot"></span>
-                                        <span className="dot"></span>
-                                    </div>
-                                    <span className="typing-text">{selectedUser.profile?.displayName || selectedUser.username} yazıyor...</span>
-                                </div>
-                            )}
 
                             {replyingTo && (
                                 <div className="reply-preview-bar">
@@ -892,7 +903,6 @@ const Inbox = () => {
                                             value={newMessage}
                                             onChange={(e) => {
                                                 setNewMessage(e.target.value);
-                                                handleTyping();
                                             }}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {

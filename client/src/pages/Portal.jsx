@@ -360,31 +360,35 @@ const Portal = () => {
         }
     };
 
-    const handleTyping = () => {
+    // Typing Indicator Persistence logic
+    useEffect(() => {
         if (!socket || !id) return;
-        
-        if (!isTypingSent) {
-            setIsTypingSent(true);
-            socket.emit('portal_typing', { portalId: id, isTyping: true });
-        }
 
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
+        if (messageText.trim().length > 0) {
+            if (!isTypingSent) {
+                setIsTypingSent(true);
+                socket.emit('portal_typing', { portalId: id, isTyping: true });
+            }
+        } else {
+            if (isTypingSent) {
+                socket.emit('portal_typing', { portalId: id, isTyping: false });
+                setIsTypingSent(false);
+            }
         }
+    }, [messageText, id, socket]);
 
-        typingTimeoutRef.current = setTimeout(() => {
-            socket.emit('portal_typing', { portalId: id, isTyping: false });
-            setIsTypingSent(false);
-        }, 2000);
-    };
+    useEffect(() => {
+        return () => {
+            if (socket && id && isTypingSent) {
+                socket.emit('portal_typing', { portalId: id, isTyping: false });
+            }
+        };
+    }, [id, socket, isTypingSent]);
 
     const handleSendMessage = async () => {
         if (!messageText.trim() && !mediaFile) return;
 
         // Clear typing indicator instantly on send
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-        }
         if (socket && id) {
             socket.emit('portal_typing', { portalId: id, isTyping: false });
         }
@@ -1412,32 +1416,6 @@ const Portal = () => {
                                                                         );
                                                                     })()}
 
-                                                                    {/* Portal Typing Indicator */}
-                                                                    {portalTypingUsers && portalTypingUsers.length > 0 && (
-                                                                        <div className="portal-typing-indicator">
-                                                                            <div className="typing-avatars-group">
-                                                                                {portalTypingUsers.map((typer) => (
-                                                                                    <img
-                                                                                        key={typer.userId}
-                                                                                        src={getImageUrl(typer.avatar)}
-                                                                                        alt={typer.displayName}
-                                                                                        className="typing-avatar"
-                                                                                        title={typer.displayName}
-                                                                                    />
-                                                                                ))}
-                                                                            </div>
-                                                                            <span className="typing-text">
-                                                                                {portalTypingUsers.length === 1 ? (
-                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> yazıyor...</>
-                                                                                ) : portalTypingUsers.length === 2 ? (
-                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> ve <strong>{portalTypingUsers[1].displayName}</strong> yazıyor...</>
-                                                                                ) : (
-                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> ve {portalTypingUsers.length - 1} kişi daha yazıyor...</>
-                                                                                )}
-                                                                            </span>
-                                                                        </div>
-                                                                    )}
-
                                                                     {user && isMember ? (
                                                                         <div className="channel-input-area">
                                                                         {showPlusMenu && createPortal(
@@ -1824,7 +1802,6 @@ const Portal = () => {
                                                                                 value={messageText}
                                                                                 onChange={(e) => {
                                                                                     setMessageText(e.target.value);
-                                                                                    handleTyping();
                                                                                 }}
                                                                                 onKeyDown={(e) => {
                                                                                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1878,6 +1855,31 @@ const Portal = () => {
                                                                                 </button>
                                                                             </div>
                                                                         </div>
+                                                                        {/* Portal Typing Indicator */}
+                                                                        {portalTypingUsers && portalTypingUsers.length > 0 && (
+                                                                            <div className="portal-typing-indicator" style={{ marginTop: '8px' }}>
+                                                                                <div className="typing-avatars-group">
+                                                                                    {portalTypingUsers.map((typer) => (
+                                                                                        <img
+                                                                                            key={typer.userId}
+                                                                                            src={getImageUrl(typer.avatar)}
+                                                                                            alt={typer.displayName}
+                                                                                            className="typing-avatar"
+                                                                                            title={typer.displayName}
+                                                                                        />
+                                                                                    ))}
+                                                                                </div>
+                                                                                <span className="typing-text">
+                                                                                    {portalTypingUsers.length === 1 ? (
+                                                                                        <><strong>{portalTypingUsers[0].displayName}</strong> yazıyor...</>
+                                                                                    ) : portalTypingUsers.length === 2 ? (
+                                                                                        <><strong>{portalTypingUsers[0].displayName}</strong> ve <strong>{portalTypingUsers[1].displayName}</strong> yazıyor...</>
+                                                                                    ) : (
+                                                                                        <><strong>{portalTypingUsers[0].displayName}</strong> ve {portalTypingUsers.length - 1} kişi daha yazıyor...</>
+                                                                                    )}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 ) : (
                                                                     <div className="channel-input-area" style={{ padding: '0 20px 24px 20px', backgroundColor: 'var(--bg-secondary)', borderTop: 'none' }}>
