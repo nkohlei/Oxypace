@@ -170,12 +170,21 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     prevIsPlayingRef.current = watchParty.isPlaying;
   }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.lastUpdated, activeVideo]);
 
+  // --- URL resolution helper to prevent double resolution/proxying ---
+  const resolveVideoUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http') || url.startsWith('/api/media/') || url.startsWith('/r2-media/')) {
+      return url;
+    }
+    return getImageUrl(url);
+  };
+
   // --- URL resolution ---
-  const src144  = getImageUrl(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']  || qualities?.low || lowVideoUrl || src);
-  const src360  = getImageUrl(video360  || qualities?.video360  || qualities?.p360  || qualities?.['360p']  || src144);
-  const src720  = getImageUrl(video720  || qualities?.video720  || qualities?.p720  || qualities?.['720p']  || src360);
-  const src1080 = getImageUrl(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p'] || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
-  const src2160 = getImageUrl(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p'] || src1080);
+  const src144  = resolveVideoUrl(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']  || qualities?.low || lowVideoUrl || src);
+  const src360  = resolveVideoUrl(video360  || qualities?.video360  || qualities?.p360  || qualities?.['360p']  || src144);
+  const src720  = resolveVideoUrl(video720  || qualities?.video720  || qualities?.p720  || qualities?.['720p']  || src360);
+  const src1080 = resolveVideoUrl(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p'] || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
+  const src2160 = resolveVideoUrl(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p'] || src1080);
 
   const has2160 = !!(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p']);
   const has1080 = !!(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p'] || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
