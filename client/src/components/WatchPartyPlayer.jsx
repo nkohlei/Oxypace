@@ -601,7 +601,7 @@ export const GlobalWatchPartyWrapper = () => {
         width: `${coords.width}px`,
         height: `${coords.height}px`,
         display: coords.display,
-        zIndex: 900,
+        zIndex: 9999,
         pointerEvents: 'auto',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     } : { display: 'none' };
