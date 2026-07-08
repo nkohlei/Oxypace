@@ -59,6 +59,9 @@ const Portal = () => {
     const [currentChannel, setCurrentChannel] = useState(null);
     const [hasScrolledToPost, setHasScrolledToPost] = useState(false);
     const [messageText, setMessageText] = useState('');
+    const [portalTypingUsers, setPortalTypingUsers] = useState([]); // Array of { userId, username, displayName, avatar }
+    const typingTimeoutRef = useRef(null);
+    const [isTypingSent, setIsTypingSent] = useState(false);
 
     // UI Toggles
     const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
@@ -228,6 +231,9 @@ const Portal = () => {
         };
 
         const handleUserStatusChange = ({ userId, status, lastActive }) => {
+            if (status === 'offline') {
+                setPortalTypingUsers((prev) => prev.filter((u) => String(u.userId) !== String(userId)));
+            }
             setPortal((prev) => {
                 if (!prev || !prev.members) return prev;
                 const updatedMembers = prev.members.map((member) => {
@@ -243,16 +249,30 @@ const Portal = () => {
             });
         };
 
+        const handlePortalTypingUpdate = ({ userId, username, displayName, avatar, isTyping }) => {
+            if (String(userId) === String(user?._id)) return;
+            setPortalTypingUsers((prev) => {
+                if (isTyping) {
+                    if (prev.some((u) => String(u.userId) === String(userId))) return prev;
+                    return [...prev, { userId, username, displayName, avatar }];
+                } else {
+                    return prev.filter((u) => String(u.userId) !== String(userId));
+                }
+            });
+        };
+
         socket.on('post:created', handleNewPost);
         socket.on('post:updated', handleUpdatePost);
         socket.on('user_status_change', handleUserStatusChange);
+        socket.on('portal_typing_update', handlePortalTypingUpdate);
 
         return () => {
             socket.off('post:created', handleNewPost);
             socket.off('post:updated', handleUpdatePost);
             socket.off('user_status_change', handleUserStatusChange);
+            socket.off('portal_typing_update', handlePortalTypingUpdate);
         };
-    }, [socket, connected, id, currentChannel]);
+    }, [socket, connected, id, currentChannel, user?._id]);
 
     // Helper to extract YouTube ID
     const getYoutubeId = (url) => {
@@ -340,8 +360,35 @@ const Portal = () => {
         }
     };
 
+    const handleTyping = () => {
+        if (!socket || !id) return;
+        
+        if (!isTypingSent) {
+            setIsTypingSent(true);
+            socket.emit('portal_typing', { portalId: id, isTyping: true });
+        }
+
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('portal_typing', { portalId: id, isTyping: false });
+            setIsTypingSent(false);
+        }, 2000);
+    };
+
     const handleSendMessage = async () => {
         if (!messageText.trim() && !mediaFile) return;
+
+        // Clear typing indicator instantly on send
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        if (socket && id) {
+            socket.emit('portal_typing', { portalId: id, isTyping: false });
+        }
+        setIsTypingSent(false);
 
         // Store current data for rollback if needed
         const currentData = { content: messageText, media: mediaFile };
@@ -1365,6 +1412,32 @@ const Portal = () => {
                                                                         );
                                                                     })()}
 
+                                                                    {/* Portal Typing Indicator */}
+                                                                    {portalTypingUsers && portalTypingUsers.length > 0 && (
+                                                                        <div className="portal-typing-indicator">
+                                                                            <div className="typing-avatars-group">
+                                                                                {portalTypingUsers.map((typer) => (
+                                                                                    <img
+                                                                                        key={typer.userId}
+                                                                                        src={getImageUrl(typer.avatar)}
+                                                                                        alt={typer.displayName}
+                                                                                        className="typing-avatar"
+                                                                                        title={typer.displayName}
+                                                                                    />
+                                                                                ))}
+                                                                            </div>
+                                                                            <span className="typing-text">
+                                                                                {portalTypingUsers.length === 1 ? (
+                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> yazıyor...</>
+                                                                                ) : portalTypingUsers.length === 2 ? (
+                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> ve <strong>{portalTypingUsers[1].displayName}</strong> yazıyor...</>
+                                                                                ) : (
+                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> ve {portalTypingUsers.length - 1} kişi daha yazıyor...</>
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+
                                                                     {user && isMember ? (
                                                                         <div className="channel-input-area">
                                                                         {showPlusMenu && createPortal(
@@ -1749,9 +1822,10 @@ const Portal = () => {
                                                                                         : `#${activeChannelObj?.name || '...'} kanalına mesaj gönder`
                                                                                 }
                                                                                 value={messageText}
-                                                                                onChange={(e) =>
-                                                                                    setMessageText(e.target.value)
-                                                                                }
+                                                                                onChange={(e) => {
+                                                                                    setMessageText(e.target.value);
+                                                                                    handleTyping();
+                                                                                }}
                                                                                 onKeyDown={(e) => {
                                                                                     if (e.key === 'Enter' && !e.shiftKey) {
                                                                                         e.preventDefault();

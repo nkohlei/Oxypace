@@ -774,3 +774,73 @@
         transform: rotate(360deg);
     }
 }
+
+/* Real-Time Typing Indicators */
+.dm-typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    background-color: transparent;
+    user-select: none;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.typing-bubble {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background-color: var(--bg-secondary);
+    padding: 6px 10px;
+    border-radius: 12px;
+}
+
+.typing-bubble .dot, .sidebar-typing-dots .dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--text-secondary);
+    border-radius: 50%;
+    display: inline-block;
+    animation: typingBlink 1.4s infinite both;
+}
+
+.typing-bubble .dot:nth-child(2), .sidebar-typing-dots .dot:nth-child(2) {
+    animation-delay: .2s;
+}
+
+.typing-bubble .dot:nth-child(3), .sidebar-typing-dots .dot:nth-child(3) {
+    animation-delay: .4s;
+}
+
+.typing-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.sidebar-typing-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.sidebar-typing-dots .dot {
+    width: 4px;
+    height: 4px;
+    background-color: var(--primary-cyan);
+}
+
+@keyframes typingBlink {
+    0% {
+        opacity: .2;
+        transform: scale(0.8);
+    }
+    20% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: .2;
+        transform: scale(0.8);
+    }
+}

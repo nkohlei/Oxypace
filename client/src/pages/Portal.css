@@ -1953,4 +1953,50 @@ img, video, iframe {
     }
 }
 
+/* Portal Typing Indicator */
+.portal-typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 24px;
+    background: transparent;
+    user-select: none;
+    animation: fadeIn 0.2s ease-out;
+    margin-top: 4px;
+}
+
+.typing-avatars-group {
+    display: flex;
+    align-items: center;
+}
+
+.typing-avatars-group .typing-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-secondary);
+    margin-left: -8px;
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+
+.typing-avatars-group .typing-avatar:first-child {
+    margin-left: 0;
+}
+
+.typing-avatars-group .typing-avatar:hover {
+    transform: translateY(-2px) scale(1.1);
+    z-index: 10;
+}
+
+.portal-typing-indicator .typing-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.portal-typing-indicator .typing-text strong {
+    color: var(--text-primary);
+}
+
 

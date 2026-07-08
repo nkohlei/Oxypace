@@ -33,6 +33,9 @@ const Inbox = () => {
     const messagesContainerRef = useRef(null);
     const [media, setMedia] = useState([]);
     const [replyingTo, setReplyingTo] = useState(null);
+    const [typingUsers, setTypingUsers] = useState({}); // userId -> boolean
+    const typingTimeoutRef = useRef(null);
+    const [isTypingSent, setIsTypingSent] = useState(false);
     const [showNewMessageModal, setShowNewMessageModal] = useState(false); // Modal State
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
@@ -153,14 +156,23 @@ const Inbox = () => {
                 );
             };
 
+            const handleDmTypingUpdate = ({ senderId, isTyping }) => {
+                setTypingUsers((prev) => ({
+                    ...prev,
+                    [senderId]: isTyping
+                }));
+            };
+
             socket.on('message', handleNewMessage);
             socket.on('messageDeleted', handleMessageDeleted);
             socket.on('messageReaction', handleMessageReaction);
+            socket.on('dm_typing_update', handleDmTypingUpdate);
 
             return () => {
                 socket.off('message', handleNewMessage);
                 socket.off('messageDeleted', handleMessageDeleted);
                 socket.off('messageReaction', handleMessageReaction);
+                socket.off('dm_typing_update', handleDmTypingUpdate);
             };
         }
     }, [socket, selectedUser, user._id]);
@@ -280,9 +292,36 @@ const Inbox = () => {
         }
     };
 
+    const handleTyping = () => {
+        if (!socket || !selectedUser) return;
+        
+        if (!isTypingSent) {
+            setIsTypingSent(true);
+            socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: true });
+        }
+
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: false });
+            setIsTypingSent(false);
+        }, 2000);
+    };
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if ((!newMessage.trim() && media.length === 0) || !selectedUser) return;
+
+        // Clear typing indicator instantly on send
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        if (socket && selectedUser) {
+            socket.emit('dm_typing', { recipientId: selectedUser._id, isTyping: false });
+        }
+        setIsTypingSent(false);
 
         if (!selectedUser._id) {
             alert('Hata: Kullanıcı ID bulunamadı.');
@@ -535,14 +574,27 @@ const Inbox = () => {
                                                     {formatTime(conv.lastMessage.createdAt)}
                                                 </span>
                                             </div>
-                                            <p className="conv-preview">
-                                                {conv.user._id === conv.lastMessage.sender._id
-                                                    ? ''
-                                                    : 'Sen: '}
-                                                {conv.lastMessage.content ||
-                                                    (conv.lastMessage.media
-                                                        ? '📷 Fotoğraf'
-                                                        : 'Mesaj')}
+                                            <p className="conv-preview" style={{ color: typingUsers[conv.user._id] ? 'var(--primary-color)' : 'inherit', fontWeight: typingUsers[conv.user._id] ? '600' : 'normal' }}>
+                                                {typingUsers[conv.user._id] ? (
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <span className="sidebar-typing-dots">
+                                                            <span className="dot"></span>
+                                                            <span className="dot"></span>
+                                                            <span className="dot"></span>
+                                                        </span>
+                                                        Yazıyor...
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        {conv.user._id === conv.lastMessage.sender._id
+                                                            ? ''
+                                                            : 'Sen: '}
+                                                        {conv.lastMessage.content ||
+                                                            (conv.lastMessage.media
+                                                                ? '📷 Fotoğraf'
+                                                                : 'Mesaj')}
+                                                    </>
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -607,6 +659,18 @@ const Inbox = () => {
                                 <div ref={messagesEndRef} />
                             </div>
 
+
+                            {/* DM Typing Indicator */}
+                            {selectedUser && typingUsers[selectedUser._id] && (
+                                <div className="dm-typing-indicator">
+                                    <div className="typing-bubble">
+                                        <span className="dot"></span>
+                                        <span className="dot"></span>
+                                        <span className="dot"></span>
+                                    </div>
+                                    <span className="typing-text">{selectedUser.profile?.displayName || selectedUser.username} yazıyor...</span>
+                                </div>
+                            )}
 
                             {replyingTo && (
                                 <div className="reply-preview-bar">
@@ -826,7 +890,10 @@ const Inbox = () => {
                                             type="text"
                                             placeholder="Mesaj"
                                             value={newMessage}
-                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            onChange={(e) => {
+                                                setNewMessage(e.target.value);
+                                                handleTyping();
+                                            }}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
                                                     e.preventDefault();

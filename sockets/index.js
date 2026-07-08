@@ -171,11 +171,27 @@ export const initializeSocket = (io) => {
             console.log(`🛡️ Socket ${socket.id} left admin_presence`);
         });
 
-        // Typing indicator
-        socket.on('typing', ({ recipientId, isTyping }) => {
-            const recipientSocketId = userSockets.get(recipientId);
-            if (recipientSocketId) {
-                io.to(recipientSocketId).emit('userTyping', { isTyping });
+        // Direct Message (DM) Typing Indicator
+        socket.on('dm_typing', ({ recipientId, isTyping }) => {
+            if (socket.user?._id) {
+                io.to(recipientId).emit('dm_typing_update', {
+                    senderId: socket.user._id,
+                    isTyping
+                });
+            }
+        });
+
+        // Portal Feed Typing Indicator
+        socket.on('portal_typing', ({ portalId, isTyping }) => {
+            if (socket.user?._id) {
+                io.to(`portal:${portalId}`).emit('portal_typing_update', {
+                    portalId,
+                    userId: socket.user._id,
+                    username: socket.user.username,
+                    displayName: socket.user.profile?.displayName || socket.user.username,
+                    avatar: socket.user.profile?.avatar || '',
+                    isTyping
+                });
             }
         });
 
