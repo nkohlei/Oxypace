@@ -606,14 +606,10 @@ export const GlobalWatchPartyWrapper = () => {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     } : { display: 'none' };
 
-    const target = document.getElementById('watch-party-hidden-target');
-    if (!target) return null;
-
-    return ReactDOM.createPortal(
+    return (
         <div style={style}>
             <WatchPartyPlayer />
-        </div>,
-        target
+        </div>
     );
 };
 

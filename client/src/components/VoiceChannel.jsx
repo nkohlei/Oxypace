@@ -421,7 +421,10 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         className={focusedParticipant ? 'watch-party-target-carousel' : 'watch-party-target-hero'}
                         onClick={focusedParticipant ? () => setFocusedIdentity(null) : undefined}
                         title={focusedParticipant ? "Videoyu Ana Ekrana Al" : undefined}
-                        style={focusedParticipant ? { cursor: 'pointer' } : undefined}
+                        style={{
+                            cursor: focusedParticipant ? 'pointer' : 'default',
+                            pointerEvents: focusedParticipant ? 'auto' : 'none'
+                        }}
                     >
                         {focusedParticipant && (
                             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'transparent' }} />
