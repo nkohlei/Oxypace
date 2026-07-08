@@ -65,6 +65,16 @@ const isPlayableExternalUrl = (url) => {
   return true;
 };
 
+const isPlatformUrl = (url) => {
+  if (!url) return false;
+  const lowerUrl = url.toLowerCase();
+  return [
+    'youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv',
+    'soundcloud.com', 'facebook.com', 'dailymotion.com',
+    'wistia.com'
+  ].some(domain => lowerUrl.includes(domain));
+};
+
 const getProxiedUrl = (url) => {
   if (!url) return '';
   if (!url.startsWith('http')) return url;
@@ -523,7 +533,7 @@ const WatchPartyPlayer = () => {
                 {!isLive && (
                     <ReactPlayer
                         ref={playerRef}
-                        url={isPlayableExternalUrl(watchParty?.url) ? watchParty.url : getImageUrl(watchParty?.url)}
+                        url={isPlatformUrl(watchParty?.url) ? watchParty.url : getImageUrl(watchParty?.url)}
                         playing={watchParty.isPlaying}
                         controls={isHost}
                         width="100%"
