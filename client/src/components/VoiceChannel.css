@@ -950,64 +950,85 @@
     transform: translateY(1px) !important;
 }
 
-/* Premium Glassmorphic Vertical Volume Slider */
+/* Premium Glassmorphic Rotated Vertical Volume Slider Dropdown */
+.vc-volume-dropdown-container {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 12px;
+    width: 32px;
+    height: 110px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(20, 20, 24, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    z-index: 1001 !important;
+}
+
 .vc-volume-slider-input {
-    -webkit-appearance: slider-vertical;
-    writing-mode: bt-lr;
-    width: 6px;
-    height: 80px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    outline: none;
-    cursor: pointer;
-    transition: background 0.2s;
-    padding: 0;
-    border: none;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 80px !important;
+    height: 4px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-radius: 2px !important;
+    outline: none !important;
+    transform: rotate(-90deg) !important;
+    cursor: pointer !important;
+    position: absolute !important;
+    border: none !important;
+    padding: 0 !important;
 }
 
-.vc-volume-slider-input::-webkit-slider-runnable-track {
-    width: 6px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-}
-
+/* Custom Webkit Thumb (Chrome/Safari) - Premium Green #23a559 */
 .vc-volume-slider-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #ffffff;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.15s ease, background-color 0.15s ease;
-    margin-top: -4px; /* Align correctly for some browsers */
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 14px !important;
+    height: 14px !important;
+    border-radius: 50% !important;
+    background: #23a559 !important;
+    cursor: pointer !important;
+    box-shadow: 0 0 8px rgba(35, 165, 89, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .vc-volume-slider-input::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-    background: #ffffff;
+    transform: scale(1.2) !important;
+    box-shadow: 0 0 12px rgba(35, 165, 89, 0.9) !important;
 }
 
-.vc-volume-slider-input::-moz-range-track {
-    width: 6px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-}
-
+/* Custom Firefox Thumb - Premium Green #23a559 */
 .vc-volume-slider-input::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #ffffff;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.15s ease;
+    width: 14px !important;
+    height: 14px !important;
+    border-radius: 50% !important;
+    background: #23a559 !important;
+    cursor: pointer !important;
+    box-shadow: 0 0 8px rgba(35, 165, 89, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .vc-volume-slider-input::-moz-range-thumb:hover {
-    transform: scale(1.2);
+    transform: scale(1.2) !important;
+    box-shadow: 0 0 12px rgba(35, 165, 89, 0.9) !important;
+}
+
+/* Track custom overrides */
+.vc-volume-slider-input::-webkit-slider-runnable-track {
+    background: transparent !important;
+    border: none !important;
+}
+
+.vc-volume-slider-input::-moz-range-track {
+    background: transparent !important;
+    border: none !important;
 }
 

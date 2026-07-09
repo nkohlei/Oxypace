@@ -425,7 +425,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <Volume2 size={18} />
                     </button>
                     {isVolumeOpen && (
-                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', top: '100%', right: '0', marginTop: '12px', padding: '12px 8px', minWidth: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', zIndex: 1001 }}>
+                        <div className="vc-volume-dropdown-container">
                             <input 
                                 type="range" 
                                 min="0" 
