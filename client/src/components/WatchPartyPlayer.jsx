@@ -44,12 +44,18 @@ const loadDash = () => {
 const isHls = (url) => {
   if (!url) return false;
   const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
+    return false;
+  }
   return cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/');
 };
 
 const isDash = (url) => {
   if (!url) return false;
   const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
+    return false;
+  }
   return cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/');
 };
 
