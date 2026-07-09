@@ -949,4 +949,65 @@
 .vc-watch-stream-btn:active {
     transform: translateY(1px) !important;
 }
+
+/* Premium Glassmorphic Vertical Volume Slider */
+.vc-volume-slider-input {
+    -webkit-appearance: slider-vertical;
+    writing-mode: bt-lr;
+    width: 6px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    padding: 0;
+    border: none;
+}
+
+.vc-volume-slider-input::-webkit-slider-runnable-track {
+    width: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+.vc-volume-slider-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    margin-top: -4px; /* Align correctly for some browsers */
+}
+
+.vc-volume-slider-input::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: #ffffff;
+}
+
+.vc-volume-slider-input::-moz-range-track {
+    width: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+.vc-volume-slider-input::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.15s ease;
+}
+
+.vc-volume-slider-input::-moz-range-thumb:hover {
+    transform: scale(1.2);
+}
 

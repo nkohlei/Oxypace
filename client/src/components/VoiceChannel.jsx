@@ -155,6 +155,28 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [invitedUserIds, setInvitedUserIds] = useState([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
 
+    const volumeCloseTimerRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (volumeCloseTimerRef.current) clearTimeout(volumeCloseTimerRef.current);
+        };
+    }, []);
+
+    const handleVolumeMouseEnter = () => {
+        if (volumeCloseTimerRef.current) {
+            clearTimeout(volumeCloseTimerRef.current);
+            volumeCloseTimerRef.current = null;
+        }
+    };
+
+    const handleVolumeMouseLeave = () => {
+        if (volumeCloseTimerRef.current) clearTimeout(volumeCloseTimerRef.current);
+        volumeCloseTimerRef.current = setTimeout(() => {
+            setIsVolumeOpen(false);
+        }, 1000);
+    };
+
     const screenShareIdentity = participants.find(p => p.screenShareTrack)?.identity || null;
 
     useEffect(() => {
@@ -390,7 +412,11 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 </button>
                 
                 {/* Volume Slider Group */}
-                <div style={{ position: 'relative' }}>
+                <div 
+                    style={{ position: 'relative' }}
+                    onMouseEnter={handleVolumeMouseEnter}
+                    onMouseLeave={handleVolumeMouseLeave}
+                >
                     <button 
                         className={`vc-ctrl-btn ${isVolumeOpen ? 'active' : ''}`} 
                         onClick={() => { setIsVolumeOpen(!isVolumeOpen); setIsChatOpen(false); setIsInviteOpen(false); }} 
@@ -400,7 +426,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </button>
                     {isVolumeOpen && (
                         <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', top: '100%', right: '0', marginTop: '12px', padding: '12px 8px', minWidth: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', zIndex: 1001 }}>
-                            <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-muted)' }}>SES</span>
                             <input 
                                 type="range" 
                                 min="0" 
@@ -408,15 +433,8 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 step="0.05" 
                                 value={userVolume} 
                                 onChange={(e) => setUserVolume(parseFloat(e.target.value))} 
-                                style={{
-                                    WebkitAppearance: 'slider-vertical',
-                                    width: '8px',
-                                    height: '80px',
-                                    padding: '0',
-                                    cursor: 'pointer'
-                                }}
+                                className="vc-volume-slider-input"
                             />
-                            <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-primary)' }}>{Math.round(userVolume * 100)}%</span>
                         </div>
                     )}
                 </div>
