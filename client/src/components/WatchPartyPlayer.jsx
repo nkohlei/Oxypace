@@ -407,18 +407,18 @@ const WatchPartyPlayer = () => {
         prevIsPlayingRef.current = watchParty.isPlaying;
     }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isLive]);
 
-    const handlePlay = () => {
+    const handlePlay = (time) => {
         if (isSyncingRef.current) return;
         if (watchParty && watchParty.isPlaying) return;
-        const time = playerRef.current ? playerRef.current.getCurrentTime() : 0;
-        sendWatchPlay(time);
+        const seekTime = typeof time === 'number' ? time : (playerRef.current ? playerRef.current.getCurrentTime() : 0);
+        sendWatchPlay(seekTime);
     };
 
-    const handlePause = () => {
+    const handlePause = (time) => {
         if (isSyncingRef.current) return;
         if (watchParty && !watchParty.isPlaying) return;
-        const time = playerRef.current ? playerRef.current.getCurrentTime() : 0;
-        sendWatchPause(time);
+        const seekTime = typeof time === 'number' ? time : (playerRef.current ? playerRef.current.getCurrentTime() : 0);
+        sendWatchPause(seekTime);
     };
 
     const handleSeek = (e) => {
