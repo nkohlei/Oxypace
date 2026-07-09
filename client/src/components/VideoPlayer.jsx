@@ -99,7 +99,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
   const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
@@ -121,6 +121,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
@@ -532,6 +533,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   // ─── Auto-quality stall handling ────────────────────────────────────────
   const handleWaiting = useCallback(() => {
+    setIsWaiting(true);
     if (qualityMode !== 'auto') return;
     if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
 
@@ -549,6 +551,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, [qualityMode, src144, src360, src, initiateQualitySwap]);
 
   const handlePlaying = useCallback(() => {
+    setIsWaiting(false);
     if (waitingTimerRef.current) { clearTimeout(waitingTimerRef.current); waitingTimerRef.current = null; }
   }, []);
 
@@ -712,6 +715,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const handleLoadedMetadataActive = useCallback(() => {
     const el = getActiveEl(); if (!el) return;
+    setIsWaiting(false);
     if (el.videoWidth && el.videoHeight && !naturalDimensions) {
       setNaturalDimensions({ width: el.videoWidth, height: el.videoHeight });
     }
@@ -760,7 +764,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else           { el.dataset.userPaused = 'true';  el.pause(); }
   }, [isSettingsOpen, isQualityMenuOpen, activeVideo, showControls, startControlsTimeout, watchParty, onPlay, onPause]);
 
-  const toggleMute = useCallback((e) => { e.stopPropagation(); setIsMuted(!isMuted); }, [isMuted]);
+  const toggleMute = useCallback((e) => {
+    e.stopPropagation();
+    if (onMuteChange) {
+      onMuteChange(!isMuted);
+    } else {
+      setIsMuted(!isMuted);
+    }
+  }, [isMuted, onMuteChange, setIsMuted]);
 
   const formatTime = (s) => {
     if (!s || isNaN(s)) return '0:00';
@@ -878,6 +889,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         </div>
       )}
 
+      {isWaiting && (
+        <div className="native-loader-overlay">
+          <div className="pro-spinner" />
+        </div>
+      )}
+
       {/* VIDEO A */}
       <video
         ref={videoRefA}
@@ -895,6 +912,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onCanPlay={activeVideo === 'A' ? handlePlaying : undefined}
         onEnded={activeVideo === 'A' ? handleVideoEnded : undefined}
         onError={activeVideo === 'A' ? handleVideoError : undefined}
+        onSeeking={activeVideo === 'A' ? () => setIsWaiting(true) : undefined}
+        onSeeked={activeVideo === 'A' ? () => setIsWaiting(false) : undefined}
+        onLoadStart={activeVideo === 'A' ? () => setIsWaiting(true) : undefined}
       />
 
       {/* VIDEO B */}
@@ -914,6 +934,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onCanPlay={activeVideo === 'B' ? handlePlaying : undefined}
         onEnded={activeVideo === 'B' ? handleVideoEnded : undefined}
         onError={activeVideo === 'B' ? handleVideoError : undefined}
+        onSeeking={activeVideo === 'B' ? () => setIsWaiting(true) : undefined}
+        onSeeked={activeVideo === 'B' ? () => setIsWaiting(false) : undefined}
+        onLoadStart={activeVideo === 'B' ? () => setIsWaiting(true) : undefined}
       />
 
       {isAdPlaying && (
@@ -959,6 +982,31 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
               <span className="native-time-sep">/</span>
               <span>{formatTime(duration)}</span>
             </div>
+
+            {watchParty && (
+              <div className="native-volume-inline">
+                <button className="native-volume-inline-btn" onClick={toggleMute} title={isMuted ? "Sesi Aç" : "Sesi Kapat"}>
+                  {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (onVolumeChange) onVolumeChange(val);
+                    if (val > 0) {
+                      if (onMuteChange) onMuteChange(false);
+                    } else {
+                      if (onMuteChange) onMuteChange(true);
+                    }
+                  }}
+                  className="native-volume-inline-slider"
+                />
+              </div>
+            )}
           </div>
 
           <div className="native-right-controls">

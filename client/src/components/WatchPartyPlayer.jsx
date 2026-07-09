@@ -474,7 +474,13 @@ const WatchPartyPlayer = () => {
                     muted={localMuted}
                 />
 
-                 {(isLive || !isPlatformUrl(watchParty?.url)) && (
+                {isLive && !isReady && !hasError && (
+                    <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
+                        <div className="pro-spinner" />
+                    </div>
+                )}
+
+                 {isLive && (
                     <>
                         {/* Collapsible Vertical Volume Control */}
                         <div 
@@ -529,9 +535,9 @@ const WatchPartyPlayer = () => {
                             </button>
                         </div>
                     </>
-                )}
+                 )}
 
-                {!isLive && (
+                 {!isLive && (
                     isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
@@ -555,10 +561,12 @@ const WatchPartyPlayer = () => {
                         />
                     ) : (
                         <VideoPlayer
-                            src={isPlayableExternalUrl(watchParty?.url) ? getProxiedUrl(watchParty.url) : getImageUrl(watchParty?.url)}
+                            src={isPlayableExternalUrl(watchParty?.url) ? watchParty.url : getImageUrl(watchParty?.url)}
                             watchParty={watchParty}
                             volume={volume}
                             muted={localMuted}
+                            onVolumeChange={setVolume}
+                            onMuteChange={setLocalMuted}
                             onReady={() => setIsReady(true)}
                             onPlay={handlePlay}
                             onPause={handlePause}

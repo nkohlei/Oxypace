@@ -545,4 +545,55 @@
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     pointer-events: auto;
+}
+
+/* Inline Volume Control for Watch Party */
+.native-volume-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 12px;
+}
+
+.native-volume-inline-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.native-volume-inline-btn:hover {
+    color: #ffffff;
+}
+
+.native-volume-inline-slider {
+    width: 60px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.native-volume-inline-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+}
+
+.native-volume-inline-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    margin-top: -3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
