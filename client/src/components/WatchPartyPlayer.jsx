@@ -164,7 +164,7 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isLive = !!watchParty?.isLive && !isPlatformUrl(watchParty?.url);
+    const isLive = (!!watchParty?.isLive || isLiveStream(watchParty?.url)) && !isPlatformUrl(watchParty?.url);
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
@@ -474,7 +474,7 @@ const WatchPartyPlayer = () => {
                     muted={localMuted}
                 />
 
-                 {isLive && (
+                 {(isLive || !isPlatformUrl(watchParty?.url)) && (
                     <>
                         {/* Collapsible Vertical Volume Control */}
                         <div 
@@ -557,6 +557,8 @@ const WatchPartyPlayer = () => {
                         <VideoPlayer
                             src={isPlayableExternalUrl(watchParty?.url) ? getProxiedUrl(watchParty.url) : getImageUrl(watchParty?.url)}
                             watchParty={watchParty}
+                            volume={volume}
+                            muted={localMuted}
                             onReady={() => setIsReady(true)}
                             onPlay={handlePlay}
                             onPause={handlePause}

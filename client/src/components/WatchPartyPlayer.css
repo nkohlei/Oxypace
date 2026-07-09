@@ -334,3 +334,14 @@
     object-fit: contain !important;
     background: #000 !important;
 }
+
+/* Custom VideoPlayer overrides when inside WatchPartyPlayer to fill container perfectly */
+.watch-party-custom-videoplayer {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}

@@ -99,7 +99,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, onReady, onPlay, onPause, onSeek }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted }) => {
   const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
@@ -113,8 +113,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   // Pending swap guard — prevents double swaps
   const swapPendingRef = useRef(false);
 
-  const isMuted = useGlobalStore(state => state.isMuted);
+  const globalMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
+  const isMuted = propMuted !== undefined ? propMuted : globalMuted;
+  const volume = propVolume !== undefined ? propVolume : 0.5;
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -419,6 +421,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (videoRefB.current) videoRefB.current.muted = isMuted;
   }, [isMuted]);
 
+  // Sync volume to both elements
+  useEffect(() => {
+    if (videoRefA.current) videoRefA.current.volume = volume;
+    if (videoRefB.current) videoRefB.current.volume = volume;
+  }, [volume]);
+
   useEffect(() => {
     if (videoRefA.current) videoRefA.current.playbackRate = playbackRate;
     if (videoRefB.current) videoRefB.current.playbackRate = playbackRate;
@@ -456,6 +464,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     // ── Prepare inactive element ──────────────────────────────────────────
     setVideoSource(inactiveEl, newSrc);
     inactiveEl.muted = isMuted;
+    inactiveEl.volume = volume;
     inactiveEl.playbackRate = playbackRate;
     inactiveEl.loop  = true;
     inactiveEl.preload = 'auto';
@@ -800,7 +809,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const isTweet = className && className.includes('quoted-player');
 
   let containerStyle = {};
-  if (isTweet) {
+  if (watchParty) {
+    containerStyle = {
+      width: '100%',
+      height: '100%',
+      background: '#000000',
+    };
+  } else if (isTweet) {
     containerStyle = {
       aspectRatio: '16/9',
       width: '100%',
@@ -833,7 +848,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const videoStyle = (id) => {
     const isActive = activeVideo === id;
-    const forceAbsolute = hasDimensions || isTweet;
+    const forceAbsolute = hasDimensions || isTweet || watchParty;
     return {
       display: 'block',
       width: '100%',
@@ -919,9 +934,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         </div>
       )}
 
-      <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
-        {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-      </button>
+      {!watchParty && (
+        <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
+          {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </button>
+      )}
 
       <div className={`native-controls-ui is-always-visible ${!showControls ? 'controls-hidden' : ''}`}>
         <div className={`native-progress-area ${isAdPlaying ? 'ad-locked' : ''}`} style={isAdPlaying ? { pointerEvents: 'none' } : {}} onClick={handleScrub}>

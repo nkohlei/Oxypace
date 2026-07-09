@@ -1301,7 +1301,9 @@ export const VoiceProvider = ({ children }) => {
 
     const startWatchParty = useCallback((url, isLive = false) => {
         if (activeRoom) {
-            safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive });
+            const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
+            const detectedLive = isLive || cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/');
+            safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive });
         }
     }, [activeRoom, safeEmit]);
 
