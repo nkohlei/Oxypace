@@ -754,8 +754,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const el = getActiveEl(); if (!el) return;
     if (watchParty) {
       if (el.paused) {
+        el.play().catch(() => {});
+        setIsPaused(false);
         if (onPlay) onPlay(el.currentTime);
       } else {
+        el.pause();
+        setIsPaused(true);
         if (onPause) onPause(el.currentTime);
       }
       return;
