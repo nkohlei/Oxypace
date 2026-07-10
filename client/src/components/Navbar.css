@@ -811,9 +811,12 @@ body.dark-mode .logo-text {
     top: 0;
     left: 0;
     width: 100%;
-    height: 28px;
-    background-color: var(--bg-darker, #0f172a);
-    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+    height: 30px;
+    background: linear-gradient(135deg, #070f1e 0%, #031b33 35%, #053359 70%, #08497d 100%);
+    background-size: 200% 200%;
+    animation: auroraMovement 6s ease infinite;
+    border-bottom: 1px solid rgba(0, 210, 255, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 210, 255, 0.15);
     z-index: 100000;
     display: flex;
     flex-direction: column;
@@ -821,7 +824,14 @@ body.dark-mode .logo-text {
     align-items: center;
     box-sizing: border-box;
     font-size: 11px;
-    color: var(--text-primary, #f1f5f9);
+    color: #e2f1ff;
+    text-shadow: 0 0 6px rgba(0, 210, 255, 0.5);
+}
+
+@keyframes auroraMovement {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .global-upload-banner-content {
@@ -845,20 +855,21 @@ body.dark-mode .logo-text {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 3px;
-    background-color: rgba(255, 255, 255, 0.08);
+    height: 2px;
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .upload-banner-bar-fill {
     height: 100%;
-    background-color: #22c55e;
+    background: linear-gradient(90deg, #00d2ff 0%, #00f0ff 50%, #38bdf8 100%);
+    box-shadow: 0 0 8px rgba(0, 210, 255, 0.8);
     transition: width 0.3s ease;
 }
 
 body:has(.global-upload-banner) .navbar {
-    transform: translateY(28px);
+    transform: translateY(30px);
 }
 
 body:has(.global-upload-banner) .app-wrapper {
-    margin-top: 28px;
+    margin-top: 30px;
 }

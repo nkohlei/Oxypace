@@ -196,10 +196,18 @@ body:has(.portal-sidebar) .app-wrapper {
     width: calc(100% + 6px);
     height: calc(100% + 6px);
     pointer-events: none;
-    transform: rotate(-90deg);
     z-index: 10;
+    animation: progressRingRotate 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .progress-ring-circle {
-    transition: stroke-dashoffset 0.15s linear;
+    stroke: #00d2ff;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.85)) drop-shadow(0 0 1.5px rgba(0, 210, 255, 0.5));
+    transition: stroke-dashoffset 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes progressRingRotate {
+    0% { transform: rotate(-90deg); }
+    100% { transform: rotate(270deg); }
 }
