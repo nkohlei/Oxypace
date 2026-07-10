@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'rea
 import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
+import { useUploadStore } from '../store/useUploadStore';
 
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -79,6 +80,16 @@ const Profile = () => {
 
     // Video transcoder hook (WASM, lazy-loaded)
     const { transcodeAndUpload } = useVideoTranscoder();
+    const activeUploads = useUploadStore((state) => state.activeUploads);
+    const activeUpload = activeUploads[`profile-${currentUser?._id}`];
+
+    useEffect(() => {
+        if (activeUpload && activeUpload.status === 'uploading') {
+            setUserPosts((current) =>
+                current.map((p) => p.isOptimistic && p.mediaType === 'video' ? { ...p, uploadProgress: activeUpload.progress } : p)
+            );
+        }
+    }, [activeUpload?.progress, activeUpload?.status]);
 
     // Cropping State
     const [cropperImage, setCropperImage] = useState(null);
@@ -254,11 +265,46 @@ const Profile = () => {
 
             if (composeMedia) {
                 if (isVideoFileRef.current) {
-                    // Browser-side WASM transcode → multi-quality R2 upload
-                    const result = await transcodeAndUpload(composeMedia, currentUser._id);
-                    mediaKey = result.mediaKey;
-                    videoQualitiesPayload = result.videoQualities;
-                    setUploadPercentage(100);
+                    const tempId = `temp-${Date.now()}`;
+                    const optimisticPost = {
+                        _id: tempId,
+                        content: composeText,
+                        media: URL.createObjectURL(composeMedia),
+                        mediaType: 'video',
+                        author: {
+                            _id: currentUser._id,
+                            username: currentUser.username,
+                            profile: currentUser.profile,
+                            verificationBadge: currentUser.verificationBadge
+                        },
+                        isOptimistic: true,
+                        createdAt: new Date().toISOString(),
+                        likes: [],
+                        likeCount: 0,
+                    };
+                    
+                    setUserPosts(prev => [optimisticPost, ...prev]);
+
+                    useUploadStore.getState().startVideoUpload({
+                        file: composeMedia,
+                        portalId: null,
+                        content: composeText,
+                        authorId: currentUser._id,
+                        onFinish: (err) => {
+                            if (err) {
+                                // Rollback optimistic update
+                                setUserPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
+                            }
+                        }
+                    });
+                    
+                    // Reset composer state immediately
+                    setComposeText('');
+                    setComposeMedia(null);
+                    setComposeMediaPreview(null);
+                    setComposeFocused(false);
+                    setComposeLoading(false);
+                    return;
                 } else {
                     // Image / PDF / GIF
                     mediaKey = await uploadFile(composeMedia, 'post', currentUser._id, (progress) => {

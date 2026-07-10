@@ -56,7 +56,7 @@ const TOUR_STEPS = [
 ];
 
 const TourGuide = () => {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, token, user } = useAuth();
   const loggedIn = isLoggedIn || !!token;
   const [currentStep, setCurrentStep] = useState(0);
   const [isActive, setIsActive] = useState(false);
@@ -88,7 +88,10 @@ const TourGuide = () => {
 
   const isPublicRoute = publicRoutes.includes(location.pathname);
   const isHomePageAndNotLoggedIn = location.pathname === '/' && !loggedIn;
-  const shouldShowTour = !isPublicRoute && !isHomePageAndNotLoggedIn && (loggedIn || isGoogleBot);
+  
+  // Wait until user profile is fetched to avoid race conditions
+  const isUserLoaded = loggedIn ? !!user : true;
+  const shouldShowTour = !isPublicRoute && !isHomePageAndNotLoggedIn && (loggedIn || isGoogleBot) && isUserLoaded;
 
   // Close tour if route changes to a public/unauthorized page or user logs out
   useEffect(() => {
@@ -97,20 +100,39 @@ const TourGuide = () => {
     }
   }, [shouldShowTour, isActive]);
 
-  // Initialize Tour: check localStorage
+  // Initialize Tour: check localStorage and user account creation age
   useEffect(() => {
     if (isGoogleBot || !shouldShowTour) {
       return;
     }
 
     const hasSeenTour = localStorage.getItem('hasSeenTour_v2');
-    if (!hasSeenTour) {
-      const timer = setTimeout(() => {
-        setIsActive(true);
-      }, 1500);
-      return () => clearTimeout(timer);
+    if (hasSeenTour) {
+      return;
     }
-  }, [isGoogleBot, shouldShowTour]);
+
+    // Prevent showing tour to existing users (account older than 24 hours)
+    if (user) {
+      if (user.createdAt) {
+        const accountAgeMs = new Date() - new Date(user.createdAt);
+        const isNewAccount = accountAgeMs < 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (!isNewAccount) {
+          localStorage.setItem('hasSeenTour_v2', 'true');
+          return;
+        }
+      } else {
+        // Fallback: If user data exists but has no createdAt, assume it's an old account to be safe
+        localStorage.setItem('hasSeenTour_v2', 'true');
+        return;
+      }
+    }
+
+    const timer = setTimeout(() => {
+      setIsActive(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [isGoogleBot, shouldShowTour, user]);
 
   // Programmatically manage profile dropdown state for Step 7 (Index 6)
   useEffect(() => {

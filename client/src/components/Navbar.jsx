@@ -10,6 +10,7 @@ import { useUI } from '../context/UIContext';
 import './Navbar.css';
 import UserAvatar from './UserAvatar';
 import { useGlobalStore } from '../store/useGlobalStore';
+import { useUploadStore } from '../store/useUploadStore';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const location = useLocation();
@@ -17,6 +18,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
     const { toggleSidebar, isMobileView } = useUI();
+    const activeUploads = useUploadStore((state) => state.activeUploads);
+    const activeUploadList = Object.values(activeUploads);
+    const uploadingItem = activeUploadList.find((u) => u.status === 'uploading');
     const navigate = useNavigate();
 
     // Hide Navbar on non-home pages ONLY for guests (not logged-in users)
@@ -155,6 +159,22 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
 
     return (
         <>
+            {/* Background Upload Progress Banner */}
+            {uploadingItem && (
+                <div className="global-upload-banner">
+                    <div className="global-upload-banner-content">
+                        <span className="upload-banner-text">
+                            Video paylaşılıyor: <strong>{uploadingItem.fileName}</strong> (%{uploadingItem.progress}) - {uploadingItem.stage}
+                        </span>
+                    </div>
+                    <div className="upload-banner-bar-bg">
+                        <div 
+                            className="upload-banner-bar-fill" 
+                            style={{ width: `${uploadingItem.progress}%` }} 
+                        />
+                    </div>
+                </div>
+            )}
             {/* Top Header */}
             <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}${hidden ? ' navbar-hidden' : ''}`}>
                 <div className="nav-container">

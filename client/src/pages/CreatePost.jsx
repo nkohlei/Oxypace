@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
+import { useUploadStore } from '../store/useUploadStore';
 
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
@@ -121,11 +122,21 @@ const CreatePost = () => {
 
             if (mediaFile) {
                 if (isVideoRef.current) {
-                    // ── VIDEO: browser-side WASM transcode + multi-quality R2 upload ──
-                    const result = await transcodeAndUpload(mediaFile, portalId);
-                    mediaKey = result.mediaKey;
-                    videoQualitiesPayload = result.videoQualities;
-                    setUploadPercentage(100);
+                    // Start background upload
+                    useUploadStore.getState().startVideoUpload({
+                        file: mediaFile,
+                        portalId,
+                        content: finalContent,
+                        quotedPostId,
+                    });
+                    
+                    // Immediately navigate to let it run in the background
+                    if (portalId) {
+                        navigate(`/portal/${portalId}`);
+                    } else {
+                        navigate('/');
+                    }
+                    return;
                 } else {
                     // ── IMAGE / PDF / GIF: existing presigned upload flow ──
                     mediaKey = await uploadFile(mediaFile, 'post', portalId, (p) => {

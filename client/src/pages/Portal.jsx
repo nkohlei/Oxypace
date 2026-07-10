@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
+import { useUploadStore } from '../store/useUploadStore';
 
 import PostCard from '../components/PostCard';
 import AdPostCard from '../components/AdPostCard';
@@ -83,16 +84,17 @@ const Portal = () => {
     const isVideoFileRef = useRef(false);
 
     // Video transcoder hook (WASM, lazy-loaded)
-    const { transcodeAndUpload, progress: transcodeProgress } = useVideoTranscoder();
+    const { transcodeAndUpload } = useVideoTranscoder();
+    const activeUploads = useUploadStore((state) => state.activeUploads);
+    const activeUpload = activeUploads[`portal-${id}`];
 
     useEffect(() => {
-        if (uploadLoading && isVideoFileRef.current) {
-            setUploadPercentage(transcodeProgress);
+        if (activeUpload && activeUpload.status === 'uploading') {
             setPosts((current) =>
-                current.map((p) => p.isOptimistic ? { ...p, uploadProgress: transcodeProgress } : p)
+                current.map((p) => p.isOptimistic && p.mediaType === 'video' ? { ...p, uploadProgress: activeUpload.progress } : p)
             );
         }
-    }, [transcodeProgress, uploadLoading]);
+    }, [activeUpload?.progress, activeUpload?.status]);
 
     const [showPortalInfo, setShowPortalInfo] = useState(false);
     const plusMenuRef = useRef(null);
@@ -436,11 +438,25 @@ const Portal = () => {
                 youtubeMediaType = 'youtube';
             } else if (currentData.media) {
                 if (isVideoFileRef.current) {
-                    // Browser-side WASM transcode → multi-quality R2 upload
-                    const result = await transcodeAndUpload(currentData.media, id);
-                    mediaKey = result.mediaKey;
-                    videoQualitiesPayload = result.videoQualities;
-                    setUploadPercentage(100);
+                    // Start background video upload
+                    useUploadStore.getState().startVideoUpload({
+                        file: currentData.media,
+                        portalId: id,
+                        content: currentData.content,
+                        quotedPostId: quotedPost?._id,
+                        onFinish: (err) => {
+                            if (err) {
+                                // Rollback optimistic update
+                                setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
+                                triggerToast('Video yükleme başarısız oldu.', 'error');
+                            }
+                        }
+                    });
+                    
+                    // Reset local upload states and finish handleSendMessage
+                    setUploadLoading(false);
+                    setQuotedPost(null);
+                    return;
                 } else {
                     // Image / PDF / GIF: existing presigned upload
                     mediaKey = await uploadFile(currentData.media, 'post', id, (progress) => {

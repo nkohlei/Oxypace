@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import { useGlobalStore } from '../store/useGlobalStore';
+import { useUploadStore } from '../store/useUploadStore';
 import CreatePortalModal from './CreatePortalModal';
 import { getImageUrl } from '../utils/imageUtils';
 import { MessageSquare, Compass, Plus, Save, ArrowUpDown } from 'lucide-react';
@@ -19,6 +20,7 @@ const PortalSidebar = () => {
     const syncUnreadCounts = useGlobalStore(state => state.syncUnreadCounts);
     const unreadMessagesCount = useGlobalStore(state => state.unreadMessagesCount);
     const fetchUnreadMessagesCount = useGlobalStore(state => state.fetchUnreadMessagesCount);
+    const activeUploads = useUploadStore(state => state.activeUploads);
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -211,6 +213,7 @@ const PortalSidebar = () => {
                 <div className="portals-scroll-area">
                     {orderedPortals.map((portal, index) => {
                         const filteredCount = getFilteredUnreadCount(portal._id);
+                        const activeUpload = activeUploads[`portal-${portal._id}`];
                         return (
                             <div
                                 key={portal._id}
@@ -241,6 +244,23 @@ const PortalSidebar = () => {
                                             <span>{portal.name.substring(0, 2).toUpperCase()}</span>
                                         )}
                                     </div>
+
+                                    {/* Green Circular Upload Progress Effect */}
+                                    {activeUpload && activeUpload.status === 'uploading' && (
+                                        <svg className="portal-upload-progress-ring" viewBox="0 0 48 48">
+                                            <circle
+                                                className="progress-ring-circle"
+                                                stroke="#22c55e"
+                                                strokeWidth="3.5"
+                                                fill="transparent"
+                                                r="21.5"
+                                                cx="24"
+                                                cy="24"
+                                                strokeDasharray="135"
+                                                strokeDashoffset={135 - (135 * (activeUpload.progress || 0)) / 100}
+                                            />
+                                        </svg>
+                                    )}
 
                                     {/* Red Notification Badge - Moved outside .portal-icon to avoid clipping */}
                                     {filteredCount > 0 && (
