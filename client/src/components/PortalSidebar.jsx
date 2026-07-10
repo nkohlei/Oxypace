@@ -250,7 +250,6 @@ const PortalSidebar = () => {
                                         <svg className="portal-upload-progress-ring" viewBox="0 0 48 48">
                                             <circle
                                                 className="progress-ring-circle"
-                                                stroke="#22c55e"
                                                 strokeWidth="3.5"
                                                 fill="transparent"
                                                 r="21.5"

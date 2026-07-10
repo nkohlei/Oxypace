@@ -191,19 +191,18 @@ body:has(.portal-sidebar) .app-wrapper {
 
 .portal-upload-progress-ring {
     position: absolute;
-    top: -3px;
-    left: -3px;
-    width: calc(100% + 6px);
-    height: calc(100% + 6px);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 10;
     animation: progressRingRotate 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .progress-ring-circle {
-    stroke: #00d2ff;
+    stroke: #a0e0ff;
     stroke-linecap: round;
-    filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.85)) drop-shadow(0 0 1.5px rgba(0, 210, 255, 0.5));
     transition: stroke-dashoffset 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
