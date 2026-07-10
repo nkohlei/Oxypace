@@ -27,10 +27,11 @@ Node.prototype.insertBefore = function (newNode, referenceNode) {
 import { Capacitor } from '@capacitor/core';
 
 const isNative = Capacitor.isNativePlatform();
+const isElectron = typeof window !== 'undefined' && window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1;
 
 // For production web, ALWAYS force relative URL to utilize Netlify Proxy and bypass ISP blocks.
-// For native, use VITE_API_BASE_URL if available, otherwise fallback to Koyeb absolute URL.
-if (!isNative && !import.meta.env.DEV) {
+// For native or desktop, use VITE_API_BASE_URL if available, otherwise fallback to Koyeb/Production absolute URL.
+if (!isNative && !isElectron && !import.meta.env.DEV) {
     console.log('🌐 Web Environment Detected: Forcing relative paths for ISP Bypass Proxy.');
     axios.defaults.baseURL = '';
 } else if (import.meta.env.VITE_API_BASE_URL) {
@@ -45,8 +46,8 @@ if (!isNative && !import.meta.env.DEV) {
     }
     axios.defaults.baseURL = baseUrl;
 } else if (!import.meta.env.DEV) {
-    console.warn('⚠️ VITE_API_BASE_URL not set! Defaulting to ' + (isNative ? 'production backend' : 'relative proxy') + '.');
-    axios.defaults.baseURL = isNative ? 'https://api.oxypace.com.tr' : '';
+    console.warn('⚠️ VITE_API_BASE_URL not set! Defaulting to ' + (isNative || isElectron ? 'production backend' : 'relative proxy') + '.');
+    axios.defaults.baseURL = (isNative || isElectron) ? 'https://api.oxypace.com.tr' : '';
 }
 
 // Initialize Auth Header from localStorage immediately to prevent race conditions
