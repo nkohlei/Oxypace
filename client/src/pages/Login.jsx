@@ -162,7 +162,9 @@ const Login = () => {
     const handleGoogleLogin = async () => {
         sessionStorage.setItem('auth_intent', 'login');
         const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (window.Capacitor && window.Capacitor.isNativePlatform());
-        let apiBase = (!isNative && !import.meta.env.DEV)
+        const isElectron = !!(window.desktopAPI && window.desktopAPI.isElectron);
+        
+        let apiBase = (!isNative && !isElectron && !import.meta.env.DEV)
             ? ''
             : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : 'https://api.oxypace.com.tr'));
 
@@ -174,9 +176,13 @@ const Login = () => {
             apiBase += '/api';
         }
 
-        const authUrl = `${apiBase}/auth/google${isNative ? '?mobile=true' : ''}`;
+        // Deep linking is required for both native (Capacitor) and desktop (Electron)
+        const useDeepLink = isNative || isElectron;
+        const authUrl = `${apiBase}/auth/google${useDeepLink ? '?mobile=true' : ''}`;
 
-        if (Capacitor.isNativePlatform()) {
+        if (isElectron) {
+            window.desktopAPI.openExternal(authUrl);
+        } else if (Capacitor.isNativePlatform()) {
             await Browser.open({ url: authUrl });
         } else {
             window.location.href = authUrl;

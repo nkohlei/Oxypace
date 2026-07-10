@@ -1,4 +1,6 @@
-// Preload script to bridge APIs safely if needed in the future
-window.addEventListener('DOMContentLoaded', () => {
-    console.log('[Oxypace Desktop] Preloaded successfully.');
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('desktopAPI', {
+    openExternal: (url) => ipcRenderer.send('open-external', url),
+    isElectron: true
 });
