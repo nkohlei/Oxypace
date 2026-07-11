@@ -495,28 +495,25 @@ const WatchPartyPlayer = () => {
 
     const onPlaying = () => {
         setIsNativePlaying(true);
+        if (isSyncingRef.current) return;
+        if (videoRef.current && isNativeVOD) {
+            sendWatchPlay(videoRef.current.currentTime);
+        }
     };
 
     const onPaused = () => {
         setIsNativePlaying(false);
-    };
-
-    const handleNativePlayPause = () => {
-        const video = videoRef.current;
-        if (!video || !isNativeVOD) return;
-        if (video.paused) {
-            sendWatchPlay(video.currentTime);
-        } else {
-            sendWatchPause(video.currentTime);
+        if (isSyncingRef.current) return;
+        if (videoRef.current && isNativeVOD) {
+            sendWatchPause(videoRef.current.currentTime);
         }
     };
 
-    const handleNativeSeekChange = (e) => {
-        const video = videoRef.current;
-        if (!video || !isNativeVOD) return;
-        const val = parseFloat(e.target.value);
-        video.currentTime = val;
-        sendWatchSeek(val);
+    const onSeeked = () => {
+        if (isSyncingRef.current) return;
+        if (videoRef.current && isNativeVOD) {
+            sendWatchSeek(videoRef.current.currentTime);
+        }
     };
 
     // Native Video Synchronization (only for manifests that are actually VODs)
@@ -600,12 +597,7 @@ const WatchPartyPlayer = () => {
     }
 
     return (
-        <div 
-            className="watch-party-player-wrapper" 
-            ref={containerRef}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setControlsVisible(false)}
-        >
+        <div className="watch-party-player-wrapper" ref={containerRef}>
             <div className="watch-party-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="watch-party-title">{isLive ? (isNativeVOD ? 'Birlikte Video İzle (HLS)' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
@@ -620,7 +612,7 @@ const WatchPartyPlayer = () => {
                 <video
                     ref={videoRef}
                     className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
-                    controls={false} // Disable standard controls for clean custom overlay layout
+                    controls={isNativeVOD} // Enable native browser player controls only if it has a duration limit (VOD)
                     playsInline
                     autoPlay
                     muted={localMuted}
@@ -628,6 +620,7 @@ const WatchPartyPlayer = () => {
                     onDurationChange={onDurationChange}
                     onPlaying={onPlaying}
                     onPause={onPaused}
+                    onSeeked={onSeeked}
                 />
 
                 {isLive && !isReady && !hasError && (
@@ -689,44 +682,6 @@ const WatchPartyPlayer = () => {
                             >
                                 <Maximize size={18} />
                             </button>
-                        </div>
-
-                        {/* Custom Controls Overlay for Manifests with Finite Duration (VOD mode) */}
-                        <div className={`watch-party-controls-overlay-modern ${controlsVisible ? 'visible' : ''}`}>
-                            {isNativeVOD ? (
-                                <>
-                                    <div className="watch-party-progress-row">
-                                        <input 
-                                            type="range" 
-                                            min="0" 
-                                            max={duration || 100} 
-                                            value={currentTime} 
-                                            onChange={handleNativeSeekChange} 
-                                            className="watch-party-progress-slider-horizontal"
-                                        />
-                                    </div>
-                                    <div className="watch-party-buttons-row">
-                                        <div className="watch-party-left-controls">
-                                            <button 
-                                                className="watch-party-ctrl-btn-action" 
-                                                onClick={handleNativePlayPause}
-                                                title={isNativePlaying ? "Duraklat" : "Oynat"}
-                                            >
-                                                {isNativePlaying ? <Pause size={18} /> : <Play size={18} />}
-                                            </button>
-                                            <div className="watch-party-time-display-text">
-                                                {formatTime(currentTime)} / {formatTime(duration)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="watch-party-buttons-row" style={{ justifyContent: 'center' }}>
-                                    <span className="watch-party-live-badge-inline" style={{ fontSize: '11px', padding: '4px 10px' }}>
-                                        Kesintisiz Canlı Yayın
-                                    </span>
-                                </div>
-                            )}
                         </div>
                     </>
                  )}

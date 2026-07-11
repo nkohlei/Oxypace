@@ -1299,12 +1299,11 @@ export const VoiceProvider = ({ children }) => {
         });
     }, []);
 
-    const startWatchParty = useCallback((url, isLive) => {
+    const startWatchParty = useCallback((url, isLive = false) => {
         if (activeRoom) {
             const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
             const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
-            const isOurR2Media = cleanUrl.includes('r2.dev') || cleanUrl.includes('oxypace.com.tr') || cleanUrl.includes('/temp_media/') || cleanUrl.includes('/r2-media/');
-            const detectedLive = !isOurR2Media && !isStaticVideo && (isLive === true || (isLive !== false && (cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/'))));
+            const detectedLive = !isStaticVideo && (isLive || cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/'));
             safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive });
         }
     }, [activeRoom, safeEmit]);
