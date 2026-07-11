@@ -603,16 +603,46 @@ const WatchPartyPlayer = () => {
                     <span className="watch-party-title">{isLive ? (isNativeVOD ? 'Birlikte Video İzle (HLS)' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
                     {isLive && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
-                <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
-                    <X size={16} /> <span>Bitir</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {isLive && (
+                        <button 
+                            className="watch-party-sync-live-btn glass-btn"
+                            style={{ 
+                                padding: '6px 12px', 
+                                fontSize: '12px', 
+                                backgroundColor: 'rgba(0, 210, 255, 0.15)',
+                                border: '1px solid rgba(0, 210, 255, 0.3)',
+                                color: '#00d2ff',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                transition: 'all 0.2s'
+                            }}
+                            onClick={() => {
+                                const video = videoRef.current;
+                                if (video && video.duration) {
+                                    const liveEdge = video.duration - 2;
+                                    const targetTime = Math.max(0, liveEdge);
+                                    video.currentTime = targetTime;
+                                    sendWatchSeek(targetTime);
+                                }
+                            }}
+                            title="Yayını canlı sona getir / Odadaki herkesi eşitle"
+                        >
+                            ⚡ Canlıya Eşitle
+                        </button>
+                    )}
+                    <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
+                        <X size={16} /> <span>Bitir</span>
+                    </button>
+                </div>
             </div>
             <div className="watch-party-player-container">
                 
                 <video
                     ref={videoRef}
                     className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
-                    controls={isNativeVOD} // Enable native browser player controls only if it has a duration limit (VOD)
+                    controls={false} // Disable native controls completely as they clash with bottom buttons
                     playsInline
                     autoPlay
                     muted={localMuted}
