@@ -177,7 +177,6 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isStream = isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url);
     const isLive = !!watchParty?.isLive;
 
     const triggerReconnect = () => {
@@ -214,11 +213,11 @@ const WatchPartyPlayer = () => {
         }
 
         // Clean up native video src if switching to a non-live stream
-        if (!isStream && videoRef.current) {
+        if (!isLive && videoRef.current) {
             videoRef.current.src = "";
             videoRef.current.load();
         }
-    }, [watchParty?.url, isStream]);
+    }, [watchParty?.url, isLive]);
 
     // Cleanup timers and player instances on unmount
     useEffect(() => {
@@ -235,7 +234,7 @@ const WatchPartyPlayer = () => {
 
     // Load and initialize HLS/DASH dynamic libraries on stream changes
     useEffect(() => {
-        if (!watchParty?.url || !isStream || !videoRef.current) return;
+        if (!watchParty?.url || !isLive || !videoRef.current) return;
 
         const video = videoRef.current;
         const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
@@ -354,11 +353,11 @@ const WatchPartyPlayer = () => {
                 dashPlayerRef.current = null;
             }
         };
-    }, [watchParty?.url, reconnectCount, useProxy, isStream]);
+    }, [watchParty?.url, reconnectCount, useProxy, isLive]);
 
     // Standard Video Polling (only for non-live files)
     useEffect(() => {
-        if (!isReady || hasError || !playerRef.current || isStream) return;
+        if (!isReady || hasError || !playerRef.current || isLive) return;
 
         const interval = setInterval(() => {
             const player = playerRef.current;
@@ -384,11 +383,11 @@ const WatchPartyPlayer = () => {
         }, 400);
 
         return () => clearInterval(interval);
-    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isStream]);
+    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isLive]);
 
     // Standard Video Synchronization (only for non-live files)
     useEffect(() => {
-        if (!watchParty || !playerRef.current || !isReady || hasError || isStream) return;
+        if (!watchParty || !playerRef.current || !isReady || hasError || isLive) return;
 
         let expectedTime = watchParty.currentTime;
         if (watchParty.isPlaying && watchParty.lastUpdated) {
@@ -413,7 +412,7 @@ const WatchPartyPlayer = () => {
         }
 
         prevIsPlayingRef.current = watchParty.isPlaying;
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isStream]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isLive]);
 
     const handlePlay = (time) => {
         if (isSyncingRef.current) return;
@@ -635,7 +634,7 @@ const WatchPartyPlayer = () => {
                 
                 <video
                     ref={videoRef}
-                    className={`watch-party-native-video ${isStream ? '' : 'hidden'}`}
+                    className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
                     controls={!isLive} // Enable native browser player controls only if it is VOD (isLive is false)
                     playsInline
                     autoPlay
