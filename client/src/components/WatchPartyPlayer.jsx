@@ -724,7 +724,7 @@ const WatchPartyPlayer = () => {
                     </>
                  )}
 
-                 {!isStream && (
+                 {!isLive && (
                     isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
