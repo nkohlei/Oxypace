@@ -547,6 +547,27 @@
     pointer-events: auto;
 }
 
+.native-skip-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 6px;
+    margin-left: 6px;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.native-skip-btn:hover {
+    color: #ffffff;
+    transform: scale(1.1);
+}
+
+.native-skip-btn:active {
+    transform: scale(0.9);
+}
+
 /* Inline Volume Control for Watch Party */
 .native-volume-inline {
     display: flex;
@@ -579,7 +600,14 @@
     border-radius: 2px;
     outline: none;
     cursor: pointer;
-    transition: background 0.2s, width 0.2s ease;
+    transition: background 0.2s, width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, margin 0.2s ease;
+}
+
+.native-volume-inline-slider.collapsed {
+    width: 0px !important;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
 }
 
 .native-volume-inline-slider:hover {

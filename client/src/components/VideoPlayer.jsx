@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Check, Maximize, Play, Pause } from 'lucide-react';
+import { Volume2, VolumeX, Check, Maximize, Play, Pause, RotateCcw, RotateCw } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar } from '@capacitor/status-bar';
 import { useGlobalStore } from '../store/useGlobalStore';
@@ -123,6 +123,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [isPaused, setIsPaused] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
+  const [volumeSliderOpen, setVolumeSliderOpen] = useState(false);
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -740,6 +741,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setProgress(frac * 100);
   }, [duration, activeVideo, isAdPlaying, watchParty, onSeek]);
 
+  const handleSeekOffset = useCallback((offset) => {
+    const el = getActiveEl();
+    if (!el || !duration) return;
+    const targetTime = Math.max(0, Math.min(duration, el.currentTime + offset));
+    if (watchParty) {
+      if (onSeek) onSeek(targetTime);
+      return;
+    }
+    el.currentTime = targetTime;
+    setProgress((targetTime / duration) * 100);
+  }, [duration, activeVideo, watchParty, onSeek]);
+
   const handleVideoClick = useCallback((e) => {
     e.stopPropagation();
     if (isSettingsOpen || isQualityMenuOpen) { setIsSettingsOpen(false); setIsQualityMenuOpen(false); return; }
@@ -987,9 +1000,31 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
               <span>{formatTime(duration)}</span>
             </div>
 
+            {!isAdPlaying && (
+              <>
+                <button className="native-skip-btn" onClick={() => handleSeekOffset(-10)} title="10 Saniye Geri">
+                  <RotateCcw size={16} />
+                </button>
+                <button className="native-skip-btn" onClick={() => handleSeekOffset(10)} title="10 Saniye İleri">
+                  <RotateCw size={16} />
+                </button>
+              </>
+            )}
+
             {watchParty && (
-              <div className="native-volume-inline">
-                <button className="native-volume-inline-btn" onClick={toggleMute} title={isMuted ? "Sesi Aç" : "Sesi Kapat"}>
+              <div className="native-volume-inline" onMouseLeave={() => setVolumeSliderOpen(false)}>
+                <button 
+                  className="native-volume-inline-btn" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!volumeSliderOpen) {
+                      setVolumeSliderOpen(true);
+                    } else {
+                      toggleMute(e);
+                    }
+                  }} 
+                  title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                >
                   {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
                 <input
@@ -1007,7 +1042,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
                       if (onMuteChange) onMuteChange(true);
                     }
                   }}
-                  className="native-volume-inline-slider"
+                  className={`native-volume-inline-slider ${!volumeSliderOpen ? 'collapsed' : ''}`}
                 />
               </div>
             )}
