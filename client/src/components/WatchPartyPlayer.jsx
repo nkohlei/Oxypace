@@ -177,7 +177,8 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isLive = watchParty?.isLive !== undefined ? watchParty.isLive : (isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url));
+    const isStream = isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url);
+    const isLive = watchParty?.isLive !== undefined ? watchParty.isLive : isStream;
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
@@ -213,11 +214,11 @@ const WatchPartyPlayer = () => {
         }
 
         // Clean up native video src if switching to a non-live stream
-        if (!isLive && videoRef.current) {
+        if (!isStream && videoRef.current) {
             videoRef.current.src = "";
             videoRef.current.load();
         }
-    }, [watchParty?.url, isLive]);
+    }, [watchParty?.url, isStream]);
 
     // Cleanup timers and player instances on unmount
     useEffect(() => {
@@ -234,7 +235,7 @@ const WatchPartyPlayer = () => {
 
     // Load and initialize HLS/DASH dynamic libraries on stream changes
     useEffect(() => {
-        if (!watchParty?.url || !isLive || !videoRef.current) return;
+        if (!watchParty?.url || !isStream || !videoRef.current) return;
 
         const video = videoRef.current;
         const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
@@ -353,11 +354,11 @@ const WatchPartyPlayer = () => {
                 dashPlayerRef.current = null;
             }
         };
-    }, [watchParty?.url, reconnectCount, useProxy, isLive]);
+    }, [watchParty?.url, reconnectCount, useProxy, isStream]);
 
     // Standard Video Polling (only for non-live files)
     useEffect(() => {
-        if (!isReady || hasError || !playerRef.current || isLive) return;
+        if (!isReady || hasError || !playerRef.current || isStream) return;
 
         const interval = setInterval(() => {
             const player = playerRef.current;
@@ -383,11 +384,11 @@ const WatchPartyPlayer = () => {
         }, 400);
 
         return () => clearInterval(interval);
-    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isLive]);
+    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isStream]);
 
     // Standard Video Synchronization (only for non-live files)
     useEffect(() => {
-        if (!watchParty || !playerRef.current || !isReady || hasError || isLive) return;
+        if (!watchParty || !playerRef.current || !isReady || hasError || isStream) return;
 
         let expectedTime = watchParty.currentTime;
         if (watchParty.isPlaying && watchParty.lastUpdated) {
@@ -412,7 +413,7 @@ const WatchPartyPlayer = () => {
         }
 
         prevIsPlayingRef.current = watchParty.isPlaying;
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isLive]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isStream]);
 
     const handlePlay = (time) => {
         if (isSyncingRef.current) return;
@@ -454,7 +455,7 @@ const WatchPartyPlayer = () => {
     };
 
     // Native Video Controls Helpers
-    const isNativeVOD = isLive && isFinite(duration) && duration > 0;
+    const isNativeVOD = isStream && (!isLive || (isFinite(duration) && duration > 0));
 
     const formatTime = (secs) => {
         if (isNaN(secs) || secs === Infinity) return '00:00';
@@ -600,8 +601,8 @@ const WatchPartyPlayer = () => {
         <div className="watch-party-player-wrapper" ref={containerRef}>
             <div className="watch-party-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="watch-party-title">{isLive ? (isNativeVOD ? 'Birlikte Video İzle (HLS)' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
-                    {isLive && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
+                    <span className="watch-party-title">{isStream ? (isNativeVOD ? 'Birlikte Video İzle (HLS)' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
+                    {isStream && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {isLive && (
@@ -641,8 +642,8 @@ const WatchPartyPlayer = () => {
                 
                 <video
                     ref={videoRef}
-                    className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
-                    controls={false} // Disable native controls completely as they clash with bottom buttons
+                    className={`watch-party-native-video ${isStream ? '' : 'hidden'}`}
+                    controls={!isLive} // Enable native browser player controls only if it is VOD (isLive is false)
                     playsInline
                     autoPlay
                     muted={localMuted}
@@ -716,7 +717,7 @@ const WatchPartyPlayer = () => {
                     </>
                  )}
 
-                 {!isLive && (
+                 {!isStream && (
                     isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
