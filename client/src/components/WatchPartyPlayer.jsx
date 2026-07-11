@@ -749,7 +749,7 @@ const WatchPartyPlayer = () => {
                         />
                     ) : (
                         <VideoPlayer
-                            src={isPlayableExternalUrl(watchParty?.url) ? watchParty.url : getImageUrl(watchParty?.url)}
+                            src={isPlayableExternalUrl(watchParty?.url) ? (isStream ? getProxiedUrl(watchParty.url) : watchParty.url) : getImageUrl(watchParty?.url)}
                             watchParty={watchParty}
                             volume={volume}
                             muted={localMuted}
