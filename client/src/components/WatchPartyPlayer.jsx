@@ -86,7 +86,9 @@ const getProxiedUrl = (url) => {
   if (!url) return '';
   if (!url.startsWith('http')) return url;
   const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
-  const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
+  const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
+  const useAbsoluteUrl = isNative || isElectron;
+  const baseUrl = ((!useAbsoluteUrl && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
   return `${baseUrl}/api/media/${encodeURIComponent(url)}`;
 };
 
@@ -170,7 +172,7 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isLive = (!!watchParty?.isLive || isLiveStream(watchParty?.url)) && !isPlatformUrl(watchParty?.url);
+    const isLive = watchParty?.isLive !== undefined ? watchParty.isLive : (isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url));
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
