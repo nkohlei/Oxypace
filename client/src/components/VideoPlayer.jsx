@@ -30,8 +30,8 @@ const loadHls = () => {
 
 const isHls = (url) => {
   if (!url) return false;
-  const cleanUrl = url.split('?')[0].split('#')[0];
-  return cleanUrl.endsWith('.m3u8');
+  const lowerUrl = url.toLowerCase();
+  return lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/');
 };
 
 const checkCenterVideo = () => {
