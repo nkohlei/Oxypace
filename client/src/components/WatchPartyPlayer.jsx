@@ -72,13 +72,103 @@ const isPlayableExternalUrl = (url) => {
   return true;
 };
 
+const isIframePlatform = (url) => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return [
+    'ok.ru', 'vk.com', 'my.mail.ru', 'tiktok.com', 
+    'vidmoly', 'fembed', 'feurl', 'vidoza', 'upstream', 
+    'streamtape', 'dood.to', 'doodstream', 'mixdrop', 'voex', 'mega.nz'
+  ].some(domain => lower.includes(domain));
+};
+
+const getEmbedUrl = (url) => {
+  if (!url) return '';
+  const lowerUrl = url.toLowerCase();
+  
+  if (lowerUrl.includes('drive.google.com/file/d/')) {
+    const parts = url.split('/d/');
+    if (parts[1]) {
+      const fileId = parts[1].split('/')[0];
+      return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+  }
+  if (lowerUrl.includes('mega.nz/file/')) {
+    const parts = url.split('/file/');
+    if (parts[1]) {
+      return `https://mega.nz/embed/${parts[1]}`;
+    }
+  }
+  if (lowerUrl.includes('ok.ru/video/')) {
+    const parts = url.split('/video/');
+    if (parts[1]) {
+      const videoId = parts[1].split('?')[0].split('/')[0];
+      return `https://ok.ru/videoembed/${videoId}`;
+    }
+  }
+  if (lowerUrl.includes('vk.com/video')) {
+    const match = url.match(/video(-?\d+_\d+)/);
+    if (match && match[1]) {
+      const parts = match[1].split('_');
+      return `https://vk.com/video_ext.php?oid=${parts[0]}&id=${parts[1]}&hash=`;
+    }
+  }
+  if (lowerUrl.includes('my.mail.ru/')) {
+    const match = url.match(/my\.mail\.ru\/(.+)\.html/);
+    if (match && match[1]) {
+      return `https://my.mail.ru/video/embed/${match[1]}`;
+    }
+  }
+  if (lowerUrl.includes('tiktok.com/')) {
+    const videoId = url.split('/video/')[1]?.split('?')[0];
+    if (videoId) {
+      return `https://www.tiktok.com/embed/v2/${videoId}`;
+    }
+  }
+  if (lowerUrl.includes('vidmoly.me/w/') || lowerUrl.includes('vidmoly.to/w/')) {
+    const code = url.split('/w/')[1]?.split('.')[0];
+    return `https://vidmoly.to/embed-${code}.html`;
+  }
+  if (lowerUrl.includes('fembed.com/v/') || lowerUrl.includes('feurl.com/v/')) {
+    const code = url.split('/v/')[1];
+    return `https://www.fembed.com/v/${code}`;
+  }
+  if (lowerUrl.includes('vidoza.net/')) {
+    const code = url.split('vidoza.net/')[1]?.replace('embed-', '').replace('.html', '');
+    return `https://vidoza.net/embed-${code}.html`;
+  }
+  if (lowerUrl.includes('upstream.to/')) {
+    const code = url.split('upstream.to/')[1]?.replace('embed-', '').replace('.html', '');
+    return `https://upstream.to/embed-${code}.html`;
+  }
+  if (lowerUrl.includes('streamtape.com/v/')) {
+    const code = url.split('/v/')[1]?.split('/')[0];
+    return `https://streamtape.com/e/${code}`;
+  }
+  if (lowerUrl.includes('dood.to/d/') || lowerUrl.includes('doodstream.com/d/')) {
+    const code = url.split('/d/')[1]?.split('/')[0];
+    return `https://dood.to/e/${code}`;
+  }
+  if (lowerUrl.includes('mixdrop.co/f/') || lowerUrl.includes('mixdrop.to/f/')) {
+    const code = url.split('/f/')[1]?.split('/')[0];
+    return `https://mixdrop.co/e/${code}`;
+  }
+  if (lowerUrl.includes('voex.sx/v/') || lowerUrl.includes('voex.sx/e/')) {
+    const code = url.split('/v/')[1] || url.split('/e/')[1];
+    return `https://voex.sx/e/${code}`;
+  }
+  return url;
+};
+
 const isPlatformUrl = (url) => {
   if (!url) return false;
   const lowerUrl = url.toLowerCase();
   return [
     'youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv',
     'soundcloud.com', 'facebook.com', 'dailymotion.com',
-    'wistia.com'
+    'wistia.com', 'ok.ru', 'vk.com', 'my.mail.ru', 'tiktok.com',
+    'vidmoly', 'fembed', 'feurl', 'vidoza', 'upstream',
+    'streamtape', 'dood.to', 'doodstream', 'mixdrop', 'voex', 'mega.nz'
   ].some(domain => lowerUrl.includes(domain));
 };
 
@@ -725,8 +815,19 @@ const WatchPartyPlayer = () => {
                     </>
                  )}
 
-                 {!isLive && (
-                     isPlatformUrl(watchParty?.url) ? (
+                  {!isLive && (
+                      isIframePlatform(watchParty?.url) ? (
+                         <iframe
+                             src={getEmbedUrl(watchParty.url)}
+                             width="100%"
+                             height="100%"
+                             frameBorder="0"
+                             allowFullScreen
+                             allow="autoplay; encrypted-media; picture-in-picture"
+                             style={{ border: 'none', background: '#000', borderRadius: '12px', width: '100%', height: '100%' }}
+                             onLoad={() => setIsReady(true)}
+                         />
+                      ) : isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
                             url={watchParty.url}
