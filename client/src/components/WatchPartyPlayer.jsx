@@ -635,8 +635,8 @@ const WatchPartyPlayer = () => {
                 
                 <video
                     ref={videoRef}
-                    className={`watch-party-native-video ${isLive || isStream ? '' : 'hidden'}`}
-                    controls={!isLive} // Enable native browser player controls only if it is VOD (isLive is false)
+                    className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
+                    controls={false}
                     playsInline
                     autoPlay
                     muted={localMuted}
@@ -725,7 +725,7 @@ const WatchPartyPlayer = () => {
                     </>
                  )}
 
-                 {!(isLive || isStream) && (
+                 {!isLive && (
                      isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
