@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, Volume2, VolumeX, Maximize } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Play, Pause } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import './WatchPartyPlayer.css';
@@ -117,6 +117,11 @@ const WatchPartyPlayer = () => {
     const [hasError, setHasError] = useState(false);
     const [reconnectCount, setReconnectCount] = useState(0);
     const [useProxy, setUseProxy] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [isNativePlaying, setIsNativePlaying] = useState(false);
+    const [controlsVisible, setControlsVisible] = useState(true);
+    const controlsTimeoutRef = useRef(null);
     const [localMuted, setLocalMuted] = useState(() => {
         const saved = localStorage.getItem('watchPartyMuted');
         return saved !== null ? saved === 'true' : false; // Default to unmuted (false)
@@ -448,6 +453,140 @@ const WatchPartyPlayer = () => {
         }
     };
 
+    // Native Video Controls Helpers
+    const isNativeVOD = isLive && isFinite(duration) && duration > 0;
+
+    const formatTime = (secs) => {
+        if (isNaN(secs) || secs === Infinity) return '00:00';
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        if (h > 0) {
+            return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    const handleMouseMove = () => {
+        setControlsVisible(true);
+        if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current);
+        }
+        controlsTimeoutRef.current = setTimeout(() => {
+            setControlsVisible(false);
+        }, 3000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        };
+    }, []);
+
+    const onTimeUpdate = () => {
+        if (!videoRef.current) return;
+        setCurrentTime(videoRef.current.currentTime);
+    };
+
+    const onDurationChange = () => {
+        if (!videoRef.current) return;
+        setDuration(videoRef.current.duration);
+    };
+
+    const onPlaying = () => {
+        setIsNativePlaying(true);
+    };
+
+    const onPaused = () => {
+        setIsNativePlaying(false);
+    };
+
+    const handleNativePlayPause = () => {
+        const video = videoRef.current;
+        if (!video || !isNativeVOD) return;
+        if (video.paused) {
+            sendWatchPlay(video.currentTime);
+        } else {
+            sendWatchPause(video.currentTime);
+        }
+    };
+
+    const handleNativeSeekChange = (e) => {
+        const video = videoRef.current;
+        if (!video || !isNativeVOD) return;
+        const val = parseFloat(e.target.value);
+        video.currentTime = val;
+        sendWatchSeek(val);
+    };
+
+    // Native Video Synchronization (only for manifests that are actually VODs)
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!watchParty || !video || !isReady || hasError || !isNativeVOD) return;
+
+        let expectedTime = watchParty.currentTime;
+        if (watchParty.isPlaying && watchParty.lastUpdated) {
+            const elapsed = (Date.now() - watchParty.lastUpdated) / 1000;
+            expectedTime += elapsed;
+        }
+
+        const localTime = video.currentTime;
+        const timeDiff = Math.abs(localTime - expectedTime);
+
+        const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
+        const threshold = isPlayTransition ? 0.2 : (watchParty.isPlaying ? 1.0 : 0.4);
+
+        if (timeDiff > threshold) {
+            isSyncingRef.current = true;
+            video.currentTime = expectedTime;
+            setTimeout(() => {
+                isSyncingRef.current = false;
+            }, 500);
+        }
+
+        if (watchParty.isPlaying && video.paused) {
+            isSyncingRef.current = true;
+            video.play().catch(err => console.warn("Native video play failed", err));
+            setTimeout(() => {
+                isSyncingRef.current = false;
+            }, 500);
+        } else if (!watchParty.isPlaying && !video.paused) {
+            isSyncingRef.current = true;
+            video.pause();
+            setTimeout(() => {
+                isSyncingRef.current = false;
+            }, 500);
+        }
+
+        prevIsPlayingRef.current = watchParty.isPlaying;
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isNativeVOD, duration]);
+
+    // Native Video Polling for manual seek detection
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!isReady || hasError || !video || !isNativeVOD) return;
+
+        const interval = setInterval(() => {
+            try {
+                const cur = video.currentTime;
+                if (lastPolledTimeRef.current !== null && !isSyncingRef.current) {
+                    const expectedProgress = watchParty?.isPlaying ? 0.4 : 0;
+                    const diff = Math.abs(cur - lastPolledTimeRef.current - expectedProgress);
+
+                    if (diff > 1.8) {
+                        console.log(`[Watch Party] Native Manual seek detected: ${lastPolledTimeRef.current}s -> ${cur}s`);
+                        sendWatchSeek(cur);
+                    }
+                }
+                lastPolledTimeRef.current = cur;
+            } catch (err) {
+                console.error("Error polling native video time:", err);
+            }
+        }, 400);
+
+        return () => clearInterval(interval);
+    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isNativeVOD]);
+
     if (!watchParty || !watchParty.url) return null;
 
     if (hasError) {
@@ -461,11 +600,16 @@ const WatchPartyPlayer = () => {
     }
 
     return (
-        <div className="watch-party-player-wrapper" ref={containerRef}>
+        <div 
+            className="watch-party-player-wrapper" 
+            ref={containerRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setControlsVisible(false)}
+        >
             <div className="watch-party-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte İzle (URL)'}</span>
-                    {isLive && <span className="watch-party-live-badge-inline">Canlı</span>}
+                    <span className="watch-party-title">{isLive ? (isNativeVOD ? 'Birlikte Video İzle (HLS)' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
+                    {isLive && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
                     <X size={16} /> <span>Bitir</span>
@@ -480,6 +624,10 @@ const WatchPartyPlayer = () => {
                     playsInline
                     autoPlay
                     muted={localMuted}
+                    onTimeUpdate={onTimeUpdate}
+                    onDurationChange={onDurationChange}
+                    onPlaying={onPlaying}
+                    onPause={onPaused}
                 />
 
                 {isLive && !isReady && !hasError && (
@@ -518,7 +666,7 @@ const WatchPartyPlayer = () => {
                                 className="watch-party-volume-btn-modern"
                                 onClick={() => {
                                     if (window.innerWidth <= 768) {
-                                        setVolumeOpen(!volumeOpen);
+                                        setLocalMuted(!localMuted);
                                     } else {
                                         setLocalMuted(!localMuted);
                                     }
@@ -541,6 +689,44 @@ const WatchPartyPlayer = () => {
                             >
                                 <Maximize size={18} />
                             </button>
+                        </div>
+
+                        {/* Custom Controls Overlay for Manifests with Finite Duration (VOD mode) */}
+                        <div className={`watch-party-controls-overlay-modern ${controlsVisible ? 'visible' : ''}`}>
+                            {isNativeVOD ? (
+                                <>
+                                    <div className="watch-party-progress-row">
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max={duration || 100} 
+                                            value={currentTime} 
+                                            onChange={handleNativeSeekChange} 
+                                            className="watch-party-progress-slider-horizontal"
+                                        />
+                                    </div>
+                                    <div className="watch-party-buttons-row">
+                                        <div className="watch-party-left-controls">
+                                            <button 
+                                                className="watch-party-ctrl-btn-action" 
+                                                onClick={handleNativePlayPause}
+                                                title={isNativePlaying ? "Duraklat" : "Oynat"}
+                                            >
+                                                {isNativePlaying ? <Pause size={18} /> : <Play size={18} />}
+                                            </button>
+                                            <div className="watch-party-time-display-text">
+                                                {formatTime(currentTime)} / {formatTime(duration)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="watch-party-buttons-row" style={{ justifyContent: 'center' }}>
+                                    <span className="watch-party-live-badge-inline" style={{ fontSize: '11px', padding: '4px 10px' }}>
+                                        Kesintisiz Canlı Yayın
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </>
                  )}
