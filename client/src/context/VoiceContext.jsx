@@ -1299,12 +1299,20 @@ export const VoiceProvider = ({ children }) => {
         });
     }, []);
 
-    const startWatchParty = useCallback((url, isLive = false) => {
+    const startWatchParty = useCallback(async (url, isLive = false) => {
         if (activeRoom) {
-            const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
-            const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
-            const detectedLive = !isStaticVideo && (isLive || cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/'));
-            safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive });
+            try {
+                const response = await axios.post('/api/media/validate-stream', { url });
+                const validatedLive = response.data.isLive;
+                console.log(`[WatchParty] URL validated by server. isLive: ${validatedLive}`);
+                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: validatedLive });
+            } catch (err) {
+                console.warn('[WatchParty] Validation failed, falling back to local detection:', err);
+                const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
+                const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
+                const detectedLive = !isStaticVideo && (isLive || cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/'));
+                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive });
+            }
         }
     }, [activeRoom, safeEmit]);
 

@@ -509,4 +509,76 @@ router.get('/*', async (req, res) => {
     }
 });
 
+/**
+ * @route   POST /api/media/validate-stream
+ * @desc    Validate watch party URL stream type (VOD vs Live) by fetching manifest contents.
+ * @access  Private
+ */
+router.post('/validate-stream', auth, async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) {
+            return res.status(400).json({ message: 'URL is required' });
+        }
+
+        const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+        const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
+        
+        if (isStaticVideo) {
+            return res.json({ isLive: false, type: 'static' });
+        }
+
+        const isPlatform = [
+            'youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv',
+            'soundcloud.com', 'facebook.com', 'dailymotion.com',
+            'wistia.com'
+        ].some(domain => cleanUrl.includes(domain));
+
+        if (isPlatform) {
+            return res.json({ isLive: false, type: 'platform' });
+        }
+
+        const isHls = cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/');
+        const isDash = cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/');
+
+        if (!isHls && !isDash) {
+            return res.json({ isLive: false, type: 'unknown' });
+        }
+
+        console.log(`[StreamValidator] Inspecting manifest for: ${url}`);
+        const response = await axios.get(url, {
+            timeout: 5000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': '*/*'
+            }
+        });
+
+        const content = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+
+        if (isHls) {
+            const hasEndList = content.includes('#EXT-X-ENDLIST');
+            return res.json({
+                isLive: !hasEndList,
+                type: hasEndList ? 'hls_vod' : 'hls_live'
+            });
+        }
+
+        if (isDash) {
+            const isStaticDash = content.includes('type="static"') || content.includes("type='static'");
+            return res.json({
+                isLive: !isStaticDash,
+                type: isStaticDash ? 'dash_vod' : 'dash_live'
+            });
+        }
+
+        return res.json({ isLive: false, type: 'unknown' });
+    } catch (error) {
+        console.error('[StreamValidator] Error validating stream:', error.message);
+        const cleanUrl = req.body.url ? req.body.url.split('?')[0].split('#')[0].toLowerCase() : '';
+        const isManifest = cleanUrl.endsWith('.m3u8') || cleanUrl.endsWith('.mpd') || req.body.url?.includes('.m3u8');
+        res.json({ isLive: isManifest, type: 'fallback', error: error.message });
+    }
+});
+
 export default router;
