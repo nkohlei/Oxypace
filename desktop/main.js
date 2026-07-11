@@ -63,6 +63,9 @@ function createWindow() {
     title: 'Oxypace'
   });
 
+  // Set standard Chrome User Agent to bypass YouTube's block (Error 153) on Electron user agents
+  mainWindow.webContents.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+
   const isDev = process.env.NODE_ENV === 'development';
 
   if (isDev) {
