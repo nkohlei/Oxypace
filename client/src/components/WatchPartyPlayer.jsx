@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, Volume2, VolumeX, Maximize, Play, Pause } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import './WatchPartyPlayer.css';
@@ -235,7 +235,7 @@ const WatchPartyPlayer = () => {
 
     // Load and initialize HLS/DASH dynamic libraries on stream changes
     useEffect(() => {
-        if (!watchParty?.url || !isLive || !videoRef.current) return;
+        if (!watchParty?.url || !isStream || !videoRef.current) return;
 
         const video = videoRef.current;
         const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
@@ -354,11 +354,11 @@ const WatchPartyPlayer = () => {
                 dashPlayerRef.current = null;
             }
         };
-    }, [watchParty?.url, reconnectCount, useProxy, isLive]);
+    }, [watchParty?.url, reconnectCount, useProxy, isStream]);
 
     // Standard Video Polling (only for non-live files)
     useEffect(() => {
-        if (!isReady || hasError || !playerRef.current || isLive) return;
+        if (!isReady || hasError || !playerRef.current || isStream) return;
 
         const interval = setInterval(() => {
             const player = playerRef.current;
@@ -384,11 +384,11 @@ const WatchPartyPlayer = () => {
         }, 400);
 
         return () => clearInterval(interval);
-    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isLive]);
+    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isStream]);
 
     // Standard Video Synchronization (only for non-live files)
     useEffect(() => {
-        if (!watchParty || !playerRef.current || !isReady || hasError || isLive) return;
+        if (!watchParty || !playerRef.current || !isReady || hasError || isStream) return;
 
         let expectedTime = watchParty.currentTime;
         if (watchParty.isPlaying && watchParty.lastUpdated) {
@@ -413,7 +413,7 @@ const WatchPartyPlayer = () => {
         }
 
         prevIsPlayingRef.current = watchParty.isPlaying;
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isLive]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isStream]);
 
     const handlePlay = (time) => {
         if (isSyncingRef.current) return;
@@ -585,6 +585,27 @@ const WatchPartyPlayer = () => {
         return () => clearInterval(interval);
     }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isNativeVOD]);
 
+    // Keep live stream playing constantly (never pause)
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || !isLive || !isReady || hasError) return;
+
+        const handlePauseAttempt = () => {
+            if (isLive) {
+                video.play().catch(err => console.warn("[WatchParty] Live stream play force failed:", err));
+            }
+        };
+
+        video.addEventListener('pause', handlePauseAttempt);
+        if (video.paused) {
+            video.play().catch(err => console.warn("[WatchParty] Live stream initial force play failed:", err));
+        }
+
+        return () => {
+            video.removeEventListener('pause', handlePauseAttempt);
+        };
+    }, [isLive, isReady, hasError, watchParty?.url]);
+
     if (!watchParty || !watchParty.url) return null;
 
     if (hasError) {
@@ -605,34 +626,6 @@ const WatchPartyPlayer = () => {
                     {isLive && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {isLive && (
-                        <button 
-                            className="watch-party-sync-live-btn glass-btn"
-                            style={{ 
-                                padding: '6px 12px', 
-                                fontSize: '12px', 
-                                backgroundColor: 'rgba(0, 210, 255, 0.15)',
-                                border: '1px solid rgba(0, 210, 255, 0.3)',
-                                color: '#00d2ff',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontWeight: '600',
-                                transition: 'all 0.2s'
-                            }}
-                            onClick={() => {
-                                const video = videoRef.current;
-                                if (video && video.duration) {
-                                    const liveEdge = video.duration - 2;
-                                    const targetTime = Math.max(0, liveEdge);
-                                    video.currentTime = targetTime;
-                                    sendWatchSeek(targetTime);
-                                }
-                            }}
-                            title="Yayını canlı sona getir / Odadaki herkesi eşitle"
-                        >
-                            ⚡ Canlıya Eşitle
-                        </button>
-                    )}
                     <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
                         <X size={16} /> <span>Bitir</span>
                     </button>
@@ -642,7 +635,7 @@ const WatchPartyPlayer = () => {
                 
                 <video
                     ref={videoRef}
-                    className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
+                    className={`watch-party-native-video ${isStream ? '' : 'hidden'}`}
                     controls={!isLive} // Enable native browser player controls only if it is VOD (isLive is false)
                     playsInline
                     autoPlay
@@ -705,7 +698,22 @@ const WatchPartyPlayer = () => {
                         </div>
 
                         {/* Repositioned Fullscreen Button */}
-                        <div className="watch-party-fullscreen-container-modern">
+                        <div className="watch-party-fullscreen-container-modern" style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                                className="watch-party-fullscreen-btn-modern"
+                                onClick={() => {
+                                    const video = videoRef.current;
+                                    if (video && video.duration) {
+                                        const liveEdge = video.duration - 2;
+                                        const targetTime = Math.max(0, liveEdge);
+                                        video.currentTime = targetTime;
+                                        sendWatchSeek(targetTime);
+                                    }
+                                }}
+                                title="Yayını canlı sona getir / Odadaki herkesi eşitle"
+                            >
+                                <RotateCw size={18} />
+                            </button>
                             <button 
                                 className="watch-party-fullscreen-btn-modern"
                                 onClick={toggleFullscreen}
@@ -717,7 +725,7 @@ const WatchPartyPlayer = () => {
                     </>
                  )}
 
-                 {!isLive && (
+                 {!isStream && (
                     isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
