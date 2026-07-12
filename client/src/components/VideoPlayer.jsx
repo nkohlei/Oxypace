@@ -360,84 +360,15 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     };
   }, []);
 
-  // Initialise video A with the best src or ad URL (VAST Parser & Timeout watchdog)
+  // Initialise video A with the preferred quality src immediately
   useEffect(() => {
     const el = videoRefA.current;
     if (!el) return;
 
-    if (adsConfig.enableAds && !watchParty) {
-      setIsAdPlaying(true);
-      setCanSkipAd(false);
-      setAdCountdown(5);
-
-      let bypassed = false;
-
-      // 3-second timeout watchdog to prevent video player hang
-      const watchdog = setTimeout(() => {
-        if (!bypassed) {
-          bypassed = true;
-          console.warn("VAST ad fetch took too long (3s timeout). Bypassing ad.");
-          setIsAdPlaying(false);
-          const bestSrc = getBestSrc();
-          if (bestSrc) {
-            setVideoSource(el, bestSrc);
-          }
-        }
-      }, 3000);
-
-      const loadAd = async () => {
-        let adUrl = adsConfig.preRollAdUrl;
-
-        if (adsConfig.enableProgrammaticAds && adsConfig.EXTERNAL_AD_TAG_URL) {
-          try {
-            const controller = new AbortController();
-            const fetchTimer = setTimeout(() => controller.abort(), 2700);
-
-            const res = await fetch(adsConfig.EXTERNAL_AD_TAG_URL, { signal: controller.signal });
-            clearTimeout(fetchTimer);
-            const xml = await res.text();
-            
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(xml, 'text/xml');
-            const mediaFiles = xmlDoc.getElementsByTagName('MediaFile');
-            if (mediaFiles && mediaFiles.length > 0) {
-              const nodeText = mediaFiles[0].textContent || '';
-              if (nodeText.trim()) {
-                adUrl = nodeText.trim();
-              }
-            }
-          } catch (e) {
-            console.warn("VAST load error or blocked by adblock", e);
-          }
-        }
-
-        if (!bypassed) {
-          clearTimeout(watchdog);
-          bypassed = true;
-          if (adUrl) {
-            setVideoSource(el, adUrl);
-          } else {
-            setIsAdPlaying(false);
-            const bestSrc = getBestSrc();
-            if (bestSrc) {
-              setVideoSource(el, bestSrc);
-            }
-          }
-        }
-      };
-
-      loadAd();
-
-      return () => {
-        clearTimeout(watchdog);
-        bypassed = true;
-      };
-    } else {
-      setIsAdPlaying(false);
-      const preferredSrc = getPreferredSrc();
-      if (preferredSrc) {
-        setVideoSource(el, preferredSrc);
-      }
+    setIsAdPlaying(false);
+    const preferredSrc = getPreferredSrc();
+    if (preferredSrc) {
+      setVideoSource(el, preferredSrc);
     }
   }, [src, videoUrl, getPreferredSrc, setVideoSource]);
 

@@ -1,6 +1,6 @@
 export const adsConfig = {
-  enableAds: true,
-  enableProgrammaticAds: true,
+  enableAds: false,
+  enableProgrammaticAds: false,
   enableAdsterraAds: false,
   
   // Sample VAST XML ad tag URL
