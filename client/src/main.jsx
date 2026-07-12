@@ -27,7 +27,7 @@ Node.prototype.insertBefore = function (newNode, referenceNode) {
 import { Capacitor } from '@capacitor/core';
 
 const isNative = Capacitor.isNativePlatform();
-const isElectron = typeof window !== 'undefined' && window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1;
+const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1));
 
 // For production web, ALWAYS force relative URL to utilize Netlify Proxy and bypass ISP blocks.
 // For native or desktop, use VITE_API_BASE_URL if available, otherwise fallback to Koyeb/Production absolute URL.

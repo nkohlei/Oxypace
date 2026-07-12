@@ -248,9 +248,14 @@ const Inbox = () => {
     const fetchConversations = async () => {
         try {
             const response = await axios.get('/api/messages/conversations');
-            setConversations(response.data);
+            if (Array.isArray(response.data)) {
+                setConversations(response.data);
+            } else {
+                setConversations([]);
+            }
         } catch (err) {
             console.error('Failed to fetch conversations:', err);
+            setConversations([]);
         } finally {
             setLoading(false);
         }
@@ -465,10 +470,10 @@ const Inbox = () => {
         return `Katıldı ${date.getFullYear()}`;
     };
 
-    const filteredConversations = conversations.filter((conv) => {
-        const name = conv.user.profile?.displayName || conv.user.username;
+    const filteredConversations = Array.isArray(conversations) ? conversations.filter((conv) => {
+        const name = conv.user?.profile?.displayName || conv.user?.username || '';
         return name.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+    }) : [];
 
     return (
         <div className="app-wrapper inbox-wrapper">
