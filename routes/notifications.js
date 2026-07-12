@@ -57,9 +57,60 @@ router.get('/portal-unreads', protect, async (req, res) => {
             recipient: req.user.id,
             type: 'portal_post',
             read: false
-        }).select('portal channel post');
+        }).populate({
+            path: 'portal',
+            select: 'members channels'
+        });
         
-        res.json(notifications);
+        const validNotifications = [];
+        const orphanIds = [];
+        
+        for (const n of notifications) {
+            let isOrphan = false;
+            
+            // 1. Check if portal exists
+            if (!n.portal) {
+                isOrphan = true;
+            } else {
+                // 2. Check if user is still a member of the portal
+                const isMember = n.portal.members.some(
+                    (memberId) => memberId.toString() === req.user.id
+                );
+                if (!isMember) {
+                    isOrphan = true;
+                } else if (n.channel) {
+                    // 3. Check if channel still exists in the portal
+                    const channelExists = n.portal.channels.some(
+                        (ch) => ch._id.toString() === n.channel || ch.name === n.channel
+                    );
+                    if (!channelExists) {
+                        isOrphan = true;
+                    }
+                }
+            }
+            
+            if (isOrphan) {
+                orphanIds.push(n._id);
+            } else {
+                // Return in the exact same shape as before (portal as an ID string)
+                validNotifications.push({
+                    _id: n._id,
+                    portal: n.portal._id.toString(),
+                    channel: n.channel,
+                    post: n.post
+                });
+            }
+        }
+        
+        // Clean up orphan notifications asynchronously in the background
+        if (orphanIds.length > 0) {
+            Notification.updateMany(
+                { _id: { $in: orphanIds } },
+                { $set: { read: true } }
+            ).catch(err => console.error('Error cleaning up orphan notifications:', err));
+        }
+        
+        res.json(validNotifications);
     } catch (error) {
         console.error('Portal unreads error:', error);
         res.status(500).json({ message: 'Server error' });
