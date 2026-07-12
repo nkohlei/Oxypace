@@ -31,7 +31,12 @@ const AuthProcess = () => {
 
                 if (action === 'login') {
                     login(authToken, user);
-                    window.location.href = '/'; // Full reload for clean layout
+                    const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
+                    if (isElectron) {
+                        window.location.href = '#/';
+                    } else {
+                        window.location.href = '/'; // Full reload for clean layout
+                    }
                 } else if (action === 'onboarding') {
                     // Redirect to onboarding with the pre-token
                     navigate(`/onboarding?preToken=${preToken}`);

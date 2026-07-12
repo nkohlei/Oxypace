@@ -19,7 +19,12 @@ const GoogleCallback = () => {
             if (isNewUser) {
                 navigate('/onboarding');
             } else {
-                window.location.href = '/'; // Full reload for clean layout
+                const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
+                if (isElectron) {
+                    window.location.href = '#/';
+                } else {
+                    window.location.href = '/'; // Full reload for clean layout
+                }
             }
         } else {
             navigate('/login');
