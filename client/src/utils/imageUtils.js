@@ -23,16 +23,17 @@ export const getImageUrl = (path, sizeType = 'original') => {
     }
 
     const isNative = Capacitor.isNativePlatform();
+    const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1));
     const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
-    const baseUrl = ((!isNative && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
+    const baseUrl = ((!isNative && !isElectron && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
 
     // 0. STATIC ASSETS: Don't proxy or transform local system assets
     if (cleanPath.startsWith('/system/') || cleanPath.startsWith('system/')) {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
-    // 1. MOBILE NATIVE FLOW: Route EVERYTHING through the backend media proxy for absolute CORS & SSL stability
-    if (isNative) {
+    // 1. MOBILE NATIVE & DESKTOP FLOW: Route EVERYTHING through the backend media proxy for absolute CORS & SSL stability
+    if (isNative || isElectron) {
         let relativePath = cleanPath;
         if (relativePath.includes('/api/media/')) {
             relativePath = relativePath.substring(relativePath.indexOf('/api/media/') + 11);
