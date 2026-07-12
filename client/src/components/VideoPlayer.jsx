@@ -36,6 +36,12 @@ const isHls = (url) => {
 
 const checkCenterVideo = () => {
   if (mountedVideos.size === 0) return;
+  if (typeof document !== 'undefined' && document.hidden) {
+    mountedVideos.forEach(video => {
+      if (!video.paused) video.pause();
+    });
+    return;
+  }
   const isFs = !!document.fullscreenElement;
   if (isFs) {
     mountedVideos.forEach(video => {
@@ -50,6 +56,7 @@ const checkCenterVideo = () => {
   mountedVideos.forEach(video => {
     if (!video) return;
     const rect = video.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return; // Skip hidden elements (e.g. background cached pages)
     if (rect.top < window.innerHeight && rect.bottom > 0) {
       const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
       const ratio = visibleHeight / (rect.height || 1);
@@ -220,6 +227,30 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (maxResolution === '360p') return src360;
     return src144;
   }, [src144, src360, src720, src1080, src2160, maxResolution]);
+
+  const getPreferredSrc = useCallback(() => {
+    const pref = user?.settings?.video?.playbackQuality || 'auto';
+    if (pref === 'performance') {
+      if (has2160) return src2160;
+      if (has1080) return src1080;
+      if (has720) return src720;
+      if (has360) return src360;
+      return src144;
+    } else if (pref === 'saver') {
+      if (has720) return src720;
+      if (has360) return src360;
+      if (has144) return src144;
+      if (has1080) return src1080;
+      return src2160;
+    } else if (pref === 'lowest') {
+      if (has144) return src144;
+      if (has360) return src360;
+      if (has720) return src720;
+      if (has1080) return src1080;
+      return src2160;
+    }
+    return getBestSrc();
+  }, [user, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc]);
 
   const availableQualities = [{ value: 'auto', label: 'Oto' }];
   if (has2160) availableQualities.push({ value: '2160', label: '2160p' });
@@ -403,22 +434,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       };
     } else {
       setIsAdPlaying(false);
-      const bestSrc = getBestSrc();
-      if (bestSrc) {
-        setVideoSource(el, bestSrc);
+      const preferredSrc = getPreferredSrc();
+      if (preferredSrc) {
+        setVideoSource(el, preferredSrc);
       }
     }
-  }, [src, videoUrl, getBestSrc, setVideoSource]);
+  }, [src, videoUrl, getPreferredSrc, setVideoSource]);
 
-  // Reset preference initialization when source or user preference changes
+  // Sync user quality preferences when settings change
   useEffect(() => {
-    initializedPrefRef.current = false;
-  }, [src, videoUrl, user?.settings?.video?.playbackQuality]);
-
-  // Sync user quality preferences once loaded
-  useEffect(() => {
-    if (!user || initializedPrefRef.current) return;
-    initializedPrefRef.current = true;
+    if (!user) return;
     const pref = user?.settings?.video?.playbackQuality || 'auto';
     
     let mode = 'auto';
@@ -458,7 +483,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (activeEl && targetSrc && activeEl.src !== targetSrc && activeEl.currentSrc !== targetSrc) {
       setVideoSource(activeEl, targetSrc);
     }
-  }, [user, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc, setVideoSource]);
+  }, [user?.settings?.video?.playbackQuality, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc, setVideoSource]);
 
   // Sync mute & playbackRate to both elements imperatively
   useEffect(() => {
@@ -671,13 +696,47 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     return () => clearInterval(id);
   }, [qualityMode, src144, src360, initiateQualitySwap]);
 
-  // ─── Register active video with scroll manager ────────────────────────
+  // ─── Register active video with scroll manager & Intersection Observer ───
   useEffect(() => {
     const el = getActiveEl();
     if (!el) return;
     mountedVideos.add(el);
     handleGlobalScroll();
-    return () => mountedVideos.delete(el);
+
+    // Pause immediately if tab/window visibility changes to hidden
+    const handleVisibilityChange = () => {
+      if (document.hidden && !el.paused) {
+        el.pause();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // IntersectionObserver to handle out-of-view pause immediately and check center
+    const container = el.closest('.native-player-container');
+    let observer = null;
+    if (container && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            handleGlobalScroll();
+          } else {
+            // Pauses immediately when it goes out of view
+            if (!el.paused) {
+              el.pause();
+            }
+          }
+        });
+      }, { threshold: [0.0, 0.2] });
+      observer.observe(container);
+    }
+
+    return () => {
+      mountedVideos.delete(el);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (observer) {
+        observer.disconnect();
+      }
+    };
   }, [activeVideo]);
 
   // ─── Sync isPaused state with active element ──────────────────────────
