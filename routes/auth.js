@@ -316,8 +316,61 @@ router.get(
         const state = req.query.state;
         
         if (state === 'mobile') {
-            // Redirect to Deep Link for Capacitor app
-            res.redirect(`oxypace://auth/process?token=${processToken}`);
+            // Serve a nice redirect page that opens the deep link and attempts to close the browser tab
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        <title>Yönlendiriliyor...</title>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {
+                                background-color: #0a0a0a;
+                                color: #ffffff;
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                height: 100vh;
+                                margin: 0;
+                                text-align: center;
+                                padding: 20px;
+                            }
+                            .loader {
+                                border: 3px solid #1a1a1a;
+                                border-top: 3px solid #00c6ff;
+                                border-radius: 50%;
+                                width: 40px;
+                                height: 40px;
+                                animation: spin 1s linear infinite;
+                                margin-bottom: 24px;
+                            }
+                            @keyframes spin {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                            h2 { margin: 10px 0; font-weight: 600; font-size: 20px; }
+                            p { color: #888; font-size: 14px; margin-top: 4px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="loader"></div>
+                        <h2>Başarıyla Giriş Yapıldı</h2>
+                        <p>Oxypace uygulamasına yönlendiriliyorsunuz...</p>
+                        <p style="font-size: 12px; color: #555; margin-top: 20px;">Eğer yönlendirme gerçekleşmediyse tarayıcı penceresini kapatıp uygulamaya dönebilirsiniz.</p>
+                        <script>
+                            // Trigger deep link
+                            window.location.href = "oxypace://auth/process?token=${processToken}";
+                            // Attempt to close the tab after a delay
+                            setTimeout(() => {
+                                window.close();
+                            }, 1500);
+                        </script>
+                    </body>
+                </html>
+            `);
         } else {
             // Redirect to Frontend "Auth Process" page for Web
             res.redirect(`${process.env.CLIENT_URL}/auth/process?token=${processToken}`);
