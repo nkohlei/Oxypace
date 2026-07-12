@@ -5,7 +5,7 @@ import { readFileSync } from 'fs';
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
 
 export default defineConfig({
-    base: './',
+    base: process.env.VITE_APP_TARGET === 'desktop' ? './' : '/',
     plugins: [react()],
     define: {
         // Inject package.json version so Footer (and any component) can read it at runtime

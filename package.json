@@ -21,7 +21,7 @@
         "mobile:open:ios": "npx cap open ios",
         "desktop:install": "npm install --prefix desktop --legacy-peer-deps",
         "desktop:dev": "cross-env NODE_ENV=development npm run start --prefix desktop",
-        "desktop:build": "npm run build && node desktop/build.js && npm run build --prefix desktop"
+        "desktop:build": "cross-env VITE_APP_TARGET=desktop npm run build && node desktop/build.js && npm run build --prefix desktop"
     },
     "keywords": [
         "social-media",
