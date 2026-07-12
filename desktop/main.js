@@ -16,7 +16,7 @@ if (process.defaultApp) {
     app.setAsDefaultProtocolClient('oxypace', process.execPath, [path.resolve(process.argv[1])]);
   }
 } else {
-  app.setAsDefaultProtocolClient('oxypace');
+  app.setAsDefaultProtocolClient('oxypace', process.execPath);
 }
 
 function handleDeepLink(urlStr) {
@@ -53,6 +53,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 650,
     icon: path.join(__dirname, '../client/public/logo.png'),
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
