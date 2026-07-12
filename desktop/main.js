@@ -21,10 +21,18 @@ if (process.defaultApp) {
 
 function handleDeepLink(urlStr) {
   if (!mainWindow) return;
-  // Format: oxypace://auth/process?token=XXXX -> app://r/auth/process?token=XXXX
+  // Format: oxypace://auth/process?token=XXXX -> /auth/process?token=XXXX
   const routePath = urlStr.replace('oxypace://', '/');
-  console.log('Routing deep link to:', 'app://r' + routePath);
-  mainWindow.loadURL('app://r' + routePath);
+  console.log('Routing deep link via window.location.hash to:', routePath);
+  
+  // Navigate via HashRouter inside the renderer process to prevent asset loading paths from breaking
+  mainWindow.webContents.executeJavaScript(`
+    window.location.hash = "${routePath}";
+  `).catch(err => {
+    console.error('Failed to redirect via hash routing:', err);
+    // Fallback loadURL
+    mainWindow.loadURL('app://r/index.html#' + routePath);
+  });
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
