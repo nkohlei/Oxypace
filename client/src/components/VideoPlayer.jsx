@@ -255,6 +255,44 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           enableWorker: true,
           lowLatencyMode: true,
         });
+        hls.on(HlsLib.Events.MANIFEST_PARSED, () => {
+          const pref = user?.settings?.video?.playbackQuality || 'auto';
+          if (pref === 'lowest') {
+            let lowestIdx = 0;
+            let lowestHeight = Infinity;
+            hls.levels.forEach((level, idx) => {
+              if (level.height && level.height < lowestHeight) {
+                lowestHeight = level.height;
+                lowestIdx = idx;
+              }
+            });
+            hls.currentLevel = lowestIdx;
+          } else if (pref === 'saver') {
+            let targetIdx = -1;
+            let bestHeight = 0;
+            hls.levels.forEach((level, idx) => {
+              if (level.height && level.height <= 720 && level.height > bestHeight) {
+                bestHeight = level.height;
+                targetIdx = idx;
+              }
+            });
+            if (targetIdx !== -1) {
+              hls.currentLevel = targetIdx;
+            }
+          } else if (pref === 'performance') {
+            let highestIdx = 0;
+            let highestHeight = 0;
+            hls.levels.forEach((level, idx) => {
+              if (level.height && level.height > highestHeight) {
+                highestHeight = level.height;
+                highestIdx = idx;
+              }
+            });
+            hls.currentLevel = highestIdx;
+          } else {
+            hls.currentLevel = -1;
+          }
+        });
         hls.loadSource(url);
         hls.attachMedia(videoEl);
         hlsInstanceRef.current = hls;
@@ -264,7 +302,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         videoEl.load();
       });
     }
-  }, []);
+  }, [user]);
 
   const setVideoSource = useCallback((el, url) => {
     if (!el) return;
@@ -371,6 +409,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       }
     }
   }, [src, videoUrl, getBestSrc, setVideoSource]);
+
+  // Reset preference initialization when source or user preference changes
+  useEffect(() => {
+    initializedPrefRef.current = false;
+  }, [src, videoUrl, user?.settings?.video?.playbackQuality]);
 
   // Sync user quality preferences once loaded
   useEffect(() => {
