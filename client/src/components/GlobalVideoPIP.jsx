@@ -74,10 +74,13 @@ const GlobalVideoPIP = () => {
     useEffect(() => {
         if (!isConnected || Capacitor.isNativePlatform() || !('documentPictureInPicture' in window)) return;
 
+        let openTime = 0;
+
         const handleBlur = async () => {
-            if (pipWindowRef.current || isDocumentPiPActive) return;
+            if (pipWindowRef.current || isDocumentPiPActive || Date.now() - openTime < 1500) return;
 
             try {
+                openTime = Date.now();
                 const pipWin = await window.documentPictureInPicture.requestWindow({
                     width: 380,
                     height: 280
@@ -110,6 +113,7 @@ const GlobalVideoPIP = () => {
         };
 
         const handleFocus = () => {
+            if (Date.now() - openTime < 1500) return;
             if (pipWindowRef.current) {
                 pipWindowRef.current.close();
                 pipWindowRef.current = null;
