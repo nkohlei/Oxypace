@@ -163,29 +163,29 @@ ipcMain.on('toggle-overlay', (event, visible) => {
       const { width, height } = primaryDisplay.workAreaSize;
 
       overlayWindow = new BrowserWindow({
-        width: 220,
-        height: Math.min(500, height - 100),
-        x: width - 232,
-        y: 60,
+        width: 230,
+        height: Math.min(520, height - 80),
+        x: width - 244,
+        y: 50,
         frame: false,
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: true,
+        resizable: false,
         movable: true,
         hasShadow: false,
-        focusable: false,
+        focusable: true,           // Must be true so buttons are clickable
         webPreferences: {
-          nodeIntegration: true,       // Needed for direct ipcRenderer in overlay.html
-          contextIsolation: false,     // Must be false when nodeIntegration is true
-          backgroundThrottling: false, // Keep rendering even when not focused
+          nodeIntegration: true,
+          contextIsolation: false,
+          backgroundThrottling: false,
         }
       });
 
       // Load the standalone overlay HTML — completely independent of React app
       overlayWindow.loadFile(path.join(__dirname, 'overlay.html'));
 
-      // Click-through: mouse events pass to the game/app below
+      // Start as click-through; the overlay itself toggles this via IPC on hover
       overlayWindow.setIgnoreMouseEvents(true, { forward: true });
 
       // Show on all workspaces including full-screen games
@@ -213,6 +213,26 @@ ipcMain.on('toggle-overlay', (event, visible) => {
   }
 });
 
+// Renderer tells us when mouse is over the overlay UI (enable interaction)
+// or outside it (pass clicks through to game/app)
+ipcMain.on('overlay-set-interactive', (event, interactive) => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    if (interactive) {
+      overlayWindow.setIgnoreMouseEvents(false);
+    } else {
+      overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+    }
+  }
+});
+
+// Bring main Oxypace window to front
+ipcMain.on('overlay-focus-main', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
 // Cache latest participant data so we can send it after the overlay window loads
 let lastParticipantData = null;
 
@@ -230,7 +250,6 @@ ipcMain.on('open-external', (event, targetUrl) => {
   }
 });
 
-// (mini-player IPC removed — overlay system handles this now)
 
 app.on('ready', () => {
   // Register custom protocol handler for 'app://' scheme

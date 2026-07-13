@@ -2,162 +2,171 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oxypace Overlay</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
       background: transparent !important;
       overflow: hidden;
       width: 100vw;
       height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      -webkit-app-region: no-drag;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       user-select: none;
     }
 
-    #overlay-root {
+    /* ======== COLLAPSED (mini icon) mode ======== */
+    #mini-btn {
+      display: none;
       position: fixed;
-      top: 0;
-      right: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      padding: 12px;
-      pointer-events: none;
-      gap: 6px;
-    }
-
-    /* Header bar at the top */
-    #overlay-header {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(10, 14, 26, 0.80);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 5px 10px;
-      width: 100%;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-
-    #overlay-header .ox-logo {
-      width: 16px;
-      height: 16px;
-      border-radius: 4px;
+      top: 12px;
+      right: 12px;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
       background: linear-gradient(135deg, #6366f1, #818cf8);
-      flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.18);
+      box-shadow: 0 4px 20px rgba(99,102,241,0.55);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: drag;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    #mini-btn:hover {
+      transform: scale(1.12);
+      box-shadow: 0 6px 28px rgba(99,102,241,0.80);
+    }
+    #mini-btn .mini-count {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #f23f43;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      padding: 0 3px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 8px;
-      font-weight: 900;
-      color: white;
+      border: 1.5px solid #0a0e1a;
     }
+    #mini-btn svg { pointer-events: none; }
 
-    #overlay-header .channel-name {
-      font-size: 11px;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.85);
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-    }
-
-    #overlay-header .participant-count {
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.5);
-      background: rgba(255, 255, 255, 0.08);
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-
-    /* Participants list */
-    #participants-list {
+    /* ======== MAIN PANEL ======== */
+    #panel {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      width: 220px;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      width: 100%;
+    }
+
+    /* Header / drag bar */
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(15, 20, 40, 0.88);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      padding: 6px 8px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      -webkit-app-region: drag;
+      cursor: grab;
+    }
+    #header .ox-logo {
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg,#6366f1,#818cf8);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 900; color: #fff;
+      -webkit-app-region: no-drag;
+    }
+    #header .ch-name {
+      font-size: 11px; font-weight: 600;
+      color: rgba(255,255,255,0.88);
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      -webkit-app-region: no-drag;
+    }
+    /* Header action buttons — must be no-drag so they're clickable */
+    .hbtn {
+      -webkit-app-region: no-drag;
+      background: rgba(255,255,255,0.08);
+      border: none; border-radius: 5px;
+      width: 22px; height: 22px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.65);
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .hbtn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+    .hbtn.danger:hover { background: rgba(242,63,67,0.75); color: #fff; }
+    .hbtn svg { width: 11px; height: 11px; }
+
+    /* Participants list */
+    #list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      max-height: calc(100vh - 90px);
       overflow-y: auto;
-      max-height: calc(100vh - 70px);
+      padding-right: 2px;
     }
+    #list::-webkit-scrollbar { width: 3px; }
+    #list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
 
-    #participants-list::-webkit-scrollbar {
-      width: 3px;
-    }
-
-    #participants-list::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 2px;
-    }
-
-    /* Single participant row */
-    .participant-card {
+    /* Single participant card */
+    .pcard {
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 5px 8px;
       border-radius: 8px;
-      background: rgba(10, 14, 26, 0.72);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(12, 17, 34, 0.80);
+      border: 1px solid rgba(255,255,255,0.06);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      transition: all 0.2s ease;
-      width: 100%;
     }
-
-    .participant-card.speaking {
-      background: rgba(35, 165, 90, 0.18);
-      border-color: rgba(35, 165, 90, 0.40);
+    .pcard.speaking {
+      background: rgba(35,165,90,0.16);
+      border-color: rgba(35,165,90,0.38);
     }
 
     /* Avatar */
-    .participant-avatar-wrap {
+    .av-wrap {
       position: relative;
-      width: 34px;
-      height: 34px;
+      width: 34px; height: 34px;
       flex-shrink: 0;
     }
-
-    .participant-avatar {
-      width: 100%;
-      height: 100%;
+    .av-img {
+      width: 100%; height: 100%;
       border-radius: 50%;
       object-fit: cover;
-      border: 2px solid rgba(255, 255, 255, 0.10);
-      transition: border-color 0.2s ease;
+      border: 2px solid rgba(255,255,255,0.10);
+      background: #1e293b;
     }
+    .speaking .av-img { border-color: #23a55a; box-shadow: 0 0 10px rgba(35,165,90,0.7); }
 
-    .speaking .participant-avatar {
-      border-color: #23a55a;
-      box-shadow: 0 0 10px rgba(35, 165, 90, 0.75);
-    }
-
-    /* Speaking animated ring */
-    .speaking-ring {
+    /* Speaking pulse ring */
+    .spk-ring {
       display: none;
-      position: absolute;
-      inset: -4px;
+      position: absolute; inset: -4px;
       border-radius: 50%;
       border: 2px solid #23a55a;
-      animation: pulse-ring 1s ease-out infinite;
+      animation: pring 1s ease-out infinite;
     }
-
-    .speaking .speaking-ring {
-      display: block;
-    }
-
-    @keyframes pulse-ring {
+    .speaking .spk-ring { display: block; }
+    @keyframes pring {
       0%   { transform: scale(1); opacity: 0.9; }
       80%  { transform: scale(1.35); opacity: 0; }
       100% { transform: scale(1.35); opacity: 0; }
@@ -166,187 +175,218 @@
     /* Mute badge */
     .mute-badge {
       display: none;
-      position: absolute;
-      bottom: -2px;
-      right: -2px;
+      position: absolute; bottom: -2px; right: -2px;
       background: #f23f43;
       border: 1.5px solid #0a0e1a;
       border-radius: 50%;
-      width: 14px;
-      height: 14px;
-      align-items: center;
-      justify-content: center;
+      width: 14px; height: 14px;
+      align-items: center; justify-content: center;
     }
-
-    .muted .mute-badge {
-      display: flex;
-    }
-
-    .mute-badge svg {
-      width: 8px;
-      height: 8px;
-      fill: white;
-    }
+    .muted .mute-badge { display: flex; }
+    .mute-badge svg { width: 8px; height: 8px; fill: white; }
 
     /* Name + status */
-    .participant-info {
-      flex: 1;
-      min-width: 0;
+    .pinfo { flex: 1; min-width: 0; }
+    .pname {
+      font-size: 12px; font-weight: 600; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
     }
-
-    .participant-name {
-      font-size: 12px;
-      font-weight: 600;
-      color: #ffffff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.6);
-    }
-
-    .participant-status {
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.45);
-      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-    }
-
-    .speaking .participant-status {
-      color: #57f287;
-    }
+    .pstatus { font-size: 10px; color: rgba(255,255,255,0.42); }
+    .speaking .pstatus { color: #57f287; }
 
     /* Camera icon */
-    .camera-icon {
-      flex-shrink: 0;
-      color: rgba(255, 255, 255, 0.30);
-    }
+    .cam-icon { flex-shrink: 0; color: rgba(255,255,255,0.22); }
+    .camOn .cam-icon { color: #57f287; }
 
-    .camera-on .camera-icon {
-      color: #57f287;
-    }
-
-    /* Empty state */
-    #empty-state {
+    /* Empty */
+    #empty {
       display: none;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-      color: rgba(255, 255, 255, 0.4);
+      text-align: center;
+      padding: 14px;
       font-size: 11px;
-      gap: 6px;
+      color: rgba(255,255,255,0.35);
+      background: rgba(12,17,34,0.72);
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.06);
     }
   </style>
 </head>
 <body>
-  <div id="overlay-root">
-    <div id="overlay-header">
-      <div class="ox-logo">O</div>
-      <span class="channel-name" id="channel-name">Ses Odası</span>
-      <span class="participant-count" id="participant-count">0 kişi</span>
-    </div>
-    <div id="participants-list"></div>
-    <div id="empty-state">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+
+<!-- Mini (collapsed) button -->
+<div id="mini-btn" title="Overlay'i göster">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+  <div class="mini-count" id="mini-count">0</div>
+</div>
+
+<!-- Main panel -->
+<div id="panel">
+  <div id="header">
+    <div class="ox-logo">O</div>
+    <span class="ch-name" id="ch-name">Ses Odası</span>
+    <span style="font-size:10px;color:rgba(255,255,255,0.40);-webkit-app-region:no-drag" id="p-count">0</span>
+
+    <!-- Open App button -->
+    <button class="hbtn" id="btn-open" title="Oxypace'i Aç">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
       </svg>
-      Katılımcı bekleniyor...
-    </div>
+    </button>
+
+    <!-- Collapse button -->
+    <button class="hbtn" id="btn-collapse" title="Küçült">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="18 15 12 9 6 15"/>
+      </svg>
+    </button>
   </div>
 
-  <script>
-    // Receive participant data from main process via IPC
-    const { ipcRenderer } = require('electron');
+  <div id="list"></div>
+  <div id="empty">Katılımcı bekleniyor...</div>
+</div>
 
-    const listEl = document.getElementById('participants-list');
-    const countEl = document.getElementById('participant-count');
-    const emptyEl = document.getElementById('empty-state');
-    const channelEl = document.getElementById('channel-name');
+<script>
+  const { ipcRenderer } = require('electron');
 
-    function getAvatarUrl(avatar, name) {
-      if (!avatar || avatar === 'null' || avatar === 'undefined') {
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || '?')}&background=1e293b&color=fff&size=80&bold=true`;
-      }
-      // Handle relative paths from the app backend
-      if (avatar.startsWith('/') || avatar.startsWith('uploads/')) {
-        return `https://oxypace.com.tr/${avatar.replace(/^\//, '')}`;
-      }
-      return avatar;
+  const panel    = document.getElementById('panel');
+  const miniBtn  = document.getElementById('mini-btn');
+  const miniCnt  = document.getElementById('mini-count');
+  const listEl   = document.getElementById('list');
+  const countEl  = document.getElementById('p-count');
+  const emptyEl  = document.getElementById('empty');
+  const chNameEl = document.getElementById('ch-name');
+  const btnOpen  = document.getElementById('btn-open');
+  const btnCol   = document.getElementById('btn-collapse');
+
+  let collapsed = false;
+
+  // ---- Open main window ----
+  btnOpen.addEventListener('click', () => {
+    ipcRenderer.send('overlay-focus-main');
+  });
+
+  // ---- Collapse / expand ----
+  function setCollapsed(val) {
+    collapsed = val;
+    if (collapsed) {
+      panel.style.display = 'none';
+      miniBtn.style.display = 'flex';
+    } else {
+      panel.style.display = 'flex';
+      miniBtn.style.display = 'none';
+    }
+  }
+
+  btnCol.addEventListener('click', () => setCollapsed(true));
+  miniBtn.addEventListener('click', () => setCollapsed(false));
+
+  // ---- Avatar URL resolver ----
+  const BASE = 'https://oxypace.com.tr';
+  function resolveAvatar(avatar, name) {
+    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name||'?')}&background=1e293b&color=fff&size=80&bold=true&format=png`;
+    if (!avatar || avatar === 'null' || avatar === 'undefined' || avatar === '') return fallback;
+    if (avatar.startsWith('http://') || avatar.startsWith('https://')) return avatar;
+    // Relative path from backend
+    const clean = avatar.startsWith('/') ? avatar : '/' + avatar;
+    return BASE + clean;
+  }
+
+  // ---- Render ----
+  function render(participants) {
+    listEl.innerHTML = '';
+
+    if (!participants || participants.length === 0) {
+      emptyEl.style.display = 'block';
+      countEl.textContent = '0';
+      miniCnt.textContent = '0';
+      return;
     }
 
-    function renderParticipants(participants) {
-      listEl.innerHTML = '';
+    emptyEl.style.display = 'none';
+    countEl.textContent = participants.length;
+    miniCnt.textContent = participants.length;
 
-      if (!participants || participants.length === 0) {
-        emptyEl.style.display = 'flex';
-        countEl.textContent = '0 kişi';
-        return;
-      }
-
-      emptyEl.style.display = 'none';
-      countEl.textContent = `${participants.length} kişi`;
-
-      // Sort: speaking first, then camera on, then rest
-      const sorted = [...participants].sort((a, b) => {
-        if (a.isSpeaking && !b.isSpeaking) return -1;
-        if (!a.isSpeaking && b.isSpeaking) return 1;
-        if (a.isCameraOn && !b.isCameraOn) return -1;
-        if (!a.isCameraOn && b.isCameraOn) return 1;
-        return 0;
-      });
-
-      sorted.forEach(p => {
-        const card = document.createElement('div');
-        card.className = [
-          'participant-card',
-          p.isSpeaking ? 'speaking' : '',
-          p.isMuted ? 'muted' : '',
-          p.isCameraOn ? 'camera-on' : ''
-        ].filter(Boolean).join(' ');
-
-        const avatarUrl = getAvatarUrl(p.avatar, p.name);
-        const statusText = p.isSpeaking
-          ? 'Konuşuyor...'
-          : p.isMuted
-            ? 'Sessiz'
-            : 'Dinliyor';
-
-        card.innerHTML = `
-          <div class="participant-avatar-wrap">
-            <img class="participant-avatar" src="${avatarUrl}" alt="${p.name}"
-              onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || '?')}&background=1e293b&color=fff&size=80&bold=true'" />
-            <div class="speaking-ring"></div>
-            <div class="mute-badge">
-              <svg viewBox="0 0 24 24"><path d="M19 11a7 7 0 0 1-7 7m0 0a7 7 0 0 1-7-7m7 7v4m0 0H8m4 0h4M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-            </div>
-          </div>
-          <div class="participant-info">
-            <div class="participant-name">${p.name || 'Kullanıcı'}</div>
-            <div class="participant-status">${statusText}</div>
-          </div>
-          <div class="camera-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              ${p.isCameraOn
-                ? '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>'
-                : '<path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/>'}
-            </svg>
-          </div>
-        `;
-        listEl.appendChild(card);
-      });
-    }
-
-    // Listen for participant updates from main process
-    ipcRenderer.on('overlay-participants-update', (event, data) => {
-      renderParticipants(data.participants);
-      if (data.channelName) {
-        channelEl.textContent = data.channelName;
-      }
+    // Sort: speaking first, then camera-on
+    const sorted = [...participants].sort((a, b) => {
+      if (a.isSpeaking && !b.isSpeaking) return -1;
+      if (!a.isSpeaking && b.isSpeaking) return 1;
+      if (a.isCameraOn && !b.isCameraOn) return -1;
+      if (!a.isCameraOn && b.isCameraOn) return 1;
+      return 0;
     });
 
-    // Initial empty render
-    renderParticipants([]);
-  </script>
+    sorted.forEach(p => {
+      const classes = ['pcard',
+        p.isSpeaking ? 'speaking' : '',
+        p.isMuted ? 'muted' : '',
+        p.isCameraOn ? 'camOn' : ''
+      ].filter(Boolean).join(' ');
+
+      const avatarUrl = resolveAvatar(p.avatar, p.name);
+      const statusTxt = p.isSpeaking ? 'Konuşuyor...' : p.isMuted ? 'Sessiz' : 'Dinliyor';
+      const fallbackUrl = resolveAvatar('', p.name);
+
+      const camSvg = p.isCameraOn
+        ? `<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>`
+        : `<path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+
+      const card = document.createElement('div');
+      card.className = classes;
+      card.innerHTML = `
+        <div class="av-wrap">
+          <img class="av-img" src="${avatarUrl}" alt="${p.name}"
+            onerror="this.onerror=null;this.src='${fallbackUrl}'" />
+          <div class="spk-ring"></div>
+          <div class="mute-badge">
+            <svg viewBox="0 0 24 24"><path d="M19 11a7 7 0 0 1-7 7m0 0a7 7 0 0 1-7-7m7 7v4m0 0H8m4 0h4M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </div>
+        </div>
+        <div class="pinfo">
+          <div class="pname">${p.name || 'Kullanıcı'}</div>
+          <div class="pstatus">${statusTxt}</div>
+        </div>
+        <div class="cam-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${camSvg}</svg>
+        </div>`;
+      listEl.appendChild(card);
+    });
+  }
+
+  // ---- IPC: receive data ----
+  ipcRenderer.on('overlay-participants-update', (event, data) => {
+    render(data.participants);
+    if (data.channelName) chNameEl.textContent = data.channelName;
+  });
+
+  // ---- Smart click-through toggle ----
+  // When mouse enters any visible UI element → enable mouse interaction
+  // When mouse leaves → pass clicks through to the game below
+  let interactiveTimeout = null;
+
+  function setInteractive(on) {
+    clearTimeout(interactiveTimeout);
+    if (!on) {
+      // Small delay before going click-through to avoid flicker on fast moves
+      interactiveTimeout = setTimeout(() => {
+        ipcRenderer.send('overlay-set-interactive', false);
+      }, 150);
+    } else {
+      ipcRenderer.send('overlay-set-interactive', true);
+    }
+  }
+
+  panel.addEventListener('mouseenter', () => setInteractive(true));
+  panel.addEventListener('mouseleave', () => setInteractive(false));
+  miniBtn.addEventListener('mouseenter', () => setInteractive(true));
+  miniBtn.addEventListener('mouseleave', () => setInteractive(false));
+
+  render([]);
+</script>
 </body>
 </html>
