@@ -83,7 +83,7 @@ const GlobalVideoPIP = () => {
 
     // Listen for window blur (goes to background) and focus (restores) on desktop/Electron
     useEffect(() => {
-        if (!isConnected || Capacitor.isNativePlatform() || !('documentPictureInPicture' in window)) return;
+        if (!isConnected || Capacitor.isNativePlatform() || window.desktopAPI || !('documentPictureInPicture' in window)) return;
 
         let openTime = 0;
 
