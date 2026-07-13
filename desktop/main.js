@@ -88,8 +88,8 @@ function createWindow() {
 
       // 1. ALWAYS force Referer and Origin spoofing for YouTube/GoogleVideo to bypass embedding restrictions (Error 150 / 152-4)
       if (urlLower.includes('youtube.com') || urlLower.includes('youtube-nocookie.com') || urlLower.includes('googlevideo.com')) {
-        headers['Referer'] = 'https://www.youtube.com/';
-        headers['Origin'] = 'https://www.youtube.com';
+        headers['Referer'] = 'https://oxypace.com.tr/';
+        headers['Origin'] = 'https://oxypace.com.tr';
       } 
       // 2. ALWAYS force spoofing for OK.ru and VK.com embeds
       else if (urlLower.includes('ok.ru')) {

@@ -94,6 +94,7 @@ const YouTubeFacade = ({ media }) => {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     title="YouTube Video"
+                    referrerPolicy="strict-origin-when-cross-origin"
                 />
             ) : (
                 <div onClick={() => setShowIframe(true)} style={{ width: '100%', height: '100%', position: 'relative' }}>

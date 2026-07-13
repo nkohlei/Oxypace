@@ -826,6 +826,7 @@ const WatchPartyPlayer = () => {
                              allow="autoplay; encrypted-media; picture-in-picture"
                              style={{ border: 'none', background: '#000', borderRadius: '12px', width: '100%', height: '100%' }}
                              onLoad={() => setIsReady(true)}
+                             referrerPolicy="strict-origin-when-cross-origin"
                          />
                       ) : isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
