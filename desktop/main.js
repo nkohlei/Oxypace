@@ -77,8 +77,20 @@ function createWindow() {
   // Set standard Chrome User Agent to bypass YouTube's block (Error 153) on Electron user agents
   mainWindow.webContents.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36");
 
-  // Intercept and rewrite request headers for external websites to bypass Referer blocks (e.g. YouTube Error 153, OK.ru/VK embeds)
-  const { session } = require('electron');
+  // Set up screen sharing source picker for getDisplayMedia in Electron
+  const { session, desktopCapturer } = require('electron');
+  
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+      // Automatically select the primary screen/window for sharing
+      if (sources.length > 0) {
+        callback({ video: sources[0] });
+      } else {
+        callback(new Error('No screenshare sources found'));
+      }
+    });
+  });
+
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ['http://*/*', 'https://*/*'] },
     (details, callback) => {
@@ -220,6 +232,24 @@ ipcMain.on('overlay-control', (event, action) => {
   }
 });
 
+// Resize overlay window based on collapse/expand state to prevent mouse blockages
+ipcMain.on('overlay-resize', (event, collapsed) => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    const { screen } = require('electron');
+    const bounds = overlayWindow.getBounds();
+    if (collapsed) {
+      // Shrink window to only fit the circular button at the top-right
+      overlayWindow.setSize(65, 65);
+      // Keep position aligned to the right side
+      overlayWindow.setPosition(bounds.x + bounds.width - 65, bounds.y);
+    } else {
+      // Restore to full panel size
+      overlayWindow.setSize(320, 520);
+      overlayWindow.setPosition(bounds.x + bounds.width - 320, bounds.y);
+    }
+  }
+});
+
 // Bring main Oxypace window to front
 ipcMain.on('overlay-focus-main', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -227,6 +257,7 @@ ipcMain.on('overlay-focus-main', () => {
     mainWindow.focus();
   }
 });
+
 
 // Relay video frames (thumbnails) to overlayWindow
 ipcMain.on('overlay-video-frame', (event, payload) => {

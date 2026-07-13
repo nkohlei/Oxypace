@@ -9,8 +9,10 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     // Güvenli IPC Kanalları
     sendOverlayControl: (action) => ipcRenderer.send('overlay-control', action),
     sendVideoFrame: (payload) => ipcRenderer.send('overlay-video-frame', payload),
+    resizeOverlay: (collapsed) => ipcRenderer.send('overlay-resize', collapsed),
+
     
-    // Güvenli Dinleyiciler
+    // Güvenli Dinleyiciler (React ve Overlay için ortak)
     onOverlayControlAction: (callback) => {
         const listener = (event, action) => callback(action);
         ipcRenderer.on('overlay-control-action', listener);
