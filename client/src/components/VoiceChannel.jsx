@@ -38,27 +38,22 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
             const video = videoEl.current;
 
             if (video.videoWidth > 0 && video.videoHeight > 0) {
-                // Resize to low-res thumbnail to optimize IPC throughput
                 canvas.width = 160;
                 canvas.height = 90;
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
                 try {
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-                    // Send captured frame to Electron main process, which relays it to overlay.html
-                    const { ipcRenderer } = window.require ? window.require('electron') : {};
-                    if (ipcRenderer) {
-                        ipcRenderer.send('overlay-video-frame', { identity, frame: dataUrl });
-                    }
+                    // Safe execution using exposed preload endpoint
+                    window.desktopAPI.sendVideoFrame({ identity, frame: dataUrl });
                 } catch (e) {
                     console.error("Frame capture error:", e);
                 }
             }
-            // Capture at ~15fps (approx 66ms interval) to keep performance light but responsive
-            setTimeout(captureFrame, 66);
+            // Capture at ~12fps to optimize CPU utilization
+            setTimeout(captureFrame, 80);
         };
 
-        // Start capturing once video plays
         if (videoEl.current) {
             videoEl.current.addEventListener('play', captureFrame);
         }
@@ -68,13 +63,10 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
             if (videoEl.current) {
                 videoEl.current.removeEventListener('play', captureFrame);
             }
-            // Clear frame on disconnect/unmount
-            const { ipcRenderer } = window.require ? window.require('electron') : {};
-            if (ipcRenderer) {
-                ipcRenderer.send('overlay-video-frame', { identity, frame: null });
-            }
+            window.desktopAPI.sendVideoFrame({ identity, frame: null });
         };
     }, [track, identity, isLocal]);
+
 
     return (
         <video 

@@ -17,7 +17,7 @@
     #mini-icon {
       display: none;
       position: fixed;
-      top: 20px; right: 20px;
+      top: 10px; right: 10px;
       width: 50px; height: 50px;
       border-radius: 50%;
       background: linear-gradient(135deg, #5865f2, #7289da);
@@ -27,6 +27,7 @@
       align-items: center; justify-content: center;
       transition: transform 0.18s, box-shadow 0.18s;
       z-index: 9999;
+      -webkit-app-region: drag;
     }
     #mini-icon:hover { transform: scale(1.15); box-shadow: 0 6px 32px rgba(88,101,242,0.9); }
     #mini-icon .mi-badge {
@@ -41,29 +42,30 @@
 
     /* ===== MAIN PANEL ===== */
     #panel {
-      position: fixed;
-      top: 20px; right: 20px;
-      width: 260px;
+      width: 100%; height: 100%;
       display: flex; flex-direction: column;
-      gap: 4px;
+      gap: 6px;
+      padding: 8px;
     }
 
     /* Header — draggable */
     #hdr {
-      display: flex; align-items: center; gap: 6px;
-      background: rgba(20,24,48,0.92);
-      border: 1px solid rgba(255,255,255,0.10);
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(20,24,48,0.95);
+      border: 1px solid rgba(255,255,255,0.12);
       border-radius: 10px;
-      padding: 7px 8px;
+      padding: 8px 10px;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       -webkit-app-region: drag;
       cursor: grab;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      flex-shrink: 0;
     }
+    #hdr:active { cursor: grabbing; }
     .ox-dot { width:8px;height:8px;border-radius:50%;background:#5865f2;flex-shrink:0;-webkit-app-region:no-drag; }
     #ch-name {
-      flex:1; font-size:11px; font-weight:700; color:#fff;
+      flex:1; font-size:12px; font-weight:700; color:#fff;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       text-shadow:0 1px 4px rgba(0,0,0,0.8);
       -webkit-app-region:no-drag;
@@ -77,26 +79,30 @@
       transition:background 0.15s,color 0.15s; flex-shrink:0;
     }
     .hbtn:hover { background:rgba(255,255,255,0.18); color:#fff; }
-    .hbtn.red:hover { background:rgba(242,63,67,0.8); color:#fff; }
-    .hbtn svg { width:12px;height:12px; }
+    .hbtn svg { width:13px;height:13px; }
 
     /* ===== PARTICIPANTS GRID ===== */
     #grid {
       display: grid;
-      gap: 4px;
+      gap: 6px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+      padding-right: 2px;
     }
-    /* dynamic column count set via JS */
+    #grid::-webkit-scrollbar { width: 3px; }
+    #grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
 
     .pcard {
       position: relative;
       border-radius: 8px;
       overflow: hidden;
-      background: rgba(20,24,48,0.88);
-      border: 1.5px solid rgba(255,255,255,0.07);
+      background: rgba(15,18,36,0.92);
+      border: 1.5px solid rgba(255,255,255,0.08);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      aspect-ratio: 16/9;
       display: flex; align-items: center; justify-content: center;
+      min-height: 100px;
     }
     .pcard.speaking { border-color: #23a55a; box-shadow: 0 0 0 2px rgba(35,165,90,0.55); }
 
@@ -126,31 +132,32 @@
     /* Name bar at bottom of card */
     .pname-bar {
       position:absolute;bottom:0;left:0;right:0;
-      padding:3px 6px;
-      background:linear-gradient(transparent,rgba(0,0,0,0.75));
+      padding:4px 8px;
+      background:linear-gradient(transparent,rgba(0,0,0,0.85));
       display:flex;align-items:center;gap:4px;
+      z-index: 10;
     }
-    .pname-txt { font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1; }
+    .pname-txt { font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1; }
     .pbadge { flex-shrink:0; display:flex;align-items:center; }
-    .pbadge svg { width:10px;height:10px; }
+    .pbadge svg { width:11px;height:11px; }
     .mute-col { color:#f23f43; }
-    .cam-off-col { color:rgba(255,255,255,0.4); }
     .spk-dot { width:6px;height:6px;border-radius:50%;background:#23a55a;animation:spkpulse 0.8s infinite; }
     @keyframes spkpulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
     /* ===== CONTROLS BAR ===== */
     #controls {
       display:flex; align-items:center; justify-content:space-between;
-      background:rgba(20,24,48,0.92);
-      border:1px solid rgba(255,255,255,0.10);
-      border-radius:10px;
-      padding:7px 10px;
-      backdrop-filter:blur(16px);
-      -webkit-backdrop-filter:blur(16px);
-      box-shadow:0 4px 20px rgba(0,0,0,0.5);
+      background: rgba(20,24,48,0.95);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 8px 12px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      flex-shrink: 0;
     }
     .cbtn {
-      display:flex;flex-direction:column;align-items:center;gap:2px;
+      display:flex;flex-direction:column;align-items:center;gap:3px;
       cursor:pointer;border:none;background:transparent;
       padding:4px;border-radius:6px;
       transition:background 0.15s;color:#fff;
@@ -163,13 +170,13 @@
     .cbtn.danger { color:#f23f43; }
     .cbtn.danger .ci { background:rgba(242,63,67,0.18);border-color:rgba(242,63,67,0.5); }
     .ci {
-      width:34px;height:34px;border-radius:8px;
+      width:36px;height:36px;border-radius:8px;
       display:flex;align-items:center;justify-content:center;
       border:1px solid rgba(255,255,255,0.10);
       background:rgba(255,255,255,0.07);
       transition:background 0.15s,border-color 0.15s;
     }
-    .ci svg { width:16px;height:16px; }
+    .ci svg { width:18px;height:18px; }
     .clabel { font-size:9px;font-weight:600;color:inherit;opacity:0.85; }
     .divider { width:1px;height:32px;background:rgba(255,255,255,0.08); }
 
@@ -269,9 +276,13 @@
 </div>
 
 <script>
-  const { ipcRenderer } = require('electron');
+  // Destructure from exposed window.desktopAPI securely
+  const { 
+    sendOverlayControl, 
+    onOverlayControlAction, 
+    updateOverlayParticipants 
+  } = window.desktopAPI;
 
-  // Elements
   const panel    = document.getElementById('panel');
   const miniIcon = document.getElementById('mini-icon');
   const miBadge  = document.getElementById('mi-badge');
@@ -299,16 +310,18 @@
   btnCol.addEventListener('click', () => setCollapsed(true));
   miniIcon.addEventListener('click', () => setCollapsed(false));
 
-  // ===== IPC CONTROLS =====
-  btnOpen.addEventListener('click', () => ipcRenderer.send('overlay-focus-main'));
-  btnMic.addEventListener('click', () => ipcRenderer.send('overlay-control', 'toggle-mic'));
-  btnCam.addEventListener('click', () => ipcRenderer.send('overlay-control', 'toggle-camera'));
-  btnScr.addEventListener('click', () => ipcRenderer.send('overlay-control', 'toggle-screen'));
-  btnLeave.addEventListener('click', () => ipcRenderer.send('overlay-control', 'leave'));
+  // ===== IPC CONTROLS (Using preload bridge) =====
+  btnOpen.addEventListener('click', () => {
+    window.desktopAPI.openExternal('oxypace://'); // fallback deep link launch
+    sendOverlayControl('focus-main');
+  });
+  btnMic.addEventListener('click', () => sendOverlayControl('toggle-mic'));
+  btnCam.addEventListener('click', () => sendOverlayControl('toggle-camera'));
+  btnScr.addEventListener('click', () => sendOverlayControl('toggle-screen'));
+  btnLeave.addEventListener('click', () => sendOverlayControl('leave'));
 
   // ===== UPDATE CONTROLS STATE =====
   function updateControlsUI(ls) {
-    // Mic button
     if (!ls.isMuted) {
       btnMic.className = 'cbtn active';
       btnMic.querySelector('.clabel').textContent = 'Mikrofon';
@@ -317,7 +330,6 @@
       btnMic.querySelector('.clabel').textContent = 'Sessiz';
     }
 
-    // Camera button
     const camSvg = btnCam.querySelector('svg');
     if (ls.isCameraOn) {
       btnCam.className = 'cbtn active';
@@ -329,7 +341,6 @@
       camSvg.innerHTML = `<path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/>`;
     }
 
-    // Screen share button
     if (ls.isScreenSharing) {
       btnScr.className = 'cbtn active';
     } else {
@@ -358,7 +369,7 @@
     }
     empty.style.display = 'none';
 
-    // Dynamic columns: 1 person=1col, 2-4=2col, 5+=3col
+    // Dynamic grid: 1 person=1col, 2-4=2col, 5+=3col
     const cols = participants.length === 1 ? 1 : participants.length <= 4 ? 2 : 3;
     grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
@@ -379,22 +390,10 @@
       const avatarUrl = resolveAvatar(p.avatar, p.name);
       const fallback  = resolveAvatar('', p.name);
 
-      // Build card content
       let mediaHTML = '';
       if (p.videoFrame) {
-        // Real camera thumbnail sent from main app
         mediaHTML = `<img class="pcam" src="${p.videoFrame}" alt="${p.name}" />`;
-      } else if (p.isCameraOn) {
-        // Camera is on but no frame yet — show blurred avatar placeholder
-        mediaHTML = `
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(45,53,97,0.5);">
-            <div class="spk-ring-wrap">
-              <img class="pav" src="${avatarUrl}" onerror="this.src='${fallback}'" />
-              ${p.isSpeaking ? '<div class="spk-ring"></div>' : ''}
-            </div>
-          </div>`;
       } else {
-        // Camera off — avatar
         mediaHTML = `
           <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
             <div class="spk-ring-wrap">
@@ -404,7 +403,6 @@
           </div>`;
       }
 
-      // Status badges
       const muteBadge = p.isMuted
         ? `<span class="pbadge mute-col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>`
         : '';
@@ -421,7 +419,22 @@
     });
   }
 
-  // ===== IPC: receive participant + localState data =====
+  // ===== IPC: receive data =====
+  window.desktopAPI.onOverlayControlAction((payload) => {
+    // If we receive participant data updates
+    if (payload.participants) {
+      lastParticipants = payload.participants;
+      if (payload.channelName) chName.textContent = payload.channelName;
+      if (payload.localState) {
+        localState = payload.localState;
+        updateControlsUI(localState);
+      }
+      render(lastParticipants, localState);
+    }
+  });
+
+  // Keep compatibility with the older custom listener name
+  const { ipcRenderer } = require('electron');
   ipcRenderer.on('overlay-participants-update', (event, data) => {
     lastParticipants = data.participants || [];
     if (data.channelName) chName.textContent = data.channelName;
@@ -432,7 +445,6 @@
     render(lastParticipants, localState);
   });
 
-  // ===== IPC: receive video frame thumbnails =====
   ipcRenderer.on('overlay-video-frame', (event, { identity, frame }) => {
     const card = grid.querySelector(`[data-identity="${identity}"]`);
     if (card) {
@@ -440,7 +452,6 @@
       if (existing) {
         existing.src = frame;
       } else {
-        // Replace media area
         const wrap = card.querySelector('div');
         if (wrap) {
           card.innerHTML = `<img class="pcam" src="${frame}" alt="" />${card.querySelector('.pname-bar')?.outerHTML || ''}`;
@@ -449,7 +460,6 @@
     }
   });
 
-  // ===== Initial render =====
   updateControlsUI(localState);
   render([], localState);
 </script>

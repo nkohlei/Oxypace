@@ -157,6 +157,7 @@ function createWindow() {
 // Uses a standalone overlay.html — NO React, NO auth, NO router dependency.
 let overlayInterval = null;
 
+
 ipcMain.on('toggle-overlay', (event, visible) => {
   if (visible) {
     if (!overlayWindow) {
@@ -165,21 +166,24 @@ ipcMain.on('toggle-overlay', (event, visible) => {
       const { width, height } = primaryDisplay.workAreaSize;
 
       overlayWindow = new BrowserWindow({
-        width: 280,
-        height: Math.min(580, height - 80),
-        x: width - 300,
+        width: 320,
+        height: 480,
+        minWidth: 200,
+        minHeight: 200,
+        x: width - 340,
         y: 60,
         frame: false,
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: true, // Allow resize if needed
-        movable: true,
-        hasShadow: false,
+        resizable: true, // Core feature: user can drag edges to resize!
+        movable: true,   // Core feature: user can drag to move!
+        hasShadow: true,
         focusable: true,
         webPreferences: {
-          nodeIntegration: true,
-          contextIsolation: false,
+          nodeIntegration: false,
+          contextIsolation: true,
+          preload: path.join(__dirname, 'preload.js'), // Use preload script
           backgroundThrottling: false,
         }
       });
@@ -190,27 +194,7 @@ ipcMain.on('toggle-overlay', (event, visible) => {
 
       overlayWindow.on('closed', () => {
         overlayWindow = null;
-        clearInterval(overlayInterval);
       });
-
-      // Poll cursor position to dynamically toggle mouse ignore state
-      // This solves the issue where mouseenter/mouseleave do not fire when click-through is enabled
-      overlayInterval = setInterval(() => {
-        if (!overlayWindow || overlayWindow.isDestroyed()) return;
-        const cursor = screen.getCursorScreenPoint();
-        const bounds = overlayWindow.getBounds();
-        
-        const isHovering = (
-          cursor.x >= bounds.x &&
-          cursor.x <= bounds.x + bounds.width &&
-          cursor.y >= bounds.y &&
-          cursor.y <= bounds.y + bounds.height
-        );
-        
-        // If mouse is inside bounds, enable mouse events so user can click, resize or drag
-        // If outside, ignore mouse events so user can play their game underneath
-        overlayWindow.setIgnoreMouseEvents(!isHovering, { forward: true });
-      }, 100);
 
       overlayWindow.webContents.on('did-finish-load', () => {
         if (overlayWindow && !overlayWindow.isDestroyed() && lastParticipantData) {
@@ -224,10 +208,10 @@ ipcMain.on('toggle-overlay', (event, visible) => {
     if (overlayWindow) {
       overlayWindow.close();
       overlayWindow = null;
-      clearInterval(overlayInterval);
     }
   }
 });
+
 
 // Relay control triggers from overlay.html back to mainWindow
 ipcMain.on('overlay-control', (event, action) => {
