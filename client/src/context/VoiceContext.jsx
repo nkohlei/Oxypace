@@ -1363,14 +1363,48 @@ export const VoiceProvider = ({ children }) => {
                     isMuted: p.isMuted,
                     isCameraOn: p.isCameraOn
                 }));
-                // Send as object with channelName so overlay.html can display it
+                // Send as object with channelName and localState so overlay.html can display it
                 window.desktopAPI.updateOverlayParticipants({
                     participants: simpleParticipants,
-                    channelName: activeRoom?.channelName || 'Ses Odası'
+                    channelName: activeRoom?.channelName || 'Ses Odası',
+                    localState: localState
                 });
             }
         }
-    }, [participants, activeRoom]);
+    }, [participants, activeRoom, localState]);
+
+    // Handle overlay IPC control actions (mic/cam/screen/leave toggles)
+    useEffect(() => {
+        if (window.desktopAPI) {
+            const handleAction = (event, action) => {
+                switch(action) {
+                    case 'toggle-mic':
+                        toggleMicrophone();
+                        break;
+                    case 'toggle-camera':
+                        toggleCamera();
+                        break;
+                    case 'toggle-screen':
+                        toggleScreenShare();
+                        break;
+                    case 'leave':
+                        disconnectFromChannel();
+                        break;
+                    default:
+                        break;
+                }
+            };
+            // Set up a listener for events relayed from main process
+            const { ipcRenderer } = window.require ? window.require('electron') : {};
+            if (ipcRenderer) {
+                ipcRenderer.on('overlay-control-action', handleAction);
+                return () => {
+                    ipcRenderer.off('overlay-control-action', handleAction);
+                };
+            }
+        }
+    }, [activeRoom, toggleMicrophone, toggleCamera, toggleScreenShare, disconnectFromChannel]);
+
 
     const value = {
         room: { localParticipant: { identity: user?._id?.toString() } },

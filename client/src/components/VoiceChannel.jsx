@@ -10,7 +10,7 @@ import WatchPartyPlayer from './WatchPartyPlayer';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
 
-const VideoRenderer = ({ track, isLocal, className }) => {
+const VideoRenderer = ({ track, isLocal, className, identity }) => {
     const videoEl = React.useRef(null);
 
     React.useEffect(() => {
@@ -25,6 +25,57 @@ const VideoRenderer = ({ track, isLocal, className }) => {
         };
     }, [track]);
 
+    // Live frame capture for the transparent overlay window (Electron only)
+    React.useEffect(() => {
+        if (!window.desktopAPI || !track || isLocal) return;
+
+        let active = true;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const captureFrame = () => {
+            if (!active || !videoEl.current) return;
+            const video = videoEl.current;
+
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                // Resize to low-res thumbnail to optimize IPC throughput
+                canvas.width = 160;
+                canvas.height = 90;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                try {
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                    // Send captured frame to Electron main process, which relays it to overlay.html
+                    const { ipcRenderer } = window.require ? window.require('electron') : {};
+                    if (ipcRenderer) {
+                        ipcRenderer.send('overlay-video-frame', { identity, frame: dataUrl });
+                    }
+                } catch (e) {
+                    console.error("Frame capture error:", e);
+                }
+            }
+            // Capture at ~15fps (approx 66ms interval) to keep performance light but responsive
+            setTimeout(captureFrame, 66);
+        };
+
+        // Start capturing once video plays
+        if (videoEl.current) {
+            videoEl.current.addEventListener('play', captureFrame);
+        }
+
+        return () => {
+            active = false;
+            if (videoEl.current) {
+                videoEl.current.removeEventListener('play', captureFrame);
+            }
+            // Clear frame on disconnect/unmount
+            const { ipcRenderer } = window.require ? window.require('electron') : {};
+            if (ipcRenderer) {
+                ipcRenderer.send('overlay-video-frame', { identity, frame: null });
+            }
+        };
+    }, [track, identity, isLocal]);
+
     return (
         <video 
             ref={videoEl} 
@@ -35,6 +86,7 @@ const VideoRenderer = ({ track, isLocal, className }) => {
         />
     );
 };
+
 
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
@@ -271,7 +323,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             className={`vc-card-video ${isShowingScreen ? 'vc-screenshare-video-contained' : ''}`} 
                             track={trackToRender} 
                             isLocal={p.isLocal} 
+                            identity={p.identity}
                         />
+
                     ) : (
                         isShowingScreen ? (
                             <div className="vc-screenshare-placeholder-bg-mobile">

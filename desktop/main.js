@@ -155,6 +155,8 @@ function createWindow() {
 
 // IPC listener for always-on-top transparent game overlay
 // Uses a standalone overlay.html — NO React, NO auth, NO router dependency.
+let overlayInterval = null;
+
 ipcMain.on('toggle-overlay', (event, visible) => {
   if (visible) {
     if (!overlayWindow) {
@@ -163,18 +165,18 @@ ipcMain.on('toggle-overlay', (event, visible) => {
       const { width, height } = primaryDisplay.workAreaSize;
 
       overlayWindow = new BrowserWindow({
-        width: 230,
-        height: Math.min(520, height - 80),
-        x: width - 244,
-        y: 50,
+        width: 280,
+        height: Math.min(580, height - 80),
+        x: width - 300,
+        y: 60,
         frame: false,
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
+        resizable: true, // Allow resize if needed
         movable: true,
         hasShadow: false,
-        focusable: true,           // Must be true so buttons are clickable
+        focusable: true,
         webPreferences: {
           nodeIntegration: true,
           contextIsolation: false,
@@ -182,21 +184,34 @@ ipcMain.on('toggle-overlay', (event, visible) => {
         }
       });
 
-      // Load the standalone overlay HTML — completely independent of React app
       overlayWindow.loadFile(path.join(__dirname, 'overlay.html'));
-
-      // Start as click-through; the overlay itself toggles this via IPC on hover
-      overlayWindow.setIgnoreMouseEvents(true, { forward: true });
-
-      // Show on all workspaces including full-screen games
       overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
       overlayWindow.setAlwaysOnTop(true, 'screen-saver', 1);
 
       overlayWindow.on('closed', () => {
         overlayWindow = null;
+        clearInterval(overlayInterval);
       });
 
-      // Once loaded, send any queued participant data
+      // Poll cursor position to dynamically toggle mouse ignore state
+      // This solves the issue where mouseenter/mouseleave do not fire when click-through is enabled
+      overlayInterval = setInterval(() => {
+        if (!overlayWindow || overlayWindow.isDestroyed()) return;
+        const cursor = screen.getCursorScreenPoint();
+        const bounds = overlayWindow.getBounds();
+        
+        const isHovering = (
+          cursor.x >= bounds.x &&
+          cursor.x <= bounds.x + bounds.width &&
+          cursor.y >= bounds.y &&
+          cursor.y <= bounds.y + bounds.height
+        );
+        
+        // If mouse is inside bounds, enable mouse events so user can click, resize or drag
+        // If outside, ignore mouse events so user can play their game underneath
+        overlayWindow.setIgnoreMouseEvents(!isHovering, { forward: true });
+      }, 100);
+
       overlayWindow.webContents.on('did-finish-load', () => {
         if (overlayWindow && !overlayWindow.isDestroyed() && lastParticipantData) {
           overlayWindow.webContents.send('overlay-participants-update', lastParticipantData);
@@ -209,19 +224,15 @@ ipcMain.on('toggle-overlay', (event, visible) => {
     if (overlayWindow) {
       overlayWindow.close();
       overlayWindow = null;
+      clearInterval(overlayInterval);
     }
   }
 });
 
-// Renderer tells us when mouse is over the overlay UI (enable interaction)
-// or outside it (pass clicks through to game/app)
-ipcMain.on('overlay-set-interactive', (event, interactive) => {
-  if (overlayWindow && !overlayWindow.isDestroyed()) {
-    if (interactive) {
-      overlayWindow.setIgnoreMouseEvents(false);
-    } else {
-      overlayWindow.setIgnoreMouseEvents(true, { forward: true });
-    }
+// Relay control triggers from overlay.html back to mainWindow
+ipcMain.on('overlay-control', (event, action) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('overlay-control-action', action);
   }
 });
 
@@ -230,6 +241,13 @@ ipcMain.on('overlay-focus-main', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
+  }
+});
+
+// Relay video frames (thumbnails) to overlayWindow
+ipcMain.on('overlay-video-frame', (event, payload) => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.webContents.send('overlay-video-frame', payload);
   }
 });
 
