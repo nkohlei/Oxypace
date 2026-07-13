@@ -1348,10 +1348,10 @@ export const VoiceProvider = ({ children }) => {
         updateParticipantList();
     }, [localState, updateParticipantList]);
 
-    // Sync participants and overlay state to Electron window overlay
+    // Sync participants and overlay state to Electron standalone overlay window
     useEffect(() => {
         if (window.desktopAPI) {
-            const isConnected = activeRoom && connectionState === 'connected';
+            const isConnected = !!activeRoom;
             window.desktopAPI.toggleOverlay(isConnected);
 
             if (isConnected) {
@@ -1363,10 +1363,14 @@ export const VoiceProvider = ({ children }) => {
                     isMuted: p.isMuted,
                     isCameraOn: p.isCameraOn
                 }));
-                window.desktopAPI.updateOverlayParticipants(simpleParticipants);
+                // Send as object with channelName so overlay.html can display it
+                window.desktopAPI.updateOverlayParticipants({
+                    participants: simpleParticipants,
+                    channelName: activeRoom?.channelName || 'Ses Odası'
+                });
             }
         }
-    }, [participants, activeRoom, connectionState]);
+    }, [participants, activeRoom]);
 
     const value = {
         room: { localParticipant: { identity: user?._id?.toString() } },

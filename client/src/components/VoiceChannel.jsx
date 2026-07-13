@@ -715,12 +715,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
 
 
-                    <div className="vc-ctrl-section glass-controls leave-section" style={{ display: 'flex', gap: '8px' }}>
-                        {window.desktopAPI && (
-                            <button className="vc-ctrl-btn active" onClick={() => window.desktopAPI.enterMiniPlayer()} title="Mini Oynatıcı (PiP) Moduna Geç">
-                                <Minimize2 size={22} />
-                            </button>
-                        )}
+                    <div className="vc-ctrl-section glass-controls leave-section">
                         <button className="vc-ctrl-btn danger leave" onClick={handleLeave} title="Ayrıl">
                             <PhoneOff size={22} />
                         </button>

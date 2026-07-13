@@ -154,50 +154,53 @@ function createWindow() {
 }
 
 // IPC listener for always-on-top transparent game overlay
+// Uses a standalone overlay.html — NO React, NO auth, NO router dependency.
 ipcMain.on('toggle-overlay', (event, visible) => {
   if (visible) {
     if (!overlayWindow) {
       const { screen } = require('electron');
       const primaryDisplay = screen.getPrimaryDisplay();
-      const { width } = primaryDisplay.workAreaSize;
+      const { width, height } = primaryDisplay.workAreaSize;
 
       overlayWindow = new BrowserWindow({
-        width: 250,
-        height: 450,
-        x: width - 270, // Align to top right
-        y: 50,
+        width: 220,
+        height: Math.min(500, height - 100),
+        x: width - 232,
+        y: 60,
         frame: false,
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
+        resizable: true,
         movable: true,
         hasShadow: false,
+        focusable: false,
         webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-          preload: path.join(__dirname, 'preload.js'),
+          nodeIntegration: true,       // Needed for direct ipcRenderer in overlay.html
+          contextIsolation: false,     // Must be false when nodeIntegration is true
+          backgroundThrottling: false, // Keep rendering even when not focused
         }
       });
 
-      overlayWindow.loadURL(
-        process.env.NODE_ENV === 'development'
-          ? 'http://localhost:5173/#/desktop-overlay'
-          : 'app://r/index.html#/desktop-overlay'
-      );
+      // Load the standalone overlay HTML — completely independent of React app
+      overlayWindow.loadFile(path.join(__dirname, 'overlay.html'));
 
-      // Make it click-through so user can click on the game underneath
+      // Click-through: mouse events pass to the game/app below
       overlayWindow.setIgnoreMouseEvents(true, { forward: true });
-      overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-      if (process.platform === 'darwin') {
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-      } else {
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-      }
+      // Show on all workspaces including full-screen games
+      overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      overlayWindow.setAlwaysOnTop(true, 'screen-saver', 1);
 
       overlayWindow.on('closed', () => {
         overlayWindow = null;
+      });
+
+      // Once loaded, send any queued participant data
+      overlayWindow.webContents.on('did-finish-load', () => {
+        if (overlayWindow && !overlayWindow.isDestroyed() && lastParticipantData) {
+          overlayWindow.webContents.send('overlay-participants-update', lastParticipantData);
+        }
       });
     } else {
       overlayWindow.showInactive();
@@ -210,9 +213,13 @@ ipcMain.on('toggle-overlay', (event, visible) => {
   }
 });
 
-ipcMain.on('update-overlay-participants', (event, participants) => {
+// Cache latest participant data so we can send it after the overlay window loads
+let lastParticipantData = null;
+
+ipcMain.on('update-overlay-participants', (event, data) => {
+  lastParticipantData = data;
   if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.webContents.send('overlay-participants-update', participants);
+    overlayWindow.webContents.send('overlay-participants-update', data);
   }
 });
 
@@ -223,30 +230,7 @@ ipcMain.on('open-external', (event, targetUrl) => {
   }
 });
 
-// IPC listeners for mini-player mode (always-on-top floating video widget)
-ipcMain.on('enter-mini-player', (event) => {
-  if (mainWindow) {
-    originalBounds = mainWindow.getBounds();
-    mainWindow.setSize(380, 290);
-    mainWindow.setAlwaysOnTop(true, 'screen-saver');
-    mainWindow.setMinimumSize(300, 200);
-    mainWindow.webContents.send('mini-player-changed', true);
-  }
-});
-
-ipcMain.on('exit-mini-player', (event) => {
-  if (mainWindow) {
-    mainWindow.setAlwaysOnTop(false);
-    mainWindow.setMinimumSize(900, 650); // Restore min bounds
-    if (originalBounds) {
-      mainWindow.setBounds(originalBounds);
-    } else {
-      mainWindow.setSize(1280, 720);
-      mainWindow.center();
-    }
-    mainWindow.webContents.send('mini-player-changed', false);
-  }
-});
+// (mini-player IPC removed — overlay system handles this now)
 
 app.on('ready', () => {
   // Register custom protocol handler for 'app://' scheme
