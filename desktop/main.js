@@ -86,8 +86,8 @@ function createWindow() {
       // Force a modern standard Chrome user agent for all external web requests
       headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-      // 1. ALWAYS force Referer and Origin spoofing for YouTube/GoogleVideo to bypass embedding restrictions (Error 150 / 152-4)
-      if (urlLower.includes('youtube.com') || urlLower.includes('youtube-nocookie.com') || urlLower.includes('googlevideo.com')) {
+      // 1. ALWAYS force Referer and Origin spoofing for YouTube to bypass embedding restrictions (Error 150 / 152-4)
+      if (urlLower.includes('youtube.com') || urlLower.includes('youtube-nocookie.com')) {
         headers['Referer'] = 'https://oxypace.com.tr/';
         headers['Origin'] = 'https://oxypace.com.tr';
       } 
