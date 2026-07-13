@@ -5,6 +5,7 @@ const fs = require('fs');
 
 let mainWindow;
 let overlayWindow = null;
+let originalBounds = null;
 
 // Register 'app' scheme as privileged so it behaves like standard https (needed for cookies, storage, fetch)
 protocol.registerSchemesAsPrivileged([
@@ -219,6 +220,31 @@ ipcMain.on('update-overlay-participants', (event, participants) => {
 ipcMain.on('open-external', (event, targetUrl) => {
   if (targetUrl.startsWith('http:') || targetUrl.startsWith('https:')) {
     shell.openExternal(targetUrl);
+  }
+});
+
+// IPC listeners for mini-player mode (always-on-top floating video widget)
+ipcMain.on('enter-mini-player', (event) => {
+  if (mainWindow) {
+    originalBounds = mainWindow.getBounds();
+    mainWindow.setSize(380, 290);
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    mainWindow.setMinimumSize(300, 200);
+    mainWindow.webContents.send('mini-player-changed', true);
+  }
+});
+
+ipcMain.on('exit-mini-player', (event) => {
+  if (mainWindow) {
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setMinimumSize(900, 650); // Restore min bounds
+    if (originalBounds) {
+      mainWindow.setBounds(originalBounds);
+    } else {
+      mainWindow.setSize(1280, 720);
+      mainWindow.center();
+    }
+    mainWindow.webContents.send('mini-player-changed', false);
   }
 });
 

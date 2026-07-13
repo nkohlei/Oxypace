@@ -5,7 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2 } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
@@ -715,7 +715,12 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     </div>
 
 
-                    <div className="vc-ctrl-section glass-controls leave-section">
+                    <div className="vc-ctrl-section glass-controls leave-section" style={{ display: 'flex', gap: '8px' }}>
+                        {window.desktopAPI && (
+                            <button className="vc-ctrl-btn active" onClick={() => window.desktopAPI.enterMiniPlayer()} title="Mini Oynatıcı (PiP) Moduna Geç">
+                                <Minimize2 size={22} />
+                            </button>
+                        )}
                         <button className="vc-ctrl-btn danger leave" onClick={handleLeave} title="Ayrıl">
                             <PhoneOff size={22} />
                         </button>
