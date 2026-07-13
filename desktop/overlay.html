@@ -17,17 +17,16 @@
     #mini-icon {
       display: none;
       position: fixed;
-      top: 5px; right: 5px;
+      top: 5px; left: 5px; /* Position strictly within the 60x60 boundary */
       width: 50px; height: 50px;
       border-radius: 50%;
       background: linear-gradient(135deg, #5865f2, #7289da);
       border: 2px solid rgba(255,255,255,0.25);
       box-shadow: 0 4px 24px rgba(88,101,242,0.7);
-      cursor: pointer;
+      cursor: move; /* Indicate it is draggable */
       align-items: center; justify-content: center;
       transition: transform 0.18s, box-shadow 0.18s;
       z-index: 9999;
-      -webkit-app-region: drag;
     }
     #mini-icon:hover { transform: scale(1.15); box-shadow: 0 6px 32px rgba(88,101,242,0.9); }
     #mini-icon .mi-badge {
@@ -312,7 +311,50 @@
     }
   }
   btnCol.addEventListener('click', () => setCollapsed(true));
-  miniIcon.addEventListener('click', () => setCollapsed(false));
+
+  // Safe JS dragging for the mini circular icon (since webkit-app-region: drag blocks click events)
+  let isDragging = false;
+  let dragStartCoords = { x: 0, y: 0 };
+  let hasMoved = false;
+
+  miniIcon.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    dragStartCoords = { x: e.screenX, y: e.screenY };
+    hasMoved = false;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const deltaX = e.screenX - dragStartCoords.x;
+    const deltaY = e.screenY - dragStartCoords.y;
+
+    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+      hasMoved = true;
+    }
+
+    if (hasMoved && window.desktopAPI.moveOverlayWindow) {
+      // Calculate new window position using screen boundary safe IPC
+      // We query the current window bounds
+      const bounds = window.desktopAPI.updateOverlayParticipants ? { x: window.screenX, y: window.screenY } : { x: 0, y: 0 };
+      window.desktopAPI.moveOverlayWindow({
+        x: window.screenX + deltaX,
+        y: window.screenY + deltaY
+      });
+      dragStartCoords = { x: e.screenX, y: e.screenY };
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      // If we didn't drag it across the screen, treat it as a click and restore the panel!
+      if (!hasMoved) {
+        setCollapsed(false);
+      }
+    }
+  });
+
 
   // ===== IPC CONTROLS =====
   btnOpen.addEventListener('click', () => {

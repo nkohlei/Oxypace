@@ -238,12 +238,12 @@ ipcMain.on('overlay-resize', (event, collapsed) => {
     const { screen } = require('electron');
     const bounds = overlayWindow.getBounds();
     if (collapsed) {
-      // Shrink window to only fit the circular button at the top-right
-      overlayWindow.setSize(65, 65);
-      overlayWindow.setPosition(bounds.x + bounds.width - 65, bounds.y);
+      // Shrink window strictly to 60x60 circular button area
+      overlayWindow.setSize(60, 60);
+      overlayWindow.setPosition(bounds.x + bounds.width - 60, bounds.y);
     } else {
-      // Restore to full panel size (580px height to align with creation size)
-      overlayWindow.setSize(320, 580);
+      // Restore to full panel size (320x450 as base)
+      overlayWindow.setSize(320, 450);
       overlayWindow.setPosition(bounds.x + bounds.width - 320, bounds.y);
     }
   }
@@ -254,6 +254,23 @@ ipcMain.on('overlay-resize-custom', (event, height) => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     const bounds = overlayWindow.getBounds();
     overlayWindow.setSize(320, height);
+  }
+});
+
+// Move window with screen boundary safety (prevents dragging off-screen)
+ipcMain.on('overlay-move-window', (event, { x, y }) => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    const { screen } = require('electron');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    const winBounds = overlayWindow.getBounds();
+
+    // Bound X position inside screen
+    let finalX = Math.max(10, Math.min(width - winBounds.width - 10, x));
+    // Bound Y position inside screen
+    let finalY = Math.max(10, Math.min(height - winBounds.height - 10, y));
+
+    overlayWindow.setPosition(finalX, finalY);
   }
 });
 
