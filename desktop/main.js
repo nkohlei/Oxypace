@@ -86,25 +86,29 @@ function createWindow() {
       // Force a modern standard Chrome user agent for all external web requests
       headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-      // Rewrite Referer and Origin if they point to the custom Electron app scheme
-      const referer = headers['Referer'] || headers['referer'] || '';
-      if (referer.startsWith('app://') || referer.startsWith('file://') || referer === '') {
-        if (urlLower.includes('youtube.com') || urlLower.includes('youtube-nocookie.com') || urlLower.includes('googlevideo.com')) {
-          headers['Referer'] = 'https://www.youtube.com/';
-          headers['Origin'] = 'https://www.youtube.com';
-        } else if (urlLower.includes('ok.ru')) {
-          headers['Referer'] = 'https://ok.ru/';
-          headers['Origin'] = 'https://ok.ru';
-        } else if (urlLower.includes('vk.com') || urlLower.includes('vk.ru')) {
-          headers['Referer'] = 'https://vk.com/';
-          headers['Origin'] = 'https://vk.com';
-        } else if (urlLower.includes('mail.ru')) {
-          headers['Referer'] = 'https://mail.ru/';
-          headers['Origin'] = 'https://mail.ru';
-        } else if (urlLower.includes('mega.nz')) {
-          headers['Referer'] = 'https://mega.nz/';
-          headers['Origin'] = 'https://mega.nz';
-        } else {
+      // 1. ALWAYS force Referer and Origin spoofing for YouTube/GoogleVideo to bypass embedding restrictions (Error 150 / 152-4)
+      if (urlLower.includes('youtube.com') || urlLower.includes('youtube-nocookie.com') || urlLower.includes('googlevideo.com')) {
+        headers['Referer'] = 'https://www.youtube.com/';
+        headers['Origin'] = 'https://www.youtube.com';
+      } 
+      // 2. ALWAYS force spoofing for OK.ru and VK.com embeds
+      else if (urlLower.includes('ok.ru')) {
+        headers['Referer'] = 'https://ok.ru/';
+        headers['Origin'] = 'https://ok.ru';
+      } else if (urlLower.includes('vk.com') || urlLower.includes('vk.ru')) {
+        headers['Referer'] = 'https://vk.com/';
+        headers['Origin'] = 'https://vk.com';
+      } else if (urlLower.includes('mail.ru')) {
+        headers['Referer'] = 'https://mail.ru/';
+        headers['Origin'] = 'https://mail.ru';
+      } else if (urlLower.includes('mega.nz')) {
+        headers['Referer'] = 'https://mega.nz/';
+        headers['Origin'] = 'https://mega.nz';
+      }
+      // 3. Otherwise, only rewrite to oxypace if it originally came from the app scheme
+      else {
+        const referer = headers['Referer'] || headers['referer'] || '';
+        if (referer.startsWith('app://') || referer.startsWith('file://')) {
           headers['Referer'] = 'https://oxypace.com.tr/';
           headers['Origin'] = 'https://oxypace.com.tr';
         }
