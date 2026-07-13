@@ -38,7 +38,7 @@ const GlobalVideoPIP = () => {
     const controlsTimeout = useRef(null);
     const pipWindowRef = useRef(null);
 
-    const isConnected = activeRoom && connectionState === 'connected';
+    const isConnected = !!activeRoom;
 
     useEffect(() => {
         if (window.desktopAPI) {

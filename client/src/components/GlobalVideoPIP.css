@@ -351,8 +351,9 @@
 }
 
 /* Desktop Document PiP window layout resets */
+.global-video-pip-window.document-pip:not(.minimized),
 .global-video-pip-window.document-pip {
-    position: relative !important;
+    position: fixed !important;
     left: 0 !important;
     top: 0 !important;
     width: 100vw !important;
