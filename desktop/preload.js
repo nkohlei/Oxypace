@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     sendOverlayControl: (action) => ipcRenderer.send('overlay-control', action),
     sendVideoFrame: (payload) => ipcRenderer.send('overlay-video-frame', payload),
     resizeOverlay: (collapsed) => ipcRenderer.send('overlay-resize', collapsed),
+    resizeOverlayCustom: (height) => ipcRenderer.send('overlay-resize-custom', height),
 
     
     // Güvenli Dinleyiciler (React ve Overlay için ortak)

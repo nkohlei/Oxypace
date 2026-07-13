@@ -240,13 +240,20 @@ ipcMain.on('overlay-resize', (event, collapsed) => {
     if (collapsed) {
       // Shrink window to only fit the circular button at the top-right
       overlayWindow.setSize(65, 65);
-      // Keep position aligned to the right side
       overlayWindow.setPosition(bounds.x + bounds.width - 65, bounds.y);
     } else {
       // Restore to full panel size (580px height to align with creation size)
       overlayWindow.setSize(320, 580);
       overlayWindow.setPosition(bounds.x + bounds.width - 320, bounds.y);
     }
+  }
+});
+
+// Dynamically resize height based on content to remove empty spacing
+ipcMain.on('overlay-resize-custom', (event, height) => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    const bounds = overlayWindow.getBounds();
+    overlayWindow.setSize(320, height);
   }
 });
 
