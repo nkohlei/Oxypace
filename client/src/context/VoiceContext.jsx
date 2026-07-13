@@ -1348,6 +1348,26 @@ export const VoiceProvider = ({ children }) => {
         updateParticipantList();
     }, [localState, updateParticipantList]);
 
+    // Sync participants and overlay state to Electron window overlay
+    useEffect(() => {
+        if (window.desktopAPI) {
+            const isConnected = activeRoom && connectionState === 'connected';
+            window.desktopAPI.toggleOverlay(isConnected);
+
+            if (isConnected) {
+                const simpleParticipants = participants.map(p => ({
+                    identity: p.identity,
+                    name: p.name,
+                    avatar: p.avatar,
+                    isSpeaking: p.isSpeaking,
+                    isMuted: p.isMuted,
+                    isCameraOn: p.isCameraOn
+                }));
+                window.desktopAPI.updateOverlayParticipants(simpleParticipants);
+            }
+        }
+    }, [participants, activeRoom, connectionState]);
+
     const value = {
         room: { localParticipant: { identity: user?._id?.toString() } },
         activeRoom,

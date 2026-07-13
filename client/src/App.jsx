@@ -64,6 +64,7 @@ const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
 const EarthSimulation = lazyWithRetry(() => import('./pages/MapDirectory/EarthSimulation'));
 const Feedback = lazyWithRetry(() => import('./pages/Feedback'));
 const Home = lazyWithRetry(() => import('./pages/Home'));
+const DesktopOverlay = lazyWithRetry(() => import('./pages/DesktopOverlay'));
 
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -579,6 +580,8 @@ const AppLayout = () => {
                                         </PrivateRoute>
                                     }
                                 />
+
+                                <Route path="/desktop-overlay" element={<DesktopOverlay />} />
 
                                 <Route path="*" element={<Navigate to="/" replace />} />
                             </Routes>

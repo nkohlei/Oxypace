@@ -1,0 +1,89 @@
+/* Discord-like Transparent Game Overlay Styles */
+
+.desktop-overlay-container {
+    width: 100vw;
+    height: 100vh;
+    background: transparent !important;
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    pointer-events: none; /* Let clicks pass through the general container */
+}
+
+.desktop-overlay-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.desktop-overlay-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(10, 15, 26, 0.45); /* Subtle dark container to make names readable */
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    width: fit-content;
+    max-width: 220px;
+    transition: all 0.2s ease;
+}
+
+/* Speaker active styling */
+.desktop-overlay-user.speaking {
+    background: rgba(35, 165, 90, 0.15);
+    border-color: rgba(35, 165, 90, 0.35);
+}
+
+.overlay-avatar-wrapper {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+}
+
+.overlay-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    transition: border-color 0.2s ease;
+}
+
+.overlay-avatar.speaking-glow {
+    border-color: #23a55a !important; /* Discord green speaking border */
+    box-shadow: 0 0 8px rgba(35, 165, 90, 0.8);
+}
+
+.overlay-mute-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: #f23f43; /* Discord mute red */
+    color: white;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #0a0f1a;
+}
+
+.overlay-username {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 2px 8px rgba(0, 0, 0, 0.5); /* Heavy drop shadows to remain visible over bright/moving games */
+}

@@ -4,6 +4,7 @@ const url = require('url');
 const fs = require('fs');
 
 let mainWindow;
+let overlayWindow = null;
 
 // Register 'app' scheme as privileged so it behaves like standard https (needed for cookies, storage, fetch)
 protocol.registerSchemesAsPrivileged([
@@ -150,6 +151,69 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+// IPC listener for always-on-top transparent game overlay
+ipcMain.on('toggle-overlay', (event, visible) => {
+  if (visible) {
+    if (!overlayWindow) {
+      const { screen } = require('electron');
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width } = primaryDisplay.workAreaSize;
+
+      overlayWindow = new BrowserWindow({
+        width: 250,
+        height: 450,
+        x: width - 270, // Align to top right
+        y: 50,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        resizable: false,
+        movable: true,
+        hasShadow: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          preload: path.join(__dirname, 'preload.js'),
+        }
+      });
+
+      overlayWindow.loadURL(
+        process.env.NODE_ENV === 'development'
+          ? 'http://localhost:5173/#/desktop-overlay'
+          : 'app://r/index.html#/desktop-overlay'
+      );
+
+      // Make it click-through so user can click on the game underneath
+      overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+      overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+      if (process.platform === 'darwin') {
+        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
+      } else {
+        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
+      }
+
+      overlayWindow.on('closed', () => {
+        overlayWindow = null;
+      });
+    } else {
+      overlayWindow.showInactive();
+    }
+  } else {
+    if (overlayWindow) {
+      overlayWindow.close();
+      overlayWindow = null;
+    }
+  }
+});
+
+ipcMain.on('update-overlay-participants', (event, participants) => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.webContents.send('overlay-participants-update', participants);
+  }
+});
 
 // IPC listener for opening links in external browser safely
 ipcMain.on('open-external', (event, targetUrl) => {
