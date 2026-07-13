@@ -179,7 +179,7 @@ ipcMain.on('toggle-overlay', (event, visible) => {
 
       overlayWindow = new BrowserWindow({
         width: 320,
-        height: 480,
+        height: 580, // Increased default height from 480 to 580 to fit vertical view
         minWidth: 200,
         minHeight: 200,
         x: width - 340,
@@ -243,8 +243,8 @@ ipcMain.on('overlay-resize', (event, collapsed) => {
       // Keep position aligned to the right side
       overlayWindow.setPosition(bounds.x + bounds.width - 65, bounds.y);
     } else {
-      // Restore to full panel size
-      overlayWindow.setSize(320, 520);
+      // Restore to full panel size (580px height to align with creation size)
+      overlayWindow.setSize(320, 580);
       overlayWindow.setPosition(bounds.x + bounds.width - 320, bounds.y);
     }
   }

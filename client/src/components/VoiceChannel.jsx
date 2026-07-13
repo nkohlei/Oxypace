@@ -27,7 +27,7 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
 
     // Live frame capture for the transparent overlay window (Electron only)
     React.useEffect(() => {
-        if (!window.desktopAPI || !track || isLocal) return;
+        if (!window.desktopAPI || !track) return; // Allow both local and remote feeds
 
         let active = true;
         const canvas = document.createElement('canvas');
@@ -44,28 +44,24 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
                 
                 try {
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-                    // Safe execution using exposed preload endpoint
                     window.desktopAPI.sendVideoFrame({ identity, frame: dataUrl });
                 } catch (e) {
                     console.error("Frame capture error:", e);
                 }
             }
-            // Capture at ~12fps to optimize CPU utilization
+            // Capture frame at regular interval
             setTimeout(captureFrame, 80);
         };
 
-        if (videoEl.current) {
-            videoEl.current.addEventListener('play', captureFrame);
-        }
+        // Start capturing immediately (the video tag has autoPlay)
+        captureFrame();
 
         return () => {
             active = false;
-            if (videoEl.current) {
-                videoEl.current.removeEventListener('play', captureFrame);
-            }
             window.desktopAPI.sendVideoFrame({ identity, frame: null });
         };
-    }, [track, identity, isLocal]);
+    }, [track, identity]);
+
 
 
     return (
