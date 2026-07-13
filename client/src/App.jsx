@@ -267,16 +267,6 @@ const AppLayout = () => {
     const { user, token, updateUser } = useAuth();
     const location = useLocation();
     const { socket, connected } = useSocket();
-    const [isMiniPlayer, setIsMiniPlayer] = useState(false);
-
-    useEffect(() => {
-        if (window.desktopAPI) {
-            const removeListener = window.desktopAPI.onMiniPlayerChanged((active) => {
-                setIsMiniPlayer(active);
-            });
-            return removeListener;
-        }
-    }, []);
 
     const isLoggedIn = !!token;
 
@@ -407,14 +397,6 @@ const AppLayout = () => {
         if (location.pathname === '/search') return 'Keşfet';
         return 'Oxypace';
     };
-
-    if (isMiniPlayer) {
-        return (
-            <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#0b0f19' }}>
-                <GlobalVideoPIP />
-            </div>
-        );
-    }
 
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>

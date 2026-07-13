@@ -29,7 +29,6 @@ const GlobalVideoPIP = () => {
     const [isInNativePiP, setIsInNativePiP] = useState(false);
     const [pipContainer, setPipContainer] = useState(null);
     const [isDocumentPiPActive, setIsDocumentPiPActive] = useState(false);
-    const [isMiniPlayer, setIsMiniPlayer] = useState(false);
     
     const isDragging = useRef(false);
     const dragStart = useRef({ x: 0, y: 0 });
@@ -39,26 +38,16 @@ const GlobalVideoPIP = () => {
     const pipWindowRef = useRef(null);
 
     const isConnected = !!activeRoom;
-
-    useEffect(() => {
-        if (window.desktopAPI) {
-            const removeListener = window.desktopAPI.onMiniPlayerChanged((active) => {
-                setIsMiniPlayer(active);
-            });
-            return removeListener;
-        }
-    }, []);
     
     // Check if user is currently inside the active channel view
     const queryParams = new URLSearchParams(location.search);
     const isViewingActiveChannel = location.pathname.includes(`/portal/${activeRoom?.portalId}`) && 
         queryParams.get('channel') === activeRoom?.channelId;
 
-    // Show overlay on native Android PiP, Desktop Document PiP or desktop mini-player mode
+    // Show overlay on native Android PiP or Desktop Document PiP
     const shouldShow = isConnected && (
         (Capacitor.isNativePlatform() && isInNativePiP) || 
-        isDocumentPiPActive ||
-        isMiniPlayer
+        isDocumentPiPActive
     );
 
     const copyStylesToDocument = (targetDoc) => {
@@ -339,7 +328,7 @@ const GlobalVideoPIP = () => {
         );
     };
 
-    const windowStyle = (isInNativePiP || isDocumentPiPActive || isMiniPlayer) ? {
+    const windowStyle = (isInNativePiP || isDocumentPiPActive) ? {
         position: 'fixed',
         left: 0,
         top: 0,
@@ -363,10 +352,6 @@ const GlobalVideoPIP = () => {
             pipWindowRef.current.close();
             return;
         }
-        if (isMiniPlayer && window.desktopAPI) {
-            window.desktopAPI.exitMiniPlayer();
-            return;
-        }
         setIsMinimized(!isMinimized);
         setShowControls(false);
     };
@@ -377,14 +362,11 @@ const GlobalVideoPIP = () => {
         if (pipWindowRef.current) {
             pipWindowRef.current.close();
         }
-        if (isMiniPlayer && window.desktopAPI) {
-            window.desktopAPI.exitMiniPlayer();
-        }
     };
 
     const content = (
         <div 
-            className={`global-video-pip-window ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''} ${isMiniPlayer ? 'document-pip' : ''}`}
+            className={`global-video-pip-window ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
             style={windowStyle}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
@@ -414,7 +396,7 @@ const GlobalVideoPIP = () => {
                                 {activeRoom?.channelName || 'Sohbet'}
                             </span>
                             <div className="pip-header-actions">
-                                <button className="pip-header-btn" onClick={handleMinimizeAction} title={(isDocumentPiPActive || isMiniPlayer) ? "Geri Dön" : "Küçült"}>
+                                <button className="pip-header-btn" onClick={handleMinimizeAction} title={isDocumentPiPActive ? "Geri Dön" : "Küçült"}>
                                     <Minimize2 size={16} />
                                 </button>
                                 <button className="pip-header-btn danger" onClick={handleDisconnectAction} title="Ayrıl">
@@ -502,7 +484,7 @@ const GlobalVideoPIP = () => {
         return createPortal(content, pipContainer);
     }
 
-    if (isInNativePiP || isMiniPlayer) {
+    if (isInNativePiP) {
         return content;
     }
 
