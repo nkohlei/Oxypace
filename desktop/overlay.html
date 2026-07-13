@@ -319,8 +319,19 @@
   btnCam.addEventListener('click', () => sendOverlayControl('toggle-camera'));
   btnScr.addEventListener('click', () => sendOverlayControl('toggle-screen'));
   btnLeave.addEventListener('click', () => sendOverlayControl('leave'));
+  // ===== IPC: receive data =====
+  window.desktopAPI.onOverlayControlAction((payload) => {
+    if (payload && payload.participants) {
+      lastParticipants = payload.participants;
+      if (payload.channelName) chName.textContent = payload.channelName;
+      if (payload.localState) {
+        localState = payload.localState;
+        updateControlsUI(localState);
+      }
+      render(lastParticipants, localState);
+    }
+  });
 
-  // ===== UPDATE CONTROLS STATE =====
   function updateControlsUI(ls) {
     if (!ls.isMuted) {
       btnMic.className = 'cbtn active';
@@ -419,19 +430,7 @@
     });
   }
 
-  // ===== IPC: receive data =====
-  window.desktopAPI.onOverlayControlAction((payload) => {
-    // If we receive participant data updates
-    if (payload.participants) {
-      lastParticipants = payload.participants;
-      if (payload.channelName) chName.textContent = payload.channelName;
-      if (payload.localState) {
-        localState = payload.localState;
-        updateControlsUI(localState);
-      }
-      render(lastParticipants, localState);
-    }
-  });
+
 
   // ===== IPC: receive data via secure contextBridge listeners =====
 

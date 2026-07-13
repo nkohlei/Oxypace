@@ -1375,8 +1375,8 @@ export const VoiceProvider = ({ children }) => {
 
     // Handle overlay IPC control actions (mic/cam/screen/leave toggles)
     useEffect(() => {
-        if (window.desktopAPI) {
-            const handleAction = (event, action) => {
+        if (window.desktopAPI && window.desktopAPI.onOverlayControlAction) {
+            const removeListener = window.desktopAPI.onOverlayControlAction((action) => {
                 switch(action) {
                     case 'toggle-mic':
                         toggleMicrophone();
@@ -1393,17 +1393,11 @@ export const VoiceProvider = ({ children }) => {
                     default:
                         break;
                 }
-            };
-            // Set up a listener for events relayed from main process
-            const { ipcRenderer } = window.require ? window.require('electron') : {};
-            if (ipcRenderer) {
-                ipcRenderer.on('overlay-control-action', handleAction);
-                return () => {
-                    ipcRenderer.off('overlay-control-action', handleAction);
-                };
-            }
+            });
+            return removeListener;
         }
     }, [activeRoom, toggleMicrophone, toggleCamera, toggleScreenShare, disconnectFromChannel]);
+
 
 
     const value = {
