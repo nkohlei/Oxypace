@@ -433,9 +433,9 @@
     }
   });
 
-  // Keep compatibility with the older custom listener name
-  const { ipcRenderer } = require('electron');
-  ipcRenderer.on('overlay-participants-update', (event, data) => {
+  // ===== IPC: receive data via secure contextBridge listeners =====
+
+  window.desktopAPI.onOverlayParticipantsUpdate((data) => {
     lastParticipants = data.participants || [];
     if (data.channelName) chName.textContent = data.channelName;
     if (data.localState) {
@@ -445,7 +445,7 @@
     render(lastParticipants, localState);
   });
 
-  ipcRenderer.on('overlay-video-frame', (event, { identity, frame }) => {
+  window.desktopAPI.onOverlayVideoFrame(({ identity, frame }) => {
     const card = grid.querySelector(`[data-identity="${identity}"]`);
     if (card) {
       const existing = card.querySelector('.pcam');
@@ -463,5 +463,6 @@
   updateControlsUI(localState);
   render([], localState);
 </script>
+
 </body>
 </html>
