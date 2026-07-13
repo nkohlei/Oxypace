@@ -16,21 +16,21 @@
     /* ===== MINI (collapsed) ICON ===== */
     #mini-icon {
       display: none;
-      position: fixed;
-      top: 5px; left: 5px; /* Position strictly within the 60x60 boundary */
-      width: 50px; height: 50px;
+      position: absolute;
+      top: 0; left: 0;
+      width: 60px; height: 60px; /* Fill the entire 60x60 boundary perfectly */
       border-radius: 50%;
       background: linear-gradient(135deg, #5865f2, #7289da);
       border: 2px solid rgba(255,255,255,0.25);
       box-shadow: 0 4px 24px rgba(88,101,242,0.7);
-      cursor: move; /* Indicate it is draggable */
+      cursor: move;
       align-items: center; justify-content: center;
       transition: transform 0.18s, box-shadow 0.18s;
       z-index: 9999;
     }
-    #mini-icon:hover { transform: scale(1.15); box-shadow: 0 6px 32px rgba(88,101,242,0.9); }
+    #mini-icon:hover { transform: scale(1.05); }
     #mini-icon .mi-badge {
-      position: absolute; top: -5px; right: -5px;
+      position: absolute; top: 0; right: 0;
       background: #f23f43; color: #fff;
       font-size: 9px; font-weight: 800;
       min-width: 18px; height: 18px;
@@ -329,21 +329,21 @@
     const deltaX = e.screenX - dragStartCoords.x;
     const deltaY = e.screenY - dragStartCoords.y;
 
-    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
       hasMoved = true;
     }
 
-    if (hasMoved && window.desktopAPI.moveOverlayWindow) {
-      // Calculate new window position using screen boundary safe IPC
-      // We query the current window bounds
-      const bounds = window.desktopAPI.updateOverlayParticipants ? { x: window.screenX, y: window.screenY } : { x: 0, y: 0 };
+    if (hasMoved && window.desktopAPI.moveOverlayWindow && window.desktopAPI.getOverlayBounds) {
+      // Get the real native screen coordinates from Electron to prevent drifts/skips
+      const bounds = window.desktopAPI.getOverlayBounds();
       window.desktopAPI.moveOverlayWindow({
-        x: window.screenX + deltaX,
-        y: window.screenY + deltaY
+        x: bounds.x + deltaX,
+        y: bounds.y + deltaY
       });
       dragStartCoords = { x: e.screenX, y: e.screenY };
     }
   });
+
 
   window.addEventListener('mouseup', () => {
     if (isDragging) {

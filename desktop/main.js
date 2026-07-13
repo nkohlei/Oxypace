@@ -274,6 +274,15 @@ ipcMain.on('overlay-move-window', (event, { x, y }) => {
   }
 });
 
+// Sync listener returning accurate screen boundaries
+ipcMain.on('overlay-get-bounds', (event) => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    event.returnValue = overlayWindow.getBounds();
+  } else {
+    event.returnValue = { x: 0, y: 0, width: 0, height: 0 };
+  }
+});
+
 // Bring main Oxypace window to front
 ipcMain.on('overlay-focus-main', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {

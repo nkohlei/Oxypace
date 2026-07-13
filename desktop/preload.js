@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     resizeOverlay: (collapsed) => ipcRenderer.send('overlay-resize', collapsed),
     resizeOverlayCustom: (height) => ipcRenderer.send('overlay-resize-custom', height),
     moveOverlayWindow: (coords) => ipcRenderer.send('overlay-move-window', coords),
+    getOverlayBounds: () => ipcRenderer.sendSync('overlay-get-bounds'),
+
 
 
     
