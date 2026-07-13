@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useVoice } from '../context/VoiceContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -26,12 +27,15 @@ const GlobalVideoPIP = () => {
     const [position, setPosition] = useState({ x: 20, y: 80 }); // Floating position offsets from bottom-right
     const [showControls, setShowControls] = useState(false);
     const [isInNativePiP, setIsInNativePiP] = useState(false);
+    const [pipContainer, setPipContainer] = useState(null);
+    const [isDocumentPiPActive, setIsDocumentPiPActive] = useState(false);
     
     const isDragging = useRef(false);
     const dragStart = useRef({ x: 0, y: 0 });
     const startPosition = useRef({ x: 0, y: 0 });
     const startTime = useRef(0);
     const controlsTimeout = useRef(null);
+    const pipWindowRef = useRef(null);
 
     const isConnected = activeRoom && connectionState === 'connected';
     
@@ -40,9 +44,89 @@ const GlobalVideoPIP = () => {
     const isViewingActiveChannel = location.pathname.includes(`/portal/${activeRoom?.portalId}`) && 
         queryParams.get('channel') === activeRoom?.channelId;
 
-    // Show overlay ONLY on native Android when the system enters PiP mode
-    // Web platform gets NO floating window ever
-    const shouldShow = isConnected && Capacitor.isNativePlatform() && isInNativePiP;
+    // Show overlay on native Android PiP or on Desktop Document PiP
+    const shouldShow = isConnected && (
+        (Capacitor.isNativePlatform() && isInNativePiP) || 
+        isDocumentPiPActive
+    );
+
+    const copyStylesToDocument = (targetDoc) => {
+        [...document.styleSheets].forEach((styleSheet) => {
+            try {
+                if (styleSheet.cssRules) {
+                    const newStyle = targetDoc.createElement('style');
+                    const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
+                    newStyle.textContent = cssRules;
+                    targetDoc.head.appendChild(newStyle);
+                }
+            } catch (e) {
+                if (styleSheet.href) {
+                    const link = targetDoc.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = styleSheet.href;
+                    targetDoc.head.appendChild(link);
+                }
+            }
+        });
+    };
+
+    // Listen for window blur (goes to background) and focus (restores) on desktop/Electron
+    useEffect(() => {
+        if (!isConnected || Capacitor.isNativePlatform() || !('documentPictureInPicture' in window)) return;
+
+        const handleBlur = async () => {
+            if (pipWindowRef.current || isDocumentPiPActive) return;
+
+            try {
+                const pipWin = await window.documentPictureInPicture.requestWindow({
+                    width: 380,
+                    height: 280
+                });
+
+                pipWindowRef.current = pipWin;
+                copyStylesToDocument(pipWin.document);
+
+                // Watch for user closing the PiP window manually
+                pipWin.addEventListener('pagehide', () => {
+                    pipWindowRef.current = null;
+                    setPipContainer(null);
+                    setIsDocumentPiPActive(false);
+                });
+
+                const container = pipWin.document.createElement('div');
+                container.id = 'pip-portal-root';
+                container.style.width = '100%';
+                container.style.height = '100%';
+                pipWin.document.body.appendChild(container);
+                pipWin.document.body.style.margin = '0';
+                pipWin.document.body.style.overflow = 'hidden';
+                pipWin.document.body.style.backgroundColor = '#0b0f19';
+
+                setPipContainer(container);
+                setIsDocumentPiPActive(true);
+            } catch (err) {
+                console.error('[DocumentPiP] Failed to open window:', err);
+            }
+        };
+
+        const handleFocus = () => {
+            if (pipWindowRef.current) {
+                pipWindowRef.current.close();
+                pipWindowRef.current = null;
+            }
+        };
+
+        window.addEventListener('blur', handleBlur);
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            window.removeEventListener('blur', handleBlur);
+            window.removeEventListener('focus', handleFocus);
+            if (pipWindowRef.current) {
+                pipWindowRef.current.close();
+            }
+        };
+    }, [isConnected, isDocumentPiPActive]);
 
     // Listen to native Android PiP state changes from MainActivity
     useEffect(() => {
@@ -240,7 +324,7 @@ const GlobalVideoPIP = () => {
         );
     };
 
-    const windowStyle = isInNativePiP ? {
+    const windowStyle = (isInNativePiP || isDocumentPiPActive) ? {
         position: 'fixed',
         left: 0,
         top: 0,
@@ -248,18 +332,41 @@ const GlobalVideoPIP = () => {
         height: '100%',
         borderRadius: 0,
         border: 'none',
-        background: '#000',
+        background: '#0b0f19',
         zIndex: 99999
     } : { left: `${position.x}px`, top: `${position.y}px` };
 
     const showOverlayControls = showControls && !isInNativePiP;
 
-    return (
+    const handleMouseMoveWindow = () => {
+        triggerControlsShow();
+    };
+
+    const handleMinimizeAction = (e) => {
+        e.stopPropagation();
+        if (isDocumentPiPActive && pipWindowRef.current) {
+            pipWindowRef.current.close();
+            return;
+        }
+        setIsMinimized(!isMinimized);
+        setShowControls(false);
+    };
+
+    const handleDisconnectAction = (e) => {
+        if (e) e.stopPropagation();
+        disconnectFromChannel();
+        if (pipWindowRef.current) {
+            pipWindowRef.current.close();
+        }
+    };
+
+    const content = (
         <div 
-            className={`global-video-pip-window ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''}`}
+            className={`global-video-pip-window ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
             style={windowStyle}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
+            onMouseMove={handleMouseMoveWindow}
         >
             {isMinimized ? (
                 // Minimized circular bubble
@@ -285,10 +392,10 @@ const GlobalVideoPIP = () => {
                                 {activeRoom?.channelName || 'Sohbet'}
                             </span>
                             <div className="pip-header-actions">
-                                <button className="pip-header-btn" onClick={handleMinimizeToggle} title="Küçült">
+                                <button className="pip-header-btn" onClick={handleMinimizeAction} title={isDocumentPiPActive ? "Geri Dön" : "Küçült"}>
                                     <Minimize2 size={16} />
                                 </button>
-                                <button className="pip-header-btn danger" onClick={disconnectFromChannel} title="Ayrıl">
+                                <button className="pip-header-btn danger" onClick={handleDisconnectAction} title="Ayrıl">
                                     <PhoneOff size={16} />
                                 </button>
                             </div>
@@ -368,6 +475,16 @@ const GlobalVideoPIP = () => {
             )}
         </div>
     );
+
+    if (isDocumentPiPActive && pipContainer) {
+        return createPortal(content, pipContainer);
+    }
+
+    if (isInNativePiP) {
+        return content;
+    }
+
+    return null;
 };
 
 export default GlobalVideoPIP;
