@@ -369,8 +369,8 @@
 
     if (!participants.length) {
       empty.style.display = 'block';
-      if (!collapsed && window.desktopAPI && window.desktopAPI.resizeOverlay) {
-        ipcRenderer.send('overlay-resize-custom', 180); // Default tiny height for empty state
+      if (!collapsed && window.desktopAPI && window.desktopAPI.resizeOverlayCustom) {
+        window.desktopAPI.resizeOverlayCustom(180); // Default tiny height for empty state
       }
       return;
     }
@@ -378,12 +378,13 @@
 
     // Auto-calculate required panel height: Header (45px) + card count * 146px (140px card + 6px gap) + Controls (60px) + Padding/Margins
     // This removes the large empty space dynamically.
-    if (!collapsed && window.desktopAPI && window.desktopAPI.resizeOverlay) {
+    if (!collapsed && window.desktopAPI && window.desktopAPI.resizeOverlayCustom) {
       const calculatedHeight = 45 + (participants.length * 146) + 65 + 16;
       // Cap max height to 600px to enable scrollbar if many participants join
       const finalHeight = Math.min(600, calculatedHeight);
-      ipcRenderer.send('overlay-resize-custom', finalHeight);
+      window.desktopAPI.resizeOverlayCustom(finalHeight);
     }
+
 
 
 
