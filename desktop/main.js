@@ -238,9 +238,9 @@ ipcMain.on('overlay-resize', (event, collapsed) => {
     const { screen } = require('electron');
     const bounds = overlayWindow.getBounds();
     if (collapsed) {
-      // Shrink window strictly to 60x60 circular button area
-      overlayWindow.setSize(60, 60);
-      overlayWindow.setPosition(bounds.x + bounds.width - 60, bounds.y);
+      // Shrink window strictly to 52x52 circular button area (zero padding residue)
+      overlayWindow.setSize(52, 52);
+      overlayWindow.setPosition(bounds.x + bounds.width - 52, bounds.y);
     } else {
       // Restore to full panel size (320x450 as base)
       overlayWindow.setSize(320, 450);
