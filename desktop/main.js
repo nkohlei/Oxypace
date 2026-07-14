@@ -238,10 +238,14 @@ ipcMain.on('overlay-resize', (event, collapsed) => {
     const { screen } = require('electron');
     const bounds = overlayWindow.getBounds();
     if (collapsed) {
+      // Disable shadow dynamically to completely remove ghost border shadows in OS
+      overlayWindow.setHasShadow(false);
       // Shrink window strictly to 52x52 circular button area (zero padding residue)
       overlayWindow.setSize(52, 52);
       overlayWindow.setPosition(bounds.x + bounds.width - 52, bounds.y);
     } else {
+      // Restore shadow dynamically
+      overlayWindow.setHasShadow(true);
       // Restore to full panel size (320x450 as base)
       overlayWindow.setSize(320, 450);
       overlayWindow.setPosition(bounds.x + bounds.width - 320, bounds.y);
