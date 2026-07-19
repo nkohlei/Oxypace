@@ -521,11 +521,22 @@ router.get('/proxy-hls', async (req, res) => {
             return res.status(400).json({ message: 'URL is required' });
         }
 
+        // Dynamically extract origin and referer from target url to bypass CDN hotlink protections
+        let origin = '';
+        let referer = '';
+        try {
+            const parsedUrl = new URL(targetUrl);
+            origin = parsedUrl.origin;
+            referer = parsedUrl.origin + '/';
+        } catch (e) {}
+
         const response = await axios.get(targetUrl, {
             responseType: 'text',
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*'
+                'Accept': '*/*',
+                ...(origin ? { 'Origin': origin } : {}),
+                ...(referer ? { 'Referer': referer } : {})
             }
         });
 
@@ -594,13 +605,24 @@ router.get('/proxy-chunk', async (req, res) => {
             return res.status(400).json({ message: 'URL is required' });
         }
 
+        // Dynamically extract origin and referer from target url to bypass CDN hotlink protections
+        let origin = '';
+        let referer = '';
+        try {
+            const parsedUrl = new URL(targetUrl);
+            origin = parsedUrl.origin;
+            referer = parsedUrl.origin + '/';
+        } catch (e) {}
+
         const response = await axios({
             method: 'get',
             url: targetUrl,
             responseType: 'stream',
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*'
+                'Accept': '*/*',
+                ...(origin ? { 'Origin': origin } : {}),
+                ...(referer ? { 'Referer': referer } : {})
             }
         });
 
