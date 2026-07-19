@@ -10,6 +10,8 @@ import './VideoPlayer.css';
 
 const mountedVideos = new Set();
 let scrollTimeout = null;
+const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1));
+
 
 const loadHls = () => {
   return new Promise((resolve, reject) => {
@@ -283,7 +285,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     if (!videoEl || !url) return;
 
-    const targetUrl = getHlsProxyUrl(url);
+    const targetUrl = isElectron ? url : getHlsProxyUrl(url);
 
     if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
       videoEl.src = targetUrl;

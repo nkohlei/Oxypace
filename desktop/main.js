@@ -106,7 +106,19 @@ function createWindow() {
         headers['Referer'] = 'https://oxypace.com.tr/';
         headers['Origin'] = 'https://oxypace.com.tr';
       } 
-      // 2. ALWAYS force spoofing for OK.ru and VK.com embeds
+      // 2. ALWAYS force spoofing for HLS video streams (manifests, segments) to bypass CDN blocks
+      else if (urlLower.includes('.m3u8') || urlLower.includes('.ts') || urlLower.includes('/hls/') || urlLower.includes('.txt') || urlLower.includes('manifest')) {
+        let targetOrigin = '';
+        try {
+          const parsed = new URL(details.url);
+          targetOrigin = parsed.origin;
+        } catch (e) {}
+
+        // Set referer and origin to the host of the CDN or hdfilmcehennemi (common film host referrer)
+        headers['Referer'] = 'https://www.hdfilmcehennemi.cx/';
+        headers['Origin'] = 'https://www.hdfilmcehennemi.cx';
+      }
+      // 3. ALWAYS force spoofing for OK.ru and VK.com embeds
       else if (urlLower.includes('ok.ru')) {
         headers['Referer'] = 'https://ok.ru/';
         headers['Origin'] = 'https://ok.ru';
@@ -120,7 +132,7 @@ function createWindow() {
         headers['Referer'] = 'https://mega.nz/';
         headers['Origin'] = 'https://mega.nz';
       }
-      // 3. Otherwise, only rewrite to oxypace if it originally came from the app scheme
+      // 4. Otherwise, only rewrite to oxypace if it originally came from the app scheme
       else {
         const referer = headers['Referer'] || headers['referer'] || '';
         if (referer.startsWith('app://') || referer.startsWith('file://')) {
@@ -130,6 +142,27 @@ function createWindow() {
       }
 
       callback({ requestHeaders: headers });
+    }
+  );
+
+  // Bypass CORS globally inside Electron by injecting Access-Control headers to all HTTP responses
+  session.defaultSession.webRequest.onHeadersReceived(
+    { urls: ['http://*/*', 'https://*/*'] },
+    (details, callback) => {
+      const responseHeaders = details.responseHeaders || {};
+      
+      responseHeaders['Access-Control-Allow-Origin'] = ['*'];
+      responseHeaders['Access-Control-Allow-Methods'] = ['GET, POST, OPTIONS, PUT, DELETE'];
+      responseHeaders['Access-Control-Allow-Headers'] = ['*'];
+      responseHeaders['Access-Control-Allow-Credentials'] = ['true'];
+
+      // Remove X-Frame-Options and Content-Security-Policy to allow embedding
+      delete responseHeaders['x-frame-options'];
+      delete responseHeaders['X-Frame-Options'];
+      delete responseHeaders['content-security-policy'];
+      delete responseHeaders['Content-Security-Policy'];
+
+      callback({ cancel: false, responseHeaders });
     }
   );
 
