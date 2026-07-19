@@ -100,7 +100,7 @@ const ChannelSidebar = ({
                 display: 'flex',
                 flexDirection: 'column',
                 flex: 1,
-                width: '350px',
+                width: '100%',
                 height: '100%',
                 overflow: 'hidden',
                 transition: 'opacity 0.2s ease, visibility 0.2s ease',

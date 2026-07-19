@@ -635,4 +635,16 @@
 .native-volume-inline-slider::-webkit-slider-thumb:hover {
     transform: scale(1.25);
     background: #ef4444;
+}
+
+@media (max-width: 768px) {
+    /* Hide 10s skip buttons in standard feed / normal flow on mobile */
+    .native-player-container .native-skip-btn {
+        display: none !important;
+    }
+    /* Show 10s skip buttons only when video player container is fullscreen on mobile */
+    .native-player-container:fullscreen .native-skip-btn,
+    .native-player-container:-webkit-full-screen .native-skip-btn {
+        display: flex !important;
+    }
 }
