@@ -489,10 +489,12 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                         {!!window.desktopAPI && (
                                             <button 
                                                 type="button"
-                                                onClick={() => {
-                                                    window.desktopAPI.openFilmBrowser(watchUrl.trim() || 'https://www.hdfilmcehennemi.cx/');
-                                                    setIsWatchInputOpen(false);
-                                                }}
+                                            onClick={() => {
+                                                const urlVal = watchUrl.trim();
+                                                const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
+                                                window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
+                                                setIsWatchInputOpen(false);
+                                            }}
                                                 className="chat-send-btn glass-btn"
                                                 style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }}
                                                 title="Film sitesini açıp oynatılan videoyu yakalayın"

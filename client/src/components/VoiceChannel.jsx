@@ -684,7 +684,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                         <button 
                                             type="button"
                                             onClick={() => {
-                                                window.desktopAPI.openFilmBrowser(watchUrl.trim() || 'https://www.hdfilmcehennemi.cx/');
+                                                const urlVal = watchUrl.trim();
+                                                const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
+                                                window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
                                                 setIsWatchInputOpen(false);
                                             }}
                                             className="chat-send-btn glass-btn"
