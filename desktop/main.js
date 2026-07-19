@@ -180,17 +180,18 @@ ipcMain.on('toggle-overlay', (event, visible) => {
       overlayWindow = new BrowserWindow({
         width: 320,
         height: 580, // Increased default height from 480 to 580 to fit vertical view
-        minWidth: 200,
-        minHeight: 200,
+        minWidth: 52,  // Set constructor minWidth to 52 to allow shrinking on Windows
+        minHeight: 52, // Set constructor minHeight to 52 to allow shrinking on Windows
         x: width - 340,
         y: 60,
         frame: false,
         transparent: true,
+        backgroundColor: '#00000000', // Forces native transparent background
         alwaysOnTop: true,
         skipTaskbar: true,
         resizable: true, // Core feature: user can drag edges to resize!
         movable: true,   // Core feature: user can drag to move!
-        hasShadow: true,
+        hasShadow: false, // Disables OS default rectangular window shadow
         focusable: true,
         webPreferences: {
           nodeIntegration: false,
@@ -199,6 +200,9 @@ ipcMain.on('toggle-overlay', (event, visible) => {
           backgroundThrottling: false,
         }
       });
+
+      // Set initial minimum size programmatically for the expanded panel
+      overlayWindow.setMinimumSize(200, 200);
 
       overlayWindow.loadFile(path.join(__dirname, 'overlay.html'));
       overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -240,12 +244,40 @@ ipcMain.on('overlay-resize', (event, collapsed) => {
     if (collapsed) {
       // Disable shadow dynamically to completely remove ghost border shadows in OS
       overlayWindow.setHasShadow(false);
-      // Shrink window strictly to 52x52 circular button area (zero padding residue)
+      // Ensure resizability is temporarily enabled so setSize is allowed by the OS
+      overlayWindow.setResizable(true);
+      // Temporarily clear min/max size limits to let the OS shrink the window
+      overlayWindow.setMinimumSize(10, 10);
+      overlayWindow.setMaximumSize(9999, 9999);
+      
+      // Perform resize and repositioning
       overlayWindow.setSize(52, 52);
       overlayWindow.setPosition(bounds.x + bounds.width - 52, bounds.y);
+      
+      // Wait 100ms for the OS window manager to apply the resize, then lock bounds
+      setTimeout(() => {
+        if (overlayWindow && !overlayWindow.isDestroyed()) {
+          overlayWindow.setMinimumSize(52, 52);
+          overlayWindow.setMaximumSize(52, 52);
+          // Disable resizability, native moves, maximize, and minimize to prevent OS snaps/resizes
+          overlayWindow.setResizable(false);
+          overlayWindow.setMovable(false);
+          overlayWindow.setMaximizable(false);
+          overlayWindow.setMinimizable(false);
+        }
+      }, 100);
     } else {
       // Restore shadow dynamically
       overlayWindow.setHasShadow(true);
+      // Restore resizability, movable, maximizable, and minimizable properties
+      overlayWindow.setResizable(true);
+      overlayWindow.setMovable(true);
+      overlayWindow.setMaximizable(true);
+      overlayWindow.setMinimizable(true);
+      // Remove maximum size limit
+      overlayWindow.setMaximumSize(9999, 9999);
+      // Restore min size constraints for the expanded panel
+      overlayWindow.setMinimumSize(200, 200);
       // Restore to full panel size (320x450 as base)
       overlayWindow.setSize(320, 450);
       overlayWindow.setPosition(bounds.x + bounds.width - 320, bounds.y);
@@ -257,22 +289,34 @@ ipcMain.on('overlay-resize', (event, collapsed) => {
 ipcMain.on('overlay-resize-custom', (event, height) => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     const bounds = overlayWindow.getBounds();
+    // Temporarily adjust minimum height constraint if height is smaller than 200
+    if (height < 200) {
+      overlayWindow.setMinimumSize(200, height);
+    } else {
+      overlayWindow.setMinimumSize(200, 200);
+    }
     overlayWindow.setSize(320, height);
   }
 });
 
 // Move window with screen boundary safety (prevents dragging off-screen)
-ipcMain.on('overlay-move-window', (event, { x, y }) => {
+ipcMain.on('overlay-move-window', (event, { offsetX, offsetY }) => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     const { screen } = require('electron');
+    const cursorPoint = screen.getCursorScreenPoint(); // Get native OS cursor coordinates
+    
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
     const winBounds = overlayWindow.getBounds();
 
+    // Calculate native coordinates
+    let targetX = cursorPoint.x - offsetX;
+    let targetY = cursorPoint.y - offsetY;
+
     // Bound X position inside screen
-    let finalX = Math.max(10, Math.min(width - winBounds.width - 10, x));
+    let finalX = Math.max(10, Math.min(width - winBounds.width - 10, targetX));
     // Bound Y position inside screen
-    let finalY = Math.max(10, Math.min(height - winBounds.height - 10, y));
+    let finalY = Math.max(10, Math.min(height - winBounds.height - 10, targetY));
 
     overlayWindow.setPosition(finalX, finalY);
   }

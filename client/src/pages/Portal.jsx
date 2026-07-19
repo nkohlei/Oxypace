@@ -444,11 +444,32 @@ const Portal = () => {
                         portalId: id,
                         content: currentData.content,
                         quotedPostId: quotedPost?._id,
-                        onFinish: (err) => {
+                        onFinish: (err, createdPost) => {
                             if (err) {
                                 // Rollback optimistic update
                                 setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
                                 triggerToast('Video yükleme başarısız oldu.', 'error');
+                            } else if (createdPost) {
+                                // Replace optimistic temp post with real post
+                                const tempStrId = String(tempId);
+                                setPosts((currentPosts) => {
+                                    const responseId = String(createdPost._id);
+                                    const alreadyExists = currentPosts.some(p => String(p._id) === responseId);
+                                    if (alreadyExists) {
+                                        return currentPosts.filter(p => String(p._id) !== tempStrId);
+                                    }
+                                    return currentPosts.map((p) => {
+                                        if (String(p._id) === tempStrId) {
+                                            const backendPost = createdPost;
+                                            const bqId = backendPost.quotedPost && (typeof backendPost.quotedPost === 'string' ? backendPost.quotedPost : backendPost.quotedPost._id);
+                                            if (bqId && p.quotedPost && bqId === p.quotedPost._id) {
+                                                backendPost.quotedPost = p.quotedPost;
+                                            }
+                                            return backendPost;
+                                        }
+                                        return p;
+                                    });
+                                });
                             }
                         }
                     });

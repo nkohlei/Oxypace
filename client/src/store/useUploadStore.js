@@ -91,7 +91,7 @@ export const useUploadStore = create((set, get) => ({
                 mediaType: 'video',
             };
 
-            await axios.post('/api/posts', postData);
+            const response = await axios.post('/api/posts', postData);
 
             // 4. Remove upload on success
             set((state) => {
@@ -101,7 +101,7 @@ export const useUploadStore = create((set, get) => ({
             });
 
             if (onFinish) {
-                onFinish(null, mediaKey);
+                onFinish(null, response.data);
             }
         } catch (err) {
             console.error('[useUploadStore] Video upload failed:', err);

@@ -19,13 +19,15 @@
       position: absolute;
       top: 0; left: 0;
       width: 52px; height: 52px; /* Perfect tight boundary fit */
-      border-radius: 50%;
-      background: linear-gradient(135deg, #5865f2, #7289da);
-      border: 2px solid rgba(255,255,255,0.25);
-      box-shadow: 0 4px 24px rgba(88,101,242,0.7);
+      border-radius: 8px; /* Square with slight round corners */
+      background: rgba(15, 18, 36, 0.85) !important; /* Premium glassmorphism background for the button */
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(255, 255, 255, 0.15) !important; /* Cohesive border */
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important; /* Subtly defined shadow */
       cursor: move;
       align-items: center; justify-content: center;
-      transition: transform 0.18s, box-shadow 0.18s;
+      transition: transform 0.18s;
       z-index: 9999;
     }
     #mini-icon:hover { transform: scale(1.05); }
@@ -44,21 +46,24 @@
       width: 100%; height: 100%;
       display: flex; flex-direction: column;
       gap: 6px;
-      padding: 6px;
+      padding: 8px;
+      background: rgba(15, 18, 36, 0.76) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
     }
 
     /* Header — draggable */
     #hdr {
       display: flex; align-items: center; gap: 8px;
-      background: rgba(20,24,48,0.95);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
       padding: 8px 10px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       -webkit-app-region: drag;
       cursor: grab;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       flex-shrink: 0;
     }
     #hdr:active { cursor: grabbing; }
@@ -148,13 +153,10 @@
     /* ===== CONTROLS BAR ===== */
     #controls {
       display:flex; align-items:center; justify-content:space-between;
-      background: rgba(20,24,48,0.95);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
       padding: 8px 12px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       flex-shrink: 0;
     }
     .cbtn {
@@ -314,41 +316,38 @@
 
   // Safe JS dragging for the mini circular icon (since webkit-app-region: drag blocks click events)
   let isDragging = false;
-  let dragStartCoords = { x: 0, y: 0 };
+  let mouseOffset = { x: 0, y: 0 };
   let hasMoved = false;
 
   miniIcon.addEventListener('mousedown', (e) => {
     isDragging = true;
-    dragStartCoords = { x: e.screenX, y: e.screenY };
+    mouseOffset = { x: e.clientX, y: e.clientY };
     hasMoved = false;
     e.preventDefault();
   });
 
   window.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
-    const deltaX = e.screenX - dragStartCoords.x;
-    const deltaY = e.screenY - dragStartCoords.y;
 
-    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+    // Only set hasMoved if mouse has travelled more than 2px to prevent accidental clicks triggering move
+    const deltaX = Math.abs(e.clientX - mouseOffset.x);
+    const deltaY = Math.abs(e.clientY - mouseOffset.y);
+    if (deltaX > 2 || deltaY > 2) {
       hasMoved = true;
     }
 
-    if (hasMoved && window.desktopAPI.moveOverlayWindow && window.desktopAPI.getOverlayBounds) {
-      // Get the real native screen coordinates from Electron to prevent drifts/skips
-      const bounds = window.desktopAPI.getOverlayBounds();
+    if (hasMoved && window.desktopAPI.moveOverlayWindow) {
       window.desktopAPI.moveOverlayWindow({
-        x: bounds.x + deltaX,
-        y: bounds.y + deltaY
+        offsetX: mouseOffset.x,
+        offsetY: mouseOffset.y
       });
-      dragStartCoords = { x: e.screenX, y: e.screenY };
     }
   });
-
 
   window.addEventListener('mouseup', () => {
     if (isDragging) {
       isDragging = false;
-      // If we didn't drag it across the screen, treat it as a click and restore the panel!
+      // If we didn't drag it, treat it as a click and restore the panel!
       if (!hasMoved) {
         setCollapsed(false);
       }

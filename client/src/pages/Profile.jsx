@@ -290,10 +290,26 @@ const Profile = () => {
                         portalId: null,
                         content: composeText,
                         authorId: currentUser._id,
-                        onFinish: (err) => {
+                        onFinish: (err, createdPost) => {
                             if (err) {
                                 // Rollback optimistic update
                                 setUserPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
+                            } else if (createdPost) {
+                                // Replace optimistic temp post with real post
+                                const tempStrId = String(tempId);
+                                setUserPosts((currentPosts) => {
+                                    const responseId = String(createdPost._id);
+                                    const alreadyExists = currentPosts.some(p => String(p._id) === responseId);
+                                    if (alreadyExists) {
+                                        return currentPosts.filter(p => String(p._id) !== tempStrId);
+                                    }
+                                    return currentPosts.map((p) => {
+                                        if (String(p._id) === tempStrId) {
+                                            return createdPost;
+                                        }
+                                        return p;
+                                    });
+                                });
                             }
                         }
                     });
