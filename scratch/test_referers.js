@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const url = 'https://srv12.cdnimages1029.shop/hls/thelordoftherings-3-returnoftheking-2003-trdualmp4-E2B7vPUNnEx.mp4/txt/master.txt';
+const url = 'https://srv12.cdnimages2169.shop/hls/theusualsuspects19951080pdualmp4-JgOFoxXEuck.mp4/txt/master.txt';
 
 const referers = [
     'https://www.hdfilmcehennemi.cx/',

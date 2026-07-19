@@ -250,21 +250,25 @@ router.get('/proxy-hls', async (req, res) => {
             referer = parsedUrl.origin + '/';
         } catch (e) {}
 
-        // List of popular Turkish film site referrers CDN hosts check
-        const refererList = [
-            'https://www.hdfilmcehennemi.cx/',
-            'https://www.hdfilmcehennemi.life/',
-            'https://www.hdfilmcehennemi.cool/',
-            'https://www.hdfilmcehennemi.live/',
-            'https://www.hdfilmcehennemi.com.tr/',
-            'https://hdfilmcehennemi.live/',
+        // Generate a comprehensive guesser list for all hdfilmcehennemi TLDs dynamically
+        const tlds = ['cx', 'life', 'cool', 'live', 'com.tr', 'de', 'be', 'vip', 'website', 'lol', 'cc', 'pro', 'pw', 'today', 'org', 'net', 'co', 'biz', 'info', 'us', 'me', 'tv', 'ws', 'xyz', 'online', 'site', 'store', 'tech', 'link', 'click', 'space', 'club', 'best', 'top', 'icu', 'win', 'bid', 'gdn', 'trade', 'loan', 'download', 'stream', 'date', 'party'];
+        const refererList = [];
+        tlds.forEach(tld => {
+            refererList.push(`https://www.hdfilmcehennemi.${tld}/`);
+            refererList.push(`https://hdfilmcehennemi.${tld}/`);
+        });
+
+        refererList.push(
             'https://www.filmmodu.org/',
+            'https://filmmodu.org/',
             'https://www.filmmodu.dev/',
             'https://fullhdfilmizlesene.pw/',
+            'https://www.fullhdfilmizlesene.pw/',
             'https://fullhdfilmizlesene.com/',
+            'https://www.fullhdfilmizlesene.com/',
             origin + '/',
             '' // No referer fallback
-        ];
+        );
 
         let response = null;
         let workingReferer = '';
@@ -279,7 +283,7 @@ router.get('/proxy-hls', async (req, res) => {
                 const res = await axios.get(targetUrl, {
                     responseType: 'text',
                     validateStatus: () => true,
-                    timeout: 4000,
+                    timeout: 1000,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                         'Accept': '*/*',
