@@ -100,6 +100,18 @@ function createWindow() {
       // Force a modern standard Chrome user agent for all external web requests
       headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
+      // 0. Dynamic client-specified Referer via X-Target-Referer header
+      const customReferer = headers['X-Target-Referer'] || headers['x-target-referer'];
+      if (customReferer) {
+        headers['Referer'] = customReferer;
+        try {
+          headers['Origin'] = new URL(customReferer).origin;
+        } catch (e) {}
+        delete headers['X-Target-Referer'];
+        delete headers['x-target-referer'];
+      }
+
+
       // 1. ALWAYS force Referer and Origin spoofing for YouTube to bypass embedding restrictions (Error 150 / 152-4)
       if ((urlLower.includes('youtube.com') || urlLower.includes('youtube-nocookie.com')) && 
           (details.resourceType === 'subFrame' || details.resourceType === 'mainFrame')) {

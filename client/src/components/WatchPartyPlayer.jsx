@@ -177,7 +177,12 @@ const getProxiedUrl = (url) => {
   if (!url.startsWith('http')) return url;
   
   const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
-  const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
+  const isElectron = typeof window !== 'undefined' && (
+    !!window.desktopAPI?.isElectron || 
+    (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1) ||
+    !!window.process?.versions?.electron ||
+    !!window.ipcRenderer
+  );
   
   // If running inside Electron, bypass backend proxy entirely for HLS since local main process spoofing handles it
   if (isElectron && (url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest'))) {

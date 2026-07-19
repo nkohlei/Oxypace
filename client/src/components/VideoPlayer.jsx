@@ -10,7 +10,12 @@ import './VideoPlayer.css';
 
 const mountedVideos = new Set();
 let scrollTimeout = null;
-const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1));
+const isElectron = typeof window !== 'undefined' && (
+  !!window.desktopAPI?.isElectron || 
+  (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1) ||
+  !!window.process?.versions?.electron ||
+  !!window.ipcRenderer
+);
 
 
 const loadHls = () => {
