@@ -252,6 +252,7 @@ router.get('/proxy-hls', async (req, res) => {
 
         const response = await axios.get(targetUrl, {
             responseType: 'text',
+            validateStatus: () => true, // Prevent Axios from throwing on 404/403/etc.
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': '*/*',
@@ -259,6 +260,11 @@ router.get('/proxy-hls', async (req, res) => {
                 ...(referer ? { 'Referer': referer } : {})
             }
         });
+
+        if (response.status !== 200) {
+            res.set('Access-Control-Allow-Origin', '*');
+            return res.status(response.status).send(response.data);
+        }
 
         const manifestText = response.data;
         const lines = manifestText.split(/\r?\n/);
@@ -338,6 +344,7 @@ router.get('/proxy-chunk', async (req, res) => {
             method: 'get',
             url: targetUrl,
             responseType: 'stream',
+            validateStatus: () => true, // Prevent Axios from throwing on 404/403/etc.
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': '*/*',
@@ -345,6 +352,12 @@ router.get('/proxy-chunk', async (req, res) => {
                 ...(referer ? { 'Referer': referer } : {})
             }
         });
+
+        if (response.status !== 200 && response.status !== 206) {
+            res.set('Access-Control-Allow-Origin', '*');
+            res.status(response.status);
+            return response.data.pipe(res);
+        }
 
         if (response.headers['content-type']) {
             res.set('Content-Type', response.headers['content-type']);

@@ -290,6 +290,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
       videoEl.src = targetUrl;
       videoEl.load();
+      
+      const handleNativeError = () => {
+        if (videoEl.src !== url) {
+          console.warn("Native HLS proxy failed, falling back to original url:", url);
+          videoEl.removeEventListener('error', handleNativeError);
+          videoEl.src = url;
+          videoEl.load();
+        }
+      };
+      videoEl.addEventListener('error', handleNativeError);
     } else {
       loadHls().then((HlsLib) => {
         if (!HlsLib.isSupported()) {
@@ -339,6 +349,27 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
             hls.currentLevel = -1;
           }
         });
+        
+        // Robust Hls.js network error handling to fall back to the original URL
+        hls.on(HlsLib.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case HlsLib.ErrorTypes.NETWORK_ERROR:
+                if (data.details === 'manifestLoadError' && hls.url !== url) {
+                  console.warn("HLS Proxy manifest load failed, falling back to original URL:", url);
+                  hls.loadSource(url);
+                  hls.startLoad();
+                } else {
+                  hls.destroy();
+                }
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+
         hls.loadSource(targetUrl);
         hls.attachMedia(videoEl);
         hlsInstanceRef.current = hls;
