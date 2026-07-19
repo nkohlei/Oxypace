@@ -250,16 +250,67 @@ router.get('/proxy-hls', async (req, res) => {
             referer = parsedUrl.origin + '/';
         } catch (e) {}
 
-        const response = await axios.get(targetUrl, {
-            responseType: 'text',
-            validateStatus: () => true, // Prevent Axios from throwing on 404/403/etc.
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*',
-                ...(origin ? { 'Origin': origin } : {}),
-                ...(referer ? { 'Referer': referer } : {})
+        // List of popular Turkish film site referrers CDN hosts check
+        const refererList = [
+            'https://www.hdfilmcehennemi.cx/',
+            'https://www.hdfilmcehennemi.life/',
+            'https://www.hdfilmcehennemi.cool/',
+            'https://www.hdfilmcehennemi.live/',
+            'https://www.hdfilmcehennemi.com.tr/',
+            'https://hdfilmcehennemi.live/',
+            'https://www.filmmodu.org/',
+            'https://www.filmmodu.dev/',
+            'https://fullhdfilmizlesene.pw/',
+            'https://fullhdfilmizlesene.com/',
+            origin + '/',
+            '' // No referer fallback
+        ];
+
+        let response = null;
+        let workingReferer = '';
+
+        // Try to fetch manifest by guessing referrers until one returns 200 OK
+        for (const ref of refererList) {
+            try {
+                let tempOrigin = '';
+                if (ref) {
+                    tempOrigin = new URL(ref).origin;
+                }
+                const res = await axios.get(targetUrl, {
+                    responseType: 'text',
+                    validateStatus: () => true,
+                    timeout: 4000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': '*/*',
+                        ...(tempOrigin ? { 'Origin': tempOrigin } : {}),
+                        ...(ref ? { 'Referer': ref } : {})
+                    }
+                });
+                if (res.status === 200 && res.data && (res.data.includes('#EXTM3U') || res.data.includes('#EXT-X-STREAM-INF') || res.data.includes('master') || res.data.includes('playlist'))) {
+                    response = res;
+                    workingReferer = ref;
+                    console.log(`[HlsProxy] Working referer found: "${ref}" for URL: ${targetUrl}`);
+                    break;
+                }
+            } catch (err) {
+                // Ignore and try next
             }
-        });
+        }
+
+        // Fallback fetch if loop failed to find a working referrer
+        if (!response) {
+            response = await axios.get(targetUrl, {
+                responseType: 'text',
+                validateStatus: () => true,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': '*/*',
+                    ...(origin ? { 'Origin': origin } : {}),
+                    ...(referer ? { 'Referer': referer } : {})
+                }
+            });
+        }
 
         if (response.status !== 200) {
             res.set('Access-Control-Allow-Origin', '*');
@@ -291,7 +342,7 @@ router.get('/proxy-hls', async (req, res) => {
                 const uriRegex = /(URI=")([^"]+)(")/g;
                 updatedLine = updatedLine.replace(uriRegex, (match, p1, p2, p3) => {
                     const resolved = resolveUrl(targetUrl, p2);
-                    const proxied = `/api/media/proxy-chunk?url=${encodeURIComponent(resolved)}`;
+                    const proxied = `/api/media/proxy-chunk?url=${encodeURIComponent(resolved)}${workingReferer ? `&referer=${encodeURIComponent(workingReferer)}` : ''}`;
                     return `${p1}${proxied}${p3}`;
                 });
                 rewrittenLines.push(updatedLine);
@@ -302,9 +353,10 @@ router.get('/proxy-hls', async (req, res) => {
                 
                 let proxiedUrl;
                 if (isSubPlaylist) {
+                    // Forward working referrer to sub-playlists too
                     proxiedUrl = `/api/media/proxy-hls?url=${encodeURIComponent(resolved)}`;
                 } else {
-                    proxiedUrl = `/api/media/proxy-chunk?url=${encodeURIComponent(resolved)}`;
+                    proxiedUrl = `/api/media/proxy-chunk?url=${encodeURIComponent(resolved)}${workingReferer ? `&referer=${encodeURIComponent(workingReferer)}` : ''}`;
                 }
                 rewrittenLines.push(proxiedUrl);
             }
@@ -340,6 +392,14 @@ router.get('/proxy-chunk', async (req, res) => {
             referer = parsedUrl.origin + '/';
         } catch (e) {}
 
+        const customReferer = req.query.referer || '';
+        let customOrigin = '';
+        if (customReferer) {
+            try {
+                customOrigin = new URL(customReferer).origin;
+            } catch (e) {}
+        }
+
         const response = await axios({
             method: 'get',
             url: targetUrl,
@@ -348,8 +408,8 @@ router.get('/proxy-chunk', async (req, res) => {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': '*/*',
-                ...(origin ? { 'Origin': origin } : {}),
-                ...(referer ? { 'Referer': referer } : {})
+                ...(customOrigin ? { 'Origin': customOrigin } : (origin ? { 'Origin': origin } : {})),
+                ...(customReferer ? { 'Referer': customReferer } : (referer ? { 'Referer': referer } : {}))
             }
         });
 
