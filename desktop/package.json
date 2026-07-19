@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "build": "electron-packager . Oxypace --platform=win32 --arch=x64 --out=dist --icon=../client/public/logo.ico --overwrite"
+    "build": "electron-packager . Oxypace --platform=win32 --arch=x64 --out=dist-build --icon=../client/public/logo.ico --overwrite"
   },
   "dependencies": {},
   "devDependencies": {
