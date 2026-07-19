@@ -2,9 +2,16 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('desktopAPI', {
     openExternal: (url) => ipcRenderer.send('open-external', url),
+    openFilmBrowser: (url) => ipcRenderer.send('open-film-browser', url),
     isElectron: true,
     toggleOverlay: (visible) => ipcRenderer.send('toggle-overlay', visible),
     updateOverlayParticipants: (data) => ipcRenderer.send('update-overlay-participants', data),
+    
+    onVideoSniffed: (callback) => {
+        const listener = (event, data) => callback(data);
+        ipcRenderer.on('video-sniffed', listener);
+        return () => ipcRenderer.off('video-sniffed', listener);
+    },
     
     // Güvenli IPC Kanalları
     sendOverlayControl: (action) => ipcRenderer.send('overlay-control', action),

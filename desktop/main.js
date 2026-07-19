@@ -6,6 +6,9 @@ const fs = require('fs');
 let mainWindow;
 let overlayWindow = null;
 let originalBounds = null;
+let filmBrowserWindow = null;
+const cdnReferers = new Map(); // Dynamic mapping of CDN hosts to their captured Referrers
+
 
 // Register 'app' scheme as privileged so it behaves like standard https (needed for cookies, storage, fetch)
 protocol.registerSchemesAsPrivileged([
@@ -110,6 +113,17 @@ function createWindow() {
         delete headers['X-Target-Referer'];
         delete headers['x-target-referer'];
       }
+
+      // Check if we have dynamically sniffed a Referer for this specific CDN host
+      try {
+        const parsed = new URL(details.url);
+        const host = parsed.host;
+        if (cdnReferers.has(host)) {
+          headers['Referer'] = cdnReferers.get(host);
+          headers['Origin'] = new URL(cdnReferers.get(host)).origin;
+        }
+      } catch (e) {}
+
 
 
       // 1. ALWAYS force Referer and Origin spoofing for YouTube to bypass embedding restrictions (Error 150 / 152-4)
@@ -408,6 +422,73 @@ ipcMain.on('open-external', (event, targetUrl) => {
     shell.openExternal(targetUrl);
   }
 });
+
+// IPC listener to open secondary Film Browser window with network traffic sniffing
+ipcMain.on('open-film-browser', (event, startUrl) => {
+  if (filmBrowserWindow && !filmBrowserWindow.isDestroyed()) {
+    filmBrowserWindow.focus();
+    return;
+  }
+
+  filmBrowserWindow = new BrowserWindow({
+    width: 1024,
+    height: 700,
+    title: 'Oxypace Film Tarayıcısı (Videoyu Oynatıp Kapatın)',
+    backgroundColor: '#0a0a0a',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      partition: 'persist:film-browser' // Isolate cookies & session for the film browser
+    }
+  });
+
+  // Sniff film browser session headers to capture direct manifest URL and referer
+  const browserSession = filmBrowserWindow.webContents.session;
+  browserSession.webRequest.onBeforeSendHeaders(
+    { urls: ['http://*/*', 'https://*/*'] },
+    (details, callback) => {
+      const headers = details.requestHeaders;
+      const urlLower = details.url.toLowerCase();
+
+      // Check if request is an HLS playlist, manifest or TS segment
+      const isHls = urlLower.includes('.m3u8') || urlLower.includes('/hls/') || urlLower.includes('.txt') || urlLower.includes('.ts') || urlLower.includes('manifest');
+
+      if (isHls) {
+        let referer = headers['Referer'] || headers['referer'] || '';
+        if (referer && !referer.includes('oxypace.com.tr') && !referer.includes('localhost') && !referer.startsWith('app://')) {
+          try {
+            const parsedUrl = new URL(details.url);
+            const host = parsedUrl.host;
+
+            // Map CDN host to captured referrer dynamically
+            cdnReferers.set(host, referer);
+            console.log(`[Sniffer] Dynamic Map Added: "${host}" -> "${referer}"`);
+
+            // Send sniffed media details back to main window
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('video-sniffed', {
+                url: details.url,
+                referer: referer
+              });
+            }
+
+            // Close film browser window immediately upon successful sniff
+            if (filmBrowserWindow && !filmBrowserWindow.isDestroyed()) {
+              filmBrowserWindow.close();
+            }
+          } catch (e) {
+            console.error('[Sniffer] Error parsing sniffed URL:', e);
+          }
+        }
+      }
+
+      callback({ requestHeaders: headers });
+    }
+  );
+
+  filmBrowserWindow.loadURL(startUrl || 'https://www.hdfilmcehennemi.cx/');
+});
+
 
 
 app.on('ready', () => {

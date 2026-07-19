@@ -5,7 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2 } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
@@ -145,8 +145,20 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
     const [isIdle, setIsIdle] = useState(false);
     const idleTimerRef = useRef(null);
-
-
+    useEffect(() => {
+        if (window.desktopAPI && window.desktopAPI.onVideoSniffed) {
+            const handleVideoSniffed = (data) => {
+                console.log("Captured sniffed HLS video stream:", data);
+                if (data.url) {
+                    startWatchParty(data.url, false);
+                }
+            };
+            const cleanup = window.desktopAPI.onVideoSniffed(handleVideoSniffed);
+            return () => {
+                if (cleanup) cleanup();
+            };
+        }
+    }, [startWatchParty]);
 
     useEffect(() => {
         if (!isConnected) {
@@ -668,6 +680,20 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                     >
                                         Başlat
                                     </button>
+                                    {!!window.desktopAPI && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                window.desktopAPI.openFilmBrowser(watchUrl.trim() || 'https://www.hdfilmcehennemi.cx/');
+                                                setIsWatchInputOpen(false);
+                                            }}
+                                            className="chat-send-btn glass-btn"
+                                            style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }}
+                                            title="Film sitesini açıp oynatılan videoyu yakalayın"
+                                        >
+                                            <Globe size={14} /> Film Aç
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
