@@ -175,10 +175,23 @@ const isPlatformUrl = (url) => {
 const getProxiedUrl = (url) => {
   if (!url) return '';
   if (!url.startsWith('http')) return url;
+  
   const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
   const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
+  
+  // If running inside Electron, bypass backend proxy entirely for HLS since local main process spoofing handles it
+  if (isElectron && (url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest'))) {
+    return url;
+  }
+  
   const useAbsoluteUrl = isNative || isElectron;
   const baseUrl = ((!useAbsoluteUrl && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
+  
+  const isHlsStream = url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest');
+  if (isHlsStream) {
+    return `${baseUrl}/api/media/proxy-hls?url=${encodeURIComponent(url)}`;
+  }
+  
   return `${baseUrl}/api/media/${encodeURIComponent(url)}`;
 };
 
