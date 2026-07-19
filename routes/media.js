@@ -510,6 +510,116 @@ router.get('/*', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/media/proxy-hls
+ * @desc    Proxy HLS m3u8 or txt manifest files to bypass CORS.
+ * @access  Public
+ */
+router.get('/proxy-hls', async (req, res) => {
+    try {
+        const targetUrl = req.query.url;
+        if (!targetUrl) {
+            return res.status(400).json({ message: 'URL is required' });
+        }
+
+        const response = await axios.get(targetUrl, {
+            responseType: 'text',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': '*/*'
+            }
+        });
+
+        const manifestText = response.data;
+        const lines = manifestText.split(/\r?\n/);
+        const rewrittenLines = [];
+
+        const resolveUrl = (base, relative) => {
+            try {
+                return new URL(relative, base).toString();
+            } catch (e) {
+                return relative;
+            }
+        };
+
+        for (let line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) {
+                rewrittenLines.push(line);
+                continue;
+            }
+
+            if (trimmed.startsWith('#')) {
+                // Rewrite URI="..." attributes in tags like #EXT-X-KEY or #EXT-X-MAP
+                let updatedLine = line;
+                const uriRegex = /(URI=")([^"]+)(")/g;
+                updatedLine = updatedLine.replace(uriRegex, (match, p1, p2, p3) => {
+                    const resolved = resolveUrl(targetUrl, p2);
+                    const proxied = `/api/media/proxy-chunk?url=${encodeURIComponent(resolved)}`;
+                    return `${p1}${proxied}${p3}`;
+                });
+                rewrittenLines.push(updatedLine);
+            } else {
+                // It is a segment or sub-playlist URL
+                const resolved = resolveUrl(targetUrl, trimmed);
+                const isSubPlaylist = resolved.includes('.m3u8') || resolved.includes('.txt') || resolved.includes('manifest');
+                
+                let proxiedUrl;
+                if (isSubPlaylist) {
+                    proxiedUrl = `/api/media/proxy-hls?url=${encodeURIComponent(resolved)}`;
+                } else {
+                    proxiedUrl = `/api/media/proxy-chunk?url=${encodeURIComponent(resolved)}`;
+                }
+                rewrittenLines.push(proxiedUrl);
+            }
+        }
+
+        res.set('Content-Type', 'application/vnd.apple.mpegurl');
+        res.set('Access-Control-Allow-Origin', '*');
+        res.send(rewrittenLines.join('\n'));
+    } catch (error) {
+        console.error('[HlsProxy] Error proxying manifest:', error.message);
+        res.status(500).json({ message: 'Failed to proxy manifest', error: error.message });
+    }
+});
+
+/**
+ * @route   GET /api/media/proxy-chunk
+ * @desc    Proxy manifest segments/chunks to bypass CORS.
+ * @access  Public
+ */
+router.get('/proxy-chunk', async (req, res) => {
+    try {
+        const targetUrl = req.query.url;
+        if (!targetUrl) {
+            return res.status(400).json({ message: 'URL is required' });
+        }
+
+        const response = await axios({
+            method: 'get',
+            url: targetUrl,
+            responseType: 'stream',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': '*/*'
+            }
+        });
+
+        if (response.headers['content-type']) {
+            res.set('Content-Type', response.headers['content-type']);
+        }
+        if (response.headers['content-length']) {
+            res.set('Content-Length', response.headers['content-length']);
+        }
+        res.set('Access-Control-Allow-Origin', '*');
+
+        response.data.pipe(res);
+    } catch (error) {
+        console.error('[HlsProxy] Error proxying chunk:', error.message);
+        res.status(500).json({ message: 'Failed to proxy chunk', error: error.message });
+    }
+});
+
+/**
  * @route   POST /api/media/validate-stream
  * @desc    Validate watch party URL stream type (VOD vs Live) by fetching manifest contents.
  * @access  Private

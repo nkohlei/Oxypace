@@ -31,7 +31,7 @@ const loadHls = () => {
 const isHls = (url) => {
   if (!url) return false;
   const lowerUrl = url.toLowerCase();
-  return lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/');
+  return lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/') || lowerUrl.includes('/proxy-hls') || lowerUrl.includes('.txt') || lowerUrl.includes('manifest');
 };
 
 const checkCenterVideo = () => {
@@ -264,6 +264,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const getInactiveEl = () => (activeVideoRef.current === 'A' ? videoRefB : videoRefA).current;
   const getInactiveId = () => (activeVideoRef.current === 'A' ? 'B' : 'A');
 
+  const getHlsProxyUrl = useCallback((url) => {
+    if (!url) return '';
+    if (url.startsWith('/api/media/proxy-hls') || url.startsWith('http://localhost') || url.startsWith('https://oxypac3.vercel.app')) {
+      return url;
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return `/api/media/proxy-hls?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  }, []);
+
   const initHls = useCallback((videoEl, url) => {
     if (hlsInstanceRef.current) {
       hlsInstanceRef.current.destroy();
@@ -272,13 +283,15 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     if (!videoEl || !url) return;
 
+    const targetUrl = getHlsProxyUrl(url);
+
     if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-      videoEl.src = url;
+      videoEl.src = targetUrl;
       videoEl.load();
     } else {
       loadHls().then((HlsLib) => {
         if (!HlsLib.isSupported()) {
-          videoEl.src = url;
+          videoEl.src = targetUrl;
           videoEl.load();
           return;
         }
@@ -324,16 +337,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
             hls.currentLevel = -1;
           }
         });
-        hls.loadSource(url);
+        hls.loadSource(targetUrl);
         hls.attachMedia(videoEl);
         hlsInstanceRef.current = hls;
       }).catch(err => {
         console.error('Failed to load Hls.js, falling back to native src:', err);
-        videoEl.src = url;
+        videoEl.src = targetUrl;
         videoEl.load();
       });
     }
-  }, [user]);
+  }, [user, getHlsProxyUrl]);
 
   const setVideoSource = useCallback((el, url) => {
     if (!el) return;
