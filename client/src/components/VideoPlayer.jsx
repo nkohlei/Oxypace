@@ -41,6 +41,54 @@ const isHls = (url) => {
   return lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/') || lowerUrl.includes('/proxy-hls') || lowerUrl.includes('.txt') || lowerUrl.includes('manifest');
 };
 
+const findWorkingReferer = async (targetUrl) => {
+  let origin = '';
+  try {
+    origin = new URL(targetUrl).origin;
+  } catch(e) {}
+  
+  const tlds = ['cx', 'life', 'cool', 'live', 'com.tr', 'de', 'be', 'vip', 'website', 'lol', 'cc', 'pro', 'pw', 'today', 'org', 'net', 'co', 'biz', 'info', 'us', 'me', 'tv', 'ws', 'xyz', 'online', 'site', 'store', 'tech', 'link', 'click', 'space', 'club', 'best', 'top', 'icu', 'win', 'bid', 'gdn', 'trade', 'loan', 'download', 'stream', 'date', 'party'];
+  const refererList = [];
+  tlds.forEach(tld => {
+      refererList.push(`https://www.hdfilmcehennemi.${tld}/`);
+      refererList.push(`https://hdfilmcehennemi.${tld}/`);
+  });
+
+  refererList.push(
+      'https://www.filmmodu.org/',
+      'https://filmmodu.org/',
+      'https://www.filmmodu.dev/',
+      'https://fullhdfilmizlesene.pw/',
+      'https://www.fullhdfilmizlesene.pw/',
+      'https://fullhdfilmizlesene.com/',
+      'https://www.fullhdfilmizlesene.com/',
+      origin + '/',
+      ''
+  );
+
+  for (const ref of refererList) {
+    try {
+      const response = await fetch(targetUrl, {
+        method: 'GET',
+        headers: {
+          'X-Target-Referer': ref
+        }
+      });
+      if (response.status === 200) {
+        const text = await response.text();
+        if (text.includes('#EXTM3U') || text.includes('master') || text.includes('playlist')) {
+          console.log("🎉 Client found working Referer:", ref);
+          return ref;
+        }
+      }
+    } catch (err) {
+      // Continue
+    }
+  }
+  return '';
+};
+
+
 const checkCenterVideo = () => {
   if (mountedVideos.size === 0) return;
   if (typeof document !== 'undefined' && document.hidden) {
@@ -273,7 +321,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const getHlsProxyUrl = useCallback((url) => {
     if (!url) return '';
-    if (url.startsWith('/api/media/proxy-hls') || url.startsWith('http://localhost') || url.startsWith('https://oxypac3.vercel.app')) {
+    if (url.includes('/proxy-hls') || url.startsWith('/api/media/proxy-hls') || url.startsWith('http://localhost') || url.startsWith('https://oxypac3.vercel.app')) {
       return url;
     }
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -292,97 +340,112 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     const targetUrl = isElectron ? url : getHlsProxyUrl(url);
 
-    if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-      videoEl.src = targetUrl;
-      videoEl.load();
-      
-      const handleNativeError = () => {
-        if (videoEl.src !== url) {
-          console.warn("Native HLS proxy failed, falling back to original url:", url);
-          videoEl.removeEventListener('error', handleNativeError);
-          videoEl.src = url;
-          videoEl.load();
-        }
-      };
-      videoEl.addEventListener('error', handleNativeError);
-    } else {
-      loadHls().then((HlsLib) => {
-        if (!HlsLib.isSupported()) {
-          videoEl.src = targetUrl;
-          videoEl.load();
-          return;
-        }
-        const hls = new HlsLib({
-          enableWorker: true,
-          lowLatencyMode: true,
-        });
-        hls.on(HlsLib.Events.MANIFEST_PARSED, () => {
-          const pref = user?.settings?.video?.playbackQuality || 'auto';
-          if (pref === 'lowest') {
-            let lowestIdx = 0;
-            let lowestHeight = Infinity;
-            hls.levels.forEach((level, idx) => {
-              if (level.height && level.height < lowestHeight) {
-                lowestHeight = level.height;
-                lowestIdx = idx;
-              }
-            });
-            hls.currentLevel = lowestIdx;
-          } else if (pref === 'saver') {
-            let targetIdx = -1;
-            let bestHeight = 0;
-            hls.levels.forEach((level, idx) => {
-              if (level.height && level.height <= 720 && level.height > bestHeight) {
-                bestHeight = level.height;
-                targetIdx = idx;
-              }
-            });
-            if (targetIdx !== -1) {
-              hls.currentLevel = targetIdx;
-            }
-          } else if (pref === 'performance') {
-            let highestIdx = 0;
-            let highestHeight = 0;
-            hls.levels.forEach((level, idx) => {
-              if (level.height && level.height > highestHeight) {
-                highestHeight = level.height;
-                highestIdx = idx;
-              }
-            });
-            hls.currentLevel = highestIdx;
-          } else {
-            hls.currentLevel = -1;
-          }
-        });
-        
-        // Robust Hls.js network error handling to fall back to the original URL
-        hls.on(HlsLib.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            switch (data.type) {
-              case HlsLib.ErrorTypes.NETWORK_ERROR:
-                if (data.details === 'manifestLoadError' && hls.url !== url) {
-                  console.warn("HLS Proxy manifest load failed, falling back to original URL:", url);
-                  hls.loadSource(url);
-                  hls.startLoad();
-                } else {
-                  hls.destroy();
-                }
-                break;
-              default:
-                hls.destroy();
-                break;
-            }
-          }
-        });
-
-        hls.loadSource(targetUrl);
-        hls.attachMedia(videoEl);
-        hlsInstanceRef.current = hls;
-      }).catch(err => {
-        console.error('Failed to load Hls.js, falling back to native src:', err);
+    const startPlayer = (workingReferer = '') => {
+      if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
         videoEl.src = targetUrl;
         videoEl.load();
+        
+        const handleNativeError = () => {
+          if (videoEl.src !== url) {
+            console.warn("Native HLS proxy failed, falling back to original url:", url);
+            videoEl.removeEventListener('error', handleNativeError);
+            videoEl.src = url;
+            videoEl.load();
+          }
+        };
+        videoEl.addEventListener('error', handleNativeError);
+      } else {
+        loadHls().then((HlsLib) => {
+          if (!HlsLib.isSupported()) {
+            videoEl.src = targetUrl;
+            videoEl.load();
+            return;
+          }
+          const hls = new HlsLib({
+            enableWorker: true,
+            lowLatencyMode: true,
+            xhrSetup: (xhr, requestUrl) => {
+              if (workingReferer) {
+                xhr.setRequestHeader('X-Target-Referer', workingReferer);
+              }
+            }
+          });
+          hls.on(HlsLib.Events.MANIFEST_PARSED, () => {
+            const pref = user?.settings?.video?.playbackQuality || 'auto';
+            if (pref === 'lowest') {
+              let lowestIdx = 0;
+              let lowestHeight = Infinity;
+              hls.levels.forEach((level, idx) => {
+                if (level.height && level.height < lowestHeight) {
+                  lowestHeight = level.height;
+                  lowestIdx = idx;
+                }
+              });
+              hls.currentLevel = lowestIdx;
+            } else if (pref === 'saver') {
+              let targetIdx = -1;
+              let bestHeight = 0;
+              hls.levels.forEach((level, idx) => {
+                if (level.height && level.height <= 720 && level.height > bestHeight) {
+                  bestHeight = level.height;
+                  targetIdx = idx;
+                }
+              });
+              if (targetIdx !== -1) {
+                hls.currentLevel = targetIdx;
+              }
+            } else if (pref === 'performance') {
+              let highestIdx = 0;
+              let highestHeight = 0;
+              hls.levels.forEach((level, idx) => {
+                if (level.height && level.height > highestHeight) {
+                  highestHeight = level.height;
+                  highestIdx = idx;
+                }
+              });
+              hls.currentLevel = highestIdx;
+            } else {
+              hls.currentLevel = -1;
+            }
+          });
+          
+          // Robust Hls.js network error handling to fall back to the original URL
+          hls.on(HlsLib.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+              switch (data.type) {
+                case HlsLib.ErrorTypes.NETWORK_ERROR:
+                  if (data.details === 'manifestLoadError' && hls.url !== url) {
+                    console.warn("HLS Proxy manifest load failed, falling back to original URL:", url);
+                    hls.loadSource(url);
+                    hls.startLoad();
+                  } else {
+                    hls.destroy();
+                  }
+                  break;
+                default:
+                  hls.destroy();
+                  break;
+              }
+            }
+          });
+
+          hls.loadSource(targetUrl);
+          hls.attachMedia(videoEl);
+          hlsInstanceRef.current = hls;
+        }).catch(err => {
+          console.error('Failed to load Hls.js, falling back to native src:', err);
+          videoEl.src = targetUrl;
+          videoEl.load();
+        });
+      }
+    };
+
+    if (isElectron) {
+      findWorkingReferer(targetUrl).then(ref => {
+        startPlayer(ref);
       });
+    } else {
+      startPlayer();
     }
   }, [user, getHlsProxyUrl]);
 
