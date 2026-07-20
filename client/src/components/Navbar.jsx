@@ -193,7 +193,15 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     )}
 
                     <div className="nav-right">
-
+                        {!hideThemeToggle && (
+                            <button
+                                className="nav-theme-toggle-btn"
+                                onClick={toggleTheme}
+                                title={isDark ? "Aydınlık Tema" : "Karanlık Tema"}
+                            >
+                                {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                            </button>
+                        )}
 
                         {/* Unified Profile Button (Toggles Dropdown) */}
                         <div className="header-menu-wrapper" ref={menuRef}>
