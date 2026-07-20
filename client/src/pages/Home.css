@@ -9,7 +9,7 @@
   background-color: transparent !important;
   opacity: 1 !important;
   filter: none !important;
-  color: #fff;
+  color: var(--foreground);
   min-height: 100vh !important;
   min-height: 100dvh !important;
   width: 100% !important;
@@ -467,8 +467,19 @@
 
 @media (max-width: 480px) {
   .advanced-home .info-text h3 { font-size: 1.3rem; }
-  .advanced-home .content-sections-wrapper { padding: 0 12px 70px; gap: 36px; }
+  .advanced-home .content-sections-wrapper { padding: 0 12px 80px; gap: 36px; }
   .advanced-home .hero-subtitle-typing { font-size: 0.85rem; }
+
+  /* Mobile bottom nav safe area */
+  .advanced-home .content-sections-wrapper {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* APK button compact on very small screens */
+  .advanced-home .footer-apk-btn {
+    padding: 10px 18px;
+    font-size: 0.85rem;
+  }
 }
 
 /* FLOATING SCROLL TOP */

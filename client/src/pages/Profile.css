@@ -1115,6 +1115,16 @@
         max-height: none;
         border-radius: 0;
         margin: 0;
+        border: none;
+    }
+
+    .profile-page-content {
+        padding: 0;
+        height: auto;
+        min-height: calc(100dvh - 56px);
+        overflow-y: auto;
+        align-items: stretch;
+        justify-content: flex-start;
     }
 
     .profile-horizontal-layout {
@@ -1140,17 +1150,17 @@
     }
 
     .profile-banner {
-        height: 180px;
+        height: 160px;
     }
 
     .profile-avatar-container {
-        width: 100px;
-        height: 100px;
-        border-width: 5px;
+        width: 86px;
+        height: 86px;
+        border-width: 4px;
     }
 
     .profile-avatar-wrapper {
-        margin-top: -50px;
+        margin-top: -43px;
         padding: 0 16px;
     }
 
@@ -1160,11 +1170,6 @@
 
     .profile-header-actions {
         padding: 0;
-    }
-
-    .profile-page-content {
-        padding: 0;
-        overflow: visible;
     }
 }
 

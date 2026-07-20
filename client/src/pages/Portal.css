@@ -477,21 +477,53 @@
 
 @media (max-width: 768px) {
     .portal-feed-container {
-        padding: 0 16px 20px 16px;
+        padding: 0 12px 20px 12px;
     }
 
     .channel-top-bar .sub-header-back-circle {
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        min-height: 36px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--glass-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--border-subtle);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--text-primary);
+        color: var(--foreground);
         cursor: pointer;
         flex-shrink: 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Channel top bar spans full width on mobile */
+    .channel-top-bar {
+        width: 100% !important;
+        min-width: unset !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-top: none !important;
+    }
+
+    /* Message input wrapper full bottom */
+    .message-input-wrapper {
+        border-radius: 24px;
+        height: 52px;
+    }
+
+    /* All tap targets minimum 44px */
+    .icon-btn,
+    .channel-header-actions button {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 }
 

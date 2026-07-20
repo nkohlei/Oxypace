@@ -585,11 +585,32 @@
         align-items: center !important;
         padding-right: 0;
         margin-top: 4px;
-        gap: 8px !important;
+        gap: 0 !important;
     }
     
     .post-actions > * {
         flex-shrink: 0 !important;
+    }
+
+    /* Touch targets: minimum 44px for accessibility */
+    .action-btn,
+    .post-action-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .action-btn {
+        padding: 10px 10px;
+    }
+
+    .action-btn svg,
+    .post-action-btn svg {
+        width: 18px;
+        height: 18px;
     }
 
     .quoted-post-container {
@@ -600,20 +621,6 @@
     .delete-confirm-modal {
         width: 90% !important;
         max-width: 320px !important;
-    }
-
-    .action-btn {
-        padding: 6px 8px;
-    }
-
-    .action-btn svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    .post-action-btn svg {
-        width: 16px;
-        height: 16px;
     }
 
     .post-action-buttons {

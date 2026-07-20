@@ -463,29 +463,41 @@ body.dark-mode .logo-text {
     right: 0;
     width: 100%;
     background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-top: none;
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border-top: 1px solid var(--border-subtle);
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 2000;
     height: calc(60px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 768px) {
+    .bottom-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 8px;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
 }
 
 @media (max-width: 768px) {
     .navbar {
-        height: calc(50px + env(safe-area-inset-top, 0px));
-        min-height: calc(50px + env(safe-area-inset-top, 0px));
+        height: calc(56px + env(safe-area-inset-top, 0px));
+        min-height: calc(56px + env(safe-area-inset-top, 0px));
+        border-bottom: 1px solid var(--border-subtle) !important;
     }
 
     .nav-container {
-        padding: 0 16px;
+        padding: 0 12px;
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
 
     .nav-left {
-        width: 44px; /* Balance with right */
+        width: 44px;
     }
 
     .brand-logo {
@@ -507,12 +519,32 @@ body.dark-mode .logo-text {
     }
 
     .nav-right {
-        gap: 8px;
+        gap: 6px;
+    }
+
+    /* Theme toggle: show as icon-only on mobile */
+    .nav-theme-toggle-btn {
+        width: 38px;
+        height: 38px;
+        margin-right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--foreground);
+        background: transparent;
+        border-radius: 50%;
+    }
+
+    /* Hide the full neumorphic toggle slider, show icon btn only */
+    .neumorphic-theme-toggle {
+        display: none;
     }
 
     .profile-unified-btn {
-        width: 38px;
-        height: 38px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        min-height: 36px;
     }
 
     .guest-register-btn {
@@ -522,6 +554,13 @@ body.dark-mode .logo-text {
     .guest-nav-actions {
         margin-left: auto;
         gap: 0;
+    }
+
+    /* Dropdown: prevent overflow on small screens */
+    .header-dropdown {
+        width: calc(100vw - 24px) !important;
+        max-width: 280px !important;
+        right: -4px !important;
     }
 }
 
