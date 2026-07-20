@@ -2,7 +2,7 @@
 .user-bar-container {
     height: 52px;
     padding: 0 8px;
-    background-color: var(--bg-darker);
+    background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
