@@ -71,14 +71,14 @@ const ChannelSidebar = ({
         <div
             className={`channel-sidebar ${isDesktopSidebarCollapsed ? 'collapsed' : ''} ${className || ''}`}
             style={{
-                minHeight: '100%',
-                backgroundColor: 'var(--bg-secondary)',
+                height: isDesktopSidebarCollapsed ? '0' : 'calc(100% - 24px)',
+                backgroundColor: 'transparent',
                 display: 'flex',
                 flexDirection: 'column',
                 flexShrink: 0,
                 overflow: 'visible',
                 position: 'relative',
-                borderRight: isDesktopSidebarCollapsed ? 'none' : '1px solid var(--border-subtle)',
+                borderRight: 'none',
             }}
         >
             {!isMobileView && isLiveRoom && (
@@ -324,7 +324,7 @@ const ChannelSidebar = ({
                 textAlign: 'center',
                 opacity: 0.6,
                 userSelect: 'none',
-                backgroundColor: 'var(--bg-secondary)', /* match sidebar background */
+                backgroundColor: 'transparent', /* match sidebar background */
                 borderTop: '1px solid var(--border-subtle)', /* separator from user bar */
             }}>
                 © 2026 Oxypace. Tüm hakları saklıdır.
@@ -338,6 +338,15 @@ const ChannelSidebar = ({
                 transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border 0.3s ease;
                 flex-shrink: 0;
                 max-width: 100vw;
+                background: var(--glass-bg) !important;
+                backdrop-filter: blur(20px) saturate(160%);
+                -webkit-backdrop-filter: blur(20px) saturate(160%);
+                border: 1px solid var(--glass-border) !important;
+                border-radius: 16px !important;
+                margin: 12px 12px 12px 0 !important;
+                height: calc(100% - 24px) !important;
+                overflow: hidden !important;
+                box-shadow: var(--glass-shadow) !important;
             }
             
             .channel-sidebar.collapsed {
@@ -425,7 +434,7 @@ const ChannelSidebar = ({
                 align-items: center;
                 justify-content: space-between;
                 border-bottom: 1px solid var(--border-subtle);
-                background: var(--bg-secondary);
+                background: transparent;
             }
 
             .portal-info-main {

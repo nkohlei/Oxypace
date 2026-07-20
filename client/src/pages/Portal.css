@@ -24,7 +24,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-dark);
+    background: transparent;
     /* Discord Chat Bckground */
     min-width: 0;
     max-width: 100%;
@@ -37,9 +37,13 @@
     padding: 0 16px;
     display: flex;
     align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    box-shadow: none;
-    background-color: var(--bg-dark);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    margin: 12px 16px 0 16px;
+    box-shadow: var(--glass-shadow);
     flex-shrink: 0;
     z-index: 50;
 }
@@ -105,7 +109,6 @@
     min-height: 0;
     /* Flexbox trick for nested scroll */
     justify-content: flex-start;
-    border-top: 1px solid var(--border-subtle);
     /* Separator between input and feed */
     position: relative;
     transform: translateZ(0); /* Isolate scroll layer to prevent backdrop-filter glitch */
@@ -155,12 +158,15 @@
 
 /* Message Input Area - At the TOP of the feed (order:-1 places it first in flex column) */
 .channel-input-area {
-    padding: 12px 24px 12px 24px;
-    margin: 0;
-    width: 100%;
-    background-color: var(--bg-dark);
-    border: none;
-    box-shadow: none;
+    padding: 12px 20px;
+    margin: 12px 16px 4px 16px;
+    width: calc(100% - 32px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: var(--glass-shadow);
     flex-shrink: 0;
     z-index: 60;
     position: relative;
