@@ -697,19 +697,21 @@
 
     margin-top: 8px;
     margin-bottom: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--glass-border);
     border-radius: var(--quote-radius);
     overflow: hidden;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background-color: rgba(255, 255, 255, 0.03);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     max-width: 460px;
     width: 100%;
 }
 
 .quoted-post-container:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
 }
 
 .quoted-post-container.depth-1 {
@@ -801,8 +803,8 @@
     align-items: center;
     gap: 4px;
     padding: 3px 6px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     font-size: calc(var(--quote-font-sub) - 2px);
     font-weight: 600;
@@ -834,9 +836,9 @@
     margin-top: var(--quote-gap);
     border-radius: 8px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
     max-height: var(--quote-max-h);
-    background: rgba(0, 0, 0, 0.1);
+    background: transparent;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -901,7 +903,7 @@
 
 .quoted-post-container.private {
     padding: 16px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--glass-bg);
     border-style: dashed;
     cursor: default;
 }
@@ -928,23 +930,23 @@
     align-items: center;
     gap: 16px;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: 12px;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     text-decoration: none;
     color: inherit;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--glass-shadow);
     cursor: pointer;
 }
 
 .pdf-glass-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--glass-shadow-hover);
 }
 
 .pdf-thumbnail-wrapper {
@@ -955,7 +957,7 @@
     overflow: hidden;
     flex-shrink: 0;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
 }
 
 .pdf-thumbnail {
