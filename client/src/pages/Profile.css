@@ -451,8 +451,10 @@
 
 .portal-item-card,
 .friend-item-card {
-    background: var(--neu-bg);
-    border: none;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
     padding: 10px;
     border-radius: 14px;
     transition: all 0.2s ease;
@@ -460,7 +462,7 @@
     align-items: center;
     gap: 10px;
     color: var(--text-primary);
-    box-shadow: none;
+    box-shadow: var(--glass-shadow);
 }
 
 .portal-item-card:hover,
@@ -539,7 +541,10 @@
 .empty-tab {
     font-size: 13px;
     color: var(--text-tertiary);
-    background: var(--bg-secondary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
     padding: 30px 15px;
     border-radius: 16px;
     text-align: center;
@@ -554,10 +559,12 @@
     display: flex;
     gap: 12px;
     padding: 14px 16px;
-    background: var(--bg-secondary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
     border-radius: 16px;
     margin-bottom: 20px;
-    border: 1px solid var(--border-subtle) !important;
+    border: 1px solid var(--glass-border) !important;
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: text;
     position: relative;
