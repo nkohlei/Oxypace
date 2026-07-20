@@ -46,7 +46,8 @@
     box-shadow: var(--glass-shadow);
     flex-shrink: 0;
     z-index: 50;
-    width: 100%;
+    width: fit-content;
+    min-width: 200px; /* Sensible minimum width */
 }
 
 .channel-title-wrapper {
@@ -158,22 +159,20 @@
     color: var(--text-primary);
 }
 
-/* Message Input Area - At the TOP of the feed (order:-1 places it first in flex column) */
+/* Message Input Area */
 .channel-input-area {
-    padding: 12px 20px;
-    margin: 12px 0 4px 0;
+    padding: 0;
+    margin: 4px 0 12px 0; /* Connected/close to the header */
     width: 100%;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    box-shadow: var(--glass-shadow);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     flex-shrink: 0;
     z-index: 60;
     position: relative;
-    order: -1;
-    /* Force to top of the flex column */
+    /* Force to top of the flex column no longer needed as DOM order is natural */
 }
 
 .channel-input-area>* {
@@ -215,27 +214,28 @@
 }
 
 .message-input-wrapper {
-    background-color: transparent;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: var(--glass-shadow);
     transform: translateZ(0); /* Force hardware acceleration to fix Chromium blur edge flashing */
     will-change: transform;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     overflow: hidden; /* Strictly prevent blur bleeding outside border-radius */
-    border-radius: 16px;
     display: flex;
     align-items: center;
     padding: 0 16px;
-    height: 56px;
-    box-shadow: none;
-    border: none;
-    position: relative;
-    transition: all 0.2s ease;
+    height: 48px; /* Compact height */
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .message-input-wrapper:focus-within {
-    box-shadow: none;
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--glass-shadow-hover);
 }
 
 /* Plus Menu Popover */
