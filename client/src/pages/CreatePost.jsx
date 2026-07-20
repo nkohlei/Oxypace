@@ -126,6 +126,7 @@ const CreatePost = () => {
                     useUploadStore.getState().startVideoUpload({
                         file: mediaFile,
                         portalId,
+                        channel: location.state?.channelId || location.state?.channel,
                         content: finalContent,
                         quotedPostId,
                     });

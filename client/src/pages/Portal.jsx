@@ -442,6 +442,7 @@ const Portal = () => {
                     useUploadStore.getState().startVideoUpload({
                         file: currentData.media,
                         portalId: id,
+                        channel: currentChannel,
                         content: currentData.content,
                         quotedPostId: quotedPost?._id,
                         onFinish: (err, createdPost) => {

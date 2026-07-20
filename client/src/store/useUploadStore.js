@@ -31,7 +31,7 @@ const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onPro
 export const useUploadStore = create((set, get) => ({
     activeUploads: {}, // { [uploadKey]: { portalId, fileName, progress, stage, status: 'uploading' | 'completed' | 'failed', error } }
 
-    startVideoUpload: async ({ file, portalId = null, content, quotedPostId = null, authorId = null, onFinish }) => {
+    startVideoUpload: async ({ file, portalId = null, channel = null, content, quotedPostId = null, authorId = null, onFinish }) => {
         // Generate a unique upload key
         const uploadKey = portalId ? `portal-${portalId}` : `profile-${authorId || 'general'}`;
         
@@ -86,6 +86,7 @@ export const useUploadStore = create((set, get) => ({
             const postData = {
                 content,
                 portalId,
+                channel,
                 quotedPostId,
                 mediaKey,
                 mediaType: 'video',
