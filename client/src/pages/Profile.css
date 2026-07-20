@@ -42,11 +42,14 @@
 
 
 .profile-card-horizontal {
-    background-color: var(--neu-bg);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
     border-radius: 20px;
     overflow: hidden;
     position: relative;
-    box-shadow: none;
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
     max-width: 1000px;
     width: 100%;
     margin: 0 auto; /* Removed vertical margin to let container align it */
@@ -54,13 +57,13 @@
     flex-direction: column;
     height: 100%;
     max-height: calc(100vh - 100px); /* Leaves a sleek 15px gap above and below */
-    border: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .profile-horizontal-layout {
     display: flex;
     flex: 1;
-    background-color: var(--bg-card);
+    background: transparent;
     min-height: 0;
 }
 
