@@ -81,7 +81,6 @@ import SecurityQuestionsModal from './components/SecurityQuestionsModal';
 import './AppLayout.css';
 import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
-import GlobalVideoPIP from './components/GlobalVideoPIP';
 import UpdateModal from './components/UpdateModal';
 import { GlobalWatchPartyWrapper } from './components/WatchPartyPlayer';
 import TourGuide from './components/TourGuide';
@@ -592,7 +591,6 @@ const AppLayout = () => {
                 </div>
             </div>
             <InAppBrowser />
-            <GlobalVideoPIP />
             <GlobalWatchPartyWrapper />
             <UpdateModal />
             <TourGuide />
