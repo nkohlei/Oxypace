@@ -62,18 +62,17 @@
   --bg-darker: #F2F2F2;
   /* Very light gray for sidebars */
   --bg-card: #FFFFFF;
-  --bg-hover: rgba(30, 58, 95, 0.15);
+  --bg-hover: rgba(30, 58, 95, 0.08);
   --bg-input: #F5F5F5;
 
   /* Text - Stark Black for readability */
-  --text-primary: #000000;
-  --text-secondary: #333333;
-  --text-tertiary: #555555;
-  --text-muted: #777777;
+  --text-primary: #0D0E12;
+  --text-secondary: #374151;
+  --text-tertiary: #6B7280;
+  --text-muted: #9CA3AF;
 
   /* Borders - Visible & Crisp */
-  --border-subtle: #DDDDDD;
-  /* Visible gray border */
+  --border-subtle: rgba(0, 0, 0, 0.08);
   --border-neon: #1E3A5F;
 
   /* Accent overrides for light mode */
@@ -88,10 +87,10 @@
   --shadow-card: none;
   --shadow-popover: none;
 
-  /* Glassmorphism (light) */
-  --glass-bg: rgba(255, 255, 255, 0.65);
+  /* Glassmorphism (light) — matches tailwind.css premium system */
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.25) 100%);
   --glass-blur: blur(20px);
-  --glass-border: none;
+  --glass-border: rgba(0, 0, 0, 0.06);
   --glass-reflection: none;
 }
 
