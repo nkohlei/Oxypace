@@ -245,7 +245,7 @@ const PageLoader = () => (
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        background: 'var(--bg-primary, #0a0a0a)'
+        background: 'transparent'
     }}>
         <div className="loading-spinner" style={{
             width: '40px',
