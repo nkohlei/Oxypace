@@ -306,14 +306,12 @@ body.dark-mode .logo-text {
     top: calc(100% + 12px);
     right: 0;
     width: 220px; /* Minimal width */
-    /* Balanced Misty Design - Light permeable yet foggy */
-    background: rgba(15, 20, 32, 0.75) !important; /* Balanced opacity for light permeability */
-    backdrop-filter: blur(120px) saturate(220%) brightness(1.2) !important;
-    -webkit-backdrop-filter: blur(120px) saturate(220%) brightness(1.2) !important;
-    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 28px !important;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7) !important;
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(20px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 20px !important;
+    box-shadow: var(--glass-shadow) !important;
     padding: 8px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
@@ -321,18 +319,12 @@ body.dark-mode .logo-text {
     animation: dropdownScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-[data-theme='light'] .header-dropdown {
-    background: rgba(250, 251, 253, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: none;
-}
-
 .dropdown-user-info {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--glass-border);
     margin-bottom: 6px;
     text-decoration: none;
     transition: background 0.2s ease;
@@ -341,10 +333,6 @@ body.dark-mode .logo-text {
 
 .dropdown-user-info:hover {
     background: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme='light'] .dropdown-user-info {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .dropdown-avatar, .dropdown-avatar-placeholder {
@@ -433,7 +421,7 @@ body.dark-mode .logo-text {
 
 .dropdown-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--glass-border);
     margin: 8px 0;
 }
 
