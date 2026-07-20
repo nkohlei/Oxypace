@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ── EVENT HORIZON PREMIUM DESIGN SYSTEM ── */
-:root {
+:root, [data-theme='light'] {
   --background: #FAF9F6;
   --foreground: #0D0E12;
   --foreground-muted: #6B7280;
@@ -24,7 +24,7 @@
   --panel-bg: rgba(255, 255, 255, 0.15);
 }
 
-.dark {
+[data-theme='dark'] {
   --background: #050505;
   --foreground: #F2F2F5;
   --foreground-muted: #71717A;
