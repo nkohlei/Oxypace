@@ -712,7 +712,7 @@ const Profile = () => {
     return (
         <div
             className="app-wrapper full-height"
-            style={{ backgroundColor: '#111214', color: '#dbdee1' }}
+            style={{ backgroundColor: 'transparent', color: '#dbdee1' }}
         >
             {profileUser && (
                 <SEO

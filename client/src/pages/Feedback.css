@@ -1,7 +1,7 @@
 /* Root & Reset */
 .feedback-page-root {
     min-height: 100vh;
-    background: #020617; /* Very dark deep blue */
+    background: transparent;
     color: #f8fafc;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -12,7 +12,7 @@
 }
 
 ::-webkit-scrollbar-track {
-    background: #020617;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
