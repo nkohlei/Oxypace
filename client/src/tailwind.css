@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Design Tokens and Theme Variables matching the Blog */
+@theme {
+  --color-brand-cyan: #06b6d4;
+  --color-brand-blue: #3b82f6;
+  --color-brand-dark-base: #09090b;
+  --color-brand-dark-card: #18181b;
+  
+  --shadow-neon-cyan: 0 0 15px rgba(6, 182, 212, 0.15);
+  --shadow-neon-blue: 0 0 15px rgba(59, 130, 246, 0.15);
+}
