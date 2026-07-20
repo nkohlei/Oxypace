@@ -42,10 +42,11 @@
     -webkit-backdrop-filter: blur(20px) saturate(160%);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
-    margin: 12px 16px 0 16px;
+    margin: 12px 0 0 0;
     box-shadow: var(--glass-shadow);
     flex-shrink: 0;
     z-index: 50;
+    width: 100%;
 }
 
 .channel-title-wrapper {
@@ -94,6 +95,7 @@
     height: 100%;
     /* Fill parent */
     justify-content: flex-start !important;
+    padding: 0 16px;
 }
 
 /* Discord Feed Adaptation - This is the scrollable part */
@@ -102,7 +104,7 @@
     overflow-y: auto;
     /* Scroll enabled here */
     overflow-x: hidden;
-    padding: 20px 40px;
+    padding: 12px 0;
     /* Reduced top padding */
     width: 100%;
     /* Remove automatic padding that might cause scroll on empty */
@@ -159,8 +161,8 @@
 /* Message Input Area - At the TOP of the feed (order:-1 places it first in flex column) */
 .channel-input-area {
     padding: 12px 20px;
-    margin: 12px 16px 4px 16px;
-    width: calc(100% - 32px);
+    margin: 12px 0 4px 0;
+    width: 100%;
     background: var(--glass-bg);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);

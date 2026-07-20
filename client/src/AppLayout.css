@@ -62,7 +62,7 @@
     overflow: visible;
     /* Must be visible to allow flyout menu to overflow */
     border-right: none;
-    background: var(--bg-darker);
+    background: transparent;
     box-shadow: none;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -74,7 +74,7 @@
     /* Prevent flex child overflow */
     height: 100%;
     position: relative;
-    background-color: var(--bg-primary);
+    background-color: transparent;
     overflow: hidden;
     /* No scroll on main wrapper */
     display: flex;
