@@ -1,12 +1,112 @@
 @import "tailwindcss";
 
-/* Design Tokens and Theme Variables matching the Blog */
-@theme {
-  --color-brand-cyan: #06b6d4;
-  --color-brand-blue: #3b82f6;
-  --color-brand-dark-base: #09090b;
-  --color-brand-dark-card: #18181b;
-  
-  --shadow-neon-cyan: 0 0 15px rgba(6, 182, 212, 0.15);
-  --shadow-neon-blue: 0 0 15px rgba(59, 130, 246, 0.15);
+/* ── EVENT HORIZON PREMIUM DESIGN SYSTEM ── */
+:root {
+  --background: #FAF9F6;
+  --foreground: #0D0E12;
+  --foreground-muted: #6B7280;
+  --foreground-subtle: #9CA3AF;
+  --accent: #6366f1;
+  --accent-muted: rgba(99, 102, 241, 0.12);
+  --border-color: rgba(0, 0, 0, 0.07);
+  --border-hover: rgba(0, 0, 0, 0.14);
+  --grid-color: rgba(0, 0, 0, 0.022);
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-bg-hover: rgba(255, 255, 255, 0.50);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --glass-border-hover: rgba(0, 0, 0, 0.12);
+  --glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.02), 0 8px 32px rgba(0, 0, 0, 0.02);
+  --glass-shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.04), 0 24px 64px rgba(0, 0, 0, 0.03);
+  --nav-bg: rgba(250, 249, 246, 0.40);
+  --modal-bg: rgba(255, 255, 255, 0.35);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.10);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  --panel-bg: rgba(255, 255, 255, 0.15);
 }
+
+.dark {
+  --background: #050505;
+  --foreground: #F2F2F5;
+  --foreground-muted: #71717A;
+  --foreground-subtle: #52525B;
+  --accent: #818cf8;
+  --accent-muted: rgba(129, 140, 248, 0.10);
+  --border-color: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(255, 255, 255, 0.10);
+  --grid-color: rgba(255, 255, 255, 0.012);
+  --glass-bg: rgba(7, 8, 11, 0.80);
+  --glass-bg-hover: rgba(7, 8, 11, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.18);
+  --glass-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.30);
+  --glass-shadow-hover: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.50);
+  --nav-bg: rgba(7, 8, 11, 0.80);
+  --modal-bg: rgba(10, 11, 16, 0.92);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.20);
+  --panel-bg: rgba(255, 255, 255, 0.02);
+}
+
+@theme {
+  --color-brand-background: var(--background);
+  --color-brand-foreground: var(--foreground);
+  --color-brand-accent: var(--accent);
+}
+
+/* ── CLASS UTILITIES ── */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  transition:
+    background 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-4px);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.glass-nav {
+  background: var(--nav-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+.glass-modal {
+  background: var(--modal-bg);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-hover);
+}
+
+.link-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--foreground);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
