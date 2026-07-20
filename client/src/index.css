@@ -276,9 +276,8 @@ textarea:focus {
   background: rgba(0, 0, 0, 0.08);
 }
 
-/* App Structure */
 .app-wrapper {
-  background: var(--bg-dark);
+  background: transparent;
   flex: 1;
   /* Allow it to fill space provided by main-content-wrapper */
   width: 100%;
