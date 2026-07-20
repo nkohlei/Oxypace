@@ -116,7 +116,7 @@
 .profile-left-column {
     width: 45%;
     padding: 0;
-    background-color: var(--bg-card);
+    background-color: transparent;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
@@ -287,12 +287,12 @@
     font-size: 13px;
     color: var(--text-secondary);
     line-height: 1.5;
-    background: var(--bg-secondary);
+    background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     padding: 12px;
     border-radius: 12px;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid var(--glass-border);
     box-shadow: none;
 }
 
@@ -351,8 +351,8 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: var(--bg-card);
-    border-left: 1px solid var(--border-subtle);
+    background: transparent;
+    border-left: 1px solid var(--glass-border);
     min-height: 0;
 }
 
