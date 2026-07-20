@@ -1920,15 +1920,18 @@ const Portal = () => {
                                                                         )}
                                                                     </div>
                                                                 ) : (
-                                                                    <div className="channel-input-area" style={{ padding: '0 20px 24px 20px', backgroundColor: 'var(--bg-secondary)', borderTop: 'none' }}>
+                                                                    <div className="channel-input-area" style={{ padding: '0 20px 24px 20px', backgroundColor: 'transparent', borderTop: 'none' }}>
                                                                         <div style={{
                                                                             display: 'flex', 
                                                                             justifyContent: 'space-between', 
                                                                             alignItems: 'center', 
-                                                                            background: 'var(--bg-card)', 
+                                                                            background: 'var(--glass-bg)', 
                                                                             padding: '12px 20px', 
                                                                             borderRadius: '8px',
-                                                                            border: '1px solid var(--border-subtle)'
+                                                                            border: '1px solid var(--glass-border)',
+                                                                            backdropFilter: 'blur(20px) saturate(160%)',
+                                                                            WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+                                                                            boxShadow: 'var(--glass-shadow)'
                                                                         }}>
                                                                             <span style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '14px' }}>
                                                                                 Bu kanalda mesaj göndermek için {user ? 'portala katılmalısın.' : 'giriş yapmalısın.'}

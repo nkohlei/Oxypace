@@ -215,7 +215,7 @@
 }
 
 .message-input-wrapper {
-    background-color: var(--bg-input);
+    background-color: transparent;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     transform: translateZ(0); /* Force hardware acceleration to fix Chromium blur edge flashing */
