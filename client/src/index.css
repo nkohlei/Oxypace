@@ -108,7 +108,7 @@ html {
 }
 
 body {
-  background: var(--bg-dark);
+  background: var(--background);
   background-attachment: fixed;
   color: var(--text-primary);
   height: 100%;
