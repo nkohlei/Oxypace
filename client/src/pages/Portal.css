@@ -48,6 +48,7 @@
     z-index: 50;
     width: fit-content;
     min-width: 200px; /* Sensible minimum width */
+    order: -2; /* Header goes to the absolute top */
 }
 
 .channel-title-wrapper {
@@ -162,7 +163,7 @@
 /* Message Input Area */
 .channel-input-area {
     padding: 0;
-    margin: 4px 0 12px 0; /* Connected/close to the header */
+    margin: 12px 0 4px 0; /* Margin adjusted */
     width: 100%;
     background: transparent;
     border: none;
@@ -172,7 +173,7 @@
     flex-shrink: 0;
     z-index: 60;
     position: relative;
-    /* Force to top of the flex column no longer needed as DOM order is natural */
+    order: -1; /* Placed directly below the header */
 }
 
 .channel-input-area>* {
@@ -464,7 +465,7 @@
 .portal-feed-container {
     width: 100%;
     margin: 0;
-    padding: 0 40px 20px 40px;
+    padding: 0 0 20px 0; /* Clear horizontal padding to align posts with input box */
     /* Standard padding */
     flex: 1;
     overflow-y: auto;
