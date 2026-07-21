@@ -154,7 +154,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
 
     const handleLogout = () => {
         logout();
-        navigate('/');
+        navigate('/login');
     };
 
     return (

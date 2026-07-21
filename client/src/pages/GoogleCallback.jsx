@@ -23,7 +23,7 @@ const GoogleCallback = () => {
                 if (isElectron) {
                     window.location.href = '#/';
                 } else {
-                    window.location.href = '/'; // Full reload for clean layout
+                    window.location.href = '/portal/'; // Full reload into Portal SPA
                 }
             }
         } else {
