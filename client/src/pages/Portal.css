@@ -115,8 +115,10 @@
     justify-content: flex-start;
     /* Separator between input and feed */
     position: relative;
-    transform: translateZ(0); /* Isolate scroll layer to prevent backdrop-filter glitch */
-    will-change: transform;
+    /* CRITICAL: Let the browser's native scroll anchoring work.
+       Do NOT add transform or will-change here — they create a new
+       stacking context that breaks overflow-anchor in Chrome/Edge. */
+    overflow-anchor: auto;
 }
 
 /* Search Bar Mini */

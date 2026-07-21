@@ -430,7 +430,6 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
             onMouseLeave={handleMouseLeave}
             style={{
                 zIndex: showMenu ? 100 : 1,
-                contentVisibility: showMenu ? 'visible' : 'auto'
             }}
         >
             {post.isOptimistic && !post.media && (

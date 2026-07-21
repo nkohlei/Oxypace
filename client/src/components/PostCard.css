@@ -16,8 +16,10 @@
     position: relative;
     cursor: default;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    content-visibility: auto;
-    contain-intrinsic-size: auto 120px;
+    /* NOTE: Do NOT add content-visibility: auto here.
+       It reserves only a fixed intrinsic height (e.g. 120px) for off-screen
+       cards. When a card with images/video enters the viewport the browser
+       recalculates the real height, causing layout shifts and scroll jumps. */
 }
 
 /* Guaranteed Visible Separator */
