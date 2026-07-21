@@ -738,45 +738,36 @@ const Settings = () => {
 
     const renderVerificationMenu = () => (
         <div className="submenu-content animation-slide-in">
-            <div className="verification-container">
-                {user?.verificationRequest?.status === 'pending' ? (
-                    <div className="verification-status pending">
-                        <div className="status-icon-large">⏳</div>
-                        <div className="status-info">
-                            <h4>Başvurunuz İnceleniyor</h4>
-                            <p>Talebiniz ekibimiz tarafından değerlendiriliyor.</p>
-
-                            <div className="badge-display-row">
-                                <span>Talep Edilen:</span>
-                    <div className="settings-card verification-status-card pending">
-                        <div className="verification-status-icon">⏳</div>
-                        <div className="verification-status-details">
-                            <h4>Doğrulama Başvurunuz İncelemede</h4>
-                            <p>Talebiniz ekibimiz tarafından değerlendiriliyor. Sonuçlandığında anlık bildirim alacaksınız.</p>
-                        </div>
+            {user?.verificationRequest?.status === 'pending' ? (
+                <div className="settings-card verification-status-card pending">
+                    <div className="verification-status-icon">⏳</div>
+                    <div className="verification-status-details">
+                        <h4>Doğrulama Başvurunuz İncelemede</h4>
+                        <p>Talebiniz ekibimiz tarafından değerlendiriliyor. Sonuçlandığında anlık bildirim alacaksınız.</p>
                     </div>
-                ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' && !reapplyMode ? (
-                    <div className="settings-card verification-status-card approved">
-                        <div className="verification-status-icon success">✓</div>
-                        <div className="verification-status-details">
-                            <h4>Hesabınız Doğrulandı</h4>
-                            <p>Tebrikler! Doğrulanmış rozetiniz aktif durumdadır.</p>
-                            <div className="verification-badge-preview-row">
-                                <span>Aktif Rozetler:</span>
-                                <UserBadges user={user} size={18} />
-                            </div>
-                            <button
-                                className="settings-action-btn"
-                                style={{ marginTop: '16px' }}
-                                onClick={() => setReapplyMode(true)}
-                            >
-                                Farklı Bir Kategori İçin Yeniden Başvur
-                            </button>
+                </div>
+            ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' && !reapplyMode ? (
+                <div className="settings-card verification-status-card approved">
+                    <div className="verification-status-icon success">✓</div>
+                    <div className="verification-status-details">
+                        <h4>Hesabınız Doğrulandı</h4>
+                        <p>Tebrikler! Doğrulanmış rozetiniz aktif durumdadır.</p>
+                        <div className="verification-badge-preview-row">
+                            <span>Aktif Rozetler:</span>
+                            <UserBadges user={user} size={18} />
                         </div>
+                        <button
+                            className="settings-action-btn"
+                            style={{ marginTop: '16px' }}
+                            onClick={() => setReapplyMode(true)}
+                        >
+                            Farklı Bir Kategori İçin Yeniden Başvur
+                        </button>
                     </div>
-                ) : (
-                    <div className="settings-group-container">
-                        {user?.verificationRequest?.status === 'rejected' && (
+                </div>
+            ) : (
+                <div className="settings-group-container">
+                    {user?.verificationRequest?.status === 'rejected' && (
                             <div className="settings-card verification-status-card rejected">
                                 <span className="status-warning-icon">⚠️</span>
                                 <div>
@@ -948,7 +939,6 @@ const Settings = () => {
                         </button>
                     </div>
                 )}
-            </div>
         </div>
     );
 
