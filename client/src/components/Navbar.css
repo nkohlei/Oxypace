@@ -300,44 +300,45 @@ body.dark-mode .logo-text {
     filter: brightness(1.1);
 }
 
-/* Modern Dropdown Menu - Ultra Premium Glassmorphism */
+/* ===================================================
+   NAVBAR DROPDOWN – GLASSMORPHISM (TEMA BAĞIMSIZ)
+   --glass-bg değişken çakışmalarından arındırıldı.
+   Hem light hem dark modda doğrudan rgba kullanılır.
+   =================================================== */
 .header-dropdown,
 .header-dropdown.glass-panel {
     position: absolute;
     top: calc(100% + 12px);
     right: 0;
     width: 240px;
-    background: var(--glass-bg, linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 100%)) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.6)) !important;
+    /* Açık tema varsayılan – glass-modal ile aynı yaklaşım */
+    background: rgba(255, 255, 255, 0.55) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.75) !important;
     border-radius: 20px !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.7) !important;
+    box-shadow:
+        0 20px 48px rgba(0, 0, 0, 0.10),
+        inset 0 1px 1px rgba(255, 255, 255, 0.85) !important;
     padding: 10px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
     transform-origin: top right;
     animation: dropdownScale 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    overflow: hidden !important;
+    overflow: visible !important; /* alt öğelerin background'u kesmemesi için */
 }
 
-:root[data-theme='light'] .header-dropdown,
-[data-theme='light'] .header-dropdown {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.35) 100%) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.8) !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
-}
-
+/* Dark tema override */
 :root[data-theme='dark'] .header-dropdown,
 [data-theme='dark'] .header-dropdown,
 body.dark-mode .header-dropdown {
-    background: linear-gradient(135deg, rgba(15, 20, 32, 0.7) 0%, rgba(10, 15, 26, 0.5) 100%) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    background: rgba(18, 24, 40, 0.65) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow:
+        0 20px 48px rgba(0, 0, 0, 0.45),
+        inset 0 1px 1px rgba(255, 255, 255, 0.12) !important;
 }
 
 .dropdown-user-info {
@@ -345,12 +346,12 @@ body.dark-mode .header-dropdown {
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     margin-bottom: 6px;
     text-decoration: none;
-    transition: background 0.2s ease, transform 0.2s ease;
+    transition: background 0.2s ease;
     border-radius: 14px;
-    background: transparent;
+    background: transparent !important; /* opak white miras alımını engelle */
 }
 
 :root[data-theme='dark'] .dropdown-user-info,
@@ -360,13 +361,13 @@ body.dark-mode .dropdown-user-info {
 }
 
 .dropdown-user-info:hover {
-    background: rgba(255, 255, 255, 0.45);
+    background: rgba(0, 0, 0, 0.04) !important;
 }
 
 :root[data-theme='dark'] .dropdown-user-info:hover,
 [data-theme='dark'] .dropdown-user-info:hover,
 body.dark-mode .dropdown-user-info:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .dropdown-avatar, .dropdown-avatar-placeholder {
@@ -419,31 +420,29 @@ body.dark-mode .dropdown-user-info:hover {
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
-    color: var(--foreground);
+    color: var(--text-primary);
     text-decoration: none;
     border-radius: 12px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.2s ease, transform 0.2s ease;
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
-    background: transparent;
+    background: transparent !important; /* opak miras alımını engelle */
     border: none;
     width: 100%;
     text-align: left;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .dropdown-item:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.06) !important;
     transform: translateX(4px);
-    box-shadow: none;
 }
 
 :root[data-theme='dark'] .dropdown-item:hover,
 [data-theme='dark'] .dropdown-item:hover,
 body.dark-mode .dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.10) !important;
 }
 
 .dropdown-item svg {
