@@ -184,20 +184,22 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
           {/* ── Right controls ── */}
           <div className="flex items-center gap-2 shrink-0">
 
-            {/* Oxypace Platform Yolu Button */}
+            {/* Oxypace Platform Yolu Button — Liquid Mercury Chrome */}
             <a
               href="/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-all"
+              className="mercury-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all"
               style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
-                color: "#ffffff",
+                background: "linear-gradient(135deg, #f8fafc 0%, #cbd5e1 35%, #94a3b8 70%, #e2e8f0 100%)",
+                color: "#090d16",
                 textDecoration: "none",
-                boxShadow: "0 2px 10px rgba(168, 85, 247, 0.4)",
+                boxShadow: "0 4px 14px rgba(255, 255, 255, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.8), inset 0 -1px 2px rgba(0, 0, 0, 0.3)",
+                border: "1px solid rgba(255, 255, 255, 0.6)",
+                letterSpacing: "-0.01em",
                 fontFamily: "var(--font-geist-sans), system-ui, sans-serif"
               }}
             >
-              <span>Oxypace Portal</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <span className="font-extrabold">Oxypace Portal</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
               </svg>
             </a>
