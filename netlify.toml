@@ -74,6 +74,13 @@
   force = true
   conditions = {Role = ["bot"]}
 
+# ── Assets Fallback ──────────────────────────────
+[[redirects]]
+  from = "/assets/*"
+  to = "/portal/assets/:splat"
+  status = 200
+  force = false
+
 # ── Portal SPA Fallback ───────────────────────────
 # /portal/* altındaki tüm route'lar → portal/index.html (SPA fallback)
 [[redirects]]

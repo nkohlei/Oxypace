@@ -60,10 +60,14 @@ if (token) {
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { HelmetProvider } from 'react-helmet-async';
 
-// Global error handler for Vite dynamic import chunk errors
+// Global error handler for Vite dynamic import chunk errors (with loop protection)
 window.addEventListener('vite:preloadError', (event) => {
-    console.warn('Vite preload error (chunk mismatch) detected. Reloading page...', event);
-    window.location.reload();
+    console.warn('Vite preload error (chunk mismatch) detected.', event);
+    const hasReloaded = sessionStorage.getItem('vite_preload_reloaded');
+    if (!hasReloaded) {
+        sessionStorage.setItem('vite_preload_reloaded', 'true');
+        window.location.reload();
+    }
 });
 
 const renderApp = () => {
