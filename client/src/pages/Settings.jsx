@@ -598,161 +598,139 @@ const Settings = () => {
 
     const renderAccountMenu = () => (
         <div className="submenu-content animation-slide-in">
-            {/* Real-time Glassmorphic Profile Preview Card */}
-            <div className="settings-profile-preview-card" style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '16px',
-                padding: '24px',
-                marginBottom: '24px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px',
-                backdropFilter: 'blur(10px)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Account Overview Header Card */}
+            <div className="settings-card account-profile-card">
+                <div className="account-profile-header">
                     {user?.profile?.avatar ? (
                         <img 
                             src={getImageUrl(user.profile.avatar)} 
                             alt={user.username} 
-                            style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-cyan)' }}
+                            className="account-avatar-img"
                         />
                     ) : (
-                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--primary-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+                        <div className="account-avatar-placeholder">
                             {user?.username?.charAt(0)?.toUpperCase()}
                         </div>
                     )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                                {profileForm.displayName || user?.profile?.displayName || user?.username}
-                            </span>
+                    <div className="account-user-details">
+                        <div className="account-name-row">
+                            <h3 className="account-display-name">
+                                {user?.profile?.displayName || user?.username}
+                            </h3>
                             <UserBadges user={user} size={18} />
                         </div>
-                        <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>@{profileForm.username || user?.username}</span>
+                        <span className="account-username-text">@{user?.username}</span>
+                        {user?.profile?.bio && (
+                            <p className="account-bio-preview">{user.profile.bio}</p>
+                        )}
                     </div>
+                    <button 
+                        className="account-edit-profile-btn"
+                        onClick={() => navigate(`/profile/${user?.username}`)}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        Profili Düzenle
+                    </button>
                 </div>
-                {profileForm.bio && (
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.15)', padding: '10px 14px', borderRadius: '8px', fontStyle: 'italic', borderLeft: '3px solid var(--primary-cyan)' }}>
-                        {profileForm.bio}
-                    </div>
-                )}
             </div>
 
-            {/* Profile Form */}
-            <form onSubmit={handleProfileUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '32px' }}>
-                <div className="setting-group" style={{ margin: 0 }}>
-                    <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Profil Bilgileri</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255, 255, 255, 0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#b5bac1' }}>Görünen İsim</label>
-                            <input 
-                                type="text" 
-                                value={profileForm.displayName} 
-                                onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })}
-                                style={{ padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: 'white', outline: 'none' }}
-                                placeholder="Görünen Adınız"
-                            />
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#b5bac1' }}>Kullanıcı Adı</label>
-                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ position: 'absolute', left: '12px', color: '#949ba4', fontWeight: '600' }}>@</span>
-                                <input 
-                                    type="text" 
-                                    value={profileForm.username} 
-                                    onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                                    style={{ width: '100%', padding: '12px 12px 12px 28px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: 'white', outline: 'none' }}
-                                    placeholder="kullanici_adi"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#b5bac1' }}>Biyografi</label>
-                            <textarea 
-                                value={profileForm.bio} 
-                                onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value.slice(0, 500) })}
-                                style={{ padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: 'white', outline: 'none', resize: 'none', fontFamily: 'inherit' }}
-                                placeholder="Kendinizden bahsedin..."
-                                rows="3"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {profileError && <div style={{ color: '#ff4444', fontSize: '13px', fontWeight: '500' }}>{profileError}</div>}
-                {profileSuccess && <div style={{ color: '#00c851', fontSize: '13px', fontWeight: '500' }}>{profileSuccess}</div>}
-
-                <button 
-                    type="submit" 
-                    disabled={profileLoading}
-                    className="confirm-btn"
-                    style={{
-                        padding: '12px 20px',
-                        background: 'var(--primary-color)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                        cursor: profileLoading ? 'not-allowed' : 'pointer',
-                        alignSelf: 'flex-start',
-                        transition: 'background 0.2s',
-                    }}
-                >
-                    {profileLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
-                </button>
-            </form>
-
-            {/* Account Stats & Security */}
-            <div className="setting-group" style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Hesap & Güvenlik</h3>
+            {/* Account Security & Credentials Section */}
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Hesap Güvenliği & Kimlik</h3>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {/* E-posta (Read-Only) */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ fontSize: '11px', color: '#949ba4', fontWeight: '700', textTransform: 'uppercase' }}>E-Posta Adresi</span>
-                            <span style={{ fontSize: '14px', color: 'white' }}>{user?.email}</span>
+                <div className="settings-card-stack">
+                    {/* E-posta */}
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-label">E-Posta Adresi</span>
+                            <span className="settings-item-value">{user?.email}</span>
                         </div>
-                        <span style={{ fontSize: '12px', background: 'rgba(46, 204, 113, 0.15)', color: '#2ecc71', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="settings-badge success">
                             ✓ Doğrulanmış
                         </span>
                     </div>
 
-                    {/* Şifre Değiştir */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>Şifre</span>
-                            <span style={{ fontSize: '12px', color: '#949ba4' }}>Güvenlik amacıyla şifrenizi buradan değiştirebilirsiniz.</span>
+                    {/* Şifre */}
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Hesap Şifresi</span>
+                            <span className="settings-item-desc">Şifrenizi düzenli aralıklarla değiştirerek hesabınızı koruyabilirsiniz.</span>
                         </div>
                         <button 
+                            className="settings-action-btn"
                             onClick={() => setShowPasswordModal(true)}
-                            style={{ padding: '8px 16px', background: 'rgba(255, 255, 255, 0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', transition: 'background 0.2s' }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
                         >
                             Şifreyi Güncelle
                         </button>
                     </div>
 
-                    {/* Stats Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
-                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '11px', color: '#949ba4', fontWeight: '700', textTransform: 'uppercase' }}>Kayıt Tarihi</span>
-                            <span style={{ fontSize: '14px', color: 'white', fontWeight: '600' }}>
-                                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
-                            </span>
+                    {/* Güvenlik Soruları */}
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Güvenlik Soruları</span>
+                            <span className="settings-item-desc">Şifrenizi unutmanız durumunda hesabınızı kurtarmanızı sağlar.</span>
                         </div>
-                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '11px', color: '#949ba4', fontWeight: '700', textTransform: 'uppercase' }}>Rol</span>
-                            <span style={{ fontSize: '14px', color: user?.isAdmin ? '#ffd700' : 'white', fontWeight: '600' }}>
-                                {user?.isAdmin ? 'Baş Yönetici (Admin)' : 'Standart Üye'}
-                            </span>
-                        </div>
+                        <button 
+                            className="settings-action-btn"
+                            onClick={() => setActiveMenu('privacy')}
+                        >
+                            Soruları Yönet
+                        </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Account Details Grid */}
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Hesap Detayları</h3>
+                
+                <div className="settings-grid-two">
+                    <div className="settings-grid-card">
+                        <span className="settings-item-label">Kayıt Tarihi</span>
+                        <span className="settings-grid-value">
+                            {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
+                        </span>
+                    </div>
+
+                    <div className="settings-grid-card">
+                        <span className="settings-item-label">Hesap Rolü</span>
+                        <span className="settings-grid-value role">
+                            {user?.isAdmin ? 'Baş Yönetici (Admin)' : 'Standart Üye'}
+                        </span>
+                    </div>
+
+                    <div className="settings-grid-card">
+                        <span className="settings-item-label">Oturum Durumu</span>
+                        <span className="settings-grid-value status-active">
+                            ● Aktif ve Güvenli
+                        </span>
+                    </div>
+
+                    <div className="settings-grid-card">
+                        <span className="settings-item-label">Doğrulama Rozeti</span>
+                        <span className="settings-grid-value">
+                            {user?.isVerified ? 'Mavi Tık Doğrulanmış' : 'Doğrulanmamış'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Danger Zone Link */}
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <div className="settings-item-row danger-row">
+                    <div className="settings-item-info">
+                        <span className="settings-item-title danger">Hesabımı Dondur veya Sil</span>
+                        <span className="settings-item-desc">Hesabınızı geçici olarak dondurabilir veya kalıcı olarak silebilirsiniz.</span>
+                    </div>
+                    <button 
+                        className="settings-action-btn danger"
+                        onClick={() => setActiveMenu('danger')}
+                    >
+                        Hesap İşlemleri
+                    </button>
                 </div>
             </div>
         </div>
