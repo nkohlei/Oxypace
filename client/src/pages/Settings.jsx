@@ -79,8 +79,8 @@ const Settings = () => {
     const [securityQ2, setSecurityQ2] = useState(SECURITY_QUESTIONS_POOL[1]);
     const [securityA1, setSecurityA1] = useState('');
     const [securityA2, setSecurityA2] = useState('');
-    const [showSecurityA1, setShowSecurityA1] = useState(false);
-    const [showSecurityA2, setShowSecurityA2] = useState(false);
+    const [showSecurityA1, setShowSecurityA1] = useState(true);
+    const [showSecurityA2, setShowSecurityA2] = useState(true);
     const [securitySuccess, setSecuritySuccess] = useState('');
     const [securityError, setSecurityError] = useState('');
     const [securityLoading, setSecurityLoading] = useState(false);
@@ -995,20 +995,27 @@ const Settings = () => {
                     </div>
 
                     {/* 3. Portal Görünürlüğü */}
-                    <div className="settings-item-row select-row">
+                    <div className="settings-item-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
                         <div className="settings-item-info">
                             <span className="settings-item-title">Portal Katılım Görünürlüğü</span>
                             <span className="settings-item-desc">Profil sayfanızda katıldığınız portalları kimlerin listeleyebileceğini seçin.</span>
                         </div>
-                        <select
-                            value={privacy.portalVisibility || 'public'}
-                            onChange={(e) => handleSelectChange('portalVisibility', e.target.value)}
-                            className="settings-select-input"
-                        >
-                            <option value="public">Herkes (Herkese Açık)</option>
-                            <option value="friends">Sadece Arkadaşlarım</option>
-                            <option value="private">Gizli (Yalnızca Ben)</option>
-                        </select>
+                        <div className="segmented-options-group">
+                            {[
+                                { value: 'public', label: 'Herkes (Açık)' },
+                                { value: 'friends', label: 'Sadece Arkadaşlarım' },
+                                { value: 'private', label: 'Gizli (Yalnızca Ben)' }
+                            ].map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    className={`segment-btn ${(privacy.portalVisibility || 'public') === opt.value ? 'active' : ''}`}
+                                    onClick={() => handleSelectChange('portalVisibility', opt.value)}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1020,7 +1027,7 @@ const Settings = () => {
                     <div className="settings-item-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Çevrimiçi Durumunu Göster</span>
-                            <span className="settings-item-desc">Aktif olduğunuzda diğer kullanıcılara yeşil çevrimiçi simgesini gösterir.</span>
+                            <span className="settings-item-desc">Aktif olduğunuzda diğer kullanıcılara çevrimiçi simgesini gösterir.</span>
                         </div>
                         <label className="switch">
                             <input
@@ -1049,20 +1056,27 @@ const Settings = () => {
                     </div>
 
                     {/* DM İzinleri */}
-                    <div className="settings-item-row select-row">
+                    <div className="settings-item-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
                         <div className="settings-item-info">
                             <span className="settings-item-title">Doğrudan Mesaj (DM) İzinleri</span>
-                            <span className="settings-item-desc">Kimlerin size mesaj atabileceğini belirler.</span>
+                            <span className="settings-item-desc">Kimlerin size doğrudan mesaj atabileceğini belirler.</span>
                         </div>
-                        <select
-                            value={privacy.dmSettings || 'everyone'}
-                            onChange={(e) => handleSelectChange('dmSettings', e.target.value)}
-                            className="settings-select-input"
-                        >
-                            <option value="everyone">Herkes Gönderebilir</option>
-                            <option value="friends">Sadece Arkadaşlarım</option>
-                            <option value="none">Hiç Kimse (Kapalı)</option>
-                        </select>
+                        <div className="segmented-options-group">
+                            {[
+                                { value: 'everyone', label: 'Herkes Gönderebilir' },
+                                { value: 'friends', label: 'Sadece Arkadaşlarım' },
+                                { value: 'none', label: 'Hiç Kimse (Kapalı)' }
+                            ].map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    className={`segment-btn ${(privacy.dmSettings || 'everyone') === opt.value ? 'active' : ''}`}
+                                    onClick={() => handleSelectChange('dmSettings', opt.value)}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1070,66 +1084,72 @@ const Settings = () => {
             {/* Güvenlik Soruları Kartı */}
             <div className="settings-group-container" style={{ marginTop: '24px' }}>
                 <h3 className="settings-group-title">Hesap Kurtarma Soruları</h3>
-                <div className="settings-card">
+                <div className="settings-card security-questions-card">
                     <p className="settings-section-desc">
-                        Hesap kurtarma durumlarında kimliğinizi doğrulamak için kullanılacak bankacılık düzeyinde güvenlik sorularınızı güncelleyebilirsiniz.
+                        Hesap kurtarma durumlarında kimliğinizi doğrulamak için kullanılacak güvenlik sorularınızı güncelleyebilirsiniz. Cevaplarınız belirgin durumdadır.
                     </p>
 
                     <form onSubmit={handleSecurityQuestionsUpdate} className="settings-form">
-                        <div className="settings-form-group">
-                            <label className="settings-input-label">GÜVENLİK SORUSU 1</label>
+                        <div className="security-question-item">
+                            <div className="security-question-header">
+                                🔒 GÜVENLİK SORUSU 1
+                            </div>
                             <select
                                 value={securityQ1}
                                 onChange={(e) => setSecurityQ1(e.target.value)}
-                                className="settings-select-input"
+                                className="security-question-select"
                             >
                                 {SECURITY_QUESTIONS_POOL.map((q) => (
                                     <option key={q} value={q}>{q}</option>
                                 ))}
                             </select>
-                            <div className="settings-input-wrapper">
+                            <div className="security-answer-box">
                                 <input
                                     type={showSecurityA1 ? 'text' : 'password'}
-                                    placeholder="Cevabınızı yazın"
+                                    placeholder="Birinci cevabınızı buraya yazın..."
                                     required
                                     value={securityA1}
                                     onChange={(e) => setSecurityA1(e.target.value)}
-                                    className="settings-text-input"
+                                    className="security-answer-input"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowSecurityA1(!showSecurityA1)}
-                                    className="settings-input-eye-btn"
+                                    className="security-eye-toggle"
+                                    title={showSecurityA1 ? 'Cevabı Gizle' : 'Cevabı Göster'}
                                 >
                                     {showSecurityA1 ? '🙈' : '👁️'}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="settings-form-group">
-                            <label className="settings-input-label">GÜVENLİK SORUSU 2</label>
+                        <div className="security-question-item">
+                            <div className="security-question-header">
+                                🔑 GÜVENLİK SORUSU 2
+                            </div>
                             <select
                                 value={securityQ2}
                                 onChange={(e) => setSecurityQ2(e.target.value)}
-                                className="settings-select-input"
+                                className="security-question-select"
                             >
                                 {SECURITY_QUESTIONS_POOL.map((q) => (
                                     <option key={q} value={q}>{q}</option>
                                 ))}
                             </select>
-                            <div className="settings-input-wrapper">
+                            <div className="security-answer-box">
                                 <input
                                     type={showSecurityA2 ? 'text' : 'password'}
-                                    placeholder="Cevabınızı yazın"
+                                    placeholder="İkinci cevabınızı buraya yazın..."
                                     required
                                     value={securityA2}
                                     onChange={(e) => setSecurityA2(e.target.value)}
-                                    className="settings-text-input"
+                                    className="security-answer-input"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowSecurityA2(!showSecurityA2)}
-                                    className="settings-input-eye-btn"
+                                    className="security-eye-toggle"
+                                    title={showSecurityA2 ? 'Cevabı Gizle' : 'Cevabı Göster'}
                                 >
                                     {showSecurityA2 ? '🙈' : '👁️'}
                                 </button>
@@ -1143,7 +1163,7 @@ const Settings = () => {
                             type="submit"
                             disabled={securityLoading}
                             className="settings-action-btn primary-btn"
-                            style={{ alignSelf: 'flex-start' }}
+                            style={{ alignSelf: 'flex-start', marginTop: '8px' }}
                         >
                             {securityLoading ? 'Kaydediliyor...' : 'Güvenlik Sorularını Güncelle'}
                         </button>
@@ -1247,40 +1267,52 @@ const Settings = () => {
             <div className="settings-group-container">
                 <h3 className="settings-group-title">Video Oynatma Kalitesi</h3>
                 <div className="settings-card">
-                    <p className="settings-section-desc">
+                    <p className="settings-section-desc" style={{ marginBottom: '12px' }}>
                         Videolar oynatılırken varsayılan olarak hangi kalitede açılacağını seçin.
                     </p>
-                    <select
-                        value={videoSettings.playbackQuality || 'auto'}
-                        onChange={(e) => handleVideoSelectChange('playbackQuality', e.target.value)}
-                        className="settings-select-input"
-                        style={{ marginTop: '12px' }}
-                    >
-                        <option value="auto">Otomatik: İnternet hızına göre kaliteyi kendi belirler</option>
-                        <option value="performance">Performans: Daima en yüksek kalite</option>
-                        <option value="saver">Tasarruf: Dengeli veri kullanımı (360p - 720p)</option>
-                        <option value="lowest">En Düşük: Veri tasarrufu için daima en düşük kalite (144p)</option>
-                    </select>
+                    <div className="segmented-options-group">
+                        {[
+                            { value: 'auto', label: '⚡ Otomatik (Önerilen)' },
+                            { value: 'performance', label: '⭐ Yüksek Performans' },
+                            { value: 'saver', label: '🍃 Veri Tasarrufu' },
+                            { value: 'lowest', label: '📉 En Düşük (144p)' }
+                        ].map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                className={`segment-btn ${(videoSettings.playbackQuality || 'auto') === opt.value ? 'active' : ''}`}
+                                onClick={() => handleVideoSelectChange('playbackQuality', opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
             <div className="settings-group-container" style={{ marginTop: '24px' }}>
                 <h3 className="settings-group-title">Video İndirme Kalitesi</h3>
                 <div className="settings-card">
-                    <p className="settings-section-desc">
+                    <p className="settings-section-desc" style={{ marginBottom: '12px' }}>
                         Video indirmelerinde varsayılan davranışı seçin (Görseller ve GIF'ler orijinal kalitede inmeye devam eder).
                     </p>
-                    <select
-                        value={videoSettings.downloadQuality || 'ask'}
-                        onChange={(e) => handleVideoSelectChange('downloadQuality', e.target.value)}
-                        className="settings-select-input"
-                        style={{ marginTop: '12px' }}
-                    >
-                        <option value="ask">Her Defasında Sor</option>
-                        <option value="1080">Daima En Yüksek (1080p / Orijinal)</option>
-                        <option value="720">Daima Yüksek (720p)</option>
-                        <option value="360">Daima Standart (360p)</option>
-                    </select>
+                    <div className="segmented-options-group">
+                        {[
+                            { value: 'ask', label: '❓ Her Defasında Sor' },
+                            { value: '1080', label: '🎬 Orijinal (1080p)' },
+                            { value: '720', label: '📺 Yüksek (720p)' },
+                            { value: '360', label: '📱 Standart (360p)' }
+                        ].map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                className={`segment-btn ${(videoSettings.downloadQuality || 'ask') === opt.value ? 'active' : ''}`}
+                                onClick={() => handleVideoSelectChange('downloadQuality', opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
