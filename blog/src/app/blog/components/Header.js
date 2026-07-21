@@ -294,34 +294,49 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
         </div>
       </header>
 
-      {/* ── Mobile-Only Floating Right Search Bar (Expands Left) ── */}
-      <div className="flex md:hidden fixed top-[68px] right-3 z-30 items-center justify-end">
+      {/* ── Mobile-Only Non-Fixed Search Bar (Expands Left with Backdrop Blur) ── */}
+      <div className="flex md:hidden absolute top-[62px] right-3 z-30 items-center justify-end">
         {searchOpen ? (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full shadow-2xl transition-all duration-300 animate-slide-left"
-            style={{
-              background: "var(--glass-bg)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid var(--border-hover)",
-              maxWidth: "calc(100vw - 24px)"
-            }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0" style={{ color: "var(--foreground-muted)" }}>
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Ara..."
-              className="bg-transparent text-xs outline-none w-48 sm:w-64"
-              style={{ color: "var(--foreground)" }}
-            />
-            <button
+          <>
+            {/* Backdrop Blur Overlay when search is active */}
+            <div
+              className="fixed inset-0 z-20 transition-all duration-300"
+              style={{
+                background: "rgba(0, 0, 0, 0.45)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
               onClick={() => setSearchOpen(false)}
-              className="p-1 rounded-full text-xs shrink-0"
-              style={{ color: "var(--foreground-muted)" }}
+            />
+
+            {/* Expanding Search Bar */}
+            <div
+              className="relative z-30 flex items-center gap-2.5 px-3.5 py-2 rounded-2xl shadow-2xl transition-all duration-300 w-[calc(100vw-24px)]"
+              style={{
+                background: "var(--glass-bg)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid var(--border-hover)",
+              }}
             >
-              ✕
-            </button>
-          </div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0" style={{ color: "var(--foreground-muted)" }}>
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Makale, konu veya içerik ara..."
+                className="bg-transparent text-xs outline-none w-full font-medium"
+                style={{ color: "var(--foreground)" }}
+              />
+              <button
+                onClick={() => setSearchOpen(false)}
+                className="p-1 rounded-full text-xs font-bold shrink-0 opacity-70 hover:opacity-100"
+                style={{ color: "var(--foreground)" }}
+              >
+                ✕
+              </button>
+            </div>
+          </>
         ) : (
           <button
             onClick={() => setSearchOpen(true)}

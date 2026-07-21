@@ -125,10 +125,21 @@ html, body {
     padding: 0 6px !important;
   }
 
-  /* Mobil marka ve sponsor logoları ufactma */
-  img, svg, .brand-logo, .sponsor-logo {
-    max-height: 28px !important;
+  /* Mobil marka ve sponsor logoları (2-3 tanesi yan yana dizilecek şekilde) */
+  .brand-logo, .sponsor-logo, .partner-logo {
+    max-height: 40px !important;
+    height: 38px !important;
     width: auto !important;
+    object-fit: contain !important;
+  }
+
+  /* Logoların yan yana dizilim grid yapısı */
+  .brand-grid, .sponsor-grid, .partner-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    align-items: center !important;
+    justify-items: center !important;
   }
 }
 
