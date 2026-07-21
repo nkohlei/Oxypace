@@ -39,9 +39,9 @@ export default function WarpGridBackground() {
       ctx.fillRect(0, 0, width, height);
 
       // Line color styling
-      const strokeColor = isDark ? "rgba(96, 165, 250, 0.18)" : "rgba(0, 0, 0, 0.11)";
+      const strokeColor = isDark ? "rgba(255, 255, 255, 0.095)" : "rgba(0, 0, 0, 0.07)";
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.1;
 
       // Project grid points
       const points = [];
