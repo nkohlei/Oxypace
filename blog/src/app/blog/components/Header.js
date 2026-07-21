@@ -103,8 +103,8 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
               </span>
             </Link>
 
-            {/* Left nav — always visible on all screens & pages */}
-            <nav className="flex items-center gap-1 sm:gap-2">
+            {/* Left nav — hidden on mobile to prevent header overflow */}
+            <nav className="hidden md:flex items-center gap-1 sm:gap-2">
               {LEFT_NAV.map((item) => (
                 <Link
                   key={item.key}
