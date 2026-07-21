@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
@@ -1100,17 +1100,20 @@ const Settings = () => {
                     <form onSubmit={handleSecurityQuestionsUpdate} className="settings-form">
                         <div className="security-question-item">
                             <div className="security-question-header">
-                                <ShieldCheck size={14} /> GÜVENLİK SORUSU 1
+                                <ShieldCheck size={15} /> GÜVENLİK SORUSU 1
                             </div>
-                            <select
-                                value={securityQ1}
-                                onChange={(e) => setSecurityQ1(e.target.value)}
-                                className="security-question-select"
-                            >
-                                {SECURITY_QUESTIONS_POOL.map((q) => (
-                                    <option key={q} value={q}>{q}</option>
-                                ))}
-                            </select>
+                            <div className="security-select-wrapper">
+                                <select
+                                    value={securityQ1}
+                                    onChange={(e) => setSecurityQ1(e.target.value)}
+                                    className="security-question-select"
+                                >
+                                    {SECURITY_QUESTIONS_POOL.map((q) => (
+                                        <option key={q} value={q}>{q}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={18} className="security-select-arrow" />
+                            </div>
                             <div className="security-answer-box">
                                 <input
                                     type={showSecurityA1 ? 'text' : 'password'}
@@ -1133,17 +1136,20 @@ const Settings = () => {
 
                         <div className="security-question-item">
                             <div className="security-question-header">
-                                <KeyRound size={14} /> GÜVENLİK SORUSU 2
+                                <KeyRound size={15} /> GÜVENLİK SORUSU 2
                             </div>
-                            <select
-                                value={securityQ2}
-                                onChange={(e) => setSecurityQ2(e.target.value)}
-                                className="security-question-select"
-                            >
-                                {SECURITY_QUESTIONS_POOL.map((q) => (
-                                    <option key={q} value={q}>{q}</option>
-                                ))}
-                            </select>
+                            <div className="security-select-wrapper">
+                                <select
+                                    value={securityQ2}
+                                    onChange={(e) => setSecurityQ2(e.target.value)}
+                                    className="security-question-select"
+                                >
+                                    {SECURITY_QUESTIONS_POOL.map((q) => (
+                                        <option key={q} value={q}>{q}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={18} className="security-select-arrow" />
+                            </div>
                             <div className="security-answer-box">
                                 <input
                                     type={showSecurityA2 ? 'text' : 'password'}
