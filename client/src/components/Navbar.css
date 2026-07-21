@@ -300,18 +300,18 @@ body.dark-mode .logo-text {
     filter: brightness(1.1);
 }
 
-/* Modern Dropdown Menu - Premium Misty Glassmorphism */
+/* Modern Dropdown Menu - Ultra Premium Frosted Glassmorphism */
 .header-dropdown {
     position: absolute;
     top: calc(100% + 12px);
     right: 0;
     width: 230px;
-    background: rgba(255, 255, 255, 0.72) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.3) 100%) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.7) !important;
     border-radius: 20px !important;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08), 0 4px 15px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.2) !important;
     padding: 8px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
@@ -322,11 +322,11 @@ body.dark-mode .logo-text {
 :root[data-theme='dark'] .header-dropdown,
 [data-theme='dark'] .header-dropdown,
 body.dark-mode .header-dropdown {
-    background: rgba(13, 18, 30, 0.75) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    background: linear-gradient(135deg, rgba(18, 24, 38, 0.55) 0%, rgba(10, 14, 24, 0.35) 100%) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.25), inset 0 0 15px rgba(255, 255, 255, 0.05) !important;
 }
 
 .dropdown-user-info {
@@ -337,24 +337,25 @@ body.dark-mode .header-dropdown {
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     margin-bottom: 6px;
     text-decoration: none;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, transform 0.2s ease;
     border-radius: 14px;
+    background: transparent;
 }
 
 :root[data-theme='dark'] .dropdown-user-info,
 [data-theme='dark'] .dropdown-user-info,
 body.dark-mode .dropdown-user-info {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
 .dropdown-user-info:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: rgba(255, 255, 255, 0.45);
 }
 
 :root[data-theme='dark'] .dropdown-user-info:hover,
 [data-theme='dark'] .dropdown-user-info:hover,
 body.dark-mode .dropdown-user-info:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .dropdown-avatar, .dropdown-avatar-placeholder {
