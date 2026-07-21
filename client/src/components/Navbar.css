@@ -328,17 +328,17 @@ body.dark-mode .logo-text {
     overflow: visible !important; /* alt öğelerin background'u kesmemesi için */
 }
 
-/* Dark tema override - Tam Opak Koyu Lacivert/Siyah */
+/* Dark tema override - Tam Opak Derin Koyu / Siyah */
 :root[data-theme='dark'] .header-dropdown,
 [data-theme='dark'] .header-dropdown,
 body.dark-mode .header-dropdown {
-    background: #161c2e !important;
+    background: #13151b !important;
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     box-shadow:
-        0 16px 40px rgba(0, 0, 0, 0.6),
-        0 4px 16px rgba(0, 0, 0, 0.3) !important;
+        0 16px 40px rgba(0, 0, 0, 0.7),
+        0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 .dropdown-user-info {
