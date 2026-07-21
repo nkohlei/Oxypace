@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
@@ -187,9 +188,16 @@ const Settings = () => {
 
     const fetchSettings = async () => {
         try {
-            // Since we don't have a dedicated GET /settings, we might need to rely on what's in 'user'
-            // or fetch the user again. Let's fetch the user profile again to get fresh settings.
             const response = await axios.get('/api/users/me');
+            if (response.data.user) {
+                const u = response.data.user;
+                if (u.securityAnswers && u.securityAnswers.length >= 2) {
+                    setSecurityQ1(u.securityAnswers[0].question || SECURITY_QUESTIONS_POOL[0]);
+                    setSecurityA1(u.securityAnswers[0].answer || '');
+                    setSecurityQ2(u.securityAnswers[1].question || SECURITY_QUESTIONS_POOL[1]);
+                    setSecurityA2(u.securityAnswers[1].answer || '');
+                }
+            }
             if (response.data.settings) {
                 setNotifications((prev) => ({ ...prev, ...response.data.settings.notifications }));
                 setPrivacy((prev) => ({ ...prev, ...response.data.settings.privacy }));
@@ -947,7 +955,7 @@ const Settings = () => {
             {/* Privacy Status Banner */}
             <div className={`settings-card privacy-status-banner ${privacy.isPrivate ? 'private' : 'public'}`}>
                 <div className="privacy-banner-icon">
-                    {privacy.isPrivate ? '🛡️' : '🌍'}
+                    {privacy.isPrivate ? <ShieldCheck size={28} /> : <Lock size={28} />}
                 </div>
                 <div className="privacy-banner-text">
                     <h4>{privacy.isPrivate ? 'Hesabınız Korumalı' : 'Hesabınız Herkese Açık'}</h4>
@@ -1086,13 +1094,13 @@ const Settings = () => {
                 <h3 className="settings-group-title">Hesap Kurtarma Soruları</h3>
                 <div className="settings-card security-questions-card">
                     <p className="settings-section-desc">
-                        Hesap kurtarma durumlarında kimliğinizi doğrulamak için kullanılacak güvenlik sorularınızı güncelleyebilirsiniz. Cevaplarınız belirgin durumdadır.
+                        Hesap kurtarma durumlarında kimliğinizi doğrulamak için kullanılacak güvenlik sorularınızı güncelleyebilirsiniz. Cevaplarınız görünür durumdadır.
                     </p>
 
                     <form onSubmit={handleSecurityQuestionsUpdate} className="settings-form">
                         <div className="security-question-item">
                             <div className="security-question-header">
-                                🔒 GÜVENLİK SORUSU 1
+                                <ShieldCheck size={14} /> GÜVENLİK SORUSU 1
                             </div>
                             <select
                                 value={securityQ1}
@@ -1106,7 +1114,7 @@ const Settings = () => {
                             <div className="security-answer-box">
                                 <input
                                     type={showSecurityA1 ? 'text' : 'password'}
-                                    placeholder="Birinci cevabınızı buraya yazın..."
+                                    placeholder="Birinci cevabınızı yazın..."
                                     required
                                     value={securityA1}
                                     onChange={(e) => setSecurityA1(e.target.value)}
@@ -1118,14 +1126,14 @@ const Settings = () => {
                                     className="security-eye-toggle"
                                     title={showSecurityA1 ? 'Cevabı Gizle' : 'Cevabı Göster'}
                                 >
-                                    {showSecurityA1 ? '🙈' : '👁️'}
+                                    {showSecurityA1 ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
                         </div>
 
                         <div className="security-question-item">
                             <div className="security-question-header">
-                                🔑 GÜVENLİK SORUSU 2
+                                <KeyRound size={14} /> GÜVENLİK SORUSU 2
                             </div>
                             <select
                                 value={securityQ2}
@@ -1139,7 +1147,7 @@ const Settings = () => {
                             <div className="security-answer-box">
                                 <input
                                     type={showSecurityA2 ? 'text' : 'password'}
-                                    placeholder="İkinci cevabınızı buraya yazın..."
+                                    placeholder="İkinci cevabınızı yazın..."
                                     required
                                     value={securityA2}
                                     onChange={(e) => setSecurityA2(e.target.value)}
@@ -1151,7 +1159,7 @@ const Settings = () => {
                                     className="security-eye-toggle"
                                     title={showSecurityA2 ? 'Cevabı Gizle' : 'Cevabı Göster'}
                                 >
-                                    {showSecurityA2 ? '🙈' : '👁️'}
+                                    {showSecurityA2 ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
                         </div>
@@ -1272,10 +1280,10 @@ const Settings = () => {
                     </p>
                     <div className="segmented-options-group">
                         {[
-                            { value: 'auto', label: '⚡ Otomatik (Önerilen)' },
-                            { value: 'performance', label: '⭐ Yüksek Performans' },
-                            { value: 'saver', label: '🍃 Veri Tasarrufu' },
-                            { value: 'lowest', label: '📉 En Düşük (144p)' }
+                            { value: 'auto', label: 'Otomatik (Önerilen)' },
+                            { value: 'performance', label: 'Yüksek Performans' },
+                            { value: 'saver', label: 'Veri Tasarrufu' },
+                            { value: 'lowest', label: 'En Düşük (144p)' }
                         ].map((opt) => (
                             <button
                                 key={opt.value}
@@ -1298,10 +1306,10 @@ const Settings = () => {
                     </p>
                     <div className="segmented-options-group">
                         {[
-                            { value: 'ask', label: '❓ Her Defasında Sor' },
-                            { value: '1080', label: '🎬 Orijinal (1080p)' },
-                            { value: '720', label: '📺 Yüksek (720p)' },
-                            { value: '360', label: '📱 Standart (360p)' }
+                            { value: 'ask', label: 'Her Defasında Sor' },
+                            { value: '1080', label: 'Orijinal (1080p)' },
+                            { value: '720', label: 'Yüksek (720p)' },
+                            { value: '360', label: 'Standart (360p)' }
                         ].map((opt) => (
                             <button
                                 key={opt.value}
