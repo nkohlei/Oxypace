@@ -252,7 +252,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
 
                             {/* Dropdown Menu (Existing logic wrapped here) */}
                             {showMenu && (
-                                <div className="header-dropdown">
+                                <div className="header-dropdown glass-panel">
                                     {/* Dropdown Header - Link to Profile */}
                                     <Link 
                                         to="/profile" 
