@@ -15,7 +15,7 @@
  * Netlify veya herhangi bir static host bunu doğrudan kullanabilir.
  */
 
-import fs   from 'fs';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -23,41 +23,36 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const ROOT       = path.join(__dirname, '..');
 
-const PORTAL_DIST = path.join(ROOT, 'client', 'dist');   // Vite output
-const BLOG_OUT    = path.join(ROOT, 'blog', 'out');       // Next.js static export
-const PORTAL_DEST = path.join(PORTAL_DIST, 'portal');     // destination for SPA
+const CLIENT_DIST = path.join(ROOT, 'client', 'dist'); // Vite output
+const BLOG_OUT    = path.join(ROOT, 'blog', 'out');     // Next static export
+const PORTAL_DEST = path.join(CLIENT_DIST, 'portal');  // Subfolder for Vite SPA
 
-// ── 1. Portal SPA → client/dist/portal/ ──────────────────────────────────────
-console.log('📦 Organizing Portal SPA into /portal subfolder...');
+console.log('🔄 Merging Blog and Portal builds...');
 
-if (!fs.existsSync(PORTAL_DIST)) {
-    console.error('❌ client/dist does not exist. Run client build first.');
+if (!fs.existsSync(CLIENT_DIST)) {
+    console.error('❌ client/dist directory not found!');
     process.exit(1);
 }
-
-// Move all portal files to /portal subfolder
-// The Vite build is already in client/dist — but we need to move them to /portal
-// Strategy: create /portal, move everything except /portal itself
-
-fs.mkdirSync(PORTAL_DEST, { recursive: true });
-
-const distEntries = fs.readdirSync(PORTAL_DIST).filter(e => e !== 'portal');
-for (const entry of distEntries) {
-    const src  = path.join(PORTAL_DIST, entry);
-    const dest = path.join(PORTAL_DEST, entry);
-    fs.renameSync(src, dest);
-    console.log(`  moved: dist/${entry} → dist/portal/${entry}`);
-}
-
-// ── 2. Blog static files → client/dist/ (root) ───────────────────────────────
-console.log('\n🌐 Copying Blog static export to dist root...');
 
 if (!fs.existsSync(BLOG_OUT)) {
-    console.error('❌ blog/out does not exist. Run blog build (next build --export) first.');
+    console.error('❌ blog/out directory not found!');
     process.exit(1);
 }
 
+// 1. Move current client/dist items into client/dist/portal (except if it's already portal or blog static files)
+const tempPortalDir = path.join(ROOT, 'client', 'temp_portal');
+if (fs.existsSync(tempPortalDir)) {
+    fs.rmSync(tempPortalDir, { recursive: true, force: true });
+}
+
+// Move current client/dist to temp_portal
+fs.renameSync(CLIENT_DIST, tempPortalDir);
+
+// Re-create empty client/dist
+fs.mkdirSync(CLIENT_DIST, { recursive: true });
+
 function copyRecursive(src, dest) {
+    if (!fs.existsSync(src)) return;
     const stat = fs.statSync(src);
     if (stat.isDirectory()) {
         fs.mkdirSync(dest, { recursive: true });
@@ -65,13 +60,26 @@ function copyRecursive(src, dest) {
             copyRecursive(path.join(src, child), path.join(dest, child));
         }
     } else {
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.copyFileSync(src, dest);
     }
 }
 
-copyRecursive(BLOG_OUT, PORTAL_DIST);
-console.log(`  copied: blog/out/* → dist/`);
+// 2. Copy Blog static export to client/dist (ROOT)
+console.log('🌐 Copying Blog static export to root...');
+copyRecursive(BLOG_OUT, CLIENT_DIST);
+
+// 3. Copy Portal SPA to client/dist/portal
+console.log('📦 Copying Portal SPA to /portal subfolder...');
+copyRecursive(tempPortalDir, PORTAL_DEST);
+
+// Cleanup temp_portal
+try {
+    fs.rmSync(tempPortalDir, { recursive: true, force: true });
+} catch (e) {
+    console.warn('⚠️ Could not remove temp_portal:', e.message);
+}
 
 console.log('\n✅ Merge complete!');
-console.log('   oxypace.com.tr/        → Blog (Next.js static)');
+console.log('   oxypace.com.tr/        → Blog (Next.js)');
 console.log('   oxypace.com.tr/portal/ → Oxypace Portal SPA');
