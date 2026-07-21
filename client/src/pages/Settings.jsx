@@ -99,7 +99,7 @@ const Settings = () => {
         fetchSettings();
     }, []);
 
-    // Sync profileForm when user is loaded
+    // Sync profileForm and securityAnswers when user is loaded
     useEffect(() => {
         if (user) {
             setProfileForm({
@@ -108,10 +108,15 @@ const Settings = () => {
                 bio: user.profile?.bio || '',
             });
             if (user.securityAnswers && user.securityAnswers.length >= 2) {
-                setSecurityQ1(user.securityAnswers[0].question);
-                setSecurityQ2(user.securityAnswers[1].question);
-                setSecurityA1(user.securityAnswers[0].answer || '');
-                setSecurityA2(user.securityAnswers[1].answer || '');
+                setSecurityQ1(user.securityAnswers[0].question || SECURITY_QUESTIONS_POOL[0]);
+                setSecurityQ2(user.securityAnswers[1].question || SECURITY_QUESTIONS_POOL[1]);
+                
+                const rawAns1 = user.securityAnswers[0].answer || '';
+                const rawAns2 = user.securityAnswers[1].answer || '';
+
+                // If stored answer is '••••••••' or a bcrypt hash ($2b$), ignore it for display so user can type a fresh answer
+                setSecurityA1(rawAns1.includes('•') || rawAns1.startsWith('$2b$') ? '' : rawAns1);
+                setSecurityA2(rawAns2.includes('•') || rawAns2.startsWith('$2b$') ? '' : rawAns2);
             }
         }
     }, [user]);
@@ -193,9 +198,11 @@ const Settings = () => {
                 const u = response.data.user;
                 if (u.securityAnswers && u.securityAnswers.length >= 2) {
                     setSecurityQ1(u.securityAnswers[0].question || SECURITY_QUESTIONS_POOL[0]);
-                    setSecurityA1(u.securityAnswers[0].answer || '');
                     setSecurityQ2(u.securityAnswers[1].question || SECURITY_QUESTIONS_POOL[1]);
-                    setSecurityA2(u.securityAnswers[1].answer || '');
+                    const rawAns1 = u.securityAnswers[0].answer || '';
+                    const rawAns2 = u.securityAnswers[1].answer || '';
+                    setSecurityA1(rawAns1.includes('•') || rawAns1.startsWith('$2b$') ? '' : rawAns1);
+                    setSecurityA2(rawAns2.includes('•') || rawAns2.startsWith('$2b$') ? '' : rawAns2);
                 }
             }
             if (response.data.settings) {
