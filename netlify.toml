@@ -84,55 +84,55 @@
 # ── Portal SPA Routes Fallback ─────────────────────
 [[redirects]]
   from = "/portal/*"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/messages"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/messages/*"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/login"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/portal/login"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/register"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/profile/*"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/settings"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
   from = "/notifications"
-  to = "/index.html"
+  to = "/portal.html"
   status = 200
   force = false
 
