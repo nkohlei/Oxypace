@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "npx cross-env VITE_BASE_PATH=/portal/ vite build && npm run build --prefix ../blog && node ../scripts/merge-blog.js",
+        "build": "npx cross-env VITE_BASE_PATH=/portal/ vite build && npm install --prefix ../blog --no-package-lock --legacy-peer-deps && npm run build --prefix ../blog && node ../scripts/merge-blog.js",
         "lint": "eslint . --max-warnings 0",
         "preview": "vite preview"
     },
