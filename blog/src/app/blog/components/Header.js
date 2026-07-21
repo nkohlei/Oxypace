@@ -89,6 +89,17 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
 
   return (
     <>
+      <style jsx global>{`
+        @media (min-width: 769px) {
+          .desktop-header-only { display: flex !important; }
+          .mobile-header-only { display: none !important; }
+        }
+        @media (max-width: 768px) {
+          .desktop-header-only { display: none !important; }
+          .mobile-header-only { display: flex !important; }
+        }
+      `}</style>
+
       <header
         className="glass-nav sticky top-0 z-40 w-full transition-theme"
         style={{
@@ -98,14 +109,14 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
           boxShadow: scrolled ? "var(--glass-shadow)" : "none",
         }}
       >
-        <div className="mx-auto flex max-w-7xl h-15 items-center justify-between px-4 sm:px-6 lg:px-8 gap-4"
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
           style={{ height: "60px" }}>
 
           {/* =========================================================
-              1) DESKTOP HEADER LAYOUT (Hidden on mobile)
+              1) DESKTOP HEADER (Visible > 768px)
              ========================================================= */}
-          <div className="hidden md:flex items-center justify-between w-full">
-            {/* Desktop Left Nav */}
+          <div className="desktop-header-only items-center justify-between w-full">
+            {/* Desktop Left */}
             <div className="flex items-center gap-1">
               <Link href="/blog" className="flex items-center gap-2.5 shrink-0 mr-4">
                 <span className="relative flex h-1.5 w-1.5" style={{ flexShrink: 0 }}>
@@ -194,7 +205,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
               )}
             </div>
 
-            {/* Desktop Right Controls */}
+            {/* Desktop Right */}
             <div className="flex items-center gap-2 shrink-0">
               <a
                 href="/login"
@@ -287,10 +298,9 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
           </div>
 
           {/* =========================================================
-              2) MOBILE HEADER LAYOUT (Visible ONLY on mobile)
+              2) MOBILE HEADER (Visible <= 768px)
              ========================================================= */}
-          <div className="flex md:hidden items-center justify-between w-full">
-            {/* Mobile Stacked Logo */}
+          <div className="mobile-header-only items-center justify-between w-full">
             <Link href="/blog" className="flex items-center shrink-0">
               <div className="flex flex-col leading-none" style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
                 <span style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "-0.02em", color: "var(--foreground)" }}>EVENT</span>
@@ -298,9 +308,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
               </div>
             </Link>
 
-            {/* Mobile Right Controls */}
             <div className="flex items-center gap-1.5 shrink-0">
-              {/* Oxypace Short Button */}
               <a
                 href="/login"
                 className="mercury-btn flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-xs transition-all"
@@ -319,7 +327,6 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                 </svg>
               </a>
 
-              {/* Single Language Toggle */}
               <button
                 id="mobile-lang-btn"
                 onClick={toggleLang}
@@ -336,7 +343,6 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                 <span className="uppercase font-bold text-[11px]">{lang}</span>
               </button>
 
-              {/* Mobile Theme Toggle */}
               <button
                 onClick={toggleTheme}
                 className="flex items-center justify-center rounded-lg transition-theme"
@@ -362,8 +368,8 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
         </div>
       </header>
 
-      {/* ── Mobile-Only Floating Search Bar (Expands Left with Backdrop Blur & Live Results) ── */}
-      <div className="flex md:hidden absolute top-[62px] right-3 z-30 items-center justify-end">
+      {/* Mobile Floating Search Bar */}
+      <div className="mobile-header-only absolute top-[62px] right-3 z-30 items-center justify-end">
         {mobileSearchOpen ? (
           <>
             <div
