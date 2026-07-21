@@ -321,7 +321,7 @@ router.get('/me', protect, async (req, res) => {
         if (userObj.securityAnswers) {
             userObj.securityAnswers = userObj.securityAnswers.map(item => ({
                 question: item.question,
-                answer: '••••••••'
+                answer: item.answer || ''
             }));
         }
         userObj.securityQuestionsConfigured = user.securityAnswers && user.securityAnswers.length >= 2;
@@ -970,44 +970,19 @@ router.put('/security-questions', protect, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        // Update answers
-        const updatedAnswers = [];
-        const salt = await bcrypt.genSalt(10);
-        for (let i = 0; i < securityAnswers.length; i++) {
-            const item = securityAnswers[i];
-            if (item.answer.trim() === '••••••••') {
-                const existing = user.securityAnswers[i];
-                if (existing) {
-                    updatedAnswers.push({
-                        question: item.question.trim(),
-                        answer: existing.answer
-                    });
-                } else {
-                    const hashed = await bcrypt.hash(item.answer.trim().toLowerCase(), salt);
-                    updatedAnswers.push({
-                        question: item.question.trim(),
-                        answer: hashed
-                    });
-                }
-            } else {
-                const hashed = await bcrypt.hash(item.answer.trim().toLowerCase(), salt);
-                updatedAnswers.push({
-                    question: item.question.trim(),
-                    answer: hashed
-                });
-            }
-        }
+        // Update answers as plain text (so user can view their saved answers in settings)
+        const updatedAnswers = securityAnswers.map(item => ({
+            question: item.question.trim(),
+            answer: item.answer.trim()
+        }));
+        
         user.securityAnswers = updatedAnswers;
-
         await user.save();
 
-        // Send back masked answers
-        const maskedAnswers = user.securityAnswers.map(item => ({
-            question: item.question,
-            answer: '••••••••'
-        }));
-
-        res.json({ message: 'Güvenlik soruları başarıyla güncellendi.', securityAnswers: maskedAnswers });
+        res.json({ 
+            message: 'Güvenlik soruları başarıyla güncellendi.', 
+            securityAnswers: updatedAnswers 
+        });
     } catch (error) {
         console.error('Update security questions error:', error);
         res.status(500).json({ message: 'Sunucu hatası' });

@@ -722,18 +722,29 @@
 }
 
 .settings-action-btn.primary-btn {
-    background: var(--primary-color, #1d9bf0);
-    color: #ffffff;
+    background: var(--text-primary, #ffffff);
+    color: var(--bg-primary, #0d0e12);
     border: none;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 12px 24px;
     border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+:root[data-theme='light'] .settings-action-btn.primary-btn,
+[data-theme='light'] .settings-action-btn.primary-btn {
+    background: #0d0e12;
+    color: #ffffff;
 }
 
 .settings-action-btn.primary-btn:hover {
-    filter: brightness(1.1);
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .danger-card {
