@@ -284,7 +284,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, [src144, src360, src720, src1080, src2160, maxResolution]);
 
   const getPreferredSrc = useCallback(() => {
-    const pref = user?.settings?.video?.playbackQuality || 'auto';
+    const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
     if (pref === 'performance') {
       if (has2160) return src2160;
       if (has1080) return src1080;
@@ -371,7 +371,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
             }
           });
           hls.on(HlsLib.Events.MANIFEST_PARSED, () => {
-            const pref = user?.settings?.video?.playbackQuality || 'auto';
+            const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
             if (pref === 'lowest') {
               let lowestIdx = 0;
               let lowestHeight = Infinity;
@@ -488,8 +488,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   // Sync user quality preferences when settings change
   useEffect(() => {
-    if (!user) return;
-    const pref = user?.settings?.video?.playbackQuality || 'auto';
+    const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
     
     let mode = 'auto';
     if (pref === 'performance') {

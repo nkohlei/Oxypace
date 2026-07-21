@@ -213,6 +213,12 @@ const Settings = () => {
                 setPrivacy((prev) => ({ ...prev, ...response.data.settings.privacy }));
                 if (response.data.settings.video) {
                     setVideoSettings((prev) => ({ ...prev, ...response.data.settings.video }));
+                    if (response.data.settings.video.playbackQuality) {
+                        localStorage.setItem('video_playback_quality', response.data.settings.video.playbackQuality);
+                    }
+                    if (response.data.settings.video.downloadQuality) {
+                        localStorage.setItem('video_download_quality', response.data.settings.video.downloadQuality);
+                    }
                 }
             }
         } catch (error) {
@@ -224,6 +230,14 @@ const Settings = () => {
 
     const handleVideoSelectChange = async (setting, value) => {
         setVideoSettings((prev) => ({ ...prev, [setting]: value }));
+        
+        // Save to localStorage for instant client-side sync across all players
+        if (setting === 'playbackQuality') {
+            localStorage.setItem('video_playback_quality', value);
+        } else if (setting === 'downloadQuality') {
+            localStorage.setItem('video_download_quality', value);
+        }
+
         try {
             await axios.put('/api/users/settings', { video: { [setting]: value } });
             if (user) {
