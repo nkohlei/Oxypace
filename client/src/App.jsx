@@ -3,11 +3,7 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 
 
 const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1));
 
-// Production'da /portal base path'i kullan (VITE_BASE_PATH=/portal/ ile build edilir)
-// Dev'de ve Electron'da / kullan
-const baseName = isElectron
-    ? '/'
-    : (import.meta.env.VITE_BASE_PATH || '/');
+const baseName = isElectron ? '/' : '/';
 
 const Router = isElectron ? HashRouter : (props) => <BrowserRouter basename={baseName} {...props} />;
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -504,7 +500,12 @@ const AppLayout = () => {
                                 <Route path="/contact" element={<Contact />} />
 
                                 {/* Private routes */}
-                                <Route path="/" element={isLoggedIn ? <Inbox /> : <Home />} />
+                                <Route path="/" element={<Navigate to={isLoggedIn ? "/messages" : "/login"} replace />} />
+                                <Route path="/messages" element={
+                                    <PrivateRoute>
+                                        <Inbox />
+                                    </PrivateRoute>
+                                } />
 
                                 {/* Portal Route */}
                                 <Route path="/portal/:id" element={<Portal />} />

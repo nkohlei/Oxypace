@@ -81,11 +81,52 @@
   status = 200
   force = false
 
-# ── Portal SPA Fallback ───────────────────────────
-# /portal/* altındaki tüm route'lar → portal/index.html (SPA fallback)
+# ── Portal SPA Routes Fallback ─────────────────────
 [[redirects]]
   from = "/portal/*"
-  to = "/portal/index.html"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/messages"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/messages/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/register"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/profile/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/settings"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/notifications"
+  to = "/index.html"
   status = 200
   force = false
 

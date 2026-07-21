@@ -9,9 +9,7 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 // - desktop build → './' (relative paths for Electron)
 // - production portal build → '/portal' (served under oxypace.com.tr/portal)
 // - development → '/' (local dev server)
-const portalBase = process.env.VITE_APP_TARGET === 'desktop'
-    ? './'
-    : process.env.VITE_BASE_PATH || '/';
+const portalBase = process.env.VITE_APP_TARGET === 'desktop' ? './' : '/';
 
 export default defineConfig({
     base: portalBase,

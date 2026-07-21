@@ -144,7 +144,7 @@ const Login = () => {
         try {
             const response = await axios.post('/api/auth/login', formData);
             login(response.data.token, response.data.user);
-            window.location.href = '/portal/'; // Full reload into Portal SPA
+            window.location.href = '/messages'; // Direct clean redirect into Portal Messages
         } catch (err) {
             if (err.response?.status === 403 && err.response?.data?.isDeleted) {
                 if (window.confirm("Bu hesap silinmiştir. Kurtarmak istiyor musunuz?")) {

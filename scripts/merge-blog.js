@@ -25,7 +25,6 @@ const ROOT       = path.join(__dirname, '..');
 
 const CLIENT_DIST = path.join(ROOT, 'client', 'dist'); // Vite output
 const BLOG_OUT    = path.join(ROOT, 'blog', 'out');     // Next static export
-const PORTAL_DEST = path.join(CLIENT_DIST, 'portal');  // Subfolder for Vite SPA
 
 console.log('🔄 Merging Blog and Portal builds...');
 
@@ -38,18 +37,6 @@ if (!fs.existsSync(BLOG_OUT)) {
     console.error('❌ blog/out directory not found!');
     process.exit(1);
 }
-
-// 1. Move current client/dist items into client/dist/portal (except if it's already portal or blog static files)
-const tempPortalDir = path.join(ROOT, 'client', 'temp_portal');
-if (fs.existsSync(tempPortalDir)) {
-    fs.rmSync(tempPortalDir, { recursive: true, force: true });
-}
-
-// Move current client/dist to temp_portal
-fs.renameSync(CLIENT_DIST, tempPortalDir);
-
-// Re-create empty client/dist
-fs.mkdirSync(CLIENT_DIST, { recursive: true });
 
 function copyRecursive(src, dest) {
     if (!fs.existsSync(src)) return;
@@ -65,21 +52,11 @@ function copyRecursive(src, dest) {
     }
 }
 
-// 2. Copy Blog static export to client/dist (ROOT)
-console.log('🌐 Copying Blog static export to root...');
+// Copy Blog static files into client/dist (Blog index.html overrides root index.html)
+console.log('🌐 Copying Blog static export over dist root...');
 copyRecursive(BLOG_OUT, CLIENT_DIST);
 
-// 3. Copy Portal SPA to client/dist/portal
-console.log('📦 Copying Portal SPA to /portal subfolder...');
-copyRecursive(tempPortalDir, PORTAL_DEST);
-
-// Cleanup temp_portal
-try {
-    fs.rmSync(tempPortalDir, { recursive: true, force: true });
-} catch (e) {
-    console.warn('⚠️ Could not remove temp_portal:', e.message);
-}
-
 console.log('\n✅ Merge complete!');
-console.log('   oxypace.com.tr/        → Blog (Next.js)');
-console.log('   oxypace.com.tr/portal/ → Oxypace Portal SPA');
+console.log('   oxypace.com.tr/          → Blog (Next.js)');
+console.log('   oxypace.com.tr/messages  → Portal Messages');
+console.log('   oxypace.com.tr/portal/:id → Portal Channels');
