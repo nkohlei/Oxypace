@@ -10,8 +10,9 @@
     "scripts": {
         "dev": "node --watch server.js",
         "start": "node server.js",
-        "build": "cross-env CI=false NODE_OPTIONS=\"--max-old-space-size=4096\" npm install --prefix client --no-package-lock --legacy-peer-deps && cross-env CI=false VITE_BASE_PATH=/portal/ NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build --prefix client && npm run build:blog && npm run merge:blog",
-        "build:blog": "npm install --prefix blog --no-package-lock --legacy-peer-deps && cross-env CI=false npm run build --prefix blog",
+        "build": "npx cross-env CI=false VITE_BASE_PATH=/portal/ NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build:client && npm run build:blog && npm run merge:blog",
+        "build:client": "npm install --prefix client --no-package-lock --legacy-peer-deps && npx cross-env CI=false VITE_BASE_PATH=/portal/ npm run build --prefix client",
+        "build:blog": "npm install --prefix blog --no-package-lock --legacy-peer-deps && npx cross-env CI=false npm run build --prefix blog",
         "merge:blog": "node scripts/merge-blog.js",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",

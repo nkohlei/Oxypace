@@ -4,9 +4,9 @@
 # oxypace.com.tr/api/*     → Koyeb Express backend
 
 [build]
-  # Build command: portal SPA + blog static export + merge
-  command = "npm install --prefix client --no-package-lock --legacy-peer-deps && VITE_BASE_PATH=/portal/ npm run build --prefix client && npm install --prefix blog --no-package-lock --legacy-peer-deps && npm run build --prefix blog && node scripts/merge-blog.js"
-  # Output directory — merge-blog.js puts everything here
+  # Build command calls root package.json build (which builds client, blog and merges)
+  command = "npm run build"
+  # Output directory — merge-blog.js puts merged output in client/dist
   publish = "client/dist"
   edge_functions = "netlify/edge-functions"
 
