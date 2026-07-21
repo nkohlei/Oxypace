@@ -1139,7 +1139,7 @@ const Settings = () => {
                                     className="security-eye-toggle"
                                     title={showSecurityA1 ? 'Cevabı Gizle' : 'Cevabı Göster'}
                                 >
-                                    {showSecurityA1 ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showSecurityA1 ? <Eye size={18} /> : <EyeOff size={18} />}
                                 </button>
                             </div>
                         </div>
@@ -1175,7 +1175,7 @@ const Settings = () => {
                                     className="security-eye-toggle"
                                     title={showSecurityA2 ? 'Cevabı Gizle' : 'Cevabı Göster'}
                                 >
-                                    {showSecurityA2 ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showSecurityA2 ? <Eye size={18} /> : <EyeOff size={18} />}
                                 </button>
                             </div>
                         </div>
