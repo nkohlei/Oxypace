@@ -149,7 +149,7 @@
         margin: 0 !important;
     }
     
-    .inbox-header, .notifications-header, .channel-header, .search-header {
+    .notifications-header, .search-header {
         display: flex !important;
         align-items: center !important;
         gap: 12px !important;
