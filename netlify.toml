@@ -107,7 +107,7 @@
   force = false
 
 [[redirects]]
-  from = "/portal/login"
+  from = "/auth/*"
   to = "/portal.html"
   status = 200
   force = false

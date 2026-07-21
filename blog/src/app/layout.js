@@ -29,10 +29,13 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                var t = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+                if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.documentElement.classList.add('dark');
+                  document.documentElement.setAttribute('data-theme', 'dark');
                 } else {
                   document.documentElement.classList.remove('dark');
+                  document.documentElement.setAttribute('data-theme', 'light');
                 }
               } catch (_) {}
             `,
