@@ -102,13 +102,13 @@ html, body {
 /* ── Mobile Layout Optimization ── */
 @media (max-width: 768px) {
   h1 {
-    font-size: 2rem !important;
+    font-size: 1.8rem !important;
     line-height: 1.15 !important;
   }
   
   .glass-nav {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
 
   .mercury-btn {
@@ -117,14 +117,18 @@ html, body {
   }
 
   .mercury-btn span {
-    font-size: 10px !important;
+    font-size: 11px !important;
   }
 
-  #lang-toggle-btn, #search-btn, #theme-toggle-btn {
+  #lang-toggle-btn, #theme-toggle-btn {
     height: 30px !important;
-    width: 30px !important;
-    padding: 0 4px !important;
-    font-size: 10px !important;
+    padding: 0 6px !important;
+  }
+
+  /* Mobil marka ve sponsor logoları ufactma */
+  img, svg, .brand-logo, .sponsor-logo {
+    max-height: 28px !important;
+    width: auto !important;
   }
 }
 

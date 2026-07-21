@@ -88,22 +88,31 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
         <div className="mx-auto flex max-w-7xl h-15 items-center justify-between px-4 sm:px-6 lg:px-8 gap-4"
           style={{ height: "60px" }}>
 
-        {/* ── LEFT SECTION: Logo + primary nav ── */}
+        {/* ── LEFT SECTION: Logo ── */}
           <div className="flex items-center gap-1">
             {/* Logo */}
-            <Link href="/blog" className="flex items-center gap-2.5 shrink-0 mr-4">
-              <span className="relative flex h-1.5 w-1.5" style={{ flexShrink: 0 }}>
+            <Link href="/blog" className="flex items-center shrink-0 mr-2 md:mr-4">
+              {/* Point dot — visible only on desktop */}
+              <span className="hidden md:flex relative h-1.5 w-1.5 mr-2.5" style={{ flexShrink: 0 }}>
                 <span className="absolute inline-flex h-full w-full rounded-full"
                   style={{ background: "var(--foreground-muted)", animation: "ping-soft 2s cubic-bezier(0,0,0.2,1) infinite", opacity: 0.6 }} />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5"
                   style={{ background: "var(--foreground-muted)" }} />
               </span>
-              <span style={{ fontSize: "14px", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--foreground)", fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
+
+              {/* Desktop Logo: Single line */}
+              <span className="hidden md:inline-block" style={{ fontSize: "14px", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--foreground)", fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
                 EVENT HORIZON
               </span>
+
+              {/* Mobile Logo: Stacked vertically, aligned left */}
+              <div className="flex md:hidden flex-col leading-none" style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
+                <span style={{ fontSize: "11px", fontWeight: 900, letterSpacing: "-0.02em", color: "var(--foreground)" }}>EVENT</span>
+                <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "-0.02em", color: "var(--foreground-muted)", marginTop: "1px" }}>HORIZON</span>
+              </div>
             </Link>
 
-            {/* Left nav — hidden on mobile to prevent header overflow */}
+            {/* Left nav — hidden on mobile */}
             <nav className="hidden md:flex items-center gap-1 sm:gap-2">
               {LEFT_NAV.map((item) => (
                 <Link
@@ -182,12 +191,12 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
           </div>
 
           {/* ── Right controls ── */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 
-            {/* Oxypace Platform Yolu Button — Liquid Mercury Chrome */}
+            {/* Oxypace Platform Yolu Button — Desktop: "Oxypace Portal", Mobile: "Oxypace" */}
             <a
               href="/login"
-              className="mercury-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all"
+              className="mercury-btn flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all"
               style={{
                 background: "linear-gradient(135deg, #f8fafc 0%, #cbd5e1 35%, #94a3b8 70%, #e2e8f0 100%)",
                 color: "#090d16",
@@ -198,18 +207,19 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                 fontFamily: "var(--font-geist-sans), system-ui, sans-serif"
               }}
             >
-              <span className="font-extrabold">Oxypace Portal</span>
+              <span className="hidden md:inline font-extrabold">Oxypace Portal</span>
+              <span className="inline md:hidden font-extrabold text-[11px]">Oxypace</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
               </svg>
             </a>
 
-            {/* Search button */}
+            {/* Search button — Desktop only (Mobile gets floating search bar below) */}
             <button
               id="search-btn"
               onClick={() => setSearchOpen(true)}
               aria-label="Ara"
-              className="flex items-center justify-center rounded-lg transition-theme"
+              className="hidden md:flex items-center justify-center rounded-lg transition-theme"
               style={{
                 width: "34px", height: "34px",
                 border: "1px solid var(--border-color)",
@@ -224,26 +234,29 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
               </svg>
             </button>
 
-            {/* Language toggle */}
+            {/* Language toggle — Desktop: "TR / EN", Mobile: Only active "TR" or "EN" */}
             <button
               id="lang-toggle-btn"
               onClick={toggleLang}
               aria-label="Dil Değiştir"
-              className="flex items-center gap-1 rounded-lg transition-theme"
+              className="flex items-center justify-center rounded-lg transition-theme"
               style={{
-                height: "34px", padding: "0 10px",
+                height: "32px", padding: "0 8px",
                 border: "1px solid var(--border-color)",
                 background: "transparent", cursor: "pointer",
                 color: "var(--foreground-muted)",
                 fontSize: "11px", fontFamily: "var(--font-geist-mono), monospace",
-                fontWeight: 600, letterSpacing: "0.04em",
+                fontWeight: 700, letterSpacing: "0.04em",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--glass-bg)"; e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--border-hover)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border-color)"; }}
             >
-              <span style={{ opacity: lang === "tr" ? 1 : 0.4, transition: "opacity 0.3s" }}>TR</span>
-              <span style={{ color: "var(--border-hover)" }}>/</span>
-              <span style={{ opacity: lang === "en" ? 1 : 0.4, transition: "opacity 0.3s" }}>EN</span>
+              <span className="hidden md:inline-flex items-center gap-1">
+                <span style={{ opacity: lang === "tr" ? 1 : 0.4 }}>TR</span>
+                <span style={{ color: "var(--border-hover)" }}>/</span>
+                <span style={{ opacity: lang === "en" ? 1 : 0.4 }}>EN</span>
+              </span>
+              <span className="inline-flex md:hidden uppercase font-bold text-[11px]" style={{ color: "var(--foreground)" }}>
+                {lang}
+              </span>
             </button>
 
             {/* Theme toggle */}
@@ -280,6 +293,54 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
           </div>
         </div>
       </header>
+
+      {/* ── Mobile-Only Floating Right Search Bar (Expands Left) ── */}
+      <div className="flex md:hidden fixed top-[68px] right-3 z-30 items-center justify-end">
+        {searchOpen ? (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full shadow-2xl transition-all duration-300 animate-slide-left"
+            style={{
+              background: "var(--glass-bg)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid var(--border-hover)",
+              maxWidth: "calc(100vw - 24px)"
+            }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0" style={{ color: "var(--foreground-muted)" }}>
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              autoFocus
+              placeholder="Ara..."
+              className="bg-transparent text-xs outline-none w-48 sm:w-64"
+              style={{ color: "var(--foreground)" }}
+            />
+            <button
+              onClick={() => setSearchOpen(false)}
+              className="p-1 rounded-full text-xs shrink-0"
+              style={{ color: "var(--foreground-muted)" }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setSearchOpen(true)}
+            aria-label="Mobil Arama"
+            className="flex items-center justify-center rounded-full shadow-lg transition-transform active:scale-95"
+            style={{
+              width: "36px", height: "36px",
+              background: "var(--glass-bg)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid var(--border-hover)",
+              color: "var(--foreground)",
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+        )}
+      </div>
 
       {/* Search modal */}
       <SearchModal
