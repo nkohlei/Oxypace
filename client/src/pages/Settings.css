@@ -40,6 +40,19 @@
 }
 
 /* ── Modern Account Settings Theme Styles ── */
+.settings-main-panel,
+.info-page-content.settings-main-panel {
+    background: #0d0e12 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 20px !important;
+}
+
+:root[data-theme='light'] .settings-main-panel,
+[data-theme='light'] .settings-main-panel {
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
 .settings-group-container {
     display: flex;
     flex-direction: column;
@@ -56,28 +69,36 @@
 }
 
 .settings-card {
-    background: var(--bg-card, rgba(255, 255, 255, 0.03));
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    background: #13141a !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-:root[data-theme='dark'] .settings-card,
-[data-theme='dark'] .settings-card,
-body.dark-mode .settings-card,
-:root[data-theme='dark'] .settings-item-row,
-[data-theme='dark'] .settings-item-row,
-body.dark-mode .settings-item-row,
-:root[data-theme='dark'] .settings-grid-card,
-[data-theme='dark'] .settings-grid-card,
-body.dark-mode .settings-grid-card {
-    background: #14161d !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
+:root[data-theme='light'] .settings-card,
+[data-theme='light'] .settings-card {
+    background: #f8f9fa !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.settings-item-row,
+.settings-grid-card {
+    background: #181a22 !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+:root[data-theme='light'] .settings-item-row,
+[data-theme='light'] .settings-item-row,
+:root[data-theme='light'] .settings-grid-card,
+[data-theme='light'] .settings-grid-card {
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 .account-profile-card {
     margin-bottom: 24px;
+    background: #13141a !important;
 }
 
 .account-profile-header {

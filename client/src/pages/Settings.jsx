@@ -588,7 +588,7 @@ const Settings = () => {
                     </div>
                 )}
                 <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 24px 40px 24px' }}>
-                    <div className={activeMenu !== 'main' ? 'info-page-content' : ''} style={activeMenu !== 'main' ? { background: 'var(--glass-bg)', padding: '30px' } : {}}>
+                    <div className={activeMenu !== 'main' ? 'info-page-content settings-main-panel' : ''} style={activeMenu !== 'main' ? { padding: '30px' } : {}}>
                         {content}
                     </div>
                 </div>
