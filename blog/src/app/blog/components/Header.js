@@ -186,7 +186,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
 
             {/* Oxypace Platform Yolu Button */}
             <a
-              href="/portal/login"
+              href="/login"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-all"
               style={{
                 background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
