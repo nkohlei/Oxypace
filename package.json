@@ -10,7 +10,9 @@
     "scripts": {
         "dev": "node --watch server.js",
         "start": "node server.js",
-        "build": "cross-env CI=false NODE_OPTIONS=\"--max-old-space-size=4096\" npm install --prefix client --no-package-lock --legacy-peer-deps && cross-env CI=false NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build --prefix client",
+        "build": "cross-env CI=false NODE_OPTIONS=\"--max-old-space-size=4096\" npm install --prefix client --no-package-lock --legacy-peer-deps && cross-env CI=false VITE_BASE_PATH=/portal/ NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build --prefix client && npm run build:blog && npm run merge:blog",
+        "build:blog": "npm install --prefix blog --no-package-lock --legacy-peer-deps && cross-env CI=false npm run build --prefix blog",
+        "merge:blog": "node scripts/merge-blog.js",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write \"**/*.{js,jsx,json,md}\" --ignore-path .gitignore",
@@ -63,6 +65,7 @@
         "form-data": "^4.0.5",
         "google-translate-api-x": "^10.7.2",
         "helmet": "^8.1.0",
+        "http-proxy-middleware": "^4.2.0",
         "ioredis": "^5.10.0",
         "jsonwebtoken": "^9.0.2",
         "livekit-server-sdk": "^2.15.0",

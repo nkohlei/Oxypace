@@ -34,3 +34,11 @@ capacitor.config.json.local
 
 # Local Netlify folder
 .netlify
+
+# Blog (Next.js) — build artifacts
+blog/node_modules/
+blog/.next/
+blog/out/
+blog/.git/
+
+client/src/blog_app/

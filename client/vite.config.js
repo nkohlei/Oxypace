@@ -5,8 +5,16 @@ import { readFileSync } from 'fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
 
+// Base path logic:
+// - desktop build → './' (relative paths for Electron)
+// - production portal build → '/portal' (served under oxypace.com.tr/portal)
+// - development → '/' (local dev server)
+const portalBase = process.env.VITE_APP_TARGET === 'desktop'
+    ? './'
+    : process.env.VITE_BASE_PATH || '/';
+
 export default defineConfig({
-    base: process.env.VITE_APP_TARGET === 'desktop' ? './' : '/',
+    base: portalBase,
     plugins: [react(), tailwindcss()],
     define: {
         // Inject package.json version so Footer (and any component) can read it at runtime

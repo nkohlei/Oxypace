@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import express from 'express'; // v2.7 - Added Visual Channels
 import compression from 'compression';
 import { createServer } from 'http';
@@ -375,6 +376,47 @@ app.get(['/sitemap.xml', '/api/sitemap.xml'], async (req, res) => {
     }
 });
 
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BLOG PROXY — Next.js blog (EVENT HORIZON) → port 3001
+// Sadece BLOG_ORIGIN env set edildiğinde aktif (local dev).
+// Production'da Netlify bu yönlendirmeyi halleder.
+// ──────────────────────────────────────────────────────────────────────────────
+if (process.env.BLOG_ORIGIN) {
+    const blogProxy = createProxyMiddleware({
+        target: process.env.BLOG_ORIGIN,
+        changeOrigin: true,
+        on: {
+            error: (err, req, res) => {
+                console.error('Blog proxy error:', err.message);
+                if (!res.headersSent) {
+                    res.status(502).send(
+                        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blog başlatılıyor...</title></head>' +
+                        '<body style="font-family:system-ui;text-align:center;padding:60px;">' +
+                        '<h2>Blog başlatılıyor, lütfen birkaç saniye bekleyin ve sayfayı yenileyin.</h2>' +
+                        '<p style="color:#888">Next.js blog süreci hazır değil.</p></body></html>'
+                    );
+                }
+            },
+        },
+    });
+
+    // Proxy yönlendirme: API/sistem rotaları dışındakileri blog'a ilet
+    app.use((req, res, next) => {
+        const p = req.path;
+        const isReserved = (
+            p.startsWith('/api') ||
+            p.startsWith('/og') ||
+            p.startsWith('/uploads') ||
+            p.startsWith('/sitemap') ||
+            p.startsWith('/socket.io')
+        );
+        if (isReserved) return next();
+        return blogProxy(req, res, next);
+    });
+
+    console.log(`🌐 Blog proxy aktif → ${process.env.BLOG_ORIGIN}`);
+}
 
 // Global Error Handler
 app.use((err, req, res, next) => {
