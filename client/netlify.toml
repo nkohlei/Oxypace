@@ -1,11 +1,13 @@
-# Netlify Configuration for Oxypace SPA
-# Replaces vercel.json — SPA fallback, security headers, build settings
+# Netlify Configuration — Blog (Next.js static) + Oxypace Portal SPA
+# oxypace.com.tr/          → Blog (Next.js static export)
+# oxypace.com.tr/portal/*  → Oxypace Portal SPA (Vite)
+# oxypace.com.tr/api/*     → Koyeb Express backend
 
 [build]
-  # Build command
+  # Build command calls root package.json build (which builds client, blog and merges)
   command = "npm run build"
-  # Output directory (Vite default)
-  publish = "dist"
+  # Output directory — merge-blog.js puts merged output in client/dist
+  publish = "client/dist"
   edge_functions = "netlify/edge-functions"
 
 [build.environment]
@@ -18,13 +20,14 @@
   path = "/*"
   function = "access-control"
 
-# ── Proxies (ported from vercel.json) ────────────
+# ── Domain redirect ──────────────────────────────
 [[redirects]]
   from = "https://oxypace.netlify.app/*"
   to = "https://oxypace.com.tr/:splat"
   status = 301
   force = true
 
+# ── API Proxy → Koyeb ────────────────────────────
 [[redirects]]
   from = "/api/*"
   to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/:splat"
@@ -49,53 +52,68 @@
   status = 200
   force = true
 
-# ── OG / Bot Proxy (WhatsApp, Telegram, Facebook Preview) ─────────────────────
-# WhatsApp ve diğer mesajlaşma botları JS çalıştırmaz; sadece OG meta etiketlerini okur.
-# Bot'lar /post/:id, /profile/:username, /portal/:id gibi URL'lere istek attığında
-# Koyeb backend'indeki /og route'una yönlendirilir. Bu kurallar SPA fallback'ten ÖNCE gelir.
+# ── OG Bot Proxy (Bot preview için) ──────────────
 [[redirects]]
-  from = "/post/*"
+  from = "/portal/post/*"
   to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/post/:splat"
   status = 200
   force = true
   conditions = {Role = ["bot"]}
 
 [[redirects]]
-  from = "/profile/*"
+  from = "/portal/profile/*"
   to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/profile/:splat"
   status = 200
   force = true
   conditions = {Role = ["bot"]}
 
 [[redirects]]
-  from = "/portal/*"
+  from = "/portal/portal/*"
   to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/portal/:splat"
   status = 200
   force = true
   conditions = {Role = ["bot"]}
 
-# ── SPA Fallback ─────────────────────────────────
-# All routes that don't match a static file → serve index.html
-# force = false ensures existing static files (.webp, .png, etc.) are served directly
+# ── Assets Fallback ──────────────────────────────
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/assets/*"
+  to = "/portal/assets/:splat"
   status = 200
   force = false
 
-# ── Security Headers (ported from vercel.json) ───
+# ── Portal SPA Fallback ───────────────────────────
+# /portal/* altındaki tüm route'lar → portal/index.html (SPA fallback)
+[[redirects]]
+  from = "/portal/*"
+  to = "/portal/index.html"
+  status = 200
+  force = false
+
+# ── Blog Fallback (Next.js static) ───────────────
+# Kök domain'de static dosya bulunamazsa → Next.js 404 veya index
+[[redirects]]
+  from = "/*"
+  to = "/404.html"
+  status = 404
+  force = false
+
+# ── Security Headers ──────────────────────────────
 [[headers]]
   for = "/*"
   [headers.values]
     X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
+    X-Frame-Options = "SAMEORIGIN"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    # Permissions-Policy removed to allow default browser behavior
     X-DNS-Prefetch-Control = "off"
 
 # ── Cache Control for Static Assets ──────────────
 [[headers]]
   for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/portal/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
