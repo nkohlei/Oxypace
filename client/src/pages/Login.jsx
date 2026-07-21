@@ -218,20 +218,24 @@ const Login = () => {
 
     return (
         <div className="auth-container">
+            <div className="auth-bg-glow-1" />
+            <div className="auth-bg-glow-2" />
             <div className="auth-bg-overlay" />
 
-            <div className="auth-card fade-in">
-                <Link to="/" className="auth-back-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="15 18 9 12 15 6" />
+            <div className="auth-wrapper">
+                {/* Circular Outer Left Back Button */}
+                <a href="/" className="auth-circle-back-btn" title="Ana Sayfaya Dön">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12" />
+                        <polyline points="12 19 5 12 12 5" />
                     </svg>
-                    Geri Dön
-                </Link>
+                </a>
 
-                <div className="auth-header">
-                    <h1>Tekrar Hoşgeldin</h1>
-                    <p>Devam etmek için giriş yap</p>
-                </div>
+                <div className="auth-card fade-in">
+                    <div className="auth-header">
+                        <h1>Tekrar Hoş Geldiniz</h1>
+                        <p>Oxypace Platformuna devam etmek için giriş yapın</p>
+                    </div>
 
                 <form onSubmit={handleSubmit} className="auth-form">
                     <div className="form-group">
@@ -358,6 +362,7 @@ const Login = () => {
                     </p>
                 </div>
             </div>
+        </div>
 
             {showRecoveryModal && (
                 <div style={{

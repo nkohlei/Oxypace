@@ -140,20 +140,24 @@ const Register = () => {
 
     return (
         <div className="auth-container">
+            <div className="auth-bg-glow-1" />
+            <div className="auth-bg-glow-2" />
             <div className="auth-bg-overlay" />
 
-            <div className="auth-card fade-in">
-                <Link to="/" className="auth-back-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="15 18 9 12 15 6" />
+            <div className="auth-wrapper">
+                {/* Circular Outer Left Back Button */}
+                <a href="/" className="auth-circle-back-btn" title="Ana Sayfaya Dön">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12" />
+                        <polyline points="12 19 5 12 12 5" />
                     </svg>
-                    Geri Dön
-                </Link>
+                </a>
 
-                <div className="auth-header">
-                    <h1>Hesap Oluştur</h1>
-                    <p>Oxypace'e katıl ve dünyayla bağlan</p>
-                </div>
+                <div className="auth-card fade-in">
+                    <div className="auth-header">
+                        <h1>Hesap Oluştur</h1>
+                        <p>Oxypace Platformuna katılın ve dünyayla bağlanın</p>
+                    </div>
 
                 <form onSubmit={step === 1 ? handleNextStep : handleSubmit} className="auth-form">
                     {step === 1 && (
@@ -301,6 +305,7 @@ const Register = () => {
                 </div>
             </div>
         </div>
+    </div>
     );
 };
 
