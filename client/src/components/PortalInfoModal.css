@@ -1,5 +1,4 @@
-.modal-overlay,
-.bottom-sheet-overlay {
+.portal-info-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -12,21 +11,25 @@
     align-items: center;
     justify-content: center;
     z-index: 99999 !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
-.portal-info-modal {
+.portal-info-modal-card {
     max-width: 520px;
     width: 90%;
-    padding: 0;
-    overflow: hidden;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
     background: #13141a !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 20px;
+    border-radius: 20px !important;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7) !important;
+    box-sizing: border-box !important;
 }
 
-:root[data-theme='light'] .portal-info-modal,
-[data-theme='light'] .portal-info-modal {
+:root[data-theme='light'] .portal-info-modal-card,
+[data-theme='light'] .portal-info-modal-card {
     background: #ffffff !important;
     border-color: rgba(0, 0, 0, 0.12) !important;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2) !important;

@@ -131,8 +131,8 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
     }
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content portal-info-modal" onClick={e => e.stopPropagation()}>
+        <div className="portal-info-modal-overlay" onClick={onClose}>
+            <div className="portal-info-modal-card" onClick={e => e.stopPropagation()}>
                 {content}
             </div>
         </div>
