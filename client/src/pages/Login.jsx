@@ -15,8 +15,16 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, user } = useAuth();
     const navigate = useNavigate();
+
+    // Oturumu açık olan kullanıcıyı doğrudan portal mesajlar modülüne yönlendir
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token && token !== 'null' && token !== 'undefined') {
+            navigate('/messages', { replace: true });
+        }
+    }, [navigate]);
 
     // Recovery Flow States
     const [showRecoveryModal, setShowRecoveryModal] = useState(false);

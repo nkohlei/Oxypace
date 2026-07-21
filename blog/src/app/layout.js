@@ -29,8 +29,12 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var t = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
-                if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                var t = localStorage.getItem('token');
+                if (t && t !== 'null' && t !== 'undefined') {
+                  window.location.replace('/messages');
+                }
+                var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+                if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.documentElement.classList.add('dark');
                   document.documentElement.setAttribute('data-theme', 'dark');
                 } else {

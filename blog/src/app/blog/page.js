@@ -39,6 +39,16 @@ const HERO_TEXT = {
 export default function BlogHome() {
   const [lang, setLang] = useState("tr");
 
+  // Kullanıcı manuel çıkış yapmadıysa (token varsa) derhal Oxypace Portal'a geçiş yap
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token && token !== "null" && token !== "undefined") {
+        window.location.replace("/messages");
+      }
+    } catch (_) {}
+  }, []);
+
   const featuredPost = posts[0];
   const indexPosts   = posts.slice(1, 3);    // posts 2–3 in right index
   const gridPosts    = posts.slice(3);        // posts 4–6 exclusively in visual grid
