@@ -311,15 +311,15 @@ body.dark-mode .logo-text {
     top: calc(100% + 12px);
     right: 0;
     width: 240px;
-    /* Açık tema varsayılan – glass-modal ile aynı yaklaşım */
-    background: rgba(255, 255, 255, 0.55) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.75) !important;
+    /* Açık tema - Tam Opak Temiz Beyaz */
+    background: #ffffff !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
     border-radius: 20px !important;
     box-shadow:
-        0 20px 48px rgba(0, 0, 0, 0.10),
-        inset 0 1px 1px rgba(255, 255, 255, 0.85) !important;
+        0 12px 36px rgba(0, 0, 0, 0.15),
+        0 4px 12px rgba(0, 0, 0, 0.08) !important;
     padding: 10px !important;
     z-index: 999999 !important;
     transform: translateZ(0) !important;
@@ -328,17 +328,17 @@ body.dark-mode .logo-text {
     overflow: visible !important; /* alt öğelerin background'u kesmemesi için */
 }
 
-/* Dark tema override */
+/* Dark tema override - Tam Opak Koyu Lacivert/Siyah */
 :root[data-theme='dark'] .header-dropdown,
 [data-theme='dark'] .header-dropdown,
 body.dark-mode .header-dropdown {
-    background: rgba(18, 24, 40, 0.65) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    background: #161c2e !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     box-shadow:
-        0 20px 48px rgba(0, 0, 0, 0.45),
-        inset 0 1px 1px rgba(255, 255, 255, 0.12) !important;
+        0 16px 40px rgba(0, 0, 0, 0.6),
+        0 4px 16px rgba(0, 0, 0, 0.3) !important;
 }
 
 .dropdown-user-info {
