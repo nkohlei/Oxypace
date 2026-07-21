@@ -339,8 +339,8 @@ const ChannelSidebar = ({
                 flex-shrink: 0;
                 max-width: 100vw;
                 background: var(--glass-bg) !important;
-                backdrop-filter: blur(20px) saturate(160%);
-                -webkit-backdrop-filter: blur(20px) saturate(160%);
+                backdrop-filter: blur(24px) saturate(180%);
+                -webkit-backdrop-filter: blur(24px) saturate(180%);
                 border: 1px solid var(--glass-border) !important;
                 border-radius: 16px !important;
                 margin: 12px 12px 12px 0 !important;
