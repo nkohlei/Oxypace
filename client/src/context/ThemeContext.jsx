@@ -4,19 +4,26 @@ const ThemeContext = createContext(null);
 
 export const ThemeProvider = ({ children }) => {
     const [isDark, setIsDark] = useState(() => {
-        const saved = localStorage.getItem('theme_mode');
-        return saved !== 'light'; // Default to dark
+        const saved = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+        return saved ? saved === 'dark' : true; // Default to dark
     });
-    // Apply theme changes
+
+    // Apply theme changes synchronously with Blog
     useEffect(() => {
         const root = document.documentElement;
         if (isDark) {
+            root.classList.add('dark');
+            root.classList.remove('light');
             root.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            localStorage.setItem('theme_mode', 'dark');
         } else {
+            root.classList.remove('dark');
+            root.classList.add('light');
             root.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+            localStorage.setItem('theme_mode', 'light');
         }
-        // Save to localStorage
-        localStorage.setItem('theme_mode', isDark ? 'dark' : 'light');
     }, [isDark]);
 
     const toggleTheme = () => {

@@ -33,9 +33,9 @@ const AuthProcess = () => {
                     login(authToken, user);
                     const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
                     if (isElectron) {
-                        window.location.href = '#/';
+                        window.location.href = '#/messages';
                     } else {
-                        window.location.href = '/'; // Full reload for clean layout
+                        window.location.href = '/messages'; // Direct clean reload into Portal Messages
                     }
                 } else if (action === 'onboarding') {
                     // Redirect to onboarding with the pre-token
