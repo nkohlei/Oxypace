@@ -54,14 +54,6 @@ export default async function BlogPostPage({ params }) {
             />
           </div>
 
-          {/* AdSense In-Article Box */}
-          <div className="my-10 border border-dashed border-zinc-200 dark:border-zinc-800 glass-card p-6 text-center font-mono rounded-lg">
-            <span className="text-[9px] tracking-widest text-zinc-400 dark:text-zinc-600 uppercase block mb-2">// SPONSOR IN-ARTICLE //</span>
-            <div className="h-16 w-full rounded border border-dashed border-zinc-200 dark:border-zinc-800/80 flex items-center justify-center text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 bg-zinc-50/50 dark:bg-zinc-950/20">
-              NATIVE IN-ARTICLE DISPLAY PLACEMENT
-            </div>
-          </div>
-
           {/* Article Body */}
           <div
             className="prose prose-zinc dark:prose-invert max-w-none text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-6 text-base font-sans"
@@ -88,16 +80,6 @@ export default async function BlogPostPage({ params }) {
             </a>
           </div>
         </article>
-
-        {/* AdSense Bottom Box */}
-        <section className="mt-16 border border-dashed border-zinc-200 dark:border-zinc-800 glass-card py-8 px-4 text-center font-mono rounded-lg">
-          <div className="flex flex-col items-center justify-center">
-            <span className="text-[9px] tracking-widest text-zinc-400 dark:text-zinc-600 uppercase mb-2">// RECOMMENDED SPONSOR LINKS //</span>
-            <div className="h-20 w-full max-w-xl rounded border border-dashed border-zinc-200 dark:border-zinc-800/80 flex items-center justify-center text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 bg-zinc-50/50 dark:bg-zinc-950/20">
-              MATCHED CONTENT RECOMMENDATIONS (AUTO-SIZE)
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* Footer */}

@@ -357,9 +357,9 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
         )}
       </div>
 
-      {/* Search modal */}
+      {/* Search modal — Desktop Only */}
       <SearchModal
-        isOpen={searchOpen}
+        isOpen={searchOpen && typeof window !== 'undefined' && window.innerWidth > 768}
         onClose={() => setSearchOpen(false)}
         lang={lang}
       />

@@ -125,19 +125,19 @@ html, body {
     padding: 0 6px !important;
   }
 
-  /* Mobil marka ve sponsor logoları (2-3 tanesi yan yana dizilecek şekilde) */
+  /* Mobil marka ve sponsor logoları (tam 2 adet yan yana dizilecek şekilde) */
   .brand-logo, .sponsor-logo, .partner-logo {
-    max-height: 40px !important;
-    height: 38px !important;
+    max-height: 44px !important;
+    height: 42px !important;
     width: auto !important;
     object-fit: contain !important;
   }
 
-  /* Logoların yan yana dizilim grid yapısı */
+  /* Logoların yan yana 2'li dizilim grid yapısı */
   .brand-grid, .sponsor-grid, .partner-grid {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 12px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
     align-items: center !important;
     justify-items: center !important;
   }
