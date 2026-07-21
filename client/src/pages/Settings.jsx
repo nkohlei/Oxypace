@@ -80,8 +80,8 @@ const Settings = () => {
     const [securityQ2, setSecurityQ2] = useState(SECURITY_QUESTIONS_POOL[1]);
     const [securityA1, setSecurityA1] = useState('');
     const [securityA2, setSecurityA2] = useState('');
-    const [showSecurityA1, setShowSecurityA1] = useState(true);
-    const [showSecurityA2, setShowSecurityA2] = useState(true);
+    const [showSecurityA1, setShowSecurityA1] = useState(false);
+    const [showSecurityA2, setShowSecurityA2] = useState(false);
     const [securitySuccess, setSecuritySuccess] = useState('');
     const [securityError, setSecurityError] = useState('');
     const [securityLoading, setSecurityLoading] = useState(false);
