@@ -14,11 +14,8 @@ export default function WarpGridBackground() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Grid dimensions
     const cols = 28;
     const rows = 28;
-
-    // Animation time tracker
     let time = 0;
 
     const handleResize = () => {
@@ -29,21 +26,20 @@ export default function WarpGridBackground() {
     window.addEventListener("resize", handleResize);
 
     const animate = () => {
-      time += 0.003; // Slow, smooth warp animation
+      time += 0.003;
 
-      // Detect theme dynamically from document data-theme
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      // Dark vs Light theme check
+      const isDark = document.documentElement.classList.contains("dark") || 
+                     document.documentElement.getAttribute("data-theme") !== "light";
 
-      // Clear canvas with theme color
+      // Background color: Pure Dark (#050505) vs Pure Light (#FAF9F6)
       ctx.fillStyle = isDark ? "#050505" : "#FAF9F6";
       ctx.fillRect(0, 0, width, height);
 
-      // Line color styling
-      const strokeColor = isDark ? "rgba(255, 255, 255, 0.095)" : "rgba(0, 0, 0, 0.07)";
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 1.1;
+      // Line stroke
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.18)" : "rgba(0, 0, 0, 0.12)";
+      ctx.lineWidth = 0.8;
 
-      // Project grid points
       const points = [];
       const centerX = width / 2;
       const centerY = height / 2;
@@ -56,17 +52,14 @@ export default function WarpGridBackground() {
           const x = c * spacingX;
           const y = r * spacingY;
 
-          // Distance from the center warp source
           const dx = x - centerX;
           const dy = y - centerY;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          // 3D gravity well + wavy space-time deformation
           const gravityWell = -120 * (1 / (1 + dist / 150));
           const wave = 25 * Math.sin(dist * 0.006 - time * 5) * (dist / (dist + 80));
           const z = gravityWell + wave;
 
-          // Projection calculation
           const fov = 350;
           const scale = fov / (fov + z);
 
@@ -77,7 +70,6 @@ export default function WarpGridBackground() {
         }
       }
 
-      // Draw grid lines
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (c < cols - 1) {
@@ -111,12 +103,12 @@ export default function WarpGridBackground() {
       ref={canvasRef}
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
+        inset: 0,
+        zIndex: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: -1,
         pointerEvents: "none",
+        display: "block",
       }}
     />
   );

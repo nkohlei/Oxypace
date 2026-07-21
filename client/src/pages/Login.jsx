@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import WarpGridBackground from '../components/WarpGridBackground';
 import './Auth.css';
 
 const Login = () => {
@@ -218,9 +219,7 @@ const Login = () => {
 
     return (
         <div className="auth-container">
-            <div className="auth-bg-glow-1" />
-            <div className="auth-bg-glow-2" />
-            <div className="auth-bg-overlay" />
+            <WarpGridBackground />
 
             <div className="auth-wrapper">
                 {/* Circular Outer Left Back Button */}
