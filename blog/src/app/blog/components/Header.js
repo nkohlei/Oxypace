@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import SearchModal from "./SearchModal";
+import { posts } from "../data/posts";
 
 /* ── Left nav items (non-article pages) ── */
 const LEFT_NAV = [
@@ -28,9 +29,18 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
   const [theme,          setTheme]          = useState("dark");
   const [scrolled,       setScrolled]       = useState(false);
   const [searchOpen,     setSearchOpen]     = useState(false);
+  const [searchQuery,    setSearchQuery]    = useState("");
   const [dropdownOpen,   setDropdownOpen]   = useState(false);
   const dropdownRef = useRef(null);
   const t = NAV_LABELS[lang] || NAV_LABELS.tr;
+
+  const filteredPosts = searchQuery.trim() === "" 
+    ? [] 
+    : posts.filter(p => 
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        p.excerpt?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   /* Initialise theme from localStorage */
   useEffect(() => {
@@ -309,32 +319,67 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
               onClick={() => setSearchOpen(false)}
             />
 
-            {/* Expanding Search Bar */}
-            <div
-              className="relative z-30 flex items-center gap-2.5 px-3.5 py-2 rounded-2xl shadow-2xl transition-all duration-300 w-[calc(100vw-24px)]"
-              style={{
-                background: "var(--glass-bg)",
-                backdropFilter: "blur(24px)",
-                border: "1px solid var(--border-hover)",
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0" style={{ color: "var(--foreground-muted)" }}>
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input
-                type="text"
-                autoFocus
-                placeholder="Makale, konu veya içerik ara..."
-                className="bg-transparent text-xs outline-none w-full font-medium"
-                style={{ color: "var(--foreground)" }}
-              />
-              <button
-                onClick={() => setSearchOpen(false)}
-                className="p-1 rounded-full text-xs font-bold shrink-0 opacity-70 hover:opacity-100"
-                style={{ color: "var(--foreground)" }}
+            {/* Expanding Search Bar & Results Dropdown */}
+            <div className="flex flex-col gap-2 w-[calc(100vw-24px)]">
+              <div
+                className="relative z-30 flex items-center gap-2.5 px-3.5 py-2 rounded-2xl shadow-2xl transition-all duration-300 w-full"
+                style={{
+                  background: "var(--glass-bg)",
+                  backdropFilter: "blur(24px)",
+                  border: "1px solid var(--border-hover)",
+                }}
               >
-                ✕
-              </button>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0" style={{ color: "var(--foreground-muted)" }}>
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Makale, konu veya içerik ara..."
+                  className="bg-transparent text-xs outline-none w-full font-medium"
+                  style={{ color: "var(--foreground)" }}
+                />
+                <button
+                  onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                  className="p-1 rounded-full text-xs font-bold shrink-0 opacity-70 hover:opacity-100"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Mobile Search Results List */}
+              {searchQuery.trim() !== "" && (
+                <div
+                  className="relative z-30 flex flex-col rounded-2xl p-2 max-h-72 overflow-y-auto shadow-2xl"
+                  style={{
+                    background: "var(--glass-bg)",
+                    backdropFilter: "blur(24px)",
+                    border: "1px solid var(--border-hover)",
+                  }}
+                >
+                  {filteredPosts.length > 0 ? (
+                    filteredPosts.map((post) => (
+                      <Link
+                        key={post.id || post.slug}
+                        href={`/blog/${post.slug}`}
+                        onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                        className="flex flex-col p-2.5 rounded-xl hover:bg-white/10 transition-colors"
+                        style={{ borderBottom: "1px solid var(--border-color)" }}
+                      >
+                        <span className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{post.title}</span>
+                        <span className="text-[10px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>{post.category} · {post.date}</span>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="p-3 text-center text-xs" style={{ color: "var(--foreground-muted)" }}>
+                      Eşleşen makale bulunamadı
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         ) : (
