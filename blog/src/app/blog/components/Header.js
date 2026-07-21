@@ -66,15 +66,25 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
     return () => document.removeEventListener("mousedown", h);
   }, [dropdownOpen]);
 
-  /* Lock body scroll when search is active (Desktop & Mobile) */
+  /* Strict Body & HTML Scroll Lock when search is active (Desktop & Mobile) */
   useEffect(() => {
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+
     if (searchOpen || mobileSearchOpen) {
-      document.body.style.overflow = "hidden";
+      htmlEl.style.overflow = "hidden";
+      bodyEl.style.overflow = "hidden";
+      bodyEl.style.touchAction = "none";
     } else {
-      document.body.style.overflow = "";
+      htmlEl.style.overflow = "";
+      bodyEl.style.overflow = "";
+      bodyEl.style.touchAction = "";
     }
+
     return () => {
-      document.body.style.overflow = "";
+      htmlEl.style.overflow = "";
+      bodyEl.style.overflow = "";
+      bodyEl.style.touchAction = "";
     };
   }, [searchOpen, mobileSearchOpen]);
 
@@ -399,7 +409,9 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                 background: "rgba(0, 0, 0, 0.45)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
+                touchAction: "none",
               }}
+              onTouchMove={(e) => e.preventDefault()}
               onClick={() => { setMobileSearchOpen(false); setSearchQuery(""); }}
             />
 
