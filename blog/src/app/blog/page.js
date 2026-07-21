@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FeaturedCard, MinimalCard, GridCard } from "./components/BlogCard";
 import CookieConsent from "./components/CookieConsent";
 import ReadingProgressBar from "./components/ReadingProgressBar";
