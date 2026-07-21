@@ -738,32 +738,10 @@ const Portal = () => {
             }
 
             if (isLoadMore) {
-                // ── Scroll-anchor fix ──────────────────────────────────────────
-                // Snapshot the current scrollHeight BEFORE new posts are added to
-                // the DOM. After React flushes the state update we compensate the
-                // scrollTop by the exact amount the content grew so the viewport
-                // stays pinned to the same visual position.
-                const feed = feedRef.current;
-                const scrollHeightBefore = feed ? feed.scrollHeight : 0;
-                const scrollTopBefore   = feed ? feed.scrollTop   : 0;
-
                 setPosts(prev => {
-                    // Deduplication Logic
                     const existingIds = new Set(prev.map(p => p._id));
                     const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p._id));
                     return [...prev, ...uniqueNewPosts];
-                });
-
-                // Use a microtask (queueMicrotask → requestAnimationFrame) so we
-                // run AFTER React has committed the DOM changes.
-                requestAnimationFrame(() => {
-                    if (feed) {
-                        const scrollHeightAfter = feed.scrollHeight;
-                        const diff = scrollHeightAfter - scrollHeightBefore;
-                        if (diff > 0) {
-                            feed.scrollTop = scrollTopBefore + diff;
-                        }
-                    }
                 });
             } else {
                 setPosts(newPosts);
@@ -799,6 +777,9 @@ const Portal = () => {
             if (entries[0].isIntersecting && hasMore) {
                 fetchChannelPosts(true);
             }
+        }, {
+            root: feedRef.current,
+            rootMargin: '200px',
         });
         if (node) observer.current.observe(node);
     }, [loadingMore, hasMore, fetchChannelPosts]);
