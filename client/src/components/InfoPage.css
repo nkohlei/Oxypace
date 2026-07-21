@@ -29,8 +29,8 @@
 }
 
 .minimal-back-btn:hover {
-    color: #38bdf8 !important;
-    background: rgba(56, 189, 248, 0.1) !important;
+    color: var(--text-primary) !important;
+    background: var(--bg-hover) !important;
     transform: translateX(-3px);
 }
 
@@ -43,9 +43,10 @@
     font-size: 2.5rem;
     font-weight: 800;
     margin: 0;
-    background: linear-gradient(135deg, #38bdf8 0%, #1e4ed8 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text-primary);
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: var(--text-primary);
     letter-spacing: -1px;
 }
 
