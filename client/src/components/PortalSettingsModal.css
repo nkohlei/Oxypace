@@ -1,32 +1,36 @@
-/* Portal Settings Modal - Discord Style */
 .settings-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--modal-overlay);
+    background-color: rgba(0, 0, 0, 0.75) !important;
     z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
     animation: fadeIn 0.2s ease;
 }
 
 .settings-modal {
     width: 800px;
     height: 600px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-radius: 8px;
+    background: #13141a !important;
+    border-radius: 16px;
     display: flex;
-    box-shadow: none;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7) !important;
     overflow: hidden;
     position: relative;
     animation: slideIn 0.2s ease;
-    border: var(--glass-border);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+:root[data-theme='light'] .settings-modal,
+[data-theme='light'] .settings-modal {
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 @keyframes fadeIn {

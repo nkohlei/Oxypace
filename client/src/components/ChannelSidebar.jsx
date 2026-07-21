@@ -151,6 +151,16 @@ const ChannelSidebar = ({
                         </div>
 
                         <div className="portal-header-actions">
+                            <button
+                                className="portal-action-btn-circle"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onShowPortalInfo && onShowPortalInfo();
+                                }}
+                                title="Portal Bilgisi"
+                            >
+                                <Info size={16} />
+                            </button>
                             {(isMember || canManage) && (
                                 <button
                                     className="portal-action-btn-circle"
@@ -158,9 +168,9 @@ const ChannelSidebar = ({
                                         e.stopPropagation();
                                         onEdit && onEdit('notifications');
                                     }}
-                                    title="Bildirimler"
+                                    title="Bildirim Ayarları"
                                 >
-                                    <Bell size={18} />
+                                    <Bell size={16} />
                                 </button>
                             )}
                             {isMember && (
