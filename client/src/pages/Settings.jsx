@@ -748,80 +748,44 @@ const Settings = () => {
 
                             <div className="badge-display-row">
                                 <span>Talep Edilen:</span>
-                                <strong>
-                                    {user.verificationRequest.category === 'creator' && 'Mavi Tik (Tanınmış Kişi)'}
-                                    {user.verificationRequest.category === 'business' && 'Altın Tik (İşletme)'}
-                                    {user.verificationRequest.category === 'government' && 'Platin Tik (Devlet)'}
-                                    {user.verificationRequest.category === 'partner' && 'Özel Tik (Partner)'}
-                                    {!user.verificationRequest.category && 'Doğrulama Rozeti'}
-                                </strong>
-                            </div>
-
-                            <div className="pending-progress-bar"></div>
-                            <p style={{ fontSize: '0.8rem', marginTop: '12px', opacity: 0.7 }}>
-                                Sonuçlandığında bildirim alacaksınız.
-                            </p>
+                    <div className="settings-card verification-status-card pending">
+                        <div className="verification-status-icon">⏳</div>
+                        <div className="verification-status-details">
+                            <h4>Doğrulama Başvurunuz İncelemede</h4>
+                            <p>Talebiniz ekibimiz tarafından değerlendiriliyor. Sonuçlandığında anlık bildirim alacaksınız.</p>
                         </div>
                     </div>
                 ) : user?.verificationBadge !== 'none' && user?.verificationBadge !== 'staff' && !reapplyMode ? (
-                    <div className="verification-status approved">
-                        <div className="status-icon-large" style={{ color: '#2ecc71' }}>✓</div>
-                        <div className="status-info">
+                    <div className="settings-card verification-status-card approved">
+                        <div className="verification-status-icon success">✓</div>
+                        <div className="verification-status-details">
                             <h4>Hesabınız Doğrulandı</h4>
                             <p>Tebrikler! Doğrulanmış rozetiniz aktif durumdadır.</p>
-                            <div className="badge-display-row" style={{ background: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71' }}>
+                            <div className="verification-badge-preview-row">
                                 <span>Aktif Rozetler:</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}>
-                                    <UserBadges user={user} size={16} />
-                                </div>
+                                <UserBadges user={user} size={18} />
                             </div>
-                            <div style={{ marginTop: '20px' }}>
-                                <button
-                                    onClick={() => setReapplyMode(true)}
-                                    style={{
-                                        padding: '10px 20px',
-                                        borderRadius: '8px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        background: 'var(--primary-cyan)',
-                                        color: 'black',
-                                        border: 'none',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
-                                    onMouseOut={(e) => e.currentTarget.style.filter = 'none'}
-                                >
-                                    Farklı Bir Kategori İçin Yeniden Başvur
-                                </button>
-                            </div>
+                            <button
+                                className="settings-action-btn"
+                                style={{ marginTop: '16px' }}
+                                onClick={() => setReapplyMode(true)}
+                            >
+                                Farklı Bir Kategori İçin Yeniden Başvur
+                            </button>
                         </div>
                     </div>
                 ) : (
-                    <div className="verification-apply">
+                    <div className="settings-group-container">
                         {user?.verificationRequest?.status === 'rejected' && (
-                            <div className="verification-status rejected" style={{
-                                background: 'rgba(255, 77, 77, 0.05)',
-                                border: '1px solid rgba(255, 77, 77, 0.2)',
-                                color: '#ff6b6b',
-                                borderRadius: '12px',
-                                padding: '16px',
-                                marginBottom: '20px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                textAlign: 'left'
-                            }}>
-                                <span style={{ fontSize: '24px' }}>⚠️</span>
+                            <div className="settings-card verification-status-card rejected">
+                                <span className="status-warning-icon">⚠️</span>
                                 <div>
-                                    <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#ff6b6b' }}>Önceki Başvurunuz Reddedildi</h4>
-                                    <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: '#b5bac1', lineHeight: '1.4' }}>
-                                        Önceki doğrulama talebiniz kriterlerimize uymadığı için reddedilmiştir. Bilgilerinizi düzelterek aşağıdan tekrar başvurabilirsiniz.
-                                    </p>
+                                    <h4>Önceki Başvurunuz Reddedildi</h4>
+                                    <p>Önceki doğrulama talebiniz kriterlerimize uymadığı için reddedilmiştir. Bilgilerinizi güncelleyerek tekrar başvurabilirsiniz.</p>
                                 </div>
                             </div>
                         )}
-                        <p className="verification-desc" style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6' }}>
+                        <p className="settings-section-desc">
                             Hesabınızın türünü en iyi anlatan kategoriyi seçerek başvurabilirsiniz. Başvurunuz ardından hesabınız topluluk kriterlerimize göre incelenecektir.
                         </p>
 
@@ -932,19 +896,10 @@ const Settings = () => {
 
                         {/* Real-time Badge Preview Card */}
                         {passwordForm.selectedCategory && (
-                            <div className="badge-preview-card" style={{
-                                background: 'rgba(0, 0, 0, 0.2)',
-                                border: '1px solid rgba(255,255,255,0.06)',
-                                borderRadius: '12px',
-                                padding: '16px 20px',
-                                margin: '20px 0',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '8px'
-                            }}>
-                                <span style={{ fontSize: '11px', color: '#949ba4', textTransform: 'uppercase', fontWeight: 'bold' }}>Canlı Rozet Önizlemesi</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'white' }}>
+                            <div className="settings-card badge-preview-card">
+                                <span className="settings-item-label">Canlı Rozet Önizlemesi</span>
+                                <div className="badge-preview-user-row">
+                                    <span className="badge-preview-name">
                                         {profileForm.displayName || user?.profile?.displayName || user?.username}
                                     </span>
                                     <Badge type={
@@ -954,32 +909,25 @@ const Settings = () => {
                                         passwordForm.selectedCategory === 'partner' ? 'special' : 'none'
                                     } size={18} />
                                 </div>
-                                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Raporlarda, gönderilerinizde ve profil sayfanızda bu şekilde görüntülenecektir.</p>
+                                <p className="settings-item-desc">Gönderilerinizde ve profil sayfanızda bu şekilde görüntülenecektir.</p>
                             </div>
                         )}
 
                         {/* Verification Criteria Checklist */}
-                        <div className="verification-criteria" style={{
-                            background: 'rgba(255, 255, 255, 0.01)',
-                            border: '1px solid rgba(255,255,255,0.04)',
-                            borderRadius: '12px',
-                            padding: '20px',
-                            marginTop: '24px',
-                            marginBottom: '24px'
-                        }}>
-                            <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div className="settings-card verification-criteria-card">
+                            <h4 className="verification-criteria-title">
                                 📋 Doğrulama Başvuru Şartları
                             </h4>
-                            <ul style={{ paddingLeft: '18px', margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.5' }}>
+                            <ul className="verification-criteria-list">
                                 <li><strong>Özgünlük:</strong> Hesabınız gerçek bir kişiyi, markayı veya resmi kurumu temsil etmelidir.</li>
-                                <li><strong>Tam Profil:</strong> Hesabınızın bir profil fotoğrafı, biyografisi ve en az bir aktif gönderisi bulunmalıdır.</li>
-                                <li><strong>Aktiflik:</strong> Son 30 günde platforma giriş yapmış ve etkileşimde bulunmuş olmanız gerekir.</li>
-                                <li><strong>Güvenilirlik:</strong> Topluluk kurallarına aykırı davranış veya yakın zamanda ban cezası bulunmamalıdır.</li>
+                                <li><strong>Tam Profil:</strong> Hesabınızın bir profil fotoğrafı ve biyografisi bulunmalıdır.</li>
+                                <li><strong>Aktiflik:</strong> Son 30 günde platformda aktif etkileşimde bulunmuş olmanız gerekir.</li>
+                                <li><strong>Güvenilirlik:</strong> Topluluk kurallarına uyum sağlanmalıdır.</li>
                             </ul>
                         </div>
 
                         <button
-                            className="apply-btn"
+                            className="settings-action-btn primary-btn"
                             disabled={!passwordForm.selectedCategory}
                             onClick={async () => {
                                 if (!passwordForm.selectedCategory) return;
@@ -993,14 +941,7 @@ const Settings = () => {
                                 }
                             }}
                         >
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                width="20"
-                                height="20"
-                            >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
                                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
                             </svg>
                             Başvuruyu Gönder
@@ -1013,25 +954,14 @@ const Settings = () => {
 
     const renderPrivacyMenu = () => (
         <div className="submenu-content animation-slide-in">
-            {/* Privacy Summary Area */}
-            <div style={{
-                background: privacy.isPrivate ? 'rgba(52, 152, 219, 0.05)' : 'rgba(230, 126, 34, 0.03)',
-                border: `1px solid ${privacy.isPrivate ? 'rgba(52, 152, 219, 0.15)' : 'rgba(255, 255, 255, 0.05)'}`,
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px'
-            }}>
-                <div style={{ fontSize: '32px' }}>
+            {/* Privacy Status Banner */}
+            <div className={`settings-card privacy-status-banner ${privacy.isPrivate ? 'private' : 'public'}`}>
+                <div className="privacy-banner-icon">
                     {privacy.isPrivate ? '🛡️' : '🌍'}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: 'white', margin: 0 }}>
-                        {privacy.isPrivate ? 'Hesabınız Korumalı' : 'Hesabınız Herkese Açık'}
-                    </h4>
-                    <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: 0 }}>
+                <div className="privacy-banner-text">
+                    <h4>{privacy.isPrivate ? 'Hesabınız Korumalı' : 'Hesabınız Herkese Açık'}</h4>
+                    <p>
                         {privacy.isPrivate 
                             ? 'Sadece onayladığınız arkadaşlarınız profil detaylarınızı ve gönderilerinizi görebilir.' 
                             : 'Tüm Oxypace kullanıcıları profilinizi inceleyebilir ve gönderilerinize erişebilir.'}
@@ -1039,15 +969,14 @@ const Settings = () => {
                 </div>
             </div>
 
-            <div className="settings-section" style={{ margin: 0, padding: 0, background: 'transparent' }}>
-                {/* SECTION 1: Profil Görünürlüğü */}
-                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Profil Görünürlüğü</h3>
-                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px', marginBottom: '24px' }}>
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Profil Görünürlüğü</h3>
+                <div className="settings-card-stack">
                     {/* 1. Gizli Hesap */}
-                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <div className="setting-info" style={{ paddingRight: '15px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Gizli Hesap</h3>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Profilinizi kilitler. Yalnızca arkadaşlarınız içeriklerinizi görebilir.</p>
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Gizli Hesap</span>
+                            <span className="settings-item-desc">Profilinizi kilitler. Yalnızca arkadaşlarınız içeriklerinizi görebilir.</span>
                         </div>
                         <label className="switch">
                             <input
@@ -1060,10 +989,10 @@ const Settings = () => {
                     </div>
 
                     {/* 2. Arama Görünürlüğü */}
-                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <div className="setting-info" style={{ paddingRight: '15px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Arama Sonuçlarında Görünme</h3>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Kapatırsanız, arama sayfasında kullanıcı adınız aratıldığında profiliniz gizlenir.</p>
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Arama Sonuçlarında Görünme</span>
+                            <span className="settings-item-desc">Kapatırsanız, arama sayfasında kullanıcı adınız aratıldığında profiliniz gizlenir.</span>
                         </div>
                         <label className="switch">
                             <input
@@ -1076,16 +1005,15 @@ const Settings = () => {
                     </div>
 
                     {/* 3. Portal Görünürlüğü */}
-                    <div className="setting-item" style={{ padding: '16px 0', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-                        <div className="setting-info">
-                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px', color: 'var(--text-primary)' }}>Portal Katılım Görünürlüğü</h3>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Profil sayfanızda katıldığınız portalları kimlerin listeleyebileceğini seçin.</p>
+                    <div className="settings-item-row select-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Portal Katılım Görünürlüğü</span>
+                            <span className="settings-item-desc">Profil sayfanızda katıldığınız portalları kimlerin listeleyebileceğini seçin.</span>
                         </div>
                         <select
                             value={privacy.portalVisibility || 'public'}
                             onChange={(e) => handleSelectChange('portalVisibility', e.target.value)}
-                            className="badge-select"
-                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                            className="settings-select-input"
                         >
                             <option value="public">Herkes (Herkese Açık)</option>
                             <option value="friends">Sadece Arkadaşlarım</option>
@@ -1093,15 +1021,16 @@ const Settings = () => {
                         </select>
                     </div>
                 </div>
+            </div>
 
-                {/* SECTION 2: İletişim ve Mesajlar */}
-                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>İletişim & Etkileşim</h3>
-                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px' }}>
-                    {/* 1. Çevrimiçi Durumu */}
-                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <div className="setting-info" style={{ paddingRight: '15px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Çevrimiçi Durumunu Göster</h3>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Aktif olduğunuzda diğer kullanıcılara yeşil çevrimiçi simgesini gösterir.</p>
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">İletişim & Etkileşim</h3>
+                <div className="settings-card-stack">
+                    {/* Çevrimiçi Durumu */}
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Çevrimiçi Durumunu Göster</span>
+                            <span className="settings-item-desc">Aktif olduğunuzda diğer kullanıcılara yeşil çevrimiçi simgesini gösterir.</span>
                         </div>
                         <label className="switch">
                             <input
@@ -1113,11 +1042,11 @@ const Settings = () => {
                         </label>
                     </div>
 
-                    {/* 2. Okundu Bilgisi */}
-                    <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <div className="setting-info" style={{ paddingRight: '15px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Okundu Bilgisi (Mavi Tik)</h3>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Özel DM sohbetlerinizde mesajları okuduğunuzda karşı tarafa bilgi iletilmesini kontrol eder.</p>
+                    {/* Okundu Bilgisi */}
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Okundu Bilgisi (Sohbet)</span>
+                            <span className="settings-item-desc">Mesajları okuduğunuzda karşı tarafa okundu bilgisi iletilmesini kontrol eder.</span>
                         </div>
                         <label className="switch">
                             <input
@@ -1129,17 +1058,16 @@ const Settings = () => {
                         </label>
                     </div>
 
-                    {/* 3. DM İzinleri */}
-                    <div className="setting-item" style={{ padding: '16px 0', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-                        <div className="setting-info">
-                            <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px', color: 'var(--text-primary)' }}>Doğrudan Mesaj (DM) İzinleri</h3>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Sohbet başlatılmamış hangi kullanıcıların size mesaj atabileceğini belirler.</p>
+                    {/* DM İzinleri */}
+                    <div className="settings-item-row select-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Doğrudan Mesaj (DM) İzinleri</span>
+                            <span className="settings-item-desc">Kimlerin size mesaj atabileceğini belirler.</span>
                         </div>
                         <select
                             value={privacy.dmSettings || 'everyone'}
                             onChange={(e) => handleSelectChange('dmSettings', e.target.value)}
-                            className="badge-select"
-                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                            className="settings-select-input"
                         >
                             <option value="everyone">Herkes Gönderebilir</option>
                             <option value="friends">Sadece Arkadaşlarım</option>
@@ -1147,173 +1075,85 @@ const Settings = () => {
                         </select>
                     </div>
                 </div>
+            </div>
 
-                {/* SECTION 3: Güvenlik Soruları */}
-                <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginTop: '28px', marginBottom: '12px', textTransform: 'uppercase' }}>Hesap Kurtarma Soruları</h3>
-                <div style={{
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    borderRadius: '16px',
-                    padding: '24px',
-                    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-                    backdropFilter: 'blur(4px)',
-                    WebkitBackdropFilter: 'blur(4px)',
-                }}>
-                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '20px' }}>
-                        Hesap kurtarma (recovery) durumlarında kimliğinizi doğrulamak için kullanılacak bankacılık düzeyinde güvenlik sorularınızı aşağıdan seçip güncelleyebilirsiniz.
+            {/* Güvenlik Soruları Kartı */}
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Hesap Kurtarma Soruları</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc">
+                        Hesap kurtarma durumlarında kimliğinizi doğrulamak için kullanılacak bankacılık düzeyinde güvenlik sorularınızı güncelleyebilirsiniz.
                     </p>
 
-                    <form onSubmit={handleSecurityQuestionsUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {/* Question 1 */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 'bold' }}>GÜVENLİK SORUSU 1</label>
+                    <form onSubmit={handleSecurityQuestionsUpdate} className="settings-form">
+                        <div className="settings-form-group">
+                            <label className="settings-input-label">GÜVENLİK SORUSU 1</label>
                             <select
                                 value={securityQ1}
                                 onChange={(e) => setSecurityQ1(e.target.value)}
-                                className="badge-select"
-                                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                                className="settings-select-input"
                             >
                                 {SECURITY_QUESTIONS_POOL.map((q) => (
-                                    <option key={q} value={q} style={{ backgroundColor: '#18191c', color: 'white' }}>{q}</option>
+                                    <option key={q} value={q}>{q}</option>
                                 ))}
                             </select>
-                            <div style={{ position: 'relative', marginTop: '4px' }}>
+                            <div className="settings-input-wrapper">
                                 <input
                                     type={showSecurityA1 ? 'text' : 'password'}
                                     placeholder="Cevabınızı yazın"
                                     required
                                     value={securityA1}
                                     onChange={(e) => setSecurityA1(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px 40px 10px 12px',
-                                        borderRadius: '8px',
-                                        backgroundColor: 'rgba(0,0,0,0.3)',
-                                        color: 'white',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        outline: 'none',
-                                        fontSize: '13.5px'
-                                    }}
+                                    className="settings-text-input"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowSecurityA1(!showSecurityA1)}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '12px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#949ba4',
-                                        cursor: 'pointer',
-                                        padding: 0
-                                    }}
+                                    className="settings-input-eye-btn"
                                 >
-                                    {showSecurityA1 ? (
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                                            <line x1="1" y1="1" x2="23" y2="23" />
-                                        </svg>
-                                    ) : (
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                            <circle cx="12" cy="12" r="3" />
-                                        </svg>
-                                    )}
+                                    {showSecurityA1 ? '🙈' : '👁️'}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Question 2 */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 'bold' }}>GÜVENLİK SORUSU 2</label>
+                        <div className="settings-form-group">
+                            <label className="settings-input-label">GÜVENLİK SORUSU 2</label>
                             <select
                                 value={securityQ2}
                                 onChange={(e) => setSecurityQ2(e.target.value)}
-                                className="badge-select"
-                                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+                                className="settings-select-input"
                             >
                                 {SECURITY_QUESTIONS_POOL.map((q) => (
-                                    <option key={q} value={q} style={{ backgroundColor: '#18191c', color: 'white' }}>{q}</option>
+                                    <option key={q} value={q}>{q}</option>
                                 ))}
                             </select>
-                            <div style={{ position: 'relative', marginTop: '4px' }}>
+                            <div className="settings-input-wrapper">
                                 <input
                                     type={showSecurityA2 ? 'text' : 'password'}
                                     placeholder="Cevabınızı yazın"
                                     required
                                     value={securityA2}
                                     onChange={(e) => setSecurityA2(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px 40px 10px 12px',
-                                        borderRadius: '8px',
-                                        backgroundColor: 'rgba(0,0,0,0.3)',
-                                        color: 'white',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        outline: 'none',
-                                        fontSize: '13.5px'
-                                    }}
+                                    className="settings-text-input"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowSecurityA2(!showSecurityA2)}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '12px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#949ba4',
-                                        cursor: 'pointer',
-                                        padding: 0
-                                    }}
+                                    className="settings-input-eye-btn"
                                 >
-                                    {showSecurityA2 ? (
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                                            <line x1="1" y1="1" x2="23" y2="23" />
-                                        </svg>
-                                    ) : (
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                            <circle cx="12" cy="12" r="3" />
-                                        </svg>
-                                    )}
+                                    {showSecurityA2 ? '🙈' : '👁️'}
                                 </button>
                             </div>
                         </div>
 
-                        {securityError && (
-                            <div style={{ color: '#ef4444', fontSize: '13px', fontWeight: '600', marginTop: '4px' }}>
-                                {securityError}
-                            </div>
-                        )}
-                        {securitySuccess && (
-                            <div style={{ color: '#10b981', fontSize: '13px', fontWeight: '600', marginTop: '4px' }}>
-                                {securitySuccess}
-                            </div>
-                        )}
+                        {securityError && <div className="settings-msg error">{securityError}</div>}
+                        {securitySuccess && <div className="settings-msg success">{securitySuccess}</div>}
 
                         <button
                             type="submit"
                             disabled={securityLoading}
-                            style={{
-                                marginTop: '8px',
-                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                padding: '12px',
-                                fontSize: '14px',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                transition: 'opacity 0.2s'
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
-                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                            className="settings-action-btn primary-btn"
+                            style={{ alignSelf: 'flex-start' }}
                         >
                             {securityLoading ? 'Kaydediliyor...' : 'Güvenlik Sorularını Güncelle'}
                         </button>
@@ -1325,91 +1165,88 @@ const Settings = () => {
 
     const renderNotificationsMenu = () => (
         <div className="submenu-content animation-slide-in">
-            {/* SECTION 1: Sistem Bildirim Kanalları */}
-            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Bildirim Kanalları</h3>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px', marginBottom: '24px' }}>
-                {/* E-posta Bildirimleri */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>E-posta Bildirimleri</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Sistem duyuruları ve önemli etkileşim özetleri e-posta adresinize gönderilir.</p>
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Bildirim Kanalları</h3>
+                <div className="settings-card-stack">
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">E-posta Bildirimleri</span>
+                            <span className="settings-item-desc">Sistem duyuruları ve önemli etkileşim özetleri e-posta adresinize gönderilir.</span>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={notifications.email}
+                                onChange={() => handleToggle('email')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={notifications.email}
-                            onChange={() => handleToggle('email')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
 
-                {/* Anlık Bildirimler */}
-                <div className="setting-item" style={{ padding: '16px 0' }}>
-                    <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Anlık (Push) Bildirimler</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Tarayıcı veya mobil cihazınıza anlık etkileşim bildirimleri gönderilir.</p>
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Anlık (Push) Bildirimler</span>
+                            <span className="settings-item-desc">Tarayıcı veya mobil cihazınıza anlık etkileşim bildirimleri gönderilir.</span>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={notifications.push}
+                                onChange={() => handleToggle('push')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={notifications.push}
-                            onChange={() => handleToggle('push')}
-                        />
-                        <span className="slider"></span>
-                    </label>
                 </div>
             </div>
 
-            {/* SECTION 2: Etkileşim Bildirimleri */}
-            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Etkileşim & Hareketler</h3>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0 20px' }}>
-                {/* Alıntılar ve Yanıtlar */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Alıntılar ve Yanıtlar</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Gönderileriniz alıntılandığında veya yanıtlandığında bildirim alın.</p>
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Etkileşim & Hareketler</h3>
+                <div className="settings-card-stack">
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Alıntılar ve Yanıtlar</span>
+                            <span className="settings-item-desc">Gönderileriniz alıntılandığında veya yanıtlandığında bildirim alın.</span>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={notifications.comments !== false}
+                                onChange={() => handleToggle('comments')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={notifications.comments !== false}
-                            onChange={() => handleToggle('comments')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
 
-                {/* Arkadaşlık İstekleri */}
-                <div className="setting-item" style={{ padding: '16px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Arkadaşlık İstekleri</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Yeni bir arkadaşlık (tanışma) veya kabul isteği aldığınızda haber verilsin.</p>
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Arkadaşlık İstekleri</span>
+                            <span className="settings-item-desc">Yeni bir arkadaşlık isteği aldığınızda haber verilsin.</span>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={notifications.friendRequests !== false}
+                                onChange={() => handleToggle('friendRequests')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={notifications.friendRequests !== false}
-                            onChange={() => handleToggle('friendRequests')}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
 
-                {/* Sistem Duyuruları */}
-                <div className="setting-item" style={{ padding: '16px 0' }}>
-                    <div className="setting-info" style={{ paddingRight: '15px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>Sistem Duyuruları</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Oxypace yönetimi tarafından yayınlanan genel güncellemeler ve duyurular.</p>
+                    <div className="settings-item-row">
+                        <div className="settings-item-info">
+                            <span className="settings-item-title">Sistem Duyuruları</span>
+                            <span className="settings-item-desc">Oxypace yönetimi tarafından yayınlanan genel güncellemeler ve duyurular.</span>
+                        </div>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={notifications.system !== false}
+                                onChange={() => handleToggle('system')}
+                            />
+                            <span className="slider"></span>
+                        </label>
                     </div>
-                    <label className="switch">
-                        <input
-                            type="checkbox"
-                            checked={notifications.system !== false}
-                            onChange={() => handleToggle('system')}
-                        />
-                        <span className="slider"></span>
-                    </label>
                 </div>
             </div>
         </div>
@@ -1417,42 +1254,42 @@ const Settings = () => {
 
     const renderVideoMenu = () => (
         <div className="submenu-content animation-slide-in">
-            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Video Oynatma Kalitesi</h3>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Video Oynatma Kalitesi</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc">
                         Videolar oynatılırken varsayılan olarak hangi kalitede açılacağını seçin.
                     </p>
                     <select
                         value={videoSettings.playbackQuality || 'auto'}
                         onChange={(e) => handleVideoSelectChange('playbackQuality', e.target.value)}
-                        className="badge-select"
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px', marginTop: '8px' }}
+                        className="settings-select-input"
+                        style={{ marginTop: '12px' }}
                     >
-                        <option value="auto" style={{ backgroundColor: '#18191c', color: 'white' }}>Oto: İnternet hızına göre kaliteyi kendi belirler</option>
-                        <option value="performance" style={{ backgroundColor: '#18191c', color: 'white' }}>Performans: Daima en yüksek kalite</option>
-                        <option value="saver" style={{ backgroundColor: '#18191c', color: 'white' }}>Tasarruf: Dengeli veri kullanımı (360p - 720p)</option>
-                        <option value="lowest" style={{ backgroundColor: '#18191c', color: 'white' }}>En Düşük: Veri tasarrufu için daima en düşük kalite (144p)</option>
+                        <option value="auto">Otomatik: İnternet hızına göre kaliteyi kendi belirler</option>
+                        <option value="performance">Performans: Daima en yüksek kalite</option>
+                        <option value="saver">Tasarruf: Dengeli veri kullanımı (360p - 720p)</option>
+                        <option value="lowest">En Düşük: Veri tasarrufu için daima en düşük kalite (144p)</option>
                     </select>
                 </div>
             </div>
 
-            <h3 style={{ fontSize: '12px', color: '#949ba4', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>Video İndirme Kalitesi</h3>
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Video İndirme Kalitesi</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc">
                         Video indirmelerinde varsayılan davranışı seçin (Görseller ve GIF'ler orijinal kalitede inmeye devam eder).
                     </p>
                     <select
                         value={videoSettings.downloadQuality || 'ask'}
                         onChange={(e) => handleVideoSelectChange('downloadQuality', e.target.value)}
-                        className="badge-select"
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer', fontSize: '13px', marginTop: '8px' }}
+                        className="settings-select-input"
+                        style={{ marginTop: '12px' }}
                     >
-                        <option value="ask" style={{ backgroundColor: '#18191c', color: 'white' }}>Her Defasında Sor</option>
-                        <option value="1080" style={{ backgroundColor: '#18191c', color: 'white' }}>Daima En Yüksek (1080p / Orijinal)</option>
-                        <option value="720" style={{ backgroundColor: '#18191c', color: 'white' }}>Daima Yüksek (720p)</option>
-                        <option value="360" style={{ backgroundColor: '#18191c', color: 'white' }}>Daima Standart (360p)</option>
+                        <option value="ask">Her Defasında Sor</option>
+                        <option value="1080">Daima En Yüksek (1080p / Orijinal)</option>
+                        <option value="720">Daima Yüksek (720p)</option>
+                        <option value="360">Daima Standart (360p)</option>
                     </select>
                 </div>
             </div>
