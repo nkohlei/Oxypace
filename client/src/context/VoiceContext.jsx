@@ -1303,7 +1303,10 @@ export const VoiceProvider = ({ children }) => {
     const startWatchParty = useCallback(async (url, isLive = false) => {
         if (activeRoom) {
             try {
-                const response = await axios.post('/api/media/validate-stream', { url });
+                const response = await axios.post('/api/media/validate-stream', { 
+                    url, 
+                    portalId: activeRoom?.portalId 
+                });
                 const validatedLive = response.data.isLive;
                 let streamUrl = response.data.streamUrl || url;
                 if (streamUrl && !streamUrl.startsWith('http') && !streamUrl.startsWith('blob:')) {

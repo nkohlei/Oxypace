@@ -729,7 +729,7 @@ router.get('/*', async (req, res) => {
  */
 router.post('/validate-stream', auth, async (req, res) => {
     try {
-        const { url } = req.body;
+        const { url, portalId } = req.body;
         if (!url) {
             return res.status(400).json({ message: 'URL is required' });
         }
@@ -747,19 +747,33 @@ router.post('/validate-stream', auth, async (req, res) => {
                         const userId = req.user?._id;
                         const isAuthor = userId && post.author && post.author.toString() === userId.toString();
 
-                        if (!isAuthor) {
-                            const isBlocked = userId && portal.blockedUsers?.some(id => id.toString() === userId.toString());
-                            if (isBlocked) {
-                                return res.status(403).json({ message: 'Gizli bir portalda paylaşılan video izlenemez.', isForbidden: true });
+                        if (portal.privacy === 'private' || portal.privacy === 'restricted') {
+                            // Rule 1: Private portal videos CANNOT be played in another portal's room
+                            if (!portalId || String(portalId) !== String(portal._id)) {
+                                return res.status(403).json({
+                                    message: 'Gizli bir portalın videosu başka bir portalda izlenemez.',
+                                    isForbidden: true
+                                });
                             }
 
-                            if (portal.privacy === 'private' || portal.privacy === 'restricted') {
+                            // Rule 2: User must be a member or allowed in this private portal
+                            if (!isAuthor) {
+                                const isBlocked = userId && portal.blockedUsers?.some(id => id.toString() === userId.toString());
+                                if (isBlocked) {
+                                    return res.status(403).json({ message: 'Gizli bir portalda paylaşılan video izlenemez.', isForbidden: true });
+                                }
+
                                 const isMember = userId && portal.members?.some(id => id.toString() === userId.toString());
                                 const isAllowed = userId && portal.allowedUsers?.some(id => id.toString() === userId.toString());
 
                                 if (!isMember && !isAllowed) {
                                     return res.status(403).json({ message: 'Gizli bir portalda paylaşılan video izlenemez.', isForbidden: true });
                                 }
+                            }
+                        } else if (!isAuthor) {
+                            const isBlocked = userId && portal.blockedUsers?.some(id => id.toString() === userId.toString());
+                            if (isBlocked) {
+                                return res.status(403).json({ message: 'Gizli bir portalda paylaşılan video izlenemez.', isForbidden: true });
                             }
                         }
                     }
