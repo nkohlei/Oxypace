@@ -284,6 +284,20 @@ export const initializeVoiceHandler = (io) => {
             console.log(`[Socket Backend] new-ice-candidate forwarded to ${destination}`);
         });
 
+        socket.on('voice:ice-restart-request', ({ roomName, targetUserId }) => {
+            if (!roomName || !targetUserId) return;
+            console.log(`[Socket Backend] ice-restart-request received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+
+            const roomData = voiceRooms.get(roomName);
+            const targetParticipant = roomData?.participants?.get(targetUserId);
+            const destination = targetParticipant?.socketId || targetUserId;
+
+            io.to(destination).emit('voice:ice-restart-request', {
+                senderId: socket._voiceUserId || socket.id
+            });
+            console.log(`[Socket Backend] ice-restart-request forwarded to ${destination}`);
+        });
+
         // ─── Cleanup on Disconnect ───
         socket.on('disconnect', () => {
             if (socket._voiceRooms && socket._voiceUserId) {
