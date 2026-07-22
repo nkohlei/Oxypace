@@ -57,7 +57,7 @@ const ChannelSidebar = ({
     })) : [];
 
     const activeChannelObj = channels.find(ch => ch.id === currentChannel);
-    const isLiveRoom = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
+    const isLiveRoom = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference' || !!activeRoom;
 
     useEffect(() => {
         if (!isLiveRoom && isDesktopSidebarCollapsed) {
@@ -71,7 +71,7 @@ const ChannelSidebar = ({
         <div
             className={`channel-sidebar ${isDesktopSidebarCollapsed ? 'collapsed' : ''} ${className || ''}`}
             style={{
-                height: isDesktopSidebarCollapsed ? '0' : 'calc(100% - 24px)',
+                height: 'calc(100% - 24px)',
                 backgroundColor: 'transparent',
                 display: 'flex',
                 flexDirection: 'column',
@@ -90,9 +90,11 @@ const ChannelSidebar = ({
                     }}
                     title={isDesktopSidebarCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
                 >
-                    <span className="toggle-text">
-                        {isDesktopSidebarCollapsed ? "GÖSTER" : "GİZLE"}
-                    </span>
+                    {isDesktopSidebarCollapsed ? (
+                        <ChevronRight size={16} />
+                    ) : (
+                        <ChevronLeft size={16} />
+                    )}
                 </button>
             )}
 
@@ -327,13 +329,15 @@ const ChannelSidebar = ({
                 border-radius: 0 !important;
                 margin: 12px 12px 12px 0 !important;
                 height: calc(100% - 24px) !important;
-                overflow: hidden !important;
+                overflow: visible !important;
                 box-shadow: none !important;
+                position: relative;
             }
 
             .channel-sidebar.collapsed {
                 width: 0px !important;
                 min-width: 0px !important;
+                margin-right: 0px !important;
             }
 
             /* ── Three-Panel Layout ── */
@@ -420,42 +424,41 @@ const ChannelSidebar = ({
                 border-top: 1px solid var(--border-subtle);
             }
 
-            /* ── Toggle button ── */
+            /* ── Toggle button (Glass vertical pill attached to top panel) ── */
             .sidebar-toggle-btn {
                 position: absolute;
                 right: -24px;
-                top: 0;
+                top: 8px;
                 width: 24px;
-                height: 160px;
-                background: #383a40 !important;
-                border: none !important;
-                border-radius: 0 !important;
-                color: #dbdee1;
+                height: 140px;
+                background: rgba(18, 18, 24, 0.75) !important;
+                backdrop-filter: blur(16px) saturate(180%);
+                -webkit-backdrop-filter: blur(16px) saturate(180%);
+                border: 1px solid rgba(255, 255, 255, 0.14) !important;
+                border-left: 1px solid rgba(255, 255, 255, 0.06) !important;
+                border-radius: 0 10px 10px 0 !important;
+                color: #94a3b8;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
                 z-index: 1000;
-                box-shadow: 4px 0 8px rgba(0, 0, 0, 0.2);
-                transition: color 0.2s ease;
+                box-shadow: 4px 0 16px rgba(0, 0, 0, 0.35);
+                transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.3s ease, visibility 0.3s ease;
                 transform: none !important;
+                padding: 0;
             }
             .sidebar-toggle-btn:hover {
                 color: #ffffff;
-                background: #383a40 !important;
-                transform: none !important;
+                background: rgba(35, 38, 50, 0.9) !important;
+                border-color: rgba(255, 255, 255, 0.25) !important;
             }
-            .sidebar-toggle-btn .toggle-text {
-                writing-mode: vertical-rl;
-                font-size: 11px;
-                font-weight: 700;
-                letter-spacing: 2px;
-                color: #dbdee1;
-                user-select: none;
-                white-space: nowrap;
-                transition: color 0.2s ease;
+            .sidebar-toggle-btn svg {
+                transition: transform 0.2s ease;
             }
-            .sidebar-toggle-btn:hover .toggle-text { color: #ffffff; }
+            .sidebar-toggle-btn:hover svg {
+                transform: scale(1.2);
+            }
 
             /* ── Banner ── */
             .channel-banner-container {
