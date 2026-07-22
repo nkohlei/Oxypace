@@ -17,7 +17,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
-import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2, Archive } from 'lucide-react';
+import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2, Archive, Copy, Check, Film } from 'lucide-react';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
@@ -297,6 +297,19 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
     };
 
     const [showShareModal, setShowShareModal] = useState(false);
+    const [copiedVideoId, setCopiedVideoId] = useState(false);
+
+    const handleCopyVideoId = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (post._id) {
+            navigator.clipboard.writeText(post._id);
+            setCopiedVideoId(true);
+            setTimeout(() => setCopiedVideoId(false), 2000);
+        }
+    };
 
     const handleShare = () => {
         setShowShareModal(true);
@@ -793,21 +806,35 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     <div className="post-media" onClick={(e) => e.stopPropagation()}>
                         <div style={{ position: 'relative', width: '100%', maxWidth: '650px' }}>
                             {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
-                                <VideoPlayer
-                                    src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)}
-                                    qualities={post.videoQualities}
-                                    videoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.videoUrl)}
-                                    lowVideoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.lowVideoUrl)}
-                                    video144={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video144)}
-                                    video360={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video360)}
-                                    video720={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video720)}
-                                    video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)}
-                                    video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)}
-                                    className="post-video-player"
-                                    isProcessing={post.mediaType === 'videoUrl' ? false : post.isProcessing}
-                                    processingProgress={post.processingProgress}
-                                    estimatedTime={post.estimatedTime}
-                                />
+                                <>
+                                    <VideoPlayer
+                                        src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)}
+                                        qualities={post.videoQualities}
+                                        videoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.videoUrl)}
+                                        lowVideoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.lowVideoUrl)}
+                                        video144={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video144)}
+                                        video360={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video360)}
+                                        video720={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video720)}
+                                        video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)}
+                                        video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)}
+                                        className="post-video-player"
+                                        isProcessing={post.mediaType === 'videoUrl' ? false : post.isProcessing}
+                                        processingProgress={post.processingProgress}
+                                        estimatedTime={post.estimatedTime}
+                                    />
+                                    <div className="post-video-id-wrapper">
+                                        <span
+                                            className="post-video-id-badge"
+                                            onClick={handleCopyVideoId}
+                                            title="Birlikte İzle için Video ID'sini Kopyala"
+                                        >
+                                            <Film size={12} className="video-id-icon" />
+                                            <span className="video-id-label">Video ID:</span>
+                                            <code className="video-id-val">{post._id}</code>
+                                            {copiedVideoId ? <Check size={12} color="#10b981" /> : <Copy size={12} className="copy-icon" />}
+                                        </span>
+                                    </div>
+                                </>
                             ) : post.mediaType === 'youtube' ? (
                                 <YouTubeFacade media={post.media} />
                             ) : (

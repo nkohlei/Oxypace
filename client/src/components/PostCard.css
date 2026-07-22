@@ -204,6 +204,58 @@
     border: none;
 }
 
+/* Video ID Badge */
+.post-video-id-wrapper {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.post-video-id-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background: rgba(0, 210, 255, 0.08);
+    border: 1px solid rgba(0, 210, 255, 0.22);
+    border-radius: 8px;
+    color: var(--primary-cyan, #00d2ff);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.post-video-id-badge:hover {
+    background: rgba(0, 210, 255, 0.16);
+    border-color: rgba(0, 210, 255, 0.45);
+    box-shadow: 0 2px 8px rgba(0, 210, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.post-video-id-badge .video-id-label {
+    font-size: 11px;
+    opacity: 0.85;
+}
+
+.post-video-id-badge .video-id-val {
+    font-family: monospace, SFMono-Regular, Consolas, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+}
+
+.post-video-id-badge .copy-icon {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.post-video-id-badge:hover .copy-icon {
+    opacity: 1;
+}
+
 /* Actions */
 .post-actions {
     display: grid;

@@ -12,6 +12,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import Post from '../models/Post.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -730,6 +732,50 @@ router.post('/validate-stream', auth, async (req, res) => {
         const { url } = req.body;
         if (!url) {
             return res.status(400).json({ message: 'URL is required' });
+        }
+
+        // Check if url contains or is a Post/Video ID (e.g. 24-character hexadecimal ObjectId)
+        const hexIdMatch = String(url).match(/\b([a-fA-F0-9]{24})\b/);
+        if (hexIdMatch) {
+            const possiblePostId = hexIdMatch[1];
+            try {
+                const post = await Post.findById(possiblePostId).populate('portal');
+                if (post && (post.mediaType === 'video' || post.mediaType === 'videoUrl' || (post.media && String(post.media).match(/\.(mp4|m4v|webm|mov|mkv|ogg|m3u8|mpd)$/i)))) {
+                    // Portal Privacy Check
+                    if (post.portal) {
+                        const portal = post.portal;
+                        const userId = req.user?._id;
+                        const isAuthor = userId && post.author && post.author.toString() === userId.toString();
+
+                        if (!isAuthor) {
+                            const isBlocked = userId && portal.blockedUsers?.some(id => id.toString() === userId.toString());
+                            if (isBlocked) {
+                                return res.status(403).json({ message: 'Gizli bir portalda paylaşılan video izlenemez.', isForbidden: true });
+                            }
+
+                            if (portal.privacy === 'private' || portal.privacy === 'restricted') {
+                                const isMember = userId && portal.members?.some(id => id.toString() === userId.toString());
+                                const isAllowed = userId && portal.allowedUsers?.some(id => id.toString() === userId.toString());
+
+                                if (!isMember && !isAllowed) {
+                                    return res.status(403).json({ message: 'Gizli bir portalda paylaşılan video izlenemez.', isForbidden: true });
+                                }
+                            }
+                        }
+                    }
+
+                    // Privacy check passed! Get video source
+                    const videoSrc = post.video720 || post.video1080 || post.video360 || post.videoUrl || post.media;
+                    return res.json({
+                        isLive: false,
+                        type: 'post_video',
+                        streamUrl: videoSrc,
+                        postId: post._id
+                    });
+                }
+            } catch (postErr) {
+                console.warn('[StreamValidator] Post lookup failed, treating as standard URL:', postErr.message);
+            }
         }
 
         const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();

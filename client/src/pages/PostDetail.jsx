@@ -19,7 +19,10 @@ import {
     Download, 
     Trash2,
     ChevronLeft,
-    Globe
+    Globe,
+    Copy,
+    Check,
+    Film
 } from 'lucide-react';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import { Capacitor } from '@capacitor/core';
@@ -97,6 +100,19 @@ const PostDetail = () => {
     const [showShareModal, setShowShareModal] = useState(false);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [errorStatus, setErrorStatus] = useState(null);
+    const [copiedVideoId, setCopiedVideoId] = useState(false);
+
+    const handleCopyVideoId = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (post && post._id) {
+            navigator.clipboard.writeText(post._id);
+            setCopiedVideoId(true);
+            setTimeout(() => setCopiedVideoId(false), 2000);
+        }
+    };
 
     useEffect(() => {
         fetchPost();
@@ -486,20 +502,34 @@ const PostDetail = () => {
                                     {(Array.isArray(post.media) ? post.media : [post.media]).map((m, i) => (
                                         <div key={i} className="pd-media-item">
                                             {post.mediaType === 'video' ? (
-                                                 <VideoPlayer 
-                                                    src={getImageUrl(m)} 
-                                                    qualities={post.videoQualities} 
-                                                    videoUrl={getImageUrl(post.videoUrl)} 
-                                                    lowVideoUrl={getImageUrl(post.lowVideoUrl)} 
-                                                    video144={getImageUrl(post.video144)}
-                                                    video360={getImageUrl(post.video360)}
-                                                    video720={getImageUrl(post.video720)}
-                                                    video1080={getImageUrl(post.video1080)}
-                                                    video2160={getImageUrl(post.video2160)}
-                                                    isProcessing={post.isProcessing}
-                                                    processingProgress={post.processingProgress}
-                                                    estimatedTime={post.estimatedTime}
-                                                />
+                                                <>
+                                                    <VideoPlayer 
+                                                        src={getImageUrl(m)} 
+                                                        qualities={post.videoQualities} 
+                                                        videoUrl={getImageUrl(post.videoUrl)} 
+                                                        lowVideoUrl={getImageUrl(post.lowVideoUrl)} 
+                                                        video144={getImageUrl(post.video144)}
+                                                        video360={getImageUrl(post.video360)}
+                                                        video720={getImageUrl(post.video720)}
+                                                        video1080={getImageUrl(post.video1080)}
+                                                        video2160={getImageUrl(post.video2160)}
+                                                        isProcessing={post.isProcessing}
+                                                        processingProgress={post.processingProgress}
+                                                        estimatedTime={post.estimatedTime}
+                                                    />
+                                                    <div className="post-video-id-wrapper">
+                                                        <span
+                                                            className="post-video-id-badge"
+                                                            onClick={handleCopyVideoId}
+                                                            title="Birlikte İzle için Video ID'sini Kopyala"
+                                                        >
+                                                            <Film size={12} className="video-id-icon" />
+                                                            <span className="video-id-label">Video ID:</span>
+                                                            <code className="video-id-val">{post._id}</code>
+                                                            {copiedVideoId ? <Check size={12} color="#10b981" /> : <Copy size={12} className="copy-icon" />}
+                                                        </span>
+                                                    </div>
+                                                </>
                                             ) : (
                                                 <img src={getImageUrl(m)} alt="" />
                                             )}

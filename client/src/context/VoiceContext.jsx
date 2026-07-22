@@ -3,6 +3,7 @@ import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
 import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
+import { getImageUrl } from '../utils/imageUtils';
 import { registerPlugin, Capacitor } from '@capacitor/core';
 
 const CallManager = registerPlugin('CallManager');
@@ -1304,9 +1305,18 @@ export const VoiceProvider = ({ children }) => {
             try {
                 const response = await axios.post('/api/media/validate-stream', { url });
                 const validatedLive = response.data.isLive;
-                console.log(`[WatchParty] URL validated by server. isLive: ${validatedLive}`);
-                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: validatedLive });
+                let streamUrl = response.data.streamUrl || url;
+                if (streamUrl && !streamUrl.startsWith('http') && !streamUrl.startsWith('blob:')) {
+                    streamUrl = getImageUrl(streamUrl);
+                }
+                console.log(`[WatchParty] URL validated by server. Final Stream: ${streamUrl}, isLive: ${validatedLive}`);
+                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url: streamUrl, isLive: validatedLive });
             } catch (err) {
+                if (err.response?.status === 403 || err.response?.data?.isForbidden) {
+                    const msg = err.response?.data?.message || 'Gizli bir portalda paylaşılan video izlenemez.';
+                    alert(msg);
+                    return;
+                }
                 console.warn('[WatchParty] Validation failed, falling back to local detection:', err);
                 const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
                 const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');

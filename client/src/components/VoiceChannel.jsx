@@ -637,7 +637,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                     <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <input 
                                             type="text" 
-                                            placeholder="YouTube, Twitch, Vimeo veya MP4 linki yapıştırın..." 
+                                            placeholder="YouTube, MP4 linki veya Video ID yapıştırın..." 
                                             value={watchUrl} 
                                             onChange={(e) => setWatchUrl(e.target.value)}
                                             style={{ width: '100%', padding: '6px 28px 6px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '12px' }}

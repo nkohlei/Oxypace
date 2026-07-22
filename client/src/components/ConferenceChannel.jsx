@@ -442,7 +442,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                         <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                                             <input 
                                                 type="text" 
-                                                placeholder="YouTube, Twitch, Vimeo veya MP4 linki yapıştırın..." 
+                                                placeholder="YouTube, MP4 linki veya Video ID yapıştırın..." 
                                                 value={watchUrl} 
                                                 onChange={(e) => setWatchUrl(e.target.value)} 
                                                 className="chat-input glass-input"
