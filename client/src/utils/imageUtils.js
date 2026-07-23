@@ -108,6 +108,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
         } else if (!cleanPath.startsWith('http')) {
             let relativePath = cleanPath;
             if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
+            if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
+                relativePath = `posts/general/${relativePath}`;
+            }
             if (!import.meta.env.DEV) {
                 absoluteUrl = `/r2-media/${relativePath}`;
             } else {

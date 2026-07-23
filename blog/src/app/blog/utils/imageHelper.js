@@ -3,34 +3,30 @@ export function formatBlogImageUrl(path) {
 
   let cleanPath = String(path).trim();
 
-  // Strip R2 dev domain if present
-  const r2Domain = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
-  if (cleanPath.includes(r2Domain)) {
-    cleanPath = cleanPath.substring(cleanPath.indexOf(r2Domain) + r2Domain.length);
-  }
-
-  if (cleanPath.startsWith('/api/media/')) {
-    cleanPath = cleanPath.substring(11);
-  } else if (cleanPath.startsWith('api/media/')) {
-    cleanPath = cleanPath.substring(10);
-  } else if (cleanPath.startsWith('/r2-media/')) {
-    cleanPath = cleanPath.substring(10);
-  } else if (cleanPath.startsWith('r2-media/')) {
-    cleanPath = cleanPath.substring(9);
-  }
-
-  if (cleanPath.startsWith('/')) {
-    cleanPath = cleanPath.substring(1);
-  }
-
   // External images (e.g. Unsplash)
   if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
-    return cleanPath;
+    const r2Domain = 'pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+    if (cleanPath.includes(r2Domain)) {
+      cleanPath = cleanPath.substring(cleanPath.indexOf(r2Domain) + r2Domain.length);
+    } else {
+      return cleanPath;
+    }
   }
+
   if (cleanPath.startsWith('data:') || cleanPath.startsWith('blob:')) {
     return cleanPath;
   }
 
-  // Route through /api/media/ backend proxy to guarantee valid SSL certificate from oxypace.com.tr
-  return `/api/media/${cleanPath}`;
+  // Strip leading slashes and prefixes
+  cleanPath = cleanPath.replace(/^\/+/, '');
+  cleanPath = cleanPath.replace(/^(api\/media\/|r2-media\/)/, '');
+  cleanPath = cleanPath.replace(/^\/+/, '');
+
+  // If path starts with 'post-' without folder prefix, prepend R2 folder 'posts/general/'
+  if (cleanPath.startsWith('post-') && !cleanPath.startsWith('posts/')) {
+    cleanPath = `posts/general/${cleanPath}`;
+  }
+
+  // Return full public Cloudflare R2 URL
+  return `https://pub-094a78010abf4ebf9726834268946cb8.r2.dev/${cleanPath}`;
 }
