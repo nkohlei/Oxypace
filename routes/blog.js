@@ -125,7 +125,6 @@ const INITIAL_POSTS = [
 function ensureHtmlFormatted(text = '') {
     if (!text || typeof text !== 'string') return '';
 
-    // HTML etiketleri içeriyorsa doğrudan döndür
     if (/<(p|h1|h2|h3|blockquote|div|ul|ol|table|br)\b[^>]*>/i.test(text)) {
         return text;
     }
@@ -145,7 +144,6 @@ function ensureHtmlFormatted(text = '') {
             continue;
         }
 
-        // Headers: ## or 📌
         if (trimmed.startsWith('## ') || trimmed.startsWith('📌 ')) {
             if (inList) { htmlResult.push('</ul>'); inList = false; }
             const headerText = trimmed.replace(/^(## |📌 )/, '');
@@ -156,19 +154,16 @@ function ensureHtmlFormatted(text = '') {
             const subText = trimmed.replace(/^(### |🔹 )/, '');
             htmlResult.push(`<h3 class="text-xl font-bold text-white mt-6 mb-3">${subText}</h3>`);
         }
-        // Blockquote: > or 💬
         else if (trimmed.startsWith('> ') || trimmed.startsWith('💬 ')) {
             if (inList) { htmlResult.push('</ul>'); inList = false; }
             const quoteText = trimmed.replace(/^(> |💬 )/, '');
             htmlResult.push(`<blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">"${quoteText}"</blockquote>`);
         }
-        // Callout box: 💡
         else if (trimmed.startsWith('💡 ')) {
             if (inList) { htmlResult.push('</ul>'); inList = false; }
             const infoText = trimmed.replace(/^💡 /, '');
             htmlResult.push(`<div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 mb-6">💡 <strong>Not:</strong> ${infoText}</div>`);
         }
-        // Lists: - or *
         else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
             if (!inList) {
                 htmlResult.push('<ul class="list-disc list-inside space-y-2 mb-6 text-zinc-300">');
@@ -177,7 +172,6 @@ function ensureHtmlFormatted(text = '') {
             const itemText = trimmed.replace(/^[-*] /, '');
             htmlResult.push(`  <li>${itemText}</li>`);
         }
-        // Standard Paragraph
         else {
             if (inList) { htmlResult.push('</ul>'); inList = false; }
             let formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -230,6 +224,10 @@ function calculateReadTime(content = '') {
     return `${minutes} dk okuma`;
 }
 
+// ---------------------------------------------------------
+// 1. PUBLIC & AUTHOR SPECIFIC ROUTES (Must come before /:slug!)
+// ---------------------------------------------------------
+
 // @route   GET /api/blog
 // @desc    Get all published blog posts (Public)
 // @access  Public
@@ -263,6 +261,56 @@ router.get('/', async (req, res) => {
     }
 });
 
+// @route   GET /api/blog/author
+// @desc    Get blog author profile settings
+// @access  Public
+router.get('/author', async (req, res) => {
+    try {
+        let author = await BlogAuthor.findOne();
+        if (!author) {
+            author = await BlogAuthor.create({});
+        }
+        res.json(author);
+    } catch (error) {
+        console.error('Fetch blog author error:', error);
+        res.status(500).json({ message: 'Yazar profili alınamadı: ' + error.message });
+    }
+});
+
+// @route   PUT /api/blog/author
+// @desc    Update blog author profile settings
+// @access  Private/Admin
+router.put('/author', protect, admin, async (req, res) => {
+    try {
+        const { name, title, bio, avatar, badge, github, twitter, website, linkedin } = req.body;
+
+        let author = await BlogAuthor.findOne();
+        if (!author) {
+            author = new BlogAuthor({});
+        }
+
+        if (name !== undefined) author.name = name.trim();
+        if (title !== undefined) author.title = title.trim();
+        if (bio !== undefined) author.bio = bio.trim();
+        if (avatar !== undefined) author.avatar = avatar.trim();
+        if (badge !== undefined) author.badge = badge.trim();
+        if (github !== undefined) author.github = github.trim();
+        if (twitter !== undefined) author.twitter = twitter.trim();
+        if (website !== undefined) author.website = website.trim();
+        if (linkedin !== undefined) author.linkedin = linkedin.trim();
+
+        const updatedAuthor = await author.save();
+        res.json(updatedAuthor);
+    } catch (error) {
+        console.error('Update blog author error:', error);
+        res.status(500).json({ message: 'Yazar profili güncellenemedi: ' + error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 2. ADMIN MANAGEMENT ROUTES
+// ---------------------------------------------------------
+
 // @route   GET /api/blog/admin/all
 // @desc    Get all blog posts including drafts for admin
 // @access  Private/Admin
@@ -278,30 +326,6 @@ router.get('/admin/all', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Fetch admin blog posts error:', error);
         res.status(500).json({ message: 'Yönetici blog listesi alınamadı: ' + error.message });
-    }
-});
-
-// @route   GET /api/blog/:slug
-// @desc    Get single blog post by slug
-// @access  Public
-router.get('/:slug', async (req, res) => {
-    try {
-        await seedDatabaseIfEmpty();
-
-        const post = await BlogPost.findOneAndUpdate(
-            { slug: req.params.slug },
-            { $inc: { views: 1 } },
-            { new: true }
-        ).populate('author', 'username profile');
-
-        if (!post) {
-            return res.status(404).json({ message: 'Makale bulunamadı.' });
-        }
-
-        res.json(post);
-    } catch (error) {
-        console.error('Fetch single blog post error:', error);
-        res.status(500).json({ message: 'Makale detayları alınamadı: ' + error.message });
     }
 });
 
@@ -321,11 +345,9 @@ router.post('/admin', protect, admin, async (req, res) => {
 
         const formattedContent = ensureHtmlFormatted(content);
 
-        // Generate slug if empty
         let finalSlug = slug && slug.trim() ? slug.trim() : BlogPost.generateSlug(title);
         if (!finalSlug) finalSlug = 'post-' + Date.now();
 
-        // Check unique slug
         const existing = await BlogPost.findOne({ slug: finalSlug });
         if (existing) {
             finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
@@ -412,52 +434,6 @@ router.patch('/admin/:id/toggle-publish', protect, admin, async (req, res) => {
     }
 });
 
-// @route   GET /api/blog/author
-// @desc    Get blog author profile settings
-// @access  Public
-router.get('/author', async (req, res) => {
-    try {
-        let author = await BlogAuthor.findOne();
-        if (!author) {
-            author = await BlogAuthor.create({});
-        }
-        res.json(author);
-    } catch (error) {
-        console.error('Fetch blog author error:', error);
-        res.status(500).json({ message: 'Yazar profili alınamadı: ' + error.message });
-    }
-});
-
-// @route   PUT /api/blog/author
-// @desc    Update blog author profile settings
-// @access  Private/Admin
-router.put('/author', protect, admin, async (req, res) => {
-    try {
-        const { name, title, bio, avatar, badge, github, twitter, website, linkedin } = req.body;
-
-        let author = await BlogAuthor.findOne();
-        if (!author) {
-            author = new BlogAuthor({});
-        }
-
-        if (name !== undefined) author.name = name.trim();
-        if (title !== undefined) author.title = title.trim();
-        if (bio !== undefined) author.bio = bio.trim();
-        if (avatar !== undefined) author.avatar = avatar.trim();
-        if (badge !== undefined) author.badge = badge.trim();
-        if (github !== undefined) author.github = github.trim();
-        if (twitter !== undefined) author.twitter = twitter.trim();
-        if (website !== undefined) author.website = website.trim();
-        if (linkedin !== undefined) author.linkedin = linkedin.trim();
-
-        const updatedAuthor = await author.save();
-        res.json(updatedAuthor);
-    } catch (error) {
-        console.error('Update blog author error:', error);
-        res.status(500).json({ message: 'Yazar profili güncellenemedi: ' + error.message });
-    }
-});
-
 // @route   DELETE /api/blog/admin/:id
 // @desc    Delete blog post
 // @access  Private/Admin
@@ -473,6 +449,34 @@ router.delete('/admin/:id', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Delete blog post error:', error);
         res.status(500).json({ message: 'Makale silinirken hata oluştu: ' + error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 3. PARAMETERIZED SLUG ROUTE (MUST ALWAYS BE AT THE END!)
+// ---------------------------------------------------------
+
+// @route   GET /api/blog/:slug
+// @desc    Get single blog post by slug
+// @access  Public
+router.get('/:slug', async (req, res) => {
+    try {
+        await seedDatabaseIfEmpty();
+
+        const post = await BlogPost.findOneAndUpdate(
+            { slug: req.params.slug },
+            { $inc: { views: 1 } },
+            { new: true }
+        ).populate('author', 'username profile');
+
+        if (!post) {
+            return res.status(404).json({ message: 'Makale bulunamadı.' });
+        }
+
+        res.json(post);
+    } catch (error) {
+        console.error('Fetch single blog post error:', error);
+        res.status(500).json({ message: 'Makale detayları alınamadı: ' + error.message });
     }
 });
 
