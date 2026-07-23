@@ -26,6 +26,29 @@ const generateToken = (id, isAdmin = false) => {
     });
 };
 
+const parseUserAgent = (ua = '') => {
+    if (!ua) return 'Bilinmeyen Cihaz';
+    let os = 'Bilinmeyen İŞ';
+    let browser = 'Tarayıcı';
+
+    if (ua.includes('Win')) os = 'Windows';
+    else if (ua.includes('iPhone')) os = 'iPhone';
+    else if (ua.includes('iPad')) os = 'iPad';
+    else if (ua.includes('Macintosh') || ua.includes('Mac OS X')) os = 'macOS';
+    else if (ua.includes('Android')) os = 'Android';
+    else if (ua.includes('Linux')) os = 'Linux';
+
+    if (ua.includes('Electron')) browser = 'Masaüstü Uygulaması';
+    else if (ua.includes('Edg/')) browser = 'Microsoft Edge';
+    else if (ua.includes('OPR/') || ua.includes('Opera')) browser = 'Opera';
+    else if (ua.includes('Chrome/')) browser = 'Google Chrome';
+    else if (ua.includes('Firefox/')) browser = 'Mozilla Firefox';
+    else if (ua.includes('Safari/') && !ua.includes('Chrome/')) browser = 'Safari';
+    else if (ua.includes('SamsungBrowser')) browser = 'Samsung Internet';
+
+    return `${browser} - ${os}`;
+};
+
 // @route   POST /api/auth/register
 // @desc    Register new user
 // @access  Public
@@ -211,6 +234,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         // Save last active IP address and check trusted device status
         const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
         const prevIP = user.lastIP;
+        const activeDeviceName = deviceName || parseUserAgent(req.headers['user-agent']);
 
         let isDeviceTrusted = false;
         if (deviceId) {
@@ -221,14 +245,12 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 isDeviceTrusted = true;
                 user.trustedDevices[existingDeviceIndex].lastUsedAt = new Date();
                 user.trustedDevices[existingDeviceIndex].ip = incomingIP;
-                if (deviceName) {
-                    user.trustedDevices[existingDeviceIndex].deviceName = deviceName;
-                }
+                user.trustedDevices[existingDeviceIndex].deviceName = activeDeviceName;
             } else if (saveDevice) {
                 isDeviceTrusted = true;
                 user.trustedDevices.push({
                     deviceId,
-                    deviceName: deviceName || 'Bilinmeyen Cihaz',
+                    deviceName: activeDeviceName,
                     ip: incomingIP,
                     lastUsedAt: new Date(),
                     createdAt: new Date()
@@ -242,7 +264,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 const notification = await Notification.create({
                     recipient: user._id,
                     type: 'security',
-                    content: 'Hesabınıza tanınmayan bir cihaz veya farklı bir IP adresinden giriş yapıldı.',
+                    content: `Hesabınıza tanınmayan bir cihazdan (${activeDeviceName}) veya farklı bir IP adresinden (${incomingIP}) giriş yapıldı.`,
                     link: '/settings',
                 });
 
@@ -307,6 +329,7 @@ router.post('/trust-device', protect, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        const activeDeviceName = deviceName || parseUserAgent(req.headers['user-agent']);
         const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
         if (!user.trustedDevices) user.trustedDevices = [];
 
@@ -314,11 +337,11 @@ router.post('/trust-device', protect, async (req, res) => {
         if (existingIndex !== -1) {
             user.trustedDevices[existingIndex].lastUsedAt = new Date();
             user.trustedDevices[existingIndex].ip = incomingIP;
-            if (deviceName) user.trustedDevices[existingIndex].deviceName = deviceName;
+            user.trustedDevices[existingIndex].deviceName = activeDeviceName;
         } else {
             user.trustedDevices.push({
                 deviceId,
-                deviceName: deviceName || 'Bilinmeyen Cihaz',
+                deviceName: activeDeviceName,
                 ip: incomingIP,
                 lastUsedAt: new Date(),
                 createdAt: new Date()
