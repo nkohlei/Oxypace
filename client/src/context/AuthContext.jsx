@@ -84,7 +84,12 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
+        try {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.clear();
+            document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        } catch (e) {}
         setToken(null);
         setUser(null);
         delete axios.defaults.headers.common['Authorization'];

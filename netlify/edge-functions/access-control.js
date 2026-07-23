@@ -110,8 +110,11 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 2. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
+  // 2. Kök sayfa, Blog, API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
   if (
+    pathname === "/" ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/og/") ||
     pathname.startsWith("/socket.io/") ||

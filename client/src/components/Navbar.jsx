@@ -154,7 +154,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
 
     const handleLogout = () => {
         logout();
-        window.location.href = '/';
+        setTimeout(() => {
+            window.location.replace('/');
+        }, 50);
     };
 
     return (

@@ -41,11 +41,18 @@ export default function BlogHome() {
   const [allPosts, setAllPosts] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Kullanıcı manuel çıkış yapmadıysa (token varsa) derhal Oxypace Portal'a geçiş yap
+  // Kullanıcı manuel çıkış yapmadıysa (geçerli JWT token varsa) derhal Oxypace Portal'a geçiş yap
   useEffect(() => {
     try {
       const token = localStorage.getItem("token");
-      if (token && token !== "null" && token !== "undefined") {
+      const isCleanToken = token && 
+        token !== "null" && 
+        token !== "undefined" && 
+        token !== "false" && 
+        typeof token === 'string' &&
+        token.trim().length > 20;
+
+      if (isCleanToken) {
         window.location.replace("/messages");
       }
     } catch (_) {}
