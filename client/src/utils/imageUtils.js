@@ -32,7 +32,7 @@ export const getImageUrl = (path, sizeType = 'original') => {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
-    // 1. MOBILE NATIVE & DESKTOP FLOW: Route EVERYTHING through the backend media proxy for absolute CORS & SSL stability
+    // 1. MOBILE NATIVE & DESKTOP FLOW: Route through backend API proxy
     if (isNative || isElectron) {
         let relativePath = cleanPath;
         if (relativePath.includes('/api/media/')) {
@@ -46,6 +46,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
         }
         if (relativePath.startsWith('/')) {
             relativePath = relativePath.substring(1);
+        }
+        if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
+            relativePath = `posts/general/${relativePath}`;
         }
 
         if (relativePath.startsWith('blob:')) {
@@ -72,13 +75,12 @@ export const getImageUrl = (path, sizeType = 'original') => {
         }
 
         if (relativePath.startsWith('http')) {
-            // External url proxying
             return `${baseUrl}/api/media/${encodeURIComponent(relativePath)}`;
         }
         return `${baseUrl}/api/media/${relativePath}`;
     }
 
-    // 2. WEB FLOW (unchanged)
+    // 2. WEB PRODUCTION FLOW: Fast Edge CDN via /r2-media/
     if (cleanPath.startsWith('/r2-media/') || cleanPath.startsWith('r2-media/')) {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
@@ -89,9 +91,17 @@ export const getImageUrl = (path, sizeType = 'original') => {
         if (cleanPath.includes('/api/media/')) {
             const proxyTarget = cleanPath.substring(cleanPath.indexOf('/api/media/') + 11);
             if (!proxyTarget.startsWith('http') && !import.meta.env.DEV) {
-                absoluteUrl = `/r2-media/${proxyTarget}`;
+                let target = proxyTarget;
+                if (target.startsWith('post-') && !target.startsWith('posts/')) {
+                    target = `posts/general/${target}`;
+                }
+                absoluteUrl = `/r2-media/${target}`;
             } else if (!proxyTarget.startsWith('http') && import.meta.env.DEV) {
-                absoluteUrl = `${r2Domain}/${proxyTarget}`;
+                let target = proxyTarget;
+                if (target.startsWith('post-') && !target.startsWith('posts/')) {
+                    target = `posts/general/${target}`;
+                }
+                absoluteUrl = `${r2Domain}/${target}`;
             } else {
                 absoluteUrl = `${baseUrl}/api/media/${proxyTarget}`;
             }
@@ -101,7 +111,11 @@ export const getImageUrl = (path, sizeType = 'original') => {
             if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
                 relativePath = `posts/general/${relativePath}`;
             }
-            absoluteUrl = `${baseUrl || 'https://api.oxypace.com.tr'}/api/media/${relativePath}`;
+            if (!import.meta.env.DEV) {
+                absoluteUrl = `/r2-media/${relativePath}`;
+            } else {
+                absoluteUrl = `${r2Domain}/${relativePath}`;
+            }
         } else if (cleanPath.startsWith('blob:')) {
             return cleanPath;
         } else if (!cleanPath.startsWith('http')) {
@@ -110,9 +124,13 @@ export const getImageUrl = (path, sizeType = 'original') => {
             if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
                 relativePath = `posts/general/${relativePath}`;
             }
-            absoluteUrl = `${baseUrl || 'https://api.oxypace.com.tr'}/api/media/${relativePath}`;
+            if (!import.meta.env.DEV) {
+                absoluteUrl = `/r2-media/${relativePath}`;
+            } else {
+                absoluteUrl = `${r2Domain}/${relativePath}`;
+            }
         } else {
-            absoluteUrl = `${baseUrl || 'https://api.oxypace.com.tr'}/api/media/${encodeURIComponent(cleanPath)}`;
+            absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
         // Apply optimization suffix (thumbnail/medium/lowres) if requested

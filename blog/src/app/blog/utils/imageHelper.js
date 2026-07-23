@@ -27,11 +27,11 @@ export function formatBlogImageUrl(path) {
     cleanPath = `posts/general/${cleanPath}`;
   }
 
-  // Local development vs Production SSL API URL
+  // Local development vs Production SSL Edge CDN URL
   if (typeof window !== 'undefined' && window.location.origin.includes('localhost')) {
     return `http://localhost:5000/api/media/${cleanPath}`;
   }
 
-  // Route through backend media endpoint with valid SSL on oxypace.com.tr
-  return `https://api.oxypace.com.tr/api/media/${cleanPath}`;
+  // Production -> Fast Edge CDN proxy (/r2-media/)
+  return `/r2-media/${cleanPath}`;
 }
