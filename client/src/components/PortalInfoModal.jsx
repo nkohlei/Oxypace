@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Users, Info, Calendar, ShieldCheck, Globe } from 'lucide-react';
+import { X, Users, Info, Calendar, ShieldCheck, Globe, Lock } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
 import './PortalInfoModal.css';
@@ -40,11 +40,25 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
         setDragOffset(0);
     };
 
-    const formattedDate = new Date(portal.createdAt).toLocaleDateString('tr-TR', {
+    const formattedDate = portal.createdAt ? new Date(portal.createdAt).toLocaleDateString('tr-TR', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-    });
+    }) : 'Bilinmiyor';
+
+    const getPrivacyInfo = (p) => {
+        const privacy = p.privacy || (p.isPrivate ? 'private' : 'public');
+
+        if (privacy === 'private' || p.isPrivate === true) {
+            return { label: 'Gizli', icon: Lock };
+        }
+        if (privacy === 'restricted') {
+            return { label: 'Kısıtlı', icon: ShieldCheck };
+        }
+        return { label: 'Kamu', icon: Globe };
+    };
+
+    const { label: privacyLabel, icon: PrivacyIcon } = getPrivacyInfo(portal);
 
     const content = (
         <div className="portal-info-container">
@@ -79,9 +93,9 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                         </div>
                     </div>
                     <div className="portal-info-stat-card">
-                        <Globe size={18} className="stat-icon" />
+                        <PrivacyIcon size={18} className="stat-icon" />
                         <div className="stat-data">
-                            <span className="stat-value">Kamu</span>
+                            <span className="stat-value">{privacyLabel}</span>
                             <span className="stat-label">Görünürlük</span>
                         </div>
                     </div>
@@ -92,10 +106,12 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                         <Calendar size={18} />
                         <span>Oluşturulma: <strong>{formattedDate}</strong></span>
                     </div>
-                    <div className="detail-item">
-                        <ShieldCheck size={18} />
-                        <span>Doğrulanmış Portal</span>
-                    </div>
+                    {portal.isVerified && (
+                        <div className="detail-item">
+                            <ShieldCheck size={18} />
+                            <span>Doğrulanmış Portal</span>
+                        </div>
+                    )}
                     <div className="detail-item">
                         <Info size={18} />
                         <span>Kategori: <strong>{portal.category || 'Genel'}</strong></span>
