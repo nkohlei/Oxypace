@@ -120,6 +120,77 @@ const INITIAL_POSTS = [
     }
 ];
 
+// Düz metinleri şık HTML biçimine çeviren akıllı dönüştürücü
+function ensureHtmlFormatted(text = '') {
+    if (!text || typeof text !== 'string') return '';
+
+    // HTML etiketleri içeriyorsa doğrudan döndür
+    if (/<(p|h1|h2|h3|blockquote|div|ul|ol|table|br)\b[^>]*>/i.test(text)) {
+        return text;
+    }
+
+    const lines = text.split('\n');
+    let htmlResult = [];
+    let inList = false;
+
+    for (let line of lines) {
+        let trimmed = line.trim();
+
+        if (!trimmed) {
+            if (inList) {
+                htmlResult.push('</ul>');
+                inList = false;
+            }
+            continue;
+        }
+
+        // Headers: ## or 📌
+        if (trimmed.startsWith('## ') || trimmed.startsWith('📌 ')) {
+            if (inList) { htmlResult.push('</ul>'); inList = false; }
+            const headerText = trimmed.replace(/^(## |📌 )/, '');
+            htmlResult.push(`<h2 class="text-2xl font-bold text-white mt-8 mb-4">${headerText}</h2>`);
+        }
+        else if (trimmed.startsWith('### ') || trimmed.startsWith('🔹 ')) {
+            if (inList) { htmlResult.push('</ul>'); inList = false; }
+            const subText = trimmed.replace(/^(### |🔹 )/, '');
+            htmlResult.push(`<h3 class="text-xl font-bold text-white mt-6 mb-3">${subText}</h3>`);
+        }
+        // Blockquote: > or 💬
+        else if (trimmed.startsWith('> ') || trimmed.startsWith('💬 ')) {
+            if (inList) { htmlResult.push('</ul>'); inList = false; }
+            const quoteText = trimmed.replace(/^(> |💬 )/, '');
+            htmlResult.push(`<blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">"${quoteText}"</blockquote>`);
+        }
+        // Callout box: 💡
+        else if (trimmed.startsWith('💡 ')) {
+            if (inList) { htmlResult.push('</ul>'); inList = false; }
+            const infoText = trimmed.replace(/^💡 /, '');
+            htmlResult.push(`<div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 mb-6">💡 <strong>Not:</strong> ${infoText}</div>`);
+        }
+        // Lists: - or *
+        else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+            if (!inList) {
+                htmlResult.push('<ul class="list-disc list-inside space-y-2 mb-6 text-zinc-300">');
+                inList = true;
+            }
+            const itemText = trimmed.replace(/^[-*] /, '');
+            htmlResult.push(`  <li>${itemText}</li>`);
+        }
+        // Standard Paragraph
+        else {
+            if (inList) { htmlResult.push('</ul>'); inList = false; }
+            let formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            htmlResult.push(`<p class="text-zinc-300 mb-4">${formattedLine}</p>`);
+        }
+    }
+
+    if (inList) {
+        htmlResult.push('</ul>');
+    }
+
+    return htmlResult.join('\n');
+}
+
 // Helper to seed if database is empty
 async function seedDatabaseIfEmpty() {
     try {
@@ -247,6 +318,8 @@ router.post('/admin', protect, admin, async (req, res) => {
             return res.status(400).json({ message: 'Makale içeriği zorunludur.' });
         }
 
+        const formattedContent = ensureHtmlFormatted(content);
+
         // Generate slug if empty
         let finalSlug = slug && slug.trim() ? slug.trim() : BlogPost.generateSlug(title);
         if (!finalSlug) finalSlug = 'post-' + Date.now();
@@ -261,9 +334,9 @@ router.post('/admin', protect, admin, async (req, res) => {
             title: title.trim(),
             slug: finalSlug,
             excerpt: excerpt ? excerpt.trim() : '',
-            content,
+            content: formattedContent,
             category: category ? category.trim() : 'Teorik Fizik',
-            readTime: readTime && readTime.trim() ? readTime.trim() : calculateReadTime(content),
+            readTime: readTime && readTime.trim() ? readTime.trim() : calculateReadTime(formattedContent),
             date: formatTurkishDate(),
             image: image ? image.trim() : 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80',
             isPublished: isPublished !== undefined ? isPublished : true,
@@ -296,8 +369,8 @@ router.put('/admin/:id', protect, admin, async (req, res) => {
         if (slug && slug.trim()) post.slug = slug.trim();
         if (excerpt !== undefined) post.excerpt = excerpt.trim();
         if (content && content.trim()) {
-            post.content = content;
-            if (!readTime) post.readTime = calculateReadTime(content);
+            post.content = ensureHtmlFormatted(content);
+            if (!readTime) post.readTime = calculateReadTime(post.content);
         }
         if (category) post.category = category.trim();
         if (readTime) post.readTime = readTime.trim();

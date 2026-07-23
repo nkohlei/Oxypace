@@ -2398,6 +2398,64 @@ const AdminDashboard = () => {
         }, 50);
     };
 
+    const ensureHtmlFormatted = (text = '') => {
+        if (!text || typeof text !== 'string') return '';
+
+        if (/<(p|h1|h2|h3|blockquote|div|ul|ol|table|br)\b[^>]*>/i.test(text)) {
+            return text;
+        }
+
+        const lines = text.split('\n');
+        let htmlResult = [];
+        let inList = false;
+
+        for (let line of lines) {
+            let trimmed = line.trim();
+
+            if (!trimmed) {
+                if (inList) { htmlResult.push('</ul>'); inList = false; }
+                continue;
+            }
+
+            if (trimmed.startsWith('## ') || trimmed.startsWith('📌 ')) {
+                if (inList) { htmlResult.push('</ul>'); inList = false; }
+                const headerText = trimmed.replace(/^(## |📌 )/, '');
+                htmlResult.push(`<h2 class="text-2xl font-bold text-white mt-8 mb-4">${headerText}</h2>`);
+            }
+            else if (trimmed.startsWith('### ') || trimmed.startsWith('🔹 ')) {
+                if (inList) { htmlResult.push('</ul>'); inList = false; }
+                const subText = trimmed.replace(/^(### |🔹 )/, '');
+                htmlResult.push(`<h3 class="text-xl font-bold text-white mt-6 mb-3">${subText}</h3>`);
+            }
+            else if (trimmed.startsWith('> ') || trimmed.startsWith('💬 ')) {
+                if (inList) { htmlResult.push('</ul>'); inList = false; }
+                const quoteText = trimmed.replace(/^(> |💬 )/, '');
+                htmlResult.push(`<blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">"${quoteText}"</blockquote>`);
+            }
+            else if (trimmed.startsWith('💡 ')) {
+                if (inList) { htmlResult.push('</ul>'); inList = false; }
+                const infoText = trimmed.replace(/^💡 /, '');
+                htmlResult.push(`<div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 mb-6">💡 <strong>Not:</strong> ${infoText}</div>`);
+            }
+            else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                if (!inList) {
+                    htmlResult.push('<ul class="list-disc list-inside space-y-2 mb-6 text-zinc-300">');
+                    inList = true;
+                }
+                const itemText = trimmed.replace(/^[-*] /, '');
+                htmlResult.push(`  <li>${itemText}</li>`);
+            }
+            else {
+                if (inList) { htmlResult.push('</ul>'); inList = false; }
+                let formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                htmlResult.push(`<p class="text-zinc-300 mb-4">${formattedLine}</p>`);
+            }
+        }
+
+        if (inList) htmlResult.push('</ul>');
+        return htmlResult.join('\n');
+    };
+
     const loadTemplate = (type) => {
         if (blogForm.content && !window.confirm('Mevcut makale içeriği şablon ile değiştirilecek. Devam etmek istiyor musunuz?')) return;
 
@@ -2406,14 +2464,14 @@ const AdminDashboard = () => {
                 ...prev,
                 category: prev.category || 'Teorik Fizik',
                 excerpt: prev.excerpt || 'Evrenin temel fiziksel yasaları ve teorik araştırmaların makroskopik evrendeki yansımaları.',
-                content: `<p class="lead text-lg text-zinc-300 mb-6">Fiziğin en temel ve sarsıcı sorularından biri, mikroskobik düzeydeki hareket yasalarının tamamı simetrik iken, makroskobik evrende süreçlerin neden kararlı bir şekilde tek bir yöne ilerlediğidir.</p>\n\n<h2 class="text-2xl font-bold text-white mt-8 mb-4">1. Teorik Çerçeve ve Gözlemler</h2>\n<p class="text-zinc-300 mb-4">Sistemlerin makroskopik durumlarına karşılık gelen mikroskobik konfigürasyonların incelenmesi, olasılıkların geometrisini ortaya koymaktadır.</p>\n\n<blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">\n  "Zaman oku, evrenin düzenden düzensizliğe doğru yaptığı kaçınılmaz istatistiksel yolculuğun makroskopik bir yansımasıdır."\n</blockquote>\n\n<h2 class="text-2xl font-bold text-white mt-8 mb-4">2. Deneysel Bulgular ve Analiz</h2>\n<p class="text-zinc-300 mb-4">Elde edilen deneysel veriler ve termodinamik denklemler aşağıdaki bulguları doğrulamaktadır:</p>\n\n<ul class="list-disc list-inside space-y-2 mb-6 text-zinc-300">\n  <li>Düşük entropi durumlarının gerçekleşme olasılığı istatistiksel olarak küçüktür.</li>\n  <li>Kozmolojik ölçekte madde ve enerji homojen bir dağılım sergilemektedir.</li>\n</ul>\n\n<div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 mb-6">\n  💡 <strong>Teknik Not:</strong> Ölçümlerde kısmi basınç ve sıcaklık farklarının telafi edilmesi kritik önem taşır.\n</div>\n\n<h2 class="text-2xl font-bold text-white mt-8 mb-4">Sonuç</h2>\n<p class="text-zinc-300 mb-4">Nihayetinde evrenin fiziksel yasaları, mikro düzeydeki simetri ile makro düzeydeki tek yönlü akış arasındaki büyüleyici denge üzerine kuruludur.</p>`
+                content: `Fiziğin en temel ve sarsıcı sorularından biri, mikroskobik düzeydeki hareket yasalarının tamamı simetrik iken, makroskobik evrende süreçlerin neden kararlı bir şekilde tek bir yöne ilerlediğidir.\n\n📌 1. Teorik Çerçeve ve Gözlemler\nSistemlerin makroskopik durumlarına karşılık gelen mikroskobik konfigürasyonların incelenmesi, olasılıkların geometrisini ortaya koymaktadır.\n\n💬 "Zaman oku, evrenin düzenden düzensizliğe doğru yaptığı kaçınılmaz istatistiksel yolculuğun makroskopik bir yansımasıdır."\n\n📌 2. Deneysel Bulgular ve Analiz\nElde edilen deneysel veriler ve termodinamik denklemler aşağıdaki bulguları doğrulamaktadır:\n\n- Düşük entropi durumlarının gerçekleşme olasılığı istatistiksel olarak küçüktür.\n- Kozmolojik ölçekte madde ve enerji homojen bir dağılım sergilemektedir.\n\n💡 Ölçümlerde kısmi basınç ve sıcaklık farklarının telafi edilmesi kritik önem taşır.\n\n📌 Sonuç\nNihayetinde evrenin fiziksel yasaları, mikro düzeydeki simetri ile makro düzeydeki tek yönlü akış arasındaki büyüleyici denge üzerine kuruludur.`
             }));
         } else if (type === 'announcement') {
             setBlogForm(prev => ({
                 ...prev,
                 category: 'Teknoloji & Yazılım',
                 excerpt: 'Oxypace platformundaki en son sistem güncellemesi ve teknik yenilikler duyuruldu.',
-                content: `<p class="lead text-lg text-zinc-300 mb-6">Oxypace altyapısında gerçekleştirdiğimiz yeni sistem güncellemesi ve performans iyileştirmelerini duyurmaktan heyecan duyuyoruz.</p>\n\n<h2 class="text-2xl font-bold text-white mt-8 mb-4">📢 Yenilikler ve Öne Çıkanlar</h2>\n<ul class="list-disc list-inside space-y-2 mb-6 text-zinc-300">\n  <li><strong>Yeni Blog Yönetim Paneli:</strong> Makaleleri tek tıkla yayınlama ve düzenleme arayüzü.</li>\n  <li><strong>Performans İyileştirmeleri:</strong> Sayfa yüklenme sürelerinde %40 hızlanma.</li>\n</ul>\n\n<div class="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 mb-6">\n  ✅ Tüm güncellemeler canlı sistemde aktif edilmiştir.\n</div>`
+                content: `Oxypace altyapısında gerçekleştirdiğimiz yeni sistem güncellemesi ve performans iyileştirmelerini duyurmaktan heyecan duyuyoruz.\n\n📌 📢 Yenilikler ve Öne Çıkanlar\n- Yeni Kolaylaştırılmış Blog Yönetim Paneli: Artık HTML bilmeden makale yazabilirsiniz!\n- Performans İyileştirmeleri: Sayfa yüklenme sürelerinde %40 hızlanma.\n\n💡 Tüm güncellemeler canlı sistemde aktif edilmiştir.`
             }));
         }
     };
@@ -4634,23 +4692,18 @@ const AdminDashboard = () => {
 
                                         {/* Rich Formatting Toolbar */}
                                         <div className="editor-rich-toolbar">
-                                            <button type="button" onClick={() => insertFormat('<h2 class="text-2xl font-bold text-white mt-8 mb-4">', '</h2>')} title="Başlık 2">H2</button>
-                                            <button type="button" onClick={() => insertFormat('<h3 class="text-xl font-bold text-white mt-6 mb-3">', '</h3>')} title="Başlık 3">H3</button>
-                                            <button type="button" onClick={() => insertFormat('<p class="text-zinc-300 mb-4">', '</p>')} title="Paragraf">P</button>
-                                            <button type="button" onClick={() => insertFormat('<strong>', '</strong>')} title="Kalın">B</button>
-                                            <button type="button" onClick={() => insertFormat('<em>', '</em>')} title="İtalik">I</button>
-                                            <button type="button" onClick={() => insertFormat('<blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">\n  "', '"\n</blockquote>')} title="Alıntı Kutusu">💬 Alıntı</button>
-                                            <button type="button" onClick={() => insertFormat('<div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 mb-6">\n  💡 <strong>Teknik Not:</strong> ', '\n</div>')} title="Bilgi Kutusu">💡 Vurgu</button>
-                                            <button type="button" onClick={() => insertFormat('<pre class="p-4 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-sm text-cyan-400 mb-6"><code>\n', '\n</code></pre>')} title="Kod Bloğu">💻 Kod</button>
-                                            <button type="button" onClick={() => insertFormat('<ul class="list-disc list-inside space-y-2 mb-6 text-zinc-300">\n  <li>', '</li>\n  <li>Madde 2</li>\n</ul>')} title="Liste">• Liste</button>
-                                            <button type="button" onClick={() => insertFormat('<img src="', '" alt="Görsel" class="w-full rounded-xl my-6 border border-zinc-800" />')} title="Görsel">🖼️ Görsel</button>
-                                            <button type="button" onClick={() => insertFormat('<hr class="my-8 border-zinc-800" />\n')} title="Ayraç Çizgisi">― Ayraç</button>
+                                            <button type="button" onClick={() => insertFormat('📌 ', '')} title="Ana Başlık Ekle">📌 Ana Başlık</button>
+                                            <button type="button" onClick={() => insertFormat('🔹 ', '')} title="Alt Başlık Ekle">🔹 Alt Başlık</button>
+                                            <button type="button" onClick={() => insertFormat('**', '**')} title="Seçili Metni Kalın Yap"><b>B</b> Kalın</button>
+                                            <button type="button" onClick={() => insertFormat('💬 "', '"')} title="Öne Çıkan Alıntı Kutusu">💬 Alıntı Kutusu</button>
+                                            <button type="button" onClick={() => insertFormat('💡 ', '')} title="Önemli Not / Vurgu Kutusu">💡 Bilgi Kutusu</button>
+                                            <button type="button" onClick={() => insertFormat('- ', '\n- ')} title="Maddeli Liste">• Liste</button>
                                         </div>
 
                                         <textarea
                                             id="blog-content-editor"
                                             className="reason-input-modern blog-content-textarea"
-                                            placeholder="Makalenin detaylı içeriğini buraya yazın veya yukarıdaki şablon / biçimlendirme butonlarını kullanın..."
+                                            placeholder="Normal bir metin yazar gibi makalenizi buraya yazın. Başlık veya alıntı yapmak istediğiniz satırın başına yukarıdaki butonları tıklayarak simgeleri ekleyebilirsiniz."
                                             rows="13"
                                             value={blogForm.content}
                                             onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
@@ -4658,7 +4711,7 @@ const AdminDashboard = () => {
                                         />
                                         
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '11px', color: '#64748b' }}>
-                                            <span>💡 Metni seçip yukarıdaki butonlara basarak kalınlaştırabilir veya başlık yapabilirsiniz.</span>
+                                            <span>✨ HTML bilmenize gerek yok! Düz metin yazıp yukarıdaki butonları kullanmanız yeterlidir.</span>
                                             <span>
                                                 📊 {blogForm.content ? `${blogForm.content.replace(/<[^>]+>/g, '').trim().split(/\s+/).filter(Boolean).length} Kelime (~${Math.max(1, Math.ceil(blogForm.content.replace(/<[^>]+>/g, '').trim().split(/\s+/).filter(Boolean).length / 200))} dk okuma)` : '0 Kelime'}
                                             </span>
@@ -4701,7 +4754,7 @@ const AdminDashboard = () => {
                                     )}
                                     <div
                                         className="blog-preview-body prose prose-invert"
-                                        dangerouslySetInnerHTML={{ __html: blogForm.content || '<p style="color:#888">İçerik henüz girilmedi...</p>' }}
+                                        dangerouslySetInnerHTML={{ __html: ensureHtmlFormatted(blogForm.content) || '<p style="color:#888">İçerik henüz girilmedi...</p>' }}
                                     />
                                 </div>
                             )}
