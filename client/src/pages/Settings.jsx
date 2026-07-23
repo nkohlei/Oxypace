@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass, ChevronDown, Smartphone, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
@@ -85,6 +85,27 @@ const Settings = () => {
     const [securitySuccess, setSecuritySuccess] = useState('');
     const [securityError, setSecurityError] = useState('');
     const [securityLoading, setSecurityLoading] = useState(false);
+
+    const [trustedDevicesList, setTrustedDevicesList] = useState([]);
+
+    useEffect(() => {
+        if (user?.trustedDevices) {
+            setTrustedDevicesList(user.trustedDevices);
+        }
+    }, [user]);
+
+    const handleRemoveTrustedDevice = async (deviceId) => {
+        try {
+            const response = await axios.delete(`/api/auth/trusted-devices/${deviceId}`);
+            setTrustedDevicesList(response.data.trustedDevices || []);
+            if (updateUser) {
+                updateUser({ trustedDevices: response.data.trustedDevices || [] });
+            }
+        } catch (err) {
+            console.error('Failed to remove trusted device:', err);
+            alert('Cihaz silinirken bir hata oluştu.');
+        }
+    };
 
     // Extract query params to open specific section
     useEffect(() => {
@@ -1206,6 +1227,64 @@ const Settings = () => {
                             {securityLoading ? 'Kaydediliyor...' : 'Güvenlik Sorularını Güncelle'}
                         </button>
                     </form>
+                </div>
+            </div>
+
+            {/* Kayıtlı Güvenilir Cihazlar Kartı */}
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Kayıtlı Güvenilir Cihazlar</h3>
+                <div className="settings-card security-questions-card">
+                    <p className="settings-section-desc">
+                        Bu cihazlardan yapılan girişlerde ek güvenlik bildirimi gönderilmez. Tanımadığınız bir cihazı kaldırdığınızda o cihazdan yapılacak sonraki girişte tekrar uyarı verilir.
+                    </p>
+
+                    {trustedDevicesList.length === 0 ? (
+                        <div style={{ padding: '16px', color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center' }}>
+                            Henüz kayıtlı güvenilir bir cihaz bulunmuyor.
+                        </div>
+                    ) : (
+                        <div className="trusted-devices-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                            {trustedDevicesList.map((dev) => (
+                                <div key={dev.deviceId} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '12px 16px',
+                                    background: 'rgba(255, 255, 255, 0.04)',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <Smartphone size={20} style={{ color: '#667eea' }} />
+                                        <div>
+                                            <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '14px' }}>
+                                                {dev.deviceName || 'Bilinmeyen Cihaz'}
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                Son Kullanım: {dev.lastUsedAt ? new Date(dev.lastUsedAt).toLocaleString('tr-TR') : 'Bilinmiyor'} {dev.ip ? `• IP: ${dev.ip}` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveTrustedDevice(dev.deviceId)}
+                                        style={{
+                                            background: 'rgba(239, 68, 68, 0.15)',
+                                            color: '#ef4444',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            padding: '8px 12px',
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Kaldır
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

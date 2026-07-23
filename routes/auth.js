@@ -15,6 +15,7 @@ import {
     passwordResetValidation,
     newPasswordValidation,
 } from '../middleware/validation.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -151,7 +152,7 @@ router.get('/verify-email', async (req, res) => {
 // @access  Public
 router.post('/login', authLimiter, loginValidation, async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, deviceId, deviceName, saveDevice } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ message: 'Please provide email and password' });
@@ -207,16 +208,41 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             }
         }
 
-        // Save last active IP address
+        // Save last active IP address and check trusted device status
         const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
         const prevIP = user.lastIP;
 
-        if (prevIP && prevIP !== incomingIP) {
+        let isDeviceTrusted = false;
+        if (deviceId) {
+            if (!user.trustedDevices) user.trustedDevices = [];
+            const existingDeviceIndex = user.trustedDevices.findIndex(d => d.deviceId === deviceId);
+
+            if (existingDeviceIndex !== -1) {
+                isDeviceTrusted = true;
+                user.trustedDevices[existingDeviceIndex].lastUsedAt = new Date();
+                user.trustedDevices[existingDeviceIndex].ip = incomingIP;
+                if (deviceName) {
+                    user.trustedDevices[existingDeviceIndex].deviceName = deviceName;
+                }
+            } else if (saveDevice) {
+                isDeviceTrusted = true;
+                user.trustedDevices.push({
+                    deviceId,
+                    deviceName: deviceName || 'Bilinmeyen Cihaz',
+                    ip: incomingIP,
+                    lastUsedAt: new Date(),
+                    createdAt: new Date()
+                });
+            }
+        }
+
+        // Security notification: ONLY send if the device is NOT trusted AND (prevIP && prevIP !== incomingIP)
+        if (!isDeviceTrusted && prevIP && prevIP !== incomingIP) {
             try {
                 const notification = await Notification.create({
                     recipient: user._id,
                     type: 'security',
-                    content: 'Hesabınıza farklı bir IP adresinden giriş yapıldı.',
+                    content: 'Hesabınıza tanınmayan bir cihaz veya farklı bir IP adresinden giriş yapıldı.',
                     link: '/settings',
                 });
 
@@ -246,6 +272,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
 
         res.json({
             token,
+            isDeviceTrusted,
             user: {
                 _id: user._id,
                 email: user.email,
@@ -256,11 +283,76 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 verificationBadge: user.verificationBadge,
                 customBadge: user.customBadge,
                 securityQuestionsConfigured: user.securityAnswers && user.securityAnswers.length >= 2,
+                trustedDevices: user.trustedDevices || [],
             },
         });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Server error during login' });
+    }
+});
+
+// @route   POST /api/auth/trust-device
+// @desc    Save/Trust a device for authenticated user
+// @access  Private
+router.post('/trust-device', protect, async (req, res) => {
+    try {
+        const { deviceId, deviceName } = req.body;
+        if (!deviceId) {
+            return res.status(400).json({ message: 'deviceId is required' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        if (!user.trustedDevices) user.trustedDevices = [];
+
+        const existingIndex = user.trustedDevices.findIndex(d => d.deviceId === deviceId);
+        if (existingIndex !== -1) {
+            user.trustedDevices[existingIndex].lastUsedAt = new Date();
+            user.trustedDevices[existingIndex].ip = incomingIP;
+            if (deviceName) user.trustedDevices[existingIndex].deviceName = deviceName;
+        } else {
+            user.trustedDevices.push({
+                deviceId,
+                deviceName: deviceName || 'Bilinmeyen Cihaz',
+                ip: incomingIP,
+                lastUsedAt: new Date(),
+                createdAt: new Date()
+            });
+        }
+
+        await user.save();
+        res.json({ message: 'Cihaz güvenilir cihaz olarak kaydedildi.', trustedDevices: user.trustedDevices });
+    } catch (err) {
+        console.error('Trust device error:', err);
+        res.status(500).json({ message: 'Cihaz kaydedilirken bir hata oluştu.' });
+    }
+});
+
+// @route   DELETE /api/auth/trusted-devices/:deviceId
+// @desc    Remove a trusted device for logged in user
+// @access  Private
+router.delete('/trusted-devices/:deviceId', protect, async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.trustedDevices) {
+            user.trustedDevices = user.trustedDevices.filter(d => d.deviceId !== deviceId);
+            await user.save();
+        }
+
+        res.json({ message: 'Cihaz kaydı silindi.', trustedDevices: user.trustedDevices || [] });
+    } catch (err) {
+        console.error('Remove trusted device error:', err);
+        res.status(500).json({ message: 'Cihaz kaydı silinemedi.' });
     }
 });
 
