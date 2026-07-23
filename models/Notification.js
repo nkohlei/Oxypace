@@ -78,6 +78,9 @@ notificationSchema.post('save', async function (doc) {
         const User = mongoose.model('User');
         const recipient = await User.findById(doc.recipient).select('fcmTokens settings username profile.displayName');
         
+        // Skip if notification is already read (e.g. informational login activity log)
+        if (doc.read) return;
+
         // Skip if user doesn't exist, has no tokens, or disabled push notifications
         if (!recipient || !recipient.fcmTokens || recipient.fcmTokens.length === 0) return;
         if (recipient.settings?.notifications?.push === false) return;
@@ -108,7 +111,7 @@ notificationSchema.post('save', async function (doc) {
                 break;
             case 'portal_invite': body = `${senderName} seni bir portala davet etti.`; break;
             case 'quote': body = `${senderName} gönderini alıntıladı.`; break;
-            case 'security': body = `Hesabınıza farklı bir cihaz/IP üzerinden giriş yapıldı.`; break;
+            case 'security': body = doc.content || 'Hesabınıza yeni bir cihazdan giriş yapıldı.'; break;
             case 'voice_invite':
                 title = 'Görüntülü Sohbet Daveti';
                 body = `${senderName} seni görüntülü sohbet odasına davet ediyor!`;

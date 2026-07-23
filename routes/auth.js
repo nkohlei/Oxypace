@@ -258,25 +258,31 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             }
         }
 
-        // Security notification: ONLY send if the device is NOT trusted AND (prevIP && prevIP !== incomingIP)
-        if (!isDeviceTrusted && prevIP && prevIP !== incomingIP) {
-            try {
-                const notification = await Notification.create({
-                    recipient: user._id,
-                    type: 'security',
-                    content: `Hesabınıza tanınmayan bir cihazdan (${activeDeviceName}) veya farklı bir IP adresinden (${incomingIP}) giriş yapıldı.`,
-                    link: '/settings',
-                });
+        // Record login activity in notifications list for EVERY login
+        try {
+            const notificationContent = isDeviceTrusted
+                ? `${activeDeviceName} cihazınız üzerinden hesabınıza giriş yapıldı. (IP: ${incomingIP})`
+                : `Tanınmayan bir cihazdan (${activeDeviceName}) hesabınıza giriş yapıldı. (IP: ${incomingIP})`;
 
+            const notification = await Notification.create({
+                recipient: user._id,
+                type: 'security',
+                content: notificationContent,
+                link: '/settings',
+                read: isDeviceTrusted // Marked as read for trusted devices (informational log only, no unread badge/push alert)
+            });
+
+            // Only emit real-time unread alert if device is NOT trusted
+            if (!isDeviceTrusted) {
                 const io = req.app.get('io');
                 if (io) {
                     const populated = await Notification.findById(notification._id)
                         .populate('sender', 'username profile.displayName profile.avatar');
                     io.to(user._id.toString()).emit('newNotification', populated);
                 }
-            } catch (err) {
-                console.error('Security login notification error:', err);
             }
+        } catch (err) {
+            console.error('Security login notification error:', err);
         }
 
         user.lastIP = incomingIP;
