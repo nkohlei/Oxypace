@@ -1,5 +1,6 @@
 import express from 'express';
 import BlogPost from '../models/BlogPost.js';
+import BlogAuthor from '../models/BlogAuthor.js';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 import { admin } from '../middleware/admin.js';
@@ -408,6 +409,52 @@ router.patch('/admin/:id/toggle-publish', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Toggle publish error:', error);
         res.status(500).json({ message: 'Yayın durumu değiştirilemedi: ' + error.message });
+    }
+});
+
+// @route   GET /api/blog/author
+// @desc    Get blog author profile settings
+// @access  Public
+router.get('/author', async (req, res) => {
+    try {
+        let author = await BlogAuthor.findOne();
+        if (!author) {
+            author = await BlogAuthor.create({});
+        }
+        res.json(author);
+    } catch (error) {
+        console.error('Fetch blog author error:', error);
+        res.status(500).json({ message: 'Yazar profili alınamadı: ' + error.message });
+    }
+});
+
+// @route   PUT /api/blog/author
+// @desc    Update blog author profile settings
+// @access  Private/Admin
+router.put('/author', protect, admin, async (req, res) => {
+    try {
+        const { name, title, bio, avatar, badge, github, twitter, website, linkedin } = req.body;
+
+        let author = await BlogAuthor.findOne();
+        if (!author) {
+            author = new BlogAuthor({});
+        }
+
+        if (name !== undefined) author.name = name.trim();
+        if (title !== undefined) author.title = title.trim();
+        if (bio !== undefined) author.bio = bio.trim();
+        if (avatar !== undefined) author.avatar = avatar.trim();
+        if (badge !== undefined) author.badge = badge.trim();
+        if (github !== undefined) author.github = github.trim();
+        if (twitter !== undefined) author.twitter = twitter.trim();
+        if (website !== undefined) author.website = website.trim();
+        if (linkedin !== undefined) author.linkedin = linkedin.trim();
+
+        const updatedAuthor = await author.save();
+        res.json(updatedAuthor);
+    } catch (error) {
+        console.error('Update blog author error:', error);
+        res.status(500).json({ message: 'Yazar profili güncellenemedi: ' + error.message });
     }
 });
 

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3 } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck } from 'lucide-react';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import UserAvatar from '../components/UserAvatar';
@@ -2280,9 +2280,63 @@ const AdminDashboard = () => {
         }
     };
 
+    const [blogAuthor, setBlogAuthor] = useState({
+        name: 'Oxypace',
+        title: 'Oxypace Kurucusu & Baş Yazarı',
+        bio: 'Teorik fizik, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor.',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        badge: 'Baş Yazar',
+        github: '',
+        twitter: '',
+        website: '',
+        linkedin: ''
+    });
+    const [blogAuthorModalOpen, setBlogAuthorModalOpen] = useState(false);
+    const [blogAuthorSaving, setBlogAuthorSaving] = useState(false);
+    const [uploadingAuthorAvatar, setUploadingAuthorAvatar] = useState(false);
+
+    const fetchBlogAuthor = async () => {
+        try {
+            const { data } = await axios.get('/api/blog/author');
+            if (data) setBlogAuthor(data);
+        } catch (e) {
+            console.error('Fetch blog author error:', e);
+        }
+    };
+
+    const handleSaveBlogAuthor = async () => {
+        setBlogAuthorSaving(true);
+        try {
+            const { data } = await axios.put('/api/blog/author', blogAuthor);
+            setBlogAuthor(data);
+            alert('Yazar profili başarıyla güncellendi.');
+            setBlogAuthorModalOpen(false);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Yazar profili güncellenirken hata oluştu.');
+        } finally {
+            setBlogAuthorSaving(false);
+        }
+    };
+
+    const handleAuthorAvatarFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingAuthorAvatar(true);
+        try {
+            const mediaKey = await uploadFile(file, 'avatar');
+            setBlogAuthor(prev => ({ ...prev, avatar: mediaKey }));
+        } catch (err) {
+            alert('Avatar yüklenirken hata oluştu.');
+        } finally {
+            setUploadingAuthorAvatar(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'blog') {
             fetchAdminBlogPosts();
+            fetchBlogAuthor();
         }
     }, [activeTab]);
 
@@ -4432,9 +4486,14 @@ const AdminDashboard = () => {
                                 <h2>📝 Blog & Makale Yönetim Paneli</h2>
                                 <p>Oxypace derin bilim ve teknik analiz makalelerini yazın, düzenleyin ve tek tuşla yayınlayın.</p>
                             </div>
-                            <button className="btn-modern-primary btn-glow-cyan" onClick={() => openBlogModal(null)}>
-                                <Plus size={18} /> Yeni Makale Yaz
-                            </button>
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                <button className="btn-modern-secondary" onClick={() => setBlogAuthorModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                                    <UserCheck size={18} /> Yazar Profilini Düzenle
+                                </button>
+                                <button className="btn-modern-primary btn-glow-cyan" onClick={() => openBlogModal(null)}>
+                                    <Plus size={18} /> Yeni Makale Yaz
+                                </button>
+                            </div>
                         </div>
 
                         {/* Stats Summary */}
@@ -4769,6 +4828,136 @@ const AdminDashboard = () => {
                                 disabled={blogSaving}
                             >
                                 {blogSaving ? 'KAYDEDİLİYOR...' : (editingBlogPost ? 'GÜNCELLE & KAYDET' : 'PAYLAŞ & OLUŞTUR')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Blog Author Profile Modal */}
+            {blogAuthorModalOpen && (
+                <div className="modal-overlay-modern backdrop-blur fade-in">
+                    <div className="modal-content-modern blog-modal-wide" style={{ maxWidth: '650px' }}>
+                        <div className="modal-header-modern">
+                            <div className="modal-title-wrap">
+                                <h3>✍️ Yazar Profili Ayarları</h3>
+                                <p>Makalelerinizin altında gösterilecek yazar kartı bilgilerinizi düzenleyin.</p>
+                            </div>
+                            <button className="btn-close-modern" onClick={() => setBlogAuthorModalOpen(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="modal-body-modern">
+                            {/* Avatar Section */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <img
+                                    src={getImageUrl(blogAuthor.avatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb'}
+                                    alt={blogAuthor.name}
+                                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(34,211,238,0.5)' }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                    <label className="badge-label">Profil Fotoğrafı (Avatar)</label>
+                                    <p className="badge-help-text" style={{ marginBottom: '8px' }}>Yazar kartınızda ve makale detaylarında görünür.</p>
+                                    <label className="btn-modern-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                                        {uploadingAuthorAvatar ? 'Fotoğraf Yükleniyor...' : 'Fotoğraf Değiştir'}
+                                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAuthorAvatarFileSelect} />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="form-row-2">
+                                <div className="form-group-modern">
+                                    <label className="badge-label">Yazar Adı / Kullanıcı Adı</label>
+                                    <input
+                                        type="text"
+                                        className="reason-input-modern"
+                                        value={blogAuthor.name}
+                                        onChange={(e) => setBlogAuthor({ ...blogAuthor, name: e.target.value })}
+                                        placeholder="Örn: Oxypace veya Adınız"
+                                    />
+                                </div>
+                                <div className="form-group-modern">
+                                    <label className="badge-label">Yazar Rozeti / Unvan Etiketi</label>
+                                    <input
+                                        type="text"
+                                        className="reason-input-modern"
+                                        value={blogAuthor.badge}
+                                        onChange={(e) => setBlogAuthor({ ...blogAuthor, badge: e.target.value })}
+                                        placeholder="Örn: Baş Yazar, Kurucu"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group-modern">
+                                <label className="badge-label">Yazar Mesleki Unvanı</label>
+                                <input
+                                    type="text"
+                                    className="reason-input-modern"
+                                    value={blogAuthor.title}
+                                    onChange={(e) => setBlogAuthor({ ...blogAuthor, title: e.target.value })}
+                                    placeholder="Örn: Oxypace Kurucusu & Teorik Fizik Araştırmacısı"
+                                />
+                            </div>
+
+                            <div className="form-group-modern">
+                                <label className="badge-label">Biyografi / Hakkında</label>
+                                <textarea
+                                    className="reason-input-modern"
+                                    rows="3"
+                                    value={blogAuthor.bio}
+                                    onChange={(e) => setBlogAuthor({ ...blogAuthor, bio: e.target.value })}
+                                    placeholder="Makale okuyucularına kendinizi kısaca tanıtın..."
+                                    style={{ resize: 'vertical' }}
+                                />
+                            </div>
+
+                            <div style={{ paddingTop: '8px' }}>
+                                <label className="badge-label" style={{ marginBottom: '8px', display: 'block' }}>🌐 Sosyal Medya & Web Bağlantıları</label>
+                                <div className="form-row-2">
+                                    <input
+                                        type="text"
+                                        className="reason-input-modern"
+                                        value={blogAuthor.github}
+                                        onChange={(e) => setBlogAuthor({ ...blogAuthor, github: e.target.value })}
+                                        placeholder="GitHub Profil URL (https://github.com/...)"
+                                    />
+                                    <input
+                                        type="text"
+                                        className="reason-input-modern"
+                                        value={blogAuthor.twitter}
+                                        onChange={(e) => setBlogAuthor({ ...blogAuthor, twitter: e.target.value })}
+                                        placeholder="Twitter / X URL (https://x.com/...)"
+                                    />
+                                </div>
+                                <div className="form-row-2" style={{ marginTop: '10px' }}>
+                                    <input
+                                        type="text"
+                                        className="reason-input-modern"
+                                        value={blogAuthor.website}
+                                        onChange={(e) => setBlogAuthor({ ...blogAuthor, website: e.target.value })}
+                                        placeholder="Kişisel Web Sitesi (https://...)"
+                                    />
+                                    <input
+                                        type="text"
+                                        className="reason-input-modern"
+                                        value={blogAuthor.linkedin}
+                                        onChange={(e) => setBlogAuthor({ ...blogAuthor, linkedin: e.target.value })}
+                                        placeholder="LinkedIn URL (https://linkedin.com/...)"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer-modern">
+                            <button type="button" className="btn-modern-ghost" onClick={() => setBlogAuthorModalOpen(false)}>İptal</button>
+                            <button
+                                type="button"
+                                className="btn-modern-primary btn-glow-cyan"
+                                onClick={handleSaveBlogAuthor}
+                                disabled={blogAuthorSaving}
+                            >
+                                {blogAuthorSaving ? 'KAYDEDİLİYOR...' : 'YAZAR PROFİLİNİ KAYDET'}
                             </button>
                         </div>
                     </div>

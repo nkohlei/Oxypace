@@ -10,8 +10,26 @@ import { formatBlogImageUrl } from "../utils/imageHelper";
 export default function ArticleClient({ initialPost, slug }) {
   const [post, setPost] = useState(initialPost);
   const [loading, setLoading] = useState(!initialPost);
+  const [author, setAuthor] = useState(null);
 
   useEffect(() => {
+    // Fetch Author Profile
+    const fetchAuthor = async () => {
+      try {
+        const authorUrl = typeof window !== 'undefined'
+          ? (window.location.origin.includes('localhost') ? 'http://localhost:5000/api/blog/author' : '/api/blog/author')
+          : '/api/blog/author';
+        const res = await fetch(authorUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data) setAuthor(data);
+        }
+      } catch (e) {
+        console.error('Fetch author profile error:', e);
+      }
+    };
+    fetchAuthor();
+
     if (!slug) return;
 
     const fetchPost = async () => {
@@ -105,8 +123,63 @@ export default function ArticleClient({ initialPost, slug }) {
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 
+          {/* Author Profile Box */}
+          {author && (
+            <div className="mt-14 p-6 sm:p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden group">
+              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-700 pointer-events-none" />
+              
+              <div className="relative shrink-0">
+                <img
+                  src={formatBlogImageUrl(author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb')}
+                  alt={author.name}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-cyan-400/50 shadow-xl shadow-cyan-500/10"
+                />
+                <span className="absolute -bottom-2 -right-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+                  {author.badge || "Baş Yazar"}
+                </span>
+              </div>
+
+              <div className="flex-1 text-center sm:text-left space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xl font-bold text-white tracking-tight">{author.name || "Oxypace"}</h3>
+                    <p className="text-xs font-mono text-cyan-400/90">{author.title || "Oxypace Kurucusu & Baş Yazarı"}</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-zinc-300 leading-relaxed font-sans pt-1">
+                  {author.bio || "Teorik fizik, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor."}
+                </p>
+
+                {/* Social Links */}
+                <div className="flex items-center justify-center sm:justify-start gap-3 pt-3 font-mono text-xs text-zinc-400">
+                  {author.github && (
+                    <a href={author.github} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
+                      [ GitHub ]
+                    </a>
+                  )}
+                  {author.twitter && (
+                    <a href={author.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
+                      [ Twitter/X ]
+                    </a>
+                  )}
+                  {author.website && (
+                    <a href={author.website} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
+                      [ Web ]
+                    </a>
+                  )}
+                  {author.linkedin && (
+                    <a href={author.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
+                      [ LinkedIn ]
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Share Buttons / Footer */}
-          <div className="mt-16 border-t border-zinc-200 dark:border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
+          <div className="mt-12 border-t border-zinc-200 dark:border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
             <div className="flex items-center gap-2">
               <span className="text-zinc-500 uppercase tracking-widest">Paylaş:</span>
               <button 
