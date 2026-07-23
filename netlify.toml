@@ -35,6 +35,12 @@
   force = true
 
 [[redirects]]
+  from = "/downloads/oxypace.apk"
+  to = "https://github.com/nkohlei/Oxypace/releases/download/v1.1.7/oxypace.apk"
+  status = 302
+  force = true
+
+[[redirects]]
   from = "/downloads/*"
   to = "/downloads/:splat"
   status = 200
