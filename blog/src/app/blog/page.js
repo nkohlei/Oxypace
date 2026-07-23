@@ -38,7 +38,8 @@ const HERO_TEXT = {
 
 export default function BlogHome() {
   const [lang, setLang] = useState("tr");
-  const [allPosts, setAllPosts] = useState(staticPosts);
+  const [allPosts, setAllPosts] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Kullanıcı manuel çıkış yapmadıysa (token varsa) derhal Oxypace Portal'a geçiş yap
   useEffect(() => {
@@ -67,19 +68,49 @@ export default function BlogHome() {
               id: p._id || p.id
             }));
             setAllPosts(formatted);
+          } else {
+            setAllPosts(staticPosts);
           }
+        } else {
+          setAllPosts(staticPosts);
         }
       } catch (e) {
         console.error('API blog posts fetch error, fallback to static:', e);
+        setAllPosts(staticPosts);
+      } finally {
+        setLoading(false);
       }
     };
     fetchPosts();
   }, []);
 
+  const T = HERO_TEXT[lang];
+
+  if (loading || !allPosts) {
+    return (
+      <div className="relative min-h-screen transition-theme" style={{ color: "var(--foreground)" }}>
+        <Header isArticle={false} lang={lang} onLangChange={setLang} />
+        <main className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="animate-pulse space-y-12">
+            <div className="space-y-4">
+              <div className="h-6 w-48 bg-white/5 rounded-full border border-white/10" />
+              <div className="h-20 w-full max-w-2xl bg-white/5 rounded-2xl border border-white/10" />
+              <div className="h-12 w-full max-w-xl bg-white/5 rounded-xl border border-white/10" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8">
+              <div className="lg:col-span-8 h-[450px] bg-white/5 rounded-2xl border border-white/10" />
+              <div className="lg:col-span-4 h-[450px] bg-white/5 rounded-2xl border border-white/10" />
+            </div>
+          </div>
+        </main>
+        <Footer lang={lang} />
+      </div>
+    );
+  }
+
   const featuredPost = allPosts[0] || staticPosts[0];
   const indexPosts   = allPosts.length > 1 ? allPosts.slice(1, 3) : staticPosts.slice(1, 3);
   const gridPosts    = allPosts.length > 3 ? allPosts.slice(3) : (allPosts.length > 1 ? allPosts.slice(1) : staticPosts.slice(3));
-  const T = HERO_TEXT[lang];
 
   return (
     <div className="relative min-h-screen transition-theme" style={{ color: "var(--foreground)" }}>
