@@ -701,11 +701,40 @@ router.get('/*', async (req, res) => {
 
         // B. Standard R2 Images/Assets (Full Proxy to avoid Client-side SSL Errors)
         console.log('📷 Full R2 Proxy (SSL Fix):', filePath);
-        const command = new GetObjectCommand({ Bucket: bucketName, Key: filePath });
-        const response = await r2.send(command);
+        
+        // Search candidates: direct key, posts/general/, posts/, uploads/, etc.
+        const candidateKeys = [filePath];
+        if (!filePath.startsWith('posts/') && !filePath.startsWith('uploads/') && !filePath.startsWith('avatars/') && !filePath.startsWith('banners/')) {
+            candidateKeys.push(`posts/general/${filePath}`);
+            candidateKeys.push(`posts/${filePath}`);
+            candidateKeys.push(`uploads/${filePath}`);
+            candidateKeys.push(`avatars/${filePath}`);
+            candidateKeys.push(`banners/${filePath}`);
+        }
+
+        let response = null;
+        let lastError = null;
+
+        for (const keyCandidate of candidateKeys) {
+            try {
+                const command = new GetObjectCommand({ Bucket: bucketName, Key: keyCandidate });
+                response = await r2.send(command);
+                if (response && response.Body) {
+                    console.log('✅ Found media at candidate R2 key:', keyCandidate);
+                    break;
+                }
+            } catch (err) {
+                lastError = err;
+            }
+        }
+
+        if (!response || !response.Body) {
+            console.error('Media Resolver Key Not Found in R2:', filePath, lastError?.message);
+            return res.status(404).json({ message: 'File not found' });
+        }
 
         res.set('Content-Type', response.ContentType || 'application/octet-stream');
-        res.set('Content-Length', response.ContentLength);
+        if (response.ContentLength) res.set('Content-Length', response.ContentLength);
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
         res.set('Accept-Ranges', 'bytes');
         res.set('Access-Control-Allow-Origin', '*');
