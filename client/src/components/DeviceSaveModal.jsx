@@ -56,61 +56,83 @@ const DeviceSaveModal = ({ user }) => {
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(8px)',
+            backdropFilter: 'blur(16px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(180%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 10000
         }}>
             <div style={{
-                background: '#18191c',
+                background: 'rgba(18, 18, 22, 0.78)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '16px',
-                padding: '28px',
+                borderRadius: '24px',
+                padding: '32px 28px',
                 maxWidth: '420px',
                 width: '90%',
-                color: '#fff',
+                color: '#ffffff',
                 textAlign: 'center',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                boxShadow: '0 30px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                 position: 'relative'
             }}>
                 <button
                     onClick={handleSkip}
                     style={{
                         position: 'absolute',
-                        top: '16px',
-                        right: '16px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'rgba(255, 255, 255, 0.5)',
+                        top: '18px',
+                        right: '18px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '50%',
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255, 255, 255, 0.6)',
                         cursor: 'pointer',
-                        padding: '4px'
+                        transition: 'all 0.2s ease'
                     }}
                 >
-                    <X size={20} />
+                    <X size={16} />
                 </button>
 
                 <div style={{
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '50%',
-                    background: 'rgba(102, 126, 234, 0.15)',
-                    border: '1px solid rgba(102, 126, 234, 0.4)',
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '20px',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    margin: '0 auto 18px auto',
-                    color: '#667eea'
+                    margin: '0 auto 20px auto',
+                    color: '#ffffff',
+                    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)'
                 }}>
-                    <Smartphone size={30} />
+                    <Smartphone size={28} strokeWidth={1.8} />
                 </div>
 
-                <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '10px' }}>
+                <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    letterSpacing: '-0.02em',
+                    marginBottom: '10px',
+                    color: '#ffffff'
+                }}>
                     Cihaz Kaydedilsin mi?
                 </h3>
 
-                <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.5', marginBottom: '24px' }}>
-                    Bu cihazı (<b>{deviceName}</b>) hesabınız için kaydetmek ister misiniz? Kaydedilen cihazlardan yapılan sonraki girişlerde güvenlik bildirimi gönderilmez.
+                <p style={{
+                    fontSize: '14px',
+                    color: 'rgba(255, 255, 255, 0.65)',
+                    lineHeight: '1.6',
+                    marginBottom: '28px',
+                    fontWeight: '400'
+                }}>
+                    Bu cihazı (<b style={{ color: '#ffffff', fontWeight: '600' }}>{deviceName}</b>) hesabınız için kaydetmek ister misiniz? Kaydedilen cihazlardan yapılan sonraki girişlerde güvenlik bildirimi gönderilmez.
                 </p>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -119,14 +141,15 @@ const DeviceSaveModal = ({ user }) => {
                         onClick={handleSkip}
                         style={{
                             flex: 1,
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: '10px',
-                            padding: '12px',
-                            color: '#fff',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '12px',
+                            padding: '13px',
+                            color: 'rgba(255, 255, 255, 0.85)',
                             cursor: 'pointer',
                             fontWeight: '600',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            transition: 'all 0.2s ease'
                         }}
                     >
                         Şimdi Değil
@@ -137,14 +160,16 @@ const DeviceSaveModal = ({ user }) => {
                         disabled={loading}
                         style={{
                             flex: 1,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            background: '#ffffff',
                             border: 'none',
-                            borderRadius: '10px',
-                            padding: '12px',
-                            color: '#fff',
+                            borderRadius: '12px',
+                            padding: '13px',
+                            color: '#0a0a0c',
                             cursor: 'pointer',
                             fontWeight: '600',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            boxShadow: '0 4px 12px rgba(255, 255, 255, 0.15)',
+                            transition: 'all 0.2s ease'
                         }}
                     >
                         {loading ? 'Kaydediliyor...' : 'Cihazı Kaydet'}
