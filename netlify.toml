@@ -7,7 +7,7 @@
   # Build command calls root package.json build (which builds client, blog and merges)
   command = "npm run build"
   # Output directory
-  publish = "dist"
+  publish = "client/dist"
   edge_functions = "netlify/edge-functions"
 
 [build.environment]
