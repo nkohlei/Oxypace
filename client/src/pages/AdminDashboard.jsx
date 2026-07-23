@@ -4529,7 +4529,7 @@ const AdminDashboard = () => {
 
                                                 <div className="blog-card-action-group">
                                                     <a
-                                                        href={`/blog/${post.slug}`}
+                                                        href={`/blog/post?slug=${post.slug}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="btn-icon-action"

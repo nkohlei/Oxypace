@@ -1,20 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { formatBlogImageUrl } from "../utils/imageHelper";
 
 /* ──────────────────────────────────────────────────────────────
    FEATURED CARD  — left hero column, large image, badge, CTA
 ────────────────────────────────────────────────────────────── */
 export function FeaturedCard({ post, lang = "tr" }) {
   const ctaLabel = lang === "en" ? "Read Analysis →" : "Analizi Aç →";
-  const readLabel = lang === "en" ? "read" : "okuma";
+  const postUrl = `/blog/post?slug=${post.slug}`;
 
   return (
     <article className="group glass-card glass-card-hover rounded-2xl overflow-hidden flex flex-col" id={`post-featured-${post.id}`}>
       {/* Image */}
       <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
         <img
-          src={post.image}
+          src={formatBlogImageUrl(post.image)}
           alt={post.title}
           className="h-full w-full object-cover"
           style={{
@@ -45,7 +46,7 @@ export function FeaturedCard({ post, lang = "tr" }) {
           className="font-black leading-snug transition-theme"
           style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.4rem)", letterSpacing: "-0.03em", color: "var(--foreground)" }}
         >
-          <Link href={`/blog/${post.slug}`} className="focus:outline-none hover:opacity-80 transition-opacity">
+          <Link href={postUrl} className="focus:outline-none hover:opacity-80 transition-opacity">
             {post.title}
           </Link>
         </h3>
@@ -57,7 +58,7 @@ export function FeaturedCard({ post, lang = "tr" }) {
 
         {/* CTA */}
         <Link
-          href={`/blog/${post.slug}`}
+          href={postUrl}
           className="mt-auto font-mono text-[11px] uppercase tracking-widest transition-theme"
           style={{ color: "var(--accent)" }}
           onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.75"; }}
@@ -75,6 +76,7 @@ export function FeaturedCard({ post, lang = "tr" }) {
 ────────────────────────────────────────────────────────────── */
 export function MinimalCard({ post, lang = "tr" }) {
   const readLabel = lang === "en" ? "Read →" : "Oku →";
+  const postUrl = `/blog/post?slug=${post.slug}`;
 
   return (
     <article
@@ -104,7 +106,7 @@ export function MinimalCard({ post, lang = "tr" }) {
         </div>
 
         <h4 className="text-sm font-bold leading-snug" style={{ letterSpacing: "-0.01em", color: "var(--foreground)" }}>
-          <Link href={`/blog/${post.slug}`} className="focus:outline-none hover:opacity-70 transition-opacity">
+          <Link href={postUrl} className="focus:outline-none hover:opacity-70 transition-opacity">
             {post.title}
           </Link>
         </h4>
@@ -114,7 +116,7 @@ export function MinimalCard({ post, lang = "tr" }) {
         </p>
 
         <Link
-          href={`/blog/${post.slug}`}
+          href={postUrl}
           className="font-mono text-[10px] uppercase tracking-widest transition-theme"
           style={{ color: "var(--foreground-subtle)" }}
           onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; }}
@@ -132,6 +134,8 @@ export function MinimalCard({ post, lang = "tr" }) {
    Image-prominent, full glassmorphism hover
 ────────────────────────────────────────────────────────────── */
 export function GridCard({ post, lang = "tr" }) {
+  const postUrl = `/blog/post?slug=${post.slug}`;
+
   return (
     <article
       className="group glass-card glass-card-hover rounded-xl overflow-hidden flex flex-col"
@@ -140,7 +144,7 @@ export function GridCard({ post, lang = "tr" }) {
       {/* Image */}
       <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
         <img
-          src={post.image}
+          src={formatBlogImageUrl(post.image)}
           alt={post.title}
           className="h-full w-full object-cover"
           style={{
@@ -171,7 +175,7 @@ export function GridCard({ post, lang = "tr" }) {
           className="font-bold leading-snug"
           style={{ fontSize: "13px", letterSpacing: "-0.01em", color: "var(--foreground)" }}
         >
-          <Link href={`/blog/${post.slug}`} className="hover:opacity-75 transition-opacity focus:outline-none">
+          <Link href={postUrl} className="hover:opacity-75 transition-opacity focus:outline-none">
             {post.title}
           </Link>
         </h4>

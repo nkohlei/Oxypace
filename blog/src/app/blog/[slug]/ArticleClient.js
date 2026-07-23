@@ -5,10 +5,11 @@ import ReadingProgressBar from "../components/ReadingProgressBar";
 import CookieConsent from "../components/CookieConsent";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { formatBlogImageUrl } from "../utils/imageHelper";
 
 export default function ArticleClient({ initialPost, slug }) {
   const [post, setPost] = useState(initialPost);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!initialPost);
 
   useEffect(() => {
     if (!slug) return;
@@ -37,10 +38,10 @@ export default function ArticleClient({ initialPost, slug }) {
 
   if (!post && !loading) {
     return (
-      <div className="min-h-screen bg-transparent text-foreground flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-transparent text-foreground flex flex-col items-center justify-center p-6 text-center">
         <h1 className="text-3xl font-bold mb-4">404 — Makale Bulunamadı</h1>
         <p className="text-zinc-400 mb-6">Aradığınız makale yayından kaldırılmış veya taşınmış olabilir.</p>
-        <a href="/blog" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-mono text-sm">
+        <a href="/blog" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-mono text-sm">
           [ ← ARŞİVE GERİ DÖN ]
         </a>
       </div>
@@ -91,7 +92,7 @@ export default function ArticleClient({ initialPost, slug }) {
           {post.image && (
             <div className="relative mb-12 overflow-hidden rounded border border-zinc-200 dark:border-white/10 bg-zinc-900 shadow-2xl aspect-video w-full">
               <img
-                src={post.image}
+                src={formatBlogImageUrl(post.image)}
                 alt={post.title}
                 className="h-full w-full object-cover opacity-90"
               />
