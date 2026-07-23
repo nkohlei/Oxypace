@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import axios from 'axios';
 
 const Downloader = registerPlugin('Downloader');
 
@@ -17,7 +18,7 @@ const showTopToast = (message) => {
         top: '24px',
         left: '50%',
         transform: 'translateX(-50%) translateY(-100px)',
-        background: 'rgba(15, 23, 42, 0.9)',
+        background: 'rgba(15, 23, 42, 0.95)',
         color: '#fff',
         padding: '14px 28px',
         borderRadius: '14px',
@@ -25,7 +26,7 @@ const showTopToast = (message) => {
         fontWeight: '600',
         zIndex: '999999',
         boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.12)',
         backdropFilter: 'blur(20px)',
         webkitBackdropFilter: 'blur(20px)',
         transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
@@ -39,7 +40,7 @@ const showTopToast = (message) => {
         toast.style.opacity = '1';
     });
 
-    // Dismiss after 1 second (1000ms)
+    // Dismiss after 2.5 seconds
     setTimeout(() => {
         toast.style.transform = 'translateX(-50%) translateY(-100px)';
         toast.style.opacity = '0';
@@ -48,7 +49,7 @@ const showTopToast = (message) => {
                 document.body.removeChild(toast);
             }
         }, 300);
-    }, 1000);
+    }, 2500);
 };
 
 /**
@@ -63,10 +64,28 @@ export const downloadFile = async (url, filename) => {
             filename = url.split('/').pop() || `oxypace-${Date.now()}`;
         }
 
-        // Show start toast
-        showTopToast('İndirme başladı...');
+        // Ensure full URL for remote files if relative path provided
+        let fullUrl = url;
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            const apiBase = axios.defaults.baseURL || 'https://oxypace.com.tr';
+            fullUrl = `${apiBase.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
+        }
 
         if (Capacitor.isNativePlatform()) {
+            // First: Attempt native Android DownloadManager via Downloader plugin (shows system notification bar progress)
+            try {
+                await Downloader.downloadFile({
+                    url: fullUrl,
+                    filename: filename
+                });
+                showTopToast('İndirme başladı! Bildirim çubuğundan takip edebilirsiniz.');
+                return;
+            } catch (pluginErr) {
+                console.warn('Native Downloader plugin fallback:', pluginErr);
+            }
+
+            // Fallback: Use LocalNotifications + Filesystem
+            showTopToast('İndirme başladı...');
             const notifId = Math.floor(Math.random() * 1000000);
             try {
                 await LocalNotifications.schedule({
@@ -83,7 +102,7 @@ export const downloadFile = async (url, filename) => {
             }
 
             try {
-                const response = await fetch(url);
+                const response = await fetch(fullUrl);
                 const blob = await response.blob();
                 
                 const reader = new FileReader();
@@ -91,7 +110,6 @@ export const downloadFile = async (url, filename) => {
                 reader.onloadend = async () => {
                     const base64data = reader.result;
                     try {
-                        // Attempt to write to public External storage or Downloads folder
                         await Filesystem.writeFile({
                             path: filename,
                             data: base64data,
@@ -147,8 +165,9 @@ export const downloadFile = async (url, filename) => {
                 showTopToast('Bağlantı hatası oluştu.');
             }
         } else {
-            // Web Desktop Download via backend proxy to bypass CORS and force download with custom filename
-            const proxyUrl = `/api/posts/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+            // Web Desktop Download via backend proxy
+            showTopToast('İndirme başladı...');
+            const proxyUrl = `/api/posts/download?url=${encodeURIComponent(fullUrl)}&filename=${encodeURIComponent(filename)}`;
             const a = document.createElement('a');
             a.href = proxyUrl;
             a.download = filename;
@@ -156,7 +175,6 @@ export const downloadFile = async (url, filename) => {
             a.click();
             document.body.removeChild(a);
             
-            // Show finished toast for web too!
             setTimeout(() => {
                 showTopToast('İndirme tamamlandı!');
             }, 1000);

@@ -294,11 +294,11 @@ app.use('/api/blog', blogRoutes);
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '1.1.5',
-        versionCode: 16,
+        latestVersion: '1.1.7',
+        versionCode: 18,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
-        forceUpdate: false,
-        changelog: '🎙️ Android 14 arka plan görüşme servisi ve arama ekranı kilit ekranı butonları kararlılık güncellemesi.',
+        forceUpdate: true,
+        changelog: '🚀 Oxypace 1.1.7 Kararlılık & Yenilenmiş Mobil Arayüz: Monokrom glassmorphism tasarım, gelişmiş cihaz tanıma, arka plan görüşme ve bildirim çubuğunda anlık indirme takibi.',
     });
 });
 
