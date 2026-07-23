@@ -145,7 +145,7 @@ async function seedDatabaseIfEmpty() {
 function formatTurkishDate(d = new Date()) {
     return new Date(d).toLocaleDateString('tr-TR', {
         day: 'numeric',
-        month: 'Long',
+        month: 'long',
         year: 'numeric'
     });
 }
@@ -187,11 +187,11 @@ router.get('/', async (req, res) => {
         res.json(posts);
     } catch (error) {
         console.error('Fetch blog posts error:', error);
-        res.status(500).json({ message: 'Blog makaleleri alınamadı.' });
+        res.status(500).json({ message: 'Blog makaleleri alınamadı: ' + error.message });
     }
 });
 
-// @route   GET /api/admin/blog (Mounted on /api/blog/admin/all or checked by protect & admin)
+// @route   GET /api/blog/admin/all
 // @desc    Get all blog posts including drafts for admin
 // @access  Private/Admin
 router.get('/admin/all', protect, admin, async (req, res) => {
@@ -205,7 +205,7 @@ router.get('/admin/all', protect, admin, async (req, res) => {
         res.json(posts);
     } catch (error) {
         console.error('Fetch admin blog posts error:', error);
-        res.status(500).json({ message: 'Yönetici blog listesi alınamadı.' });
+        res.status(500).json({ message: 'Yönetici blog listesi alınamadı: ' + error.message });
     }
 });
 
@@ -229,7 +229,7 @@ router.get('/:slug', async (req, res) => {
         res.json(post);
     } catch (error) {
         console.error('Fetch single blog post error:', error);
-        res.status(500).json({ message: 'Makale detayları alınamadı.' });
+        res.status(500).json({ message: 'Makale detayları alınamadı: ' + error.message });
     }
 });
 
@@ -240,12 +240,15 @@ router.post('/admin', protect, admin, async (req, res) => {
     try {
         const { title, slug, excerpt, content, category, readTime, image, isPublished } = req.body;
 
-        if (!title || !content) {
-            return res.status(400).json({ message: 'Başlık ve içerik alanları zorunludur.' });
+        if (!title || !title.trim()) {
+            return res.status(400).json({ message: 'Makale başlığı zorunludur.' });
+        }
+        if (!content || !content.trim()) {
+            return res.status(400).json({ message: 'Makale içeriği zorunludur.' });
         }
 
         // Generate slug if empty
-        let finalSlug = slug ? slug.trim() : BlogPost.generateSlug(title);
+        let finalSlug = slug && slug.trim() ? slug.trim() : BlogPost.generateSlug(title);
         if (!finalSlug) finalSlug = 'post-' + Date.now();
 
         // Check unique slug
@@ -255,25 +258,25 @@ router.post('/admin', protect, admin, async (req, res) => {
         }
 
         const newPost = new BlogPost({
-            title,
+            title: title.trim(),
             slug: finalSlug,
-            excerpt: excerpt || '',
+            excerpt: excerpt ? excerpt.trim() : '',
             content,
-            category: category || 'Teorik Fizik',
-            readTime: readTime || calculateReadTime(content),
+            category: category ? category.trim() : 'Teorik Fizik',
+            readTime: readTime && readTime.trim() ? readTime.trim() : calculateReadTime(content),
             date: formatTurkishDate(),
-            image: image || 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80',
+            image: image ? image.trim() : 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80',
             isPublished: isPublished !== undefined ? isPublished : true,
-            author: req.user._id,
+            author: req.user ? req.user._id : null,
         });
 
         const savedPost = await newPost.save();
-        await savedPost.populate('author', 'username profile');
+        const populatedPost = await BlogPost.findById(savedPost._id).populate('author', 'username profile');
 
-        res.status(201).json(savedPost);
+        res.status(201).json(populatedPost || savedPost);
     } catch (error) {
         console.error('Create blog post error:', error);
-        res.status(500).json({ message: 'Makale oluşturulurken bir hata oluştu.' });
+        res.status(500).json({ message: 'Makale oluşturulurken hata oluştu: ' + (error.message || error) });
     }
 });
 
@@ -289,25 +292,25 @@ router.put('/admin/:id', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Makale bulunamadı.' });
         }
 
-        if (title) post.title = title;
-        if (slug) post.slug = slug.trim();
-        if (excerpt !== undefined) post.excerpt = excerpt;
-        if (content) {
+        if (title && title.trim()) post.title = title.trim();
+        if (slug && slug.trim()) post.slug = slug.trim();
+        if (excerpt !== undefined) post.excerpt = excerpt.trim();
+        if (content && content.trim()) {
             post.content = content;
             if (!readTime) post.readTime = calculateReadTime(content);
         }
-        if (category) post.category = category;
-        if (readTime) post.readTime = readTime;
-        if (image !== undefined) post.image = image;
+        if (category) post.category = category.trim();
+        if (readTime) post.readTime = readTime.trim();
+        if (image !== undefined) post.image = image.trim();
         if (isPublished !== undefined) post.isPublished = isPublished;
 
         const updatedPost = await post.save();
-        await updatedPost.populate('author', 'username profile');
+        const populatedPost = await BlogPost.findById(updatedPost._id).populate('author', 'username profile');
 
-        res.json(updatedPost);
+        res.json(populatedPost || updatedPost);
     } catch (error) {
         console.error('Update blog post error:', error);
-        res.status(500).json({ message: 'Makale güncellenirken bir hata oluştu.' });
+        res.status(500).json({ message: 'Makale güncellenirken hata oluştu: ' + (error.message || error) });
     }
 });
 
@@ -331,7 +334,7 @@ router.patch('/admin/:id/toggle-publish', protect, admin, async (req, res) => {
         });
     } catch (error) {
         console.error('Toggle publish error:', error);
-        res.status(500).json({ message: 'Yayın durumu değiştirilemedi.' });
+        res.status(500).json({ message: 'Yayın durumu değiştirilemedi: ' + error.message });
     }
 });
 
@@ -349,7 +352,7 @@ router.delete('/admin/:id', protect, admin, async (req, res) => {
         res.json({ message: 'Makale başarıyla silindi.' });
     } catch (error) {
         console.error('Delete blog post error:', error);
-        res.status(500).json({ message: 'Makale silinirken bir hata oluştu.' });
+        res.status(500).json({ message: 'Makale silinirken hata oluştu: ' + error.message });
     }
 });
 
