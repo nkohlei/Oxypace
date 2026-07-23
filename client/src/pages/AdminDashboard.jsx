@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3 } from 'lucide-react';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import UserAvatar from '../components/UserAvatar';
@@ -1097,6 +1097,28 @@ const AdminDashboard = () => {
     const [alertModalOpen, setAlertModalOpen] = useState(false);
     const [alertPortalId, setAlertPortalId] = useState(null);
     const [alertPortalName, setAlertPortalName] = useState('');
+
+    // Blog Management State
+    const [blogPosts, setBlogPosts] = useState([]);
+    const [blogLoading, setBlogLoading] = useState(false);
+    const [blogSearch, setBlogSearch] = useState('');
+    const [blogCategoryFilter, setBlogCategoryFilter] = useState('all');
+    const [blogStatusFilter, setBlogStatusFilter] = useState('all');
+    const [blogModalOpen, setBlogModalOpen] = useState(false);
+    const [editingBlogPost, setEditingBlogPost] = useState(null);
+    const [blogEditorMode, setBlogEditorMode] = useState('write');
+    const [blogSaving, setBlogSaving] = useState(false);
+    const [uploadingBlogImage, setUploadingBlogImage] = useState(false);
+    const [blogForm, setBlogForm] = useState({
+        title: '',
+        slug: '',
+        excerpt: '',
+        content: '',
+        category: 'Teorik Fizik',
+        readTime: '',
+        image: '',
+        isPublished: true,
+    });
 
     // Badge Creator State
     const { badges: contextBadges, refreshBadges } = useBadges();
@@ -2245,6 +2267,129 @@ const AdminDashboard = () => {
         setBadgeForm(newForm);
     };
 
+    // ===== BLOG MANAGEMENT HANDLERS =====
+    const fetchAdminBlogPosts = async () => {
+        setBlogLoading(true);
+        try {
+            const { data } = await axios.get('/api/blog/admin/all');
+            setBlogPosts(data);
+        } catch (err) {
+            console.error('Fetch blog error:', err);
+        } finally {
+            setBlogLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'blog') {
+            fetchAdminBlogPosts();
+        }
+    }, [activeTab]);
+
+    const handleTogglePublish = async (id) => {
+        try {
+            const { data } = await axios.patch(`/api/blog/admin/${id}/toggle-publish`);
+            setBlogPosts(prev => prev.map(p => p._id === id ? { ...p, isPublished: data.isPublished } : p));
+        } catch (err) {
+            alert('Yayın durumu güncellenemedi.');
+        }
+    };
+
+    const handleDeleteBlogPost = async (id) => {
+        if (!window.confirm('Bu makaleyi silmek istediğinize emin misiniz?')) return;
+        try {
+            await axios.delete(`/api/blog/admin/${id}`);
+            setBlogPosts(prev => prev.filter(p => p._id !== id));
+        } catch (err) {
+            alert('Makale silinemedi.');
+        }
+    };
+
+    const openBlogModal = (post = null) => {
+        if (post) {
+            setEditingBlogPost(post);
+            setBlogForm({
+                title: post.title || '',
+                slug: post.slug || '',
+                excerpt: post.excerpt || '',
+                content: post.content || '',
+                category: post.category || 'Teorik Fizik',
+                readTime: post.readTime || '',
+                image: post.image || '',
+                isPublished: post.isPublished !== undefined ? post.isPublished : true,
+            });
+        } else {
+            setEditingBlogPost(null);
+            setBlogForm({
+                title: '',
+                slug: '',
+                excerpt: '',
+                content: '',
+                category: 'Teorik Fizik',
+                readTime: '',
+                image: '',
+                isPublished: true,
+            });
+        }
+        setBlogEditorMode('write');
+        setBlogModalOpen(true);
+    };
+
+    const handleSaveBlogPost = async () => {
+        if (!blogForm.title.trim() || !blogForm.content.trim()) {
+            alert('Lütfen başlık ve içerik alanlarını doldurun.');
+            return;
+        }
+
+        setBlogSaving(true);
+        try {
+            if (editingBlogPost) {
+                const { data } = await axios.put(`/api/blog/admin/${editingBlogPost._id}`, blogForm);
+                setBlogPosts(prev => prev.map(p => p._id === editingBlogPost._id ? data : p));
+            } else {
+                const { data } = await axios.post('/api/blog/admin', blogForm);
+                setBlogPosts(prev => [data, ...prev]);
+            }
+            setBlogModalOpen(false);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Makale kaydedilirken hata oluştu.');
+        } finally {
+            setBlogSaving(false);
+        }
+    };
+
+    const handleBlogImageFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingBlogImage(true);
+        try {
+            const mediaKey = await uploadFile(file, 'post');
+            setBlogForm(prev => ({ ...prev, image: mediaKey }));
+        } catch (err) {
+            alert('Görsel yüklenirken hata oluştu.');
+        } finally {
+            setUploadingBlogImage(false);
+        }
+    };
+
+    const insertFormat = (startTag, endTag) => {
+        setBlogForm(prev => ({
+            ...prev,
+            content: prev.content + `\n${startTag}Metin buraya${endTag}\n`
+        }));
+    };
+
+    const filteredBlogPosts = blogPosts.filter(post => {
+        const matchesSearch = !blogSearch.trim() ||
+            post.title?.toLowerCase().includes(blogSearch.toLowerCase()) ||
+            post.excerpt?.toLowerCase().includes(blogSearch.toLowerCase());
+        const matchesCategory = blogCategoryFilter === 'all' || post.category === blogCategoryFilter;
+        const matchesStatus = blogStatusFilter === 'all' ||
+            (blogStatusFilter === 'published' ? post.isPublished : !post.isPublished);
+        return matchesSearch && matchesCategory && matchesStatus;
+    });
+
     return (
         <div className="admin-layout">
             {/* Backdrop overlay for mobile menu */}
@@ -2390,6 +2535,14 @@ const AdminDashboard = () => {
                         >
                             <span className="snav-icon"><Globe size={18} /></span>
                             <span className="snav-label">Portallar</span>
+                        </button>
+
+                        <button
+                            className={`sidebar-nav-item ${activeTab === 'blog' ? 'active' : ''}`}
+                            onClick={() => { setActiveTab('blog'); setSidebarOpen(false); }}
+                        >
+                            <span className="snav-icon"><FileText size={18} /></span>
+                            <span className="snav-label">Blog Yönetimi</span>
                         </button>
 
                         {(isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
@@ -4174,8 +4327,341 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 )}
+
+                {activeTab === 'blog' && (
+                    <div className="blog-admin-container fade-in">
+                        {/* Header & Action Bar */}
+                        <div className="blog-admin-header-card">
+                            <div className="blog-header-title-wrap">
+                                <h2>📝 Blog & Makale Yönetim Paneli</h2>
+                                <p>Oxypace derin bilim ve teknik analiz makalelerini yazın, düzenleyin ve tek tuşla yayınlayın.</p>
+                            </div>
+                            <button className="btn-modern-primary btn-glow-cyan" onClick={() => openBlogModal(null)}>
+                                <Plus size={18} /> Yeni Makale Yaz
+                            </button>
+                        </div>
+
+                        {/* Stats Summary */}
+                        <div className="blog-stats-grid">
+                            <div className="blog-stat-card">
+                                <span className="stat-label">Toplam Makale</span>
+                                <span className="stat-value">{blogPosts.length}</span>
+                            </div>
+                            <div className="blog-stat-card success">
+                                <span className="stat-label">Yayında Olanlar</span>
+                                <span className="stat-value">{blogPosts.filter(p => p.isPublished).length}</span>
+                            </div>
+                            <div className="blog-stat-card warning">
+                                <span className="stat-label">Taslaklar</span>
+                                <span className="stat-value">{blogPosts.filter(p => !p.isPublished).length}</span>
+                            </div>
+                            <div className="blog-stat-card info">
+                                <span className="stat-label">Farklı Kategori</span>
+                                <span className="stat-value">{new Set(blogPosts.map(p => p.category)).size}</span>
+                            </div>
+                        </div>
+
+                        {/* Search & Filter Bar */}
+                        <div className="blog-filter-bar">
+                            <input
+                                type="text"
+                                className="reason-input-modern"
+                                placeholder="Makale başlığında veya özette ara..."
+                                value={blogSearch}
+                                onChange={(e) => setBlogSearch(e.target.value)}
+                                style={{ flex: 1, minWidth: '220px' }}
+                            />
+                            <select
+                                className="badge-select"
+                                value={blogCategoryFilter}
+                                onChange={(e) => setBlogCategoryFilter(e.target.value)}
+                                style={{ width: '170px', padding: '10px', background: 'rgba(0,0,0,0.3)' }}
+                            >
+                                <option value="all">Tüm Kategoriler</option>
+                                {Array.from(new Set(blogPosts.map(p => p.category))).map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                            <select
+                                className="badge-select"
+                                value={blogStatusFilter}
+                                onChange={(e) => setBlogStatusFilter(e.target.value)}
+                                style={{ width: '160px', padding: '10px', background: 'rgba(0,0,0,0.3)' }}
+                            >
+                                <option value="all">Tüm Durumlar</option>
+                                <option value="published">Yayında Olanlar</option>
+                                <option value="draft">Taslaklar</option>
+                            </select>
+                        </div>
+
+                        {/* Articles Grid */}
+                        {blogLoading ? (
+                            <div className="admin-loading">Makaleler Yükleniyor...</div>
+                        ) : filteredBlogPosts.length === 0 ? (
+                            <div className="no-data" style={{ padding: '60px', textAlign: 'center' }}>
+                                <FileText size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                                <p>Kriterlerinize uygun makale bulunamadı.</p>
+                            </div>
+                        ) : (
+                            <div className="blog-admin-grid">
+                                {filteredBlogPosts.map(post => (
+                                    <div key={post._id} className={`blog-admin-card ${!post.isPublished ? 'is-draft' : ''}`}>
+                                        <div className="blog-card-thumb-wrap">
+                                            <img src={getImageUrl(post.image) || 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86'} alt={post.title} className="blog-card-thumb" />
+                                            <span className={`blog-status-badge ${post.isPublished ? 'published' : 'draft'}`}>
+                                                {post.isPublished ? '● YAYINDA' : '○ TASLAK'}
+                                            </span>
+                                        </div>
+                                        <div className="blog-card-body">
+                                            <div className="blog-card-meta">
+                                                <span className="blog-card-category">{post.category}</span>
+                                                <span className="blog-card-date">{post.date}</span>
+                                                <span className="blog-card-read">• {post.readTime}</span>
+                                            </div>
+                                            <h3 className="blog-card-title">{post.title}</h3>
+                                            <p className="blog-card-excerpt">{post.excerpt || 'Özet eklenmemiş.'}</p>
+                                            
+                                            <div className="blog-card-actions">
+                                                <button
+                                                    type="button"
+                                                    className={`btn-toggle-publish ${post.isPublished ? 'active' : ''}`}
+                                                    onClick={() => handleTogglePublish(post._id)}
+                                                    title={post.isPublished ? 'Yayından Kaldır' : 'Tek Tuşla Paylaş'}
+                                                >
+                                                    {post.isPublished ? '⚡ Yayından Kaldır' : '🚀 Tek Tuşla Paylaş'}
+                                                </button>
+
+                                                <div className="blog-card-action-group">
+                                                    <a
+                                                        href={`/blog/${post.slug}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn-icon-action"
+                                                        title="Sitede Gör"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-icon-action"
+                                                        onClick={() => openBlogModal(post)}
+                                                        title="Düzenle"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-icon-action danger"
+                                                        onClick={() => handleDeleteBlogPost(post._id)}
+                                                        title="Sil"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
+            {/* Blog Article Editor Modal */}
+            {blogModalOpen && (
+                <div className="modal-overlay-modern">
+                    <div className="modal-content-modern blog-editor-modal">
+                        <div className="modal-header-modern">
+                            <h2>{editingBlogPost ? '✏️ Makaleyi Düzenle' : '✨ Yeni Makale Yaz'}</h2>
+                            <button className="close-btn-modern" onClick={() => setBlogModalOpen(false)}>&times;</button>
+                        </div>
+
+                        {/* Mode Switcher: Write vs Preview */}
+                        <div className="editor-mode-toggle">
+                            <button
+                                type="button"
+                                className={`mode-btn ${blogEditorMode === 'write' ? 'active' : ''}`}
+                                onClick={() => setBlogEditorMode('write')}
+                            >
+                                <Edit3 size={16} /> Düzenle (Editör)
+                            </button>
+                            <button
+                                type="button"
+                                className={`mode-btn ${blogEditorMode === 'preview' ? 'active' : ''}`}
+                                onClick={() => setBlogEditorMode('preview')}
+                            >
+                                <Eye size={16} /> Canlı Önizleme
+                            </button>
+                        </div>
+
+                        <div className="modal-body-scroller">
+                            {blogEditorMode === 'write' ? (
+                                <div className="blog-form-grid">
+                                    <div className="form-group-modern">
+                                        <label className="badge-label">Makale Başlığı *</label>
+                                        <input
+                                            type="text"
+                                            className="reason-input-modern"
+                                            placeholder="Örn: Zamanın Yönü: Entropi ve Termodinamik"
+                                            value={blogForm.title}
+                                            onChange={(e) => {
+                                                const title = e.target.value;
+                                                setBlogForm(prev => ({
+                                                    ...prev,
+                                                    title,
+                                                    slug: prev.slug || title.toLowerCase().trim().replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-')
+                                                }));
+                                            }}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="form-row-2">
+                                        <div className="form-group-modern">
+                                            <label className="badge-label">URL Slug (Otomatik)</label>
+                                            <input
+                                                type="text"
+                                                className="reason-input-modern"
+                                                placeholder="zamanin-yonu-entropi"
+                                                value={blogForm.slug}
+                                                onChange={(e) => setBlogForm({ ...blogForm, slug: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="form-group-modern">
+                                            <label className="badge-label">Kategori</label>
+                                            <select
+                                                className="badge-select"
+                                                value={blogForm.category}
+                                                onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
+                                                style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', width: '100%' }}
+                                            >
+                                                <option value="Teorik Fizik">Teorik Fizik</option>
+                                                <option value="Ekstrem Doğa Fiziği">Ekstrem Doğa Fiziği</option>
+                                                <option value="Kozmoloji">Kozmoloji</option>
+                                                <option value="Biyofizik">Biyofizik</option>
+                                                <option value="Astrofizik">Astrofizik</option>
+                                                <option value="Teknoloji & Yazılım">Teknoloji & Yazılım</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group-modern">
+                                        <label className="badge-label">Öne Çıkan Kapak Görseli URL veya Dosya</label>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <input
+                                                type="text"
+                                                className="reason-input-modern"
+                                                placeholder="https://images.unsplash.com/..."
+                                                value={blogForm.image}
+                                                onChange={(e) => setBlogForm({ ...blogForm, image: e.target.value })}
+                                                style={{ flex: 1 }}
+                                            />
+                                            <label className="btn-modern-ghost" style={{ cursor: 'pointer', margin: 0, padding: '10px 16px', display: 'inline-flex', alignItems: 'center' }}>
+                                                {uploadingBlogImage ? 'Yükleniyor...' : 'Görsel Seç'}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ display: 'none' }}
+                                                    onChange={handleBlogImageFileSelect}
+                                                    disabled={uploadingBlogImage}
+                                                />
+                                            </label>
+                                        </div>
+                                        {blogForm.image && (
+                                            <img src={getImageUrl(blogForm.image)} alt="Önizleme" className="blog-form-image-preview" />
+                                        )}
+                                    </div>
+
+                                    <div className="form-group-modern">
+                                        <label className="badge-label">Kısa Özet (Excerpt)</label>
+                                        <textarea
+                                            className="reason-input-modern"
+                                            placeholder="Makalenin anasayfa kartında görünecek çarpıcı özet metni..."
+                                            rows="3"
+                                            value={blogForm.excerpt}
+                                            onChange={(e) => setBlogForm({ ...blogForm, excerpt: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="form-group-modern">
+                                        <div className="editor-toolbar-header">
+                                            <label className="badge-label">Makale İçeriği (HTML / Rich Text) *</label>
+                                            <div className="editor-quick-tools">
+                                                <button type="button" onClick={() => insertFormat('<h2>', '</h2>')} title="Başlık 2">H2</button>
+                                                <button type="button" onClick={() => insertFormat('<h3>', '</h3>')} title="Başlık 3">H3</button>
+                                                <button type="button" onClick={() => insertFormat('<p class="text-zinc-300 mb-4">', '</p>')} title="Paragraf">P</button>
+                                                <button type="button" onClick={() => insertFormat('<strong>', '</strong>')} title="Kalın">B</button>
+                                                <button type="button" onClick={() => insertFormat('<blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">', '</blockquote>')} title="Alıntı">Alıntı</button>
+                                            </div>
+                                        </div>
+                                        <textarea
+                                            className="reason-input-modern blog-content-textarea"
+                                            placeholder="Makalenin detaylı HTML içeriğini buraya yazın..."
+                                            rows="12"
+                                            value={blogForm.content}
+                                            onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="form-row-2" style={{ alignItems: 'center' }}>
+                                        <div className="form-group-modern">
+                                            <label className="badge-label">Okuma Süresi Etiketi (Opsiyonel)</label>
+                                            <input
+                                                type="text"
+                                                className="reason-input-modern"
+                                                placeholder="Örn: 10 dk okuma (Boş bırakılırsa otomatik hesaplanır)"
+                                                value={blogForm.readTime}
+                                                onChange={(e) => setBlogForm({ ...blogForm, readTime: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="form-group-modern" style={{ display: 'flex', alignItems: 'center', paddingTop: '20px' }}>
+                                            <label className="publish-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#fff', fontSize: '14px', fontWeight: '600' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={blogForm.isPublished}
+                                                    onChange={(e) => setBlogForm({ ...blogForm, isPublished: e.target.checked })}
+                                                    style={{ width: '18px', height: '18px', accentColor: '#22c55e' }}
+                                                />
+                                                <span>Tek Tuşla Hemen Yayınlansın</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="blog-preview-container">
+                                    <div className="blog-preview-header">
+                                        <span className="blog-preview-category">{blogForm.category}</span>
+                                        <h1 className="blog-preview-title">{blogForm.title || 'Başlıksız Makale'}</h1>
+                                        <span className="blog-preview-meta">{blogForm.readTime || '5 dk okuma'}</span>
+                                    </div>
+                                    {blogForm.image && (
+                                        <img src={getImageUrl(blogForm.image)} alt="" className="blog-preview-image" />
+                                    )}
+                                    <div
+                                        className="blog-preview-body prose prose-invert"
+                                        dangerouslySetInnerHTML={{ __html: blogForm.content || '<p style="color:#888">İçerik henüz girilmedi...</p>' }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-footer-modern">
+                            <button type="button" className="btn-modern-ghost" onClick={() => setBlogModalOpen(false)}>İptal</button>
+                            <button
+                                type="button"
+                                className="btn-modern-primary btn-glow-cyan"
+                                onClick={handleSaveBlogPost}
+                                disabled={blogSaving}
+                            >
+                                {blogSaving ? 'KAYDEDİLİYOR...' : (editingBlogPost ? 'GÜNCELLE & KAYDET' : 'PAYLAŞ & OLUŞTUR')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Reason Modal */}
             <ReasonModal

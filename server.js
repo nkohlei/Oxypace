@@ -34,6 +34,7 @@ import voiceRoutes from './routes/voice.js';
 import translateRoutes from './routes/translate.js';
 import previewRoutes from './routes/preview.js';
 import reportRoutes from './routes/reports.js';
+import blogRoutes from './routes/blog.js';
 import ogRoutes from './routes/og.js';
 import { initFirebase } from './utils/firebase.js';
 
@@ -288,6 +289,7 @@ app.use('/api/voice', voiceRoutes);
 app.use('/api/translate', translateRoutes);
 app.use('/api/preview', previewRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/blog', blogRoutes);
 
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {

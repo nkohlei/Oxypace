@@ -7,7 +7,7 @@ import ReadingProgressBar from "./components/ReadingProgressBar";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import QuoteCards from "./components/QuoteCards";
-import { posts } from "./data/posts";
+import { posts as staticPosts } from "./data/posts";
 
 const HERO_TEXT = {
   tr: {
@@ -38,6 +38,7 @@ const HERO_TEXT = {
 
 export default function BlogHome() {
   const [lang, setLang] = useState("tr");
+  const [allPosts, setAllPosts] = useState(staticPosts);
 
   // Kullanıcı manuel çıkış yapmadıysa (token varsa) derhal Oxypace Portal'a geçiş yap
   useEffect(() => {
@@ -49,9 +50,35 @@ export default function BlogHome() {
     } catch (_) {}
   }, []);
 
-  const featuredPost = posts[0];
-  const indexPosts   = posts.slice(1, 3);    // posts 2–3 in right index
-  const gridPosts    = posts.slice(3);        // posts 4–6 exclusively in visual grid
+  // Dinamik makaleleri API'den çek
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const apiUrl = typeof window !== 'undefined'
+          ? (window.location.origin.includes('localhost') ? 'http://localhost:5000/api/blog' : '/api/blog')
+          : '/api/blog';
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            // MongoDB `_id` alanını `id` veya `_id` şeklinde eşle
+            const formatted = data.map(p => ({
+              ...p,
+              id: p._id || p.id
+            }));
+            setAllPosts(formatted);
+          }
+        }
+      } catch (e) {
+        console.error('API blog posts fetch error, fallback to static:', e);
+      }
+    };
+    fetchPosts();
+  }, []);
+
+  const featuredPost = allPosts[0] || staticPosts[0];
+  const indexPosts   = allPosts.length > 1 ? allPosts.slice(1, 3) : staticPosts.slice(1, 3);
+  const gridPosts    = allPosts.length > 3 ? allPosts.slice(3) : (allPosts.length > 1 ? allPosts.slice(1) : staticPosts.slice(3));
   const T = HERO_TEXT[lang];
 
   return (
