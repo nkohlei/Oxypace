@@ -98,11 +98,10 @@ export const getImageUrl = (path, sizeType = 'original') => {
         } else if (cleanPath.startsWith(r2Domain)) {
             let relativePath = cleanPath.substring(r2Domain.length);
             if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
-            if (!import.meta.env.DEV) {
-                absoluteUrl = `/r2-media/${relativePath}`;
-            } else {
-                absoluteUrl = `${r2Domain}/${relativePath}`;
+            if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
+                relativePath = `posts/general/${relativePath}`;
             }
+            absoluteUrl = `${baseUrl || 'https://api.oxypace.com.tr'}/api/media/${relativePath}`;
         } else if (cleanPath.startsWith('blob:')) {
             return cleanPath;
         } else if (!cleanPath.startsWith('http')) {
@@ -111,13 +110,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
             if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
                 relativePath = `posts/general/${relativePath}`;
             }
-            if (!import.meta.env.DEV) {
-                absoluteUrl = `/r2-media/${relativePath}`;
-            } else {
-                absoluteUrl = `${r2Domain}/${relativePath}`;
-            }
+            absoluteUrl = `${baseUrl || 'https://api.oxypace.com.tr'}/api/media/${relativePath}`;
         } else {
-            absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
+            absoluteUrl = `${baseUrl || 'https://api.oxypace.com.tr'}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
         // Apply optimization suffix (thumbnail/medium/lowres) if requested

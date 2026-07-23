@@ -3,9 +3,9 @@ export function formatBlogImageUrl(path) {
 
   let cleanPath = String(path).trim();
 
-  // External images (e.g. Unsplash)
+  // If path is external URL (e.g. Unsplash), return directly unless it's r2.dev
   if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
-    const r2Domain = 'pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+    const r2Domain = 'r2.dev';
     if (cleanPath.includes(r2Domain)) {
       cleanPath = cleanPath.substring(cleanPath.indexOf(r2Domain) + r2Domain.length);
     } else {
@@ -22,11 +22,16 @@ export function formatBlogImageUrl(path) {
   cleanPath = cleanPath.replace(/^(api\/media\/|r2-media\/)/, '');
   cleanPath = cleanPath.replace(/^\/+/, '');
 
-  // If path starts with 'post-' without folder prefix, prepend R2 folder 'posts/general/'
+  // Prepend posts/general/ if path starts with post-
   if (cleanPath.startsWith('post-') && !cleanPath.startsWith('posts/')) {
     cleanPath = `posts/general/${cleanPath}`;
   }
 
-  // Return full public Cloudflare R2 URL
-  return `https://pub-094a78010abf4ebf9726834268946cb8.r2.dev/${cleanPath}`;
+  // Local development vs Production SSL API URL
+  if (typeof window !== 'undefined' && window.location.origin.includes('localhost')) {
+    return `http://localhost:5000/api/media/${cleanPath}`;
+  }
+
+  // Route through backend media endpoint with valid SSL on oxypace.com.tr
+  return `https://api.oxypace.com.tr/api/media/${cleanPath}`;
 }
