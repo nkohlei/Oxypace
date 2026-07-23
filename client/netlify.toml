@@ -35,6 +35,12 @@
   force = true
 
 [[redirects]]
+  from = "/downloads/*"
+  to = "/downloads/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
   from = "/r2-media/*"
   to = "https://pub-094a78010abf4ebf9726834268946cb8.r2.dev/:splat"
   status = 200

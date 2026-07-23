@@ -104,19 +104,20 @@ export default async (request, context) => {
   const pathname = url.pathname;
   const userAgent = request.headers.get("user-agent") || "";
 
-  // 1. Statik dosya isteklerini (js, css, resimler vb.) doğrudan geçir
-  const isStaticAsset = pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest)$/i);
+  // 1. Statik dosya isteklerini (js, css, resimler, apk vb.) doğrudan geçir
+  const isStaticAsset = pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest|apk)$/i);
   if (isStaticAsset) {
     return context.next();
   }
 
-  // 2. Kök sayfa, Blog, API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
+  // 2. Kök sayfa, Blog, API, WebSocket, downloads, medya yolları ve hata sayfasının kendisini doğrudan geçir
   if (
     pathname === "/" ||
     pathname === "/blog" ||
     pathname.startsWith("/blog/") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/og/") ||
+    pathname.startsWith("/downloads/") ||
     pathname.startsWith("/socket.io/") ||
     pathname.startsWith("/r2-media/") ||
     pathname === "/404.html"
