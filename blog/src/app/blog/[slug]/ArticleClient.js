@@ -19,6 +19,7 @@ export default function ArticleClient({ initialPost, slug }) {
   const [post, setPost] = useState(initialPost);
   const [loading, setLoading] = useState(!initialPost);
   const [author, setAuthor] = useState(DEFAULT_AUTHOR);
+  const [authorModalOpen, setAuthorModalOpen] = useState(false);
 
   useEffect(() => {
     // Fetch Author Profile from DB
@@ -114,19 +115,28 @@ export default function ArticleClient({ initialPost, slug }) {
             {post.title}
           </h1>
 
-          {/* Author Header Meta */}
+          {/* Author Header Meta (Clickable to open profile popup) */}
           {author && (
-            <div className="flex items-center gap-3 mb-8 pb-6 border-b border-zinc-200 dark:border-white/10">
-              <img
-                src={formatBlogImageUrl(author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb')}
-                alt={author.name}
-                className="w-10 h-10 rounded-full object-cover border border-cyan-400/50 shadow"
-              />
+            <div 
+              onClick={() => setAuthorModalOpen(true)}
+              className="flex items-center gap-3 mb-8 pb-6 border-b border-zinc-200 dark:border-white/10 cursor-pointer group hover:opacity-90 transition-all w-fit"
+              title="Yazar profilini görüntülemek için tıklayın"
+            >
+              <div className="relative">
+                <img
+                  src={formatBlogImageUrl(author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb')}
+                  alt={author.name}
+                  className="w-11 h-11 rounded-full object-cover border-2 border-cyan-400/50 shadow group-hover:scale-105 transition-transform"
+                />
+              </div>
               <div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 group-hover:text-cyan-400 transition-colors">
                   <span>{author.name || "Oxypace"}</span>
                   <span className="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-mono font-normal">
                     {author.badge || "Yazar"}
+                  </span>
+                  <span className="text-[11px] text-cyan-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                    (Profili Gör →)
                   </span>
                 </div>
                 <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
@@ -153,63 +163,8 @@ export default function ArticleClient({ initialPost, slug }) {
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 
-          {/* Author Profile Box */}
-          {author && (
-            <div className="mt-14 p-6 sm:p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden group">
-              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-700 pointer-events-none" />
-              
-              <div className="relative shrink-0">
-                <img
-                  src={formatBlogImageUrl(author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb')}
-                  alt={author.name}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-cyan-400/50 shadow-xl shadow-cyan-500/10"
-                />
-                <span className="absolute -bottom-2 -right-1 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
-                  {author.badge || "Baş Yazar"}
-                </span>
-              </div>
-
-              <div className="flex-1 text-center sm:text-left space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">{author.name || "Oxypace"}</h3>
-                    <p className="text-xs font-mono text-cyan-400/90">{author.title || "Oxypace Kurucusu & Baş Yazarı"}</p>
-                  </div>
-                </div>
-
-                <p className="text-sm text-zinc-300 leading-relaxed font-sans pt-1">
-                  {author.bio || "Teorik fizik, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor."}
-                </p>
-
-                {/* Social Links */}
-                <div className="flex items-center justify-center sm:justify-start gap-3 pt-3 font-mono text-xs text-zinc-400">
-                  {author.github && (
-                    <a href={author.github} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
-                      [ GitHub ]
-                    </a>
-                  )}
-                  {author.twitter && (
-                    <a href={author.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
-                      [ Twitter/X ]
-                    </a>
-                  )}
-                  {author.website && (
-                    <a href={author.website} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
-                      [ Web ]
-                    </a>
-                  )}
-                  {author.linkedin && (
-                    <a href={author.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
-                      [ LinkedIn ]
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Share Buttons / Footer */}
-          <div className="mt-12 border-t border-zinc-200 dark:border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
+          <div className="mt-14 border-t border-zinc-200 dark:border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
             <div className="flex items-center gap-2">
               <span className="text-zinc-500 uppercase tracking-widest">Paylaş:</span>
               <button 
@@ -241,6 +196,86 @@ export default function ArticleClient({ initialPost, slug }) {
           </div>
         </article>
       </main>
+
+      {/* Author Profile Popup Modal Window */}
+      {authorModalOpen && author && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in"
+          onClick={() => setAuthorModalOpen(false)}
+        >
+          <div 
+            className="relative w-full max-w-md rounded-3xl border border-white/15 bg-zinc-900/95 p-6 sm:p-8 text-white shadow-2xl space-y-6 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Background Glows */}
+            <div className="absolute -right-16 -top-16 w-64 h-64 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Close Button */}
+            <button 
+              onClick={() => setAuthorModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/15 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-sm"
+            >
+              ✕
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex flex-col items-center text-center space-y-3 relative">
+              <img
+                src={formatBlogImageUrl(author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb')}
+                alt={author.name}
+                className="w-24 h-24 rounded-full object-cover border-2 border-cyan-400 shadow-xl shadow-cyan-500/20"
+              />
+              <div className="space-y-1">
+                <div className="flex items-center justify-center gap-2">
+                  <h3 className="text-2xl font-bold tracking-tight text-white">{author.name || "Oxypace"}</h3>
+                  <span className="text-[10px] bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow">
+                    {author.badge || "Baş Yazar"}
+                  </span>
+                </div>
+                <p className="text-xs font-mono text-cyan-400 font-medium">{author.title || "Oxypace Kurucusu & Baş Yazarı"}</p>
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div className="border-t border-b border-white/10 py-4">
+              <h4 className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mb-2">Hakkında & Biyografi</h4>
+              <p className="text-sm text-zinc-300 leading-relaxed font-sans">
+                {author.bio || "Teorik fizik, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor."}
+              </p>
+            </div>
+
+            {/* Social Links */}
+            {(author.github || author.twitter || author.website || author.linkedin) && (
+              <div className="space-y-3">
+                <h4 className="text-[11px] font-mono uppercase tracking-widest text-zinc-400">Bağlantılar</h4>
+                <div className="flex flex-wrap items-center justify-center gap-2.5 font-mono text-xs">
+                  {author.github && (
+                    <a href={author.github} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-cyan-500/20 hover:border-cyan-400/50 text-zinc-300 hover:text-cyan-300 transition-all">
+                      GitHub ↗
+                    </a>
+                  )}
+                  {author.twitter && (
+                    <a href={author.twitter} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-cyan-500/20 hover:border-cyan-400/50 text-zinc-300 hover:text-cyan-300 transition-all">
+                      Twitter/X ↗
+                    </a>
+                  )}
+                  {author.website && (
+                    <a href={author.website} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-cyan-500/20 hover:border-cyan-400/50 text-zinc-300 hover:text-cyan-300 transition-all">
+                      Web Sitesi ↗
+                    </a>
+                  )}
+                  {author.linkedin && (
+                    <a href={author.linkedin} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-cyan-500/20 hover:border-cyan-400/50 text-zinc-300 hover:text-cyan-300 transition-all">
+                      LinkedIn ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <Footer />
