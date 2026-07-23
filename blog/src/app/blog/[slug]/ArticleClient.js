@@ -8,11 +8,14 @@ import Footer from "../components/Footer";
 import { formatBlogImageUrl } from "../utils/imageHelper";
 
 const DEFAULT_AUTHOR = {
-  name: "Oxypace",
-  title: "Oxypace Kurucusu & Baş Yazarı",
-  bio: "Teorik fizik, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor.",
+  name: "Bilal Yılmaz",
+  title: "Founder & CEO of Oxypace",
+  bio: "Ben Bilal. Elektrik-Elektronik Mühendisliği 2. sınıf öğrencisiyim. Mühendislik eğitimimin yanı sıra modern web teknolojileri ve bulut altyapıları kullanarak full-stack yazılım projeleri geliştiriyorum. Teknoloji ve yazılımın ötesinde; astronomi, kozmoloji ve ekstrem sporlara derin bir ilgi duyuyor, bilimsel merakımı dijital içerik üretimiyle projelerime yansıtıyorum.",
   avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-  badge: "Baş Yazar"
+  badge: "Yazar",
+  github: "https://github.com",
+  twitter: "https://twitter.com",
+  website: "https://oxypace.com.tr"
 };
 
 export default function ArticleClient({ initialPost, slug }) {
@@ -31,7 +34,12 @@ export default function ArticleClient({ initialPost, slug }) {
         const res = await fetch(authorUrl);
         if (res.ok) {
           const data = await res.json();
-          if (data && data.name) setAuthor(data);
+          if (data && (data.name || data.bio)) {
+            setAuthor({
+              ...DEFAULT_AUTHOR,
+              ...data
+            });
+          }
         }
       } catch (e) {
         console.error('Fetch author profile error:', e);
@@ -115,29 +123,32 @@ export default function ArticleClient({ initialPost, slug }) {
             {post.title}
           </h1>
 
-          {/* Author Header Meta (Görsel 1: Tıklanınca Yazar Penceresi Açılır) */}
+          {/* Author Header Meta (Görsel 1: Tıklanınca Ortada Yazar Kartı Pop-up Açılır) */}
           {author && (
             <div 
               onClick={() => setAuthorModalOpen(true)}
               className="flex items-center gap-3 mb-8 pb-6 border-b border-zinc-200 dark:border-white/10 cursor-pointer group hover:opacity-90 transition-all w-fit"
-              title="Yazar profil detaylarını görüntülemek için tıklayın"
+              title="Yazar profil kartını ortada pencere olarak açmak için tıklayın"
             >
               <div className="relative">
                 <img
                   src={formatBlogImageUrl(author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb')}
                   alt={author.name}
-                  className="w-10 h-10 rounded-full object-cover border border-cyan-400/50 shadow group-hover:scale-105 transition-transform"
+                  className="w-11 h-11 rounded-full object-cover border-2 border-cyan-400/50 shadow group-hover:scale-105 group-hover:border-cyan-400 transition-all"
                 />
               </div>
               <div>
                 <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 group-hover:text-cyan-400 transition-colors">
-                  <span>{author.name || "Oxypace"}</span>
+                  <span>{author.name || "Bilal Yılmaz"}</span>
                   <span className="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-mono font-normal">
                     {author.badge || "Yazar"}
                   </span>
+                  <span className="text-[11px] text-cyan-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                    (Profili Gör ↗)
+                  </span>
                 </div>
                 <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                  {author.title || "Oxypace Kurucusu & Baş Yazarı"}
+                  {author.title || "Founder & CEO of Oxypace"}
                 </div>
               </div>
             </div>
@@ -194,14 +205,14 @@ export default function ArticleClient({ initialPost, slug }) {
         </article>
       </main>
 
-      {/* Author Profile Popup Modal Window (Görsel 2'deki Yazar Kartı Tam Birebir Pop-up Şeklinde Ortada Açılır) */}
+      {/* Author Profile Popup Modal Window (Görsel 2'deki Yazar Kartının Birebir Kendisi Sayfa Ortasında Açılır) */}
       {authorModalOpen && author && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
           onClick={() => setAuthorModalOpen(false)}
         >
           <div 
-            className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-zinc-900/95 p-6 sm:p-8 text-white shadow-2xl space-y-4 overflow-hidden"
+            className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-zinc-900/95 p-6 sm:p-8 text-white shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Background Glow */}
@@ -232,13 +243,13 @@ export default function ArticleClient({ initialPost, slug }) {
               <div className="flex-1 text-center sm:text-left space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{author.name || "Oxypace"}</h3>
-                    <p className="text-xs font-mono text-cyan-400">{author.title || "Oxypace Kurucusu & Baş Yazarı"}</p>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{author.name || "Bilal Yılmaz"}</h3>
+                    <p className="text-xs font-mono text-cyan-400">{author.title || "Founder & CEO of Oxypace"}</p>
                   </div>
                 </div>
 
                 <p className="text-sm text-zinc-300 leading-relaxed font-sans pt-1">
-                  {author.bio || "Teorik fizik, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor."}
+                  {author.bio || "Ben Bilal. Elektrik-Elektronik Mühendisliği 2. sınıf öğrencisiyim. Mühendislik eğitimimin yanı sıra modern web teknolojileri ve bulut altyapıları kullanarak full-stack yazılım projeleri geliştiriyorum. Teknoloji ve yazılımın ötesinde; astronomi, kozmoloji ve ekstrem sporlara derin bir ilgi duyuyor, bilimsel merakımı dijital içerik üretimiyle projelerime yansıtıyorum."}
                 </p>
 
                 {/* Social Links */}
