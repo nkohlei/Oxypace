@@ -43,3 +43,8 @@ blog/out/
 blog/.git/
 
 client/src/blog_app/
+
+# Large APK Binaries (stored locally / uploaded to CDN)
+*.apk
+client/public/downloads/*.apk
+
