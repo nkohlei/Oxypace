@@ -9,8 +9,8 @@
  *    Bu dosyaları client/dist/ ve root dist/ klasörüne kopyalıyoruz.
  *
  * Sonuç:
- *   client/dist/ & dist/          → Blog (Next.js) — oxypace.com.tr/
- *   client/dist/portal/           → Oxypace SPA     — oxypace.com.tr/portal/
+ *   dist/ & client/dist/          → Blog (Next.js) — oxypace.com.tr/
+ *   dist/portal/                  → Oxypace SPA     — oxypace.com.tr/portal/
  *
  * Netlify veya herhangi bir static host bunu doğrudan kullanabilir.
  */
@@ -65,8 +65,15 @@ if (fs.existsSync(portalHtmlSrc)) {
 console.log('🌐 Copying Blog static export over dist root...');
 copyRecursive(BLOG_OUT, CLIENT_DIST);
 
-// 3. Mirror merged output to ROOT/dist to guarantee Netlify publish works everywhere
+// 3. Clean and mirror merged output to ROOT/dist for Netlify root publish
 console.log('📦 Mirroring merged output to ROOT/dist...');
+try {
+    if (fs.existsSync(ROOT_DIST)) {
+        fs.rmSync(ROOT_DIST, { recursive: true, force: true });
+    }
+} catch (e) {
+    console.warn('Warning cleaning ROOT_DIST:', e.message);
+}
 copyRecursive(CLIENT_DIST, ROOT_DIST);
 
 console.log('\n✅ Merge complete!');
