@@ -141,12 +141,6 @@ const Login = () => {
         }
     };
 
-    // Device Save States
-    const [saveDevice, setSaveDevice] = useState(true);
-    const [showTrustPromptModal, setShowTrustPromptModal] = useState(false);
-    const [pendingAuthData, setPendingAuthData] = useState(null);
-    const [trustLoading, setTrustLoading] = useState(false);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -165,18 +159,11 @@ const Login = () => {
             const response = await axios.post('/api/auth/login', {
                 ...formData,
                 deviceId,
-                deviceName,
-                saveDevice
+                deviceName
             });
 
             login(response.data.token, response.data.user);
-
-            if (!response.data.isDeviceTrusted && !saveDevice) {
-                setPendingAuthData(response.data);
-                setShowTrustPromptModal(true);
-            } else {
-                window.location.href = '/messages'; // Direct clean redirect into Portal Messages
-            }
+            window.location.href = '/messages'; // Direct clean redirect into Portal Messages
         } catch (err) {
             if (err.response?.status === 403 && err.response?.data?.isDeleted) {
                 if (window.confirm("Bu hesap silinmiştir. Kurtarmak istiyor musunuz?")) {
@@ -189,30 +176,6 @@ const Login = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleConfirmTrustDevice = async () => {
-        setTrustLoading(true);
-        try {
-            const deviceId = getOrCreateDeviceId();
-            const deviceName = getDeviceName();
-            if (pendingAuthData?.token) {
-                await axios.post('/api/auth/trust-device', { deviceId, deviceName }, {
-                    headers: { Authorization: `Bearer ${pendingAuthData.token}` }
-                });
-            }
-        } catch (err) {
-            console.error('Trust device request error:', err);
-        } finally {
-            setTrustLoading(false);
-            setShowTrustPromptModal(false);
-            window.location.href = '/messages';
-        }
-    };
-
-    const handleSkipTrustDevice = () => {
-        setShowTrustPromptModal(false);
-        window.location.href = '/messages';
     };
 
     const handleGoogleLogin = async () => {
@@ -365,33 +328,6 @@ const Login = () => {
                                 )}
                             </button>
                         </div>
-                    </div>
-
-                    <div
-                        className="device-save-option"
-                        onClick={() => setSaveDevice(!saveDevice)}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            margin: '10px 0 16px 0',
-                            fontSize: '13.5px',
-                            color: 'rgba(255, 255, 255, 0.85)',
-                            cursor: 'pointer',
-                            userSelect: 'none'
-                        }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="saveDevice"
-                            checked={saveDevice}
-                            onChange={(e) => setSaveDevice(e.target.checked)}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ accentColor: '#667eea', width: '16px', height: '16px', cursor: 'pointer' }}
-                        />
-                        <label htmlFor="saveDevice" style={{ cursor: 'pointer' }}>
-                            Bu cihazı güvenilir olarak kaydet
-                        </label>
                     </div>
 
                     {error && <div className="error-message">{error}</div>}
@@ -653,86 +589,6 @@ const Login = () => {
                                 </form>
                             </div>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {showTrustPromptModal && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                    backdropFilter: 'blur(8px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 9999
-                }}>
-                    <div className="modal-content" style={{
-                        background: '#18191c',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        borderRadius: '16px',
-                        padding: '24px',
-                        maxWidth: '420px',
-                        width: '90%',
-                        color: '#fff',
-                        textAlign: 'center'
-                    }}>
-                        <div style={{
-                            width: '56px',
-                            height: '56px',
-                            borderRadius: '50%',
-                            background: 'rgba(102, 126, 234, 0.15)',
-                            border: '1px solid rgba(102, 126, 234, 0.4)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 16px auto',
-                            color: '#667eea'
-                        }}>
-                            <ShieldCheck size={28} />
-                        </div>
-                        <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
-                            Cihaz Kaydedilsin mi?
-                        </h3>
-                        <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.5', marginBottom: '20px' }}>
-                            Bu cihazı (<b>{getDeviceName()}</b>) güvenilir cihazınız olarak kaydetmek ister misiniz? Kaydedilen cihazlardan yapılan girişlerde ek güvenlik uyarısı verilmez.
-                        </p>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button
-                                type="button"
-                                onClick={handleSkipTrustDevice}
-                                style={{
-                                    flex: 1,
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    border: 'none',
-                                    borderRadius: '10px',
-                                    padding: '12px',
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    fontWeight: '600'
-                                }}
-                            >
-                                Şimdi Değil
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmTrustDevice}
-                                disabled={trustLoading}
-                                style={{
-                                    flex: 1,
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                    border: 'none',
-                                    borderRadius: '10px',
-                                    padding: '12px',
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    fontWeight: '600'
-                                }}
-                            >
-                                {trustLoading ? 'Kaydediliyor...' : 'Evet, Cihazı Kaydet'}
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

@@ -81,6 +81,7 @@ import ScrollToTop from './components/ScrollToTop';
 import WarpGridBackground from './components/WarpGridBackground';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import SecurityQuestionsModal from './components/SecurityQuestionsModal';
+import DeviceSaveModal from './components/DeviceSaveModal';
 import './AppLayout.css';
 import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
@@ -404,6 +405,7 @@ const AppLayout = () => {
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
             {isLoggedIn && <WarpGridBackground />}
+            {isLoggedIn && user && <DeviceSaveModal user={user} />}
             {user && user.securityQuestionsConfigured === false && localStorage.getItem(`isSecurityConfigured_${user._id}`) !== 'true' && (
                 <SecurityQuestionsModal 
                     user={user} 

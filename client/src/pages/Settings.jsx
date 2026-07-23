@@ -1230,9 +1230,9 @@ const Settings = () => {
                 </div>
             </div>
 
-            {/* Kayıtlı Güvenilir Cihazlar Kartı */}
+            {/* Kayıtlı Cihazlar Kartı */}
             <div className="settings-group-container" style={{ marginTop: '24px' }}>
-                <h3 className="settings-group-title">Kayıtlı Güvenilir Cihazlar</h3>
+                <h3 className="settings-group-title">Kayıtlı Cihazlar</h3>
                 <div className="settings-card security-questions-card">
                     <p className="settings-section-desc">
                         Bu cihazlardan yapılan girişlerde ek güvenlik bildirimi gönderilmez. Tanımadığınız bir cihazı kaldırdığınızda o cihazdan yapılacak sonraki girişte tekrar uyarı verilir.
@@ -1240,7 +1240,7 @@ const Settings = () => {
 
                     {trustedDevicesList.length === 0 ? (
                         <div style={{ padding: '16px', color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center' }}>
-                            Henüz kayıtlı güvenilir bir cihaz bulunmuyor.
+                            Henüz kayıtlı bir cihaz bulunmuyor.
                         </div>
                     ) : (
                         <div className="trusted-devices-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
