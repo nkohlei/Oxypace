@@ -7,13 +7,21 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { formatBlogImageUrl } from "../utils/imageHelper";
 
+const DEFAULT_AUTHOR = {
+  name: "Oxypace",
+  title: "Oxypace Kurucusu & Baş Yazarı",
+  bio: "Teorik fizik, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor.",
+  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+  badge: "Baş Yazar"
+};
+
 export default function ArticleClient({ initialPost, slug }) {
   const [post, setPost] = useState(initialPost);
   const [loading, setLoading] = useState(!initialPost);
-  const [author, setAuthor] = useState(null);
+  const [author, setAuthor] = useState(DEFAULT_AUTHOR);
 
   useEffect(() => {
-    // Fetch Author Profile
+    // Fetch Author Profile from DB
     const fetchAuthor = async () => {
       try {
         const authorUrl = typeof window !== 'undefined'
@@ -22,7 +30,7 @@ export default function ArticleClient({ initialPost, slug }) {
         const res = await fetch(authorUrl);
         if (res.ok) {
           const data = await res.json();
-          if (data) setAuthor(data);
+          if (data && data.name) setAuthor(data);
         }
       } catch (e) {
         console.error('Fetch author profile error:', e);
@@ -86,7 +94,7 @@ export default function ArticleClient({ initialPost, slug }) {
       <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 animate-fade-in-up">
         <article className="glass-card p-6 sm:p-10 rounded-2xl">
           {/* Category Tag & Meta */}
-          <div className="flex items-center gap-4 text-xs font-mono text-zinc-500 mb-6">
+          <div className="flex items-center gap-4 text-xs font-mono text-zinc-500 mb-6 flex-wrap">
             <span className="border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 px-2.5 py-0.5 rounded text-zinc-700 dark:text-zinc-300 font-semibold">
               {post.category}
             </span>
@@ -102,9 +110,31 @@ export default function ArticleClient({ initialPost, slug }) {
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl mb-8 leading-tight uppercase font-sans">
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl mb-6 leading-tight uppercase font-sans">
             {post.title}
           </h1>
+
+          {/* Author Header Meta */}
+          {author && (
+            <div className="flex items-center gap-3 mb-8 pb-6 border-b border-zinc-200 dark:border-white/10">
+              <img
+                src={formatBlogImageUrl(author.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb')}
+                alt={author.name}
+                className="w-10 h-10 rounded-full object-cover border border-cyan-400/50 shadow"
+              />
+              <div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>{author.name || "Oxypace"}</span>
+                  <span className="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-mono font-normal">
+                    {author.badge || "Yazar"}
+                  </span>
+                </div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                  {author.title || "Oxypace Kurucusu & Baş Yazarı"}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Banner Image */}
           {post.image && (
