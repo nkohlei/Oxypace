@@ -109,8 +109,8 @@ notificationSchema.post('save', async function (doc) {
                 break;
             case 'portal_invite': body = `${senderName} seni bir portala davet etti.`; break;
             case 'quote': body = `${senderName} gönderini alıntıladı.`; break;
-            case 'security': 
-            case 'security_silent': body = `Hesabınıza yeni bir cihaz/IP üzerinden giriş yapıldı.`; break;
+            case 'security': body = `Hesabınıza farklı bir cihaz/IP üzerinden giriş yapıldı.`; break;
+            case 'security_silent': body = doc.content || `Hesabınıza giriş yapıldı.`; break;
             case 'voice_invite':
                 title = 'Görüntülü Sohbet Daveti';
                 body = `${senderName} seni görüntülü sohbet odasına davet ediyor!`;

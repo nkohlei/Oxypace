@@ -215,67 +215,37 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             user.registeredDevices = [];
         }
 
-        let isNewDevice = false;
+        const formattedDeviceName = deviceName || 'Bilinmeyen Cihaz';
+        const isRegistered = deviceId ? user.registeredDevices.some(d => d.deviceId === deviceId) : false;
+        const isNewDevice = !isRegistered;
 
-        if (deviceId) {
+        if (isRegistered && deviceId) {
             const existingDeviceIndex = user.registeredDevices.findIndex(d => d.deviceId === deviceId);
-
             if (existingDeviceIndex >= 0) {
-                // Known Device -> Update timestamps and IP without generating notification
                 user.registeredDevices[existingDeviceIndex].lastSeenAt = new Date();
                 user.registeredDevices[existingDeviceIndex].lastIP = incomingIP;
                 if (deviceName) user.registeredDevices[existingDeviceIndex].deviceName = deviceName;
                 if (deviceType) user.registeredDevices[existingDeviceIndex].deviceType = deviceType;
-            } else {
-                // Unregistered Device -> Flag as new device and send silent notification
-                isNewDevice = true;
-                user.registeredDevices.push({
-                    deviceId,
-                    deviceName: deviceName || 'Bilinmeyen Cihaz',
-                    deviceType: deviceType || 'web',
-                    lastIP: incomingIP,
-                    firstSeenAt: new Date(),
-                    lastSeenAt: new Date(),
-                });
-
-                try {
-                    const formattedDeviceName = deviceName || 'Yeni Cihaz';
-                    const notification = await Notification.create({
-                        recipient: user._id,
-                        type: 'security_silent',
-                        content: `Hesabınıza farklı bir cihazdan (${formattedDeviceName}) giriş yapıldı.`,
-                        link: '/settings?section=devices',
-                    });
-
-                    const io = req.app.get('io');
-                    if (io) {
-                        const populated = await Notification.findById(notification._id)
-                            .populate('sender', 'username profile.displayName profile.avatar');
-                        io.to(user._id.toString()).emit('newNotification', populated);
-                    }
-                } catch (err) {
-                    console.error('Security login notification error:', err);
-                }
             }
-        } else if (user.lastIP && user.lastIP !== incomingIP) {
-            // Fallback for legacy clients without deviceId: check IP change
-            try {
-                const notification = await Notification.create({
-                    recipient: user._id,
-                    type: 'security_silent',
-                    content: 'Hesabınıza farklı bir IP adresinden giriş yapıldı.',
-                    link: '/settings?section=devices',
-                });
+        }
 
-                const io = req.app.get('io');
-                if (io) {
-                    const populated = await Notification.findById(notification._id)
-                        .populate('sender', 'username profile.displayName profile.avatar');
-                    io.to(user._id.toString()).emit('newNotification', populated);
-                }
-            } catch (err) {
-                console.error('Security login notification error:', err);
+        // Send silent login notification ON EVERY LOGIN with device details
+        try {
+            const notification = await Notification.create({
+                recipient: user._id,
+                type: 'security_silent',
+                content: `Hesabınıza ${formattedDeviceName} cihazından giriş yapıldı.`,
+                link: '/settings?section=devices',
+            });
+
+            const io = req.app.get('io');
+            if (io) {
+                const populated = await Notification.findById(notification._id)
+                    .populate('sender', 'username profile.displayName profile.avatar');
+                io.to(user._id.toString()).emit('newNotification', populated);
             }
+        } catch (err) {
+            console.error('Security login notification error:', err);
         }
 
         user.lastIP = incomingIP;
