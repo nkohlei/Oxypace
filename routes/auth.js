@@ -215,6 +215,8 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             user.registeredDevices = [];
         }
 
+        let isNewDevice = false;
+
         if (deviceId) {
             const existingDeviceIndex = user.registeredDevices.findIndex(d => d.deviceId === deviceId);
 
@@ -225,7 +227,8 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 if (deviceName) user.registeredDevices[existingDeviceIndex].deviceName = deviceName;
                 if (deviceType) user.registeredDevices[existingDeviceIndex].deviceType = deviceType;
             } else {
-                // New Device -> Register device & send one-time security notification
+                // Unregistered Device -> Flag as new device and send silent notification
+                isNewDevice = true;
                 user.registeredDevices.push({
                     deviceId,
                     deviceName: deviceName || 'Bilinmeyen Cihaz',
@@ -239,9 +242,9 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                     const formattedDeviceName = deviceName || 'Yeni Cihaz';
                     const notification = await Notification.create({
                         recipient: user._id,
-                        type: 'security',
-                        content: `Hesabınıza yeni bir cihazdan (${formattedDeviceName}) giriş yapıldı.`,
-                        link: '/settings',
+                        type: 'security_silent',
+                        content: `Hesabınıza farklı bir cihazdan (${formattedDeviceName}) giriş yapıldı.`,
+                        link: '/settings?section=devices',
                     });
 
                     const io = req.app.get('io');
@@ -259,9 +262,9 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             try {
                 const notification = await Notification.create({
                     recipient: user._id,
-                    type: 'security',
+                    type: 'security_silent',
                     content: 'Hesabınıza farklı bir IP adresinden giriş yapıldı.',
-                    link: '/settings',
+                    link: '/settings?section=devices',
                 });
 
                 const io = req.app.get('io');
@@ -290,6 +293,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
 
         res.json({
             token,
+            isNewDevice,
             user: {
                 _id: user._id,
                 email: user.email,

@@ -86,11 +86,37 @@ const Settings = () => {
     const [securityError, setSecurityError] = useState('');
     const [securityLoading, setSecurityLoading] = useState(false);
 
+    // Devices State
+    const [userDevices, setUserDevices] = useState([]);
+    const [devicesLoading, setDevicesLoading] = useState(false);
+
+    const fetchUserDevices = async () => {
+        setDevicesLoading(true);
+        try {
+            const res = await axios.get('/api/users/devices');
+            setUserDevices(res.data.devices || []);
+        } catch (err) {
+            console.error('Fetch devices error:', err);
+        } finally {
+            setDevicesLoading(false);
+        }
+    };
+
+    const handleRemoveDevice = async (deviceId) => {
+        if (!window.confirm('Bu cihazın erişim kaydını silmek istediğinize emin misiniz?')) return;
+        try {
+            const res = await axios.delete(`/api/users/devices/${deviceId}`);
+            setUserDevices(res.data.devices || []);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Cihaz silinemedi');
+        }
+    };
+
     // Extract query params to open specific section
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const section = params.get('section');
-        if (section && ['account', 'verification'].includes(section)) {
+        if (section && ['account', 'verification', 'devices', 'privacy', 'notifications'].includes(section)) {
             setActiveMenu(section);
         }
     }, []);
@@ -98,6 +124,12 @@ const Settings = () => {
     useEffect(() => {
         fetchSettings();
     }, []);
+
+    useEffect(() => {
+        if (activeMenu === 'devices') {
+            fetchUserDevices();
+        }
+    }, [activeMenu]);
 
     // Sync profileForm and securityAnswers when user is loaded
     useEffect(() => {
@@ -466,6 +498,15 @@ const Settings = () => {
                     <span style={{ fontWeight: 500 }}>Gizlilik ve Güvenlik</span>
                 </div>
 
+                <div
+                    className={`channel-item ${activeMenu === 'devices' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('devices')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'devices' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'devices' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                    <span style={{ fontWeight: 500 }}>Kayıtlı Cihazlar</span>
+                </div>
+
                 <div style={{
                     padding: '24px 8px 8px 8px',
                     color: '#949ba4',
@@ -569,6 +610,10 @@ const Settings = () => {
             case 'privacy':
                 title = "Gizlilik ve Güvenlik";
                 content = renderPrivacyMenu();
+                break;
+            case 'devices':
+                title = "Kayıtlı Cihazlar";
+                content = renderDevicesMenu();
                 break;
             case 'notifications':
                 title = "Bildirimler";
@@ -1210,6 +1255,82 @@ const Settings = () => {
             </div>
         </div>
     );
+
+    const renderDevicesMenu = () => {
+        const currentDeviceId = localStorage.getItem('oxypace_device_id');
+        return (
+            <div className="submenu-content animation-slide-in">
+                <div className="settings-group-container">
+                    <h3 className="settings-group-title">Kayıtlı Cihazlarınız ve Oturum Geçmişi</h3>
+                    <p className="settings-section-desc" style={{ marginBottom: '16px' }}>
+                        Hesabınıza erişim izni verilmiş cihazların listesidir. Tanımadığınız bir cihaz görürseniz listeden kaldırarak erişimini sonlandırabilirsiniz.
+                    </p>
+
+                    {devicesLoading ? (
+                        <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>Cihazlar yükleniyor...</div>
+                    ) : userDevices.length === 0 ? (
+                        <div className="settings-card" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            Kayıtlı cihaz bulunamadı.
+                        </div>
+                    ) : (
+                        <div className="settings-card-stack">
+                            {userDevices.map((dev) => {
+                                const isCurrent = dev.deviceId === currentDeviceId;
+                                return (
+                                    <div key={dev.deviceId || dev._id} className="settings-item-row" style={{ alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{
+                                                fontSize: '20px',
+                                                width: '40px',
+                                                height: '40px',
+                                                borderRadius: '10px',
+                                                background: isCurrent ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: isCurrent ? '#22c55e' : '#aaa'
+                                            }}>
+                                                {dev.deviceType === 'desktop' ? '💻' : (dev.deviceType === 'android' || dev.deviceType === 'ios' || dev.deviceType === 'mobile') ? '📱' : '🌐'}
+                                            </div>
+                                            <div className="settings-item-info">
+                                                <span className="settings-item-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {dev.deviceName || 'Bilinmeyen Cihaz'}
+                                                    {isCurrent && (
+                                                        <span style={{ fontSize: '11px', background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                                                            Şu Anki Cihaz
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span className="settings-item-desc" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                    Son İP: {dev.lastIP || 'Bilinmiyor'} • İlk Kayıt: {dev.firstSeenAt ? new Date(dev.firstSeenAt).toLocaleDateString('tr-TR') : '-'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="settings-action-btn danger-btn"
+                                            onClick={() => handleRemoveDevice(dev.deviceId)}
+                                            style={{
+                                                padding: '6px 12px',
+                                                fontSize: '12px',
+                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                color: '#ef4444',
+                                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Kaldır
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const renderNotificationsMenu = () => (
         <div className="submenu-content animation-slide-in">

@@ -32,7 +32,7 @@ router.get('/', protect, async (req, res) => {
         const unreadCount = await Notification.countDocuments({
             recipient: req.user.id,
             read: false,
-            type: { $nin: ['portal_post', 'message'] }
+            type: { $nin: ['portal_post', 'message', 'security_silent'] }
         });
 
         res.json({

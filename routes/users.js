@@ -1194,4 +1194,75 @@ router.post('/updatePortalOrder', protect, async (req, res) => {
     }
 });
 
+// @route   GET /api/users/devices
+// @desc    Get user's registered devices
+// @access  Private
+router.get('/devices', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('registeredDevices');
+        res.json({ devices: user?.registeredDevices || [] });
+    } catch (error) {
+        console.error('Get devices error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
+// @route   POST /api/users/devices/save
+// @desc    Explicitly save/register a device when prompted
+// @access  Private
+router.post('/devices/save', protect, async (req, res) => {
+    try {
+        const { deviceId, deviceName, deviceType } = req.body;
+        if (!deviceId) return res.status(400).json({ message: 'deviceId gereklidir' });
+
+        const user = await User.findById(req.user._id);
+        if (!user.registeredDevices) user.registeredDevices = [];
+
+        const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const existingIndex = user.registeredDevices.findIndex(d => d.deviceId === deviceId);
+
+        if (existingIndex >= 0) {
+            user.registeredDevices[existingIndex].lastSeenAt = new Date();
+            user.registeredDevices[existingIndex].lastIP = incomingIP;
+            if (deviceName) user.registeredDevices[existingIndex].deviceName = deviceName;
+            if (deviceType) user.registeredDevices[existingIndex].deviceType = deviceType;
+        } else {
+            user.registeredDevices.push({
+                deviceId,
+                deviceName: deviceName || 'Bilinmeyen Cihaz',
+                deviceType: deviceType || 'web',
+                lastIP: incomingIP,
+                firstSeenAt: new Date(),
+                lastSeenAt: new Date(),
+            });
+        }
+
+        await user.save();
+        res.json({ message: 'Cihaz başarıyla kaydedildi', devices: user.registeredDevices });
+    } catch (error) {
+        console.error('Save device error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
+// @route   DELETE /api/users/devices/:deviceId
+// @desc    Remove a registered device
+// @access  Private
+router.delete('/devices/:deviceId', protect, async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const user = await User.findById(req.user._id);
+
+        if (!user.registeredDevices) user.registeredDevices = [];
+
+        user.registeredDevices = user.registeredDevices.filter(d => d.deviceId !== deviceId);
+        await user.save();
+
+        res.json({ message: 'Cihaz kaydı silindi', devices: user.registeredDevices });
+    } catch (error) {
+        console.error('Remove device error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
 export default router;
