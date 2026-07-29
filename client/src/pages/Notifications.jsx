@@ -193,7 +193,7 @@ const Notifications = () => {
             return notif.type === 'follow' || notif.type === 'follow_request' || notif.type === 'friend_request' || notif.type === 'friend_connected' || notif.type === 'follow_request_handled';
         }
         if (activeFilter === 'system') {
-            return notif.type === 'system' || notif.type === 'security';
+            return notif.type === 'system' || notif.type === 'security' || notif.type === 'security_silent';
         }
         return true;
     });
@@ -271,13 +271,13 @@ const Notifications = () => {
                         {filteredNotifications.length > 0 ? (
                             filteredNotifications.map((notif) => {
                                 // Guard clause: if no sender and not security/system type, skip rendering to prevent crash
-                                if (!notif.sender && notif.type !== 'security' && notif.type !== 'system') return null;
+                                if (!notif.sender && notif.type !== 'security' && notif.type !== 'security_silent' && notif.type !== 'system') return null;
 
                                 return (
                                     <Link
                                         to={
-                                            notif.type === 'security'
-                                                ? '/settings'
+                                            notif.type === 'security' || notif.type === 'security_silent'
+                                                ? '/settings?section=devices'
                                                 : notif.type === 'message'
                                                     ? `/inbox?user=${notif.sender?.username}`
                                                     : notif.post
@@ -316,7 +316,7 @@ const Notifications = () => {
                                                 {notif.type === 'message' && '✉️'}
                                                 {notif.type === 'portal_invite' && '🏰'}
                                                 {notif.type === 'system' && '📢'}
-                                                {notif.type === 'security' && '🛡️'}
+                                                {(notif.type === 'security' || notif.type === 'security_silent') && '🛡️'}
                                             </div>
                                         </div>
 
@@ -324,7 +324,7 @@ const Notifications = () => {
                                             <div className="notif-text-row">
                                                 <div className="notif-text-left">
                                                     <p className="notif-message-text">
-                                                        {notif.type !== 'security' && notif.type !== 'system' && notif.sender && (
+                                                        {notif.type !== 'security' && notif.type !== 'security_silent' && notif.type !== 'system' && notif.sender && (
                                                             <span className="notif-user">
                                                                 {notif.sender.username}
                                                             </span>
@@ -339,7 +339,7 @@ const Notifications = () => {
                                                         {notif.type === 'follow_request_handled' && ' tanışma isteği reddedildi.'}
                                                         {notif.type === 'message' && ' sana bir mesaj gönderdi.'}
                                                         {notif.type === 'portal_invite' && ' seni bir portala davet etti.'}
-                                                        {(notif.type === 'system' || notif.type === 'security') && (
+                                                        {(notif.type === 'system' || notif.type === 'security' || notif.type === 'security_silent') && (
                                                             <span>{notif.content}</span>
                                                         )}
                                                     </p>
