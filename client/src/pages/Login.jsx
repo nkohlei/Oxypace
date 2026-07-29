@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { getDeviceInfo } from '../utils/deviceHelper';
 import WarpGridBackground from '../components/WarpGridBackground';
 import './Auth.css';
 
@@ -151,7 +152,12 @@ const Login = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post('/api/auth/login', formData);
+            const deviceInfo = await getDeviceInfo();
+            const payload = {
+                ...formData,
+                ...deviceInfo
+            };
+            const response = await axios.post('/api/auth/login', payload);
             login(response.data.token, response.data.user);
             window.location.href = '/messages'; // Direct clean redirect into Portal Messages
         } catch (err) {

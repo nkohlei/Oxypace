@@ -249,6 +249,34 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        registeredDevices: [
+            {
+                deviceId: {
+                    type: String,
+                    required: true,
+                },
+                deviceName: {
+                    type: String,
+                    default: 'Bilinmeyen Cihaz',
+                },
+                deviceType: {
+                    type: String,
+                    default: 'web',
+                },
+                lastIP: {
+                    type: String,
+                    default: '',
+                },
+                firstSeenAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+                lastSeenAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
         isDeleted: {
             type: Boolean,
             default: false,

@@ -207,11 +207,55 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             }
         }
 
-        // Save last active IP address
+        // Device Registration & Security Notification Logic
+        const { deviceId, deviceName, deviceType } = req.body;
         const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-        const prevIP = user.lastIP;
 
-        if (prevIP && prevIP !== incomingIP) {
+        if (!user.registeredDevices) {
+            user.registeredDevices = [];
+        }
+
+        if (deviceId) {
+            const existingDeviceIndex = user.registeredDevices.findIndex(d => d.deviceId === deviceId);
+
+            if (existingDeviceIndex >= 0) {
+                // Known Device -> Update timestamps and IP without generating notification
+                user.registeredDevices[existingDeviceIndex].lastSeenAt = new Date();
+                user.registeredDevices[existingDeviceIndex].lastIP = incomingIP;
+                if (deviceName) user.registeredDevices[existingDeviceIndex].deviceName = deviceName;
+                if (deviceType) user.registeredDevices[existingDeviceIndex].deviceType = deviceType;
+            } else {
+                // New Device -> Register device & send one-time security notification
+                user.registeredDevices.push({
+                    deviceId,
+                    deviceName: deviceName || 'Bilinmeyen Cihaz',
+                    deviceType: deviceType || 'web',
+                    lastIP: incomingIP,
+                    firstSeenAt: new Date(),
+                    lastSeenAt: new Date(),
+                });
+
+                try {
+                    const formattedDeviceName = deviceName || 'Yeni Cihaz';
+                    const notification = await Notification.create({
+                        recipient: user._id,
+                        type: 'security',
+                        content: `Hesabınıza yeni bir cihazdan (${formattedDeviceName}) giriş yapıldı.`,
+                        link: '/settings',
+                    });
+
+                    const io = req.app.get('io');
+                    if (io) {
+                        const populated = await Notification.findById(notification._id)
+                            .populate('sender', 'username profile.displayName profile.avatar');
+                        io.to(user._id.toString()).emit('newNotification', populated);
+                    }
+                } catch (err) {
+                    console.error('Security login notification error:', err);
+                }
+            }
+        } else if (user.lastIP && user.lastIP !== incomingIP) {
+            // Fallback for legacy clients without deviceId: check IP change
             try {
                 const notification = await Notification.create({
                     recipient: user._id,
