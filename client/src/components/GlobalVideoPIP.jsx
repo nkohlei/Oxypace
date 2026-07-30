@@ -7,6 +7,51 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Sh
 import { Capacitor } from '@capacitor/core';
 import './GlobalVideoPIP.css';
 
+// Standalone VideoRenderer outside main component scope to guarantee zero DOM re-creations / unmounts
+const VideoRenderer = React.memo(({ participant, className }) => {
+    const videoRef = useRef(null);
+    const rawTrack = participant?.videoTrack?.track || participant?.videoTrack;
+
+    useEffect(() => {
+        const el = videoRef.current;
+        if (el && rawTrack && participant?.isCameraOn) {
+            // Check if element already contains this exact MediaStream track
+            const currentStream = el.srcObject;
+            if (currentStream && currentStream.getVideoTracks()[0]?.id === rawTrack.id) {
+                return;
+            }
+
+            if (participant?.videoTrack?.attach) {
+                participant.videoTrack.attach(el);
+            } else {
+                el.srcObject = new MediaStream([rawTrack]);
+                el.play().catch(e => console.warn("[PiP] Video play error:", e));
+            }
+        }
+    }, [rawTrack?.id, participant?.isCameraOn]);
+
+    if (participant?.isCameraOn && rawTrack) {
+        return (
+            <video 
+                ref={videoRef} 
+                className={className} 
+                autoPlay 
+                playsInline 
+                muted={participant.isLocal} 
+            />
+        );
+    }
+
+    return (
+        <div className={`${className} pip-avatar-placeholder`}>
+            <img 
+                src={getImageUrl(participant?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(participant?.name || '')}&background=1e293b&color=fff`} 
+                alt="" 
+            />
+        </div>
+    );
+});
+
 const GlobalVideoPIP = () => {
     const {
         activeRoom,
@@ -225,50 +270,6 @@ const GlobalVideoPIP = () => {
         document.removeEventListener('touchmove', handleTouchMove);
         document.removeEventListener('touchend', handleTouchEnd);
     };
-
-    const VideoRenderer = React.memo(({ participant, className }) => {
-        const videoRef = useRef(null);
-        const rawTrack = participant?.videoTrack?.track || participant?.videoTrack;
-
-        useEffect(() => {
-            const el = videoRef.current;
-            if (el && rawTrack && participant?.isCameraOn) {
-                // If the element already has a MediaStream containing this exact track, do NOT re-assign srcObject (prevents 100ms black flicker)
-                const currentStream = el.srcObject;
-                if (currentStream && currentStream.getVideoTracks()[0]?.id === rawTrack.id) {
-                    return;
-                }
-
-                if (participant?.videoTrack?.attach) {
-                    participant.videoTrack.attach(el);
-                } else {
-                    el.srcObject = new MediaStream([rawTrack]);
-                    el.play().catch(e => console.warn("[PiP] Video play error:", e));
-                }
-            }
-        }, [rawTrack?.id, participant?.isCameraOn]);
-
-        if (participant?.isCameraOn && rawTrack) {
-            return (
-                <video 
-                    ref={videoRef} 
-                    className={className} 
-                    autoPlay 
-                    playsInline 
-                    muted={participant.isLocal} 
-                />
-            );
-        }
-
-        return (
-            <div className={`${className} pip-avatar-placeholder`}>
-                <img 
-                    src={getImageUrl(participant?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(participant?.name || '')}&background=1e293b&color=fff`} 
-                    alt="" 
-                />
-            </div>
-        );
-    });
 
     const windowStyle = (isInNativePiP || isDocumentPiPActive) ? {
         position: 'fixed',
