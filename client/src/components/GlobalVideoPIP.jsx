@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useVoice } from '../context/VoiceContext';
+import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X, MonitorUp, Search } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import axios from 'axios';
 import './GlobalVideoPIP.css';
 
 // Standalone VideoRenderer outside main component scope to guarantee zero DOM re-creations / unmounts
@@ -53,6 +55,7 @@ const VideoRenderer = React.memo(({ participant, className }) => {
 });
 
 const GlobalVideoPIP = () => {
+    const { user } = useAuth();
     const {
         activeRoom,
         connectionState,
@@ -60,10 +63,13 @@ const GlobalVideoPIP = () => {
         localState,
         toggleMicrophone,
         toggleCamera,
+        toggleScreenShare,
         disconnectFromChannel,
         toggleDeafen,
         chatMessages,
-        sendChatMessage
+        sendChatMessage,
+        userVolume,
+        setUserVolume
     } = useVoice();
 
     const location = useLocation();
@@ -77,11 +83,17 @@ const GlobalVideoPIP = () => {
     const [pipContainer, setPipContainer] = useState(null);
     const [isDocumentPiPActive, setIsDocumentPiPActive] = useState(false);
 
+    // Popover states for right-top buttons in PiP
     const [isPipInviteOpen, setIsPipInviteOpen] = useState(false);
     const [isPipChatOpen, setIsPipChatOpen] = useState(false);
     const [isPipVolumeOpen, setIsPipVolumeOpen] = useState(false);
-    const [pipVolume, setPipVolume] = useState(1);
     const [chatInputText, setChatInputText] = useState('');
+
+    // Member invite & search states
+    const [portalMembers, setPortalMembers] = useState([]);
+    const [inviteSearchQuery, setInviteSearchQuery] = useState('');
+    const [loadingMembers, setLoadingMembers] = useState(false);
+    const [invitedUserIds, setInvitedUserIds] = useState([]);
 
     const isDragging = useRef(false);
     const dragStart = useRef({ x: 0, y: 0 });
@@ -91,6 +103,36 @@ const GlobalVideoPIP = () => {
     const pipWindowRef = useRef(null);
 
     const isConnected = !!activeRoom;
+
+    // Fetch portal members for direct invitation when invite popover opens
+    useEffect(() => {
+        if (isPipInviteOpen && activeRoom?.portalId) {
+            setLoadingMembers(true);
+            axios.get(`/api/portals/${activeRoom.portalId}`)
+                .then(res => {
+                    const members = res.data.members || [];
+                    const currentUserId = user?._id?.toString();
+                    const filtered = members.map(m => m.user).filter(u => u && u._id !== currentUserId);
+                    setPortalMembers(filtered);
+                })
+                .catch(err => console.error("[PiP Invite] Fetch members error:", err))
+                .finally(() => setLoadingMembers(false));
+        }
+    }, [isPipInviteOpen, activeRoom?.portalId, user]);
+
+    const handleSendDirectInvite = async (targetUserId) => {
+        if (!activeRoom?.portalId || !activeRoom?.channelId) return;
+        try {
+            await axios.post('/api/voice/invite', {
+                portalId: activeRoom.portalId,
+                channelId: activeRoom.channelId,
+                targetUserIds: [targetUserId]
+            });
+            setInvitedUserIds(prev => [...prev, targetUserId]);
+        } catch (error) {
+            console.error("[PiP Invite] Send invite error:", error);
+        }
+    };
 
     const copyStylesToDocument = (targetDoc) => {
         [...document.styleSheets].forEach((styleSheet) => {
@@ -301,6 +343,13 @@ const GlobalVideoPIP = () => {
         }
     };
 
+    const searchedMembers = portalMembers.filter(m => {
+        const query = inviteSearchQuery.toLowerCase().trim();
+        if (!query) return true;
+        const name = (m.profile?.displayName || m.username || '').toLowerCase();
+        return name.includes(query);
+    });
+
     const content = (
         <div 
             className={`global-video-pip-window vertical-mode ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
@@ -358,23 +407,51 @@ const GlobalVideoPIP = () => {
                     )}
 
                     {isPipInviteOpen && (
-                        <div className="pip-popover">
+                        <div className="pip-popover invite-popover">
                             <div className="pip-popover-header">
-                                <span>Davet Bağlantısı</span>
+                                <span>Kullanıcı Davet Et</span>
                                 <button onClick={() => setIsPipInviteOpen(false)}><X size={12} /></button>
                             </div>
-                            <div className="pip-popover-body">
-                                <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 8px 0' }}>Oda bağlantısını kopyalayıp arkadaşlarınızla paylaşın:</p>
-                                <button 
-                                    className="pip-action-btn"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(window.location.href);
-                                        alert("Oda bağlantısı kopyalandı!");
-                                        setIsPipInviteOpen(false);
-                                    }}
-                                >
-                                    Bağlantıyı Kopyala
-                                </button>
+                            <div className="pip-search-box">
+                                <Search size={12} color="#94a3b8" />
+                                <input 
+                                    type="text"
+                                    placeholder="Kullanıcı ara..."
+                                    value={inviteSearchQuery}
+                                    onChange={(e) => setInviteSearchQuery(e.target.value)}
+                                />
+                                {inviteSearchQuery && (
+                                    <button onClick={() => setInviteSearchQuery('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}>
+                                        <X size={10} />
+                                    </button>
+                                )}
+                            </div>
+                            <div className="pip-member-list custom-scrollbar">
+                                {loadingMembers ? (
+                                    <div className="pip-popover-status">Yükleniyor...</div>
+                                ) : searchedMembers.length === 0 ? (
+                                    <div className="pip-popover-status">Üye bulunamadı.</div>
+                                ) : (
+                                    searchedMembers.map(m => {
+                                        const isInvited = invitedUserIds.includes(m._id);
+                                        const name = m.profile?.displayName || m.username;
+                                        return (
+                                            <div key={m._id} className="pip-member-item">
+                                                <div className="pip-member-info">
+                                                    <img src={getImageUrl(m.profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`} alt="" />
+                                                    <span>{name}</span>
+                                                </div>
+                                                <button 
+                                                    disabled={isInvited}
+                                                    onClick={() => handleSendDirectInvite(m._id)}
+                                                    className={`pip-invite-btn ${isInvited ? 'invited' : ''}`}
+                                                >
+                                                    {isInvited ? 'Davet Edildi' : 'Davet Et'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     )}
@@ -412,7 +489,7 @@ const GlobalVideoPIP = () => {
                     {isPipVolumeOpen && (
                         <div className="pip-popover volume-popover">
                             <div className="pip-popover-header">
-                                <span>Ses Düzeyi</span>
+                                <span>Kullanıcı Ses Düzeyi</span>
                                 <button onClick={() => setIsPipVolumeOpen(false)}><X size={12} /></button>
                             </div>
                             <div className="pip-popover-body" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -422,18 +499,14 @@ const GlobalVideoPIP = () => {
                                     min="0" 
                                     max="1" 
                                     step="0.05" 
-                                    value={pipVolume} 
+                                    value={userVolume} 
                                     onChange={(e) => {
                                         const vol = parseFloat(e.target.value);
-                                        setPipVolume(vol);
-                                        const videos = pipWindowRef.current?.document?.querySelectorAll('video');
-                                        if (videos) {
-                                            videos.forEach(v => { if (!v.muted) v.volume = vol; });
-                                        }
+                                        setUserVolume(vol);
                                     }} 
                                     style={{ flex: 1 }}
                                 />
-                                <span style={{ fontSize: '10px', color: 'white' }}>{Math.round(pipVolume * 100)}%</span>
+                                <span style={{ fontSize: '10px', color: 'white', minWidth: '28px', textAlign: 'right' }}>{Math.round(userVolume * 100)}%</span>
                             </div>
                         </div>
                     )}
@@ -484,6 +557,15 @@ const GlobalVideoPIP = () => {
                             >
                                 {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
                             </button>
+                            
+                            <button 
+                                className={`pip-control-btn ${localState.isScreenSharing ? 'active-share' : ''}`} 
+                                onClick={toggleScreenShare}
+                                title={localState.isScreenSharing ? "Ekran Paylaşımını Durdur" : "Ekranı Paylaş"}
+                            >
+                                <MonitorUp size={14} />
+                            </button>
+
                             <button 
                                 className="pip-control-btn danger disconnect-btn" 
                                 onClick={handleDisconnectAction}

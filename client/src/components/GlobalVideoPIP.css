@@ -267,19 +267,107 @@
     outline: none;
 }
 
-.pip-chat-input-row button {
+.pip-control-btn.active-share {
+    background: #10b981;
+    color: white;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Invite Search Popover */
+.invite-popover {
+    max-height: 240px;
+    display: flex;
+    flex-direction: column;
+}
+
+.pip-search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-bottom: 8px;
+}
+
+.pip-search-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 11px;
+}
+
+.pip-member-list {
+    flex: 1;
+    max-height: 150px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pip-member-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+}
+
+.pip-member-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pip-member-info img {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.pip-member-info span {
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pip-invite-btn {
     background: #6366f1;
     color: white;
     border: none;
-    font-size: 10px;
-    padding: 4px 8px;
     border-radius: 4px;
+    font-size: 10px;
+    padding: 3px 8px;
+    font-weight: 600;
     cursor: pointer;
+    transition: background 0.2s ease;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
+.pip-invite-btn:hover {
+    background: #4f46e5;
+}
+
+.pip-invite-btn.invited {
+    background: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    cursor: default;
+}
+
+.pip-popover-status {
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+    padding: 12px;
 }
 
 .pip-header-btn.danger:hover {
