@@ -70,67 +70,62 @@ const GlobalVideoPIP = () => {
         });
     };
 
-    // Listen for window blur (goes to background) and focus (restores) on desktop/Electron
-    useEffect(() => {
-        if (!isConnected || Capacitor.isNativePlatform() || window.desktopAPI || !('documentPictureInPicture' in window)) return;
+    const openDocumentPiPWindow = async () => {
+        if (!('documentPictureInPicture' in window) || pipWindowRef.current || isDocumentPiPActive) return;
 
-        let openTime = 0;
+        try {
+            const pipWin = await window.documentPictureInPicture.requestWindow({
+                width: 270,
+                height: 420
+            });
 
-        const handleBlur = async () => {
-            if (pipWindowRef.current || isDocumentPiPActive || Date.now() - openTime < 1500) return;
+            pipWindowRef.current = pipWin;
+            copyStylesToDocument(pipWin.document);
 
-            try {
-                openTime = Date.now();
-                const pipWin = await window.documentPictureInPicture.requestWindow({
-                    width: 380,
-                    height: 280
-                });
-
-                pipWindowRef.current = pipWin;
-                copyStylesToDocument(pipWin.document);
-
-                // Watch for user closing the PiP window manually
-                pipWin.addEventListener('pagehide', () => {
-                    pipWindowRef.current = null;
-                    setPipContainer(null);
-                    setIsDocumentPiPActive(false);
-                });
-
-                const container = pipWin.document.createElement('div');
-                container.id = 'pip-portal-root';
-                container.style.width = '100%';
-                container.style.height = '100%';
-                pipWin.document.body.appendChild(container);
-                pipWin.document.body.style.margin = '0';
-                pipWin.document.body.style.overflow = 'hidden';
-                pipWin.document.body.style.backgroundColor = '#0b0f19';
-
-                setPipContainer(container);
-                setIsDocumentPiPActive(true);
-            } catch (err) {
-                console.error('[DocumentPiP] Failed to open window:', err);
-            }
-        };
-
-        const handleFocus = () => {
-            if (Date.now() - openTime < 1500) return;
-            if (pipWindowRef.current) {
-                pipWindowRef.current.close();
+            // Watch for user closing the PiP window manually
+            pipWin.addEventListener('pagehide', () => {
                 pipWindowRef.current = null;
-            }
+                setPipContainer(null);
+                setIsDocumentPiPActive(false);
+            });
+
+            const container = pipWin.document.createElement('div');
+            container.id = 'pip-portal-root';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            pipWin.document.body.appendChild(container);
+            pipWin.document.body.style.margin = '0';
+            pipWin.document.body.style.overflow = 'hidden';
+            pipWin.document.body.style.backgroundColor = '#070a12';
+
+            setPipContainer(container);
+            setIsDocumentPiPActive(true);
+        } catch (err) {
+            console.error('[DocumentPiP] Failed to open window:', err);
+        }
+    };
+
+    // Listen for custom trigger event (e.g. from right-side Picture-in-Picture button click)
+    useEffect(() => {
+        const handleManualPipTrigger = () => {
+            openDocumentPiPWindow();
         };
 
-        window.addEventListener('blur', handleBlur);
-        window.addEventListener('focus', handleFocus);
-
+        window.addEventListener('triggerDocumentPiP', handleManualPipTrigger);
         return () => {
-            window.removeEventListener('blur', handleBlur);
-            window.removeEventListener('focus', handleFocus);
-            if (pipWindowRef.current) {
-                pipWindowRef.current.close();
-            }
+            window.removeEventListener('triggerDocumentPiP', handleManualPipTrigger);
         };
-    }, [isConnected, isDocumentPiPActive]);
+    }, [isDocumentPiPActive]);
+
+    // Automatically close PiP window if disconnected from room
+    useEffect(() => {
+        if (!isConnected && pipWindowRef.current) {
+            pipWindowRef.current.close();
+            pipWindowRef.current = null;
+            setPipContainer(null);
+            setIsDocumentPiPActive(false);
+        }
+    }, [isConnected]);
 
     // Listen to native Android PiP state changes from MainActivity
     useEffect(() => {

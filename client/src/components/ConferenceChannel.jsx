@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import './VoiceChannel.css';
 
@@ -77,6 +77,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
             return;
         }
         sendChatMessage(text);
+    };
+
+    const handleTriggerDocumentPiP = () => {
+        window.dispatchEvent(new CustomEvent('triggerDocumentPiP'));
     };
 
     const [isMicMenuOpen, setIsMicMenuOpen] = useState(false);
@@ -312,6 +316,16 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Picture-in-Picture Button */}
+                <button 
+                    className="vc-ctrl-btn" 
+                    onClick={handleTriggerDocumentPiP} 
+                    title="Yüzen Pencereye Geç (PiP)"
+                    style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+                >
+                    <PictureInPicture size={18} color="#818cf8" />
+                </button>
             </div>
 
             <div className="vc-viewport layout-spotlight" style={{ padding: '80px 24px 100px 24px' }}>
