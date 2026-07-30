@@ -288,16 +288,24 @@ const GlobalVideoPIP = () => {
         }
     };
 
-    const VideoRenderer = ({ participant, className }) => {
+    // Optimized video renderer that prevents stream re-attaching flicker
+    const VideoRenderer = React.memo(({ participant, className }) => {
         const videoEl = useRef(null);
         const track = participant?.videoTrack;
 
         useEffect(() => {
-            if (videoEl.current && track && participant?.isCameraOn) {
-                track.attach(videoEl.current);
+            const currentVideo = videoEl.current;
+            if (currentVideo && track && participant?.isCameraOn) {
+                track.attach(currentVideo);
             }
             return () => {
-                if (track) track.detach();
+                if (currentVideo && track) {
+                    try {
+                        track.detach(currentVideo);
+                    } catch (e) {
+                        // ignore cleanup edge case
+                    }
+                }
             };
         }, [track, participant?.isCameraOn]);
 
@@ -321,7 +329,7 @@ const GlobalVideoPIP = () => {
                 />
             </div>
         );
-    };
+    });
 
     const windowStyle = (isInNativePiP || isDocumentPiPActive) ? {
         position: 'fixed',
@@ -331,7 +339,7 @@ const GlobalVideoPIP = () => {
         height: '100%',
         borderRadius: 0,
         border: 'none',
-        background: '#0b0f19',
+        background: '#070a12',
         zIndex: 99999
     } : { left: `${position.x}px`, top: `${position.y}px` };
 
@@ -394,10 +402,10 @@ const GlobalVideoPIP = () => {
                             </div>
                             <div className="pip-header-actions">
                                 <button className="pip-header-btn" onClick={handleMinimizeAction} title={isDocumentPiPActive ? "Geri Dön" : "Küçült"}>
-                                    <Minimize2 size={15} />
+                                    <Minimize2 size={14} />
                                 </button>
                                 <button className="pip-header-btn danger" onClick={handleDisconnectAction} title="Ayrıl">
-                                    <PhoneOff size={15} />
+                                    <PhoneOff size={14} />
                                 </button>
                             </div>
                         </div>
@@ -412,15 +420,15 @@ const GlobalVideoPIP = () => {
                                     className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''} ${p.isLocal ? 'local' : ''}`}
                                 >
                                     <VideoRenderer participant={p} className="pip-participant-video" />
-                                    <div className="pip-participant-overlay">
-                                        <span className="pip-participant-name">
+                                    
+                                    {/* Ultra Minimal Compact Name Pill */}
+                                    <div className="pip-participant-minimal-badge">
+                                        <span className="pip-participant-name-text">
                                             {p.name} {p.isLocal && '(Sen)'}
-                                            {p.role === 'owner' && <Crown size={12} className="role-icon owner" />}
-                                            {p.role === 'admin' && <Shield size={12} className="role-icon admin" />}
                                         </span>
-                                        <div className="pip-participant-status">
-                                            {p.isMuted ? <MicOff size={12} className="status-icon muted" /> : <Mic size={12} className="status-icon active" />}
-                                        </div>
+                                        {p.role === 'owner' && <Crown size={10} className="role-icon owner" />}
+                                        {p.role === 'admin' && <Shield size={10} className="role-icon admin" />}
+                                        {p.isMuted ? <MicOff size={10} className="status-icon muted" /> : <Mic size={10} className="status-icon active" />}
                                     </div>
                                 </div>
                             ))
@@ -429,7 +437,7 @@ const GlobalVideoPIP = () => {
                         )}
                     </div>
 
-                    {/* Bottom Action Controls */}
+                    {/* Bottom Action Controls - All core room controls compact & clean */}
                     {!isInNativePiP && (
                         <div className="pip-controls vertical-controls">
                             <button 
@@ -437,28 +445,28 @@ const GlobalVideoPIP = () => {
                                 onClick={toggleMicrophone}
                                 title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
                             >
-                                {localState.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                                {localState.isMuted ? <MicOff size={14} /> : <Mic size={14} />}
                             </button>
                             <button 
                                 className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
                                 onClick={toggleCamera}
                                 title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
                             >
-                                {localState.isCameraOn ? <Video size={16} /> : <VideoOff size={16} />}
+                                {localState.isCameraOn ? <Video size={14} /> : <VideoOff size={14} />}
                             </button>
                             <button 
                                 className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
                                 onClick={toggleDeafen}
                                 title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
                             >
-                                {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                                {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
                             </button>
                             <button 
                                 className="pip-control-btn danger disconnect-btn" 
                                 onClick={handleDisconnectAction}
                                 title="Aramayı Sonlandır"
                             >
-                                <PhoneOff size={16} />
+                                <PhoneOff size={14} />
                             </button>
                         </div>
                     )}
