@@ -228,25 +228,27 @@ const GlobalVideoPIP = () => {
 
     const VideoRenderer = React.memo(({ participant, className }) => {
         const videoRef = useRef(null);
-        const track = participant?.videoTrack;
+        const rawTrack = participant?.videoTrack?.track || participant?.videoTrack;
 
         useEffect(() => {
             const el = videoRef.current;
-            if (el && track && participant?.isCameraOn) {
-                track.attach(el);
-            }
-            return () => {
-                if (el && track) {
-                    try {
-                        track.detach(el);
-                    } catch (e) {
-                        // ignore
-                    }
+            if (el && rawTrack && participant?.isCameraOn) {
+                // If the element already has a MediaStream containing this exact track, do NOT re-assign srcObject (prevents 100ms black flicker)
+                const currentStream = el.srcObject;
+                if (currentStream && currentStream.getVideoTracks()[0]?.id === rawTrack.id) {
+                    return;
                 }
-            };
-        }, [track?.sid, participant?.isCameraOn]);
 
-        if (participant?.isCameraOn && track) {
+                if (participant?.videoTrack?.attach) {
+                    participant.videoTrack.attach(el);
+                } else {
+                    el.srcObject = new MediaStream([rawTrack]);
+                    el.play().catch(e => console.warn("[PiP] Video play error:", e));
+                }
+            }
+        }, [rawTrack?.id, participant?.isCameraOn]);
+
+        if (participant?.isCameraOn && rawTrack) {
             return (
                 <video 
                     ref={videoRef} 
