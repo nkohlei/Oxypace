@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useVoice } from '../context/VoiceContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Maximize2, Volume2, VolumeX, Shield, Crown } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import './GlobalVideoPIP.css';
 
@@ -16,7 +16,9 @@ const GlobalVideoPIP = () => {
         toggleMicrophone,
         toggleCamera,
         disconnectFromChannel,
-        toggleDeafen
+        toggleDeafen,
+        chatMessages,
+        sendChatMessage
     } = useVoice();
 
     const location = useLocation();
@@ -24,12 +26,18 @@ const GlobalVideoPIP = () => {
 
     const [isMinimized, setIsMinimized] = useState(false);
     const [manualFocusId, setManualFocusId] = useState(null);
-    const [position, setPosition] = useState({ x: 20, y: 80 }); // Floating position offsets from bottom-right
-    const [showControls, setShowControls] = useState(false);
+    const [position, setPosition] = useState({ x: 20, y: 80 });
+    const [showControls, setShowControls] = useState(true);
     const [isInNativePiP, setIsInNativePiP] = useState(false);
     const [pipContainer, setPipContainer] = useState(null);
     const [isDocumentPiPActive, setIsDocumentPiPActive] = useState(false);
-    
+
+    const [isPipInviteOpen, setIsPipInviteOpen] = useState(false);
+    const [isPipChatOpen, setIsPipChatOpen] = useState(false);
+    const [isPipVolumeOpen, setIsPipVolumeOpen] = useState(false);
+    const [pipVolume, setPipVolume] = useState(1);
+    const [chatInputText, setChatInputText] = useState('');
+
     const isDragging = useRef(false);
     const dragStart = useRef({ x: 0, y: 0 });
     const startPosition = useRef({ x: 0, y: 0 });
@@ -38,17 +46,6 @@ const GlobalVideoPIP = () => {
     const pipWindowRef = useRef(null);
 
     const isConnected = !!activeRoom;
-    
-    // Check if user is currently inside the active channel view
-    const queryParams = new URLSearchParams(location.search);
-    const isViewingActiveChannel = location.pathname.includes(`/portal/${activeRoom?.portalId}`) && 
-        queryParams.get('channel') === activeRoom?.channelId;
-
-    // Show overlay on native Android PiP or Desktop Document PiP
-    const shouldShow = isConnected && (
-        (Capacitor.isNativePlatform() && isInNativePiP) || 
-        isDocumentPiPActive
-    );
 
     const copyStylesToDocument = (targetDoc) => {
         [...document.styleSheets].forEach((styleSheet) => {
@@ -75,14 +72,13 @@ const GlobalVideoPIP = () => {
 
         try {
             const pipWin = await window.documentPictureInPicture.requestWindow({
-                width: 270,
-                height: 420
+                width: 280,
+                height: 440
             });
 
             pipWindowRef.current = pipWin;
             copyStylesToDocument(pipWin.document);
 
-            // Watch for user closing the PiP window manually
             pipWin.addEventListener('pagehide', () => {
                 pipWindowRef.current = null;
                 setPipContainer(null);
@@ -105,7 +101,6 @@ const GlobalVideoPIP = () => {
         }
     };
 
-    // Listen for custom trigger event (e.g. from right-side Picture-in-Picture button click)
     useEffect(() => {
         const handleManualPipTrigger = () => {
             openDocumentPiPWindow();
@@ -117,7 +112,6 @@ const GlobalVideoPIP = () => {
         };
     }, [isDocumentPiPActive]);
 
-    // Automatically close PiP window if disconnected from room
     useEffect(() => {
         if (!isConnected && pipWindowRef.current) {
             pipWindowRef.current.close();
@@ -127,7 +121,6 @@ const GlobalVideoPIP = () => {
         }
     }, [isConnected]);
 
-    // Listen to native Android PiP state changes from MainActivity
     useEffect(() => {
         const handlePipChange = (e) => {
             if (e.detail && typeof e.detail.isInPiP !== 'undefined') {
@@ -141,25 +134,17 @@ const GlobalVideoPIP = () => {
         return () => window.removeEventListener('pipModeChanged', handlePipChange);
     }, []);
 
-    // Track active speaker to automatically shift focus
-    useEffect(() => {
-        if (!shouldShow) return;
-        const activeSpeaker = participants.find(p => !p.isLocal && p.isSpeaking);
-        if (activeSpeaker) {
-            setManualFocusId(activeSpeaker.identity);
-        }
-    }, [participants, shouldShow]);
-
-    // Handle auto-hide timer for controls
     const triggerControlsShow = () => {
-        if (isInNativePiP) return; // Disable controls in native PiP
+        if (isInNativePiP) return;
         setShowControls(true);
         if (controlsTimeout.current) {
             clearTimeout(controlsTimeout.current);
         }
         controlsTimeout.current = setTimeout(() => {
-            setShowControls(false);
-        }, 2000);
+            if (!isPipInviteOpen && !isPipChatOpen && !isPipVolumeOpen) {
+                setShowControls(false);
+            }
+        }, 3000);
     };
 
     useEffect(() => {
@@ -168,52 +153,29 @@ const GlobalVideoPIP = () => {
         };
     }, []);
 
+    const shouldShow = isConnected && (
+        (Capacitor.isNativePlatform() && isInNativePiP) || 
+        isDocumentPiPActive
+    );
+
     if (!shouldShow) return null;
 
-    // Find local and remote participants
-    const localUser = participants.find(p => p.isLocal);
-    const remoteParticipants = participants.filter(p => !p.isLocal);
+    const mainUser = participants.find(p => p.isSpeaking && !p.isLocal) || participants[0];
 
-    // Determine who to show in the main window of PIP
-    let mainUser = null;
-    if (manualFocusId) {
-        mainUser = participants.find(p => p.identity === manualFocusId);
-    }
-    if (!mainUser || mainUser.isLocal) {
-        // Fallback: first speaking user, or first camera user, or first participant
-        mainUser = remoteParticipants.find(p => p.isSpeaking) || 
-                   remoteParticipants.find(p => p.isCameraOn) || 
-                   remoteParticipants[0];
-    }
-
-    const handleMinimizeToggle = (e) => {
-        e.stopPropagation();
-        setIsMinimized(!isMinimized);
-        setShowControls(false);
-    };
-
-    const handleNavigateToChannel = (e) => {
-        if (isInNativePiP) return;
-        if (e) e.stopPropagation();
-        navigate(`/portal/${activeRoom.portalId}?channel=${activeRoom.channelId}`);
-    };
-
-    // Drag constraints
     const constrainPosition = (x, y) => {
         const minX = 10;
-        const maxX = window.innerWidth - (isMinimized ? 80 : 260); // Constrained to mobile sizes
+        const maxX = window.innerWidth - (isMinimized ? 80 : 280);
         const minY = 10;
-        const maxY = window.innerHeight - (isMinimized ? 80 : 220);
+        const maxY = window.innerHeight - (isMinimized ? 80 : 440);
         return {
             x: Math.max(minX, Math.min(maxX, x)),
             y: Math.max(minY, Math.min(maxY, y))
         };
     };
 
-    // Mouse events
     const handleMouseDown = (e) => {
         if (isInNativePiP) return;
-        if (e.target.closest('.pip-controls') || e.target.closest('.pip-member-strip') || e.target.closest('.pip-header-actions')) return;
+        if (e.target.closest('.pip-controls') || e.target.closest('.pip-header-actions') || e.target.closest('.pip-popover')) return;
         isDragging.current = true;
         startTime.current = Date.now();
         startPosition.current = { x: e.clientX, y: e.clientY };
@@ -230,27 +192,15 @@ const GlobalVideoPIP = () => {
         setPosition(constrainPosition(newX, newY));
     };
 
-    const handleMouseUp = (e) => {
+    const handleMouseUp = () => {
         isDragging.current = false;
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
-
-        // Click detection
-        const elapsed = Date.now() - startTime.current;
-        const dist = Math.hypot(e.clientX - startPosition.current.x, e.clientY - startPosition.current.y);
-        if (elapsed < 200 && dist < 8) {
-            if (isMinimized) {
-                setIsMinimized(false);
-            } else {
-                triggerControlsShow();
-            }
-        }
     };
 
-    // Touch events (Mobile support)
     const handleTouchStart = (e) => {
         if (isInNativePiP) return;
-        if (e.target.closest('.pip-controls') || e.target.closest('.pip-member-strip') || e.target.closest('.pip-header-actions')) return;
+        if (e.target.closest('.pip-controls') || e.target.closest('.pip-header-actions') || e.target.closest('.pip-popover')) return;
         isDragging.current = true;
         startTime.current = Date.now();
         const touch = e.touches[0];
@@ -263,56 +213,43 @@ const GlobalVideoPIP = () => {
 
     const handleTouchMove = (e) => {
         if (!isDragging.current) return;
-        e.preventDefault(); // Prevents scroll bouncing
+        e.preventDefault();
         const touch = e.touches[0];
         const newX = touch.clientX - dragStart.current.x;
         const newY = touch.clientY - dragStart.current.y;
         setPosition(constrainPosition(newX, newY));
     };
 
-    const handleTouchEnd = (e) => {
+    const handleTouchEnd = () => {
         isDragging.current = false;
         document.removeEventListener('touchmove', handleTouchMove);
         document.removeEventListener('touchend', handleTouchEnd);
-
-        const elapsed = Date.now() - startTime.current;
-        const touch = e.changedTouches[0];
-        const dist = Math.hypot(touch.clientX - startPosition.current.x, touch.clientY - startPosition.current.y);
-        
-        if (elapsed < 250 && dist < 12) {
-            if (isMinimized) {
-                setIsMinimized(false);
-            } else {
-                triggerControlsShow();
-            }
-        }
     };
 
-    // Optimized video renderer that prevents stream re-attaching flicker
     const VideoRenderer = React.memo(({ participant, className }) => {
-        const videoEl = useRef(null);
+        const videoRef = useRef(null);
         const track = participant?.videoTrack;
 
         useEffect(() => {
-            const currentVideo = videoEl.current;
-            if (currentVideo && track && participant?.isCameraOn) {
-                track.attach(currentVideo);
+            const el = videoRef.current;
+            if (el && track && participant?.isCameraOn) {
+                track.attach(el);
             }
             return () => {
-                if (currentVideo && track) {
+                if (el && track) {
                     try {
-                        track.detach(currentVideo);
+                        track.detach(el);
                     } catch (e) {
-                        // ignore cleanup edge case
+                        // ignore
                     }
                 }
             };
-        }, [track, participant?.isCameraOn]);
+        }, [track?.sid, participant?.isCameraOn]);
 
         if (participant?.isCameraOn && track) {
             return (
                 <video 
-                    ref={videoEl} 
+                    ref={videoRef} 
                     className={className} 
                     autoPlay 
                     playsInline 
@@ -345,25 +282,19 @@ const GlobalVideoPIP = () => {
 
     const showOverlayControls = showControls && !isInNativePiP;
 
-    const handleMouseMoveWindow = () => {
-        triggerControlsShow();
-    };
-
-    const handleMinimizeAction = (e) => {
-        e.stopPropagation();
-        if (isDocumentPiPActive && pipWindowRef.current) {
-            pipWindowRef.current.close();
-            return;
-        }
-        setIsMinimized(!isMinimized);
-        setShowControls(false);
-    };
-
     const handleDisconnectAction = (e) => {
         if (e) e.stopPropagation();
         disconnectFromChannel();
         if (pipWindowRef.current) {
             pipWindowRef.current.close();
+        }
+    };
+
+    const handleSendChatSubmit = (e) => {
+        e.preventDefault();
+        if (chatInputText.trim()) {
+            sendChatMessage(chatInputText.trim());
+            setChatInputText('');
         }
     };
 
@@ -373,11 +304,9 @@ const GlobalVideoPIP = () => {
             style={windowStyle}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            onMouseMove={handleMouseMoveWindow}
-            onMouseLeave={() => setShowControls(false)}
+            onMouseMove={triggerControlsShow}
         >
             {isMinimized ? (
-                // Minimized circular bubble
                 <div className="pip-bubble">
                     <div className="pip-bubble-avatar-wrapper">
                         <img 
@@ -391,27 +320,121 @@ const GlobalVideoPIP = () => {
                     </div>
                 </div>
             ) : (
-                // Vertical PiP View
                 <div className="pip-full-content vertical-pip-content">
-                    {/* Floating Header */}
                     {!isInNativePiP && (
                         <div className="pip-header">
-                            <div className="pip-header-info" onClick={handleNavigateToChannel}>
+                            <div className="pip-header-info">
                                 <span className="pip-title">{activeRoom?.channelName || 'Canlı Oda'}</span>
                                 <span className="pip-subtitle">{participants.length} katılımcı</span>
                             </div>
+                            
                             <div className="pip-header-actions">
-                                <button className="pip-header-btn" onClick={handleMinimizeAction} title={isDocumentPiPActive ? "Geri Dön" : "Küçült"}>
-                                    <Minimize2 size={14} />
+                                <button 
+                                    className={`pip-header-btn ${isPipInviteOpen ? 'active' : ''}`} 
+                                    onClick={() => { setIsPipInviteOpen(!isPipInviteOpen); setIsPipChatOpen(false); setIsPipVolumeOpen(false); }} 
+                                    title="Davet Et"
+                                >
+                                    <UserPlus size={14} />
                                 </button>
-                                <button className="pip-header-btn danger" onClick={handleDisconnectAction} title="Ayrıl">
-                                    <PhoneOff size={14} />
+                                <button 
+                                    className={`pip-header-btn ${isPipChatOpen ? 'active' : ''}`} 
+                                    onClick={() => { setIsPipChatOpen(!isPipChatOpen); setIsPipInviteOpen(false); setIsPipVolumeOpen(false); }} 
+                                    title="Sohbet"
+                                >
+                                    <MessageCircle size={14} />
+                                </button>
+                                <button 
+                                    className={`pip-header-btn ${isPipVolumeOpen ? 'active' : ''}`} 
+                                    onClick={() => { setIsPipVolumeOpen(!isPipVolumeOpen); setIsPipChatOpen(false); setIsPipInviteOpen(false); }} 
+                                    title="Ses Düzeyi"
+                                >
+                                    <Volume2 size={14} />
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Vertical Scrollable Participant Stack */}
+                    {isPipInviteOpen && (
+                        <div className="pip-popover">
+                            <div className="pip-popover-header">
+                                <span>Davet Bağlantısı</span>
+                                <button onClick={() => setIsPipInviteOpen(false)}><X size={12} /></button>
+                            </div>
+                            <div className="pip-popover-body">
+                                <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 8px 0' }}>Oda bağlantısını kopyalayıp arkadaşlarınızla paylaşın:</p>
+                                <button 
+                                    className="pip-action-btn"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(window.location.href);
+                                        alert("Oda bağlantısı kopyalandı!");
+                                        setIsPipInviteOpen(false);
+                                    }}
+                                >
+                                    Bağlantıyı Kopyala
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {isPipChatOpen && (
+                        <div className="pip-popover chat-popover">
+                            <div className="pip-popover-header">
+                                <span>Canlı Sohbet</span>
+                                <button onClick={() => setIsPipChatOpen(false)}><X size={12} /></button>
+                            </div>
+                            <div className="pip-chat-messages custom-scrollbar">
+                                {chatMessages && chatMessages.length > 0 ? (
+                                    chatMessages.map((m, idx) => (
+                                        <div key={m.id || idx} className="pip-chat-msg">
+                                            <strong>{m.senderName}: </strong>
+                                            <span>{m.text}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ fontSize: '11px', color: '#64748b', textAlign: 'center', padding: '10px' }}>Henüz mesaj yok</div>
+                                )}
+                            </div>
+                            <form onSubmit={handleSendChatSubmit} className="pip-chat-input-row">
+                                <input 
+                                    type="text" 
+                                    placeholder="Mesaj yazın..." 
+                                    value={chatInputText} 
+                                    onChange={(e) => setChatInputText(e.target.value)} 
+                                />
+                                <button type="submit">Gönder</button>
+                            </form>
+                        </div>
+                    )}
+
+                    {isPipVolumeOpen && (
+                        <div className="pip-popover volume-popover">
+                            <div className="pip-popover-header">
+                                <span>Ses Düzeyi</span>
+                                <button onClick={() => setIsPipVolumeOpen(false)}><X size={12} /></button>
+                            </div>
+                            <div className="pip-popover-body" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Volume2 size={14} color="#94a3b8" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="1" 
+                                    step="0.05" 
+                                    value={pipVolume} 
+                                    onChange={(e) => {
+                                        const vol = parseFloat(e.target.value);
+                                        setPipVolume(vol);
+                                        const videos = pipWindowRef.current?.document?.querySelectorAll('video');
+                                        if (videos) {
+                                            videos.forEach(v => { if (!v.muted) v.volume = vol; });
+                                        }
+                                    }} 
+                                    style={{ flex: 1 }}
+                                />
+                                <span style={{ fontSize: '10px', color: 'white' }}>{Math.round(pipVolume * 100)}%</span>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="pip-vertical-participants-container custom-scrollbar">
                         {participants.length > 0 ? (
                             participants.map((p) => (
@@ -420,8 +443,6 @@ const GlobalVideoPIP = () => {
                                     className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''} ${p.isLocal ? 'local' : ''}`}
                                 >
                                     <VideoRenderer participant={p} className="pip-participant-video" />
-                                    
-                                    {/* Ultra Minimal Compact Name Pill */}
                                     <div className="pip-participant-minimal-badge">
                                         <span className="pip-participant-name-text">
                                             {p.name} {p.isLocal && '(Sen)'}
@@ -437,7 +458,6 @@ const GlobalVideoPIP = () => {
                         )}
                     </div>
 
-                    {/* Bottom Action Controls - All core room controls compact & clean */}
                     {!isInNativePiP && (
                         <div className="pip-controls vertical-controls">
                             <button 
