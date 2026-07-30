@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X, MonitorUp, Search } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X, MonitorUp, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import './GlobalVideoPIP.css';
@@ -12,27 +12,27 @@ import './GlobalVideoPIP.css';
 // Standalone VideoRenderer outside main component scope to guarantee zero DOM re-creations / unmounts
 const VideoRenderer = React.memo(({ participant, className }) => {
     const videoRef = useRef(null);
-    const rawTrack = participant?.videoTrack?.track || participant?.videoTrack;
+    const rawTrackObj = participant?.screenShareTrack || participant?.videoTrack;
+    const rawTrack = rawTrackObj?.track || rawTrackObj;
 
     useEffect(() => {
         const el = videoRef.current;
-        if (el && rawTrack && participant?.isCameraOn) {
-            // Check if element already contains this exact MediaStream track
+        if (el && rawTrack && (participant?.isCameraOn || participant?.isScreenSharing)) {
             const currentStream = el.srcObject;
             if (currentStream && currentStream.getVideoTracks()[0]?.id === rawTrack.id) {
                 return;
             }
 
-            if (participant?.videoTrack?.attach) {
-                participant.videoTrack.attach(el);
+            if (rawTrackObj?.attach) {
+                rawTrackObj.attach(el);
             } else {
                 el.srcObject = new MediaStream([rawTrack]);
                 el.play().catch(e => console.warn("[PiP] Video play error:", e));
             }
         }
-    }, [rawTrack?.id, participant?.isCameraOn]);
+    }, [rawTrack?.id, participant?.isCameraOn, participant?.isScreenSharing]);
 
-    if (participant?.isCameraOn && rawTrack) {
+    if ((participant?.isCameraOn || participant?.isScreenSharing) && rawTrack) {
         return (
             <video 
                 ref={videoRef} 
@@ -89,6 +89,37 @@ const GlobalVideoPIP = () => {
     const [isPipVolumeOpen, setIsPipVolumeOpen] = useState(false);
     const [chatInputText, setChatInputText] = useState('');
 
+    // Custom participant reordering state
+    const [customOrder, setCustomOrder] = useState([]);
+
+    const moveParticipant = (identity, direction) => {
+        const currentIdentities = orderedParticipants.map(p => p.identity);
+        const index = currentIdentities.indexOf(identity);
+        if (index === -1) return;
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= currentIdentities.length) return;
+
+        const newOrder = [...currentIdentities];
+        const [movedItem] = newOrder.splice(index, 1);
+        newOrder.splice(targetIndex, 0, movedItem);
+        setCustomOrder(newOrder);
+    };
+
+    // Sort participants according to custom order preference if available
+    const orderedParticipants = React.useMemo(() => {
+        if (!customOrder || customOrder.length === 0) return participants;
+        const copy = [...participants];
+        return copy.sort((a, b) => {
+            const indexA = customOrder.indexOf(a.identity);
+            const indexB = customOrder.indexOf(b.identity);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return 0;
+        });
+    }, [participants, customOrder]);
+
     // Member invite & search states
     const [portalMembers, setPortalMembers] = useState([]);
     const [inviteSearchQuery, setInviteSearchQuery] = useState('');
@@ -110,10 +141,11 @@ const GlobalVideoPIP = () => {
             setLoadingMembers(true);
             axios.get(`/api/portals/${activeRoom.portalId}`)
                 .then(res => {
-                    const members = res.data.members || [];
+                    const rawMembers = res.data?.members || res.data?.portal?.members || [];
                     const currentUserId = user?._id?.toString();
-                    const filtered = members.map(m => m.user).filter(u => u && u._id !== currentUserId);
-                    setPortalMembers(filtered);
+                    // Handle both populated user objects and raw member objects
+                    const extracted = rawMembers.map(m => m.user || m).filter(u => u && (u._id?.toString() !== currentUserId && u.id?.toString() !== currentUserId));
+                    setPortalMembers(extracted);
                 })
                 .catch(err => console.error("[PiP Invite] Fetch members error:", err))
                 .finally(() => setLoadingMembers(false));
@@ -512,13 +544,28 @@ const GlobalVideoPIP = () => {
                     )}
 
                     <div className="pip-vertical-participants-container custom-scrollbar">
-                        {participants.length > 0 ? (
-                            participants.map((p) => (
+                        {orderedParticipants.length > 0 ? (
+                            orderedParticipants.map((p, idx) => (
                                 <div 
                                     key={p.identity} 
                                     className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''} ${p.isLocal ? 'local' : ''}`}
                                 >
                                     <VideoRenderer participant={p} className="pip-participant-video" />
+                                    
+                                    {/* Reordering Controls overlay (Up/Down arrows) */}
+                                    <div className="pip-order-controls">
+                                        {idx > 0 && (
+                                            <button className="pip-order-btn" onClick={() => moveParticipant(p.identity, 'up')} title="Yukarı Taşı">
+                                                <ChevronUp size={10} />
+                                            </button>
+                                        )}
+                                        {idx < orderedParticipants.length - 1 && (
+                                            <button className="pip-order-btn" onClick={() => moveParticipant(p.identity, 'down')} title="Aşağı Taşı">
+                                                <ChevronDown size={10} />
+                                            </button>
+                                        )}
+                                    </div>
+
                                     <div className="pip-participant-minimal-badge">
                                         <span className="pip-participant-name-text">
                                             {p.name} {p.isLocal && '(Sen)'}
