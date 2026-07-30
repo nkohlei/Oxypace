@@ -5,7 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
@@ -78,6 +78,9 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
 
 
 const VoiceChannel = ({ portalId, channelId, channelName }) => {
+    const handleTriggerDocumentPiP = () => {
+        window.dispatchEvent(new CustomEvent('triggerDocumentPiP'));
+    };
     const { user } = useAuth();
     const {
         activeRoom,
@@ -493,6 +496,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     )}
                 </div>
                 
+                {/* Picture-in-Picture Button */}
+                <button 
+                    className="vc-ctrl-btn" 
+                    onClick={handleTriggerDocumentPiP} 
+                    title="Yüzen Pencereye Geç (PiP)"
+                    style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+                >
+                    <PictureInPicture size={18} color="#818cf8" />
+                </button>
+
                 {/* Mobile More Menu Trigger (Arrow) */}
                 {isMobile && (
                     <div style={{ position: 'relative' }}>
