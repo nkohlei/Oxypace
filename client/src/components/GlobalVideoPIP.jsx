@@ -366,11 +366,12 @@ const GlobalVideoPIP = () => {
 
     const content = (
         <div 
-            className={`global-video-pip-window ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
+            className={`global-video-pip-window vertical-mode ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
             style={windowStyle}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
             onMouseMove={handleMouseMoveWindow}
+            onMouseLeave={() => setShowControls(false)}
         >
             {isMinimized ? (
                 // Minimized circular bubble
@@ -387,92 +388,83 @@ const GlobalVideoPIP = () => {
                     </div>
                 </div>
             ) : (
-                // Full PiP view
-                <div className="pip-full-content">
-                    {/* Header - shown on controls state */}
+                // Vertical PiP View
+                <div className="pip-full-content vertical-pip-content">
+                    {/* Floating Header */}
                     {!isInNativePiP && (
                         <div className="pip-header">
-                            <span className="pip-title" onClick={handleNavigateToChannel}>
-                                {activeRoom?.channelName || 'Sohbet'}
-                            </span>
+                            <div className="pip-header-info" onClick={handleNavigateToChannel}>
+                                <span className="pip-title">{activeRoom?.channelName || 'Canlı Oda'}</span>
+                                <span className="pip-subtitle">{participants.length} katılımcı</span>
+                            </div>
                             <div className="pip-header-actions">
                                 <button className="pip-header-btn" onClick={handleMinimizeAction} title={isDocumentPiPActive ? "Geri Dön" : "Küçült"}>
-                                    <Minimize2 size={16} />
+                                    <Minimize2 size={15} />
                                 </button>
                                 <button className="pip-header-btn danger" onClick={handleDisconnectAction} title="Ayrıl">
-                                    <PhoneOff size={16} />
+                                    <PhoneOff size={15} />
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Main video area */}
-                    <div className="pip-main-video-container" onClick={handleNavigateToChannel}>
-                        {mainUser ? (
-                            <VideoRenderer participant={mainUser} className="pip-main-video" />
+                    {/* Vertical Scrollable Participant Stack */}
+                    <div className="pip-vertical-participants-container custom-scrollbar">
+                        {participants.length > 0 ? (
+                            participants.map((p) => (
+                                <div 
+                                    key={p.identity} 
+                                    className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''} ${p.isLocal ? 'local' : ''}`}
+                                >
+                                    <VideoRenderer participant={p} className="pip-participant-video" />
+                                    <div className="pip-participant-overlay">
+                                        <span className="pip-participant-name">
+                                            {p.name} {p.isLocal && '(Sen)'}
+                                            {p.role === 'owner' && <Crown size={12} className="role-icon owner" />}
+                                            {p.role === 'admin' && <Shield size={12} className="role-icon admin" />}
+                                        </span>
+                                        <div className="pip-participant-status">
+                                            {p.isMuted ? <MicOff size={12} className="status-icon muted" /> : <Mic size={12} className="status-icon active" />}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
                         ) : (
                             <div className="pip-empty">Oda boş</div>
                         )}
-
-                        {/* Local thumbnail overlay */}
-                        {localUser && localUser.isCameraOn && !isInNativePiP && (
-                            <div className="pip-local-thumbnail">
-                                <VideoRenderer participant={localUser} className="pip-local-video" />
-                            </div>
-                        )}
-
-                        {/* Speaking / Mute Indicators */}
-                        {mainUser && !isInNativePiP && (
-                            <div className="pip-overlay-info">
-                                <span className="pip-speaker-name">
-                                    {mainUser.name}
-                                    {mainUser.role === 'owner' && <Crown size={12} className="role-icon owner" />}
-                                    {mainUser.role === 'admin' && <Shield size={12} className="role-icon admin" />}
-                                </span>
-                            </div>
-                        )}
                     </div>
 
-                    {/* Control Strip - shown on controls state */}
+                    {/* Bottom Action Controls */}
                     {!isInNativePiP && (
-                        <div className="pip-controls">
+                        <div className="pip-controls vertical-controls">
                             <button 
                                 className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
                                 onClick={toggleMicrophone}
+                                title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
                             >
                                 {localState.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
                             </button>
                             <button 
                                 className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
                                 onClick={toggleCamera}
+                                title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
                             >
                                 {localState.isCameraOn ? <Video size={16} /> : <VideoOff size={16} />}
                             </button>
                             <button 
                                 className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
                                 onClick={toggleDeafen}
+                                title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
                             >
                                 {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />}
                             </button>
-                        </div>
-                    )}
-
-                    {/* Member Strip for manual pinning */}
-                    {remoteParticipants.length > 1 && showOverlayControls && !isInNativePiP && (
-                        <div className="pip-member-strip custom-scrollbar">
-                            {remoteParticipants.map(p => (
-                                <div 
-                                    key={p.identity} 
-                                    className={`pip-member-avatar-wrapper ${manualFocusId === p.identity ? 'active' : ''} ${p.isSpeaking ? 'speaking' : ''}`}
-                                    onClick={() => setManualFocusId(p.identity)}
-                                >
-                                    <img 
-                                        src={getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}`} 
-                                        alt={p.name} 
-                                        title={p.name}
-                                    />
-                                </div>
-                            ))}
+                            <button 
+                                className="pip-control-btn danger disconnect-btn" 
+                                onClick={handleDisconnectAction}
+                                title="Aramayı Sonlandır"
+                            >
+                                <PhoneOff size={16} />
+                            </button>
                         </div>
                     )}
                 </div>
