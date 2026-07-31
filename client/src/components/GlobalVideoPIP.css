@@ -203,21 +203,71 @@
     color: white;
 }
 
-.pip-action-btn {
-    width: 100%;
-    background: #6366f1;
-    color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s ease;
+.pip-body-layout {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
 }
 
-.pip-action-btn:hover {
-    background: #4f46e5;
+/* Vertical Mode (Default) */
+.vertical-mode .pip-body-layout {
+    flex-direction: column;
+}
+
+.vertical-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    overflow-y: auto;
+}
+
+.vertical-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Horizontal Mode (Requested layout) */
+.horizontal-mode .pip-body-layout {
+    flex-direction: row;
+}
+
+.horizontal-container {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.horizontal-container .pip-participant-card {
+    min-width: 180px;
+    max-width: 220px;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.horizontal-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 6px;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(12px);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 10;
 }
 
 /* Chat Popover */
