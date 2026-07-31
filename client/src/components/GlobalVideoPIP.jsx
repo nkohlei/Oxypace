@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X, MonitorUp, Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, Columns, Rows } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X, MonitorUp, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import './GlobalVideoPIP.css';
@@ -83,30 +83,6 @@ const GlobalVideoPIP = () => {
     const [pipContainer, setPipContainer] = useState(null);
     const [isDocumentPiPActive, setIsDocumentPiPActive] = useState(false);
 
-    // Orientation state: 'vertical' or 'horizontal'
-    const [orientation, setOrientation] = useState(() => {
-        return localStorage.getItem('pip_orientation') || 'vertical';
-    });
-
-    const toggleOrientation = () => {
-        const nextMode = orientation === 'vertical' ? 'horizontal' : 'vertical';
-        setOrientation(nextMode);
-        localStorage.setItem('pip_orientation', nextMode);
-        
-        // Resize Document PiP Window dynamically if active
-        if (pipWindowRef.current) {
-            try {
-                if (nextMode === 'horizontal') {
-                    pipWindowRef.current.resizeTo(480, 260);
-                } else {
-                    pipWindowRef.current.resizeTo(280, 440);
-                }
-            } catch (e) {
-                console.warn("[PiP] Dynamic resize error:", e);
-            }
-        }
-    };
-
     // Popover states for right-top buttons in PiP
     const [isPipInviteOpen, setIsPipInviteOpen] = useState(false);
     const [isPipChatOpen, setIsPipChatOpen] = useState(false);
@@ -121,7 +97,7 @@ const GlobalVideoPIP = () => {
         const index = currentIdentities.indexOf(identity);
         if (index === -1) return;
 
-        const targetIndex = (direction === 'up' || direction === 'left') ? index - 1 : index + 1;
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
         if (targetIndex < 0 || targetIndex >= currentIdentities.length) return;
 
         const newOrder = [...currentIdentities];
@@ -214,10 +190,9 @@ const GlobalVideoPIP = () => {
         if (!('documentPictureInPicture' in window) || pipWindowRef.current || isDocumentPiPActive) return;
 
         try {
-            const isHoriz = orientation === 'horizontal';
             const pipWin = await window.documentPictureInPicture.requestWindow({
-                width: isHoriz ? 480 : 280,
-                height: isHoriz ? 260 : 440
+                width: 280,
+                height: 440
             });
 
             pipWindowRef.current = pipWin;
@@ -308,11 +283,9 @@ const GlobalVideoPIP = () => {
 
     const constrainPosition = (x, y) => {
         const minX = 10;
-        const width = orientation === 'horizontal' ? 440 : 280;
-        const height = orientation === 'horizontal' ? 240 : 440;
-        const maxX = window.innerWidth - (isMinimized ? 80 : width);
+        const maxX = window.innerWidth - (isMinimized ? 80 : 280);
         const minY = 10;
-        const maxY = window.innerHeight - (isMinimized ? 80 : height);
+        const maxY = window.innerHeight - (isMinimized ? 80 : 440);
         return {
             x: Math.max(minX, Math.min(maxX, x)),
             y: Math.max(minY, Math.min(maxY, y))
@@ -411,7 +384,7 @@ const GlobalVideoPIP = () => {
 
     const content = (
         <div 
-            className={`global-video-pip-window ${orientation}-mode ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
+            className={`global-video-pip-window vertical-mode ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
             style={windowStyle}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
@@ -431,7 +404,7 @@ const GlobalVideoPIP = () => {
                     </div>
                 </div>
             ) : (
-                <div className={`pip-full-content ${orientation}-pip-content`}>
+                <div className="pip-full-content vertical-pip-content">
                     {!isInNativePiP && (
                         <div className="pip-header">
                             <div className="pip-header-info">
@@ -440,13 +413,6 @@ const GlobalVideoPIP = () => {
                             </div>
                             
                             <div className="pip-header-actions">
-                                <button 
-                                    className="pip-header-btn"
-                                    onClick={toggleOrientation}
-                                    title={orientation === 'vertical' ? "Yatay Moda Geç" : "Dikey Moda Geç"}
-                                >
-                                    {orientation === 'vertical' ? <Columns size={14} /> : <Rows size={14} />}
-                                </button>
                                 <button 
                                     className={`pip-header-btn ${isPipInviteOpen ? 'active' : ''}`} 
                                     onClick={() => { setIsPipInviteOpen(!isPipInviteOpen); setIsPipChatOpen(false); setIsPipVolumeOpen(false); }} 
@@ -472,6 +438,7 @@ const GlobalVideoPIP = () => {
                         </div>
                     )}
 
+                    {/* Davet Popover */}
                     {isPipInviteOpen && (
                         <div className="pip-popover invite-popover">
                             <div className="pip-popover-header">
@@ -522,6 +489,7 @@ const GlobalVideoPIP = () => {
                         </div>
                     )}
 
+                    {/* Chat Popover */}
                     {isPipChatOpen && (
                         <div className="pip-popover chat-popover">
                             <div className="pip-popover-header">
@@ -552,6 +520,7 @@ const GlobalVideoPIP = () => {
                         </div>
                     )}
 
+                    {/* Ses Seviyesi Popover */}
                     {isPipVolumeOpen && (
                         <div className="pip-popover volume-popover">
                             <div className="pip-popover-header">
@@ -577,86 +546,84 @@ const GlobalVideoPIP = () => {
                         </div>
                     )}
 
-                    <div className="pip-body-layout">
-                        <div className={`pip-participants-container custom-scrollbar ${orientation}-container`}>
-                            {orderedParticipants.length > 0 ? (
-                                orderedParticipants.map((p, idx) => (
-                                    <div 
-                                        key={p.identity} 
-                                        className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''} ${p.isLocal ? 'local' : ''}`}
-                                    >
-                                        <VideoRenderer participant={p} className="pip-participant-video" />
-                                        
-                                        <div className="pip-order-controls">
-                                            {idx > 0 && (
-                                                <button className="pip-order-btn" onClick={() => moveParticipant(p.identity, orientation === 'horizontal' ? 'left' : 'up')} title={orientation === 'horizontal' ? "Sola Taşı" : "Yukarı Taşı"}>
-                                                    {orientation === 'horizontal' ? <ChevronLeft size={10} /> : <ChevronUp size={10} />}
-                                                </button>
-                                            )}
-                                            {idx < orderedParticipants.length - 1 && (
-                                                <button className="pip-order-btn" onClick={() => moveParticipant(p.identity, orientation === 'horizontal' ? 'right' : 'down')} title={orientation === 'horizontal' ? "Sağa Taşı" : "Aşağı Taşı"}>
-                                                    {orientation === 'horizontal' ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="pip-participant-minimal-badge">
-                                            <span className="pip-participant-name-text">
-                                                {p.name} {p.isLocal && '(Sen)'}
-                                            </span>
-                                            {p.role === 'owner' && <Crown size={10} className="role-icon owner" />}
-                                            {p.role === 'admin' && <Shield size={10} className="role-icon admin" />}
-                                            {p.isMuted ? <MicOff size={10} className="status-icon muted" /> : <Mic size={10} className="status-icon active" />}
-                                        </div>
+                    <div className="pip-vertical-participants-container custom-scrollbar">
+                        {orderedParticipants.length > 0 ? (
+                            orderedParticipants.map((p, idx) => (
+                                <div 
+                                    key={p.identity} 
+                                    className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''} ${p.isLocal ? 'local' : ''}`}
+                                >
+                                    <VideoRenderer participant={p} className="pip-participant-video" />
+                                    
+                                    <div className="pip-order-controls">
+                                        {idx > 0 && (
+                                            <button className="pip-order-btn" onClick={() => moveParticipant(p.identity, 'up')} title="Yukarı Taşı">
+                                                <ChevronUp size={10} />
+                                            </button>
+                                        )}
+                                        {idx < orderedParticipants.length - 1 && (
+                                            <button className="pip-order-btn" onClick={() => moveParticipant(p.identity, 'down')} title="Aşağı Taşı">
+                                                <ChevronDown size={10} />
+                                            </button>
+                                        )}
                                     </div>
-                                ))
-                            ) : (
-                                <div className="pip-empty">Oda boş</div>
-                            )}
-                        </div>
 
-                        {!isInNativePiP && (
-                            <div className={`pip-controls ${orientation}-controls`}>
-                                <button 
-                                    className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
-                                    onClick={toggleMicrophone}
-                                    title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
-                                >
-                                    {localState.isMuted ? <MicOff size={14} /> : <Mic size={14} />}
-                                </button>
-                                <button 
-                                    className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
-                                    onClick={toggleCamera}
-                                    title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
-                                >
-                                    {localState.isCameraOn ? <Video size={14} /> : <VideoOff size={14} />}
-                                </button>
-                                <button 
-                                    className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
-                                    onClick={toggleDeafen}
-                                    title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
-                                >
-                                    {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                                </button>
-                                
-                                <button 
-                                    className={`pip-control-btn ${localState.isScreenSharing ? 'active-share' : ''}`} 
-                                    onClick={toggleScreenShare}
-                                    title={localState.isScreenSharing ? "Ekran Paylaşımını Durdur" : "Ekranı Paylaş"}
-                                >
-                                    <MonitorUp size={14} />
-                                </button>
-
-                                <button 
-                                    className="pip-control-btn danger disconnect-btn" 
-                                    onClick={handleDisconnectAction}
-                                    title="Aramayı Sonlandır"
-                                >
-                                    <PhoneOff size={14} />
-                                </button>
-                            </div>
+                                    <div className="pip-participant-minimal-badge">
+                                        <span className="pip-participant-name-text">
+                                            {p.name} {p.isLocal && '(Sen)'}
+                                        </span>
+                                        {p.role === 'owner' && <Crown size={10} className="role-icon owner" />}
+                                        {p.role === 'admin' && <Shield size={10} className="role-icon admin" />}
+                                        {p.isMuted ? <MicOff size={10} className="status-icon muted" /> : <Mic size={10} className="status-icon active" />}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="pip-empty">Oda boş</div>
                         )}
                     </div>
+
+                    {!isInNativePiP && (
+                        <div className="pip-controls vertical-controls">
+                            <button 
+                                className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
+                                onClick={toggleMicrophone}
+                                title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                            >
+                                {localState.isMuted ? <MicOff size={14} /> : <Mic size={14} />}
+                            </button>
+                            <button 
+                                className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
+                                onClick={toggleCamera}
+                                title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
+                            >
+                                {localState.isCameraOn ? <Video size={14} /> : <VideoOff size={14} />}
+                            </button>
+                            <button 
+                                className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
+                                onClick={toggleDeafen}
+                                title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
+                            >
+                                {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                            </button>
+                            
+                            <button 
+                                className={`pip-control-btn ${localState.isScreenSharing ? 'active-share' : ''}`} 
+                                onClick={toggleScreenShare}
+                                title={localState.isScreenSharing ? "Ekran Paylaşımını Durdur" : "Ekranı Paylaş"}
+                            >
+                                <MonitorUp size={14} />
+                            </button>
+
+                            <button 
+                                className="pip-control-btn danger disconnect-btn" 
+                                onClick={handleDisconnectAction}
+                                title="Aramayı Sonlandır"
+                            >
+                                <PhoneOff size={14} />
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
