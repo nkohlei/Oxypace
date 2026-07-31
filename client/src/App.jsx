@@ -87,6 +87,7 @@ import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
 import UpdateModal from './components/UpdateModal';
 import { GlobalWatchPartyWrapper } from './components/WatchPartyPlayer';
+import TourGuide from './components/TourGuide';
 import RegisterDeviceModal from './components/RegisterDeviceModal';
 import { getDeviceInfo } from './utils/deviceHelper';
 import axios from 'axios';
