@@ -81,15 +81,17 @@ router.get('/', optionalProtect, async (req, res) => {
 
         const portals = await Portal.find(keyword)
             .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status statusReason')
+            .populate('members', 'isDeleted')
             .limit(100);
 
         const userId = req.user?._id?.toString();
         const formattedPortals = portals.map((portal) => {
             const portalObj = portal.toObject();
-            portalObj.memberCount = portal.members?.length || 0;
+            const activeMembers = (portal.members || []).filter(m => !m.isDeleted);
+            portalObj.memberCount = activeMembers.length;
 
             if (userId) {
-                portalObj.isMember = portal.members.some((m) => m.toString() === userId);
+                portalObj.isMember = activeMembers.some((m) => (m._id || m).toString() === userId);
                 portalObj.isRequested = portal.joinRequests?.some((r) => r.toString() === userId);
             }
 
@@ -147,7 +149,8 @@ router.get('/map', optionalProtect, async (req, res) => {
         }
 
         const portals = await Portal.find({ ...baseFilter, ...privacyFilter })
-            .select('name description avatar banner location showOnMap members');
+            .select('name description avatar banner location showOnMap members')
+            .populate('members', 'isDeleted');
 
         const result = portals.map(p => ({
             _id: p._id,
@@ -159,7 +162,7 @@ router.get('/map', optionalProtect, async (req, res) => {
             lat: p.location.lat,
             lng: p.location.lng,
             label: p.location.label || p.name,
-            memberCount: p.members?.length || 0,
+            memberCount: (p.members || []).filter(m => !m.isDeleted).length,
         }));
 
         res.json(result);

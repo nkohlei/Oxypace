@@ -85,6 +85,9 @@ export const initializeSocket = (io) => {
                         socket.emit('dm_typing_update', { senderId, isTyping: true });
                     }
                 }
+            } else {
+                // If ghost/hidden, send online users list ONLY to this socket
+                socket.emit('getOnlineUsers', getOnlineUsersList());
             }
         });
 
