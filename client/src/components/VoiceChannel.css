@@ -387,7 +387,12 @@
     transition: all 0.2s ease;
     border: none;
     background: rgba(255, 255, 255, 0.05);
-    color: white;
+    color: var(--text-primary, white);
+}
+
+[data-theme='light'] .vc-ctrl-btn {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
 }
 
 .vc-ctrl-btn svg {
@@ -396,6 +401,8 @@
 }
 
 .vc-ctrl-btn:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
+[data-theme='light'] .vc-ctrl-btn:hover { background: rgba(0, 0, 0, 0.1); }
+
 .vc-ctrl-btn.danger { background: #f23f43 !important; color: white !important; }
 .vc-ctrl-btn.danger:hover { background: #e0383b !important; }
 .vc-ctrl-btn.active { background: #23a559 !important; color: white !important; }
@@ -853,9 +860,20 @@
 }
 
 .glass-join-btn {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: white;
+    background: var(--bg-hover, rgba(255,255,255,0.1));
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.2));
+    color: var(--text-primary, white);
+}
+
+[data-theme='light'] .glass-join-btn {
+    background: rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: var(--text-primary);
+}
+
+[data-theme='light'] .glass-join-btn:hover {
+    background: rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
 }
 
 .glass-join-btn:hover { background: rgba(255,255,255,0.2); transform: translateY(-2px); }
