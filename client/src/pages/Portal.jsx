@@ -1268,10 +1268,10 @@ const Portal = () => {
                                                                         </svg>
                                                                     </button>
                                                                 )}
-                                                                <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
+                                                                <span className="hashtag" style={{ color: 'var(--text-primary)' }}>
                                                                     {channelType === 'image' ? '🖼️' : '#'}
                                                                 </span>
-                                                                <h3 className="channel-name" style={{ color: 'var(--primary-color)' }}>
+                                                                <h3 className="channel-name" style={{ color: 'var(--text-primary)' }}>
                                                                     {channelName}
                                                                 </h3>
                                                             </div>
