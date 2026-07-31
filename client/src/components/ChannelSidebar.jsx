@@ -57,7 +57,7 @@ const ChannelSidebar = ({
     })) : [];
 
     const activeChannelObj = channels.find(ch => ch.id === currentChannel);
-    const isLiveRoom = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference' || !!activeRoom;
+    const isLiveRoom = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
 
     useEffect(() => {
         if (!isLiveRoom && isDesktopSidebarCollapsed) {
