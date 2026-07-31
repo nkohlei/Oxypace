@@ -26,34 +26,46 @@
     width: 280px;
     height: 440px;
     min-width: 260px;
-    min-height: 380px;
+    min-height: 360px;
 }
 
+/* Horizontal Mode dimensions & constraints */
 .global-video-pip-window.horizontal-mode:not(.minimized) {
     width: 480px;
     height: 260px;
-    min-width: 380px;
-    min-height: 260px; /* Strict minimum height in horizontal mode so right vertical controls NEVER overflow */
+    min-width: 360px; /* Minimum horizontal width constraint */
+    min-height: 220px; /* Minimum vertical height constraint so title and cameras stay visible */
 }
 
 /* Document PiP Root body limits */
 body:has(#pip-portal-root) {
-    min-height: 240px;
+    min-height: 220px;
 }
 
-/* Horizontal Mode Controls Bar (Right side vertical column) */
+/* Horizontal Mode Controls Bar (Right side vertical column - Overlay & Auto-hide) */
 .horizontal-controls {
+    position: absolute;
+    top: 44px;
+    right: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 6px 8px;
-    background: rgba(15, 23, 42, 0.95);
+    gap: 8px;
+    padding: 8px 6px;
+    background: linear-gradient(270deg, rgba(7, 10, 18, 0.95) 0%, rgba(7, 10, 18, 0.8) 70%, rgba(7, 10, 18, 0) 100%);
     backdrop-filter: blur(12px);
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(12px);
     z-index: 10;
-    overflow-y: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.show-controls .horizontal-controls {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .horizontal-controls .pip-control-btn {
@@ -280,9 +292,10 @@ body:has(#pip-portal-root) {
     display: flex;
     flex-direction: row;
     gap: 8px;
-    padding: 8px;
+    padding: 48px 8px 8px 8px; /* Top padding for autohiding header */
     overflow-x: auto;
     overflow-y: hidden;
+    width: 100%;
 }
 
 .horizontal-container .pip-participant-card {
