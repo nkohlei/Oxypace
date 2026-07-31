@@ -21,10 +21,19 @@
     cursor: grabbing;
 }
 
-/* Vertical Full PiP Mode dimensions */
-.global-video-pip-window:not(.minimized) {
-    width: 270px;
-    height: 420px;
+/* Mode-specific dimensions & constraints */
+.global-video-pip-window.vertical-mode:not(.minimized) {
+    width: 280px;
+    height: 440px;
+    min-width: 250px;
+    min-height: 380px;
+}
+
+.global-video-pip-window.horizontal-mode:not(.minimized) {
+    width: 480px;
+    height: 240px;
+    min-width: 320px;
+    min-height: 185px; /* Minimum height limit in horizontal mode so title & controls never crop */
 }
 
 /* Minimized bubble state */
@@ -251,9 +260,10 @@
 }
 
 .horizontal-container .pip-participant-card {
-    min-width: 180px;
-    max-width: 220px;
+    min-width: 140px;
+    max-width: 260px;
     height: 100%;
+    aspect-ratio: 16 / 9;
     flex-shrink: 0;
 }
 
