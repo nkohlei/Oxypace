@@ -1245,6 +1245,36 @@ router.post('/devices/save', protect, async (req, res) => {
     }
 });
 
+// @route   PUT /api/users/devices/:deviceId/rename
+// @desc    Rename a registered device
+// @access  Private
+router.put('/devices/:deviceId/rename', protect, async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { deviceName } = req.body;
+
+        if (!deviceName || !deviceName.trim()) {
+            return res.status(400).json({ message: 'Cihaz adı boş olamaz.' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user.registeredDevices) user.registeredDevices = [];
+
+        const existingIndex = user.registeredDevices.findIndex(d => d.deviceId === deviceId);
+        if (existingIndex < 0) {
+            return res.status(444).json({ message: 'Cihaz bulunamadı.' });
+        }
+
+        user.registeredDevices[existingIndex].deviceName = deviceName.trim();
+        await user.save();
+
+        res.json({ message: 'Cihaz adı güncellendi', devices: user.registeredDevices });
+    } catch (error) {
+        console.error('Rename device error:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
 // @route   DELETE /api/users/devices/:deviceId
 // @desc    Remove a registered device
 // @access  Private

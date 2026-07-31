@@ -229,23 +229,25 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             }
         }
 
-        // Send silent login notification ON EVERY LOGIN with device details
-        try {
-            const notification = await Notification.create({
-                recipient: user._id,
-                type: 'security_silent',
-                content: `Hesabınıza ${formattedDeviceName} cihazından giriş yapıldı.`,
-                link: '/settings?section=devices',
-            });
+        // Send security login notification ONLY IF it is an unregistered/unknown device
+        if (isNewDevice) {
+            try {
+                const notification = await Notification.create({
+                    recipient: user._id,
+                    type: 'security_silent',
+                    content: `Hesabınıza yeni/tanınmayan ${formattedDeviceName} cihazından giriş yapıldı.`,
+                    link: '/settings?section=devices',
+                });
 
-            const io = req.app.get('io');
-            if (io) {
-                const populated = await Notification.findById(notification._id)
-                    .populate('sender', 'username profile.displayName profile.avatar');
-                io.to(user._id.toString()).emit('newNotification', populated);
+                const io = req.app.get('io');
+                if (io) {
+                    const populated = await Notification.findById(notification._id)
+                        .populate('sender', 'username profile.displayName profile.avatar');
+                    io.to(user._id.toString()).emit('newNotification', populated);
+                }
+            } catch (err) {
+                console.error('Security login notification error:', err);
             }
-        } catch (err) {
-            console.error('Security login notification error:', err);
         }
 
         user.lastIP = incomingIP;

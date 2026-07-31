@@ -112,6 +112,17 @@ const Settings = () => {
         }
     };
 
+    const handleRenameDevice = async (deviceId, currentName) => {
+        const newName = window.prompt('Cihaz için yeni bir isim girin:', currentName);
+        if (!newName || !newName.trim() || newName.trim() === currentName) return;
+        try {
+            const res = await axios.put(`/api/users/devices/${deviceId}/rename`, { deviceName: newName.trim() });
+            setUserDevices(res.data.devices || []);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Cihaz ismi güncellenemedi');
+        }
+    };
+
     // Extract query params to open specific section
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -1307,21 +1318,38 @@ const Settings = () => {
                                             </div>
                                         </div>
 
-                                        <button
-                                            className="settings-action-btn danger-btn"
-                                            onClick={() => handleRemoveDevice(dev.deviceId)}
-                                            style={{
-                                                padding: '6px 12px',
-                                                fontSize: '12px',
-                                                background: 'rgba(239, 68, 68, 0.1)',
-                                                color: '#ef4444',
-                                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                                borderRadius: '8px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Kaldır
-                                        </button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <button
+                                                className="settings-action-btn secondary-btn"
+                                                onClick={() => handleRenameDevice(dev.deviceId, dev.deviceName)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    fontSize: '12px',
+                                                    background: 'rgba(255, 255, 255, 0.06)',
+                                                    color: 'var(--text-primary)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                Yeniden İsimlendir
+                                            </button>
+                                            <button
+                                                className="settings-action-btn danger-btn"
+                                                onClick={() => handleRemoveDevice(dev.deviceId)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    fontSize: '12px',
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    color: '#ef4444',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                Kaldır
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}

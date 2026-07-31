@@ -87,7 +87,9 @@ import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
 import UpdateModal from './components/UpdateModal';
 import { GlobalWatchPartyWrapper } from './components/WatchPartyPlayer';
-import TourGuide from './components/TourGuide';
+import RegisterDeviceModal from './components/RegisterDeviceModal';
+import { getDeviceInfo } from './utils/deviceHelper';
+import axios from 'axios';
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
 const MAINTENANCE_MODE = false;
@@ -293,6 +295,34 @@ const AppLayout = () => {
         }
     }, [location.pathname, socket, connected, isLoggedIn]);
 
+    // Device Prompt State
+    const [showDeviceModal, setShowDeviceModal] = useState(false);
+    const [currentDeviceInfo, setCurrentDeviceInfo] = useState({ deviceId: '', deviceName: '', deviceType: '' });
+
+    useEffect(() => {
+        if (!isLoggedIn || !user) return;
+        const promptHandled = sessionStorage.getItem('oxypace_device_prompt_handled');
+        if (promptHandled === 'true') return;
+
+        const checkDeviceRegistration = async () => {
+            try {
+                const info = await getDeviceInfo();
+                setCurrentDeviceInfo(info);
+                const res = await axios.get('/api/users/devices');
+                const registeredList = res.data.devices || [];
+                const isRegistered = registeredList.some(d => d.deviceId === info.deviceId);
+
+                if (!isRegistered) {
+                    setShowDeviceModal(true);
+                }
+            } catch (err) {
+                console.error('Check device registration error:', err);
+            }
+        };
+
+        checkDeviceRegistration();
+    }, [isLoggedIn, user]);
+
     // Listen for incoming voice invite socket events → fire local notification with action buttons
     useEffect(() => {
         if (!socket || !isLoggedIn) return;
@@ -405,6 +435,18 @@ const AppLayout = () => {
     return (
         <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
             {isLoggedIn && <WarpGridBackground />}
+            {showDeviceModal && (
+                <RegisterDeviceModal
+                    isOpen={showDeviceModal}
+                    onClose={() => setShowDeviceModal(false)}
+                    deviceId={currentDeviceInfo.deviceId}
+                    deviceName={currentDeviceInfo.deviceName}
+                    deviceType={currentDeviceInfo.deviceType}
+                    onRegistered={() => {
+                        setShowDeviceModal(false);
+                    }}
+                />
+            )}
             {user && user.securityQuestionsConfigured === false && localStorage.getItem(`isSecurityConfigured_${user._id}`) !== 'true' && (
                 <SecurityQuestionsModal 
                     user={user} 
