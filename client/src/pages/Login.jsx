@@ -159,7 +159,20 @@ const Login = () => {
             };
             const response = await axios.post('/api/auth/login', payload);
             login(response.data.token, response.data.user);
-            navigate('/');
+
+            if (response.data.isNewDevice) {
+                // If it's a new device, prompt the user for confirmation
+                const saveDevice = window.confirm(`Yeni bir cihazdan (${deviceInfo.deviceName}) giriş yapıldı.\n\nBu cihazı güvenli cihazlarınız arasına kaydetmek istiyor musunuz?`);
+                if (saveDevice) {
+                    try {
+                        await axios.post('/api/users/devices/save', deviceInfo);
+                    } catch (e) {
+                        console.error('Failed to register device:', e);
+                    }
+                }
+            }
+
+            window.location.href = '/messages'; // Direct clean redirect into Portal Messages
         } catch (err) {
             if (err.response?.status === 403 && err.response?.data?.isDeleted) {
                 if (window.confirm("Bu hesap silinmiştir. Kurtarmak istiyor musunuz?")) {
