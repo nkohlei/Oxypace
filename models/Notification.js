@@ -82,6 +82,7 @@ notificationSchema.post('save', async function (doc) {
         // Skip if user doesn't exist, has no tokens, or disabled push notifications
         if (!recipient || !recipient.fcmTokens || recipient.fcmTokens.length === 0) return;
         if (recipient.settings?.notifications?.push === false) return;
+        if (doc.type === 'security_silent') return; // Do not send mobile push for silent security log activity
 
         let senderName = 'Oxypace';
         if (doc.sender) {

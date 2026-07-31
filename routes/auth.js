@@ -229,21 +229,14 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             }
         }
 
-        // Create login security activity notification
+        // Create login security activity notification log
         try {
-            const notification = await Notification.create({
+            await Notification.create({
                 recipient: user._id,
                 type: 'security_silent',
                 content: `Hesabınıza ${isNewDevice ? 'yeni/tanınmayan ' : ''}${formattedDeviceName} cihazından giriş yapıldı.`,
                 link: '/settings?section=devices',
             });
-
-            const io = req.app.get('io');
-            if (io) {
-                const populated = await Notification.findById(notification._id)
-                    .populate('sender', 'username profile.displayName profile.avatar');
-                io.to(user._id.toString()).emit('newNotification', populated);
-            }
         } catch (err) {
             console.error('Security login notification error:', err);
         }
