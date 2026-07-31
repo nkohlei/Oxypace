@@ -465,6 +465,7 @@ const AppLayout = () => {
                     deviceId={currentDeviceInfo.deviceId}
                     deviceName={currentDeviceInfo.deviceName}
                     deviceType={currentDeviceInfo.deviceType}
+                    token={token}
                     onRegistered={() => {
                         setShowDeviceModal(false);
                     }}
