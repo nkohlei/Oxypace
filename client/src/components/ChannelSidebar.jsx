@@ -448,10 +448,22 @@ const ChannelSidebar = ({
                 transform: none !important;
                 padding: 0;
             }
+            [data-theme='light'] .sidebar-toggle-btn {
+                background: rgba(255, 255, 255, 0.85) !important;
+                border: 1px solid rgba(0, 0, 0, 0.12) !important;
+                border-left: 1px solid rgba(0, 0, 0, 0.05) !important;
+                color: #334155;
+                box-shadow: 4px 0 16px rgba(0, 0, 0, 0.08);
+            }
             .sidebar-toggle-btn:hover {
                 color: #ffffff;
                 background: rgba(35, 38, 50, 0.9) !important;
                 border-color: rgba(255, 255, 255, 0.25) !important;
+            }
+            [data-theme='light'] .sidebar-toggle-btn:hover {
+                color: #0f172a;
+                background: rgba(241, 245, 249, 0.95) !important;
+                border-color: rgba(0, 0, 0, 0.2) !important;
             }
             .sidebar-toggle-btn svg {
                 transition: transform 0.2s ease;

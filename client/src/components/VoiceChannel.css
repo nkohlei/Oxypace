@@ -372,6 +372,12 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
+[data-theme='light'] .vc-ctrl-section {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
 .leave-section {
     padding: 10px; /* Square/Circular standalone look */
 }
@@ -417,6 +423,11 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+[data-theme='light'] .vc-ctrl-group {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .vc-ctrl-group .vc-ctrl-btn {
     background: transparent;
 }
@@ -432,7 +443,12 @@
     border-radius: 0 100px 100px 0;
 }
 
+[data-theme='light'] .vc-device-arrow {
+    color: rgba(0, 0, 0, 0.45);
+}
+
 .vc-device-arrow:hover { color: white; background: rgba(255, 255, 255, 0.05); }
+[data-theme='light'] .vc-device-arrow:hover { color: var(--text-primary); background: rgba(0, 0, 0, 0.06); }
 
 /* Top Right controls */
 .vc-top-right-controls {
