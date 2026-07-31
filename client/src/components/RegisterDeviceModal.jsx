@@ -25,8 +25,6 @@ const RegisterDeviceModal = ({ isOpen, onClose, deviceId, deviceName, deviceType
                 deviceType: deviceType || 'web',
             }, { headers });
 
-            // Mark as handled so modal won't show again for this session
-            sessionStorage.setItem('oxypace_device_prompt_handled', 'true');
             if (onRegistered) onRegistered();
             onClose();
         } catch (err) {
@@ -38,7 +36,6 @@ const RegisterDeviceModal = ({ isOpen, onClose, deviceId, deviceName, deviceType
     };
 
     const handleSkip = () => {
-        sessionStorage.setItem('oxypace_device_prompt_handled', 'true');
         onClose();
     };
 
@@ -50,7 +47,16 @@ const RegisterDeviceModal = ({ isOpen, onClose, deviceId, deviceName, deviceType
     return (
         <div className="rdm-overlay" onClick={handleSkip}>
             <div className="rdm-card animation-slide-up" onClick={(e) => e.stopPropagation()}>
-                <div className="rdm-icon">🛡️</div>
+                {/* Icon — SVG shield, no emoji */}
+                <div className="rdm-icon-wrap">
+                    <svg className="rdm-icon-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L3 7V12C3 16.55 6.84 20.74 12 22C17.16 20.74 21 16.55 21 12V7L12 2Z"
+                            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9 12L11 14L15 10"
+                            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                </div>
+
                 <h2 className="rdm-title">Bu Cihazı Kaydet</h2>
                 <p className="rdm-desc">
                     Bu cihazı güvenli cihazlar listenize eklemek ister misiniz? Sonraki girişlerinizde güvenlik uyarısı almadan erişebilirsiniz.

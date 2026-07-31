@@ -158,6 +158,7 @@ const Login = () => {
                 ...deviceInfo
             };
             const response = await axios.post('/api/auth/login', payload);
+            sessionStorage.setItem('oxypace_fresh_login', 'true');
             login(response.data.token, response.data.user);
             navigate('/');
         } catch (err) {

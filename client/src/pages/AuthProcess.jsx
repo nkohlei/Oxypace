@@ -30,6 +30,7 @@ const AuthProcess = () => {
                 const { action, user, token: authToken, preToken, message } = response.data;
 
                 if (action === 'login') {
+                    sessionStorage.setItem('oxypace_fresh_login', 'true');
                     login(authToken, user);
                     const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
                     if (isElectron) {

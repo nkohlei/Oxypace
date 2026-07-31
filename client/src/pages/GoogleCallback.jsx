@@ -14,6 +14,7 @@ const GoogleCallback = () => {
         const isNewUser = query.get('isNewUser') === 'true';
 
         if (token) {
+            sessionStorage.setItem('oxypace_fresh_login', 'true');
             login(token, null); // Pass null for user, AuthContext will fetch /me
 
             if (isNewUser) {

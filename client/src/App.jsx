@@ -302,11 +302,17 @@ const AppLayout = () => {
     const [currentDeviceInfo, setCurrentDeviceInfo] = useState({ deviceId: '', deviceName: '', deviceType: '' });
 
     useEffect(() => {
-        // Use stable primitives as dependencies — the full `user` object
-        // changes on every updateUser() call, causing race conditions.
         if (!isLoggedIn || !userId || !token) return;
-        const promptHandled = sessionStorage.getItem('oxypace_device_prompt_handled');
-        if (promptHandled === 'true') return;
+
+        // Only show the device prompt right after a real login event.
+        // Login pages set 'oxypace_fresh_login' before calling login().
+        // We consume (delete) the flag immediately so page refreshes
+        // and new visits never re-trigger the modal.
+        const isFreshLogin = sessionStorage.getItem('oxypace_fresh_login') === 'true';
+        if (!isFreshLogin) return;
+
+        // Consume the flag right away — one chance per login
+        sessionStorage.removeItem('oxypace_fresh_login');
 
         let cancelled = false;
 
@@ -316,8 +322,6 @@ const AppLayout = () => {
                 if (cancelled) return;
                 setCurrentDeviceInfo(info);
 
-                // Explicitly pass the token to avoid race conditions where
-                // axios.defaults.headers may not yet be set during fast state transitions.
                 const res = await axios.get('/api/users/devices', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -331,8 +335,6 @@ const AppLayout = () => {
                 }
             } catch (err) {
                 console.error('Check device registration error:', err);
-                // On API failure (e.g., network issue), still show the modal
-                // so the user gets the opportunity to register their device.
                 if (!cancelled) {
                     setShowDeviceModal(true);
                 }

@@ -1,58 +1,73 @@
-/* RegisterDeviceModal.css — Minimal black & white theme */
+/* RegisterDeviceModal.css — Dark glassmorphism */
 
 .rdm-overlay {
     position: fixed;
     inset: 0;
     z-index: 99999;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
 }
 
-/* ── Card ── */
+/* ── Glassmorphism card ── */
 .rdm-card {
     width: 100%;
     max-width: 380px;
-    background: #111111;
+    background: rgba(18, 18, 22, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 32px 28px 24px;
+    border-radius: 20px;
+    padding: 36px 28px 26px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 14px;
     color: #ffffff;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 [data-theme='light'] .rdm-card {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     color: #0d0e12;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.14);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* ── Icon ── */
-.rdm-icon {
+/* ── SVG Shield Icon ── */
+.rdm-icon-wrap {
     width: 52px;
     height: 52px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
-[data-theme='light'] .rdm-icon {
+[data-theme='light'] .rdm-icon-wrap {
     background: rgba(0, 0, 0, 0.05);
     border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.rdm-icon-svg {
+    width: 26px;
+    height: 26px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme='light'] .rdm-icon-svg {
+    color: rgba(0, 0, 0, 0.7);
 }
 
 /* ── Title ── */
@@ -61,33 +76,39 @@
     font-weight: 700;
     margin: 0;
     text-align: center;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
+    color: #ffffff;
+}
+
+[data-theme='light'] .rdm-title {
+    color: #0d0e12;
 }
 
 /* ── Description ── */
 .rdm-desc {
     font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(255, 255, 255, 0.5);
     margin: 0;
     text-align: center;
     line-height: 1.6;
+    max-width: 300px;
 }
 
 [data-theme='light'] .rdm-desc {
-    color: rgba(0, 0, 0, 0.5);
+    color: rgba(0, 0, 0, 0.48);
 }
 
-/* ── Device info badge ── */
+/* ── Device info ── */
 .rdm-device-info {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     width: 100%;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 10px;
-    padding: 10px 16px;
+    border-radius: 12px;
+    padding: 12px 16px;
 }
 
 [data-theme='light'] .rdm-device-info {
@@ -96,25 +117,25 @@
 }
 
 .rdm-device-type {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.35);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.07em;
 }
 
 [data-theme='light'] .rdm-device-type {
-    color: rgba(0, 0, 0, 0.4);
+    color: rgba(0, 0, 0, 0.35);
 }
 
 .rdm-device-name {
     font-size: 0.9rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.8);
 }
 
 [data-theme='light'] .rdm-device-name {
-    color: rgba(0, 0, 0, 0.75);
+    color: rgba(0, 0, 0, 0.72);
 }
 
 /* ── Error ── */
@@ -126,7 +147,7 @@
     width: 100%;
 }
 
-/* ── Footer buttons ── */
+/* ── Buttons ── */
 .rdm-footer {
     display: flex;
     gap: 10px;
@@ -143,18 +164,19 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
-    transition: opacity 0.15s, transform 0.15s;
+    transition: opacity 0.15s, transform 0.15s, background 0.15s;
 }
 
 .rdm-btn-primary:disabled,
 .rdm-btn-secondary:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
+    transform: none !important;
 }
 
-/* Primary — solid white/black */
+/* Primary: solid white in dark mode / solid dark in light mode */
 .rdm-btn-primary {
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.92);
     color: #0d0e12;
 }
 
@@ -164,39 +186,47 @@
 }
 
 .rdm-btn-primary:not(:disabled):hover {
-    opacity: 0.9;
+    background: rgba(255, 255, 255, 1);
     transform: translateY(-1px);
 }
 
-/* Secondary — ghost */
+[data-theme='light'] .rdm-btn-primary:not(:disabled):hover {
+    background: #1a1b1f;
+    transform: translateY(-1px);
+}
+
+/* Secondary: ghost with subtle glass border */
 .rdm-btn-secondary {
-    background: transparent;
-    color: rgba(255, 255, 255, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 [data-theme='light'] .rdm-btn-secondary {
-    color: rgba(0, 0, 0, 0.45);
-    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: rgba(0, 0, 0, 0.04);
+    color: rgba(0, 0, 0, 0.42);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .rdm-btn-secondary:not(:disabled):hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.65);
 }
 
 [data-theme='light'] .rdm-btn-secondary:not(:disabled):hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.07);
+    color: rgba(0, 0, 0, 0.6);
 }
 
 /* ── Slide-up animation ── */
 .animation-slide-up {
-    animation: rdmSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: rdmSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes rdmSlideUp {
     from {
         opacity: 0;
-        transform: translateY(18px) scale(0.97);
+        transform: translateY(20px) scale(0.97);
     }
     to {
         opacity: 1;
