@@ -75,7 +75,7 @@ export const useGlobalStore = create(
                     return { unreadPostsByPortal: newUnread };
                 });
 
-                // Sync with backend: Mark these notifications as read
+                // Sync with backend: mark ALL unread portal_post notifications as read
                 try {
                     await axios.put(`/api/notifications/portal/${portalId}/read`);
                 } catch (err) {
