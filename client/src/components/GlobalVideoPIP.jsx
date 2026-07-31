@@ -214,9 +214,10 @@ const GlobalVideoPIP = () => {
         if (!('documentPictureInPicture' in window) || pipWindowRef.current || isDocumentPiPActive) return;
 
         try {
+            const isHoriz = orientation === 'horizontal';
             const pipWin = await window.documentPictureInPicture.requestWindow({
-                width: 280,
-                height: 440
+                width: isHoriz ? 480 : 280,
+                height: isHoriz ? 260 : 440
             });
 
             pipWindowRef.current = pipWin;
