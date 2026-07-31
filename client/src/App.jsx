@@ -272,6 +272,7 @@ const AppLayout = () => {
     useRealtimeSync(); // Global websocket synchronization
     const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen } = useUI();
     const { user, token, updateUser } = useAuth();
+    const userId = user?._id;
     const location = useLocation();
     const { socket, connected } = useSocket();
 
@@ -301,15 +302,27 @@ const AppLayout = () => {
     const [currentDeviceInfo, setCurrentDeviceInfo] = useState({ deviceId: '', deviceName: '', deviceType: '' });
 
     useEffect(() => {
-        if (!isLoggedIn || !user) return;
+        // Use stable primitives as dependencies — the full `user` object
+        // changes on every updateUser() call, causing race conditions.
+        if (!isLoggedIn || !userId || !token) return;
         const promptHandled = sessionStorage.getItem('oxypace_device_prompt_handled');
         if (promptHandled === 'true') return;
+
+        let cancelled = false;
 
         const checkDeviceRegistration = async () => {
             try {
                 const info = await getDeviceInfo();
+                if (cancelled) return;
                 setCurrentDeviceInfo(info);
-                const res = await axios.get('/api/users/devices');
+
+                // Explicitly pass the token to avoid race conditions where
+                // axios.defaults.headers may not yet be set during fast state transitions.
+                const res = await axios.get('/api/users/devices', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (cancelled) return;
+
                 const registeredList = res.data.devices || [];
                 const isRegistered = registeredList.some(d => d.deviceId === info.deviceId);
 
@@ -318,11 +331,20 @@ const AppLayout = () => {
                 }
             } catch (err) {
                 console.error('Check device registration error:', err);
+                // On API failure (e.g., network issue), still show the modal
+                // so the user gets the opportunity to register their device.
+                if (!cancelled) {
+                    setShowDeviceModal(true);
+                }
             }
         };
 
         checkDeviceRegistration();
-    }, [isLoggedIn, user]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isLoggedIn, userId, token]);
 
     // Listen for incoming voice invite socket events → fire local notification with action buttons
     useEffect(() => {
