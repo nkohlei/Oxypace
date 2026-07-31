@@ -6,8 +6,8 @@
     overflow: hidden;
 }
 
-/* --- Discord-like Layout (Copied from Portal.css) --- */
-.discord-layout {
+/* --- Discord-like Layout (Scoped to Settings) --- */
+.settings-container .discord-layout {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -19,7 +19,7 @@
     position: relative;
 }
 
-.discord-split-view {
+.settings-container .discord-split-view {
     display: flex;
     flex: 1;
     overflow: hidden;
@@ -28,7 +28,7 @@
     max-width: 100vw;
 }
 
-.discord-main-content {
+.settings-container .discord-main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -816,8 +816,8 @@
     background-color: transparent;
 }
 
-/* Channel Top Bar (Header in Content) */
-.channel-top-bar {
+/* Channel Top Bar (Header in Content - Scoped to Settings) */
+.settings-container .channel-top-bar {
     height: 48px;
     padding: 0 16px;
     display: flex;
@@ -827,20 +827,20 @@
     flex-shrink: 0;
 }
 
-.channel-title-wrapper {
+.settings-container .channel-title-wrapper {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.hashtag {
+.settings-container .hashtag {
     font-size: 24px;
     color: var(--text-muted);
     font-weight: 300;
     line-height: 1;
 }
 
-.channel-name {
+.settings-container .channel-name {
     font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
