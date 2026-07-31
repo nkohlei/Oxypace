@@ -507,7 +507,11 @@
         z-index: 999 !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: #000 !important;
+        background: var(--bg-dark, #060913) !important;
+    }
+
+    [data-theme='light'] .vc-container {
+        background: var(--bg-dark, #ffffff) !important;
     }
 
     /* Back button style positioned at the very top left */
@@ -528,6 +532,12 @@
         justify-content: center !important;
         z-index: 1000 !important;
         cursor: pointer !important;
+    }
+
+    [data-theme='light'] .vc-mobile-back-btn {
+        background: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        color: var(--text-primary, #0d0e12) !important;
     }
 
     /* Position top-right controls at the very top right, stacked vertically */
