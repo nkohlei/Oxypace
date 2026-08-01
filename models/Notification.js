@@ -79,9 +79,10 @@ notificationSchema.post('save', async function (doc) {
         const User = mongoose.model('User');
         const recipient = await User.findById(doc.recipient).select('fcmTokens settings username profile.displayName');
         
-        // Skip if user doesn't exist, has no tokens, or disabled push notifications
+        // Skip if user doesn't exist, has no tokens, disabled push notifications, or if it's a silent security event
         if (!recipient || !recipient.fcmTokens || recipient.fcmTokens.length === 0) return;
         if (recipient.settings?.notifications?.push === false) return;
+        if (doc.type === 'security_silent') return;
 
         let senderName = 'Oxypace';
         if (doc.sender) {
