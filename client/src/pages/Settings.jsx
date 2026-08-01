@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass, ChevronDown } from 'lucide-react';
@@ -124,13 +124,15 @@ const Settings = () => {
     };
 
     // Extract query params to open specific section
-    useEffect(() => {
+    useLayoutEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const section = params.get('section');
         if (section && ['account', 'verification', 'devices', 'privacy', 'notifications'].includes(section)) {
             setActiveMenu(section);
+        } else {
+            setActiveMenu('main');
         }
-    }, []);
+    }, [window.location.search]);
 
     useEffect(() => {
         fetchSettings();
