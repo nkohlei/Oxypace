@@ -19,21 +19,23 @@
     position: relative;
 }
 
-.settings-container .discord-split-view {
+.settings-page-wrapper .discord-split-view {
     display: flex;
     flex: 1;
     overflow: hidden;
     position: relative;
     width: 100%;
     max-width: 100vw;
+    min-width: 0;
 }
 
-.settings-container .discord-main-content {
+.settings-page-wrapper .discord-main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     background: transparent !important;
     min-width: 0;
+    width: 100%;
     max-width: 100%;
     overflow-x: hidden;
     position: relative;
@@ -1912,12 +1914,19 @@ input:checked + .slider::before {
 }
 
 @media (max-width: 768px) {
+    .settings-page-wrapper .channel-sidebar.hidden-on-mobile,
     .channel-sidebar.hidden-on-mobile {
         display: none !important;
     }
 
-    .settings-container .discord-split-view {
+    .settings-page-wrapper .discord-main-content.hidden-on-mobile,
+    .discord-main-content.hidden-on-mobile {
+        display: none !important;
+    }
+
+    .settings-page-wrapper .discord-split-view {
         max-width: 100vw;
+        width: 100vw;
         overflow-x: hidden;
     }
 
