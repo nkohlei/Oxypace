@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { getDeviceInfo } from '../utils/deviceHelper';
 
 const AuthProcess = () => {
     const [searchParams] = useSearchParams();
@@ -21,10 +22,12 @@ const AuthProcess = () => {
             }
 
             try {
-                // Validate with Backend
+                // Validate with Backend (including Device Information)
+                const deviceInfo = await getDeviceInfo();
                 const response = await axios.post('/api/auth/google/validate', {
                     token,
                     intent,
+                    ...deviceInfo,
                 });
 
                 const { action, user, token: authToken, preToken, message } = response.data;

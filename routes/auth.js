@@ -227,6 +227,15 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 if (deviceName) user.registeredDevices[existingDeviceIndex].deviceName = deviceName;
                 if (deviceType) user.registeredDevices[existingDeviceIndex].deviceType = deviceType;
             }
+        } else if (deviceId) {
+            user.registeredDevices.push({
+                deviceId,
+                deviceName: formattedDeviceName,
+                deviceType: deviceType || 'web',
+                lastIP: incomingIP,
+                registeredAt: new Date(),
+                lastSeenAt: new Date()
+            });
         }
 
         // Send silent security notification for login activity
