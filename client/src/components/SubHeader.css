@@ -149,7 +149,7 @@
         margin: 0 !important;
     }
     
-    .notifications-header, .search-header {
+    .search-header {
         display: flex !important;
         align-items: center !important;
         gap: 12px !important;
