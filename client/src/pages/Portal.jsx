@@ -605,6 +605,18 @@ const Portal = () => {
         }
     }, [portal, authLoading]);
 
+    // Reset mobileChannelOpen when navigating into or away from Portal
+    useLayoutEffect(() => {
+        if (setMobileChannelOpen) {
+            setMobileChannelOpen(false);
+        }
+        return () => {
+            if (setMobileChannelOpen) {
+                setMobileChannelOpen(false);
+            }
+        };
+    }, [id]);
+
     useEffect(() => {
         // Guard: Don't fetch if we are navigating (portal data mismatches URL id)
         // or if channel is not set yet.
