@@ -1524,7 +1524,7 @@ const Settings = () => {
         <div className="app-wrapper full-height settings-page-wrapper glass-redesign" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <Navbar />
 
-            <div className="discord-split-view" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <div className="discord-split-view" style={{ flex: 1, minHeight: 0 }}>
                 {renderSidebar()}
                 {renderContent()}
 

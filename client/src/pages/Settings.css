@@ -22,12 +22,16 @@
 .settings-page-wrapper .discord-split-view {
     display: flex;
     flex: 1;
-    min-height: 0; /* Critical: allows flex children to shrink below their content size */
-    overflow: hidden;
+    min-height: 0;
+    /* Do NOT set overflow:hidden here — it clips the sidebar card's border-radius */
+    overflow: visible;
     position: relative;
     width: 100%;
     max-width: 100vw;
     min-width: 0;
+    /* Padding creates the breathing room around the floating sidebar card */
+    padding: 12px 12px 12px 0;
+    box-sizing: border-box;
 }
 
 .settings-page-wrapper .discord-main-content {
@@ -758,10 +762,11 @@
 
 
 /* Sidebar Styling — Isolated class for Settings page only.
-   We do NOT override .channel-sidebar here to avoid Portal.css conflicts.
-   Settings uses .settings-sidebar-global for its sidebar panel. */
+   We do NOT reuse .channel-sidebar here to avoid Portal.css rule bleed-through.
+   Settings uses .settings-sidebar-global exclusively for its sidebar panel. */
 .settings-sidebar-global {
     width: 240px;
+    flex-shrink: 0;
     background: var(--glass-bg) !important;
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
@@ -770,11 +775,11 @@
     box-shadow: var(--glass-shadow);
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
     overflow: hidden;
-    /* Self-contained height within the flex parent */
-    height: 100%;
+    /* Floating card: height leaves breathing room, margin spaces it from the edges */
+    height: calc(100% - 0px); /* padding on parent (.discord-split-view) provides 12px top+bottom */
     min-height: 0;
+    /* No left margin — the PortalSidebar wrapper already provides left spacing */
 }
 
 /* Legacy .channel-sidebar within Settings — keep for backward compat
@@ -1946,6 +1951,9 @@ input:checked + .slider::before {
         max-width: 100vw;
         width: 100vw;
         overflow-x: hidden;
+        /* Mobile: add padding so the sidebar card isn't flush to edges */
+        padding: 12px;
+        box-sizing: border-box;
     }
 
     .glass-redesign .discord-main-content {
@@ -2049,4 +2057,16 @@ input:checked + .slider::before {
         gap: 10px !important;
         box-sizing: border-box !important;
     }
-}
+
+    /* Mobile sidebar: fills the padded parent, not flush to left edge */
+    .settings-sidebar-global {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 16px !important;
+        /* Glassmorphism preserved */
+        background: var(--glass-bg) !important;
+        backdrop-filter: blur(20px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+}
