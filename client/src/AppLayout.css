@@ -185,17 +185,22 @@
     /* Below sidebar (2000), above content */
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    /* NO transition on the base state — closing is instant to prevent
+       backdrop ghost appearing during SPA page navigation */
+    transition: none;
 }
 
 .mobile-sidebar-overlay.active {
     opacity: 1;
     pointer-events: auto;
+    /* Transition only when opening, not when closing */
+    transition: opacity 0.25s ease;
 }
 
 @media (min-width: 769px) {
     .mobile-sidebar-overlay {
         display: none !important;
+        pointer-events: none !important;
     }
 }
 

@@ -4,6 +4,8 @@
     flex-direction: column;
     overflow-y: auto;
     min-height: 0;
+    /* Ensure the container fills the available height from the parent flex chain */
+    height: 100%;
 }
 
 .notifications-container {
@@ -12,6 +14,7 @@
     max-width: 700px;
     margin: 0 auto;
     box-sizing: border-box;
+    /* Height is driven by the flex chain above — no hardcoded vh values */
 }
 
 .notifications-header {
@@ -374,8 +377,11 @@
     .notifications-container {
         padding: 12px;
         padding-bottom: 90px; /* room for mobile navbar */
-        height: calc(100vh - 50px - env(safe-area-inset-top, 0px));
-        overflow-y: auto;
+        /* Do NOT set height: calc(100vh - ...) here.
+           100vh breaks on SPA navigation (browser caches the value).
+           Let the flex chain from .notifications-app-content handle the height. */
+        box-sizing: border-box;
+        width: 100%;
     }
     
     .notifications-header {

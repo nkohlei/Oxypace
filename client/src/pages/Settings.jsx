@@ -401,7 +401,7 @@ const Settings = () => {
     // to handle the 'back' button behavior (hidden on desktop).
 
     const renderSidebar = () => (
-        <div className={`channel-sidebar ${activeMenu !== 'main' ? 'hidden-on-mobile' : ''} settings-sidebar-global`}>
+        <div className={`settings-sidebar-global ${activeMenu !== 'main' ? 'hidden-on-mobile' : ''}`}>
             {/* Sidebar Header mimicking ChannelSidebar */}
             <div className="channel-header" style={{ cursor: 'default' }}>
                 <div style={{
@@ -1521,10 +1521,10 @@ const Settings = () => {
     );
 
     return (
-        <div className="app-wrapper full-height settings-page-wrapper glass-redesign">
+        <div className="app-wrapper full-height settings-page-wrapper glass-redesign" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <Navbar />
 
-            <div className="discord-split-view">
+            <div className="discord-split-view" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {renderSidebar()}
                 {renderContent()}
 

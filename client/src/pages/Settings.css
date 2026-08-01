@@ -22,6 +22,7 @@
 .settings-page-wrapper .discord-split-view {
     display: flex;
     flex: 1;
+    min-height: 0; /* Critical: allows flex children to shrink below their content size */
     overflow: hidden;
     position: relative;
     width: 100%;
@@ -756,8 +757,10 @@
 
 
 
-/* Sidebar Styling */
-.channel-sidebar {
+/* Sidebar Styling — Isolated class for Settings page only.
+   We do NOT override .channel-sidebar here to avoid Portal.css conflicts.
+   Settings uses .settings-sidebar-global for its sidebar panel. */
+.settings-sidebar-global {
     width: 240px;
     background: var(--glass-bg) !important;
     backdrop-filter: blur(20px) saturate(160%);
@@ -768,6 +771,19 @@
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    overflow: hidden;
+    /* Self-contained height within the flex parent */
+    height: 100%;
+    min-height: 0;
+}
+
+/* Legacy .channel-sidebar within Settings — keep for backward compat
+   but redirect visuals to settings-sidebar-global rules */
+.settings-page-wrapper .channel-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    height: 100%;
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -1915,7 +1931,9 @@ input:checked + .slider::before {
 
 @media (max-width: 768px) {
     .settings-page-wrapper .channel-sidebar.hidden-on-mobile,
-    .channel-sidebar.hidden-on-mobile {
+    .settings-page-wrapper .settings-sidebar-global.hidden-on-mobile,
+    .channel-sidebar.hidden-on-mobile,
+    .settings-sidebar-global.hidden-on-mobile {
         display: none !important;
     }
 

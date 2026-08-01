@@ -404,6 +404,14 @@ const AppLayout = () => {
             setMobileChannelOpen(false);
         }
 
+        // CRITICAL: Synchronously remove the active class from the overlay DOM element.
+        // React state updates (closeSidebar) are batched and may apply after the next
+        // paint, leaving a visible backdrop flash. Direct DOM manipulation is instant.
+        const overlay = document.querySelector('.mobile-sidebar-overlay');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+
         const root = document.getElementById('root');
         if (isLoggedIn) {
             document.documentElement.classList.add('discord-layout-active');
