@@ -599,11 +599,50 @@ body.dark-mode .dropdown-divider {
         gap: 0;
     }
 
-    /* Dropdown: prevent overflow on small screens */
+    /* Dropdown: compact & narrow layout on mobile */
     .header-dropdown {
-        width: calc(100vw - 24px) !important;
-        max-width: 280px !important;
-        right: -4px !important;
+        width: 200px !important;
+        max-width: calc(100vw - 32px) !important;
+        right: 4px !important;
+        padding: 6px !important;
+        border-radius: 16px !important;
+    }
+
+    .dropdown-user-info {
+        padding: 8px 10px !important;
+        gap: 8px !important;
+        margin-bottom: 4px !important;
+        border-radius: 10px !important;
+    }
+
+    .dropdown-avatar, .dropdown-avatar-placeholder {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 0.9rem !important;
+    }
+
+    .dropdown-username {
+        font-size: 0.88rem !important;
+    }
+
+    .dropdown-user-status {
+        font-size: 0.7rem !important;
+    }
+
+    .dropdown-item {
+        padding: 7px 10px !important;
+        gap: 8px !important;
+        font-size: 0.84rem !important;
+        border-radius: 8px !important;
+    }
+
+    .dropdown-item svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .dropdown-divider {
+        margin: 4px 0 !important;
     }
 }
 
