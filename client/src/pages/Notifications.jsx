@@ -223,7 +223,7 @@ const Notifications = () => {
                                     <polyline points="15 18 9 12 15 6" />
                                 </svg>
                             </button>
-                            <h1>Bildirimler</h1>
+                            <h1 className="gradient-title">Bildirimler</h1>
                         </div>
                         <div className="notifications-header-actions">
                             {notifications.length > 0 && (

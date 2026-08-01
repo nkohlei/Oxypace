@@ -30,10 +30,15 @@
     gap: 12px;
 }
 
-.title-with-back h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
+.title-with-back h1,
+.notifications-header .gradient-title {
+    font-size: 2rem;
+    font-weight: 800;
     margin: 0;
+    background: linear-gradient(135deg, #38bdf8 0%, #1e4ed8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
 }
 
 .back-btn-minimalist {
