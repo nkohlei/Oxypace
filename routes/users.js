@@ -497,7 +497,12 @@ router.delete('/devices/:deviceId', protect, async (req, res) => {
 
         if (!user.registeredDevices) user.registeredDevices = [];
 
-        user.registeredDevices = user.registeredDevices.filter(d => d.deviceId !== deviceId);
+        const targetIdStr = deviceId.toString();
+        user.registeredDevices = user.registeredDevices.filter(d => {
+            const dId = d.deviceId ? d.deviceId.toString() : '';
+            const subId = d._id ? d._id.toString() : '';
+            return dId !== targetIdStr && subId !== targetIdStr;
+        });
         await user.save();
 
         res.json({ message: 'Cihaz kaydı silindi', devices: user.registeredDevices });

@@ -1338,7 +1338,7 @@ const Settings = () => {
                                             </button>
                                             <button
                                                 className="settings-action-btn danger-btn"
-                                                onClick={() => handleRemoveDevice(dev.deviceId)}
+                                                onClick={() => handleRemoveDevice(dev.deviceId || dev._id)}
                                                 style={{
                                                     padding: '6px 12px',
                                                     fontSize: '12px',
