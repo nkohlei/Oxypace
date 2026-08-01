@@ -398,15 +398,15 @@ const AppLayout = () => {
     const showSidebarOnMobile = isLoggedIn && isPortalPage && !mobileChannelOpen;
 
     useLayoutEffect(() => {
+        // Reset sidebar state on every route transition
+        closeSidebar();
+
         const root = document.getElementById('root');
         if (isLoggedIn) {
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
 
             // CRITICAL: Force-reset #root to 100vh to flush the stale guest-mode height.
-            // When transitioning from guest mode (which can grow to 2000+ px), 
-            // the #root flex container retains its expanded height even after overflow:hidden is applied.
-            // Setting inline styles forces an immediate reflow to 100vh.
             if (root) {
                 root.style.height = '100dvh';
                 root.style.maxHeight = '100dvh';
