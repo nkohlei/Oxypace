@@ -119,7 +119,10 @@ const Notifications = () => {
         if (!socket) return;
 
         socket.on('newNotification', (newNotif) => {
-            setNotifications((prev) => [newNotif, ...prev]);
+            setNotifications((prev) => {
+                if (prev.some((n) => n._id === newNotif._id)) return prev;
+                return [newNotif, ...prev];
+            });
         });
 
         return () => {
