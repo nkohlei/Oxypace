@@ -1097,6 +1097,7 @@ router.put('/:id/notifications', protect, async (req, res) => {
             message: 'Bildirim ayarları güncellendi',
             isAllMuted: isAllMuted !== undefined ? isAllMuted : false,
             mutedChannels: mutedChannels || [],
+            portalNotificationSettings: user.portalNotificationSettings
         });
     } catch (error) {
         console.error('Update notifications error:', error);

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { UserPlus, Users, AlertTriangle, Check, X, CheckCircle, Volume2, Megaphone, Hash, Image, Bell, BellOff } from 'lucide-react';
 import './PortalNotifications.css';
 
 const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
+    const { user, updateUser } = useAuth();
     // Member preferences state
     const [isAllMuted, setIsAllMuted] = useState(false);
     const [mutedChannels, setMutedChannels] = useState([]);
@@ -42,10 +44,16 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
 
     const handleSaveSettings = async (updatedAllMuted, updatedMutedChannels) => {
         try {
-            await axios.put(`/api/portals/${portalId}/notifications`, {
+            const res = await axios.put(`/api/portals/${portalId}/notifications`, {
                 isAllMuted: updatedAllMuted,
                 mutedChannels: updatedMutedChannels,
             });
+            if (res.data?.portalNotificationSettings && user) {
+                updateUser({
+                    ...user,
+                    portalNotificationSettings: res.data.portalNotificationSettings
+                });
+            }
         } catch (error) {
             console.error('Update settings failed:', error);
         }

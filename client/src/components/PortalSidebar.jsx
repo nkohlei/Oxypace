@@ -33,21 +33,29 @@ const PortalSidebar = () => {
     // Helper to filter unread counts based on user's muted channels settings
     const getFilteredUnreadCount = (portalId) => {
         if (!portalId) return 0;
-        const settings = user?.portalNotificationSettings?.find(
-            (s) => s.portal?.toString() === portalId.toString()
-        );
+        const targetIdStr = portalId.toString();
+        const settings = user?.portalNotificationSettings?.find((s) => {
+            if (!s || !s.portal) return false;
+            const pId = typeof s.portal === 'object' ? s.portal._id || s.portal : s.portal;
+            return pId?.toString() === targetIdStr;
+        });
         if (settings?.isAllMuted) return 0;
-        
-        const allUnread = unreadPostsByPortal[portalId.toString()] || [];
-        const mutedChannels = settings?.mutedChannels?.map(id => id.toString()) || [];
-        
+
+        const allUnread = unreadPostsByPortal[targetIdStr] || [];
+        const mutedChannels = (settings?.mutedChannels || []).map(id => {
+            const chId = typeof id === 'object' ? id._id || id : id;
+            return chId?.toString();
+        });
+
+        if (mutedChannels.length === 0) return allUnread.length;
+
         const filtered = allUnread.filter(postId => {
-            const isMuted = mutedChannels.some(channelId => 
-                unreadPostsByChannel[channelId]?.includes(postId)
+            const isMuted = mutedChannels.some(channelId =>
+                channelId && unreadPostsByChannel[channelId]?.includes(postId)
             );
             return !isMuted;
         });
-        
+
         return filtered.length;
     };
     
