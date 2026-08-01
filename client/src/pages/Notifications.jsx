@@ -199,9 +199,9 @@ const Notifications = () => {
     });
 
     return (
-        <div className="app-wrapper">
+        <div className="app-wrapper notifications-page-wrapper">
             <Navbar />
-            <main className="app-content">
+            <main className="app-content notifications-app-content">
                 <div className="notifications-container">
                     <div className="notifications-header">
                         <div className="title-with-back">

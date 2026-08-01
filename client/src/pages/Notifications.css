@@ -1,10 +1,28 @@
+.notifications-page-wrapper {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.notifications-app-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
 .notifications-container {
     padding: 20px;
     width: 100%;
     max-width: 700px;
     margin: 0 auto;
     box-sizing: border-box;
-    height: calc(100vh - 64px);
+    flex: 1;
+    height: 100%;
+    max-height: 100%;
     overflow-y: auto;
 }
 
