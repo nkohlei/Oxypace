@@ -599,6 +599,7 @@
         padding: 10px 12px;
         grid-template-columns: 38px 1fr;
         border-bottom: none;
+        margin: 6px 0 !important;
     }
 
     .post-left {

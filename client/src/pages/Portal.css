@@ -1101,7 +1101,8 @@
     }
 
     .channel-input-area {
-        padding: 12px;
+        padding: 0 12px;
+        margin: 6px 0 !important;
     }
 
     .channel-input {
@@ -1109,7 +1110,7 @@
     }
 
     .portal-feed-container {
-        padding: 12px;
+        padding: 6px 12px 12px 12px;
     }
 }
 
@@ -1120,11 +1121,12 @@
     }
 
     .discord-feed {
-        padding: 12px 8px;
+        padding: 4px 8px 12px 8px;
     }
 
     .channel-input-area {
-        padding: 8px;
+        padding: 0 8px;
+        margin: 6px 0 !important;
     }
 }
 
