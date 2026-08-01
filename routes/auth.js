@@ -238,36 +238,36 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
             });
         }
 
-        // Send silent security notification for login activity (throttled to prevent duplicate spam within 10s)
-        try {
-            const tenSecondsAgo = new Date(Date.now() - 10000);
-            const recentDuplicateNotif = await Notification.findOne({
-                recipient: user._id,
-                type: 'security_silent',
-                createdAt: { $gte: tenSecondsAgo }
-            });
-
-            if (!recentDuplicateNotif) {
-                const loginMsg = isNewDevice
-                    ? `Hesabınıza yeni/tanınmayan ${formattedDeviceName} cihazından giriş yapıldı.`
-                    : `Hesabınıza ${formattedDeviceName} cihazından giriş yapıldı.`;
-
-                const notification = await Notification.create({
+        // Send silent security notification ONLY IF it is an unrecognized/new device login
+        if (isNewDevice) {
+            try {
+                const tenSecondsAgo = new Date(Date.now() - 10000);
+                const recentDuplicateNotif = await Notification.findOne({
                     recipient: user._id,
                     type: 'security_silent',
-                    content: loginMsg,
-                    link: '/settings?section=devices',
+                    createdAt: { $gte: tenSecondsAgo }
                 });
 
-                const io = req.app.get('io');
-                if (io) {
-                    const populated = await Notification.findById(notification._id)
-                        .populate('sender', 'username profile.displayName profile.avatar');
-                    io.to(user._id.toString()).emit('newNotification', populated);
+                if (!recentDuplicateNotif) {
+                    const loginMsg = `Hesabınıza yeni/tanınmayan ${formattedDeviceName} cihazından giriş yapıldı.`;
+
+                    const notification = await Notification.create({
+                        recipient: user._id,
+                        type: 'security_silent',
+                        content: loginMsg,
+                        link: '/settings?section=devices',
+                    });
+
+                    const io = req.app.get('io');
+                    if (io) {
+                        const populated = await Notification.findById(notification._id)
+                            .populate('sender', 'username profile.displayName profile.avatar');
+                        io.to(user._id.toString()).emit('newNotification', populated);
+                    }
                 }
+            } catch (err) {
+                console.error('Security login notification error:', err);
             }
-        } catch (err) {
-            console.error('Security login notification error:', err);
         }
 
         user.lastIP = incomingIP;
@@ -503,35 +503,36 @@ router.post('/google/validate', async (req, res) => {
                 });
             }
 
-            try {
-                const tenSecondsAgo = new Date(Date.now() - 10000);
-                const recentDuplicateNotif = await Notification.findOne({
-                    recipient: user._id,
-                    type: 'security_silent',
-                    createdAt: { $gte: tenSecondsAgo }
-                });
-
-                if (!recentDuplicateNotif) {
-                    const loginMsg = isNewDevice
-                        ? `Hesabınıza Google ile yeni/tanınmayan ${formattedDeviceName} cihazından giriş yapıldı.`
-                        : `Hesabınıza Google ile (${formattedDeviceName}) giriş yapıldı.`;
-
-                    const notification = await Notification.create({
+            // Send silent security notification ONLY IF it is an unrecognized/new device login
+            if (isNewDevice) {
+                try {
+                    const tenSecondsAgo = new Date(Date.now() - 10000);
+                    const recentDuplicateNotif = await Notification.findOne({
                         recipient: user._id,
                         type: 'security_silent',
-                        content: loginMsg,
-                        link: '/settings?section=devices',
+                        createdAt: { $gte: tenSecondsAgo }
                     });
 
-                    const io = req.app.get('io');
-                    if (io) {
-                        const populated = await Notification.findById(notification._id)
-                            .populate('sender', 'username profile.displayName profile.avatar');
-                        io.to(user._id.toString()).emit('newNotification', populated);
+                    if (!recentDuplicateNotif) {
+                        const loginMsg = `Hesabınıza Google ile yeni/tanınmayan ${formattedDeviceName} cihazından giriş yapıldı.`;
+
+                        const notification = await Notification.create({
+                            recipient: user._id,
+                            type: 'security_silent',
+                            content: loginMsg,
+                            link: '/settings?section=devices',
+                        });
+
+                        const io = req.app.get('io');
+                        if (io) {
+                            const populated = await Notification.findById(notification._id)
+                                .populate('sender', 'username profile.displayName profile.avatar');
+                            io.to(user._id.toString()).emit('newNotification', populated);
+                        }
                     }
+                } catch (err) {
+                    console.error('Google login security notification error:', err);
                 }
-            } catch (err) {
-                console.error('Google login security notification error:', err);
             }
 
             user.lastIP = incomingIP;
