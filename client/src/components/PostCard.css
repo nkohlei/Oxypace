@@ -677,25 +677,38 @@
         flex-shrink: 0 !important;
     }
 
-    /* Touch targets: minimum 44px for accessibility */
-    .action-btn,
-    .post-action-btn {
+    /* Touch targets for main bottom action buttons */
+    .action-btn {
         min-width: 44px;
         min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 10px;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .action-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Top-right post header action buttons (maximize & options) compact size */
+    .post-action-btn {
+        min-width: 28px !important;
+        min-height: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        padding: 4px !important;
         display: flex;
         align-items: center;
         justify-content: center;
         -webkit-tap-highlight-color: transparent;
     }
 
-    .action-btn {
-        padding: 10px 10px;
-    }
-
-    .action-btn svg,
     .post-action-btn svg {
-        width: 18px;
-        height: 18px;
+        width: 14px !important;
+        height: 14px !important;
     }
 
     .quoted-post-container {
@@ -710,6 +723,7 @@
 
     .post-action-buttons {
         opacity: 1 !important;
+        gap: 2px !important;
     }
 }
 

@@ -258,7 +258,7 @@
     cursor: pointer;
     padding: 6px;
     border-radius: 50%;
-    opacity: 0;
+    opacity: 0.6;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
@@ -273,6 +273,7 @@
 .delete-notif-btn:hover {
     background: rgba(244, 33, 46, 0.1);
     color: #f4212e;
+    opacity: 1;
 }
 
 .delete-notif-btn svg {
@@ -366,18 +367,31 @@
 @media (max-width: 480px) {
     .notifications-container {
         padding: 12px;
-        padding-bottom: 80px; /* leaves room for bottom nav */
+        padding-bottom: 90px; /* room for mobile navbar */
         height: calc(100vh - 50px - env(safe-area-inset-top, 0px));
         overflow-y: auto;
+    }
+    
+    .notifications-header {
+        margin-bottom: 14px;
+    }
+
+    .notifications-header-actions {
+        gap: 10px;
+    }
+
+    .mark-read-btn, .clear-all-btn {
+        font-size: 0.8rem;
     }
     
     .notification-item {
         padding: 12px;
         gap: 10px;
+        border-radius: 10px;
     }
     
     .notif-text-row {
-        gap: 8px;
+        gap: 6px;
     }
     
     .notif-message-text {
@@ -386,5 +400,10 @@
     
     .notif-time-new {
         font-size: 0.75rem;
+    }
+
+    .delete-notif-btn {
+        opacity: 0.75;
+        padding: 4px;
     }
 }
