@@ -615,7 +615,7 @@ const Portal = () => {
                 setMobileChannelOpen(false);
             }
         };
-    }, [id]);
+    }, [id, setMobileChannelOpen]);
 
     useEffect(() => {
         // Guard: Don't fetch if we are navigating (portal data mismatches URL id)

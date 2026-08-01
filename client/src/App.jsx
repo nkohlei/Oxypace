@@ -270,7 +270,7 @@ const PageLoader = () => (
 // Separate layout component to use useUI hook
 const AppLayout = () => {
     useRealtimeSync(); // Global websocket synchronization
-    const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen } = useUI();
+    const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen, setMobileChannelOpen } = useUI();
     const { user, token, updateUser } = useAuth();
     const userId = user?._id;
     const location = useLocation();
@@ -400,6 +400,9 @@ const AppLayout = () => {
     useLayoutEffect(() => {
         // Reset sidebar state on every route transition
         closeSidebar();
+        if (setMobileChannelOpen) {
+            setMobileChannelOpen(false);
+        }
 
         const root = document.getElementById('root');
         if (isLoggedIn) {
