@@ -454,6 +454,62 @@ router.post('/google/validate', async (req, res) => {
                 }
             }
 
+            // Device Registration & Security Notification Logic for Google Login
+            const { deviceId, deviceName, deviceType } = req.body;
+            const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+
+            if (!user.registeredDevices) {
+                user.registeredDevices = [];
+            }
+
+            const formattedDeviceName = deviceName || 'Google Girişi (Web/Mobil)';
+            const isRegistered = deviceId ? user.registeredDevices.some(d => d.deviceId === deviceId) : false;
+            const isNewDevice = !isRegistered;
+
+            if (isRegistered && deviceId) {
+                const existingDeviceIndex = user.registeredDevices.findIndex(d => d.deviceId === deviceId);
+                if (existingDeviceIndex >= 0) {
+                    user.registeredDevices[existingDeviceIndex].lastSeenAt = new Date();
+                    user.registeredDevices[existingDeviceIndex].lastIP = incomingIP;
+                    if (deviceName) user.registeredDevices[existingDeviceIndex].deviceName = deviceName;
+                    if (deviceType) user.registeredDevices[existingDeviceIndex].deviceType = deviceType;
+                }
+            } else if (deviceId) {
+                user.registeredDevices.push({
+                    deviceId,
+                    deviceName: formattedDeviceName,
+                    deviceType: deviceType || 'web',
+                    lastIP: incomingIP,
+                    registeredAt: new Date(),
+                    lastSeenAt: new Date()
+                });
+            }
+
+            try {
+                const loginMsg = isNewDevice
+                    ? `Hesabınıza Google ile yeni/tanınmayan ${formattedDeviceName} cihazından giriş yapıldı.`
+                    : `Hesabınıza Google ile (${formattedDeviceName}) giriş yapıldı.`;
+
+                const notification = await Notification.create({
+                    recipient: user._id,
+                    type: 'security_silent',
+                    content: loginMsg,
+                    link: '/settings?section=devices',
+                });
+
+                const io = req.app.get('io');
+                if (io) {
+                    const populated = await Notification.findById(notification._id)
+                        .populate('sender', 'username profile.displayName profile.avatar');
+                    io.to(user._id.toString()).emit('newNotification', populated);
+                }
+            } catch (err) {
+                console.error('Google login security notification error:', err);
+            }
+
+            user.lastIP = incomingIP;
+            await user.save();
+
             const realToken = generateToken(decoded.id, user.isAdmin);
 
             res.cookie('token', realToken, {
@@ -513,6 +569,46 @@ router.post('/google/complete', async (req, res) => {
                 avatar: avatar || '',
             },
         });
+
+        // Device Registration & Security Notification Logic for Google Complete Registration
+        const { deviceId, deviceName, deviceType } = req.body;
+        const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+
+        if (!user.registeredDevices) {
+            user.registeredDevices = [];
+        }
+
+        const formattedDeviceName = deviceName || 'Google Girişi (Web/Mobil)';
+        if (deviceId) {
+            user.registeredDevices.push({
+                deviceId,
+                deviceName: formattedDeviceName,
+                deviceType: deviceType || 'web',
+                lastIP: incomingIP,
+                registeredAt: new Date(),
+                lastSeenAt: new Date()
+            });
+        }
+        user.lastIP = incomingIP;
+        await user.save();
+
+        try {
+            const notification = await Notification.create({
+                recipient: user._id,
+                type: 'security_silent',
+                content: `Hesabınız oluşturuldu ve Google ile (${formattedDeviceName}) giriş yapıldı.`,
+                link: '/settings?section=devices',
+            });
+
+            const io = req.app.get('io');
+            if (io) {
+                const populated = await Notification.findById(notification._id)
+                    .populate('sender', 'username profile.displayName profile.avatar');
+                io.to(user._id.toString()).emit('newNotification', populated);
+            }
+        } catch (err) {
+            console.error('Google register security notification error:', err);
+        }
 
         // Generate real auth token
         const token = generateToken(user._id, user.isAdmin);
