@@ -35,12 +35,7 @@ const AuthProcess = () => {
                 if (action === 'login') {
                     sessionStorage.setItem('oxypace_fresh_login', 'true');
                     login(authToken, user);
-                    const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
-                    if (isElectron) {
-                        window.location.href = '#/messages';
-                    } else {
-                        window.location.href = '/messages'; // Direct clean reload into Portal Messages
-                    }
+                    navigate('/');
                 } else if (action === 'onboarding') {
                     // Redirect to onboarding with the pre-token
                     navigate(`/onboarding?preToken=${preToken}`);
