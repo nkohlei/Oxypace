@@ -217,6 +217,25 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             </button>
                         )}
 
+                        {/* Oxypace Portal Button (Visible on /blog page when user is logged in) */}
+                        {user && location.pathname === '/blog' && (
+                            <button
+                                className="oxypace-portal-nav-btn"
+                                onClick={() => {
+                                    if (user.joinedPortals && user.joinedPortals.length > 0) {
+                                        const firstPortalId = typeof user.joinedPortals[0] === 'string' ? user.joinedPortals[0] : user.joinedPortals[0]._id;
+                                        navigate(`/portal/${firstPortalId}`);
+                                    } else {
+                                        navigate('/messages');
+                                    }
+                                }}
+                                title="Oxypace Platformuna Dön"
+                            >
+                                <span>Oxypace Portal</span>
+                                <span className="arrow">→</span>
+                            </button>
+                        )}
+
                         {/* Unified Profile Button (Toggles Dropdown) */}
                         <div className="header-menu-wrapper" ref={menuRef}>
                             {user ? (
@@ -249,38 +268,18 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                 </div>
                             ) : (
                                 <div className="guest-nav-actions">
-                                    {user ? (
-                                        <button
-                                            className="oxypace-portal-nav-btn"
-                                            onClick={() => {
-                                                if (user.joinedPortals && user.joinedPortals.length > 0) {
-                                                    const firstPortalId = typeof user.joinedPortals[0] === 'string' ? user.joinedPortals[0] : user.joinedPortals[0]._id;
-                                                    navigate(`/portal/${firstPortalId}`);
-                                                } else {
-                                                    navigate('/messages');
-                                                }
-                                            }}
-                                            title="Oxypace Platformuna Dön"
-                                        >
-                                            <span>Oxypace Portal</span>
-                                            <span className="arrow">→</span>
-                                        </button>
-                                    ) : (
-                                        <>
-                                            <Link
-                                                to="/login"
-                                                className="guest-login-btn"
-                                            >
-                                                Giriş Yap
-                                            </Link>
-                                            <Link
-                                                to="/register"
-                                                className="guest-register-btn"
-                                            >
-                                                Kaydol
-                                            </Link>
-                                        </>
-                                    )}
+                                    <Link
+                                        to="/login"
+                                        className="guest-login-btn"
+                                    >
+                                        Giriş Yap
+                                    </Link>
+                                    <Link
+                                        to="/register"
+                                        className="guest-register-btn"
+                                    >
+                                        Kaydol
+                                    </Link>
                                 </div>
                             )}
                             {showMenu && (
