@@ -27,7 +27,7 @@ export default function ArticleClient({ initialPost, slug }) {
 
   const activeSlug = slug || post?.slug || "";
   const canonicalUrl = activeSlug
-    ? `https://oxypace.com.tr/blog/${activeSlug}`
+    ? `https://oxypace.com.tr/blog/post?slug=${activeSlug}`
     : typeof window !== "undefined"
     ? window.location.href
     : "https://oxypace.com.tr/blog";
