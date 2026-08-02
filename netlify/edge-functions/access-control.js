@@ -111,36 +111,33 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 2. ── BOT TESPİTİ & OG YÖNLENDİRME ──────────────────────────────────────
-  if (isBot(userAgent)) {
-    let targetOgPath = null;
-
-    // Özel durum: /blog/post?slug=... veya /blog/post/?slug=...
-    if ((pathname === "/blog/post" || pathname === "/blog/post/") && url.searchParams.get("slug")) {
-      targetOgPath = `/og/blog/${url.searchParams.get("slug")}`;
-    } else {
-      for (const { regex, path } of OG_PATTERNS) {
-        const match = pathname.match(regex);
-        if (match) {
-          // /blog/post kelimesini genel /blog/:slug eşleşmesinden muaf tut
-          if (match[1] === "post" && pathname.startsWith("/blog/post")) {
-            continue;
-          }
-          targetOgPath = path(match);
-          break;
+  // 2. ── BOT & BROWSER OG META ETİKET ENJEKSİYONU ──────────────────────────
+  let targetOgPath = null;
+  if ((pathname === "/blog/post" || pathname === "/blog/post/") && url.searchParams.get("slug")) {
+    targetOgPath = `/og/blog/${url.searchParams.get("slug")}`;
+  } else {
+    for (const { regex, path } of OG_PATTERNS) {
+      const match = pathname.match(regex);
+      if (match) {
+        if (match[1] === "post" && pathname.startsWith("/blog/post")) {
+          continue;
         }
+        targetOgPath = path(match);
+        break;
       }
     }
+  }
 
-    if (targetOgPath) {
-      const ogUrl = `${BACKEND_URL}${targetOgPath}`;
+  if (targetOgPath) {
+    const ogUrl = `${BACKEND_URL}${targetOgPath}`;
+    const userAgent = request.headers.get("user-agent") || "";
+    const isBotReq = isBot(userAgent);
+
+    if (isBotReq) {
       console.log(`[OG Edge] Bot (${userAgent.substring(0, 50)}) → ${ogUrl}`);
       try {
         const ogResponse = await fetch(ogUrl, {
-          headers: {
-            "User-Agent": userAgent,
-            "Accept": "text/html",
-          },
+          headers: { "User-Agent": userAgent, "Accept": "text/html" },
         });
         const html = await ogResponse.text();
         return new Response(html, {
@@ -152,7 +149,37 @@ export default async (request, context) => {
           },
         });
       } catch (fetchErr) {
-        console.error("[OG Edge] Fetch error:", fetchErr.message);
+        console.error("[OG Edge] Bot Fetch error:", fetchErr.message);
+        return context.next();
+      }
+    } else {
+      // WhatsApp Web / Desktop Browser link preview isteği
+      try {
+        const response = await context.next();
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("text/html")) {
+          const ogResponse = await fetch(ogUrl, {
+            headers: { "Accept": "text/html" },
+          });
+          if (ogResponse.ok) {
+            const ogHtml = await ogResponse.text();
+            const headMatch = ogHtml.match(/<head>([\s\S]*?)<\/head>/i);
+            if (headMatch && headMatch[1]) {
+              let originalHtml = await response.text();
+              originalHtml = originalHtml.replace(
+                /<title>.*?<\/title>/i,
+                headMatch[1].trim()
+              );
+              return new Response(originalHtml, {
+                status: response.status,
+                headers: response.headers,
+              });
+            }
+          }
+        }
+        return response;
+      } catch (injectErr) {
+        console.error("[OG Edge] Inject error:", injectErr.message);
         return context.next();
       }
     }
