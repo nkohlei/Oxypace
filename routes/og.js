@@ -511,7 +511,7 @@ function resolveBlogCoverImageUrl(imagePath) {
  */
 router.get('/blog/:slug', async (req, res) => {
     const { slug } = req.params;
-    const pageUrl = `${SITE_URL}/blog/post?slug=${slug}`;
+    const pageUrl = `${SITE_URL}/blog/${slug}`;
 
     try {
         let post = null;
