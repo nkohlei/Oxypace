@@ -69,6 +69,7 @@ const OG_PATTERNS = [
   { regex: /^\/post\/([a-f0-9]{24})$/i, path: (m) => `/og/post/${m[1]}` },
   { regex: /^\/profile\/([a-zA-Z0-9_.]{1,50})$/, path: (m) => `/og/profile/${m[1]}` },
   { regex: /^\/portal\/([a-f0-9]{24})$/i, path: (m) => `/og/portal/${m[1]}` },
+  { regex: /^\/blog\/([a-zA-Z0-9_-]+)$/i, path: (m) => `/og/blog/${m[1]}` },
 ];
 
 async function verifyJwt(token, secret) {
@@ -110,7 +111,53 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 2. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
+  // 2. ── BOT TESPİTİ & OG YÖNLENDİRME ──────────────────────────────────────
+  if (isBot(userAgent)) {
+    let targetOgPath = null;
+
+    // Özel durum: /blog/post?slug=... veya /blog/post/?slug=...
+    if ((pathname === "/blog/post" || pathname === "/blog/post/") && url.searchParams.get("slug")) {
+      targetOgPath = `/og/blog/${url.searchParams.get("slug")}`;
+    } else {
+      for (const { regex, path } of OG_PATTERNS) {
+        const match = pathname.match(regex);
+        if (match) {
+          if (match[1] === "post" && pathname.startsWith("/blog/post")) {
+            continue;
+          }
+          targetOgPath = path(match);
+          break;
+        }
+      }
+    }
+
+    if (targetOgPath) {
+      const ogUrl = `${BACKEND_URL}${targetOgPath}`;
+      console.log(`[OG Edge] Bot (${userAgent.substring(0, 50)}) → ${ogUrl}`);
+      try {
+        const ogResponse = await fetch(ogUrl, {
+          headers: {
+            "User-Agent": userAgent,
+            "Accept": "text/html",
+          },
+        });
+        const html = await ogResponse.text();
+        return new Response(html, {
+          status: ogResponse.status,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "public, max-age=300",
+            "X-OG-Served": "true",
+          },
+        });
+      } catch (fetchErr) {
+        console.error("[OG Edge] Fetch error:", fetchErr.message);
+        return context.next();
+      }
+    }
+  }
+
+  // 3. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
   if (
     pathname.startsWith("/api/") ||
     pathname.startsWith("/og/") ||
@@ -119,37 +166,6 @@ export default async (request, context) => {
     pathname === "/404.html"
   ) {
     return context.next();
-  }
-
-  // 4. ── BOT TESPİTİ & OG YÖNLENDİRME ──────────────────────────────────────
-  if (isBot(userAgent)) {
-    for (const { regex, path } of OG_PATTERNS) {
-      const match = pathname.match(regex);
-      if (match) {
-        const ogUrl = `${BACKEND_URL}${path(match)}`;
-        console.log(`[OG Edge] Bot (${userAgent.substring(0, 50)}) → ${ogUrl}`);
-        try {
-          const ogResponse = await fetch(ogUrl, {
-            headers: {
-              "User-Agent": userAgent,
-              "Accept": "text/html",
-            },
-          });
-          const html = await ogResponse.text();
-          return new Response(html, {
-            status: ogResponse.status,
-            headers: {
-              "Content-Type": "text/html; charset=utf-8",
-              "Cache-Control": "public, max-age=300",
-              "X-OG-Served": "true",
-            },
-          });
-        } catch (fetchErr) {
-          console.error("[OG Edge] Fetch error:", fetchErr.message);
-          return context.next();
-        }
-      }
-    }
   }
 
   // 5. Bakım Modu aktif mi kontrol et

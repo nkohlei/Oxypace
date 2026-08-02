@@ -74,6 +74,13 @@
   force = true
   conditions = {Role = ["bot"]}
 
+[[redirects]]
+  from = "/blog/*"
+  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/blog/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
 # ── Assets Fallback ──────────────────────────────
 [[redirects]]
   from = "/assets/*"
