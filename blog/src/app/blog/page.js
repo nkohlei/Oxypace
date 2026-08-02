@@ -41,22 +41,8 @@ export default function BlogHome() {
   const [allPosts, setAllPosts] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Kullanıcı manuel çıkış yapmadıysa (geçerli JWT token varsa) derhal Oxypace Portal'a geçiş yap
-  useEffect(() => {
-    try {
-      const token = localStorage.getItem("token");
-      const isCleanToken = token && 
-        token !== "null" && 
-        token !== "undefined" && 
-        token !== "false" && 
-        typeof token === 'string' &&
-        token.trim().length > 20;
-
-      if (isCleanToken) {
-        window.location.replace("/messages");
-      }
-    } catch (_) {}
-  }, []);
+  // Blog sayfası artık giriş yapmış kullanıcılara da açık.
+  // Kullanıcı "Oxypace Portal" butonuyla platforma dönebilir.
 
   // Dinamik makaleleri API'den çek
   useEffect(() => {
