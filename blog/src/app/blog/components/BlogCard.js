@@ -8,7 +8,7 @@ import { formatBlogImageUrl } from "../utils/imageHelper";
 ────────────────────────────────────────────────────────────── */
 export function FeaturedCard({ post, lang = "tr" }) {
   const ctaLabel = lang === "en" ? "Read Analysis →" : "Analizi Aç →";
-  const postUrl = `/blog/${post.slug}`;
+  const postUrl = `/blog/post/?slug=${post.slug}`;
 
   return (
     <article className="group glass-card glass-card-hover rounded-2xl overflow-hidden flex flex-col" id={`post-featured-${post.id}`}>
@@ -76,7 +76,7 @@ export function FeaturedCard({ post, lang = "tr" }) {
 ────────────────────────────────────────────────────────────── */
 export function MinimalCard({ post, lang = "tr" }) {
   const readLabel = lang === "en" ? "Read →" : "Oku →";
-  const postUrl = `/blog/${post.slug}`;
+  const postUrl = `/blog/post/?slug=${post.slug}`;
 
   return (
     <article
@@ -134,7 +134,7 @@ export function MinimalCard({ post, lang = "tr" }) {
    Image-prominent, full glassmorphism hover
 ────────────────────────────────────────────────────────────── */
 export function GridCard({ post, lang = "tr" }) {
-  const postUrl = `/blog/${post.slug}`;
+  const postUrl = `/blog/post/?slug=${post.slug}`;
 
   return (
     <article

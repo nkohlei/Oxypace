@@ -26,10 +26,10 @@ export default function ArticleClient({ initialPost, slug }) {
   const [copied, setCopied] = useState(false);
 
   const activeSlug = slug || post?.slug || "";
-  const canonicalUrl = activeSlug
-    ? `https://oxypace.com.tr/blog/${activeSlug}`
-    : typeof window !== "undefined"
+  const canonicalUrl = typeof window !== "undefined"
     ? window.location.href
+    : activeSlug
+    ? `https://oxypace.com.tr/blog/post/?slug=${activeSlug}`
     : "https://oxypace.com.tr/blog";
 
   const handleCopyLink = () => {
