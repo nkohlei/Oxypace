@@ -196,9 +196,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
 
                     <div className="nav-right">
                         {/* EVENT HORIZON Blog Button (Visible when logged in and in platform) */}
-                        {user && location.pathname !== '/' && (
+                        {user && location.pathname !== '/blog' && (
                             <Link
-                                to="/"
+                                to="/blog"
                                 className="event-horizon-nav-btn"
                                 title="EVENT HORIZON Blog"
                             >

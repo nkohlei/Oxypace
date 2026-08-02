@@ -387,11 +387,12 @@ const AppLayout = () => {
         };
     }, [socket, isLoggedIn]);
 
-    // Map and admin pages get a clean full-screen layout — no sidebar, no footer
+    // Map, admin and blog pages get a clean layout — no sidebar
     const isMapPage = location.pathname === '/map';
     const isAdminPage = location.pathname.startsWith('/admin');
     const isPortalPage = location.pathname.startsWith('/portal/');
-    const isCleanLayout = isMapPage || isAdminPage;
+    const isBlogPage = location.pathname === '/blog';
+    const isCleanLayout = isMapPage || isAdminPage || isBlogPage;
 
     // Route-based sidebar visibility for mobile (Discord-style)
     // Sidebar visible on Portal Selection screen (when channel feed is NOT open)
@@ -413,7 +414,7 @@ const AppLayout = () => {
         }
 
         const root = document.getElementById('root');
-        if (isLoggedIn) {
+        if (isLoggedIn && !isBlogPage) {
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
 
@@ -442,7 +443,7 @@ const AppLayout = () => {
             document.documentElement.classList.remove('discord-layout-active');
             document.body.classList.remove('discord-layout-active');
 
-            // Clear forced inline styles so guest pages can scroll freely
+            // Clear forced inline styles so guest/blog pages can scroll freely
             if (root) {
                 root.style.height = '';
                 root.style.maxHeight = '';
@@ -457,7 +458,7 @@ const AppLayout = () => {
 
     // Page titles for mobile header
     const getPageTitle = () => {
-        if (location.pathname === '/') return 'Oxypace';
+        if (location.pathname === '/' || location.pathname === '/blog') return 'Oxypace';
         if (location.pathname.startsWith('/portal/')) return 'Portal';
         if (location.pathname === '/profile') return 'Profilim';
         if (location.pathname.startsWith('/profile/')) return 'Profil';
@@ -469,7 +470,7 @@ const AppLayout = () => {
     };
 
     return (
-        <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
+        <div className={`app-container ${(!isLoggedIn || location.pathname === '/blog') ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
             {isLoggedIn && <WarpGridBackground />}
             {showDeviceModal && (
                 <RegisterDeviceModal
@@ -566,6 +567,7 @@ const AppLayout = () => {
                         <Suspense fallback={<PageLoader />}>
                             <Routes>
                                 {/* Public routes */}
+                                <Route path="/blog" element={<Home />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
                                 <Route path="/forgot-password" element={<ForgotPassword />} />
