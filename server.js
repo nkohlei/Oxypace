@@ -242,6 +242,7 @@ const OG_PATH_PATTERNS = [
     { pattern: /^\/post\/([a-f\d]{24})$/i, route: '/og/post/$1' },
     { pattern: /^\/profile\/([a-zA-Z0-9_.]+)$/i, route: '/og/profile/$1' },
     { pattern: /^\/portal\/([a-f\d]{24})$/i, route: '/og/portal/$1' },
+    { pattern: /^\/blog\/([a-zA-Z0-9_-]+)$/i, route: '/og/blog/$1' },
 ];
 
 app.use((req, res, next) => {

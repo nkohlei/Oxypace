@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Portal from '../models/Portal.js';
+import BlogPost from '../models/BlogPost.js';
 import connectDB from '../config/db.js';
 
 const router = express.Router();
@@ -481,4 +482,50 @@ router.get('/portal/:portalId', async (req, res) => {
     }
 });
 
+/**
+ * GET /og/blog/:slug
+ *
+ * Blog makaleleri için OG önizlemesi (WhatsApp, Twitter, LinkedIn, Facebook, Telegram)
+ */
+router.get('/blog/:slug', async (req, res) => {
+    const { slug } = req.params;
+    const pageUrl = `${SITE_URL}/blog/${slug}`;
+
+    try {
+        await connectDB();
+        const post = await BlogPost.findOne({ slug, isPublished: true }).lean();
+
+        if (post) {
+            const title = post.title || 'Oxypace Blog Makalesi';
+            const cleanContent = post.content ? post.content.replace(/<[^>]*>?/gm, '') : '';
+            const description = post.excerpt || sanitizeText(cleanContent, 160) || 'Oxypace Blog makalesini inceleyin.';
+            const rawImg = post.image ? resolveMediaUrl(post.image) : DEFAULT_IMAGE;
+            const imageUrl = getOGImageUrl(rawImg, false);
+
+            const html = buildOGHtml({
+                title: `${title} | Oxypace Blog`,
+                description,
+                imageUrl,
+                pageUrl,
+                type: 'article',
+            });
+
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Cache-Control', 'public, max-age=300');
+            return res.send(html);
+        }
+    } catch (err) {
+        console.error('[OG] Blog route error:', err.message);
+    }
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(buildOGHtml({
+        title: 'Oxypace Blog Makalesi',
+        description: 'Oxypace Blog makalesini okuyun.',
+        imageUrl: DEFAULT_IMAGE,
+        pageUrl,
+    }));
+});
+
 export default router;
+
