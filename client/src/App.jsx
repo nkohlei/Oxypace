@@ -387,11 +387,12 @@ const AppLayout = () => {
         };
     }, [socket, isLoggedIn]);
 
-    // Map and admin pages get a clean full-screen layout — no sidebar, no footer
+    // Map, admin and home (blog) pages get a clean layout — no sidebar
     const isMapPage = location.pathname === '/map';
     const isAdminPage = location.pathname.startsWith('/admin');
     const isPortalPage = location.pathname.startsWith('/portal/');
-    const isCleanLayout = isMapPage || isAdminPage;
+    const isHomePage = location.pathname === '/';
+    const isCleanLayout = isMapPage || isAdminPage || isHomePage;
 
     // Route-based sidebar visibility for mobile (Discord-style)
     // Sidebar visible on Portal Selection screen (when channel feed is NOT open)
@@ -413,7 +414,7 @@ const AppLayout = () => {
         }
 
         const root = document.getElementById('root');
-        const isBlogPage = location.pathname === '/home' || (location.pathname === '/' && !isLoggedIn);
+        const isBlogPage = location.pathname === '/';
         if (isLoggedIn && !isBlogPage) {
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
@@ -470,7 +471,7 @@ const AppLayout = () => {
     };
 
     return (
-        <div className={`app-container ${(!isLoggedIn || location.pathname === '/home') ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
+        <div className={`app-container ${(!isLoggedIn || location.pathname === '/') ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
             {isLoggedIn && <WarpGridBackground />}
             {showDeviceModal && (
                 <RegisterDeviceModal
@@ -567,22 +568,8 @@ const AppLayout = () => {
                         <Suspense fallback={<PageLoader />}>
                             <Routes>
                                 {/* Public / Blog routes */}
-                                <Route path="/home" element={<Home />} />
+                                <Route path="/" element={<Home />} />
                                 <Route path="/login" element={<Login />} />
-
-                                <Route path="/register" element={<Register />} />
-                                <Route path="/forgot-password" element={<ForgotPassword />} />
-                                <Route path="/reset-password" element={<ResetPassword />} />
-                                <Route path="/verify-email" element={<VerifyEmail />} />
-                                <Route path="/onboarding" element={<Onboarding />} />
-                                <Route path="/auth/process" element={<AuthProcess />} />
-                                <Route path="/auth/google/success" element={<GoogleCallback />} />
-                                <Route path="/privacy" element={<PrivacyPolicy />} />
-                                <Route path="/terms" element={<TermsOfService />} />
-                                <Route path="/contact" element={<Contact />} />
-
-                                {/* Private routes */}
-                                <Route path="/" element={<Navigate to={isLoggedIn ? "/messages" : "/login"} replace />} />
                                 <Route path="/messages" element={
                                     <PrivateRoute>
                                         <Inbox />

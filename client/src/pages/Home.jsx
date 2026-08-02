@@ -53,22 +53,13 @@ const Home = () => {
         }
     }, []);
 
-    // Auto-redirect logged-in users only if they land directly on '/'
+    // Handle pending portal redirect after login if any
     useEffect(() => {
-        if (!loading && user && window.location.pathname === '/') {
-            // Check if user clicked a portal before logging in
+        if (!loading && user) {
             const pendingPortal = localStorage.getItem('oxypace_pending_portal');
             if (pendingPortal) {
                 localStorage.removeItem('oxypace_pending_portal');
                 navigate(`/portal/${pendingPortal}`);
-                return;
-            }
-            if (user.joinedPortals && user.joinedPortals.length > 0) {
-                const firstPortalId =
-                    typeof user.joinedPortals[0] === 'string'
-                        ? user.joinedPortals[0]
-                        : user.joinedPortals[0]._id;
-                navigate(`/portal/${firstPortalId}`);
             }
         }
     }, [user, loading, navigate]);
