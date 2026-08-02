@@ -172,6 +172,7 @@ function buildOGHtml({ title, description, imageUrl, videoUrl, pageUrl, type = '
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDesc}" />
   <meta property="og:image" content="${safeImage}" />
+  <meta property="og:image:secure_url" content="${safeImage}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="${safeTitle}" />
@@ -183,9 +184,6 @@ function buildOGHtml({ title, description, imageUrl, videoUrl, pageUrl, type = '
   <meta name="twitter:title" content="${safeTitle}" />
   <meta name="twitter:description" content="${safeDesc}" />
   <meta name="twitter:image" content="${safeImage}" />
-
-  <!-- Kullanıcıları gerçek siteye yönlendir (0 saniye) -->
-  <meta http-equiv="refresh" content="0;url=${safePageUrl}" />
   <link rel="canonical" href="${safePageUrl}" />
 </head>
 <body>
