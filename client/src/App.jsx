@@ -413,7 +413,8 @@ const AppLayout = () => {
         }
 
         const root = document.getElementById('root');
-        if (isLoggedIn) {
+        const isBlogPage = location.pathname === '/home' || (location.pathname === '/' && !isLoggedIn);
+        if (isLoggedIn && !isBlogPage) {
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
 
@@ -442,7 +443,7 @@ const AppLayout = () => {
             document.documentElement.classList.remove('discord-layout-active');
             document.body.classList.remove('discord-layout-active');
 
-            // Clear forced inline styles so guest pages can scroll freely
+            // Clear forced inline styles so guest/blog pages can scroll freely
             if (root) {
                 root.style.height = '';
                 root.style.maxHeight = '';
@@ -469,7 +470,7 @@ const AppLayout = () => {
     };
 
     return (
-        <div className={`app-container ${!isLoggedIn ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
+        <div className={`app-container ${(!isLoggedIn || location.pathname === '/home') ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
             {isLoggedIn && <WarpGridBackground />}
             {showDeviceModal && (
                 <RegisterDeviceModal
@@ -565,7 +566,8 @@ const AppLayout = () => {
                     <div className="content-scroll-area">
                         <Suspense fallback={<PageLoader />}>
                             <Routes>
-                                {/* Public routes */}
+                                {/* Public / Blog routes */}
+                                <Route path="/home" element={<Home />} />
                                 <Route path="/login" element={<Login />} />
 
                                 <Route path="/register" element={<Register />} />

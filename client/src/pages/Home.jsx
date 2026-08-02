@@ -53,9 +53,9 @@ const Home = () => {
         }
     }, []);
 
-    // Auto-redirect logged-in users
+    // Auto-redirect logged-in users only if they land directly on '/'
     useEffect(() => {
-        if (!loading && user) {
+        if (!loading && user && window.location.pathname === '/') {
             // Check if user clicked a portal before logging in
             const pendingPortal = localStorage.getItem('oxypace_pending_portal');
             if (pendingPortal) {
@@ -141,11 +141,15 @@ const Home = () => {
         sectionRefs.current[index] = el;
     }, []);
 
-    // Handle portal card click - save portal ID and redirect to login
+    // Handle portal card click
     const handlePortalClick = useCallback((portalId) => {
-        localStorage.setItem('oxypace_pending_portal', portalId);
-        navigate('/login');
-    }, [navigate]);
+        if (user) {
+            navigate(`/portal/${portalId}`);
+        } else {
+            localStorage.setItem('oxypace_pending_portal', portalId);
+            navigate('/login');
+        }
+    }, [user, navigate]);
 
     if (loading) {
         return (
