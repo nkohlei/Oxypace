@@ -498,7 +498,7 @@ function resolveBlogCoverImageUrl(imagePath) {
     if (cleanPath.startsWith('data:') || cleanPath.startsWith('blob:')) {
         return DEFAULT_IMAGE;
     }
-    cleanPath = cleanPath.replace(/^\/+/, '').replace(/^(api\/media\/|r2-media\/)/, '').replace(/^\/+/, '');
+    cleanPath = cleanPath.replace(/^\/+/, '').replace(/^(api\/media\/|r2-media\/|uploads\/|media\/)/, '').replace(/^\/+/, '');
     if (cleanPath.startsWith('post-') && !cleanPath.startsWith('posts/')) {
         cleanPath = `posts/general/${cleanPath}`;
     }
@@ -518,7 +518,10 @@ router.get('/blog/:slug', async (req, res) => {
         let post = null;
         try {
             await connectDB();
-            post = await BlogPost.findOne({ slug, isPublished: true }).lean();
+            post = await BlogPost.findOne({ $or: [{ slug }, { slug: slug.toLowerCase() }] }).lean();
+            if (!post) {
+                post = await BlogPost.findOne({ slug: new RegExp(`^${slug}$`, 'i') }).lean();
+            }
         } catch (dbErr) {
             console.error('[OG] DB Error during blog fetch:', dbErr.message);
         }
