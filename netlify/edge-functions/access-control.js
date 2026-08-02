@@ -167,8 +167,8 @@ export default async (request, context) => {
             if (headMatch && headMatch[1]) {
               let originalHtml = await response.text();
               const ogHeadTags = headMatch[1].trim();
-              if (originalHtml.includes("<head>")) {
-                originalHtml = originalHtml.replace("<head>", `<head>${ogHeadTags}`);
+              if (originalHtml.includes("</head>")) {
+                originalHtml = originalHtml.replace("</head>", `${ogHeadTags}</head>`);
               }
               return new Response(originalHtml, {
                 status: response.status,
