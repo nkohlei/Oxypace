@@ -7,7 +7,14 @@ import { posts as staticPosts } from "../data/posts";
 
 function PostContent() {
   const searchParams = useSearchParams();
-  const slug = searchParams.get("slug") || "";
+  let slug = searchParams.get("slug") || "";
+
+  if (!slug && typeof window !== "undefined") {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    if (parts.length > 0 && parts[0] === "blog" && parts[parts.length - 1] !== "post") {
+      slug = parts[parts.length - 1];
+    }
+  }
 
   const initialPost = staticPosts.find((p) => p.slug === slug) || null;
 
