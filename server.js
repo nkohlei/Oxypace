@@ -254,10 +254,22 @@ app.use((req, res, next) => {
 
     if (!isBot) return next();
 
+    // Özel Kontrol: /blog/post?slug=... veya /blog/post/?slug=... (Eski/query param link yapısı)
+    if ((req.path === '/blog/post' || req.path === '/blog/post/') && req.query.slug) {
+        const slug = req.query.slug;
+        console.log(`🤖 Bot detected (${ua.substring(0, 40)}...) → Serving OG query slug: /og/blog/${slug}`);
+        req.url = `/og/blog/${slug}`;
+        return next();
+    }
+
     // Bot ise path'i OG route'u ile eşleştir
     for (const { pattern, route } of OG_PATH_PATTERNS) {
         const match = req.path.match(pattern);
         if (match) {
+            // /blog/post rotasını genel /blog/:slug eşleşmesinden hariç tut
+            if (match[1] === 'post' && req.path.startsWith('/blog/post')) {
+                continue;
+            }
             // Route placeholder'larını gerçek değerlerle değiştir
             const ogPath = route.replace('$1', match[1]);
             console.log(`🤖 Bot detected (${ua.substring(0, 40)}...) → Serving OG: ${ogPath}`);

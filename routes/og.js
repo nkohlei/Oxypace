@@ -483,6 +483,30 @@ router.get('/portal/:portalId', async (req, res) => {
 });
 
 /**
+ * Blog makalesi kapak görseli için tam URL oluşturur
+ */
+function resolveBlogCoverImageUrl(imagePath) {
+    if (!imagePath) return DEFAULT_IMAGE;
+    let cleanPath = String(imagePath).trim();
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        const r2Domain = 'r2.dev';
+        if (cleanPath.includes(r2Domain)) {
+            cleanPath = cleanPath.substring(cleanPath.indexOf(r2Domain) + r2Domain.length);
+        } else {
+            return cleanPath;
+        }
+    }
+    if (cleanPath.startsWith('data:') || cleanPath.startsWith('blob:')) {
+        return DEFAULT_IMAGE;
+    }
+    cleanPath = cleanPath.replace(/^\/+/, '').replace(/^(api\/media\/|r2-media\/)/, '').replace(/^\/+/, '');
+    if (cleanPath.startsWith('post-') && !cleanPath.startsWith('posts/')) {
+        cleanPath = `posts/general/${cleanPath}`;
+    }
+    return `${SITE_URL}/r2-media/${cleanPath}`;
+}
+
+/**
  * GET /og/blog/:slug
  *
  * Blog makaleleri için OG önizlemesi (WhatsApp, Twitter, LinkedIn, Facebook, Telegram)
@@ -492,15 +516,19 @@ router.get('/blog/:slug', async (req, res) => {
     const pageUrl = `${SITE_URL}/blog/${slug}`;
 
     try {
-        await connectDB();
-        const post = await BlogPost.findOne({ slug, isPublished: true }).lean();
+        let post = null;
+        try {
+            await connectDB();
+            post = await BlogPost.findOne({ slug, isPublished: true }).lean();
+        } catch (dbErr) {
+            console.error('[OG] DB Error during blog fetch:', dbErr.message);
+        }
 
         if (post) {
             const title = post.title || 'Oxypace Blog Makalesi';
             const cleanContent = post.content ? post.content.replace(/<[^>]*>?/gm, '') : '';
             const description = post.excerpt || sanitizeText(cleanContent, 160) || 'Oxypace Blog makalesini inceleyin.';
-            const rawImg = post.image ? resolveMediaUrl(post.image) : DEFAULT_IMAGE;
-            const imageUrl = getOGImageUrl(rawImg, false);
+            const imageUrl = resolveBlogCoverImageUrl(post.image);
 
             const html = buildOGHtml({
                 title: `${title} | Oxypace Blog`,

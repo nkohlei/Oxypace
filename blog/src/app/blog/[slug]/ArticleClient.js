@@ -25,8 +25,15 @@ export default function ArticleClient({ initialPost, slug }) {
   const [authorModalOpen, setAuthorModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const activeSlug = slug || post?.slug || "";
+  const canonicalUrl = activeSlug
+    ? `https://oxypace.com.tr/blog/${activeSlug}`
+    : typeof window !== "undefined"
+    ? window.location.href
+    : "https://oxypace.com.tr/blog";
+
   const handleCopyLink = () => {
-    const url = typeof window !== "undefined" ? window.location.href : `https://oxypace.com.tr/blog/${slug}`;
+    const url = canonicalUrl;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).then(() => {
         setCopied(true);
@@ -45,7 +52,7 @@ export default function ArticleClient({ initialPost, slug }) {
   };
 
   const shareTitle = post?.title || "Oxypace Blog";
-  const shareUrl = typeof window !== "undefined" ? window.location.href : `https://oxypace.com.tr/blog/${slug}`;
+  const shareUrl = canonicalUrl;
 
   const handleNativeShare = async () => {
     if (typeof navigator !== "undefined" && navigator.share) {
