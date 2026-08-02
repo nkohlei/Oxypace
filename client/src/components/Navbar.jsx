@@ -195,37 +195,6 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     )}
 
                     <div className="nav-right">
-                        {/* Oxypace Portal Button (Visible on Blog/Home page '/home' when user is logged in) */}
-                        {user && location.pathname === '/home' && (
-                            <button
-                                className="oxypace-portal-nav-btn"
-                                onClick={() => {
-                                    if (user.joinedPortals && user.joinedPortals.length > 0) {
-                                        const firstPortalId = typeof user.joinedPortals[0] === 'string' ? user.joinedPortals[0] : user.joinedPortals[0]._id;
-                                        navigate(`/portal/${firstPortalId}`);
-                                    } else {
-                                        navigate('/messages');
-                                    }
-                                }}
-                                title="Oxypace Platformuna Dön"
-                            >
-                                <span>Oxypace Portal</span>
-                                <span className="arrow">→</span>
-                            </button>
-                        )}
-
-                        {/* EVENT HORIZON Blog Button (Visible when logged in and NOT on '/home' page) */}
-                        {user && location.pathname !== '/home' && (
-                            <Link
-                                to="/home"
-                                className="event-horizon-nav-btn"
-                                title="EVENT HORIZON Blog"
-                            >
-                                <span className="eh-line1">EVENT</span>
-                                <span className="eh-line2">HORIZON</span>
-                            </Link>
-                        )}
-
                         {!hideThemeToggle && (
                             <button
                                 className="nav-theme-toggle-btn"
