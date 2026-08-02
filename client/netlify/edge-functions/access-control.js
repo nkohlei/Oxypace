@@ -166,10 +166,10 @@ export default async (request, context) => {
             const headMatch = ogHtml.match(/<head>([\s\S]*?)<\/head>/i);
             if (headMatch && headMatch[1]) {
               let originalHtml = await response.text();
-              originalHtml = originalHtml.replace(
-                /<title>.*?<\/title>/i,
-                headMatch[1].trim()
-              );
+              const ogHeadTags = headMatch[1].trim();
+              if (originalHtml.includes("<head>")) {
+                originalHtml = originalHtml.replace("<head>", `<head>${ogHeadTags}`);
+              }
               return new Response(originalHtml, {
                 status: response.status,
                 headers: response.headers,
