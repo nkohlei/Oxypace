@@ -195,8 +195,8 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     )}
 
                     <div className="nav-right">
-                        {/* Oxypace Portal Button (Visible on Blog/Home page '/' when user is logged in) */}
-                        {user && location.pathname === '/' && (
+                        {/* Oxypace Portal Button (Visible on Blog/Home page '/home' when user is logged in) */}
+                        {user && location.pathname === '/home' && (
                             <button
                                 className="oxypace-portal-nav-btn"
                                 onClick={() => {
@@ -214,10 +214,10 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             </button>
                         )}
 
-                        {/* EVENT HORIZON Blog Button (Visible when logged in and NOT on '/' home page) */}
-                        {user && location.pathname !== '/' && (
+                        {/* EVENT HORIZON Blog Button (Visible when logged in and NOT on '/home' page) */}
+                        {user && location.pathname !== '/home' && (
                             <Link
-                                to="/"
+                                to="/home"
                                 className="event-horizon-nav-btn"
                                 title="EVENT HORIZON Blog"
                             >
