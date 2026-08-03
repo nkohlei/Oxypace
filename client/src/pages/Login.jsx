@@ -160,7 +160,7 @@ const Login = () => {
             const response = await axios.post('/api/auth/login', payload);
             sessionStorage.setItem('oxypace_fresh_login', 'true');
             login(response.data.token, response.data.user);
-            navigate('/');
+            navigate('/messages', { replace: true });
         } catch (err) {
             if (err.response?.status === 403 && err.response?.data?.isDeleted) {
                 if (window.confirm("Bu hesap silinmiştir. Kurtarmak istiyor musunuz?")) {
