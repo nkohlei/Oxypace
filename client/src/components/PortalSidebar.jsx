@@ -200,8 +200,8 @@ const PortalSidebar = () => {
                 {/* Top Actions: Messages and Search */}
                 <div
                     id="tour-step-messages"
-                    className={`sidebar-item ${location.pathname === '/' || location.pathname === '/inbox' ? 'active' : ''}`}
-                    onClick={() => handleNavigation('/')}
+                    className={`sidebar-item ${location.pathname === '/messages' || location.pathname === '/inbox' ? 'active' : ''}`}
+                    onClick={() => handleNavigation('/messages')}
                 >
                     <div className="portal-icon-container">
                         <div className="portal-icon">

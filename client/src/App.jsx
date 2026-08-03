@@ -616,7 +616,7 @@ const AppLayout = () => {
                                 <Route path="/profile/:username" element={<Profile />} />
                                 <Route
                                     path="/inbox"
-                                    element={<Navigate to="/" replace />}
+                                    element={<Navigate to="/messages" replace />}
                                 />
                                 <Route
                                     path="/settings"
