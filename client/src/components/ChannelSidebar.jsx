@@ -43,10 +43,10 @@ const ChannelSidebar = ({
 
     // Clear unread count for the active channel
     useEffect(() => {
-        if (currentChannel) {
-            clearUnreadForChannel(currentChannel);
+        if (currentChannel && portal?._id) {
+            clearUnreadForChannel(currentChannel, portal._id);
         }
-    }, [currentChannel, clearUnreadForChannel]);
+    }, [currentChannel, portal?._id, clearUnreadForChannel]);
 
     if (!portal) return null;
 

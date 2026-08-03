@@ -223,7 +223,7 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', margin: '24px 0 16px 0' }}>
                             <h3 className="channels-mute-title" style={{ margin: 0, borderBottom: 'none', paddingBottom: 0 }}>Kanal Bildirim Tercihleri</h3>
                             <span className="channels-mute-info-note" style={{ fontSize: '11px', color: '#ff7675', fontWeight: '500', letterSpacing: '0.3px' }}>
-                                Açık olan kanalların sol menü portal bildirim simgesi susturulur!
+                                Susturulan kanalın bildirimi kanal listesinde görünür, sol menüdeki portal avatar rozetine dahil edilmez.
                             </span>
                         </div>
                         <div className="channels-mute-list">

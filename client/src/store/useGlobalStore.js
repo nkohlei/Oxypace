@@ -120,11 +120,36 @@ export const useGlobalStore = create(
                 }
             },
 
-            clearUnreadForChannel: (channelId) => set((state) => {
-                const newUnread = { ...state.unreadPostsByChannel };
-                delete newUnread[channelId];
-                return { unreadPostsByChannel: newUnread };
-            }),
+            clearUnreadForChannel: async (channelId, portalId) => {
+                set((state) => {
+                    const newUnreadByChannel = { ...state.unreadPostsByChannel };
+                    const channelPostIds = newUnreadByChannel[channelId] || [];
+                    delete newUnreadByChannel[channelId];
+
+                    const newUnreadByPortal = { ...state.unreadPostsByPortal };
+                    if (portalId && newUnreadByPortal[portalId]) {
+                        newUnreadByPortal[portalId] = newUnreadByPortal[portalId].filter(
+                            (postId) => !channelPostIds.includes(postId)
+                        );
+                        if (newUnreadByPortal[portalId].length === 0) {
+                            delete newUnreadByPortal[portalId];
+                        }
+                    }
+
+                    return {
+                        unreadPostsByChannel: newUnreadByChannel,
+                        unreadPostsByPortal: newUnreadByPortal,
+                    };
+                });
+
+                if (portalId && channelId) {
+                    try {
+                        await axios.put(`/api/notifications/portal/${portalId}/read?channel=${channelId}`);
+                    } catch (err) {
+                        console.error('Failed to clear channel notifications on server:', err);
+                    }
+                }
+            },
 
             setUnreadMessagesCount: (count) => set({ unreadMessagesCount: count }),
 

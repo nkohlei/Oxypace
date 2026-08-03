@@ -90,12 +90,8 @@ const PortalSidebar = () => {
     }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount, orderedPortals]);
 
     useEffect(() => {
-        // Clear unread status when entering a portal
-        const match = location.pathname.match(/\/portal\/([a-f\d]{24})/i);
-        if (match && match[1]) {
-            clearUnreadForPortal(match[1]);
-        }
-    }, [location.pathname, clearUnreadForPortal]);
+        // Sync unread counts on navigation
+    }, [location.pathname]);
 
     const handleDragStart = (e, index) => {
         setDraggedIndex(index);
