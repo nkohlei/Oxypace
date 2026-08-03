@@ -32,10 +32,15 @@ export default function RootLayout({ children }) {
                 var isFirstVisitOfSession = !sessionStorage.getItem('hasVisitedThisSession');
                 sessionStorage.setItem('hasVisitedThisSession', 'true');
 
+                var pathname = window.location.pathname;
+                var isBlogPath = pathname.indexOf('/blog') === 0;
+
                 var t = localStorage.getItem('token');
                 var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 20;
 
-                if (isFirstVisitOfSession && isLoggedIn) {
+                // Yönlendirme SADECE ilk girişte ve SADECE ana URL ('/') adresindeyken yapılır.
+                // Eğer girilen URL bir blog linki ise (/blog/...) ASLA yönlendirme yapılmaz.
+                if (isFirstVisitOfSession && isLoggedIn && !isBlogPath && (pathname === '/' || pathname === '')) {
                   window.location.replace('/messages');
                 }
 
