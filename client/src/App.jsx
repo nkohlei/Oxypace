@@ -566,7 +566,7 @@ const AppLayout = () => {
                     <div className="content-scroll-area">
                         <Suspense fallback={<PageLoader />}>
                             <Routes>
-                                {/* Public routes */}
+                                <Route path="/" element={<Home />} />
                                 <Route path="/blog" element={<Home />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
@@ -579,9 +579,6 @@ const AppLayout = () => {
                                 <Route path="/privacy" element={<PrivacyPolicy />} />
                                 <Route path="/terms" element={<TermsOfService />} />
                                 <Route path="/contact" element={<Contact />} />
-
-                                {/* Private routes */}
-                                <Route path="/" element={<Navigate to={isLoggedIn ? "/messages" : "/login"} replace />} />
                                 <Route path="/messages" element={
                                     <PrivateRoute>
                                         <Inbox />

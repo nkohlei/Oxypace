@@ -29,10 +29,16 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{
             __html: `
               try {
+                var isFirstVisitOfSession = !sessionStorage.getItem('hasVisitedThisSession');
+                sessionStorage.setItem('hasVisitedThisSession', 'true');
+
                 var t = localStorage.getItem('token');
-                if (t && t !== 'null' && t !== 'undefined') {
+                var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 20;
+
+                if (isFirstVisitOfSession && isLoggedIn) {
                   window.location.replace('/messages');
                 }
+
                 var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
                 if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.documentElement.classList.add('dark');
