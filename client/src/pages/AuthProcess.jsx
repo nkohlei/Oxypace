@@ -35,7 +35,7 @@ const AuthProcess = () => {
                 if (action === 'login') {
                     sessionStorage.setItem('oxypace_fresh_login', 'true');
                     login(authToken, user);
-                    navigate('/');
+                    navigate('/messages', { replace: true });
                 } else if (action === 'onboarding') {
                     // Redirect to onboarding with the pre-token
                     navigate(`/onboarding?preToken=${preToken}`);
