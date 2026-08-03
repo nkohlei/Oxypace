@@ -8,6 +8,7 @@ export const useGlobalStore = create(
             posts: [],
             unreadPostsByPortal: {}, // { [portalId]: [postId1, postId2, ...] }
             unreadPostsByChannel: {}, // { [channelId]: [postId1, postId2, ...] }
+            unreadNotificationItems: [], // [ { portalId, channelId, postId } ]
             isMuted: true, // Default to muted for better initial experience
             usersCache: {},
             unreadMessagesCount: 0,
@@ -90,17 +91,21 @@ export const useGlobalStore = create(
                     
                     const unreadPostsByPortal = {};
                     const unreadPostsByChannel = {};
-                    
+                    const unreadNotificationItems = [];
+
                     notifications.forEach(n => {
                         if (n.portal && n.post) {
                             const portalId = n.portal.toString();
                             const postId = n.post.toString();
+                            const channelId = n.channel ? n.channel.toString() : null;
+
                             if (!unreadPostsByPortal[portalId]) {
                                 unreadPostsByPortal[portalId] = [];
                             }
                             if (!unreadPostsByPortal[portalId].includes(postId)) {
                                 unreadPostsByPortal[portalId].push(postId);
                             }
+                            unreadNotificationItems.push({ portalId, channelId, postId });
                         }
                         if (n.channel && n.post) {
                             const channelId = n.channel.toString();
@@ -113,8 +118,8 @@ export const useGlobalStore = create(
                             }
                         }
                     });
-                    
-                    set({ unreadPostsByPortal, unreadPostsByChannel });
+
+                    set({ unreadPostsByPortal, unreadPostsByChannel, unreadNotificationItems });
                 } catch (err) {
                     console.error('Failed to sync unread counts:', err);
                 }

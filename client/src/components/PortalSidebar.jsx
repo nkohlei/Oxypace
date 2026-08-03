@@ -30,6 +30,8 @@ const PortalSidebar = () => {
         setFailedThumbnails(prev => ({ ...prev, [portalId]: true }));
     };
     
+    const unreadNotificationItems = useGlobalStore(state => state.unreadNotificationItems) || [];
+
     // Helper to filter unread counts based on user's muted channels settings
     const getFilteredUnreadCount = (portalId) => {
         if (!portalId) return 0;
@@ -50,10 +52,18 @@ const PortalSidebar = () => {
         if (mutedChannels.length === 0) return allUnread.length;
 
         const filtered = allUnread.filter(postId => {
-            const isMuted = mutedChannels.some(channelId =>
+            // Check if this unread post belongs to any muted channel
+            const notifItem = unreadNotificationItems.find(
+                item => item.portalId === targetIdStr && item.postId === postId
+            );
+            if (notifItem && notifItem.channelId && mutedChannels.includes(notifItem.channelId)) {
+                return false; // Exclude muted channel post
+            }
+
+            const isMutedByChannelStore = mutedChannels.some(channelId =>
                 channelId && unreadPostsByChannel[channelId]?.includes(postId)
             );
-            return !isMuted;
+            return !isMutedByChannelStore;
         });
 
         return filtered.length;
