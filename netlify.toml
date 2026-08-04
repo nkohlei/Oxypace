@@ -132,6 +132,12 @@
   force = false
 
 [[redirects]]
+  from = "/post/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
   from = "/settings"
   to = "/portal.html"
   status = 200
