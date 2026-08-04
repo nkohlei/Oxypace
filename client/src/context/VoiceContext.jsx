@@ -119,6 +119,7 @@ export const VoiceProvider = ({ children }) => {
 
     // Core states
     const [activeRoom, setActiveRoom] = useState(null); // { portalId, channelId, roomName, channelName, roomMode, userRole }
+    const activeRoomRef = useRef(null); // Ref to always hold latest activeRoom (avoids stale closures in WebRTC callbacks)
     const [connectionState, setConnectionState] = useState(ConnectionState.Disconnected);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -144,6 +145,12 @@ export const VoiceProvider = ({ children }) => {
     const _setRoomStartTime = (val) => {
         roomStartTimeRef.current = val;
         setRoomStartTime(val);
+    };
+
+    // Helper to keep activeRoomRef and activeRoom state in sync
+    const _setActiveRoom = (val) => {
+        activeRoomRef.current = val;
+        setActiveRoom(val);
     };
 
     useEffect(() => {
@@ -461,6 +468,7 @@ export const VoiceProvider = ({ children }) => {
         }
 
         // Bind onnegotiationneeded to trigger renegotiation automatically
+        // Uses activeRoomRef.current to avoid stale closure — always reads the latest activeRoom value
         pc.onnegotiationneeded = async () => {
             try {
                 // To avoid glare/collision on initial track addition, only the designated offer creator
@@ -477,13 +485,16 @@ export const VoiceProvider = ({ children }) => {
                 const offer = await pc.createOffer();
                 const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
                 await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
-                if (activeRoom) {
+                const currentRoom = activeRoomRef.current;
+                if (currentRoom) {
                     safeEmit('voice:video-offer', {
-                        roomName: activeRoom.roomName,
+                        roomName: currentRoom.roomName,
                         targetUserId,
                         sdp: prioritizedOffer
                     });
                     console.log(`[Socket] renegotiation video-offer sent to ${targetUserId}`);
+                } else {
+                    console.warn(`[WebRTC] onnegotiationneeded: activeRoom is null, cannot send offer to ${targetUserId}`);
                 }
             } catch (err) {
                 console.error(`[WebRTC] Negotiation offer generation failed for user ${targetUserId}:`, err);
@@ -496,15 +507,19 @@ export const VoiceProvider = ({ children }) => {
         };
 
         // ICE candidate handler
+        // Uses activeRoomRef.current to avoid stale closure — always reads the latest activeRoom value
         pc.onicecandidate = (event) => {
             if (event.candidate) {
                 console.log(`[WebRTC Log] onicecandidate event triggered for user ${targetUserId}: candidate gathered`);
-                if (activeRoom) {
+                const currentRoom = activeRoomRef.current;
+                if (currentRoom) {
                     safeEmit('voice:new-ice-candidate', {
-                        roomName: activeRoom.roomName,
+                        roomName: currentRoom.roomName,
                         targetUserId,
                         candidate: event.candidate
                     });
+                } else {
+                    console.warn(`[WebRTC] onicecandidate: activeRoom is null, dropping candidate for ${targetUserId}`);
                 }
             } else {
                 console.log(`[WebRTC Log] onicecandidate gathering completed for user ${targetUserId}`);
@@ -558,7 +573,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         return pc;
-    }, [activeRoom, updateParticipantList, safeEmit, localState]);
+    }, [updateParticipantList, safeEmit, localState]); // activeRoom intentionally removed — callbacks use activeRoomRef.current to avoid stale closures
 
     // Handle joining room and configuring media
     const connectToChannel = useCallback(async (portalId, channelId) => {
@@ -628,7 +643,7 @@ export const VoiceProvider = ({ children }) => {
                 isScreenSharing: false
             });
 
-            setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
+            _setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
             setConnectionState(ConnectionState.Connected);
             setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
 
@@ -688,7 +703,7 @@ export const VoiceProvider = ({ children }) => {
             });
         }
 
-        setActiveRoom(null);
+        _setActiveRoom(null);
         setParticipants([]);
         setChatMessages([]);
         setPinnedParticipant(null);
@@ -812,12 +827,18 @@ export const VoiceProvider = ({ children }) => {
                 const answer = await pc.createAnswer();
                 const prioritizedAnswer = prioritizeVideoCodec(answer.sdp);
                 await pc.setLocalDescription({ type: 'answer', sdp: prioritizedAnswer });
-                safeEmit('voice:video-answer', {
-                    roomName: activeRoom.roomName,
-                    targetUserId: senderId,
-                    sdp: prioritizedAnswer
-                });
-                console.log(`[Socket] video-answer gönderildi to ${senderId}`);
+                // Use activeRoomRef.current to avoid stale closure
+                const currentRoom = activeRoomRef.current;
+                if (currentRoom) {
+                    safeEmit('voice:video-answer', {
+                        roomName: currentRoom.roomName,
+                        targetUserId: senderId,
+                        sdp: prioritizedAnswer
+                    });
+                    console.log(`[Socket] video-answer gönderildi to ${senderId}`);
+                } else {
+                    console.error(`[WebRTC] handleVideoOffer: activeRoom is null, cannot send answer to ${senderId}`);
+                }
             } catch (err) {
                 console.error("Error setting video offer from remote:", err);
             }
@@ -1524,6 +1545,14 @@ const AudioTrackPlayer = ({ track, muted, volume }) => {
     useEffect(() => {
         if (audioEl.current && track) {
             audioEl.current.srcObject = new MediaStream([track]);
+            audioEl.current.muted = muted;
+            audioEl.current.volume = volume;
+            // Explicitly call play() after assigning srcObject.
+            // Many browsers (Chrome, Safari) do not auto-trigger autoPlay
+            // when srcObject is set dynamically on an already-rendered element.
+            audioEl.current.play().catch(err => {
+                console.warn('[WebRTC] AudioTrackPlayer: audio.play() failed (likely autoplay policy):', err);
+            });
         }
         return () => {
             if (audioEl.current) audioEl.current.srcObject = null;
