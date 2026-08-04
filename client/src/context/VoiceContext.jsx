@@ -752,7 +752,7 @@ export const VoiceProvider = ({ children }) => {
                 if (p.userId !== user?._id?.toString()) {
                     remoteStatesRef.current.set(p.userId, {
                         isMuted: p.isMuted === true,
-                        isCameraOn: p.isCameraOn !== false,
+                        isCameraOn: p.isCameraOn === true,   // Fixed: was !== false which incorrectly set to true
                         isScreenSharing: !!p.isScreenSharing
                     });
                 }
@@ -770,12 +770,18 @@ export const VoiceProvider = ({ children }) => {
                             const offer = await pc.createOffer();
                             const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
                             await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
-                            safeEmit('voice:video-offer', {
-                                roomName: activeRoom.roomName,
-                                targetUserId: p.userId,
-                                sdp: prioritizedOffer
-                            });
-                            console.log(`[Socket] video-offer gönderildi to user ${p.userId}`);
+                            // Use activeRoomRef.current to always read latest room (not stale closure)
+                            const currentRoom = activeRoomRef.current;
+                            if (currentRoom) {
+                                safeEmit('voice:video-offer', {
+                                    roomName: currentRoom.roomName,
+                                    targetUserId: p.userId,
+                                    sdp: prioritizedOffer
+                                });
+                                console.log(`[Socket] video-offer gönderildi to user ${p.userId}`);
+                            } else {
+                                console.warn(`[WebRTC] handleParticipants: activeRoomRef is null, cannot send offer to ${p.userId}`);
+                            }
                         } catch (err) {
                             console.error("Failed to create offer for:", p.userId, err);
                         }
@@ -811,75 +817,6 @@ export const VoiceProvider = ({ children }) => {
                 candidateQueuesRef.current.delete(data.userId);
                 rawParticipantsRef.current = rawParticipantsRef.current.filter(p => p.userId !== data.userId);
                 updateParticipantList();
-            }
-        };
-
-        const handleVideoOffer = async ({ senderId, sdp }) => {
-            console.log(`[Socket] video-offer alındı from user: ${senderId}`);
-            const pc = getOrCreatePC(senderId, false);
-            try {
-                await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
-                console.log(`[WebRTC] setRemoteDescription completed for offer from ${senderId}`);
-                
-                // Process any ICE candidates that arrived early
-                await processQueuedCandidates(senderId, pc);
-
-                const answer = await pc.createAnswer();
-                const prioritizedAnswer = prioritizeVideoCodec(answer.sdp);
-                await pc.setLocalDescription({ type: 'answer', sdp: prioritizedAnswer });
-                // Use activeRoomRef.current to avoid stale closure
-                const currentRoom = activeRoomRef.current;
-                if (currentRoom) {
-                    safeEmit('voice:video-answer', {
-                        roomName: currentRoom.roomName,
-                        targetUserId: senderId,
-                        sdp: prioritizedAnswer
-                    });
-                    console.log(`[Socket] video-answer gönderildi to ${senderId}`);
-                } else {
-                    console.error(`[WebRTC] handleVideoOffer: activeRoom is null, cannot send answer to ${senderId}`);
-                }
-            } catch (err) {
-                console.error("Error setting video offer from remote:", err);
-            }
-        };
-
-        const handleVideoAnswer = async ({ senderId, sdp }) => {
-            console.log(`[Socket] video-answer alındı from user: ${senderId}`);
-            const pc = peerConnectionsRef.current.get(senderId);
-            if (pc) {
-                try {
-                    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
-                    console.log(`[WebRTC] Successfully set remote answer for peer ${senderId}`);
-                    
-                    // Process any ICE candidates that arrived early
-                    await processQueuedCandidates(senderId, pc);
-                } catch (err) {
-                    console.error("Error setting video answer from remote:", err);
-                }
-            }
-        };
-
-        const handleNewIceCandidate = async ({ senderId, candidate }) => {
-            console.log(`[Socket] new-ice-candidate received from user: ${senderId}`);
-            // If peer connection doesn't exist yet (e.g. ICE candidates arrived before the offer),
-            // prepare the peer connection as answerer so we don't drop candidates.
-            const pc = getOrCreatePC(senderId, false);
-            if (pc) {
-                try {
-                    if (pc.remoteDescription && pc.remoteDescription.type) {
-                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                        console.log(`[WebRTC] Added ICE candidate immediately for user ${senderId}`);
-                    } else {
-                        if (!candidateQueuesRef.current.has(senderId)) {
-                            candidateQueuesRef.current.set(senderId, []);
-                        }
-                        candidateQueuesRef.current.get(senderId).push(candidate);
-                        console.log(`[WebRTC] Queued ICE candidate for user ${senderId} (remoteDescription is not yet set)`);
-                    }
-                } catch (err) {
-                    console.error("Error adding ice candidate:", err);
-                }
             }
         };
 
@@ -921,9 +858,6 @@ export const VoiceProvider = ({ children }) => {
         socket.on('voice:participants', handleParticipants);
         socket.on('voice:user-joined', handleUserJoined);
         socket.on('voice:user-left', handleUserLeft);
-        socket.on('voice:video-offer', handleVideoOffer);
-        socket.on('voice:video-answer', handleVideoAnswer);
-        socket.on('voice:new-ice-candidate', handleNewIceCandidate);
         socket.on('voice:state-update', handleStateUpdate);
         socket.on('voice:watch-state', handleWatchState);
         socket.on('voice:watch-play', handleWatchPlay);
@@ -935,9 +869,6 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:participants', handleParticipants);
             socket.off('voice:user-joined', handleUserJoined);
             socket.off('voice:user-left', handleUserLeft);
-            socket.off('voice:video-offer', handleVideoOffer);
-            socket.off('voice:video-answer', handleVideoAnswer);
-            socket.off('voice:new-ice-candidate', handleNewIceCandidate);
             socket.off('voice:state-update', handleStateUpdate);
             socket.off('voice:watch-state', handleWatchState);
             socket.off('voice:watch-play', handleWatchPlay);
@@ -946,6 +877,89 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:watch-stop', handleWatchStop);
         };
     }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList, safeEmit]);
+
+    // ─── Persistent WebRTC Signaling Effect ───
+    // Registered independently of activeRoom so that offer/answer/ice signals are NEVER dropped.
+    // Uses activeRoomRef.current (not closed-over activeRoom) for room name lookups.
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleVideoOffer = async ({ senderId, sdp }) => {
+            console.log(`[Socket] video-offer alındı from user: ${senderId}`);
+            const pc = getOrCreatePC(senderId, false);
+            try {
+                await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+                console.log(`[WebRTC] setRemoteDescription completed for offer from ${senderId}`);
+
+                // Process any ICE candidates that arrived early
+                await processQueuedCandidates(senderId, pc);
+
+                const answer = await pc.createAnswer();
+                const prioritizedAnswer = prioritizeVideoCodec(answer.sdp);
+                await pc.setLocalDescription({ type: 'answer', sdp: prioritizedAnswer });
+                const currentRoom = activeRoomRef.current;
+                if (currentRoom) {
+                    safeEmit('voice:video-answer', {
+                        roomName: currentRoom.roomName,
+                        targetUserId: senderId,
+                        sdp: prioritizedAnswer
+                    });
+                    console.log(`[Socket] video-answer gönderildi to ${senderId}`);
+                } else {
+                    console.error(`[WebRTC] handleVideoOffer: activeRoom is null, cannot send answer to ${senderId}`);
+                }
+            } catch (err) {
+                console.error("Error setting video offer from remote:", err);
+            }
+        };
+
+        const handleVideoAnswer = async ({ senderId, sdp }) => {
+            console.log(`[Socket] video-answer alındı from user: ${senderId}`);
+            const pc = peerConnectionsRef.current.get(senderId);
+            if (pc) {
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
+                    console.log(`[WebRTC] Successfully set remote answer for peer ${senderId}`);
+
+                    // Process any ICE candidates that arrived early
+                    await processQueuedCandidates(senderId, pc);
+                } catch (err) {
+                    console.error("Error setting video answer from remote:", err);
+                }
+            }
+        };
+
+        const handleNewIceCandidate = async ({ senderId, candidate }) => {
+            console.log(`[Socket] new-ice-candidate received from user: ${senderId}`);
+            const pc = getOrCreatePC(senderId, false);
+            if (pc) {
+                try {
+                    if (pc.remoteDescription && pc.remoteDescription.type) {
+                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                        console.log(`[WebRTC] Added ICE candidate immediately for user ${senderId}`);
+                    } else {
+                        if (!candidateQueuesRef.current.has(senderId)) {
+                            candidateQueuesRef.current.set(senderId, []);
+                        }
+                        candidateQueuesRef.current.get(senderId).push(candidate);
+                        console.log(`[WebRTC] Queued ICE candidate for user ${senderId} (remoteDescription is not yet set)`);
+                    }
+                } catch (err) {
+                    console.error("Error adding ice candidate:", err);
+                }
+            }
+        };
+
+        socket.on('voice:video-offer', handleVideoOffer);
+        socket.on('voice:video-answer', handleVideoAnswer);
+        socket.on('voice:new-ice-candidate', handleNewIceCandidate);
+
+        return () => {
+            socket.off('voice:video-offer', handleVideoOffer);
+            socket.off('voice:video-answer', handleVideoAnswer);
+            socket.off('voice:new-ice-candidate', handleNewIceCandidate);
+        };
+    }, [socket, getOrCreatePC, safeEmit]);
 
     // Reconnection listener to recover signalling state automatically
     useEffect(() => {
