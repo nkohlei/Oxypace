@@ -736,8 +736,8 @@ export const VoiceProvider = ({ children }) => {
             rawParticipantsRef.current.forEach(p => {
                 if (p.userId !== user?._id?.toString()) {
                     remoteStatesRef.current.set(p.userId, {
-                        isMuted: p.isMuted !== false,
-                        isCameraOn: !!p.isCameraOn,
+                        isMuted: p.isMuted === true,
+                        isCameraOn: p.isCameraOn !== false,
                         isScreenSharing: !!p.isScreenSharing
                     });
                 }
@@ -1490,8 +1490,8 @@ const GlobalVideoRenderer = ({ participants, localState }) => {
                 <VideoTrackPlayer key="global-local-video" trackObj={localVideoTrackObj} isLocal={true} />
             )}
             {/* Remote Video Keep-Alive (keeps decoders running in background) */}
-            {participants.filter(p => !p.isLocal && p.isCameraOn && p.videoTrack).map(p => (
-                <VideoTrackPlayer key={`global-video-${p.identity}`} trackObj={p.videoTrack} isLocal={false} />
+            {participants.filter(p => !p.isLocal && (p.videoTrack || p.screenShareTrack)).map(p => (
+                <VideoTrackPlayer key={`global-video-${p.identity}`} trackObj={p.videoTrack || p.screenShareTrack} isLocal={false} />
             ))}
         </div>
     );
