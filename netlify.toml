@@ -143,10 +143,10 @@
   status = 200
   force = false
 
-# ── Dynamic Blog Post Fallback (DB'deki dinamik makaleler için) ─
+# ── Dynamic Blog Post Fallback (DB'deki dinamik makaleler ve statik makaleler için) ─
 [[redirects]]
   from = "/blog/:slug"
-  to = "/blog/post/index.html"
+  to = "/blog/:slug/index.html"
   status = 200
   force = false
 
