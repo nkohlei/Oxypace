@@ -1024,14 +1024,17 @@ export const VoiceProvider = ({ children }) => {
 
                 // Swap placeholder track with real camera track on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
-                    const videoTransceiver = pc.getTransceivers().find(t => t.receiver.track.kind === 'video');
-                    const videoSender = videoTransceiver ? videoTransceiver.sender : null;
+                    const senders = pc.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
+                                        pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender ||
+                                        pc.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === 'video')?.sender;
                     if (videoSender) {
                         videoSender.replaceTrack(cameraTrack).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
                         });
                     }
                 });
+                renegotiateAll();
             }
         } else {
             // Turning camera OFF
@@ -1048,8 +1051,10 @@ export const VoiceProvider = ({ children }) => {
                 
                 // Swap camera track with placeholder track on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
-                    const videoTransceiver = pc.getTransceivers().find(t => t.receiver.track.kind === 'video');
-                    const videoSender = videoTransceiver ? videoTransceiver.sender : null;
+                    const senders = pc.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
+                                        pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender ||
+                                        pc.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === 'video')?.sender;
                     if (videoSender) {
                         videoSender.replaceTrack(placeholderTrack).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (OFF):", e);

@@ -39,7 +39,7 @@ const VideoRenderer = React.memo(({ participant, className }) => {
                 className={className} 
                 autoPlay 
                 playsInline 
-                muted={participant.isLocal} 
+                muted={true} 
             />
         );
     }

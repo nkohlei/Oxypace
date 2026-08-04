@@ -30,7 +30,7 @@ const VideoRenderer = ({ track, isLocal, className }) => {
             ref={videoEl} 
             className={className} 
             autoPlay 
-            muted={isLocal} 
+            muted={true} 
             playsInline 
         />
     );

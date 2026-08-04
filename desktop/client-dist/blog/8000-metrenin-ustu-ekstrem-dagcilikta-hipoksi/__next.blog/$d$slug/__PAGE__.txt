@@ -1,0 +1,18 @@
+1:"$Sreact.fragment"
+2:I[8013,["257","static/chunks/257-a3913a9a898aeef4.js","230","static/chunks/230-87d2039aaab70367.js","13","static/chunks/13-fcaaacb0c1ad73c6.js","953","static/chunks/app/blog/%5Bslug%5D/page-407262c04085e739.js"],"default"]
+4:I[484,[],"OutletBoundary"]
+5:"$Sreact.suspense"
+3:T7e5,
+      <p class="lead text-lg text-zinc-300 mb-6">Yeryüzündeki 8000 metreyi aşan 14 zirve, dağcılar için sadece fiziksel bir engel değil, aynı zamanda sınırları zorlayan fizyolojik bir laboratuvardır. Bu yüksekliklerde atmosfer basıncı deniz seviyesindekinin yaklaşık üçte birine düşer. Bu durum, havadaki oksijen oranının azalmasından değil, atmosfer basıncının düşmesiyle oksijenin kısmi basıncının azalmasından kaynaklanır.</p>
+      
+      <h2 class="text-2xl font-bold text-white mt-8 mb-4">Ölüm Bölgesi ve Hipoksi</h2>
+      <p class="text-zinc-300 mb-4">Fizyolojide 8000 metrenin üzeri 'Ölüm Bölgesi' (Death Zone) olarak tanımlanır. Bu irtifada insan vücudu kendini yenileyemez ve tüketim hızı üretim hızını aşar. Kısmi basınç farkı azaldığı için akciğer alveollerinden kana oksijen geçişi kritik düzeyde yavaşlar. Bu duruma hipoksi (oksijen yetmezliği) denir. Hücreler aerobik solunumdan anaerobik solunuma geçtikçe laktik asit birikir, beyin ve akciğer ödemi riski katlanarak artar.</p>
+      
+      <blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">
+        "8000 metrede atılan her adım, fiziksel yerçekimi kuvvetiyle birlikte, kandaki hemoglobin doygunluğunun sınırlarına karşı verilen biyokimyasal bir savaştır."
+      </blockquote>
+
+      <h2 class="text-2xl font-bold text-white mt-8 mb-4">Aklimatizasyonun Biyofiziksel Süreci</h2>
+      <p class="text-zinc-300 mb-4">İnsan vücudu bu ekstrem koşullara uyum sağlamak için aklimatizasyon (iklimleştirme) adı verilen biyofiziksel süreçleri devreye sokar. Böbreklerden salgılanan eritropoietin (EPO) hormonu kemik iliğini uyararak alyuvar (kırmızı kan hücresi) üretimini artırır. Kanın viskozitesi (akışkanlığa karşı direnci) artar, solunum derinleşir ve kalp debisi yükselir. Ancak bu adaptasyonların bile bir sınırı vardır ve ölüm bölgesinde geçirilen her dakika hücre ömründen çalmaya devam eder.</p>
+    0:{"rsc":["$","$1","c",{"children":[["$","$L2",null,{"initialPost":{"id":2,"title":"8000 Metrenin Üstü: Ekstrem Dağcılıkta Hipoksi ve Aklimatizasyon Fiziği","slug":"8000-metrenin-ustu-ekstrem-dagcilikta-hipoksi","excerpt":"Ölüm Bölgesi olarak adlandırılan ekstrem irtifalarda insan vücudundaki kısmi oksijen basıncının düşüşü, hücresel solunum fiziğini ve aklimatizasyon mekanizmalarını nasıl etkiler?","category":"Ekstrem Doğa Fiziği","readTime":"10 dk okuma","date":"12 Temmuz 2026","image":"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80","content":"$3"},"slug":"8000-metrenin-ustu-ekstrem-dagcilikta-hipoksi"}],null,["$","$L4",null,{"children":["$","$5",null,{"name":"Next.MetadataOutlet","children":"$@6"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"UxKaEAk3pu_gdpdM3opdf"}
+6:null
