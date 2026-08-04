@@ -85,11 +85,7 @@ const ShareModal = ({ postId, onClose }) => {
     };
 
     const getShareUrl = () => {
-        const origin = window.location.origin;
-        const baseUrl = (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('file:') || origin.includes('capacitor:'))
-            ? 'https://oxypace.com.tr'
-            : origin;
-        return `${baseUrl}/post/${postId}`;
+        return `${window.location.origin}/post/${postId}`;
     };
 
     const handleCopyLink = () => {
