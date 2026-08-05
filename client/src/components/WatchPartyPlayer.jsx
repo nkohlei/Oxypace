@@ -194,7 +194,8 @@ const getProxiedUrl = (url) => {
   
   const isHlsStream = url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest');
   if (isHlsStream) {
-    return `${baseUrl}/api/media/proxy-hls?url=${encodeURIComponent(url)}`;
+    if (url.startsWith('/api/proxy')) return url;
+    return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
   }
   
   return `${baseUrl}/api/media/${encodeURIComponent(url)}`;
