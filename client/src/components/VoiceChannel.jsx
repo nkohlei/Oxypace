@@ -7,6 +7,7 @@ import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
+import { HlsTesterModal } from './HlsTesterModal';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
 
@@ -143,6 +144,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [watchUrl, setWatchUrl] = useState('');
     const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
+    const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
@@ -506,6 +508,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <PictureInPicture size={18} color="#818cf8" />
                 </button>
 
+                {/* HLS Video Oynatıcı & Çözücü Butonu */}
+                <button 
+                    className={`vc-ctrl-btn ${isHlsModalOpen ? 'active' : ''}`} 
+                    onClick={() => setIsHlsModalOpen(true)} 
+                    title="HLS Oynatıcı & Çözücü Modalını Aç"
+                    style={{ background: 'rgba(168, 85, 247, 0.25)', borderColor: 'rgba(168, 85, 247, 0.6)' }}
+                >
+                    <Radio size={18} color="#c084fc" />
+                </button>
+
                 {/* Mobile More Menu Trigger (Arrow) */}
                 {isMobile && (
                     <div style={{ position: 'relative' }}>
@@ -851,6 +863,14 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 onClose={() => setIsChatOpen(false)} 
                 isAdmin={true}
                 isOpen={isChatOpen}
+            />
+
+            <HlsTesterModal
+                isOpen={isHlsModalOpen}
+                onClose={() => setIsHlsModalOpen(false)}
+                onStartWatchParty={(streamUrl) => {
+                    startWatchParty(streamUrl, false);
+                }}
             />
         </div>
     );
