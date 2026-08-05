@@ -13,6 +13,10 @@ export const getImageUrl = (path, sizeType = 'original') => {
         cleanPath = cleanPath.replace('undefined', '');
     }
 
+    if (cleanPath.startsWith('/api/proxy') || cleanPath.startsWith('api/proxy')) {
+        return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    }
+
     if (cleanPath.startsWith('http') && !cleanPath.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) {
         const cleanUrlForCheck = cleanPath.split('?')[0].split('#')[0];
         const ext = cleanUrlForCheck.split('.').pop().toLowerCase();
