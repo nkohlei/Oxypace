@@ -587,6 +587,18 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 )}
                             </div>
 
+                            {/* HLS Oynatıcı & Test Modalı Direkt Butonu */}
+                            <div className="vc-ctrl-group">
+                                <button 
+                                    className={`vc-ctrl-btn ${isHlsModalOpen ? 'active' : ''}`} 
+                                    onClick={() => setIsHlsModalOpen(!isHlsModalOpen)} 
+                                    title="HLS Oynatıcı & Yayın Testi"
+                                    style={{ background: isHlsModalOpen ? 'rgba(168, 85, 247, 0.3)' : undefined }}
+                                >
+                                    <Radio size={22} color={isHlsModalOpen ? '#ffffff' : '#a855f7'} />
+                                </button>
+                            </div>
+
                             <HlsTesterModal
                                 isOpen={isHlsModalOpen}
                                 onClose={() => setIsHlsModalOpen(false)}
