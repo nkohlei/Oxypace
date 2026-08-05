@@ -95,7 +95,7 @@ router.get('/proxy', async (req, res) => {
             return line.replace(/URI="([^"]+)"/g, (_, p1) => {
               try {
                 const absUrl = new URL(p1, targetUrl).href;
-                let proxied = `${reqOrigin}/api/proxy?url=${encodeURIComponent(absUrl)}`;
+                let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
                 if (referer) proxied += `&referer=${encodeURIComponent(referer)}`;
                 return `URI="${proxied}"`;
               } catch {
@@ -108,7 +108,7 @@ router.get('/proxy', async (req, res) => {
 
         try {
           const absUrl = new URL(trimmed, targetUrl).href;
-          let proxied = `${reqOrigin}/api/proxy?url=${encodeURIComponent(absUrl)}`;
+          let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
           if (referer) proxied += `&referer=${encodeURIComponent(referer)}`;
           return proxied;
         } catch {
