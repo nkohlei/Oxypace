@@ -778,9 +778,24 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                     >
                                         Başlat
                                     </button>
+                                    <button 
+                                        onClick={() => setIsHlsModalOpen(true)}
+                                        className="chat-send-btn glass-btn active"
+                                        style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    >
+                                        <Radio size={14} /> HLS Oynatıcı
+                                    </button>
                                 </div>
                             )}
                         </div>
+
+                        <HlsTesterModal
+                            isOpen={isHlsModalOpen}
+                            onClose={() => setIsHlsModalOpen(false)}
+                            onStartWatchParty={(streamUrl) => {
+                                startWatchParty(streamUrl, false);
+                            }}
+                        />
 
                         {/* Desktop Specific Controls (Screen Share & Deafen) */}
                         {!isMobile && (
