@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Play, Video, Link2, ShieldAlert, Sparkles } from 'lucide-react';
 
 export const REFERER_OPTIONS = [
@@ -14,7 +15,6 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
   const [isResolving, setIsResolving] = useState(false);
   const [resolveError, setResolveError] = useState(null);
   const [resolvedStreamUrl, setResolvedStreamUrl] = useState(null);
-  const [effectiveReferer, setEffectiveReferer] = useState('');
 
   if (!isOpen) return null;
 
@@ -35,7 +35,6 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
       const ref = activeRefererValue || 'https://closeload.filmmakinesi.to/';
       const proxiedUrl = `/api/proxy?url=${encodeURIComponent(trimmedUrl)}&referer=${encodeURIComponent(ref)}`;
       setResolvedStreamUrl(proxiedUrl);
-      setEffectiveReferer(ref);
       setIsResolving(false);
       return;
     }
@@ -49,7 +48,6 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
         const ref = activeRefererValue || 'https://closeload.filmmakinesi.to/';
         const proxiedUrl = `/api/proxy?url=${encodeURIComponent(rawStream)}&referer=${encodeURIComponent(ref)}`;
         setResolvedStreamUrl(proxiedUrl);
-        setEffectiveReferer(ref);
         setIsResolving(false);
         return;
       }
@@ -64,7 +62,6 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
         const ref = data.referer || activeRefererValue || 'https://closeload.filmmakinesi.to/';
         const proxiedUrl = `/api/proxy?url=${encodeURIComponent(data.streamUrl)}&referer=${encodeURIComponent(ref)}`;
         setResolvedStreamUrl(proxiedUrl);
-        setEffectiveReferer(ref);
       } else {
         setResolveError(data.error || 'Sayfadan yayın adresi ayıklanamadı.');
       }
@@ -82,28 +79,76 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-5 text-zinc-100">
+  const modalContent = (
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 999999,
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(12px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        animation: 'fadeIn 0.2s ease-out'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div 
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: '520px',
+          backgroundColor: '#121318',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '20px',
+          padding: '24px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px',
+          color: '#f4f4f5',
+          fontFamily: 'sans-serif'
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-          <div className="flex items-center gap-2">
-            <Video className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-lg font-bold">HLS Video Oynatıcı & Çözücü</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Video size={20} color="#818cf8" />
+            <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>HLS Video Oynatıcı & Çözücü</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#a1a1aa',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            <X className="w-5 h-5" />
+            <X size={20} />
           </button>
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleTestStream} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-              <Link2 className="w-3.5 h-3.5 text-indigo-400" />
+        <form onSubmit={handleTestStream} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: '#d4d4d8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Link2 size={14} color="#818cf8" />
               Film URL / Iframe veya master.txt bağlantısı:
             </label>
             <input
@@ -115,31 +160,53 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
                 setInputUrl(e.target.value);
                 setResolvedStreamUrl(null);
               }}
-              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 text-xs sm:text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-zinc-600"
+              style={{
+                width: '100%',
+                backgroundColor: '#09090b',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                fontSize: '13px',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
             />
           </div>
 
           {/* Preset Referer Selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: '#d4d4d8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldAlert size={14} color="#fbbf24" />
               Hazır Web Site Seçeneği (Referer Header):
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {REFERER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.label}
-                  type="button"
-                  onClick={() => setSelectedReferer(opt.value)}
-                  className={`px-2.5 py-2 rounded-xl text-xs font-medium border transition cursor-pointer text-center truncate ${
-                    selectedReferer === opt.value
-                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              {REFERER_OPTIONS.map((opt) => {
+                const isSelected = selectedReferer === opt.value;
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => setSelectedReferer(opt.value)}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      border: isSelected ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.1)',
+                      backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : '#09090b',
+                      color: isSelected ? '#a5b4fc' : '#a1a1aa',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
 
             {selectedReferer === '' && (
@@ -148,13 +215,24 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
                 placeholder="Özel Referer URL girin (https://...)"
                 value={customReferer}
                 onChange={(e) => setCustomReferer(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 text-xs rounded-xl px-3.5 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{
+                  width: '100%',
+                  backgroundColor: '#09090b',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  borderRadius: '12px',
+                  padding: '8px 12px',
+                  marginTop: '4px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
             )}
           </div>
 
           {resolveError && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-3 rounded-xl">
+            <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', fontSize: '12px', padding: '12px', borderRadius: '12px' }}>
               {resolveError}
             </div>
           )}
@@ -163,22 +241,53 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
             <button
               type="submit"
               disabled={isResolving}
-              className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold py-2.5 rounded-xl shadow-lg active:scale-[0.99] transition cursor-pointer disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+              style={{
+                width: '100%',
+                background: 'linear-gradient(to right, #4f46e5, #6366f1)',
+                color: '#ffffff',
+                fontWeight: '600',
+                padding: '12px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: isResolving ? 'not-allowed' : 'pointer',
+                opacity: isResolving ? 0.6 : 1,
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+              }}
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles size={16} />
               {isResolving ? 'Yayın Çözümleniyor...' : 'Videoyu Çöz & Hazırla'}
             </button>
           ) : (
-            <div className="flex flex-col gap-3 pt-2">
-              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs p-3 rounded-xl flex items-center justify-between">
-                <span>✓ Yayın başarıyla çözümlendi ve hazırlandı!</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}>
+              <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', fontSize: '12px', padding: '12px', borderRadius: '12px' }}>
+                ✓ Yayın başarıyla çözümlendi ve hazırlandı!
               </div>
               <button
                 type="button"
                 onClick={handleStartTogether}
-                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-[0.99] transition cursor-pointer text-sm flex items-center justify-center gap-2"
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(to right, #059669, #10b981)',
+                  color: '#ffffff',
+                  fontWeight: '700',
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
+                }}
               >
-                <Play className="w-5 h-5 fill-white" />
+                <Play size={18} fill="#ffffff" />
                 Birlikte İzle'de Filmi Başlat (Herkesle Oynat)
               </button>
             </div>
@@ -187,4 +296,6 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
