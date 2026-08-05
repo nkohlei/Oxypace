@@ -34,6 +34,7 @@
         "gifuct-js": "^2.1.2",
         "globalmessage-backend": "file:..",
         "globe.gl": "^2.45.0",
+        "hls.js": "^1.6.17",
         "livekit-client": "^2.17.2",
         "lucide-react": "^0.576.0",
         "media-icons": "^0.10.0",

@@ -8,6 +8,7 @@ import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
+import { HlsTesterModal } from './HlsTesterModal';
 import './VoiceChannel.css';
 
 const VideoRenderer = ({ track, isLocal, className }) => {
@@ -92,6 +93,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [focusedIdentity, setFocusedIdentity] = useState(null);
     const [lobbyCount, setLobbyCount] = useState(null);
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
+    const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
     const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
@@ -574,9 +576,24 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                         >
                                             Başlat
                                         </button>
+                                        <button 
+                                            onClick={() => setIsHlsModalOpen(true)}
+                                            className="chat-send-btn glass-btn active"
+                                            style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                                        >
+                                            <Radio size={14} /> HLS Oynatıcı
+                                        </button>
                                     </div>
                                 )}
                             </div>
+
+                            <HlsTesterModal
+                                isOpen={isHlsModalOpen}
+                                onClose={() => setIsHlsModalOpen(false)}
+                                onStartWatchParty={(streamUrl) => {
+                                    startWatchParty(streamUrl, false);
+                                }}
+                            />
 
                             {/* Desktop Specific for Conference */}
                             {!isMobile && (
