@@ -328,6 +328,16 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 >
                     <PictureInPicture size={18} color="#818cf8" />
                 </button>
+
+                {/* HLS Video Oynatıcı & Çözücü Butonu */}
+                <button 
+                    className={`vc-ctrl-btn ${isHlsModalOpen ? 'active' : ''}`} 
+                    onClick={() => setIsHlsModalOpen(true)} 
+                    title="HLS Oynatıcı & Çözücü Modalını Aç"
+                    style={{ background: 'rgba(168, 85, 247, 0.25)', borderColor: 'rgba(168, 85, 247, 0.6)' }}
+                >
+                    <Radio size={18} color="#c084fc" />
+                </button>
             </div>
 
             <div className="vc-viewport layout-spotlight" style={{ padding: '80px 24px 100px 24px' }}>
