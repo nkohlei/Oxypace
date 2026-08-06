@@ -236,8 +236,14 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                             }}
                                             title="İndir"
                                         >
-                                            <Download size={18} />
+                                            <Download size={16} />
                                         </button>
+                                        {!message.content && (
+                                            <div className="pdf-time-in-card">
+                                                {formatTime(message.createdAt)}
+                                                {message.isOptimistic && <span className="sending-indicator">...</span>}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ) : (
@@ -439,7 +445,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                             </div>
                         ) : null}
 
-                        {message.content ? (
+                        {message.content && (
                             <div className="message-content">
                                 {(() => {
                                     const firstUrl = extractFirstUrl(message.content);
@@ -455,12 +461,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                     {message.isOptimistic && <span className="sending-indicator">...</span>}
                                 </span>
                             </div>
-                        ) : (!message.media || isDocument) ? (
-                            <div className="message-time-in-bubble standalone">
-                                {formatTime(message.createdAt)}
-                                {message.isOptimistic && <span className="sending-indicator">...</span>}
-                            </div>
-                        ) : null}
+                        )}
 
                         {/* Reactions Display */}
                         {message.reactions && message.reactions.length > 0 && (
