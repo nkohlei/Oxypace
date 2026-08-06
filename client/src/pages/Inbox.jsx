@@ -127,34 +127,82 @@ const Inbox = () => {
         }
     }, [searchParams]);
 
+    const updateConversationInstant = useCallback((message, incrementUnread = false) => {
+        setConversations((prevConvs) => {
+            const senderId = String(message.sender?._id || message.sender);
+            const recipientId = String(message.recipient?._id || message.recipient);
+            const currentUserId = String(user._id);
+            const otherUserId = senderId === currentUserId ? recipientId : senderId;
+
+            const existingIndex = prevConvs.findIndex(c => String(c.user?._id) === String(otherUserId));
+
+            if (existingIndex > -1) {
+                const existing = prevConvs[existingIndex];
+                const updatedConv = {
+                    ...existing,
+                    lastMessage: {
+                        ...message,
+                        sender: typeof message.sender === 'object' ? message.sender : { _id: senderId }
+                    },
+                    unreadCount: incrementUnread ? (existing.unreadCount || 0) + 1 : (existing.unreadCount || 0)
+                };
+                const newConvs = [...prevConvs];
+                newConvs.splice(existingIndex, 1);
+                return [updatedConv, ...newConvs];
+            } else {
+                const otherUserObj = senderId === currentUserId 
+                    ? (typeof message.recipient === 'object' ? message.recipient : selectedUser)
+                    : (typeof message.sender === 'object' ? message.sender : null);
+                
+                if (!otherUserObj || !otherUserObj._id) return prevConvs;
+
+                const newConv = {
+                    user: otherUserObj,
+                    lastMessage: {
+                        ...message,
+                        sender: typeof message.sender === 'object' ? message.sender : { _id: senderId }
+                    },
+                    unreadCount: incrementUnread ? 1 : 0
+                };
+                return [newConv, ...prevConvs];
+            }
+        });
+    }, [user._id, selectedUser]);
+
     useEffect(() => {
         if (socket) {
-            const handleNewMessage = (message) => {
-                const messageSenderId = String(message.sender._id || message.sender);
-                const messageRecipientId = String(message.recipient._id || message.recipient);
+            const handleIncomingMessage = (message) => {
+                const messageSenderId = String(message.sender?._id || message.sender);
+                const messageRecipientId = String(message.recipient?._id || message.recipient);
                 const currentUserId = String(user._id);
                 const selectedUserId = selectedUser ? String(selectedUser._id) : null;
 
-                if (
+                const isForCurrentChat =
                     (messageSenderId === selectedUserId && messageRecipientId === currentUserId) ||
-                    (messageSenderId === currentUserId && messageRecipientId === selectedUserId)
-                ) {
+                    (messageSenderId === currentUserId && messageRecipientId === selectedUserId);
+
+                if (isForCurrentChat) {
                     setMessages((prev) => {
-                        if (prev.some((m) => String(m._id) === String(message._id))) return prev;
-                        return [...prev, message];
+                        const messageIdStr = String(message._id);
+                        if (prev.some((m) => String(m._id) === messageIdStr)) return prev;
+                        const filtered = prev.filter((m) => !m.isOptimistic || (m.content !== message.content && m.media !== message.media));
+                        return [...filtered, message];
                     });
                 }
+
+                const isUnread = messageSenderId !== currentUserId && (!selectedUser || String(selectedUser._id) !== messageSenderId);
+                updateConversationInstant(message, isUnread);
                 fetchConversations();
             };
 
             const handleMessageDeleted = (id) => {
-                setMessages((prev) => prev.filter((msg) => msg._id !== id));
+                setMessages((prev) => prev.filter((msg) => String(msg._id) !== String(id)));
                 fetchConversations();
             };
 
             const handleMessageReaction = ({ messageId, reactions }) => {
                 setMessages((prev) =>
-                    prev.map((msg) => (msg._id === messageId ? { ...msg, reactions } : msg))
+                    prev.map((msg) => (String(msg._id) === String(messageId) ? { ...msg, reactions } : msg))
                 );
             };
 
@@ -165,19 +213,23 @@ const Inbox = () => {
                 }));
             };
 
-            socket.on('message', handleNewMessage);
+            socket.on('message', handleIncomingMessage);
+            socket.on('newMessage', handleIncomingMessage);
+            socket.on('messageSent', handleIncomingMessage);
             socket.on('messageDeleted', handleMessageDeleted);
             socket.on('messageReaction', handleMessageReaction);
             socket.on('dm_typing_update', handleDmTypingUpdate);
 
             return () => {
-                socket.off('message', handleNewMessage);
+                socket.off('message', handleIncomingMessage);
+                socket.off('newMessage', handleIncomingMessage);
+                socket.off('messageSent', handleIncomingMessage);
                 socket.off('messageDeleted', handleMessageDeleted);
                 socket.off('messageReaction', handleMessageReaction);
                 socket.off('dm_typing_update', handleDmTypingUpdate);
             };
         }
-    }, [socket, selectedUser, user._id]);
+    }, [socket, selectedUser, user._id, updateConversationInstant]);
 
     useLayoutEffect(() => {
         if (selectedUser) {
@@ -389,6 +441,7 @@ const Inbox = () => {
             };
 
             setMessages((prev) => [...prev, optimisticMessage]);
+            updateConversationInstant(optimisticMessage, false);
 
             try {
                 let mediaKey = null;
@@ -412,6 +465,8 @@ const Inbox = () => {
                 }
 
                 const response = await axios.post('/api/messages', messageData);
+
+                updateConversationInstant(response.data, false);
 
                 setMessages((prev) => {
                     const responseId = String(response.data._id);
