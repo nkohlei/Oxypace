@@ -356,8 +356,7 @@
     flex: 1;
     overflow-y: auto;
     /* Scroll ONLY here */
-    padding: 20px 20px 100px 20px;
-    /* Extra bottom padding for fixed input */
+    padding: 20px 20px 16px 20px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -369,7 +368,7 @@
 
 @media (max-width: 768px) {
     .messages-container {
-        padding: 10px 10px 140px 10px;
+        padding: 12px 12px 12px 12px;
     }
 }
 
@@ -704,7 +703,7 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
     .system-no-reply-notice {
-        margin: 10px 10px 100px 10px;
+        margin: 10px 10px 16px 10px;
         font-size: 13px;
         padding: 0 10px;
         gap: 8px;

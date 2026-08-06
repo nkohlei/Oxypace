@@ -109,11 +109,13 @@ const Inbox = () => {
         setShowPlusMenu(false);
     }, [selectedUser]);
 
-    const scrollToBottom = useCallback(() => {
+    const scrollToBottom = useCallback((instant = true) => {
         if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: instant ? 'auto' : 'smooth', block: 'end' });
+        }
     }, []);
 
     useEffect(() => {
@@ -182,27 +184,28 @@ const Inbox = () => {
             const container = messagesContainerRef.current;
             if (!container) return;
 
-            let isAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+            let isNearBottom = true;
 
             const handleScroll = () => {
-                isAtBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+                isNearBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 120;
             };
 
             container.addEventListener('scroll', handleScroll);
 
             const observer = new MutationObserver(() => {
-                if (isAtBottom) {
-                    scrollToBottom();
+                if (isNearBottom) {
+                    scrollToBottom(true);
                 }
             });
 
             observer.observe(container, {
                 childList: true,
                 subtree: true,
+                attributes: true,
+                characterData: true,
             });
 
-            // Initial scroll
-            scrollToBottom();
+            scrollToBottom(true);
 
             return () => {
                 container.removeEventListener('scroll', handleScroll);
@@ -211,14 +214,22 @@ const Inbox = () => {
         }
     }, [selectedUser, messages, media, replyingTo, scrollToBottom]);
 
-    // Unconditional scroll to bottom when messages are loaded or user changes
+    // Unconditional scroll to bottom when messages finish loading or conversation changes
     useEffect(() => {
         if (selectedUser && !messagesLoading) {
-            setTimeout(() => {
-                scrollToBottom();
-            }, 100);
+            scrollToBottom(true);
+            const rafId = requestAnimationFrame(() => scrollToBottom(true));
+            const t1 = setTimeout(() => scrollToBottom(true), 50);
+            const t2 = setTimeout(() => scrollToBottom(true), 150);
+            const t3 = setTimeout(() => scrollToBottom(true), 350);
+            return () => {
+                cancelAnimationFrame(rafId);
+                clearTimeout(t1);
+                clearTimeout(t2);
+                clearTimeout(t3);
+            };
         }
-    }, [selectedUser, messagesLoading, scrollToBottom]);
+    }, [selectedUser?._id, messagesLoading, scrollToBottom]);
 
     // Direct Message Typing Indicator Persistence
     useEffect(() => {
