@@ -87,16 +87,25 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         setShowLightbox(!showLightbox);
     };
 
-    const autoHideTimer = React.useRef(null);
+    React.useEffect(() => {
+        if (showActionsMobile) {
+            const timer = setTimeout(() => {
+                setShowActionsMobile(false);
+            }, 2500);
+            return () => clearTimeout(timer);
+        }
+    }, [showActionsMobile]);
+
+    const handleRowClick = () => {
+        if (window.matchMedia('(pointer: coarse)').matches) {
+            setShowActionsMobile((prev) => !prev);
+        }
+    };
 
     const handleTouchStart = () => {
         longPressTimer.current = setTimeout(() => {
             setShowActionsMobile(true);
-            if (autoHideTimer.current) clearTimeout(autoHideTimer.current);
-            autoHideTimer.current = setTimeout(() => {
-                setShowActionsMobile(false);
-            }, 3000);
-        }, 400);
+        }, 350);
     };
 
     const handleTouchEnd = () => {
@@ -120,6 +129,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         <>
             <div
                 className={`message-row ${isOwn ? 'own' : 'other'} ${showActionsMobile ? 'mobile-actions-visible' : ''}`}
+                onClick={handleRowClick}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
             >

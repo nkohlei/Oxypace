@@ -217,10 +217,12 @@
     pointer-events: none;
 }
 
-.message-row:hover .message-actions {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
+@media (hover: hover) and (pointer: fine) {
+    .message-row:hover .message-actions {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
 }
 
 @media (max-width: 768px) {
