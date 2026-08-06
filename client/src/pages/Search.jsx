@@ -121,7 +121,7 @@ const Search = () => {
                         <div className="title-with-back">
                             <button 
                                 className="mobile-back-btn-inline" 
-                                onClick={() => navigate('/')}
+                                onClick={() => navigate(-1)}
                             >
                                 <svg
                                     viewBox="0 0 24 24"
