@@ -656,15 +656,24 @@ const Inbox = () => {
                                     style={{ cursor: 'pointer' }}
                                     onClick={() => navigate(`/profile/${selectedUser.username}`)}
                                 >
-                                    <span className="chat-header-name">
-                                        {selectedUser.profile?.displayName || selectedUser.username}
-                                        <UserBadges user={selectedUser} size={18} />
-                                    </span>
-                                    {selectedUser.username && (
-                                        <span className="chat-header-joined">
-                                            @{selectedUser.username}
+                                    <UserAvatar
+                                        src={selectedUser.profile?.lowResAvatar || selectedUser.profile?.avatar}
+                                        alt={selectedUser.username}
+                                        size={38}
+                                        className="chat-header-avatar"
+                                        isDeleted={selectedUser.isDeleted}
+                                    />
+                                    <div className="chat-header-details">
+                                        <span className="chat-header-name">
+                                            {selectedUser.profile?.displayName || selectedUser.username}
+                                            <UserBadges user={selectedUser} size={18} />
                                         </span>
-                                    )}
+                                        {selectedUser.username && (
+                                            <span className="chat-header-joined">
+                                                @{selectedUser.username}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

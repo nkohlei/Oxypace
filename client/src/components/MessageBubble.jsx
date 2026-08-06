@@ -132,15 +132,6 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                     </button>
                 </div>
 
-                {!isOwn && (
-                    <UserAvatar
-                        src={message.sender?.profile?.lowResAvatar || message.sender?.profile?.avatar}
-                        alt={message.sender?.username}
-                        size={32}
-                        className="message-bubble-avatar"
-                        isDeleted={message.sender?.isDeleted}
-                    />
-                )}
 
                 <div
                     className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''}`}
@@ -268,6 +259,12 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                                         >
                                             <Download size={24} strokeWidth={2} />
                                         </button>
+                                    )}
+                                    {!message.content && (
+                                        <div className="media-time-badge">
+                                            {formatTime(message.createdAt)}
+                                            {message.isOptimistic && <span className="sending-indicator">...</span>}
+                                        </div>
                                     )}
                                 </div>
                             )
@@ -426,23 +423,28 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
                             </div>
                         ) : null}
 
-                        {message.content && (
-                            <>
+                        {message.content ? (
+                            <div className="message-content">
                                 {(() => {
                                     const firstUrl = extractFirstUrl(message.content);
                                     return (
                                         <>
-                                            <div className="message-content">{linkifyText(message.content, firstUrl)}</div>
+                                            <span className="message-text-span">{linkifyText(message.content, firstUrl)}</span>
                                             {firstUrl && <LinkPreview url={firstUrl} />}
                                         </>
                                     );
                                 })()}
-                            </>
-                        )}
-                        <div className="message-time">
-                            {formatTime(message.createdAt)}
-                            {message.isOptimistic && <span className="sending-indicator">...</span>}
-                        </div>
+                                <span className="message-time-in-bubble">
+                                    {formatTime(message.createdAt)}
+                                    {message.isOptimistic && <span className="sending-indicator">...</span>}
+                                </span>
+                            </div>
+                        ) : (!message.media || isDocument) ? (
+                            <div className="message-time-in-bubble standalone">
+                                {formatTime(message.createdAt)}
+                                {message.isOptimistic && <span className="sending-indicator">...</span>}
+                            </div>
+                        ) : null}
 
                         {/* Reactions Display */}
                         {message.reactions && message.reactions.length > 0 && (

@@ -11,13 +11,21 @@
 
 .message-row.own {
     justify-content: flex-end;
+    margin-bottom: 2px;
+}
+
+/* Zero gap between consecutive own messages */
+.message-row.own + .message-row.own {
+    margin-top: -8px;
+    margin-bottom: 2px;
 }
 
 .message-row.other {
     justify-content: flex-start;
+    margin-bottom: 2px;
 }
 
-/* Actions/Avatar Spacing */
+/* Actions Spacing */
 .message-row.other .message-actions {
     order: 2;
     margin-left: 8px;
@@ -27,17 +35,9 @@
     margin-right: 8px;
 }
 
-.message-bubble-avatar {
-    flex-shrink: 0;
-    align-self: flex-end;
-    margin-bottom: 2px;
-    margin-right: 8px;
-}
-
 /* The Bubble Itself */
 .message-bubble {
     max-width: 85%;
-    /* Wider on mobile */
     position: relative;
     display: flex;
     flex-direction: column;
@@ -50,18 +50,20 @@
 
 /* Content Styling */
 .message-content {
-    padding: 8px 14px;
-    /* Slightly tighter padding */
+    padding: 8px 14px 6px 14px;
     border-radius: 18px;
-    /* Classic round app style */
     font-size: 0.9rem;
-    /* Smaller text */
     line-height: 1.4;
     word-wrap: break-word;
     white-space: pre-wrap;
     position: relative;
     box-shadow: none;
-    /* Subtle shadow */
+    display: inline-block;
+    max-width: 100%;
+}
+
+.message-text-span {
+    display: inline;
 }
 
 /* Own Message Style */
@@ -79,19 +81,45 @@
     border-bottom-left-radius: 4px;
 }
 
-/* Time Stamp */
-.message-time {
+/* Time Stamp Inside Bubble (Bottom Right) */
+.message-time-in-bubble {
     font-size: 0.65rem;
-    color: var(--text-tertiary);
-    /* Use variable */
+    float: right;
+    margin-left: 10px;
     margin-top: 4px;
-    padding: 0 4px;
-    display: inline-block;
+    margin-bottom: -2px;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
 }
 
-.message-bubble.own .message-time {
-    text-align: right;
-    color: rgba(255, 255, 255, 0.7);
+.message-bubble.own .message-time-in-bubble {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.message-bubble.other .message-time-in-bubble {
+    color: var(--text-tertiary);
+}
+
+.message-time-in-bubble.standalone {
+    align-self: flex-end;
+    padding: 2px 8px;
+}
+
+.media-time-badge {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: #ffffff;
+    font-size: 0.65rem;
+    padding: 3px 7px;
+    border-radius: 10px;
+    pointer-events: none;
+    z-index: 2;
+    line-height: 1;
 }
 
 /* Media (Images) */
