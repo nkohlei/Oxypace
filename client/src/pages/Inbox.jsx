@@ -15,7 +15,32 @@ import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
-import './Inbox.css';
+const formatDateDivider = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isSameDay = (d1, d2) =>
+        d1.getFullYear() === d2.getFullYear() &&
+        d1.getMonth() === d2.getMonth() &&
+        d1.getDate() === d2.getDate();
+
+    if (isSameDay(date, today)) {
+        return 'Bugün';
+    } else if (isSameDay(date, yesterday)) {
+        return 'Dün';
+    } else {
+        return date.toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+        });
+    }
+};
 
 const Inbox = () => {
     const [searchParams] = useSearchParams();
