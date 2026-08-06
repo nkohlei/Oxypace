@@ -87,10 +87,16 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
         setShowLightbox(!showLightbox);
     };
 
+    const autoHideTimer = React.useRef(null);
+
     const handleTouchStart = () => {
         longPressTimer.current = setTimeout(() => {
             setShowActionsMobile(true);
-        }, 500); // 500ms long press
+            if (autoHideTimer.current) clearTimeout(autoHideTimer.current);
+            autoHideTimer.current = setTimeout(() => {
+                setShowActionsMobile(false);
+            }, 3000);
+        }, 400);
     };
 
     const handleTouchEnd = () => {
