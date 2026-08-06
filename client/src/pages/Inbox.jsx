@@ -750,28 +750,29 @@ const Inbox = () => {
                                 </div>
                             ) : (
                                 <form onSubmit={handleSendMessage} className="message-form">
+                                    {media && media.length > 0 && (
+                                        <div className="media-preview-container-above">
+                                            {media.map((file, idx) => (
+                                                <div key={idx} className="selected-media-pill-minimal">
+                                                    <span className="media-pill-icon">
+                                                        {file.type.startsWith('image') ? '🖼️' : file.type.startsWith('video') ? '🎥' : '📄'}
+                                                    </span>
+                                                    <span className="media-pill-name">{file.name}</span>
+                                                    <button 
+                                                        type="button" 
+                                                        className="remove-media-btn-minimal"
+                                                        onClick={() => {
+                                                            setMedia((prev) => prev.filter((_, i) => i !== idx));
+                                                        }}
+                                                        title="Kaldır"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                     <div className="message-input-wrapper">
-                                        {media && media.length > 0 && (
-                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginRight: '12px' }}>
-                                                {media.map((file, idx) => (
-                                                    <div key={idx} className="selected-media-pill">
-                                                        <div className="media-pill-icon">
-                                                            {file.type.startsWith('image') ? '🖼️' : '🎥'}
-                                                        </div>
-                                                        <span className="media-pill-name">{file.name}</span>
-                                                        <button 
-                                                            type="button" 
-                                                            className="remove-media-btn"
-                                                            onClick={() => {
-                                                                setMedia((prev) => prev.filter((_, i) => i !== idx));
-                                                            }}
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
                                         {/* Plus / Upload Button */}
                                         <button
                                             ref={plusButtonRef}
