@@ -371,7 +371,7 @@
     padding: 20px 20px 16px 20px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
     scroll-behavior: auto;
     background-color: transparent;
     height: 100%;

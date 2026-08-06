@@ -801,7 +801,7 @@ const Inbox = () => {
                                                 )}
                                                 <MessageBubble
                                                     message={message}
-                                                    isOwn={message.sender._id === user._id}
+                                                    isOwn={String(message.sender?._id || message.sender) === String(user._id)}
                                                     onDelete={handleDeleteMessage}
                                                     onReply={handleReply}
                                                     onReact={handleReact}
