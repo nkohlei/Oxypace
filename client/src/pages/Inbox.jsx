@@ -39,6 +39,7 @@ const Inbox = () => {
     const [showNewMessageModal, setShowNewMessageModal] = useState(false); // Modal State
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const [activeFloatingDate, setActiveFloatingDate] = useState('');
     const fileInputRef = useRef(null);
     const videoInputRef = useRef(null);
     const docInputRef = useRef(null);
@@ -282,6 +283,45 @@ const Inbox = () => {
             };
         }
     }, [selectedUser?._id, messagesLoading, scrollToBottom]);
+
+    // WhatsApp-style Floating Sticky Date Header on Scroll
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container || messages.length === 0) {
+            setActiveFloatingDate('');
+            return;
+        }
+
+        const handleScroll = () => {
+            const dividers = container.querySelectorAll('.chat-date-divider');
+            if (dividers.length === 0) {
+                setActiveFloatingDate('');
+                return;
+            }
+
+            let currentHeader = '';
+            const containerRect = container.getBoundingClientRect();
+
+            dividers.forEach((divider) => {
+                const rect = divider.getBoundingClientRect();
+                if (rect.top - containerRect.top <= 40) {
+                    currentHeader = divider.getAttribute('data-date-str') || '';
+                }
+            });
+
+            const firstRect = dividers[0].getBoundingClientRect();
+            if (firstRect.top - containerRect.top > 10) {
+                setActiveFloatingDate('');
+            } else {
+                setActiveFloatingDate(currentHeader);
+            }
+        };
+
+        container.addEventListener('scroll', handleScroll);
+        handleScroll();
+
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [messages, selectedUser]);
 
     // Direct Message Typing Indicator Persistence
     useEffect(() => {
@@ -732,23 +772,44 @@ const Inbox = () => {
                                 </div>
                             </div>
 
+                            {activeFloatingDate && (
+                                <div className="floating-date-sticky">
+                                    <span>{activeFloatingDate}</span>
+                                </div>
+                            )}
+
                             <div className="messages-container" ref={messagesContainerRef}>
                                 {messagesLoading ? (
                                     <div className="spinner-container" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px' }}>
                                         <div className="spinner"></div>
                                     </div>
-                                ) : (
-                                    messages.map((message) => (
-                                        <MessageBubble
-                                            key={message._id}
-                                            message={message}
-                                            isOwn={message.sender._id === user._id}
-                                            onDelete={handleDeleteMessage}
-                                            onReply={handleReply}
-                                            onReact={handleReact}
-                                        />
-                                    ))
-                                )}
+                                ) : (() => {
+                                    let lastDateStr = null;
+                                    return messages.map((message) => {
+                                        const formattedDate = formatDateDivider(message.createdAt);
+                                        const showDateDivider = formattedDate && formattedDate !== lastDateStr;
+                                        if (showDateDivider) {
+                                            lastDateStr = formattedDate;
+                                        }
+
+                                        return (
+                                            <React.Fragment key={message._id}>
+                                                {showDateDivider && (
+                                                    <div className="chat-date-divider" data-date-str={formattedDate}>
+                                                        <span>{formattedDate}</span>
+                                                    </div>
+                                                )}
+                                                <MessageBubble
+                                                    message={message}
+                                                    isOwn={message.sender._id === user._id}
+                                                    onDelete={handleDeleteMessage}
+                                                    onReply={handleReply}
+                                                    onReact={handleReact}
+                                                />
+                                            </React.Fragment>
+                                        );
+                                    });
+                                })()}
                                 {/* DM Typing Indicator inside scroll container */}
                                 {selectedUser && typingUsers[selectedUser._id] && (
                                     <div className="dm-typing-indicator" style={{ margin: '10px 0 20px 0' }}>
