@@ -15,6 +15,8 @@ import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
+import './Inbox.css';
+
 const formatDateDivider = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
