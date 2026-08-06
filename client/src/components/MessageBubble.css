@@ -1,29 +1,21 @@
-/* Message Wrapper */
 .message-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 4px;
+    margin: 0;
+    padding: 0;
     max-width: 100%;
     position: relative;
-    padding: 2px 0;
 }
 
 .message-row.own {
     justify-content: flex-end;
-    margin-bottom: 2px;
+    margin: 0;
 }
 
 .message-row.other {
     justify-content: flex-start;
-    margin-bottom: 2px;
-}
-
-/* Zero gap between consecutive messages from same side */
-.message-row.own + .message-row.own,
-.message-row.other + .message-row.other {
-    margin-top: -8px;
-    margin-bottom: 2px;
+    margin: 0;
 }
 
 /* Actions Spacing */
@@ -143,7 +135,7 @@
     width: 100%;
     height: auto;
     object-fit: contain;
-    margin-bottom: 4px;
+    margin-bottom: 0;
     border: 1px solid var(--border-subtle);
     cursor: pointer;
     transition: transform 0.2s;
@@ -329,7 +321,7 @@
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
     overflow: hidden;
-    margin-bottom: 8px;
+    margin-bottom: 0;
     background: var(--bg-card);
     text-decoration: none;
     color: inherit;
@@ -407,7 +399,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     overflow: hidden;
-    margin-top: 8px;
+    margin: 0;
     background: #1e1f22;
     /* Sleek dark box */
     color: white;
@@ -689,8 +681,7 @@
 
 /* PDF Glassmorphism Document Card */
 .post-pdf-container {
-    margin-top: 10px;
-    margin-bottom: 8px;
+    margin: 0;
     width: 100%;
     max-width: 500px;
 }
