@@ -14,14 +14,15 @@
     margin-bottom: 2px;
 }
 
-/* Zero gap between consecutive own messages */
-.message-row.own + .message-row.own {
-    margin-top: -8px;
+.message-row.other {
+    justify-content: flex-start;
     margin-bottom: 2px;
 }
 
-.message-row.other {
-    justify-content: flex-start;
+/* Zero gap between consecutive messages from same side */
+.message-row.own + .message-row.own,
+.message-row.other + .message-row.other {
+    margin-top: -8px;
     margin-bottom: 2px;
 }
 
@@ -73,12 +74,18 @@
     border-bottom-right-radius: 4px;
 }
 
-/* Other Message Style - Dynamic Theme */
+/* Other Message Style - Neutral Dark/Light without Blue */
 .message-bubble.other .message-content {
-    background: var(--bg-card);
+    background: #222428;
     color: var(--text-primary);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-bottom-left-radius: 4px;
+}
+
+[data-theme='light'] .message-bubble.other .message-content {
+    background: #f0f2f5;
+    color: #0d0e12;
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Time Stamp Inside Bubble (Bottom Right) */

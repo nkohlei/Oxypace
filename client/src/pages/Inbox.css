@@ -373,7 +373,7 @@
     flex-direction: column;
     gap: 8px;
     scroll-behavior: auto;
-    background-color: var(--bg-dark);
+    background-color: transparent;
     height: 100%;
     /* Fill available space */
 }
@@ -401,24 +401,31 @@
 }
 
 .message-input-wrapper {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--glass-border);
+    background: #141518;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    box-shadow: var(--glass-shadow);
+    box-shadow: none;
     display: flex;
     align-items: center;
     padding: 0 16px;
     height: 48px; /* Compact height */
     position: relative;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease;
+}
+
+[data-theme='light'] .message-input-wrapper {
+    background: #f3f4f6;
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 .message-input-wrapper:focus-within {
-    background: var(--glass-bg-hover);
-    border-color: var(--glass-border-hover);
-    box-shadow: var(--glass-shadow-hover);
+    background: #1a1b1e;
+    border-color: var(--primary-cyan);
+}
+
+[data-theme='light'] .message-input-wrapper:focus-within {
+    background: #ffffff;
+    border-color: var(--primary-cyan);
 }
 
 /* Plus/Upload Button inside input */
