@@ -4722,23 +4722,6 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <div className="form-group-modern">
-                                        <label className="badge-label">Yazar Profili (Makaleyi Yayınlayan Yazar)</label>
-                                        <select
-                                            className="badge-select"
-                                            value={blogForm.authorProfile || ''}
-                                            onChange={(e) => setBlogForm({ ...blogForm, authorProfile: e.target.value })}
-                                            style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', width: '100%' }}
-                                        >
-                                            <option value="">Varsayılan Yazar Profili (Resmi / Kendi Profilim)</option>
-                                            {blogAuthors.map(author => (
-                                                <option key={author._id} value={author._id}>
-                                                    {author.name} {author.isOfficial ? '👑 (Oxypace Resmi Yazar Profili)' : `(${author.badge || 'Yazar'})`}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="form-group-modern">
                                         <label className="badge-label">Öne Çıkan Kapak Görseli URL veya Dosya</label>
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <input

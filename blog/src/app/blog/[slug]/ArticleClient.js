@@ -131,8 +131,9 @@ export default function ArticleClient({ initialPost, slug }) {
   ];
 
   useEffect(() => {
-    // Fetch Author Profile from DB
-    const fetchAuthor = async () => {
+    if (!slug) return;
+
+    const fetchOfficialAuthor = async () => {
       try {
         const authorUrl = typeof window !== 'undefined'
           ? (window.location.origin.includes('localhost') ? 'http://localhost:5000/api/blog/author' : '/api/blog/author')
@@ -148,12 +149,9 @@ export default function ArticleClient({ initialPost, slug }) {
           }
         }
       } catch (e) {
-        console.error('Fetch author profile error:', e);
+        console.error('Fetch official author profile error:', e);
       }
     };
-    fetchAuthor();
-
-    if (!slug) return;
 
     const fetchPost = async () => {
       try {
@@ -166,7 +164,12 @@ export default function ArticleClient({ initialPost, slug }) {
           if (data && data.title) {
             setPost(data);
             if (data.authorProfile && (data.authorProfile.name || data.authorProfile.title)) {
-              setAuthor(data.authorProfile);
+              setAuthor({
+                ...DEFAULT_AUTHOR,
+                ...data.authorProfile
+              });
+            } else {
+              fetchOfficialAuthor();
             }
           }
         }

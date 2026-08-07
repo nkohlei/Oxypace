@@ -458,7 +458,7 @@ router.get('/admin/all', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/admin', protect, admin, async (req, res) => {
     try {
-        const { title, slug, excerpt, content, category, readTime, image, isPublished, authorProfile } = req.body;
+        const { title, slug, excerpt, content, category, readTime, image, isPublished } = req.body;
 
         if (!title || !title.trim()) {
             return res.status(400).json({ message: 'Makale başlığı zorunludur.' });
@@ -477,14 +477,26 @@ router.post('/admin', protect, admin, async (req, res) => {
             finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
         }
 
-        let selectedAuthorProfile = authorProfile;
-        if (!selectedAuthorProfile && req.user) {
-            const userAuthor = await BlogAuthor.findOne({ user: req.user._id });
-            if (userAuthor) {
-                selectedAuthorProfile = userAuthor._id;
-            } else {
-                const official = await getOrCreateOfficialAuthor();
-                selectedAuthorProfile = official._id;
+        // Automatically bind author profile based on the logged-in creator
+        const isOxypaceAccount = req.user.username === 'oxypace' || (req.user.isAdmin && !req.user.isTouristAdmin);
+        let userAuthor = null;
+
+        if (isOxypaceAccount) {
+            userAuthor = await getOrCreateOfficialAuthor();
+        } else {
+            userAuthor = await BlogAuthor.findOne({ user: req.user._id });
+            if (!userAuthor) {
+                const defaultName = req.user.name || req.user.username || 'Yazar';
+                const defaultAvatar = req.user.profile?.avatar || req.user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+                userAuthor = await BlogAuthor.create({
+                    user: req.user._id,
+                    name: defaultName,
+                    title: 'Oxypace Yazar & İçerik Üreticisi',
+                    bio: `${defaultName} — Oxypace bilim ve teknoloji blogu yazarı.`,
+                    avatar: defaultAvatar,
+                    badge: 'Yazar',
+                    isOfficial: false,
+                });
             }
         }
 
@@ -499,7 +511,7 @@ router.post('/admin', protect, admin, async (req, res) => {
             image: image ? image.trim() : 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80',
             isPublished: isPublished !== undefined ? isPublished : true,
             author: req.user ? req.user._id : null,
-            authorProfile: selectedAuthorProfile || null,
+            authorProfile: userAuthor._id,
         });
 
         const savedPost = await newPost.save();
@@ -519,7 +531,7 @@ router.post('/admin', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.put('/admin/:id', protect, admin, async (req, res) => {
     try {
-        const { title, slug, excerpt, content, category, readTime, image, isPublished, authorProfile } = req.body;
+        const { title, slug, excerpt, content, category, readTime, image, isPublished } = req.body;
 
         const post = await BlogPost.findById(req.params.id);
         if (!post) {
@@ -537,7 +549,19 @@ router.put('/admin/:id', protect, admin, async (req, res) => {
         if (readTime) post.readTime = readTime.trim();
         if (image !== undefined) post.image = image.trim();
         if (isPublished !== undefined) post.isPublished = isPublished;
-        if (authorProfile !== undefined) post.authorProfile = authorProfile;
+
+        if (!post.authorProfile && req.user) {
+            const isOxypaceAccount = req.user.username === 'oxypace' || (req.user.isAdmin && !req.user.isTouristAdmin);
+            let userAuthor = null;
+            if (isOxypaceAccount) {
+                userAuthor = await getOrCreateOfficialAuthor();
+            } else {
+                userAuthor = await BlogAuthor.findOne({ user: req.user._id });
+            }
+            if (userAuthor) {
+                post.authorProfile = userAuthor._id;
+            }
+        }
 
         const updatedPost = await post.save();
         const populatedPost = await BlogPost.findById(updatedPost._id)
