@@ -186,6 +186,7 @@ export const VoiceProvider = ({ children }) => {
         return saved !== null ? parseFloat(saved) : 1.0;
     });
 
+    useEffect(() => {
         localStorage.setItem('voiceUserVolume', userVolume.toString());
     }, [userVolume]);
 
