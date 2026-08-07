@@ -186,9 +186,25 @@ export const VoiceProvider = ({ children }) => {
         return saved !== null ? parseFloat(saved) : 1.0;
     });
 
-    useEffect(() => {
         localStorage.setItem('voiceUserVolume', userVolume.toString());
     }, [userVolume]);
+
+    // Prompt "Siteden çıkılsın mı?" browser confirmation modal if user attempts to close tab/window or reload during active live room call
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            const isLiveCallActive = activeRoomRef.current || activeRoom || connectionState === ConnectionState.Connected || connectionState === ConnectionState.Connecting;
+            if (isLiveCallActive) {
+                e.preventDefault();
+                e.returnValue = ''; // Triggers Chrome/Edge/Safari/Firefox native "Siteden çıkılsın mı?" confirmation modal
+                return '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [activeRoom, connectionState]);
 
     // WebRTC connection references
     const localStreamRef = useRef(null);
