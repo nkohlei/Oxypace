@@ -109,7 +109,7 @@ const ChannelSidebar = ({
                 opacity: isDesktopSidebarCollapsed ? 0 : 1,
                 visibility: isDesktopSidebarCollapsed ? 'hidden' : 'visible',
                 gap: '8px',
-                padding: '8px',
+                padding: '0px',
                 boxSizing: 'border-box',
             }}>
 
