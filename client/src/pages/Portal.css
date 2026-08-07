@@ -1045,6 +1045,16 @@
         height: auto !important;
         min-height: 100% !important;
         box-shadow: none !important;
+        padding-bottom: 28px !important;
+        margin-bottom: 16px !important;
+    }
+
+    .cs-panel--userbar {
+        margin-bottom: 12px !important;
+    }
+
+    .cs-footer-copyright {
+        padding-bottom: 12px !important;
     }
 
     /* When a channel is selected — hide the sidebar, show fullscreen feed */
