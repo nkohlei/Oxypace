@@ -152,8 +152,7 @@
 
 .conversation-item.active {
     background-color: var(--bg-card);
-    border-right: 3px solid var(--primary-cyan);
-    /* Active indicator */
+    border-right: none;
 }
 
 .conversation-item.unread {
