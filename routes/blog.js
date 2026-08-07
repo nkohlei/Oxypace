@@ -252,7 +252,8 @@ router.get('/', async (req, res) => {
 
         const posts = await BlogPost.find(query)
             .sort({ createdAt: -1 })
-            .populate('author', 'username profile');
+            .populate('author', 'username profile')
+            .populate('authorProfile');
 
         res.json(posts);
     } catch (error) {
@@ -261,16 +262,81 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Helper function to get or create official default Oxypace author
+const getOrCreateOfficialAuthor = async () => {
+    let official = await BlogAuthor.findOne({ isOfficial: true });
+    if (!official) {
+        official = await BlogAuthor.findOne({ user: { $exists: false } });
+        if (official) {
+            official.isOfficial = true;
+            await official.save();
+        } else {
+            official = await BlogAuthor.create({
+                name: 'Oxypace',
+                title: 'Oxypace Kurucusu & Baş Yazarı',
+                bio: 'Teorik fizik, ekstrem doğa olayları, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor.',
+                avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+                badge: 'Baş Yazar',
+                isOfficial: true,
+            });
+        }
+    }
+    return official;
+};
+
+// @route   GET /api/blog/authors
+// @desc    Get all blog author profiles for selection in admin
+// @access  Private/Admin
+router.get('/authors', protect, admin, async (req, res) => {
+    try {
+        await getOrCreateOfficialAuthor();
+        const authors = await BlogAuthor.find().sort({ isOfficial: -1, createdAt: 1 }).populate('user', 'username name profile');
+        res.json(authors);
+    } catch (error) {
+        console.error('Fetch all blog authors error:', error);
+        res.status(500).json({ message: 'Yazar listesi alınamadı: ' + error.message });
+    }
+});
+
 // @route   GET /api/blog/author
-// @desc    Get blog author profile settings
-// @access  Public
+// @desc    Get blog author profile settings (returns current user's profile if logged in, or official author)
+// @access  Public / Optional Auth
 router.get('/author', async (req, res) => {
     try {
-        let author = await BlogAuthor.findOne();
-        if (!author) {
-            author = await BlogAuthor.create({});
+        const authHeader = req.headers.authorization;
+        let currentUser = null;
+
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            try {
+                const token = authHeader.split(' ')[1];
+                const jwt = (await import('jsonwebtoken')).default;
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                currentUser = await User.findById(decoded.id).select('-password');
+            } catch (err) {
+                // Token invalid, fall back to official author
+            }
         }
-        res.json(author);
+
+        if (currentUser) {
+            let author = await BlogAuthor.findOne({ user: currentUser._id });
+            if (!author) {
+                const defaultName = currentUser.name || currentUser.username || 'Yazar';
+                const defaultAvatar = currentUser.profile?.avatar || currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+                author = await BlogAuthor.create({
+                    user: currentUser._id,
+                    name: defaultName,
+                    title: 'Oxypace Yazar & İçerik Üreticisi',
+                    bio: `${defaultName} — Oxypace bilim ve teknoloji blogu yazarı.`,
+                    avatar: defaultAvatar,
+                    badge: currentUser.isAdmin ? 'Baş Yazar' : 'Yazar',
+                    isOfficial: false,
+                });
+            }
+            return res.json(author);
+        }
+
+        const official = await getOrCreateOfficialAuthor();
+        res.json(official);
     } catch (error) {
         console.error('Fetch blog author error:', error);
         res.status(500).json({ message: 'Yazar profili alınamadı: ' + error.message });
@@ -278,15 +344,23 @@ router.get('/author', async (req, res) => {
 });
 
 // @route   PUT /api/blog/author
-// @desc    Update blog author profile settings
+// @desc    Update blog author profile settings (for current admin / tourist admin or official profile)
 // @access  Private/Admin
 router.put('/author', protect, admin, async (req, res) => {
     try {
-        const { name, title, bio, avatar, badge, github, twitter, website, linkedin } = req.body;
+        const { name, title, bio, avatar, badge, github, twitter, website, linkedin, isOfficialTarget } = req.body;
 
-        let author = await BlogAuthor.findOne();
-        if (!author) {
-            author = new BlogAuthor({});
+        let author;
+        if (isOfficialTarget && req.user.isAdmin) {
+            author = await getOrCreateOfficialAuthor();
+        } else {
+            author = await BlogAuthor.findOne({ user: req.user._id });
+            if (!author) {
+                author = new BlogAuthor({
+                    user: req.user._id,
+                    isOfficial: false,
+                });
+            }
         }
 
         if (name !== undefined) author.name = name.trim();
@@ -320,7 +394,8 @@ router.get('/admin/all', protect, admin, async (req, res) => {
 
         const posts = await BlogPost.find()
             .sort({ createdAt: -1 })
-            .populate('author', 'username profile');
+            .populate('author', 'username profile')
+            .populate('authorProfile');
 
         res.json(posts);
     } catch (error) {
@@ -334,7 +409,7 @@ router.get('/admin/all', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/admin', protect, admin, async (req, res) => {
     try {
-        const { title, slug, excerpt, content, category, readTime, image, isPublished } = req.body;
+        const { title, slug, excerpt, content, category, readTime, image, isPublished, authorProfile } = req.body;
 
         if (!title || !title.trim()) {
             return res.status(400).json({ message: 'Makale başlığı zorunludur.' });
@@ -353,6 +428,17 @@ router.post('/admin', protect, admin, async (req, res) => {
             finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
         }
 
+        let selectedAuthorProfile = authorProfile;
+        if (!selectedAuthorProfile && req.user) {
+            const userAuthor = await BlogAuthor.findOne({ user: req.user._id });
+            if (userAuthor) {
+                selectedAuthorProfile = userAuthor._id;
+            } else {
+                const official = await getOrCreateOfficialAuthor();
+                selectedAuthorProfile = official._id;
+            }
+        }
+
         const newPost = new BlogPost({
             title: title.trim(),
             slug: finalSlug,
@@ -364,10 +450,13 @@ router.post('/admin', protect, admin, async (req, res) => {
             image: image ? image.trim() : 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80',
             isPublished: isPublished !== undefined ? isPublished : true,
             author: req.user ? req.user._id : null,
+            authorProfile: selectedAuthorProfile || null,
         });
 
         const savedPost = await newPost.save();
-        const populatedPost = await BlogPost.findById(savedPost._id).populate('author', 'username profile');
+        const populatedPost = await BlogPost.findById(savedPost._id)
+            .populate('author', 'username profile')
+            .populate('authorProfile');
 
         res.status(201).json(populatedPost || savedPost);
     } catch (error) {
@@ -381,7 +470,7 @@ router.post('/admin', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.put('/admin/:id', protect, admin, async (req, res) => {
     try {
-        const { title, slug, excerpt, content, category, readTime, image, isPublished } = req.body;
+        const { title, slug, excerpt, content, category, readTime, image, isPublished, authorProfile } = req.body;
 
         const post = await BlogPost.findById(req.params.id);
         if (!post) {
@@ -399,9 +488,12 @@ router.put('/admin/:id', protect, admin, async (req, res) => {
         if (readTime) post.readTime = readTime.trim();
         if (image !== undefined) post.image = image.trim();
         if (isPublished !== undefined) post.isPublished = isPublished;
+        if (authorProfile !== undefined) post.authorProfile = authorProfile;
 
         const updatedPost = await post.save();
-        const populatedPost = await BlogPost.findById(updatedPost._id).populate('author', 'username profile');
+        const populatedPost = await BlogPost.findById(updatedPost._id)
+            .populate('author', 'username profile')
+            .populate('authorProfile');
 
         res.json(populatedPost || updatedPost);
     } catch (error) {
@@ -467,7 +559,9 @@ router.get('/:slug', async (req, res) => {
             { slug: req.params.slug },
             { $inc: { views: 1 } },
             { new: true }
-        ).populate('author', 'username profile');
+        )
+            .populate('author', 'username profile')
+            .populate('authorProfile');
 
         if (!post) {
             return res.status(404).json({ message: 'Makale bulunamadı.' });

@@ -50,6 +50,10 @@ const blogPostSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         },
+        authorProfile: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'BlogAuthor',
+        },
         views: {
             type: Number,
             default: 0,

@@ -165,6 +165,9 @@ export default function ArticleClient({ initialPost, slug }) {
           const data = await res.json();
           if (data && data.title) {
             setPost(data);
+            if (data.authorProfile && (data.authorProfile.name || data.authorProfile.title)) {
+              setAuthor(data.authorProfile);
+            }
           }
         }
       } catch (e) {

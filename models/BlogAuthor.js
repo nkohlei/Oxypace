@@ -2,6 +2,17 @@ import mongoose from 'mongoose';
 
 const blogAuthorSchema = new mongoose.Schema(
     {
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            sparse: true,
+            index: true,
+        },
+        isOfficial: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
         name: {
             type: String,
             default: 'Oxypace',

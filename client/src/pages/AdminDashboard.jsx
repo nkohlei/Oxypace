@@ -2291,6 +2291,8 @@ const AdminDashboard = () => {
         website: '',
         linkedin: ''
     });
+    const [blogAuthors, setBlogAuthors] = useState([]);
+    const [authorEditTarget, setAuthorEditTarget] = useState('mine');
     const [blogAuthorModalOpen, setBlogAuthorModalOpen] = useState(false);
     const [blogAuthorSaving, setBlogAuthorSaving] = useState(false);
     const [uploadingAuthorAvatar, setUploadingAuthorAvatar] = useState(false);
@@ -2304,13 +2306,27 @@ const AdminDashboard = () => {
         }
     };
 
+    const fetchBlogAuthors = async () => {
+        try {
+            const { data } = await axios.get('/api/blog/authors');
+            if (data && Array.isArray(data)) setBlogAuthors(data);
+        } catch (e) {
+            console.error('Fetch all blog authors error:', e);
+        }
+    };
+
     const handleSaveBlogAuthor = async () => {
         setBlogAuthorSaving(true);
         try {
-            const { data } = await axios.put('/api/blog/author', blogAuthor);
+            const payload = {
+                ...blogAuthor,
+                isOfficialTarget: authorEditTarget === 'official'
+            };
+            const { data } = await axios.put('/api/blog/author', payload);
             setBlogAuthor(data);
             alert('Yazar profili başarıyla güncellendi.');
             setBlogAuthorModalOpen(false);
+            fetchBlogAuthors();
         } catch (err) {
             alert(err.response?.data?.message || 'Yazar profili güncellenirken hata oluştu.');
         } finally {
@@ -2337,6 +2353,7 @@ const AdminDashboard = () => {
         if (activeTab === 'blog') {
             fetchAdminBlogPosts();
             fetchBlogAuthor();
+            fetchBlogAuthors();
         }
     }, [activeTab]);
 
@@ -2371,6 +2388,7 @@ const AdminDashboard = () => {
                 readTime: post.readTime || '',
                 image: post.image || '',
                 isPublished: post.isPublished !== undefined ? post.isPublished : true,
+                authorProfile: post.authorProfile?._id || post.authorProfile || blogAuthor._id || '',
             });
         } else {
             setEditingBlogPost(null);
@@ -2383,6 +2401,7 @@ const AdminDashboard = () => {
                 readTime: '',
                 image: '',
                 isPublished: true,
+                authorProfile: blogAuthor._id || '',
             });
         }
         setBlogEditorMode('write');
@@ -4703,6 +4722,23 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <div className="form-group-modern">
+                                        <label className="badge-label">Yazar Profili (Makaleyi Yayınlayan Yazar)</label>
+                                        <select
+                                            className="badge-select"
+                                            value={blogForm.authorProfile || ''}
+                                            onChange={(e) => setBlogForm({ ...blogForm, authorProfile: e.target.value })}
+                                            style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', width: '100%' }}
+                                        >
+                                            <option value="">Varsayılan Yazar Profili (Resmi / Kendi Profilim)</option>
+                                            {blogAuthors.map(author => (
+                                                <option key={author._id} value={author._id}>
+                                                    {author.name} {author.isOfficial ? '👑 (Oxypace Resmi Yazar Profili)' : `(${author.badge || 'Yazar'})`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group-modern">
                                         <label className="badge-label">Öne Çıkan Kapak Görseli URL veya Dosya</label>
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <input
@@ -4849,6 +4885,55 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="modal-body-modern">
+                            {user?.isAdmin && (
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', padding: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                    <button
+                                        type="button"
+                                        className="btn-modern-secondary"
+                                        onClick={async () => {
+                                            setAuthorEditTarget('mine');
+                                            const { data } = await axios.get('/api/blog/author');
+                                            if (data) setBlogAuthor(data);
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 12px',
+                                            background: authorEditTarget === 'mine' ? 'rgba(34,211,238,0.2)' : 'transparent',
+                                            color: '#fff',
+                                            border: authorEditTarget === 'mine' ? '1px solid rgba(34,211,238,0.5)' : 'none',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            fontSize: '13px'
+                                        }}
+                                    >
+                                        👤 Kendi Yazar Profilim
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn-modern-secondary"
+                                        onClick={async () => {
+                                            setAuthorEditTarget('official');
+                                            const official = blogAuthors.find(a => a.isOfficial);
+                                            if (official) setBlogAuthor(official);
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 12px',
+                                            background: authorEditTarget === 'official' ? 'rgba(34,211,238,0.2)' : 'transparent',
+                                            color: '#fff',
+                                            border: authorEditTarget === 'official' ? '1px solid rgba(34,211,238,0.5)' : 'none',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            fontSize: '13px'
+                                        }}
+                                    >
+                                        🏢 Oxypace Resmi Yazar Profili
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Avatar Section */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
                                 <img
