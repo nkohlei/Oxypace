@@ -317,8 +317,8 @@ const ChannelSidebar = ({
                 background: transparent !important;
                 border: none !important;
                 border-radius: 0 !important;
-                margin: 12px 12px 12px 0 !important;
-                height: calc(100% - 24px) !important;
+                margin: 6px 12px 12px 0 !important;
+                height: calc(100% - 18px) !important;
                 overflow: visible !important;
                 box-shadow: none !important;
                 position: relative;
