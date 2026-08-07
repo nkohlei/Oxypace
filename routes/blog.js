@@ -264,22 +264,30 @@ router.get('/', async (req, res) => {
 
 // Helper function to get or create official default Oxypace author
 const getOrCreateOfficialAuthor = async () => {
+    const oxypaceUser = await User.findOne({ username: 'oxypace' }) || await User.findOne({ isAdmin: true });
+
     let official = await BlogAuthor.findOne({ isOfficial: true });
     if (!official) {
-        official = await BlogAuthor.findOne({ user: { $exists: false } });
-        if (official) {
-            official.isOfficial = true;
-            await official.save();
-        } else {
-            official = await BlogAuthor.create({
-                name: 'Oxypace',
-                title: 'Oxypace Kurucusu & Baş Yazarı',
-                bio: 'Teorik fizik, ekstrem doğa olayları, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor.',
-                avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-                badge: 'Baş Yazar',
-                isOfficial: true,
-            });
+        // Find existing author profile without user reference or any existing profile
+        official = await BlogAuthor.findOne({ user: { $exists: false } }) || await BlogAuthor.findOne();
+    }
+
+    if (official) {
+        official.isOfficial = true;
+        if (oxypaceUser && (!official.user || official.user.toString() !== oxypaceUser._id.toString())) {
+            official.user = oxypaceUser._id;
         }
+        await official.save();
+    } else {
+        official = await BlogAuthor.create({
+            user: oxypaceUser ? oxypaceUser._id : null,
+            name: 'Oxypace',
+            title: 'Oxypace Kurucusu & Baş Yazarı',
+            bio: 'Teorik fizik, ekstrem doğa olayları, kozmoloji ve yüksek performanslı yazılım mimarileri üzerine araştırmalar yapıyor.',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+            badge: 'Baş Yazar',
+            isOfficial: true,
+        });
     }
     return official;
 };
@@ -318,7 +326,12 @@ router.get('/author', async (req, res) => {
         }
 
         if (currentUser) {
+            const isMainAdmin = currentUser.username === 'oxypace' || (currentUser.isAdmin && !currentUser.isTouristAdmin);
+
             let author = await BlogAuthor.findOne({ user: currentUser._id });
+            if (!author && isMainAdmin) {
+                author = await getOrCreateOfficialAuthor();
+            }
             if (!author) {
                 const defaultName = currentUser.name || currentUser.username || 'Yazar';
                 const defaultAvatar = currentUser.profile?.avatar || currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
@@ -329,7 +342,7 @@ router.get('/author', async (req, res) => {
                     bio: `${defaultName} — Oxypace bilim ve teknoloji blogu yazarı.`,
                     avatar: defaultAvatar,
                     badge: currentUser.isAdmin ? 'Baş Yazar' : 'Yazar',
-                    isOfficial: false,
+                    isOfficial: isMainAdmin,
                 });
             }
             return res.json(author);
