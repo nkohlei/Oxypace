@@ -4885,7 +4885,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="modal-body-modern">
-                            {user?.isAdmin && (
+                            {currentUser?.isAdmin && (
                                 <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', padding: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
                                     <button
                                         type="button"
