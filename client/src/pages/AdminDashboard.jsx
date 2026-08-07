@@ -2561,8 +2561,8 @@ const AdminDashboard = () => {
                 <span className="admin-mobile-title">Yönetici Paneli</span>
                 <button
                     className="admin-home-btn"
-                    onClick={() => navigate('/')}
-                    title="Anasayfa"
+                    onClick={() => navigate('/messages')}
+                    title="Mesajlar"
                 >
                     <Home size={20} />
                 </button>
@@ -2573,8 +2573,8 @@ const AdminDashboard = () => {
                 <div className="sidebar-header">
                     <button
                         className="sidebar-home-btn"
-                        onClick={() => navigate('/')}
-                        title="Anasayfa"
+                        onClick={() => navigate('/messages')}
+                        title="Mesajlar"
                     >
                         <Home size={18} />
                     </button>
