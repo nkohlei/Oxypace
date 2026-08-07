@@ -5,7 +5,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px 0;
+    padding: 12px 0;
     overflow-y: auto;
     overflow-x: hidden !important; /* Strictly prevent horizontal scroll/swipe */
     scrollbar-width: none;
@@ -107,7 +107,7 @@
 @media (max-width: 768px) {
     .portal-sidebar {
         width: 64px !important; /* Fixed mobile width */
-        padding: 50px 0 20px 0; /* Add top padding for fixed navbar if needed, or safe area */
+        padding: 12px 0 20px 0;
     }
 
     .sidebar-item {
