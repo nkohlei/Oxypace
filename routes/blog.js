@@ -266,18 +266,44 @@ router.get('/', async (req, res) => {
 const getOrCreateOfficialAuthor = async () => {
     const oxypaceUser = await User.findOne({ username: 'oxypace' }) || await User.findOne({ isAdmin: true });
 
-    let official = await BlogAuthor.findOne({ isOfficial: true });
+    // Find all existing author profiles sorted by creation date (earliest first)
+    const allAuthors = await BlogAuthor.find().sort({ createdAt: 1 });
+    let official = null;
+
+    if (oxypaceUser) {
+        // Priority 1: Profile already linked to oxypaceUser
+        official = allAuthors.find(a => a.user && a.user.toString() === oxypaceUser._id.toString());
+    }
+
     if (!official) {
-        // Find existing author profile without user reference or any existing profile
-        official = await BlogAuthor.findOne({ user: { $exists: false } }) || await BlogAuthor.findOne();
+        // Priority 2: Profile marked as official
+        official = allAuthors.find(a => a.isOfficial);
+    }
+
+    if (!official && allAuthors.length > 0) {
+        // Priority 3: Earliest pre-existing author profile in database
+        official = allAuthors[0];
     }
 
     if (official) {
         official.isOfficial = true;
-        if (oxypaceUser && (!official.user || official.user.toString() !== oxypaceUser._id.toString())) {
+        if (oxypaceUser) {
             official.user = oxypaceUser._id;
         }
         await official.save();
+
+        // Cleanup: If extra duplicate profiles were created for oxypaceUser during testing, merge them
+        if (oxypaceUser) {
+            const duplicates = allAuthors.filter(a =>
+                a._id.toString() !== official._id.toString() &&
+                a.user && a.user.toString() === oxypaceUser._id.toString()
+            );
+
+            for (const dup of duplicates) {
+                await BlogPost.updateMany({ authorProfile: dup._id }, { authorProfile: official._id });
+                await BlogAuthor.findByIdAndDelete(dup._id);
+            }
+        }
     } else {
         official = await BlogAuthor.create({
             user: oxypaceUser ? oxypaceUser._id : null,
@@ -289,6 +315,11 @@ const getOrCreateOfficialAuthor = async () => {
             isOfficial: true,
         });
     }
+
+    // Ensure all existing blog posts point to the official profile
+    await BlogPost.updateMany({ authorProfile: { $exists: false } }, { authorProfile: official._id });
+    await BlogPost.updateMany({ authorProfile: null }, { authorProfile: official._id });
+
     return official;
 };
 
@@ -321,17 +352,20 @@ router.get('/author', async (req, res) => {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
                 currentUser = await User.findById(decoded.id).select('-password');
             } catch (err) {
-                // Token invalid, fall back to official author
+                // Token invalid
             }
         }
 
         if (currentUser) {
-            const isMainAdmin = currentUser.username === 'oxypace' || (currentUser.isAdmin && !currentUser.isTouristAdmin);
+            const isOxypaceAccount = currentUser.username === 'oxypace' || (currentUser.isAdmin && !currentUser.isTouristAdmin);
 
-            let author = await BlogAuthor.findOne({ user: currentUser._id });
-            if (!author && isMainAdmin) {
-                author = await getOrCreateOfficialAuthor();
+            if (isOxypaceAccount) {
+                const official = await getOrCreateOfficialAuthor();
+                return res.json(official);
             }
+
+            // Tourist admin or other user
+            let author = await BlogAuthor.findOne({ user: currentUser._id });
             if (!author) {
                 const defaultName = currentUser.name || currentUser.username || 'Yazar';
                 const defaultAvatar = currentUser.profile?.avatar || currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
@@ -341,8 +375,8 @@ router.get('/author', async (req, res) => {
                     title: 'Oxypace Yazar & İçerik Üreticisi',
                     bio: `${defaultName} — Oxypace bilim ve teknoloji blogu yazarı.`,
                     avatar: defaultAvatar,
-                    badge: currentUser.isAdmin ? 'Baş Yazar' : 'Yazar',
-                    isOfficial: isMainAdmin,
+                    badge: 'Yazar',
+                    isOfficial: false,
                 });
             }
             return res.json(author);
@@ -363,8 +397,10 @@ router.put('/author', protect, admin, async (req, res) => {
     try {
         const { name, title, bio, avatar, badge, github, twitter, website, linkedin, isOfficialTarget } = req.body;
 
+        const isOxypaceAccount = req.user.username === 'oxypace' || (req.user.isAdmin && !req.user.isTouristAdmin);
+
         let author;
-        if (isOfficialTarget && req.user.isAdmin) {
+        if (isOfficialTarget || isOxypaceAccount) {
             author = await getOrCreateOfficialAuthor();
         } else {
             author = await BlogAuthor.findOne({ user: req.user._id });
