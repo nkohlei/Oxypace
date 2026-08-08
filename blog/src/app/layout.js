@@ -56,6 +56,7 @@ export default function RootLayout({ children }) {
             `,
           }}
         />
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107" crossorigin="anonymous" />
         <script async type="application/javascript" src="https://news.google.com/swg/js/v1/swg-basic.js" />
         <script
           dangerouslySetInnerHTML={{
