@@ -196,7 +196,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                   {dropdownOpen && (
                     <div className="dropdown-menu" style={{ minWidth: "240px", left: 0, transform: "none" }}>
                       {CATEGORIES_ITEMS.map((item) => (
-                        <Link
+                        <a
                           key={item.key}
                           href={item.href}
                           className="dropdown-item"
@@ -204,7 +204,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                         >
                           <span style={{ fontSize: "14px" }}>{item.icon}</span>
                           <span>{lang === "en" ? item.en : item.tr}</span>
-                        </Link>
+                        </a>
                       ))}
                     </div>
                   )}

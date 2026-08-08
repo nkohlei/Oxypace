@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { FeaturedCard, MinimalCard, GridCard } from "./components/BlogCard";
 import CookieConsent from "./components/CookieConsent";
 import ReadingProgressBar from "./components/ReadingProgressBar";
@@ -36,20 +37,13 @@ const HERO_TEXT = {
   },
 };
 
-export default function BlogHome() {
+function BlogHomeContent() {
   const [lang, setLang] = useState("tr");
   const [allPosts, setAllPosts] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState(null);
 
-  // URL query parameter listener for category
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const cat = params.get("category");
-      setActiveCategory(cat);
-    }
-  }, []);
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams ? searchParams.get("category") : null;
 
   // Dinamik makaleleri API'den çek
   useEffect(() => {
@@ -107,16 +101,20 @@ export default function BlogHome() {
     );
   }
 
-  // Filter posts if activeCategory is set
-  const filteredPosts = activeCategory
-    ? allPosts.filter((p) => p.category?.toLowerCase().includes(activeCategory.toLowerCase()))
+  // Filter posts if categoryParam is set
+  const filteredPosts = categoryParam
+    ? allPosts.filter((p) => {
+        if (!p.category) return false;
+        const pCat = p.category.toLowerCase().trim();
+        const target = categoryParam.toLowerCase().trim();
+        return pCat.includes(target) || target.includes(pCat);
+      })
     : allPosts;
 
-  const displayPosts = filteredPosts.length > 0 ? filteredPosts : allPosts;
-
-  const featuredPost = displayPosts[0] || staticPosts[0];
-  const indexPosts   = displayPosts.length > 1 ? displayPosts.slice(1, 3) : staticPosts.slice(1, 3);
-  const gridPosts    = displayPosts.length > 3 ? displayPosts.slice(3) : (displayPosts.length > 1 ? displayPosts.slice(1) : staticPosts.slice(3));
+  const isFiltered = !!categoryParam;
+  const featuredPost = filteredPosts[0] || allPosts[0];
+  const indexPosts   = filteredPosts.length > 1 ? filteredPosts.slice(1, 3) : allPosts.slice(1, 3);
+  const gridPosts    = filteredPosts.length > 3 ? filteredPosts.slice(3) : (filteredPosts.length > 1 ? filteredPosts.slice(1) : allPosts.slice(1));
 
   return (
     <div className="relative min-h-screen transition-theme" style={{ color: "var(--foreground)" }}>
@@ -196,6 +194,29 @@ export default function BlogHome() {
       ══════════════════════════════════════ */}
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
 
+        {/* Category Active Filter Bar */}
+        {isFiltered && (
+          <div className="mb-10 p-5 rounded-2xl glass-card border border-sky-500/30 bg-sky-500/10 flex flex-wrap items-center justify-between gap-4 animate-fade-in-up">
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-xs text-sky-400 font-bold uppercase tracking-widest">
+                {lang === "en" ? "ACTIVE CATEGORY:" : "SEÇİLİ KATEGORİ:"}
+              </span>
+              <span className="text-sm font-extrabold text-white px-3.5 py-1 rounded-xl bg-sky-500/20 border border-sky-500/40">
+                {categoryParam}
+              </span>
+              <span className="text-xs text-slate-300 font-mono">
+                ({filteredPosts.length} {lang === "en" ? "articles found" : "makale bulundu"})
+              </span>
+            </div>
+            <a
+              href="/blog"
+              className="text-xs font-bold text-sky-400 hover:text-white transition-colors underline font-mono uppercase tracking-wider"
+            >
+              {lang === "en" ? "Show All Articles ✕" : "Tüm Makaleleri Göster ✕"}
+            </a>
+          </div>
+        )}
+
         {/* AdSense top */}
         <AdPlaceholder label={T.adSponsor} size="728×90" mb className="mb-12" />
 
@@ -204,8 +225,16 @@ export default function BlogHome() {
 
           {/* Left — featured hero */}
           <div className="lg:col-span-8">
-            <SectionLabel dot="accent">{T.featuredLabel}</SectionLabel>
-            <FeaturedCard post={featuredPost} lang={lang} />
+            <SectionLabel dot="accent">
+              {isFiltered ? `${categoryParam} - ${T.featuredLabel}` : T.featuredLabel}
+            </SectionLabel>
+            {featuredPost ? (
+              <FeaturedCard post={featuredPost} lang={lang} />
+            ) : (
+              <div className="p-8 glass-card rounded-2xl text-center text-slate-400 text-sm">
+                Bu kategoride henüz makale bulunmuyor.
+              </div>
+            )}
           </div>
 
           {/* Right — vertical index */}
@@ -213,12 +242,14 @@ export default function BlogHome() {
             <SectionLabel dot="muted">{T.indexLabel}</SectionLabel>
 
             {/* Index panel */}
-            <div
-              className="glass-card rounded-xl p-4 flex-1"
-            >
-              {indexPosts.map((p) => (
-                <MinimalCard key={p.id} post={p} lang={lang} />
-              ))}
+            <div className="glass-card rounded-xl p-4 flex-1">
+              {indexPosts.length > 0 ? (
+                indexPosts.map((p) => (
+                  <MinimalCard key={p.id} post={p} lang={lang} />
+                ))
+              ) : (
+                <div className="p-4 text-xs text-slate-400 text-center">İndeks makalesi bulunamadı</div>
+              )}
             </div>
 
             {/* Calculations portal link */}
@@ -237,9 +268,11 @@ export default function BlogHome() {
           </div>
         </div>
 
-        {/* ── ALL ARTICLES — VISUAL GRID 3 col (new posts only) ── */}
+        {/* ── ALL ARTICLES — VISUAL GRID 3 col ── */}
         <section className="mb-20 animate-fade-in-up-delay-2">
-          <SectionLabel dot="muted">{T.gridLabel}</SectionLabel>
+          <SectionLabel dot="muted">
+            {isFiltered ? `${categoryParam} ${lang === "en" ? "ANALYSES" : "ANALİZLERİ"}` : T.gridLabel}
+          </SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
             {gridPosts.map((p) => (
               <GridCard key={p.id} post={p} lang={lang} />
@@ -247,7 +280,7 @@ export default function BlogHome() {
           </div>
         </section>
 
-        {/* ── Reference Brands Grid (Desktop: 4 columns, Mobile: 2 columns side-by-side) ── */}
+        {/* ── Reference Brands Grid ── */}
         <section className="mb-16">
           <SectionLabel dot="accent">
             {lang === "en" ? "GLOBAL SCIENCE & TECH PARTNERS" : "REFERANS VE İŞ ORTAKLIĞI KURUMLARI"}
@@ -289,6 +322,14 @@ export default function BlogHome() {
   );
 }
 
+export default function BlogHome() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#060913]" />}>
+      <BlogHomeContent />
+    </Suspense>
+  );
+}
+
 /* ──────── Helper sub-components ──────── */
 
 function SectionLabel({ children, dot = "muted" }) {
@@ -311,21 +352,11 @@ function AdPlaceholder({ label, size, mb }) {
     <div
       className={`py-6 px-4 text-center rounded-xl transition-all border-2 border-dashed border-zinc-300 dark:border-zinc-800 glass-card flex flex-col items-center justify-center min-h-[140px] ${mb ? "mb-12" : ""}`}
     >
-      <span 
-        className="text-[10px] font-bold tracking-[0.25em] text-zinc-400 dark:text-zinc-650 uppercase mb-4 block"
-        style={{ fontFamily: "var(--font-geist-mono), monospace" }}
-      >
-        // ADVERTISEMENT SPACE //
-      </span>
-      <div
-        className="w-full max-w-[728px] h-[64px] border border-dashed border-zinc-200 dark:border-zinc-900 rounded-lg flex items-center justify-center transition-all bg-white/40 dark:bg-black/20"
-      >
-        <span 
-          className="text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-450"
-          style={{ fontFamily: "var(--font-geist-sans), sans-serif" }}
-        >
-          {label} ({size})
-        </span>
+      <div className="font-mono text-[10px] uppercase tracking-widest opacity-40 mb-1">
+        {label} [{size}]
+      </div>
+      <div className="text-xs opacity-30 font-sans">
+        AdSense Responsive Ad Unit
       </div>
     </div>
   );
