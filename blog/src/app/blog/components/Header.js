@@ -11,18 +11,18 @@ const LEFT_NAV = [
   { key: "calculations", tr: "Hesaplama Araçları", en: "Calculation Tools", href: "/calculations" },
 ];
 
-/* ── Modules dropdown entries ── */
-const MODULES_ITEMS = [
-  { icon: "🌌", key: "physics",   tr: "Teorik Fizik",           en: "Theoretical Physics",       href: "/blog" },
-  { icon: "🚀", key: "cosmo",     tr: "Kozmoloji & Uzay",        en: "Cosmology & Space",         href: "/blog" },
-  { icon: "🏔️", key: "extreme",   tr: "Ekstrem Doğa Fiziği",    en: "Extreme Adventure",         href: "/blog" },
-  { icon: "⚫", key: "bh",        tr: "Kozmik Simülatör",        en: "Cosmic Simulator",          href: "/calculations" },
-  { icon: "📊", key: "alt",       tr: "İrtifa Hesaplayıcı",      en: "Altitude Calculator",       href: "/calculations" },
+/* ── Categories dropdown entries ── */
+const CATEGORIES_ITEMS = [
+  { icon: "🌌", key: "physics",   tr: "Teorik Fizik",                      en: "Theoretical Physics",            href: "/blog?category=Teorik+Fizik" },
+  { icon: "🚀", key: "cosmo",     tr: "Kozmoloji & Uzay",                   en: "Cosmology & Space",              href: "/blog?category=Kozmoloji" },
+  { icon: "🏔️", key: "extreme",   tr: "Ekstrem Doğa Fiziği",               en: "Extreme Biophysics",             href: "/blog?category=Ekstrem+Do%C4%9Fa+Fizi%C4%9Fi" },
+  { icon: "🧮", key: "calc",      tr: "Kozmik Simülatörler & Hesaplamalar", en: "Cosmic Simulators & Calculations", href: "/calculations" },
+  { icon: "🌐", key: "all",       tr: "Tüm Kategoriler",                   en: "All Categories",                 href: "/blog" },
 ];
 
 const NAV_LABELS = {
-  tr: { modules: "Modüller", back: "← Geri Dön" },
-  en: { modules: "Modules",  back: "← Go Back"  },
+  tr: { categories: "Kategoriler", back: "← Geri Dön" },
+  en: { categories: "Categories",  back: "← Go Back"  },
 };
 
 export default function Header({ isArticle = false, lang = "tr", onLangChange }) {
@@ -173,7 +173,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
 
                 <div ref={dropdownRef} style={{ position: "relative" }}>
                   <button
-                    id="modules-btn"
+                    id="categories-btn"
                     onClick={() => setDropdownOpen((v) => !v)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg"
                     style={{
@@ -186,7 +186,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                     onMouseEnter={(e) => { e.currentTarget.style.background = "var(--glass-bg)"; e.currentTarget.style.color = "var(--foreground)"; }}
                     onMouseLeave={(e) => { if (!dropdownOpen) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--foreground-muted)"; } }}
                   >
-                    {t.modules}
+                    {t.categories}
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
                       style={{ transition: "transform 0.2s ease", transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                       <polyline points="6 9 12 15 18 9"/>
@@ -195,7 +195,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
 
                   {dropdownOpen && (
                     <div className="dropdown-menu" style={{ minWidth: "240px", left: 0, transform: "none" }}>
-                      {MODULES_ITEMS.map((item) => (
+                      {CATEGORIES_ITEMS.map((item) => (
                         <Link
                           key={item.key}
                           href={item.href}

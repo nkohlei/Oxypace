@@ -40,9 +40,16 @@ export default function BlogHome() {
   const [lang, setLang] = useState("tr");
   const [allPosts, setAllPosts] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState(null);
 
-  // Blog sayfası artık giriş yapmış kullanıcılara da açık.
-  // Kullanıcı "Oxypace Portal" butonuyla platforma dönebilir.
+  // URL query parameter listener for category
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const cat = params.get("category");
+      setActiveCategory(cat);
+    }
+  }, []);
 
   // Dinamik makaleleri API'den çek
   useEffect(() => {
@@ -55,7 +62,6 @@ export default function BlogHome() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            // MongoDB `_id` alanını `id` veya `_id` şeklinde eşle
             const formatted = data.map(p => ({
               ...p,
               id: p._id || p.id
@@ -101,9 +107,16 @@ export default function BlogHome() {
     );
   }
 
-  const featuredPost = allPosts[0] || staticPosts[0];
-  const indexPosts   = allPosts.length > 1 ? allPosts.slice(1, 3) : staticPosts.slice(1, 3);
-  const gridPosts    = allPosts.length > 3 ? allPosts.slice(3) : (allPosts.length > 1 ? allPosts.slice(1) : staticPosts.slice(3));
+  // Filter posts if activeCategory is set
+  const filteredPosts = activeCategory
+    ? allPosts.filter((p) => p.category?.toLowerCase().includes(activeCategory.toLowerCase()))
+    : allPosts;
+
+  const displayPosts = filteredPosts.length > 0 ? filteredPosts : allPosts;
+
+  const featuredPost = displayPosts[0] || staticPosts[0];
+  const indexPosts   = displayPosts.length > 1 ? displayPosts.slice(1, 3) : staticPosts.slice(1, 3);
+  const gridPosts    = displayPosts.length > 3 ? displayPosts.slice(3) : (displayPosts.length > 1 ? displayPosts.slice(1) : staticPosts.slice(3));
 
   return (
     <div className="relative min-h-screen transition-theme" style={{ color: "var(--foreground)" }}>
