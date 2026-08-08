@@ -56,6 +56,21 @@ export default function RootLayout({ children }) {
             `,
           }}
         />
+        <script async type="application/javascript" src="https://news.google.com/swg/js/v1/swg-basic.js" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {
+                basicSubscriptions.init({
+                  type: "NewsArticle",
+                  isPartOfType: ["Product"],
+                  isPartOfProductId: "CAowz_nMDA:openaccess",
+                  clientOptions: { theme: "light", lang: "tr" },
+                });
+              });
+            `,
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col transition-colors duration-300">
         <WarpGridBackground />

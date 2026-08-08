@@ -47,21 +47,21 @@ export default function Footer({ lang = "tr" }) {
             <nav className="flex flex-wrap items-center justify-center gap-5 font-mono text-[11px] uppercase tracking-widest"
               style={{ color: "var(--foreground-muted)" }}>
               {LINKS.map((l) => (
-                <button
+                <a
                   key={l.id}
                   id={`footer-${l.id}`}
-                  onClick={() => open(l.key)}
+                  href={`/${l.key}`}
                   className="link-underline transition-theme"
                   style={{
-                    background: "none", border: "none", cursor: "pointer",
                     fontFamily: "inherit", fontSize: "inherit",
                     color: "inherit", letterSpacing: "inherit", textTransform: "inherit",
+                    textDecoration: "none"
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = ""; }}
                 >
                   {lang === "en" ? l.en : l.tr}
-                </button>
+                </a>
               ))}
             </nav>
           </div>
