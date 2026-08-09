@@ -210,7 +210,8 @@ export default function CalculationsPage() {
                 </div>
               </div>
             </article>
-          ))}
+          );
+        })}
         </div>
 
         {/* Back to archive link */}
