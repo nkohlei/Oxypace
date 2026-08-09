@@ -309,16 +309,16 @@ function TimeDilationModule({ lang }) {
         </div>
         <input
           id="dilation-slider"
-          type="range" min={11} max={100} step={1}
+          type="range" min={10} max={100} step={1}
           value={distance}
           onChange={(e) => setDistance(+e.target.value)}
           className="slider-dilation"
           style={{
-            background: `linear-gradient(90deg,var(--accent) ${((distance-11)/89)*100}%,var(--glass-border) ${((distance-11)/89)*100}%)`,
+            background: `linear-gradient(90deg,var(--accent) ${((distance-10)/90)*100}%,var(--glass-border) ${((distance-10)/90)*100}%)`,
           }}
         />
         <div className="flex justify-between font-mono text-[9px] mt-1" style={{ color: "var(--foreground-subtle)" }}>
-          <span style={{ color: "#ef4444" }}>11 km ({lang === "en" ? "Near Horizon, rs=10km" : "Ufuk Sınırı, rs=10km"})</span>
+          <span style={{ color: "#ef4444" }}>10 km ({lang === "en" ? "Event Horizon (rₛ = 10 km)" : "Olay Ufku (rₛ = 10 km)"})</span>
           <span>100 km ({lang === "en" ? "Flat Space" : "Düz Uzay"})</span>
         </div>
       </div>

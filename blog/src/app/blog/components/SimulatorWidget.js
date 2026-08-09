@@ -320,18 +320,18 @@ export default function SimulatorWidget() {
             <input
               id="dilation-slider"
               type="range"
-              min="11"
+              min="10"
               max="100"
               step="1"
               value={distance}
               onChange={(e) => setDistance(parseInt(e.target.value))}
               className="slider-dilation"
               style={{
-                background: `linear-gradient(90deg, #a855f7 ${((distance - 11) / 89) * 100}%, rgba(255,255,255,0.08) ${((distance - 11) / 89) * 100}%)`,
+                background: `linear-gradient(90deg, #a855f7 ${((distance - 10) / 90) * 100}%, rgba(255,255,255,0.08) ${((distance - 10) / 90) * 100}%)`,
               }}
             />
             <div className="flex justify-between text-[9px]" style={{ color: "var(--foreground-muted)" }}>
-              <span className="text-red-500 font-bold">11 km (Ufuk Sınırı, rs=10km)</span>
+              <span className="text-red-500 font-bold">10 km (Olay Ufku, rₛ = 10 km)</span>
               <span>100 km (Düz Uzay)</span>
             </div>
           </div>
