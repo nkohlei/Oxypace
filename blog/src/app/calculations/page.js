@@ -231,6 +231,7 @@ export default function CalculationsPage() {
               </div>
             </article>
           );
+        })}
         </div>
         )}
 
