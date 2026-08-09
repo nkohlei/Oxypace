@@ -280,31 +280,6 @@ function BlogHomeContent() {
           </div>
         </section>
 
-        {/* ── Reference Brands Grid ── */}
-        <section className="mb-16">
-          <SectionLabel dot="accent">
-            {lang === "en" ? "GLOBAL SCIENCE & TECH PARTNERS" : "REFERANS VE İŞ ORTAKLIĞI KURUMLARI"}
-          </SectionLabel>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 glass-card rounded-2xl">
-            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/5 text-center">
-              <span className="text-sm font-extrabold tracking-wider" style={{ color: "var(--foreground)" }}>CERN</span>
-              <span className="text-[10px] mt-1 opacity-60">Fizik Araştırmaları</span>
-            </div>
-            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/5 text-center">
-              <span className="text-sm font-extrabold tracking-wider" style={{ color: "var(--foreground)" }}>NASA</span>
-              <span className="text-[10px] mt-1 opacity-60">Uzay Lab.</span>
-            </div>
-            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/5 text-center">
-              <span className="text-sm font-extrabold tracking-wider" style={{ color: "var(--foreground)" }}>ESA</span>
-              <span className="text-[10px] mt-1 opacity-60">Avrupa Uzay Ajansı</span>
-            </div>
-            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/5 text-center">
-              <span className="text-sm font-extrabold tracking-wider" style={{ color: "var(--foreground)" }}>MIT</span>
-              <span className="text-[10px] mt-1 opacity-60">Teknoloji Enst.</span>
-            </div>
-          </div>
-        </section>
 
         {/* ── QUOTE CARDS ── */}
         <section className="mb-20">
