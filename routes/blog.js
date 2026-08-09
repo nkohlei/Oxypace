@@ -1,6 +1,7 @@
 import express from 'express';
 import BlogPost from '../models/BlogPost.js';
 import BlogAuthor from '../models/BlogAuthor.js';
+import CalculationTool from '../models/CalculationTool.js';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 import { admin } from '../middleware/admin.js';
@@ -614,6 +615,109 @@ router.delete('/admin/:id', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Delete blog post error:', error);
         res.status(500).json({ message: 'Makale silinirken hata oluştu: ' + error.message });
+    }
+});
+
+const DEFAULT_CALCULATION_TOOLS = [
+    {
+        toolId: "hypoxia",
+        slug: "/calculations/hypoxia",
+        category: "ATMOSPHERIC BIOPHYSICS",
+        type: "INTERACTIVE SIMULATOR",
+        image: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80",
+        title: {
+            tr: "Atmosferik Hipoksi Kontrol Merkezi",
+            en: "Atmospheric Hypoxia Control Center",
+        },
+        excerpt: {
+            tr: "İrtifaya bağlı olarak atmosfer katmanlarındaki efektif O₂ oranını, barometrik basınç değişimini ve biyofiziksel hipoksi sınırlarını canlı simüle edin.",
+            en: "Live simulate effective O₂ percentages, barometric pressure changes, and biophysical hypoxia limits across atmospheric layers based on altitude.",
+        },
+        accentColor: "#0ea5e9",
+    },
+    {
+        toolId: "time-dilation",
+        slug: "/calculations/time-dilation",
+        category: "ASTROPHYSICS & GR",
+        type: "INTERACTIVE SIMULATOR",
+        image: "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=800&q=80",
+        title: {
+            tr: "Schwarzschild Zaman Dilatasyonu Simülatörü",
+            en: "Schwarzschild Time Dilation Simulator",
+        },
+        excerpt: {
+            tr: "Schwarzschild metriğindeki kütleçekimsel zaman genleşmesini, foton küresi limitini ve ISCO kararlı yörünge stabilitesini interaktif olarak hesaplayın.",
+            en: "Interactively calculate gravitational time dilation, photon sphere limits, and ISCO orbit stability near a non-rotating Schwarzschild black hole.",
+        },
+        accentColor: "#818cf8",
+    },
+];
+
+async function seedCalculationToolsIfEmpty() {
+    try {
+        const count = await CalculationTool.countDocuments();
+        if (count === 0) {
+            await CalculationTool.insertMany(DEFAULT_CALCULATION_TOOLS);
+        }
+    } catch (e) {
+        console.error('Seed calculation tools error:', e);
+    }
+}
+
+// @route   GET /api/blog/calculations
+// @desc    Get all calculation tools metadata
+// @access  Public
+router.get('/calculations', async (req, res) => {
+    try {
+        await seedCalculationToolsIfEmpty();
+        const tools = await CalculationTool.find({});
+        res.json(tools);
+    } catch (error) {
+        console.error('Get calculation tools error:', error);
+        res.status(500).json({ message: 'Hesaplama araçları yüklenemedi.' });
+    }
+});
+
+// @route   GET /api/blog/admin/calculations
+// @desc    Get all calculation tools for admin
+// @access  Private/Admin
+router.get('/admin/calculations', protect, admin, async (req, res) => {
+    try {
+        await seedCalculationToolsIfEmpty();
+        const tools = await CalculationTool.find({});
+        res.json(tools);
+    } catch (error) {
+        console.error('Admin get calculation tools error:', error);
+        res.status(500).json({ message: 'Hesaplama araçları yüklenemedi.' });
+    }
+});
+
+// @route   PUT /api/blog/admin/calculations/:toolId
+// @desc    Update a calculation tool (cover image, title, category, etc.)
+// @access  Private/Admin
+router.put('/admin/calculations/:toolId', protect, admin, async (req, res) => {
+    try {
+        await seedCalculationToolsIfEmpty();
+        const { toolId } = req.params;
+        const { image, title, category, excerpt, accentColor } = req.body;
+
+        let tool = await CalculationTool.findOne({ toolId });
+        if (!tool) {
+            return res.status(404).json({ message: 'Hesaplama aracı bulunamadı.' });
+        }
+
+        if (image !== undefined) tool.image = image;
+        if (title !== undefined) tool.title = title;
+        if (category !== undefined) tool.category = category;
+        if (excerpt !== undefined) tool.excerpt = excerpt;
+        if (accentColor !== undefined) tool.accentColor = accentColor;
+        tool.updatedAt = new Date();
+
+        await tool.save();
+        res.json(tool);
+    } catch (error) {
+        console.error('Update calculation tool error:', error);
+        res.status(500).json({ message: 'Hesaplama aracı güncellenemedi: ' + error.message });
     }
 });
 

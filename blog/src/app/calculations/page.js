@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Header from "../blog/components/Header";
 import Footer from "../blog/components/Footer";
 import ReadingProgressBar from "../blog/components/ReadingProgressBar";
 import CookieConsent from "../blog/components/CookieConsent";
+import { formatBlogImageUrl } from "../blog/utils/imageHelper";
 
-const CALCULATORS = [
+const DEFAULT_CALCULATORS = [
   {
     id: "hypoxia",
+    toolId: "hypoxia",
     slug: "/calculations/hypoxia",
     category: "ATMOSPHERIC BIOPHYSICS",
     type: "INTERACTIVE SIMULATOR",
@@ -26,6 +28,7 @@ const CALCULATORS = [
   },
   {
     id: "time-dilation",
+    toolId: "time-dilation",
     slug: "/calculations/time-dilation",
     category: "ASTROPHYSICS & GR",
     type: "INTERACTIVE SIMULATOR",
@@ -44,6 +47,32 @@ const CALCULATORS = [
 
 export default function CalculationsPage() {
   const [lang, setLang] = useState("tr");
+  const [calculators, setCalculators] = useState(DEFAULT_CALCULATORS);
+
+  useEffect(() => {
+    const fetchTools = async () => {
+      try {
+        const apiUrl = typeof window !== 'undefined'
+          ? (window.location.origin.includes('localhost') ? 'http://localhost:5000/api/blog/calculations' : '/api/blog/calculations')
+          : '/api/blog/calculations';
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setCalculators(data.map(item => ({
+              ...item,
+              id: item.toolId || item.id,
+              title: typeof item.title === 'string' ? { tr: item.title, en: item.title } : item.title,
+              excerpt: typeof item.excerpt === 'string' ? { tr: item.excerpt, en: item.excerpt } : item.excerpt,
+            })));
+          }
+        }
+      } catch (e) {
+        console.error('Fetch calculation tools error:', e);
+      }
+    };
+    fetchTools();
+  }, []);
 
   const PAGE = {
     tr: {
@@ -100,56 +129,60 @@ export default function CalculationsPage() {
       {/* Calculation Tools Grid */}
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {CALCULATORS.map((calc) => (
-            <article
-              key={calc.id}
-              className="group glass-card glass-card-hover rounded-2xl overflow-hidden flex flex-col"
-              id={`calc-card-${calc.id}`}
-            >
-              {/* Cover Image */}
-              <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
-                <img
-                  src={calc.image}
-                  alt={calc.title[lang]}
-                  className="h-full w-full object-cover"
-                  style={{
-                    transition: "transform 0.8s cubic-bezier(0.16,1,0.3,1), filter 0.5s ease",
-                    filter: "saturate(0.9)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "scale(1.06)";
-                    e.currentTarget.style.filter = "saturate(1.1)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.filter = "saturate(0.9)";
-                  }}
-                  loading="lazy"
-                />
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)" }}
-                />
-                <div className="absolute top-4 left-4 font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10">
-                  {calc.type}
-                </div>
-              </div>
+          {calculators.map((calc) => {
+            const titleStr = typeof calc.title === 'object' ? (calc.title[lang] || calc.title.tr) : calc.title;
+            const excerptStr = typeof calc.excerpt === 'object' ? (calc.excerpt[lang] || calc.excerpt.tr) : calc.excerpt;
 
-              {/* Card Body */}
-              <div className="flex flex-col flex-1 p-6 gap-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="badge-category">{calc.category}</span>
+            return (
+              <article
+                key={calc.id || calc.toolId}
+                className="group glass-card glass-card-hover rounded-2xl overflow-hidden flex flex-col"
+                id={`calc-card-${calc.id || calc.toolId}`}
+              >
+                {/* Cover Image */}
+                <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
+                  <img
+                    src={formatBlogImageUrl(calc.image)}
+                    alt={titleStr}
+                    className="h-full w-full object-cover"
+                    style={{
+                      transition: "transform 0.8s cubic-bezier(0.16,1,0.3,1), filter 0.5s ease",
+                      filter: "saturate(0.9)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.06)";
+                      e.currentTarget.style.filter = "saturate(1.1)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.filter = "saturate(0.9)";
+                    }}
+                    loading="lazy"
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)" }}
+                  />
+                  <div className="absolute top-4 left-4 font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10">
+                    {calc.type || "INTERACTIVE SIMULATOR"}
+                  </div>
                 </div>
 
-                <h2 className="text-xl font-bold leading-snug tracking-tight" style={{ color: "var(--foreground)" }}>
-                  <Link href={calc.slug} className="focus:outline-none hover:opacity-80 transition-opacity">
-                    {calc.title[lang]}
-                  </Link>
-                </h2>
+                {/* Card Body */}
+                <div className="flex flex-col flex-1 p-6 gap-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="badge-category">{calc.category}</span>
+                  </div>
 
-                <p className="text-sm leading-relaxed flex-1" style={{ color: "var(--foreground-muted)" }}>
-                  {calc.excerpt[lang]}
-                </p>
+                  <h2 className="text-xl font-bold leading-snug tracking-tight" style={{ color: "var(--foreground)" }}>
+                    <Link href={calc.slug} className="focus:outline-none hover:opacity-80 transition-opacity">
+                      {titleStr}
+                    </Link>
+                  </h2>
+
+                  <p className="text-sm leading-relaxed flex-1" style={{ color: "var(--foreground-muted)" }}>
+                    {excerptStr}
+                  </p>
 
                 <div className="pt-2 mt-auto">
                   <Link

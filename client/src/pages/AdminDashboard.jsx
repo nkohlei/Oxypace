@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image } from 'lucide-react';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import UserAvatar from '../components/UserAvatar';
@@ -1119,6 +1119,15 @@ const AdminDashboard = () => {
         image: '',
         isPublished: true,
     });
+
+    // Calculation Tools Management State
+    const [calcToolsModalOpen, setCalcToolsModalOpen] = useState(false);
+    const [calcToolsList, setCalcToolsList] = useState([]);
+    const [calcToolsLoading, setCalcToolsLoading] = useState(false);
+    const [editingCalcTool, setEditingCalcTool] = useState(null);
+    const [calcToolImageUrl, setCalcToolImageUrl] = useState('');
+    const [uploadingCalcToolImage, setUploadingCalcToolImage] = useState(false);
+    const [calcToolSaving, setCalcToolSaving] = useState(false);
 
     // Badge Creator State
     const { badges: contextBadges, refreshBadges } = useBadges();
@@ -2349,11 +2358,59 @@ const AdminDashboard = () => {
         }
     };
 
+    const fetchCalcTools = async () => {
+        setCalcToolsLoading(true);
+        try {
+            const { data } = await axios.get('/api/blog/admin/calculations');
+            setCalcToolsList(data);
+        } catch (e) {
+            console.error('Fetch calc tools error:', e);
+        } finally {
+            setCalcToolsLoading(false);
+        }
+    };
+
+    const handleSaveCalcToolImage = async (toolId, imageUrl) => {
+        if (!imageUrl) {
+            alert('Lütfen bir görsel URL\'si girin veya dosya seçin.');
+            return;
+        }
+        setCalcToolSaving(true);
+        try {
+            const { data } = await axios.put(`/api/blog/admin/calculations/${toolId}`, { image: imageUrl });
+            setCalcToolsList(prev => prev.map(t => t.toolId === toolId ? data : t));
+            alert('Hesaplama aracı kapak görseli başarıyla güncellendi!');
+            setEditingCalcTool(null);
+            setCalcToolImageUrl('');
+        } catch (e) {
+            console.error('Save calc tool error:', e);
+            alert('Görsel güncellenirken hata oluştu: ' + (e.response?.data?.message || e.message));
+        } finally {
+            setCalcToolSaving(false);
+        }
+    };
+
+    const handleCalcToolFileSelect = async (e, toolId) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingCalcToolImage(true);
+        try {
+            const mediaKey = await uploadFile(file, 'post');
+            setCalcToolImageUrl(mediaKey);
+        } catch (err) {
+            alert('Görsel yüklenirken hata oluştu.');
+        } finally {
+            setUploadingCalcToolImage(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'blog') {
             fetchAdminBlogPosts();
             fetchBlogAuthor();
             fetchBlogAuthors();
+            fetchCalcTools();
         }
     }, [activeTab]);
 
@@ -4506,6 +4563,9 @@ const AdminDashboard = () => {
                                 <p>Oxypace derin bilim ve teknik analiz makalelerini yazın, düzenleyin ve tek tuşla yayınlayın.</p>
                             </div>
                             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                <button className="btn-modern-secondary" onClick={() => { fetchCalcTools(); setCalcToolsModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                                    <Calculator size={18} /> Hesaplama Araçları Görselleri
+                                </button>
                                 <button className="btn-modern-secondary" onClick={() => setBlogAuthorModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
                                     <UserCheck size={18} /> Yazar Profilini Düzenle
                                 </button>
@@ -5285,6 +5345,141 @@ const AdminDashboard = () => {
                             <button type="button" className="btn-modern-ghost" onClick={() => setBadgeModalOpen(false)}>İptal</button>
                             <button type="button" className="btn-modern-primary" onClick={handleBadgeSave}>
                                 {editingBadge ? 'GÜNCELLE' : 'OLUŞTUR'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Calculation Tools Cover Images Modal */}
+            {calcToolsModalOpen && (
+                <div className="modal-overlay-modern" onClick={() => { setCalcToolsModalOpen(false); setEditingCalcTool(null); }}>
+                    <div className="modal-content-modern" style={{ maxWidth: '750px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header-modern">
+                            <h2>🧮 Hesaplama Araçları Kapak Görselleri</h2>
+                            <button className="close-btn-modern" onClick={() => { setCalcToolsModalOpen(false); setEditingCalcTool(null); }}>×</button>
+                        </div>
+                        <div className="modal-body-modern" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+                            <p className="modal-description-modern">
+                                Hesaplama portalında (`/calculations`) listelenen interaktif simülasyon araçlarının kapak görsellerini düzenleyin.
+                            </p>
+
+                            {calcToolsLoading ? (
+                                <div style={{ padding: '30px', textAlign: 'center', color: '#888' }}>Araçlar Yükleniyor...</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '16px' }}>
+                                    {calcToolsList.map(tool => {
+                                        const titleStr = typeof tool.title === 'object' ? (tool.title.tr || tool.title.en) : tool.title;
+                                        const isEditing = editingCalcTool?.toolId === tool.toolId;
+
+                                        return (
+                                            <div
+                                                key={tool.toolId || tool._id}
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.04)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '16px',
+                                                    padding: '20px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '16px'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                    {/* Preview Thumbnail */}
+                                                    <div style={{ width: '140px', height: '80px', borderRadius: '10px', overflow: 'hidden', background: '#000', flexShrink: 0, border: '1px solid rgba(255,255,255,0.15)' }}>
+                                                        <img
+                                                            src={getImageUrl(isEditing ? (calcToolImageUrl || tool.image) : tool.image) || 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86'}
+                                                            alt={titleStr}
+                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                        />
+                                                    </div>
+
+                                                    <div style={{ flex: 1, minWidth: '200px' }}>
+                                                        <div style={{ fontSize: '11px', color: '#818cf8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                            {tool.category || 'SIMULATOR'}
+                                                        </div>
+                                                        <h3 style={{ margin: '4px 0', fontSize: '16px', fontWeight: '800', color: '#fff' }}>
+                                                            {titleStr}
+                                                        </h3>
+                                                        <div style={{ fontSize: '12px', color: '#888', fontFamily: 'monospace' }}>
+                                                            Rota: {tool.slug}
+                                                        </div>
+                                                    </div>
+
+                                                    {!isEditing && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn-modern-secondary"
+                                                            onClick={() => {
+                                                                setEditingCalcTool(tool);
+                                                                setCalcToolImageUrl(tool.image || '');
+                                                            }}
+                                                            style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                        >
+                                                            <Edit3 size={15} /> Kapak Resmini Değiştir
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Editing inputs */}
+                                                {isEditing && (
+                                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#ccc' }}>
+                                                            📷 Kapak Resmi Seç veya URL Yapıştır:
+                                                        </label>
+                                                        
+                                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                            <input
+                                                                type="text"
+                                                                className="reason-input-modern"
+                                                                placeholder="https://images.unsplash.com/... veya yüklenen medya URL'si"
+                                                                value={calcToolImageUrl}
+                                                                onChange={(e) => setCalcToolImageUrl(e.target.value)}
+                                                                style={{ flex: 1, minWidth: '220px', padding: '10px 14px', borderRadius: '8px' }}
+                                                            />
+                                                            <label className="btn-modern-secondary" style={{ padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                                                <Image size={16} /> {uploadingCalcToolImage ? 'Yükleniyor...' : 'Dosya Seç'}
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    onChange={(e) => handleCalcToolFileSelect(e, tool.toolId)}
+                                                                    style={{ display: 'none' }}
+                                                                    disabled={uploadingCalcToolImage}
+                                                                />
+                                                            </label>
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="btn-modern-ghost"
+                                                                onClick={() => { setEditingCalcTool(null); setCalcToolImageUrl(''); }}
+                                                                style={{ padding: '8px 14px', fontSize: '13px' }}
+                                                            >
+                                                                İptal
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn-modern-primary btn-glow-cyan"
+                                                                onClick={() => handleSaveCalcToolImage(tool.toolId, calcToolImageUrl)}
+                                                                disabled={calcToolSaving || uploadingCalcToolImage}
+                                                                style={{ padding: '8px 18px', fontSize: '13px' }}
+                                                            >
+                                                                {calcToolSaving ? 'Kaydediliyor...' : 'Görseli Kaydet'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer-modern">
+                            <button type="button" className="btn-modern-ghost" onClick={() => { setCalcToolsModalOpen(false); setEditingCalcTool(null); }}>
+                                Kapat
                             </button>
                         </div>
                     </div>
