@@ -93,7 +93,8 @@ export default function SimulatorWidget() {
   };
 
   const dilationLabel = formatDilation(dilationFactor);
-  const isExtreme = distance <= 12;
+  const isUnstable = distance < 30 && distance > 15;
+  const isExtreme = distance <= 15;
 
   return (
     <div
@@ -330,7 +331,7 @@ export default function SimulatorWidget() {
               }}
             />
             <div className="flex justify-between text-[9px]" style={{ color: "var(--foreground-muted)" }}>
-              <span className="text-red-500 font-bold">11 km (Event Horizon)</span>
+              <span className="text-red-500 font-bold">11 km (Ufuk Sınırı, rs=10km)</span>
               <span>100 km (Düz Uzay)</span>
             </div>
           </div>
@@ -360,8 +361,8 @@ export default function SimulatorWidget() {
                 style={{
                   fontSize: "clamp(1.1rem, 3vw, 1.8rem)",
                   letterSpacing: "-0.04em",
-                  color: isExtreme ? "#a78bfa" : "#f5f5f7",
-                  textShadow: isExtreme ? "0 0 20px rgba(167,139,250,0.5)" : "none",
+                  color: isExtreme ? "#ef4444" : isUnstable ? "#f59e0b" : "#f5f5f7",
+                  textShadow: isExtreme ? "0 0 20px rgba(239,68,68,0.5)" : "none",
                   transition: "color 0.5s ease, text-shadow 0.5s ease",
                   wordBreak: "break-all",
                 }}
@@ -393,16 +394,31 @@ export default function SimulatorWidget() {
             <div
               className="mt-4 rounded-lg px-4 py-3 text-center"
               style={{
-                background: "rgba(139,92,246,0.08)",
-                border: "1px solid rgba(139,92,246,0.3)",
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.3)",
                 animation: "glow-pulse 1.8s ease-in-out infinite",
               }}
             >
               <p
                 className="text-[11px] font-black uppercase tracking-widest"
-                style={{ color: "#a78bfa", textShadow: "0 0 12px rgba(167,139,250,0.5)" }}
+                style={{ color: "#ef4444", textShadow: "0 0 12px rgba(239,68,68,0.5)" }}
               >
-                ⚠ YERÇEK. KRİTİK // ZAMAN YAVAŞLIYOR
+                ⚠ KRİTİK ÇÖKÜŞ // FOTON KÜRESİ İÇİ
+              </p>
+            </div>
+          ) : isUnstable ? (
+            <div
+              className="mt-4 rounded-lg px-4 py-2.5 text-center"
+              style={{
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.3)",
+              }}
+            >
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "#f59e0b" }}
+              >
+                ⚠ KARARSIZ YÖRÜNGE (r &lt; 30km ISCO)
               </p>
             </div>
           ) : (
@@ -417,7 +433,7 @@ export default function SimulatorWidget() {
                 className="text-[10px] font-bold uppercase tracking-widest"
                 style={{ color: "#0ea5e9" }}
               >
-                ✓ RELATİVİSTİK YÖRÜNGE STABİL
+                ✓ YÖRÜNGE STABİL (r ≥ 30 km)
               </p>
             </div>
           )}

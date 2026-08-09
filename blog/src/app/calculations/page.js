@@ -270,7 +270,9 @@ function BlackHoleSim({ distance, rs = 10 }) {
 function TimeDilationModule({ lang }) {
   const [distance, setDistance] = useState(35);
   const rs = 10;
-  const isExtreme = distance <= 13;
+  // Physics thresholds (r_s = 10km): ISCO (Innermost Stable Circular Orbit) = 3 * rs = 30km, Photon Sphere = 1.5 * rs = 15km
+  const isUnstable = distance < 30 && distance > 15;
+  const isExtreme = distance <= 15;
 
   let factor = 1;
   if (distance > rs) factor = 1 / Math.sqrt(1 - rs / distance);
@@ -316,7 +318,7 @@ function TimeDilationModule({ lang }) {
           }}
         />
         <div className="flex justify-between font-mono text-[9px] mt-1" style={{ color: "var(--foreground-subtle)" }}>
-          <span style={{ color: "#ef4444" }}>11 km ({lang === "en" ? "Event Horizon" : "Olay Ufku"})</span>
+          <span style={{ color: "#ef4444" }}>11 km ({lang === "en" ? "Near Horizon, rs=10km" : "Ufuk Sınırı, rs=10km"})</span>
           <span>100 km ({lang === "en" ? "Flat Space" : "Düz Uzay"})</span>
         </div>
       </div>
@@ -346,7 +348,7 @@ function TimeDilationModule({ lang }) {
             <p style={{
               fontSize: "clamp(1rem,3vw,1.5rem)", fontWeight: 900,
               letterSpacing: "-0.04em", wordBreak: "break-all",
-              color: isExtreme ? "#a78bfa" : "var(--foreground)",
+              color: isExtreme ? "#ef4444" : isUnstable ? "#f59e0b" : "var(--foreground)",
               transition: "color 0.5s ease",
             }}>
               {fmt(factor)}
@@ -365,15 +367,21 @@ function TimeDilationModule({ lang }) {
 
           {/* Status */}
           {isExtreme ? (
-            <div className="cockpit-panel" style={{ padding: "10px 14px", borderColor: "rgba(167,139,250,0.25)", background: "rgba(139,92,246,0.05)" }}>
-              <p className="font-mono text-[10px] font-black uppercase tracking-wider" style={{ color: "#a78bfa" }}>
-                ⚠ {lang === "en" ? "TIME NEAR STANDSTILL" : "ZAMAN NEREDEYSE DURDU"}
+            <div className="cockpit-panel" style={{ padding: "10px 14px", borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.08)" }}>
+              <p className="font-mono text-[10px] font-black uppercase tracking-wider" style={{ color: "#ef4444" }}>
+                ⚠ {lang === "en" ? "CRITICAL GRAVITY (Inside Photon Sphere)" : "KRİTİK ÇÖKÜŞ (Foton Küresi İçi)"}
+              </p>
+            </div>
+          ) : isUnstable ? (
+            <div className="cockpit-panel" style={{ padding: "10px 14px", borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.08)" }}>
+              <p className="font-mono text-[10px] font-black uppercase tracking-wider" style={{ color: "#f59e0b" }}>
+                ⚠ {lang === "en" ? "UNSTABLE ORBIT (r < 30km ISCO)" : "KARARSIZ YÖRÜNGE (r < 30km ISCO)"}
               </p>
             </div>
           ) : (
             <div className="cockpit-panel" style={{ padding: "10px 14px" }}>
               <p className="font-mono text-[10px] font-bold uppercase tracking-wider" style={{ color: "#22c55e" }}>
-                ✓ {lang === "en" ? "Orbit Stable" : "Yörünge Stabil"}
+                ✓ {lang === "en" ? "Orbit Stable (r ≥ 30 km)" : "Yörünge Stabil (r ≥ 30 km)"}
               </p>
             </div>
           )}
