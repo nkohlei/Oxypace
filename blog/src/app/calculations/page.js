@@ -47,32 +47,41 @@ const DEFAULT_CALCULATORS = [
 
 export default function CalculationsPage() {
   const [lang, setLang] = useState("tr");
-  const [calculators, setCalculators] = useState(DEFAULT_CALCULATORS);
+  const [calculators, setCalculators] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        const apiUrl = typeof window !== 'undefined'
+        const baseUrl = typeof window !== 'undefined'
           ? (window.location.origin.includes('localhost') ? 'http://localhost:5000/api/blog/calculations' : '/api/blog/calculations')
           : '/api/blog/calculations';
-        const res = await fetch(apiUrl);
+        const apiUrl = `${baseUrl}?_t=${Date.now()}`;
+        const res = await fetch(apiUrl, { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             setCalculators(data.map(item => ({
               ...item,
               id: item.toolId || item.id,
-              title: typeof item.title === 'string' ? { tr: item.title, en: item.title } : item.title,
-              excerpt: typeof item.excerpt === 'string' ? { tr: item.excerpt, en: item.excerpt } : item.excerpt,
+              title: typeof item.title === 'object' ? (item.title[lang] || item.title.tr) : item.title,
+              excerpt: typeof item.excerpt === 'object' ? (item.excerpt[lang] || item.excerpt.tr) : item.excerpt,
             })));
+          } else {
+            setCalculators(DEFAULT_CALCULATORS);
           }
+        } else {
+          setCalculators(DEFAULT_CALCULATORS);
         }
       } catch (e) {
         console.error('Fetch calculation tools error:', e);
+        setCalculators(DEFAULT_CALCULATORS);
+      } finally {
+        setLoading(false);
       }
     };
     fetchTools();
-  }, []);
+  }, [lang]);
 
   const PAGE = {
     tr: {
@@ -128,7 +137,18 @@ export default function CalculationsPage() {
 
       {/* Calculation Tools Grid */}
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {loading || !calculators ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {[1, 2].map((n) => (
+              <div key={n} className="glass-card rounded-2xl p-6 h-[380px] animate-pulse space-y-4">
+                <div className="h-48 w-full bg-white/5 rounded-xl border border-white/10" />
+                <div className="h-6 w-3/4 bg-white/5 rounded-lg border border-white/10" />
+                <div className="h-12 w-full bg-white/5 rounded-lg border border-white/10" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {calculators.map((calc) => {
             const titleStr = typeof calc.title === 'object' ? (calc.title[lang] || calc.title.tr) : calc.title;
             const excerptStr = typeof calc.excerpt === 'object' ? (calc.excerpt[lang] || calc.excerpt.tr) : calc.excerpt;
@@ -211,8 +231,8 @@ export default function CalculationsPage() {
               </div>
             </article>
           );
-        })}
         </div>
+        )}
 
         {/* Back to archive link */}
         <div className="mt-16">
