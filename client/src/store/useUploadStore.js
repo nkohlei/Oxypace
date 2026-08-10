@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { AdaptiveProgressCounter } from '../utils/downloadHelper';
 
 // Upload original video directly to Cloudflare R2
 const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onProgress) => {
@@ -20,7 +21,7 @@ const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onPro
         headers: { 'Content-Type': fileType },
         onUploadProgress: (evt) => {
             if (onProgress && evt.total) {
-                onProgress(Math.round((evt.loaded * 100) / evt.total));
+                onProgress((evt.loaded * 100) / evt.total);
             }
         },
     });
@@ -49,6 +50,21 @@ export const useUploadStore = create((set, get) => ({
         }));
 
         try {
+            const counter = new AdaptiveProgressCounter(
+                (p) => {
+                    set((state) => {
+                        const current = state.activeUploads[uploadKey];
+                        if (!current) return state;
+                        return {
+                            activeUploads: {
+                                ...state.activeUploads,
+                                [uploadKey]: { ...current, progress: p }
+                            }
+                        };
+                    });
+                }
+            );
+
             // 1. Upload to R2
             const mediaKey = await uploadBlobToR2(
                 file,
@@ -56,19 +72,10 @@ export const useUploadStore = create((set, get) => ({
                 file.type || 'video/mp4',
                 'post',
                 portalId,
-                (progress) => {
-                    set((state) => {
-                        const current = state.activeUploads[uploadKey];
-                        if (!current) return state;
-                        return {
-                            activeUploads: {
-                                ...state.activeUploads,
-                                [uploadKey]: { ...current, progress }
-                            }
-                        };
-                    });
-                }
+                (progress) => counter.setTarget(progress)
             );
+
+            counter.finish();
 
             // 2. Set stage to complete
             set((state) => {

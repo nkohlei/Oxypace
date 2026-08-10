@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { AdaptiveProgressCounter } from '../utils/downloadHelper';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Upload original video directly to Cloudflare R2
@@ -22,7 +23,7 @@ const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onPro
         headers: { 'Content-Type': fileType },
         onUploadProgress: (evt) => {
             if (onProgress && evt.total) {
-                onProgress(Math.round((evt.loaded * 100) / evt.total));
+                onProgress((evt.loaded * 100) / evt.total);
             }
         },
     });
@@ -47,14 +48,20 @@ export function useVideoTranscoder() {
         setStage('Video yükleniyor...');
 
         try {
+            const counter = new AdaptiveProgressCounter(
+                (p) => setProgress(p)
+            );
+
             const originalKey = await uploadBlobToR2(
                 file,
                 file.name,
                 file.type || 'video/mp4',
                 'post',
                 portalId,
-                (p) => setProgress(p)
+                (p) => counter.setTarget(p)
             );
+
+            counter.finish();
             setProgress(100);
             setStage('Yükleme tamamlandı');
             return { mediaKey: originalKey, videoQualities: null };
