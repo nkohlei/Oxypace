@@ -61,14 +61,23 @@ export default function RootLayout({ children }) {
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {
-                basicSubscriptions.init({
-                  type: "NewsArticle",
-                  isPartOfType: ["Product"],
-                  isPartOfProductId: "CAowz_nMDA:openaccess",
-                  clientOptions: { theme: "light", lang: "tr" },
-                });
-              });
+              try {
+                var lastShown = localStorage.getItem('swg_last_shown_time');
+                var now = Date.now();
+                var ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 saat
+
+                if (!lastShown || (now - parseInt(lastShown, 10)) > ONE_DAY_MS) {
+                  (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {
+                    basicSubscriptions.init({
+                      type: "NewsArticle",
+                      isPartOfType: ["Product"],
+                      isPartOfProductId: "CAowz_nMDA:openaccess",
+                      clientOptions: { theme: "light", lang: "tr" },
+                    });
+                    localStorage.setItem('swg_last_shown_time', now.toString());
+                  });
+                }
+              } catch (_) {}
             `,
           }}
         />
