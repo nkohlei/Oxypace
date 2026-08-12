@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Disallow admin/internal paths
+Disallow: /api/
+Disallow: /messages/
+Disallow: /_next/
+
+# Sitemap
+Sitemap: https://oxypace.com.tr/sitemap.xml
