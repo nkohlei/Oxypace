@@ -215,8 +215,8 @@ export default function ArticleClient({ initialPost, slug }) {
       <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 animate-fade-in-up">
         <article className="glass-card p-6 sm:p-10 rounded-2xl">
           {/* Category Tag & Meta */}
-          <div className="flex items-center gap-4 text-xs font-mono text-zinc-500 mb-6 flex-wrap">
-            <span className="border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 px-2.5 py-0.5 rounded text-zinc-700 dark:text-zinc-300 font-semibold">
+          <div className="flex items-center gap-4 text-xs font-mono mb-6 flex-wrap" style={{ color: "var(--foreground-muted)" }}>
+            <span className="border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 px-2.5 py-0.5 rounded font-semibold" style={{ color: "var(--foreground)" }}>
               {post.category}
             </span>
             <span>{post.date}</span>
@@ -231,7 +231,7 @@ export default function ArticleClient({ initialPost, slug }) {
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl mb-6 leading-tight uppercase font-sans">
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl mb-6 leading-tight uppercase font-sans" style={{ color: "var(--foreground)" }}>
             {post.title}
           </h1>
 
@@ -250,7 +250,7 @@ export default function ArticleClient({ initialPost, slug }) {
                 />
               </div>
               <div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 group-hover:text-cyan-400 transition-colors">
+                <div className="text-sm font-bold flex items-center gap-2 group-hover:text-cyan-400 transition-colors" style={{ color: "var(--foreground)" }}>
                   <span>{author.name || "Bilal Yılmaz"}</span>
                   <span className="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-mono font-normal">
                     {author.badge || "Yazar"}
@@ -259,7 +259,7 @@ export default function ArticleClient({ initialPost, slug }) {
                     (Profili Gör ↗)
                   </span>
                 </div>
-                <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                <div className="text-xs font-mono" style={{ color: "var(--foreground-muted)" }}>
                   {author.title || "Founder & CEO of Oxypace"}
                 </div>
               </div>
