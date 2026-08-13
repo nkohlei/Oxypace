@@ -24,11 +24,11 @@
   --glass-border-hover: rgba(0, 0, 0, 0.12);
   --glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.02), 0 8px 32px rgba(0, 0, 0, 0.02);
   --glass-shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.04), 0 24px 64px rgba(0, 0, 0, 0.03);
-  --nav-bg: rgba(250, 249, 246, 0.40);
-  --modal-bg: rgba(255, 255, 255, 0.35);
+  --nav-bg: rgba(250, 249, 246, 0.85);
+  --modal-bg: rgba(255, 255, 255, 0.95);
   --scrollbar-thumb: rgba(0, 0, 0, 0.10);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
-  --panel-bg: rgba(255, 255, 255, 0.15);
+  --panel-bg: rgba(255, 255, 255, 0.80);
 }
 
 /* ── DARK MODE ── */
@@ -273,8 +273,58 @@ html, body {
 }
 
 /* ============================================================
-   PROGRESS BAR — neutral gradient, no neon
+   ARTICLE TYPOGRAPHY CONTRAST & THEME FIXES
    ============================================================ */
+
+/* Light mode text contrast overrides */
+html:not(.dark) .prose {
+  color: #1e293b !important;
+}
+
+html:not(.dark) .prose h1,
+html:not(.dark) .prose h2,
+html:not(.dark) .prose h3,
+html:not(.dark) .prose h4,
+html:not(.dark) .prose h5,
+html:not(.dark) .prose h6 {
+  color: #0f172a !important;
+}
+
+html:not(.dark) .prose p,
+html:not(.dark) .prose li,
+html:not(.dark) .prose strong {
+  color: #334155 !important;
+}
+
+html:not(.dark) .prose blockquote {
+  color: #475569 !important;
+  border-left-color: var(--accent) !important;
+}
+
+/* Dark mode text contrast overrides */
+.dark .prose {
+  color: #cbd5e1 !important;
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose h5,
+.dark .prose h6 {
+  color: #ffffff !important;
+}
+
+.dark .prose p,
+.dark .prose li,
+.dark .prose strong {
+  color: #e2e8f0 !important;
+}
+
+.dark .prose blockquote {
+  color: #94a3b8 !important;
+  border-left-color: var(--accent) !important;
+}
 
 .progress-bar-gradient {
   background: linear-gradient(

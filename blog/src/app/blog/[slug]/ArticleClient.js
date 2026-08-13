@@ -279,7 +279,7 @@ export default function ArticleClient({ initialPost, slug }) {
 
           {/* Article Body */}
           <div
-            className="prose prose-zinc dark:prose-invert max-w-none text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-6 text-base font-sans"
+            className="prose prose-slate dark:prose-invert max-w-none text-slate-800 dark:text-zinc-200 leading-relaxed space-y-6 text-base font-sans"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 
