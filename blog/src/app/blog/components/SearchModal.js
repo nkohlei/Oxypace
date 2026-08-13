@@ -309,10 +309,11 @@ export default function SearchModal({ isOpen, onClose, lang = "tr" }) {
 
           {results.map((post) => {
             const hasCover = !!post.image;
+            const postUrl = `/blog/post?slug=${post.slug}`;
             return (
               <a
                 key={post.id || post.slug}
-                href={`/blog/${post.slug}`}
+                href={postUrl}
                 onClick={onClose}
                 style={{ textDecoration: "none", display: "block" }}
               >

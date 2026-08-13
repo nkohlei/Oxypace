@@ -512,7 +512,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                     filteredPosts.map((post) => (
                       <Link
                         key={post.id || post.slug}
-                        href={`/blog/${post.slug}`}
+                        href={`/blog/post?slug=${post.slug}`}
                         onClick={() => { setMobileSearchOpen(false); setSearchQuery(""); }}
                         className="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
                         style={{ borderBottom: "1px solid var(--border-color)", textDecoration: "none" }}
