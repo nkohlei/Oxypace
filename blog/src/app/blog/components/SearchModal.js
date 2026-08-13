@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { posts as staticPosts } from "../data/posts";
+import { formatBlogImageUrl } from "../utils/imageHelper";
 
 const TRANSLATIONS = {
   tr: {
@@ -444,36 +445,25 @@ export default function SearchModal({ isOpen, onClose, lang = "tr" }) {
                       justifyContent: "center",
                     }}
                   >
-                    {hasCover ? (
-                      <img
-                        src={post.image}
-                        alt={post.title}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          transition: "transform 0.3s ease",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.transform = "scale(1.08)")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.transform = "scale(1)")
-                        }
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: "18px",
-                          opacity: 0.5,
-                        }}
-                      >
-                        🌌
-                      </span>
-                    )}
+                    <img
+                      src={formatBlogImageUrl(post.image)}
+                      alt={post.title}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        transition: "transform 0.3s ease",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.transform = "scale(1.08)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.transform = "scale(1)")
+                      }
+                      onError={(e) => {
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80";
+                      }}
+                    />
                   </div>
                 </div>
               </a>

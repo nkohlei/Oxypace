@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import SearchModal from "./SearchModal";
 import { posts } from "../data/posts";
+import { formatBlogImageUrl } from "../utils/imageHelper";
 
 /* ── Left nav items (non-article pages) ── */
 const LEFT_NAV = [
@@ -525,11 +526,14 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                           {post.excerpt && <span className="text-[10px] line-clamp-1 opacity-70" style={{ color: "var(--foreground-muted)" }}>{post.excerpt}</span>}
                         </div>
                         <div className="w-14 h-11 rounded-lg overflow-hidden shrink-0 bg-white/5 border border-white/10 flex items-center justify-center">
-                          {post.image ? (
-                            <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs">🌌</span>
-                          )}
+                          <img
+                            src={formatBlogImageUrl(post.image)}
+                            alt={post.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80";
+                            }}
+                          />
                         </div>
                       </Link>
                     ))
