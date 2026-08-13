@@ -244,10 +244,24 @@ router.get('/', async (req, res) => {
         }
 
         if (search) {
+            const trimmedSearch = search.trim();
+            // Build regex that matches both original search term and Turkish normalized variations
+            const normalizeStr = (str) =>
+                str.replace(/i/g, '[iİıI]').replace(/ı/g, '[iİıI]')
+                   .replace(/s/g, '[sŞşS]').replace(/ş/g, '[sŞşS]')
+                   .replace(/g/g, '[gĞğG]').replace(/ğ/g, '[gĞğG]')
+                   .replace(/u/g, '[uÜüU]').replace(/ü/g, '[uÜüU]')
+                   .replace(/o/g, '[oÖöO]').replace(/ö/g, '[oÖöO]')
+                   .replace(/c/g, '[cÇçC]').replace(/ç/g, '[cÇçC]');
+
+            const fuzzyPattern = normalizeStr(trimmedSearch);
+            const regex = new RegExp(fuzzyPattern, 'i');
+
             query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { excerpt: { $regex: search, $options: 'i' } },
-                { category: { $regex: search, $options: 'i' } }
+                { title: regex },
+                { excerpt: regex },
+                { category: regex },
+                { content: regex }
             ];
         }
 

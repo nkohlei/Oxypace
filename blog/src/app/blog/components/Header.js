@@ -35,12 +35,52 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
   const dropdownRef = useRef(null);
   const t = NAV_LABELS[lang] || NAV_LABELS.tr;
 
-  const filteredPosts = searchQuery.trim() === "" 
-    ? [] 
-    : posts.filter(p => 
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        p.excerpt?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category?.toLowerCase().includes(searchQuery.toLowerCase())
+  const [allPosts, setAllPosts] = useState([]);
+
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const apiUrl =
+          typeof window !== "undefined"
+            ? window.location.origin.includes("localhost")
+              ? "http://localhost:5000/api/blog"
+              : "/api/blog"
+            : "/api/blog";
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setAllPosts(data.map(p => ({ ...p, id: p._id || p.id })));
+          } else {
+            setAllPosts(posts);
+          }
+        } else {
+          setAllPosts(posts);
+        }
+      } catch (e) {
+        setAllPosts(posts);
+      }
+    };
+    loadPosts();
+  }, []);
+
+  const normalizeStr = (text = "") =>
+    text
+      .toString()
+      .toLowerCase()
+      .replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s")
+      .replace(/ı/g, "i").replace(/ö/g, "o").replace(/ç/g, "c")
+      .trim();
+
+  const normQuery = normalizeStr(searchQuery);
+
+  const filteredPosts = normQuery === ""
+    ? []
+    : allPosts.filter(p =>
+        normalizeStr(p.title || "").includes(normQuery) ||
+        normalizeStr(p.excerpt || "").includes(normQuery) ||
+        normalizeStr(p.category || "").includes(normQuery) ||
+        normalizeStr(p.content || "").includes(normQuery)
       );
 
   /* Initialise theme from localStorage */
@@ -473,11 +513,24 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                         key={post.id || post.slug}
                         href={`/blog/${post.slug}`}
                         onClick={() => { setMobileSearchOpen(false); setSearchQuery(""); }}
-                        className="flex flex-col p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                        style={{ borderBottom: "1px solid var(--border-color)" }}
+                        className="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
+                        style={{ borderBottom: "1px solid var(--border-color)", textDecoration: "none" }}
                       >
-                        <span className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{post.title}</span>
-                        <span className="text-[10px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>{post.category} · {post.date}</span>
+                        <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="badge-category text-[9px] px-1.5 py-0.5 rounded font-semibold">{post.category || "Teorik Fizik"}</span>
+                            {post.readTime && <span className="text-[10px]" style={{ color: "var(--foreground-subtle)" }}>{post.readTime}</span>}
+                          </div>
+                          <span className="text-xs font-semibold truncate" style={{ color: "var(--foreground)" }}>{post.title}</span>
+                          {post.excerpt && <span className="text-[10px] line-clamp-1 opacity-70" style={{ color: "var(--foreground-muted)" }}>{post.excerpt}</span>}
+                        </div>
+                        <div className="w-14 h-11 rounded-lg overflow-hidden shrink-0 bg-white/5 border border-white/10 flex items-center justify-center">
+                          {post.image ? (
+                            <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs">🌌</span>
+                          )}
+                        </div>
                       </Link>
                     ))
                   ) : (
