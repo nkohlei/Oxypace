@@ -9,9 +9,10 @@ import { body, param, query, validationResult } from 'express-validator';
 export const validate = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+        const errorArray = errors.array();
         return res.status(400).json({
-            message: 'Validation error',
-            errors: errors.array().map((err) => ({
+            message: errorArray[0]?.msg || 'Doğrulama hatası',
+            errors: errorArray.map((err) => ({
                 field: err.path,
                 message: err.msg,
             })),

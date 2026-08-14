@@ -34,6 +34,25 @@ const Register = () => {
             setError('E-posta ve kullanıcı adı zorunludur');
             return;
         }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email.trim())) {
+            setError('Geçerli bir e-posta adresi girin');
+            return;
+        }
+
+        const trimmedUsername = formData.username.trim();
+        if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+            setError('Kullanıcı adı 3-30 karakter arasında olmalıdır');
+            return;
+        }
+
+        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!usernameRegex.test(trimmedUsername)) {
+            setError('Kullanıcı adı sadece harf, rakam ve alt çizgi (_) içerebilir');
+            return;
+        }
+
         setStep(2);
     };
 
@@ -52,13 +71,28 @@ const Register = () => {
             return;
         }
 
-        if (formData.password !== formData.confirmPassword) {
-            setError('Şifreler eşleşmiyor');
+        if (formData.password.length < 8) {
+            setError('Şifre en az 8 karakter olmalıdır');
             return;
         }
 
-        if (formData.password.length < 6) {
-            setError('Şifre en az 6 karakter olmalı');
+        if (!/[A-Z]/.test(formData.password)) {
+            setError('Şifre en az bir büyük harf içermelidir (A-Z)');
+            return;
+        }
+
+        if (!/[a-z]/.test(formData.password)) {
+            setError('Şifre en az bir küçük harf içermelidir (a-z)');
+            return;
+        }
+
+        if (!/[0-9]/.test(formData.password)) {
+            setError('Şifre en az bir rakam içermelidir (0-9)');
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Şifreler eşleşmiyor');
             return;
         }
 
@@ -66,8 +100,8 @@ const Register = () => {
 
         try {
             const response = await axios.post('/api/auth/register', {
-                email: formData.email,
-                username: formData.username,
+                email: formData.email.trim(),
+                username: formData.username.trim(),
                 password: formData.password,
                 bannedDevice: localStorage.getItem('banned_device') || undefined,
             });
@@ -81,7 +115,10 @@ const Register = () => {
         } catch (err) {
             console.error(err);
             const baseURL = axios.defaults.baseURL || 'Tanımsız (Undefined)';
-            const errorMsg = err.response?.data?.message || `Bağlantı Hatası! (Hedef: ${baseURL})`;
+            const errorMsg =
+                err.response?.data?.errors?.[0]?.message ||
+                err.response?.data?.message ||
+                `Bağlantı Hatası! (Hedef: ${baseURL})`;
             setError(errorMsg);
         } finally {
             setLoading(false);
@@ -205,7 +242,7 @@ const Register = () => {
                                         type={showPassword ? 'text' : 'password'}
                                         id="password"
                                         name="password"
-                                        placeholder="En az 6 karakter"
+                                        placeholder="En az 8 karakter (büyük, küçük harf, rakam)"
                                         value={formData.password}
                                         onChange={handleChange}
                                         required
@@ -219,6 +256,7 @@ const Register = () => {
                                         <PasswordToggleIcon show={showPassword} />
                                     </button>
                                 </div>
+                                <small>En az 8 karakter, 1 büyük harf, 1 küçük harf ve 1 rakam içermelidir</small>
                             </div>
 
                             <div className="form-group">

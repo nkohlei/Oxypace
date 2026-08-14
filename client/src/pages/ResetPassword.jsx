@@ -24,13 +24,28 @@ const ResetPassword = () => {
         setMessage('');
         setError('');
 
-        if (formData.newPassword !== formData.confirmPassword) {
-            setError('Şifreler eşleşmiyor');
+        if (formData.newPassword.length < 8) {
+            setError('Şifre en az 8 karakter olmalıdır');
             return;
         }
 
-        if (formData.newPassword.length < 6) {
-            setError('Şifre en az 6 karakter olmalı');
+        if (!/[A-Z]/.test(formData.newPassword)) {
+            setError('Şifre en az bir büyük harf içermelidir (A-Z)');
+            return;
+        }
+
+        if (!/[a-z]/.test(formData.newPassword)) {
+            setError('Şifre en az bir küçük harf içermelidir (a-z)');
+            return;
+        }
+
+        if (!/[0-9]/.test(formData.newPassword)) {
+            setError('Şifre en az bir rakam içermelidir (0-9)');
+            return;
+        }
+
+        if (formData.newPassword !== formData.confirmPassword) {
+            setError('Şifreler eşleşmiyor');
             return;
         }
 
@@ -38,8 +53,8 @@ const ResetPassword = () => {
 
         try {
             await axios.post('/api/auth/reset-password', {
-                email: formData.email,
-                code: formData.code,
+                email: formData.email.trim(),
+                code: formData.code.trim(),
                 newPassword: formData.newPassword,
             });
             setMessage('Şifreniz başarıyla sıfırlandı! Giriş sayfasına yönlendiriliyorsunuz...');
@@ -47,7 +62,11 @@ const ResetPassword = () => {
                 navigate('/login');
             }, 3000);
         } catch (err) {
-            setError(err.response?.data?.message || 'Bir hata oluştu.');
+            setError(
+                err.response?.data?.errors?.[0]?.message ||
+                err.response?.data?.message ||
+                'Bir hata oluştu.'
+            );
         } finally {
             setLoading(false);
         }

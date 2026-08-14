@@ -59,16 +59,16 @@ router.post('/register', registerLimiter, registerValidation, async (req, res) =
 
         // Validation
         if (!email || !username || !password) {
-            return res.status(400).json({ message: 'Please provide all required fields' });
+            return res.status(400).json({ message: 'Lütfen tüm zorunlu alanları doldurun' });
         }
 
         // Check if user exists
         const userExists = await User.findOne({ $or: [{ email }, { username }] });
         if (userExists) {
             if (userExists.email === email) {
-                return res.status(400).json({ message: 'Email already registered' });
+                return res.status(400).json({ message: 'Bu e-posta adresi zaten kayıtlı' });
             }
-            return res.status(400).json({ message: 'Username already taken' });
+            return res.status(400).json({ message: 'Bu kullanıcı adı zaten kullanılıyor' });
         }
 
         // Create verification token
@@ -100,8 +100,8 @@ router.post('/register', registerLimiter, registerValidation, async (req, res) =
 
         res.status(201).json({
             message: emailSent
-                ? 'Registration successful! Please check your email to verify your account.'
-                : 'Registration successful! Your account has been automatically verified.',
+                ? 'Kayıt başarılı! Hesabınızı doğrulamak için lütfen e-postanızı kontrol edin.'
+                : 'Kayıt başarılı! Giriş yapabilirsiniz.',
             user: {
                 id: user._id,
                 email: user.email,
@@ -111,7 +111,7 @@ router.post('/register', registerLimiter, registerValidation, async (req, res) =
         });
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(500).json({ message: 'Server error during registration' });
+        res.status(500).json({ message: 'Kayıt işlemi sırasında bir sunucu hatası oluştu' });
     }
 });
 
