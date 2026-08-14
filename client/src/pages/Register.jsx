@@ -26,34 +26,72 @@ const Register = () => {
         setError('');
     };
 
-    const handleNextStep = (e) => {
+    const handleUsernameChange = (e) => {
+        let val = e.target.value;
+        if (val.includes('@')) {
+            setError('@ işareti otomatik olarak eklenmektedir, tekrar yazmanıza gerek yoktur.');
+            val = val.replace(/@/g, '');
+        } else {
+            setError('');
+        }
+
+        if (/[^a-zA-Z0-9_]/.test(val)) {
+            setError('Kullanıcı adı sadece İngilizce harf (a-z), rakam (0-9) ve alt çizgi (_) içerebilir.');
+            val = val.replace(/[^a-zA-Z0-9_]/g, '');
+        }
+
+        setFormData((prev) => ({ ...prev, username: val }));
+    };
+
+    const handleNextStep = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (!formData.email || !formData.username) {
+        const email = formData.email.trim();
+        const username = formData.username.trim();
+
+        if (!email || !username) {
             setError('E-posta ve kullanıcı adı zorunludur');
             return;
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email.trim())) {
-            setError('Geçerli bir e-posta adresi girin');
+        if (!emailRegex.test(email)) {
+            setError('Geçerli bir e-posta adresi girin (Örn: ornek@email.com)');
             return;
         }
 
-        const trimmedUsername = formData.username.trim();
-        if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+        if (username.length < 3 || username.length > 30) {
             setError('Kullanıcı adı 3-30 karakter arasında olmalıdır');
             return;
         }
 
-        const usernameRegex = /^[a-zA-Z0-9_]+$/;
-        if (!usernameRegex.test(trimmedUsername)) {
-            setError('Kullanıcı adı sadece harf, rakam ve alt çizgi (_) içerebilir');
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            setError('Kullanıcı adı sadece İngilizce harf, rakam ve alt çizgi (_) içerebilir');
             return;
         }
 
-        setStep(2);
+        setLoading(true);
+        try {
+            // Anlık olarak dünyadaki aktif posta sunucusu (DNS MX) ve kullanılabilirlik kontrolü
+            const response = await axios.post('/api/auth/validate-step1', {
+                email,
+                username,
+            });
+
+            if (response.data.success) {
+                setStep(2);
+            }
+        } catch (err) {
+            console.error(err);
+            const errorMsg =
+                err.response?.data?.errors?.[0]?.message ||
+                err.response?.data?.message ||
+                'E-posta veya kullanıcı adı doğrulanırken bir hata oluştu.';
+            setError(errorMsg);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePrevStep = () => {
@@ -213,22 +251,34 @@ const Register = () => {
 
                             <div className="form-group">
                                 <label htmlFor="username">Kullanıcı Adı</label>
-                                <input
-                                    type="text"
-                                    id="username"
-                                    name="username"
-                                    placeholder="Benzersiz bir kullanıcı adı seç"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    required
-                                />
-                                <small>Kullanıcı adı sonradan değiştirilemez</small>
+                                <div className="username-input-wrapper">
+                                    <span className="username-prefix">@</span>
+                                    <input
+                                        type="text"
+                                        id="username"
+                                        name="username"
+                                        placeholder="kullanici_adi"
+                                        value={formData.username}
+                                        onChange={handleUsernameChange}
+                                        autoComplete="off"
+                                        maxLength={30}
+                                        required
+                                    />
+                                </div>
+                                <small>Sadece harf, rakam ve alt çizgi (_) kullanılabilir</small>
                             </div>
 
                             {error && <div className="error-message">{error}</div>}
 
                             <button type="submit" className="btn btn-primary" disabled={loading}>
-                                İleri
+                                {loading ? (
+                                    <div
+                                        className="spinner"
+                                        style={{ width: '20px', height: '20px', margin: '0 auto' }}
+                                    ></div>
+                                ) : (
+                                    'İleri'
+                                )}
                             </button>
                         </>
                     )}

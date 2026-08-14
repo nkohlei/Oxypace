@@ -156,7 +156,8 @@ html.light .form-group label,
 
 /* Input fields */
 .form-group input,
-.password-input-wrapper input {
+.password-input-wrapper input,
+.username-input-wrapper input {
     background: rgba(255, 255, 255, 0.07) !important;
     border: 1px solid rgba(255, 255, 255, 0.18) !important;
     border-radius: 12px;
@@ -168,10 +169,50 @@ html.light .form-group label,
     width: 100%;
 }
 
+/* Username input with fixed @ prefix */
+.username-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.username-prefix {
+    position: absolute;
+    left: 14px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.45);
+    user-select: none;
+    pointer-events: none;
+    transition: color 0.2s ease;
+    z-index: 2;
+}
+
+html.light .username-prefix,
+:root[data-theme="light"] .username-prefix {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.username-input-wrapper input {
+    padding-left: 32px !important;
+}
+
+.username-input-wrapper:focus-within .username-prefix {
+    color: #818cf8;
+}
+
+html.light .username-input-wrapper:focus-within .username-prefix,
+:root[data-theme="light"] .username-input-wrapper:focus-within .username-prefix {
+    color: #4f46e5;
+}
+
 html.light .form-group input,
 html.light .password-input-wrapper input,
+html.light .username-input-wrapper input,
 :root[data-theme="light"] .form-group input,
-:root[data-theme="light"] .password-input-wrapper input {
+:root[data-theme="light"] .password-input-wrapper input,
+:root[data-theme="light"] .username-input-wrapper input {
     background: rgba(0, 0, 0, 0.04) !important;
     border-color: rgba(0, 0, 0, 0.2) !important;
     color: #111111 !important;

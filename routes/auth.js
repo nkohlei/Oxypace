@@ -15,6 +15,7 @@ import {
     passwordResetValidation,
     newPasswordValidation,
 } from '../middleware/validation.js';
+import { verifyEmailDomain } from '../utils/emailVerifier.js';
 
 const router = express.Router();
 
@@ -24,6 +25,51 @@ const generateToken = (id, isAdmin = false) => {
         expiresIn: '30d',
     });
 };
+
+// @route   POST /api/auth/validate-step1
+// @desc    Pre-validate email, username and check real email domain existence
+// @access  Public
+router.post('/validate-step1', registerLimiter, async (req, res) => {
+    try {
+        const { email, username } = req.body;
+
+        if (!email || !username) {
+            return res.status(400).json({ message: 'E-posta ve kullanıcı adı zorunludur' });
+        }
+
+        const trimmedEmail = email.trim().toLowerCase();
+        const trimmedUsername = username.trim();
+
+        // Username format check
+        if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+            return res.status(400).json({ message: 'Kullanıcı adı 3-30 karakter arasında olmalıdır' });
+        }
+
+        if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+            return res.status(400).json({ message: 'Kullanıcı adı sadece İngilizce harf, rakam ve alt çizgi (_) içerebilir' });
+        }
+
+        // Email real-world existence and MX check
+        const domainCheck = await verifyEmailDomain(trimmedEmail);
+        if (!domainCheck.valid) {
+            return res.status(400).json({ message: domainCheck.message });
+        }
+
+        // Check if user already exists
+        const userExists = await User.findOne({ $or: [{ email: trimmedEmail }, { username: trimmedUsername }] });
+        if (userExists) {
+            if (userExists.email.toLowerCase() === trimmedEmail) {
+                return res.status(400).json({ message: 'Bu e-posta adresi zaten kayıtlı' });
+            }
+            return res.status(400).json({ message: 'Bu kullanıcı adı zaten kullanılıyor' });
+        }
+
+        return res.json({ success: true, message: 'Bilgiler geçerli' });
+    } catch (err) {
+        console.error('Validate step1 error:', err);
+        return res.status(500).json({ message: 'Doğrulama sırasında hata oluştu' });
+    }
+});
 
 // @route   POST /api/auth/register
 // @desc    Register new user
@@ -62,10 +108,19 @@ router.post('/register', registerLimiter, registerValidation, async (req, res) =
             return res.status(400).json({ message: 'Lütfen tüm zorunlu alanları doldurun' });
         }
 
+        const trimmedEmail = email.trim().toLowerCase();
+        const trimmedUsername = username.trim();
+
+        // Real-world email MX & domain check
+        const domainCheck = await verifyEmailDomain(trimmedEmail);
+        if (!domainCheck.valid) {
+            return res.status(400).json({ message: domainCheck.message });
+        }
+
         // Check if user exists
-        const userExists = await User.findOne({ $or: [{ email }, { username }] });
+        const userExists = await User.findOne({ $or: [{ email: trimmedEmail }, { username: trimmedUsername }] });
         if (userExists) {
-            if (userExists.email === email) {
+            if (userExists.email.toLowerCase() === trimmedEmail) {
                 return res.status(400).json({ message: 'Bu e-posta adresi zaten kayıtlı' });
             }
             return res.status(400).json({ message: 'Bu kullanıcı adı zaten kullanılıyor' });
