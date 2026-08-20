@@ -6,17 +6,21 @@
 .gallery-single-image-wrapper {
     position: relative;
     width: 100%;
-    max-height: 520px;
-    border-radius: 16px;
+    max-width: 100%;
+    max-height: 440px;
+    border-radius: 14px;
     overflow: hidden;
     cursor: pointer;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .gallery-single-image-wrapper .gallery-image.single-img {
     width: 100%;
-    max-height: 520px;
+    max-height: 440px;
     object-fit: cover;
     display: block;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -51,18 +55,21 @@
 .post-gallery-carousel-wrapper {
     position: relative;
     width: 100%;
-    max-height: 520px;
-    border-radius: 16px;
+    max-width: 100%;
+    height: 380px;
+    max-height: 380px;
+    border-radius: 14px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.2);
+    background: #090c10;
     border: 1px solid var(--border-subtle);
     user-select: none;
+    box-sizing: border-box;
 }
 
 .post-gallery-scroll-container {
     display: flex;
     width: 100%;
-    max-height: 520px;
+    height: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
@@ -78,19 +85,21 @@
 .post-gallery-slide {
     flex: 0 0 100%;
     width: 100%;
-    max-height: 520px;
+    height: 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    background: #0b0e14;
+    background: #090c10;
+    position: relative;
+    overflow: hidden;
 }
 
 .post-gallery-slide .gallery-image.slide-img {
     width: 100%;
-    max-height: 520px;
+    height: 100%;
     object-fit: cover;
     display: block;
     transition: filter 0.2s ease;
@@ -371,6 +380,19 @@
 }
 
 @media (max-width: 768px) {
+    .gallery-single-image-wrapper {
+        max-height: 280px;
+    }
+
+    .gallery-single-image-wrapper .gallery-image.single-img {
+        max-height: 280px;
+    }
+
+    .post-gallery-carousel-wrapper {
+        height: 260px;
+        max-height: 260px;
+    }
+
     .oxypace-lightbox-nav-btn {
         width: 40px;
         height: 40px;

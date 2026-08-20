@@ -179,17 +179,13 @@
 .post-media {
     margin-bottom: 12px;
     margin-top: 8px;
-    max-height: 350px;
+    width: 100%;
+    max-width: 100%;
     display: flex;
     justify-content: flex-start;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    min-height: 200px; /* Reserve height while loading to prevent layout shifts */
-}
-
-.post-media:has(.native-player-container) {
-    max-height: none !important;
-    min-height: auto;
+    background: transparent;
+    overflow: hidden;
 }
 
 .post-media img,
