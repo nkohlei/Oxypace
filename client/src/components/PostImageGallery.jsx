@@ -1,19 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
+import { getImageUrl } from '../utils/imageUtils';
 import './PostImageGallery.css';
-
-/**
- * Helper to ensure an image URL is valid and proxied/absolute
- */
-const getImageUrl = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
-        return url;
-    }
-    const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
-    return `https://img.oxypace.com/${cleanUrl}`;
-};
 
 export const PostImageGallery = ({ media, isOptimistic = false }) => {
     // Normalise media into an array of string URLs
