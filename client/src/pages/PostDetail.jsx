@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { shouldShowTranslation } from '../utils/languageUtils';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -91,7 +92,46 @@ const PostDetail = () => {
     
     // Menu State
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const menuBtnRef = useRef(null);
     const menuRef = useRef(null);
+
+    const handleMenuToggle = (e) => {
+        e.stopPropagation();
+        setIsMenuOpen(prev => {
+            if (!prev && menuBtnRef.current) {
+                const rect = menuBtnRef.current.getBoundingClientRect();
+                setMenuPosition({
+                    top: rect.bottom + 6,
+                    left: Math.max(10, rect.right - 165),
+                });
+            }
+            return !prev;
+        });
+    };
+
+    // Menu Click outside listener
+    useEffect(() => {
+        if (!isMenuOpen) return;
+        const handleClickOutside = (event) => {
+            const clickedMenu = event.target.closest('.pd-dropdown-menu');
+            const clickedBtn = menuBtnRef.current && menuBtnRef.current.contains(event.target);
+            if (!clickedMenu && !clickedBtn) {
+                setIsMenuOpen(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            document.addEventListener('click', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }, 0);
+
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('click', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isMenuOpen]);
 
     // Translation State
     const [isTranslated, setIsTranslated] = useState(false);
@@ -118,14 +158,6 @@ const PostDetail = () => {
     useEffect(() => {
         fetchPost();
         
-        // Click outside listener for menu
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setIsMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        
         // Socket listener for real-time updates
         if (socket && connected) {
             const handleUpdatePost = (updatedPost) => {
@@ -137,14 +169,9 @@ const PostDetail = () => {
             socket.on('post:updated', handleUpdatePost);
             
             return () => {
-                document.removeEventListener('mousedown', handleClickOutside);
                 socket.off('post:updated', handleUpdatePost);
             };
         }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
     }, [postId, socket, connected]);
 
     const fetchPost = async () => {
@@ -385,30 +412,59 @@ const PostDetail = () => {
                                 </div>
                             </Link>
 
-                            <div className="pd-actions-wrapper" ref={menuRef}>
+                            <div className="pd-actions-wrapper">
                                 <button 
+                                    ref={menuBtnRef}
                                     className={`pd-menu-trigger ${isMenuOpen ? 'active' : ''}`}
-                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                    onClick={handleMenuToggle}
                                 >
                                     <MoreVertical size={20} />
                                 </button>
 
-                                {isMenuOpen && (
-                                    <div className="pd-dropdown-menu">
-                                        <div className="pd-menu-item" onClick={handleShare}>
+                                {isMenuOpen && createPortal(
+                                    <div
+                                        ref={menuRef}
+                                        className="pd-dropdown-menu"
+                                        style={{
+                                            position: 'fixed',
+                                            top: menuPosition.top,
+                                            left: menuPosition.left,
+                                            zIndex: 999999,
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <div
+                                            className="pd-menu-item"
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                handleShare();
+                                            }}
+                                        >
                                             <div className="pd-menu-item-icon">
                                                 <Share2 size={17} />
                                             </div>
                                             <span className="pd-menu-item-label">Gönder</span>
                                         </div>
-                                        <div className="pd-menu-item" onClick={handleSave}>
+                                        <div
+                                            className="pd-menu-item"
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                handleSave();
+                                            }}
+                                        >
                                             <div className="pd-menu-item-icon">
                                                 <Bookmark size={17} fill={saved ? 'currentColor' : 'none'} />
                                             </div>
                                             <span className="pd-menu-item-label">{saved ? 'Kaydı Kaldır' : 'Kaydet'}</span>
                                         </div>
                                         {((post.media && post.media.length > 0) || post.pdfUrl) && (
-                                            <div className="pd-menu-item" onClick={handleDownload}>
+                                            <div
+                                                className="pd-menu-item"
+                                                onClick={(e) => {
+                                                    setIsMenuOpen(false);
+                                                    handleDownload(e);
+                                                }}
+                                            >
                                                 <div className="pd-menu-item-icon">
                                                     <Download size={17} />
                                                 </div>
@@ -418,7 +474,13 @@ const PostDetail = () => {
                                         {isOwner && (
                                             <>
                                                 <div className="pd-menu-divider" />
-                                                <div onClick={handleDelete} className="pd-menu-item pd-delete-action">
+                                                <div
+                                                    onClick={() => {
+                                                        setIsMenuOpen(false);
+                                                        handleDelete();
+                                                    }}
+                                                    className="pd-menu-item pd-delete-action"
+                                                >
                                                     <div className="pd-menu-item-icon">
                                                         <Trash2 size={17} />
                                                     </div>
@@ -426,7 +488,8 @@ const PostDetail = () => {
                                                 </div>
                                             </>
                                         )}
-                                    </div>
+                                    </div>,
+                                    document.body
                                 )}
                             </div>
                         </header>

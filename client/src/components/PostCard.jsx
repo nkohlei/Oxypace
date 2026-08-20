@@ -133,12 +133,29 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
     const [saved, setSaved] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const moreBtnRef = useRef(null);
+    const floatingMenuRef = useRef(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showQuoteModal, setShowQuoteModal] = useState(false);
     const [showReportModal, setShowReportModal] = useState(false);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const MAX_LENGTH = 150;
+
+    const handleMenuToggle = (e) => {
+        e.stopPropagation();
+        setShowMenu(prev => {
+            if (!prev && moreBtnRef.current) {
+                const rect = moreBtnRef.current.getBoundingClientRect();
+                setMenuPosition({
+                    top: rect.bottom + 6,
+                    left: Math.max(10, rect.right - 165),
+                });
+            }
+            return !prev;
+        });
+    };
 
 
     // Translation State
@@ -419,23 +436,24 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
     // Auto-close menu on outside click (Mobile/General)
     useEffect(() => {
+        if (!showMenu) return;
         const handleClickOutside = (event) => {
-            if (showMenu) {
-                // If click is not inside the menu or on the toggle button, close it.
-                // Note: We rely on event bubbling and specific class names or refs if needed.
-                // But a simple document click that isn't stopped by the menu itself acts as "outside".
-                // However, we stopped propagation on the menu itself.
-                // So any click that reaches document is "outside".
+            const clickedMenu = event.target.closest('.post-floating-menu');
+            const clickedBtn = moreBtnRef.current && moreBtnRef.current.contains(event.target);
+            if (!clickedMenu && !clickedBtn) {
                 setShowMenu(false);
             }
         };
 
-        if (showMenu) {
+        const timer = setTimeout(() => {
             document.addEventListener('click', handleClickOutside);
-        }
+            document.addEventListener('touchstart', handleClickOutside);
+        }, 0);
 
         return () => {
+            clearTimeout(timer);
             document.removeEventListener('click', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
         };
     }, [showMenu]);
 
@@ -562,28 +580,36 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
                         {/* Three-dot menu button (horizontal) */}
                         <button
+                            ref={moreBtnRef}
                             className="post-action-btn"
                             aria-label="Gönderi seçenekleri"
                             aria-haspopup="true"
                             aria-expanded={showMenu}
                             title="Daha Fazla"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setShowMenu(!showMenu);
-                            }}
+                            onClick={handleMenuToggle}
                         >
                             <MoreHorizontal size={18} />
                         </button>
 
-                        {/* Floating Context Menu */}
-                        {showMenu && (
+                        {/* Floating Context Menu (Portal based to blur all background content) */}
+                        {showMenu && createPortal(
                             <div
+                                ref={floatingMenuRef}
                                 className="post-floating-menu"
+                                style={{
+                                    position: 'fixed',
+                                    top: menuPosition.top,
+                                    left: menuPosition.left,
+                                    zIndex: 999999,
+                                }}
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <div
                                     className="menu-item"
-                                    onClick={handleQuote}
+                                    onClick={() => {
+                                        setShowMenu(false);
+                                        handleQuote();
+                                    }}
                                 >
                                     <div className="menu-item-icon">
                                         <Quote size={17} />
@@ -605,7 +631,13 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                 </div>
                                 
                                 {(post.media || post.pdfUrl) && (
-                                    <div className="menu-item" onClick={handleDownload}>
+                                    <div
+                                        className="menu-item"
+                                        onClick={(e) => {
+                                            setShowMenu(false);
+                                            handleDownload(e);
+                                        }}
+                                    >
                                         <div className="menu-item-icon">
                                             <Download size={17} />
                                         </div>
@@ -613,7 +645,13 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                     </div>
                                 )}
 
-                                <div className="menu-item" onClick={handleShare}>
+                                <div
+                                    className="menu-item"
+                                    onClick={() => {
+                                        setShowMenu(false);
+                                        handleShare();
+                                    }}
+                                >
                                     <div className="menu-item-icon">
                                         <Send size={17} />
                                     </div>
@@ -626,8 +664,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                         <div
                                             className="menu-item"
                                             onClick={() => {
-                                                onPin(post._id);
                                                 setShowMenu(false);
+                                                onPin(post._id);
                                             }}
                                         >
                                             <div className="menu-item-icon">
@@ -644,7 +682,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                     <>
                                         <div
                                             className="menu-item"
-                                            onClick={handleArchiveToggle}
+                                            onClick={() => {
+                                                setShowMenu(false);
+                                                handleArchiveToggle();
+                                            }}
                                         >
                                             <div className="menu-item-icon">
                                                 <Archive size={17} />
@@ -670,6 +711,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                     className="menu-item delete-item"
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        setShowMenu(false);
                                         handleMenuAction('report');
                                     }}
                                 >
@@ -678,7 +720,8 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                     </div>
                                     <span className="menu-item-label">Bildir</span>
                                 </div>
-                            </div>
+                            </div>,
+                            document.body
                         )}
                     </div>
                 </div>
