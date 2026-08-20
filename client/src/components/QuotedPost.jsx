@@ -7,6 +7,7 @@ import UserBadges from './UserBadges';
 import { extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import UserAvatar from './UserAvatar';
+import PostImageGallery from './PostImageGallery';
 
 const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
     const navigate = useNavigate();
@@ -213,15 +214,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                 <div className="video-badge"><Youtube size={12} /> YouTube</div>
                             </div>
                         ) : (
-                            <img
-                                src={getImageUrl(activePost.media)}
-                                alt="Quoted media"
-                                className="quoted-image-element"
-                                loading="lazy"
-                                decoding="async"
-                                width="600"
-                                height="400"
-                            />
+                            <PostImageGallery media={activePost.media} />
                         )}
                     </div>
                 )}

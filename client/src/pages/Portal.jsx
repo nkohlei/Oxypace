@@ -77,7 +77,9 @@ const Portal = () => {
     const videoInputRef = useRef(null);
     const gifInputRef = useRef(null);
     const pdfInputRef = useRef(null);
-    const [mediaFile, setMediaFile] = useState(null);
+    const [mediaFile, setMediaFile] = useState(null); // Used for single video/gif/pdf/youtube
+    const [mediaFiles, setMediaFiles] = useState([]); // Array of File objects for multi-image (up to 10)
+    const [mediaPreviews, setMediaPreviews] = useState([]); // Array of { url, name, size } for previews
     const [quotedPost, setQuotedPost] = useState(null);
     const [uploadPercentage, setUploadPercentage] = useState(0);
     const [uploadLoading, setUploadLoading] = useState(false);
@@ -347,6 +349,61 @@ const Portal = () => {
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
     }, []);
 
+    const handleImageSelect = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        // Reset single mediaFile (video/gif/pdf) if selecting photos
+        setMediaFile(null);
+        isVideoFileRef.current = false;
+
+        const currentCount = mediaFiles.length;
+        const remainingSlots = 10 - currentCount;
+
+        if (remainingSlots <= 0) {
+            triggerToast("Bir gönderiye en fazla 10 görsel ekleyebilirsiniz.", 'warning');
+            return;
+        }
+
+        const allowedFiles = files.slice(0, remainingSlots);
+        if (files.length > remainingSlots) {
+            triggerToast(`En fazla 10 görsel ekleyebilirsiniz. İlk ${remainingSlots} görsel eklendi.`, 'warning');
+        }
+
+        const validFiles = [];
+        const newPreviews = [];
+
+        for (const file of allowedFiles) {
+            if (file.size > 2 * 1024 * 1024 * 1024) {
+                triggerToast(`${file.name} boyutu 2 GB'dan büyük olamaz.`, 'error');
+                continue;
+            }
+            validFiles.push(file);
+            newPreviews.push({
+                url: URL.createObjectURL(file),
+                name: file.name,
+                size: file.size,
+                file: file
+            });
+        }
+
+        setMediaFiles((prev) => [...prev, ...validFiles]);
+        setMediaPreviews((prev) => [...prev, ...newPreviews]);
+        setShowPlusMenu(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleRemoveImage = (indexToRemove) => {
+        setMediaFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+        setMediaPreviews((prev) => {
+            const item = prev[indexToRemove];
+            if (item && item.url && item.url.startsWith('blob:')) {
+                try { URL.revokeObjectURL(item.url); } catch (e) {}
+            }
+            return prev.filter((_, idx) => idx !== indexToRemove);
+        });
+    };
+
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -354,6 +411,9 @@ const Portal = () => {
                 triggerToast("Dosya boyutu 2 GB'dan büyük olamaz.", 'error');
                 return;
             }
+            // Clear multi-images when choosing single video/gif/pdf
+            setMediaFiles([]);
+            setMediaPreviews([]);
             setMediaFile(file);
             // Track whether the selected file is a video
             isVideoFileRef.current = file.type.startsWith('video/') ||
@@ -366,7 +426,7 @@ const Portal = () => {
     useEffect(() => {
         if (!socket || !id) return;
 
-        if (messageText.trim().length > 0 || mediaFile !== null) {
+        if (messageText.trim().length > 0 || mediaFile !== null || mediaFiles.length > 0) {
             if (!isTypingSent) {
                 setIsTypingSent(true);
                 socket.emit('portal_typing', { portalId: id, isTyping: true });
@@ -377,7 +437,7 @@ const Portal = () => {
                 setIsTypingSent(false);
             }
         }
-    }, [messageText, mediaFile, id, socket, isTypingSent]);
+    }, [messageText, mediaFile, mediaFiles, id, socket, isTypingSent]);
 
     useEffect(() => {
         return () => {
@@ -388,7 +448,11 @@ const Portal = () => {
     }, [id, socket, isTypingSent]);
 
     const handleSendMessage = async () => {
-        if (!messageText.trim() && !mediaFile) return;
+        const hasText = messageText.trim().length > 0;
+        const hasSingleMedia = !!mediaFile;
+        const hasMultiImages = mediaFiles.length > 0;
+
+        if (!hasText && !hasSingleMedia && !hasMultiImages) return;
 
         // Clear typing indicator instantly on send
         if (socket && id) {
@@ -397,18 +461,37 @@ const Portal = () => {
         setIsTypingSent(false);
 
         // Store current data for rollback if needed
-        const currentData = { content: messageText, media: mediaFile };
+        const currentData = {
+            content: messageText,
+            media: mediaFile,
+            mediaFiles: [...mediaFiles],
+            mediaPreviews: [...mediaPreviews]
+        };
 
         // Check if it's a YouTube "file"
         const isYoutube = mediaFile && mediaFile.type === 'youtube';
 
         // 1. Optimistic Update
         const tempId = `temp-${Date.now()}`;
+        let optimisticMedia = null;
+        let optimisticMediaType = null;
+
+        if (isYoutube) {
+            optimisticMedia = mediaFile.url;
+            optimisticMediaType = 'youtube';
+        } else if (hasMultiImages) {
+            optimisticMedia = mediaPreviews.map(p => p.url);
+            optimisticMediaType = 'image';
+        } else if (mediaFile) {
+            optimisticMedia = URL.createObjectURL(mediaFile);
+            optimisticMediaType = mediaFile.type.startsWith('video') ? 'video' : (mediaFile.type.includes('gif') ? 'gif' : 'image');
+        }
+
         const optimisticPost = {
             _id: tempId,
             content: messageText,
-            media: isYoutube ? mediaFile.url : (mediaFile ? URL.createObjectURL(mediaFile) : null),
-            mediaType: isYoutube ? 'youtube' : (mediaFile ? (mediaFile.type.startsWith('video') ? 'video' : 'image') : null),
+            media: optimisticMedia,
+            mediaType: optimisticMediaType || 'none',
             author: user,
             createdAt: new Date().toISOString(),
             likes: [],
@@ -423,12 +506,15 @@ const Portal = () => {
         // Clear input immediately
         setMessageText('');
         setMediaFile(null);
+        setMediaFiles([]);
+        setMediaPreviews([]);
         setShowPlusMenu(false);
         setUploadLoading(true);
         setUploadPercentage(0);
 
         try {
             let mediaKey = null;
+            let mediaKeys = null;
             let youtubeMedia = null;
             let youtubeMediaType = null;
             let videoQualitiesPayload = null;
@@ -436,6 +522,23 @@ const Portal = () => {
             if (isYoutube) {
                 youtubeMedia = currentData.media.url;
                 youtubeMediaType = 'youtube';
+            } else if (currentData.mediaFiles && currentData.mediaFiles.length > 0) {
+                // Multi-image upload flow (up to 10 images in parallel)
+                const totalFiles = currentData.mediaFiles.length;
+                const fileProgresses = new Array(totalFiles).fill(0);
+
+                const uploadPromises = currentData.mediaFiles.map((file, idx) => {
+                    return uploadFile(file, 'post', id, (progress) => {
+                        fileProgresses[idx] = progress;
+                        const avgProgress = Math.round(fileProgresses.reduce((a, b) => a + b, 0) / totalFiles);
+                        setUploadPercentage(avgProgress);
+                        setPosts((current) =>
+                            current.map((p) => String(p._id) === String(tempId) ? { ...p, uploadProgress: avgProgress } : p)
+                        );
+                    });
+                });
+
+                mediaKeys = await Promise.all(uploadPromises);
             } else if (currentData.media) {
                 if (isVideoFileRef.current) {
                     // Start background video upload
@@ -499,7 +602,10 @@ const Portal = () => {
                 quotedPostId: quotedPost?._id,
             };
 
-            if (mediaKey) {
+            if (mediaKeys && mediaKeys.length > 0) {
+                postData.mediaKeys = mediaKeys;
+                postData.mediaType = 'image';
+            } else if (mediaKey) {
                 postData.mediaKey = mediaKey;
                 if (isVideoFileRef.current) {
                     postData.mediaType = 'video';
@@ -518,7 +624,6 @@ const Portal = () => {
             const res = await axios.post('/api/posts', postData);
 
             setQuotedPost(null); // Clear after send
-
 
             // 2. Success: Replace temp post with real data
             const tempStrId = String(tempId);
@@ -547,12 +652,13 @@ const Portal = () => {
             console.error('Send message failed', err);
             const errorMsg = err.response?.data?.message || err.message;
             triggerToast(errorMsg, 'error');
-            // console.error(err);
 
-            // 3. Failure: Remove optimistic post and restore input (optional)
+            // 3. Failure: Remove optimistic post and restore input
             setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
             setMessageText(currentData.content);
             setMediaFile(currentData.media);
+            setMediaFiles(currentData.mediaFiles || []);
+            setMediaPreviews(currentData.mediaPreviews || []);
         } finally {
             setUploadLoading(false);
             setUploadPercentage(0);
@@ -1591,9 +1697,10 @@ const Portal = () => {
                                                                         <input
                                                                             type="file"
                                                                             ref={fileInputRef}
-                                                                            onChange={handleFileSelect}
+                                                                            onChange={handleImageSelect}
                                                                             style={{ display: 'none' }}
-                                                                            accept="image/png, image/jpeg, image/jpg"
+                                                                            accept="image/png, image/jpeg, image/jpg, image/webp"
+                                                                            multiple
                                                                         />
                                                                         <input
                                                                             type="file"
@@ -1857,13 +1964,13 @@ const Portal = () => {
                                                                                     onClick={handleSendMessage}
                                                                                     disabled={
                                                                                         uploadLoading || (isImageChannel
-                                                                                            ? !mediaFile
-                                                                                            : !messageText.trim() && !mediaFile)
+                                                                                            ? (!mediaFile && mediaFiles.length === 0)
+                                                                                            : (!messageText.trim() && !mediaFile && mediaFiles.length === 0))
                                                                                     }
                                                                                     title="Gönder"
                                                                                     style={{
                                                                                         color:
-                                                                                            messageText.trim() || mediaFile
+                                                                                            messageText.trim() || mediaFile || mediaFiles.length > 0
                                                                                                 ? 'var(--primary-color)'
                                                                                                 : 'var(--text-tertiary)',
                                                                                     }}
@@ -1896,6 +2003,46 @@ const Portal = () => {
                                                                                 </button>
                                                                             </div>
                                                                         </div>
+
+                                                                        {/* Multi-Image Selected Previews Gallery (Left to Right, Square Grid/Row) */}
+                                                                        {mediaPreviews && mediaPreviews.length > 0 && (
+                                                                            <div className="portal-image-previews-container">
+                                                                                <div className="portal-image-previews-header">
+                                                                                    <span className="portal-image-previews-count">
+                                                                                        Seçilen Görseller ({mediaPreviews.length}/10)
+                                                                                    </span>
+                                                                                    {mediaPreviews.length < 10 && (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="portal-add-more-images-btn"
+                                                                                            onClick={() => fileInputRef.current?.click()}
+                                                                                        >
+                                                                                            + Görsel Ekle
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="portal-image-previews-list">
+                                                                                    {mediaPreviews.map((preview, index) => (
+                                                                                        <div key={index} className="portal-image-preview-item">
+                                                                                            <img
+                                                                                                src={preview.url}
+                                                                                                alt={`Preview ${index + 1}`}
+                                                                                                className="portal-image-preview-thumb"
+                                                                                            />
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                className="portal-image-remove-btn"
+                                                                                                onClick={() => handleRemoveImage(index)}
+                                                                                                title="Görseli Kaldır"
+                                                                                            >
+                                                                                                <X size={14} />
+                                                                                            </button>
+                                                                                            <span className="portal-image-index-badge">{index + 1}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
                                                                         {/* Portal Typing Indicator */}
                                                                         {portalTypingUsers && portalTypingUsers.length > 0 && (
                                                                             <div className="portal-typing-indicator" style={{ marginTop: '8px' }}>

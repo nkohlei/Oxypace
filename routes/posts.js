@@ -56,7 +56,7 @@ router.post(
             const { content, portalId, media, mediaType, quotedPostId } = req.body;
 
             // If no file and no content and no external media and no direct upload, reject
-            if (!content && !req.file && !media && !req.body.mediaKey) {
+            if (!content && !req.file && !media && !req.body.mediaKey && (!req.body.mediaKeys || req.body.mediaKeys.length === 0)) {
                 console.log('📤 Rejected: No content, no file, no mediaKey, and no external media');
                 return res.status(400).json({ message: 'Post must have content or media' });
             }
@@ -127,19 +127,60 @@ router.post(
                 }
             }
 
-            // PDF File Handling & Generation
-            let pdfKey = null;
-            let pdfName = '';
-            let pdfSize = 0;
+            // Check for multi-image upload
+            const mediaKeys = req.body.mediaKeys || (req.body.mediaKey ? [req.body.mediaKey] : null);
+            if (Array.isArray(mediaKeys) && mediaKeys.length > 0) {
+                const limitedKeys = mediaKeys.slice(0, 10);
+                const isSingle = limitedKeys.length === 1;
+                
+                // If it's a PDF
+                const firstKey = limitedKeys[0];
+                const isPdf = firstKey.split('?')[0].split('.').pop().toLowerCase() === 'pdf';
 
-            if (req.body.mediaKey && req.body.mediaKey.split('.').pop().toLowerCase() === 'pdf') {
-                pdfKey = req.body.mediaKey;
-                pdfName = req.body.pdfName || 'Doküman.pdf';
-                pdfSize = Number(req.body.pdfSize) || 0;
-            } else if (req.file && (req.file.mimetype === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf'))) {
-                pdfKey = req.file.key;
-                pdfName = req.file.originalname;
-                pdfSize = req.file.size;
+                if (isPdf) {
+                    pdfKey = firstKey;
+                    pdfName = req.body.pdfName || 'Doküman.pdf';
+                    pdfSize = Number(req.body.pdfSize) || 0;
+                } else {
+                    const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'm4v'];
+                    const ext = firstKey.split('?')[0].split('.').pop().toLowerCase();
+                    const isVideo = req.body.mediaType === 'video' || videoExts.includes(ext);
+
+                    if (isVideo) {
+                        postData.mediaType = 'video';
+                        const actualVideoUrl = constructProxiedUrl(firstKey);
+                        postData.isProcessing = true;
+                        postData.processingProgress = 0;
+                        postData.estimatedTime = 'Hesaplanıyor...';
+                        postData.videoQualities = {
+                            high:  actualVideoUrl,
+                            low:   actualVideoUrl,
+                            p144:  '',
+                            p360:  '',
+                            p720:  '',
+                            p1080: actualVideoUrl,
+                            p2160: ''
+                        };
+                        postData.video144    = '';
+                        postData.video360    = '';
+                        postData.video720    = '';
+                        postData.video1080   = actualVideoUrl;
+                        postData.videoUrl    = actualVideoUrl;
+                        postData.lowVideoUrl = actualVideoUrl;
+                        postData.media       = actualVideoUrl;
+                    } else {
+                        postData.mediaType = req.body.mediaType || 'image';
+                        if (isSingle) {
+                            postData.media = constructProxiedUrl(firstKey);
+                        } else {
+                            postData.media = limitedKeys.map(k => constructProxiedUrl(k));
+                        }
+                    }
+                }
+            } else if (Array.isArray(media) && media.length > 0) {
+                const limitedMedia = media.slice(0, 10);
+                postData.media = limitedMedia.length === 1 ? limitedMedia[0] : limitedMedia;
+                postData.mediaType = mediaType || 'image';
             }
 
             if (pdfKey) {
@@ -174,72 +215,35 @@ router.post(
                     console.log('✅ [POST Route] PDF thumbnail uploaded successfully:', postData.pdfThumbnailUrl);
                 } catch (thumbError) {
                     console.error('❌ [POST Route] Failed to generate/upload PDF thumbnail:', thumbError);
-                    // Non-blocking fallback: create post even if thumbnail generation fails
                 }
-            } else {
-                // Direct Cloud Upload support (Presigned URL)
-                if (req.body.mediaKey) {
-                    postData.media = constructProxiedUrl(req.body.mediaKey);
-                    // If mediaType isn't provided, try to infer it from extension
-                    if (req.body.mediaType) {
-                        postData.mediaType = req.body.mediaType;
-                    } else {
-                        const ext = req.body.mediaKey.split('.').pop().toLowerCase();
-                        const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'm4v'];
-                        postData.mediaType = videoExts.includes(ext) ? 'video' : 'image';
-                    }
+            } else if (req.file) {
+                postData.media = constructProxiedUrl(req.file.key);
+                console.log('📤 Media Proxied URL (from utility):', postData.media);
 
-                    if (postData.mediaType === 'video') {
-                        const actualVideoUrl = constructProxiedUrl(req.body.mediaKey);
-                        postData.isProcessing = true;
-                        postData.processingProgress = 0;
-                        postData.estimatedTime = 'Hesaplanıyor...';
-                        postData.videoQualities = {
-                            high:  actualVideoUrl,
-                            low:   actualVideoUrl,
-                            p144:  '',
-                            p360:  '',
-                            p720:  '',
-                            p1080: actualVideoUrl,
-                            p2160: ''
-                        };
-                        postData.video144    = '';
-                        postData.video360    = '';
-                        postData.video720    = '';
-                        postData.video1080   = actualVideoUrl;
-                        postData.videoUrl    = actualVideoUrl;
-                        postData.lowVideoUrl = actualVideoUrl;
-                        postData.media       = actualVideoUrl;
-                    }
-                } else if (req.file) {
-                    postData.media = constructProxiedUrl(req.file.key);
-                    console.log('📤 Media Proxied URL (from utility):', postData.media);
-
-                    if (req.file.mimetype.includes('video')) {
-                        postData.mediaType = 'video';
-                        const actualVideoUrl = postData.media;
-                        postData.isProcessing = true;
-                        postData.processingProgress = 0;
-                        postData.estimatedTime = 'Hesaplanıyor...';
-                        postData.videoQualities = {
-                            high:  actualVideoUrl,
-                            low:   actualVideoUrl,
-                            p144:  '',
-                            p360:  '',
-                            p720:  '',
-                            p1080: actualVideoUrl,
-                            p2160: ''
-                        };
-                        postData.video144    = '';
-                        postData.video360    = '';
-                        postData.video720    = '';
-                        postData.video1080   = actualVideoUrl;
-                        postData.videoUrl    = actualVideoUrl;
-                        postData.lowVideoUrl = actualVideoUrl;
-                        postData.media       = actualVideoUrl;
-                    } else {
-                        postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
-                    }
+                if (req.file.mimetype.includes('video')) {
+                    postData.mediaType = 'video';
+                    const actualVideoUrl = postData.media;
+                    postData.isProcessing = true;
+                    postData.processingProgress = 0;
+                    postData.estimatedTime = 'Hesaplanıyor...';
+                    postData.videoQualities = {
+                        high:  actualVideoUrl,
+                        low:   actualVideoUrl,
+                        p144:  '',
+                        p360:  '',
+                        p720:  '',
+                        p1080: actualVideoUrl,
+                        p2160: ''
+                    };
+                    postData.video144    = '';
+                    postData.video360    = '';
+                    postData.video720    = '';
+                    postData.video1080   = actualVideoUrl;
+                    postData.videoUrl    = actualVideoUrl;
+                    postData.lowVideoUrl = actualVideoUrl;
+                    postData.media       = actualVideoUrl;
+                } else {
+                    postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
                 }
             }
 

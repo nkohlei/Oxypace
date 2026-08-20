@@ -23,6 +23,7 @@ import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
 import ReportModal from './ReportModal';
 import VideoDownloadModal from './VideoDownloadModal';
+import PostImageGallery from './PostImageGallery';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -838,14 +839,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                             ) : post.mediaType === 'youtube' ? (
                                 <YouTubeFacade media={post.media} />
                             ) : (
-                                <img
-                                    src={getImageUrl(post.media)}
-                                    alt="Post media"
-                                    loading="lazy"
-                                    decoding="async"
-                                    width="600"
-                                    height="400"
-                                />
+                                <PostImageGallery media={post.media} isOptimistic={post.isOptimistic} />
                             )}
                             {post.isOptimistic && (
                                 <div className="post-card-upload-overlay" style={{

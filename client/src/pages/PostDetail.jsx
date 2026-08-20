@@ -31,6 +31,7 @@ import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from '../components/LinkPreview';
 import QuotedPost from '../components/QuotedPost';
 import VideoDownloadModal from '../components/VideoDownloadModal';
+import PostImageGallery from '../components/PostImageGallery';
 
 // YouTube video ID'sini URL'den çıkar
 const extractYouTubeId = (url) => {
@@ -497,44 +498,40 @@ const PostDetail = () => {
                                 <QuotedPost quotedPost={post.quotedPost} viewer={user} />
                             )}
 
-                            {post.media && post.media.length > 0 && (
+                            {post.media && (
                                 <div className="pd-media-showcase">
-                                    {(Array.isArray(post.media) ? post.media : [post.media]).map((m, i) => (
-                                        <div key={i} className="pd-media-item">
-                                            {post.mediaType === 'video' ? (
-                                                <>
-                                                    <VideoPlayer 
-                                                        src={getImageUrl(m)} 
-                                                        qualities={post.videoQualities} 
-                                                        videoUrl={getImageUrl(post.videoUrl)} 
-                                                        lowVideoUrl={getImageUrl(post.lowVideoUrl)} 
-                                                        video144={getImageUrl(post.video144)}
-                                                        video360={getImageUrl(post.video360)}
-                                                        video720={getImageUrl(post.video720)}
-                                                        video1080={getImageUrl(post.video1080)}
-                                                        video2160={getImageUrl(post.video2160)}
-                                                        isProcessing={post.isProcessing}
-                                                        processingProgress={post.processingProgress}
-                                                        estimatedTime={post.estimatedTime}
-                                                    />
-                                                    <div className="post-video-id-wrapper">
-                                                        <span
-                                                            className="post-video-id-badge"
-                                                            onClick={handleCopyVideoId}
-                                                            title="Birlikte İzle için Video ID'sini Kopyala"
-                                                        >
-                                                            <Film size={12} className="video-id-icon" />
-                                                            <span className="video-id-label">Video ID:</span>
-                                                            <code className="video-id-val">{post._id}</code>
-                                                            {copiedVideoId ? <Check size={12} color="#10b981" /> : <Copy size={12} className="copy-icon" />}
-                                                        </span>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <img src={getImageUrl(m)} alt="" />
-                                            )}
+                                    {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
+                                        <div className="pd-media-item">
+                                            <VideoPlayer 
+                                                src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)} 
+                                                qualities={post.videoQualities} 
+                                                videoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.videoUrl)} 
+                                                lowVideoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.lowVideoUrl)} 
+                                                video144={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video144)} 
+                                                video360={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video360)} 
+                                                video720={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video720)} 
+                                                video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)} 
+                                                video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)} 
+                                                isProcessing={post.mediaType === 'videoUrl' ? false : post.isProcessing} 
+                                                processingProgress={post.processingProgress} 
+                                                estimatedTime={post.estimatedTime} 
+                                            />
+                                            <div className="post-video-id-wrapper">
+                                                <span
+                                                    className="post-video-id-badge"
+                                                    onClick={handleCopyVideoId}
+                                                    title="Birlikte İzle için Video ID'sini Kopyala"
+                                                >
+                                                    <Film size={12} className="video-id-icon" />
+                                                    <span className="video-id-label">Video ID:</span>
+                                                    <code className="video-id-val">{post._id}</code>
+                                                    {copiedVideoId ? <Check size={12} color="#10b981" /> : <Copy size={12} className="copy-icon" />}
+                                                </span>
+                                            </div>
                                         </div>
-                                    ))}
+                                    ) : (
+                                        <PostImageGallery media={post.media} />
+                                    )}
                                 </div>
                             )}
                         </div>

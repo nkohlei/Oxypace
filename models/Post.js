@@ -25,7 +25,7 @@ const postSchema = new mongoose.Schema(
             default: 'none',
         },
         media: {
-            type: String, // URL to uploaded image/gif
+            type: mongoose.Schema.Types.Mixed, // String URL or Array of String URLs
             default: '',
         },
         pdfUrl: {

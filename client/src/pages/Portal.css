@@ -2077,4 +2077,137 @@ img, video, iframe {
     }
 }
 
+/* =============================================
+   PORTAL MULTI-IMAGE PREVIEWS (Square Grid / Row)
+   ============================================= */
+.portal-image-previews-container {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: fadeIn 0.25s ease-out;
+}
+
+.portal-image-previews-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.portal-image-previews-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.portal-add-more-images-btn {
+    background: transparent;
+    border: 1px dashed var(--primary-cyan);
+    color: var(--primary-cyan);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.portal-add-more-images-btn:hover {
+    background: rgba(0, 240, 255, 0.1);
+    transform: scale(1.03);
+}
+
+.portal-image-previews-list {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.portal-image-previews-list::-webkit-scrollbar {
+    height: 4px;
+}
+
+.portal-image-previews-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.portal-image-preview-item {
+    position: relative;
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.portal-image-preview-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-cyan);
+}
+
+.portal-image-preview-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.portal-image-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.75);
+    border: none;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.portal-image-remove-btn:hover {
+    background: #ef4444;
+    transform: scale(1.15);
+}
+
+.portal-image-index-badge {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    pointer-events: none;
+    line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+    .portal-image-preview-item {
+        width: 60px;
+        height: 60px;
+        min-width: 60px;
+    }
+}
+
+
 

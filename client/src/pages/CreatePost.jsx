@@ -12,13 +12,16 @@ import './CreatePost.css';
 const CreatePost = () => {
     const [content, setContent] = useState('');
     const [externalUrl, setExternalUrl] = useState('');
-    const [mediaFile, setMediaFile] = useState(null);
-    const [mediaPreview, setMediaPreview] = useState(null);
+    const [mediaFile, setMediaFile] = useState(null); // Used for single video/gif/pdf
+    const [mediaFiles, setMediaFiles] = useState([]); // Array of File objects (up to 10)
+    const [mediaPreview, setMediaPreview] = useState(null); // Single preview (video/gif/pdf/youtube)
+    const [mediaPreviews, setMediaPreviews] = useState([]); // Array of preview objects for multi-image
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [showYoutubeInput, setShowYoutubeInput] = useState(false);
     const [loading, setLoading] = useState(false);
     const [uploadPercentage, setUploadPercentage] = useState(0);
     const [error, setError] = useState('');
+    const fileInputRef = useRef(null);
     const navigate = useNavigate();
     const location = useLocation();
     const portalId = location.state?.portalId;
@@ -45,44 +48,117 @@ const CreatePost = () => {
         if (videoId) {
             setMediaPreview(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
             setMediaFile(null);
+            setMediaFiles([]);
+            setMediaPreviews([]);
         } else if (!url) {
             setMediaPreview(null);
         }
     };
 
     const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 2 * 1024 * 1024 * 1024) {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        const firstFile = files[0];
+        const isPdf = firstFile.type === 'application/pdf' || firstFile.name.toLowerCase().endsWith('.pdf');
+        const isVideo = firstFile.type.startsWith('video/') ||
+            ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(firstFile.name.split('.').pop().toLowerCase());
+        const isGif = firstFile.type === 'image/gif';
+
+        if (isPdf || isVideo || isGif) {
+            if (firstFile.size > 2 * 1024 * 1024 * 1024) {
                 setError("Dosya boyutu 2 GB'dan büyük olamaz.");
                 return;
             }
-            setMediaFile(file);
-            isVideoRef.current = file.type.startsWith('video/') ||
-                ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(file.name.split('.').pop().toLowerCase());
+            setMediaFiles([]);
+            setMediaPreviews([]);
+            setMediaFile(firstFile);
+            isVideoRef.current = isVideo;
 
-            if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-                setMediaPreview({ isPdf: true, name: file.name, size: file.size });
+            if (isPdf) {
+                setMediaPreview({ isPdf: true, name: firstFile.name, size: firstFile.size });
             } else {
-                setMediaPreview(URL.createObjectURL(file));
+                setMediaPreview(URL.createObjectURL(firstFile));
             }
             setYoutubeUrl('');
             setShowYoutubeInput(false);
+            setError('');
+        } else {
+            // Multi-image selection flow (images only)
+            setMediaFile(null);
+            setMediaPreview(null);
+            isVideoRef.current = false;
+            setYoutubeUrl('');
+            setShowYoutubeInput(false);
+
+            const currentCount = mediaFiles.length;
+            const remainingSlots = 10 - currentCount;
+
+            if (remainingSlots <= 0) {
+                setError("Bir gönderiye en fazla 10 görsel ekleyebilirsiniz.");
+                return;
+            }
+
+            const allowedFiles = files.slice(0, remainingSlots);
+            if (files.length > remainingSlots) {
+                setError(`En fazla 10 görsel ekleyebilirsiniz. İlk ${remainingSlots} görsel eklendi.`);
+            } else {
+                setError('');
+            }
+
+            const validFiles = [];
+            const newPreviews = [];
+
+            for (const file of allowedFiles) {
+                if (file.size > 2 * 1024 * 1024 * 1024) {
+                    setError(`${file.name} boyutu 2 GB'dan büyük olamaz.`);
+                    continue;
+                }
+                validFiles.push(file);
+                newPreviews.push({
+                    url: URL.createObjectURL(file),
+                    name: file.name,
+                    size: file.size,
+                    file: file
+                });
+            }
+
+            setMediaFiles((prev) => [...prev, ...validFiles]);
+            setMediaPreviews((prev) => [...prev, ...newPreviews]);
         }
+
+        if (e.target) e.target.value = '';
     };
 
-    const removeMedia = () => {
+    const removeSingleMedia = () => {
         setMediaFile(null);
         setMediaPreview(null);
         setYoutubeUrl('');
         isVideoRef.current = false;
     };
 
+    const removeMultiImage = (indexToRemove) => {
+        setMediaFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+        setMediaPreviews((prev) => {
+            const item = prev[indexToRemove];
+            if (item && item.url && item.url.startsWith('blob:')) {
+                try { URL.revokeObjectURL(item.url); } catch (e) {}
+            }
+            return prev.filter((_, idx) => idx !== indexToRemove);
+        });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (!content.trim() && !mediaFile && !youtubeUrl && !externalUrl.trim()) {
+        const hasText = !!content.trim();
+        const hasSingleMedia = !!mediaFile;
+        const hasMultiImages = mediaFiles.length > 0;
+        const hasYoutube = !!youtubeUrl.trim();
+        const hasExternal = !!externalUrl.trim();
+
+        if (!hasText && !hasSingleMedia && !hasMultiImages && !hasYoutube && !hasExternal) {
             setError('Lütfen bir içerik veya medya ekleyin');
             return;
         }
@@ -97,13 +173,14 @@ const CreatePost = () => {
             }
 
             let mediaKey = null;
+            let mediaKeys = null;
             let videoQualitiesPayload = null;
             let youtubeMedia = null;
             let youtubeMediaType = null;
             let detectedVideo = null;
 
             // Detect external video URL
-            if (!mediaFile && !youtubeUrl && finalContent) {
+            if (!mediaFile && mediaFiles.length === 0 && !youtubeUrl && finalContent) {
                 const urlRegex = /(https?:\/\/[^\s]+)/gi;
                 const matches = finalContent.match(urlRegex);
                 if (matches) {
@@ -120,7 +197,21 @@ const CreatePost = () => {
                 }
             }
 
-            if (mediaFile) {
+            if (hasMultiImages) {
+                // Upload multiple images in parallel
+                const totalFiles = mediaFiles.length;
+                const fileProgresses = new Array(totalFiles).fill(0);
+
+                const uploadPromises = mediaFiles.map((file, idx) => {
+                    return uploadFile(file, 'post', portalId, (p) => {
+                        fileProgresses[idx] = p;
+                        const avgProgress = Math.round(fileProgresses.reduce((a, b) => a + b, 0) / totalFiles);
+                        setUploadPercentage(avgProgress);
+                    });
+                });
+
+                mediaKeys = await Promise.all(uploadPromises);
+            } else if (mediaFile) {
                 if (isVideoRef.current) {
                     // Start background upload
                     useUploadStore.getState().startVideoUpload({
@@ -148,7 +239,7 @@ const CreatePost = () => {
                 setUploadPercentage(100);
             }
 
-            if (!mediaFile && youtubeUrl) {
+            if (!mediaFile && mediaFiles.length === 0 && youtubeUrl) {
                 const videoId = getYoutubeId(youtubeUrl);
                 if (videoId) {
                     youtubeMedia = `https://www.youtube.com/watch?v=${videoId}`;
@@ -166,7 +257,10 @@ const CreatePost = () => {
                 quotedPostId: quotedPostId,
             };
 
-            if (mediaKey) {
+            if (mediaKeys && mediaKeys.length > 0) {
+                postData.mediaKeys = mediaKeys;
+                postData.mediaType = 'image';
+            } else if (mediaKey) {
                 postData.mediaKey = mediaKey;
                 if (isVideoRef.current) {
                     postData.mediaType = 'video';
@@ -245,7 +339,7 @@ const CreatePost = () => {
                         <button
                             className="share-btn"
                             onClick={handleSubmit}
-                            disabled={isSubmitting || (!content.trim() && !mediaFile && !externalUrl.trim() && !youtubeUrl.trim())}
+                            disabled={isSubmitting || (!content.trim() && !mediaFile && mediaFiles.length === 0 && !externalUrl.trim() && !youtubeUrl.trim())}
                         >
                             {isSubmitting ? (
                                 <>
@@ -327,6 +421,45 @@ const CreatePost = () => {
                             </div>
                         )}
 
+                        {/* Multi-Image Selected Previews Gallery (Left to Right, Square Grid) */}
+                        {mediaPreviews && mediaPreviews.length > 0 && (
+                            <div className="create-post-multi-images-container">
+                                <div className="create-post-multi-images-header">
+                                    <span className="create-post-multi-images-count">
+                                        Seçilen Görseller ({mediaPreviews.length}/10)
+                                    </span>
+                                    {mediaPreviews.length < 10 && (
+                                        <button
+                                            type="button"
+                                            className="create-post-add-more-btn"
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            + Görsel Ekle
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="create-post-multi-images-list">
+                                    {mediaPreviews.map((preview, index) => (
+                                        <div key={index} className="create-post-image-item">
+                                            <img src={preview.url} alt={`Preview ${index + 1}`} />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeMultiImage(index)}
+                                                className="create-post-image-remove-btn"
+                                                title="Görseli Kaldır"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                                </svg>
+                                            </button>
+                                            <span className="create-post-image-badge">{index + 1}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {mediaPreview && (
                             <div className="media-preview">
                                 {mediaPreview.isPdf ? (
@@ -356,7 +489,7 @@ const CreatePost = () => {
                                             <div style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 600 }}>{mediaPreview.name}</div>
                                             <div style={{ fontSize: '12px', color: '#94a3b8' }}>{(mediaPreview.size / (1024 * 1024)).toFixed(2)} MB</div>
                                         </div>
-                                        <button type="button" onClick={removeMedia} className="remove-btn">
+                                        <button type="button" onClick={removeSingleMedia} className="remove-btn">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <line x1="18" y1="6" x2="6" y2="18" />
                                                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -366,7 +499,7 @@ const CreatePost = () => {
                                 ) : (
                                     <>
                                         <img src={mediaPreview} alt="Preview" />
-                                        <button type="button" onClick={removeMedia} className="remove-btn">
+                                        <button type="button" onClick={removeSingleMedia} className="remove-btn">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <line x1="18" y1="6" x2="6" y2="18" />
                                                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -383,10 +516,12 @@ const CreatePost = () => {
                             <label className="media-btn">
                                 <input
                                     type="file"
+                                    ref={fileInputRef}
                                     accept="image/*,video/*,.gif,.pdf"
                                     onChange={handleFileChange}
                                     style={{ display: 'none' }}
                                     disabled={isTranscoding}
+                                    multiple
                                 />
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />

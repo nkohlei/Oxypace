@@ -41,6 +41,10 @@ const BACKEND_URL = process.env.BACKEND_URL || 'https://api.oxypace.com.tr';
  */
 function resolveMediaUrl(media) {
     if (!media) return null;
+    if (Array.isArray(media)) {
+        if (media.length === 0) return null;
+        return resolveMediaUrl(media[0]);
+    }
     if (typeof media !== 'string') return null;
     if (media.startsWith('http://') || media.startsWith('https://')) {
         return media;
