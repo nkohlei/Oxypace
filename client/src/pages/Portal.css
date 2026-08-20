@@ -2003,6 +2003,33 @@ img, video, iframe {
     }
 }
 
+/* Mobile sizing for portal plus menu */
+@media (max-width: 768px) {
+    .portal-plus-menu-portal {
+        width: 140px !important;
+        padding: 4px !important;
+        gap: 2px !important;
+        border-radius: 10px !important;
+    }
+
+    .portal-plus-menu-portal .plus-menu-item {
+        gap: 8px !important;
+        padding: 7px 9px !important;
+        font-size: 12.5px !important;
+        border-radius: 6px !important;
+    }
+
+    .portal-plus-menu-portal .plus-menu-icon {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .portal-plus-menu-portal .plus-menu-icon svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+}
+
 /* Collapsible Sidebar & Live Room Centering Integration */
 @media (min-width: 769px) {
     .discord-split-view.sidebar-collapsed .vc-container {

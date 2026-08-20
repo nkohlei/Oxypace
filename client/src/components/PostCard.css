@@ -479,6 +479,41 @@
     color: #ffffff !important;
 }
 
+/* Mobile sizing for post floating menu */
+@media (max-width: 768px) {
+    .post-floating-menu {
+        width: 140px !important;
+        padding: 4px !important;
+        gap: 2px !important;
+        border-radius: 10px !important;
+    }
+
+    .post-floating-menu .menu-item {
+        gap: 8px !important;
+        padding: 7px 9px !important;
+        font-size: 12.5px !important;
+        border-radius: 6px !important;
+    }
+
+    .post-floating-menu .menu-item-icon {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .post-floating-menu .menu-item-icon svg {
+        width: 15px !important;
+        height: 15px !important;
+    }
+
+    .post-floating-menu .menu-item-label {
+        font-size: 12.5px !important;
+    }
+
+    .post-floating-menu .menu-divider {
+        margin: 2px 3px !important;
+    }
+}
+
 .menu-item.delete-item {
     color: #f87171;
 }

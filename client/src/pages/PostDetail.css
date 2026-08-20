@@ -224,6 +224,41 @@
     color: #ffffff !important;
 }
 
+/* Mobile sizing for PostDetail dropdown menu */
+@media (max-width: 768px) {
+    .pd-dropdown-menu {
+        width: 140px !important;
+        padding: 4px !important;
+        gap: 2px !important;
+        border-radius: 10px !important;
+    }
+
+    .pd-dropdown-menu .pd-menu-item {
+        gap: 8px !important;
+        padding: 7px 9px !important;
+        font-size: 12.5px !important;
+        border-radius: 6px !important;
+    }
+
+    .pd-dropdown-menu .pd-menu-item-icon {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .pd-dropdown-menu .pd-menu-item-icon svg {
+        width: 15px !important;
+        height: 15px !important;
+    }
+
+    .pd-dropdown-menu .pd-menu-item-label {
+        font-size: 12.5px !important;
+    }
+
+    .pd-dropdown-menu .pd-menu-divider {
+        margin: 2px 3px !important;
+    }
+}
+
 /* CARD BODY */
 .pd-card-body {
     padding: 16px 20px;
