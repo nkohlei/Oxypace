@@ -387,6 +387,16 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
             const targetUrl = getDownloadUrlForQuality(post, downloadPref);
             const filename = targetUrl.split('/').pop() || `oxypace-video-${Date.now()}`;
             await nativeDownloadFile(getImageUrl(targetUrl), filename);
+        } else if (Array.isArray(post.media)) {
+            // Download all images sequentially/in parallel
+            for (let i = 0; i < post.media.length; i++) {
+                const img = post.media[i];
+                if (img) {
+                    const url = getImageUrl(img);
+                    const filename = url.split('/').pop() || `oxypace-post-${post._id}-${i + 1}.jpg`;
+                    await nativeDownloadFile(url, filename);
+                }
+            }
         } else {
             const url = getImageUrl(post.media);
             const filename = url.split('/').pop() || `oxypace-post-${Date.now()}`;

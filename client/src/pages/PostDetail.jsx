@@ -275,9 +275,17 @@ const PostDetail = () => {
             const targetUrl = getDownloadUrlForQuality(post, downloadPref);
             const filename = targetUrl.split('/').pop() || `oxypace-video-${Date.now()}`;
             await nativeDownloadFile(getImageUrl(targetUrl), filename);
+        } else if (Array.isArray(post.media)) {
+            for (let i = 0; i < post.media.length; i++) {
+                const img = post.media[i];
+                if (img) {
+                    const url = getImageUrl(img);
+                    const filename = url.split('/').pop() || `oxypace_post_${postId}_${i + 1}.jpg`;
+                    await nativeDownloadFile(url, filename);
+                }
+            }
         } else {
-            const mediaUrl = Array.isArray(post.media) ? post.media[0] : post.media;
-            const url = getImageUrl(mediaUrl);
+            const url = getImageUrl(post.media);
             const filename = url.split('/').pop() || `oxypace_post_${postId}`;
             await nativeDownloadFile(url, filename);
         }
