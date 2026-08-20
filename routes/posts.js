@@ -127,6 +127,11 @@ router.post(
                 }
             }
 
+            // PDF File Handling & Media Key parsing
+            let pdfKey = null;
+            let pdfName = '';
+            let pdfSize = 0;
+
             // Check for multi-image upload
             const mediaKeys = req.body.mediaKeys || (req.body.mediaKey ? [req.body.mediaKey] : null);
             if (Array.isArray(mediaKeys) && mediaKeys.length > 0) {
