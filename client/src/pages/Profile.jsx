@@ -19,6 +19,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import PostCard from '../components/PostCard';
 import LinkPreview from '../components/LinkPreview';
 import { extractFirstUrl } from '../utils/linkify';
+import PostImageGallery from '../components/PostImageGallery';
 import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
 import { useSocket } from '../context/SocketContext';
@@ -1375,15 +1376,7 @@ const Profile = () => {
                                                                                         </div>
                                                                                     </div>
                                                                                 ) : (
-                                                                                    <img
-                                                                                        src={getImageUrl(post.media)}
-                                                                                        alt="Post media"
-                                                                                        loading="lazy"
-                                                                                        decoding="async"
-                                                                                        width="600"
-                                                                                        height="400"
-                                                                                        onError={(e) => { e.target.style.display = 'none'; }}
-                                                                                    />
+                                                                                    <PostImageGallery media={post.media} />
                                                                                 )}
                                                                             </div>
                                                                         )}

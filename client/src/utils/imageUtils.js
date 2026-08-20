@@ -3,6 +3,14 @@ import { Capacitor } from '@capacitor/core';
 export const getImageUrl = (path, sizeType = 'original') => {
     if (!path) return null;
 
+    if (Array.isArray(path)) {
+        path = path[0] || '';
+    }
+
+    if (typeof path !== 'string') {
+        return null;
+    }
+
     let cleanPath = path;
 
     // Fix legacy URLs stored with 'undefined' prefix
