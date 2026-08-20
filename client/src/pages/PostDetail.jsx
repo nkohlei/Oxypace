@@ -395,25 +395,36 @@ const PostDetail = () => {
 
                                 {isMenuOpen && (
                                     <div className="pd-dropdown-menu">
-                                        <button onClick={handleShare}>
-                                            <Share2 size={16} />
-                                            <span>Gönder</span>
-                                        </button>
-                                        <button onClick={handleSave}>
-                                            <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
-                                            <span>{saved ? 'Kaydedildi' : 'Kaydet'}</span>
-                                        </button>
+                                        <div className="pd-menu-item" onClick={handleShare}>
+                                            <div className="pd-menu-item-icon">
+                                                <Share2 size={17} />
+                                            </div>
+                                            <span className="pd-menu-item-label">Gönder</span>
+                                        </div>
+                                        <div className="pd-menu-item" onClick={handleSave}>
+                                            <div className="pd-menu-item-icon">
+                                                <Bookmark size={17} fill={saved ? 'currentColor' : 'none'} />
+                                            </div>
+                                            <span className="pd-menu-item-label">{saved ? 'Kaydı Kaldır' : 'Kaydet'}</span>
+                                        </div>
                                         {((post.media && post.media.length > 0) || post.pdfUrl) && (
-                                            <button onClick={handleDownload}>
-                                                <Download size={16} />
-                                                <span>İndir</span>
-                                            </button>
+                                            <div className="pd-menu-item" onClick={handleDownload}>
+                                                <div className="pd-menu-item-icon">
+                                                    <Download size={17} />
+                                                </div>
+                                                <span className="pd-menu-item-label">İndir</span>
+                                            </div>
                                         )}
                                         {isOwner && (
-                                            <button onClick={handleDelete} className="pd-delete-action">
-                                                <Trash2 size={16} />
-                                                <span>Sil</span>
-                                            </button>
+                                            <>
+                                                <div className="pd-menu-divider" />
+                                                <div onClick={handleDelete} className="pd-menu-item pd-delete-action">
+                                                    <div className="pd-menu-item-icon">
+                                                        <Trash2 size={17} />
+                                                    </div>
+                                                    <span className="pd-menu-item-label">Sil</span>
+                                                </div>
+                                            </>
                                         )}
                                     </div>
                                 )}

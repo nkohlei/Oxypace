@@ -581,54 +581,60 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                 className="post-floating-menu"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <button
+                                <div
                                     className="menu-item"
                                     onClick={handleQuote}
                                 >
-                                    Alıntıla
-                                    <Quote size={18} className="menu-icon-right" />
-                                </button>
+                                    <div className="menu-item-icon">
+                                        <Quote size={17} />
+                                    </div>
+                                    <span className="menu-item-label">Alıntıla</span>
+                                </div>
 
-                                <button
+                                <div
                                     className="menu-item"
                                     onClick={() => {
                                         handleSave();
                                         setShowMenu(false);
                                     }}
                                 >
-                                    {saved ? 'Kaydı Kaldır' : 'Kaydet'}
-                                    <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} className="menu-icon-right" />
-                                </button>
+                                    <div className="menu-item-icon">
+                                        <Bookmark size={17} fill={saved ? 'currentColor' : 'none'} />
+                                    </div>
+                                    <span className="menu-item-label">{saved ? 'Kaydı Kaldır' : 'Kaydet'}</span>
+                                </div>
                                 
                                 {(post.media || post.pdfUrl) && (
-                                    <button className="menu-item" onClick={handleDownload}>
-                                        İndir
-                                        <Download size={18} className="menu-icon-right" />
-                                    </button>
+                                    <div className="menu-item" onClick={handleDownload}>
+                                        <div className="menu-item-icon">
+                                            <Download size={17} />
+                                        </div>
+                                        <span className="menu-item-label">İndir</span>
+                                    </div>
                                 )}
 
-                                <button className="menu-item" onClick={handleShare}>
-                                    Gönder
-                                    <Send size={18} className="menu-icon-right" />
-                                </button>
+                                <div className="menu-item" onClick={handleShare}>
+                                    <div className="menu-item-icon">
+                                        <Send size={17} />
+                                    </div>
+                                    <span className="menu-item-label">Gönder</span>
+                                </div>
 
                                 {isAdmin && (
                                     <>
                                         <div className="menu-divider"></div>
-                                        <button
+                                        <div
                                             className="menu-item"
                                             onClick={() => {
                                                 onPin(post._id);
                                                 setShowMenu(false);
                                             }}
                                         >
-                                            {post.isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}
-                                            {post.isPinned ? (
-                                                <PinOff size={18} className="menu-icon-right" />
-                                            ) : (
-                                                <Pin size={18} className="menu-icon-right" />
-                                            )}
-                                        </button>
+                                            <div className="menu-item-icon">
+                                                {post.isPinned ? <PinOff size={17} /> : <Pin size={17} />}
+                                            </div>
+                                            <span className="menu-item-label">{post.isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}</span>
+                                        </div>
                                     </>
                                 )}
 
@@ -636,14 +642,16 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
                                 {isOwnPost && (
                                     <>
-                                        <button
+                                        <div
                                             className="menu-item"
                                             onClick={handleArchiveToggle}
                                         >
-                                            {post.isArchived ? 'Arşivden Çıkar' : 'Arşivle'}
-                                            <Archive size={18} className="menu-icon-right" />
-                                        </button>
-                                        <button
+                                            <div className="menu-item-icon">
+                                                <Archive size={17} />
+                                            </div>
+                                            <span className="menu-item-label">{post.isArchived ? 'Arşivden Çıkar' : 'Arşivle'}</span>
+                                        </div>
+                                        <div
                                             className="menu-item delete-item"
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -651,18 +659,25 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                                 setShowDeleteConfirm(true);
                                             }}
                                         >
-                                            Sil
-                                            <Trash2 size={18} className="menu-icon-right" />
-                                        </button>
+                                            <div className="menu-item-icon">
+                                                <Trash2 size={17} />
+                                            </div>
+                                            <span className="menu-item-label">Sil</span>
+                                        </div>
                                     </>
                                 )}
-                                <button
+                                <div
                                     className="menu-item delete-item"
-                                    onClick={() => handleMenuAction('report')}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMenuAction('report');
+                                    }}
                                 >
-                                    Bildir
-                                    <Flag size={18} className="menu-icon-right" />
-                                </button>
+                                    <div className="menu-item-icon">
+                                        <Flag size={17} />
+                                    </div>
+                                    <span className="menu-item-label">Bildir</span>
+                                </div>
                             </div>
                         )}
                     </div>
