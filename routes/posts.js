@@ -117,7 +117,7 @@ router.post(
                 if (channelId !== 'general') {
                     const channel = portal.channels.find((c) => c._id.toString() === channelId);
                     if (channel && channel.type === 'image') {
-                        const hasMedia = req.file || req.body.mediaKey || (media && mediaType);
+                        const hasMedia = req.file || req.body.mediaKey || (Array.isArray(req.body.mediaKeys) && req.body.mediaKeys.length > 0) || (media && mediaType);
                         if (!hasMedia) {
                             return res.status(400).json({
                                 message: 'Bu kanalda en az 1 görsel paylaşılması zorunludur',
@@ -304,10 +304,10 @@ router.post(
                 .exec();
 
 
-            // Increment post count
-            await User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } });
+            // Increment post count (non-blocking)
+            User.findByIdAndUpdate(req.user._id, { $inc: { postCount: 1 } }).catch(e => console.error('Error incrementing postCount:', e));
 
-            // Create notification for quoted post author
+            // Create notification for quoted post author (non-blocking)
             if (quotedPostId) {
                 try {
                     const originalPost = await Post.findById(quotedPostId).populate('author');
@@ -335,17 +335,26 @@ router.post(
                 }
             }
 
-            // ... emit socket events ...
-            if (!postData.portal) {
-                req.app.get('io').emit('newPost', populatedPost);
-            } else {
-                req.app.get('io').emit('global:portal_activity', { 
-                    portalId: postData.portal.toString(),
-                    channelId: postData.channel.toString(),
-                    postId: post._id.toString()
-                });
+            // Emit socket events
+            try {
+                const io = req.app.get('io');
+                if (io) {
+                    if (!postData.portal) {
+                        io.emit('newPost', populatedPost);
+                    } else {
+                        io.emit('global:portal_activity', { 
+                            portalId: postData.portal.toString(),
+                            channelId: postData.channel.toString(),
+                            postId: post._id.toString()
+                        });
+                    }
+                }
+            } catch (socketErr) {
+                console.error('Socket emission error:', socketErr);
+            }
 
-                // --- PERSISTENT NOTIFICATIONS FOR OFFLINE USERS ---
+            // --- PERSISTENT NOTIFICATIONS FOR OFFLINE USERS ---
+            if (postData.portal) {
                 try {
                     const portal = await Portal.findById(postData.portal);
                     if (portal) {
@@ -368,10 +377,11 @@ router.post(
                 }
             }
 
-            return res.status(201).json(populatedPost);
+            return res.status(201).json(populatedPost || post);
         } catch (error) {
-            console.error('Create post error:', error);
-            return res.status(500).json({ message: 'Server error' });
+            console.error('❌ Create post error:', error);
+            console.error('❌ Stack:', error.stack);
+            return res.status(500).json({ message: error.message || 'Server error' });
         }
     }
 );
