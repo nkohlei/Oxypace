@@ -123,6 +123,17 @@ const Portal = () => {
     useEffect(() => {
         if (!showPlusMenu) return;
         let active = true;
+
+        const updatePosition = () => {
+            if (plusButtonRef.current) {
+                const rect = plusButtonRef.current.getBoundingClientRect();
+                setMenuPosition({
+                    top: rect.bottom + 8,
+                    left: rect.left,
+                });
+            }
+        };
+
         const handleClickOutside = (event) => {
             if (!active) return;
             const clickedMenu = event.target.closest('.plus-menu') || event.target.closest('.portal-plus-menu-portal');
@@ -139,11 +150,16 @@ const Portal = () => {
             }
         }, 0);
 
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+
         return () => {
             active = false;
             clearTimeout(timer);
             document.removeEventListener('click', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
         };
     }, [showPlusMenu]);
 

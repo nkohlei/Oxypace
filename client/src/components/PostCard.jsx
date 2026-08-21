@@ -148,9 +148,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
         setShowMenu(prev => {
             if (!prev && moreBtnRef.current) {
                 const rect = moreBtnRef.current.getBoundingClientRect();
+                const menuWidth = window.innerWidth <= 768 ? 140 : 165;
                 setMenuPosition({
                     top: rect.bottom + 6,
-                    left: Math.max(10, rect.right - 165),
+                    left: Math.max(10, rect.right - menuWidth),
                 });
             }
             return !prev;
@@ -434,9 +435,21 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
         }
     };
 
-    // Auto-close menu on outside click (Mobile/General)
+    // Auto-close menu on outside click & update position on scroll/resize (Mobile/General)
     useEffect(() => {
         if (!showMenu) return;
+
+        const updatePosition = () => {
+            if (moreBtnRef.current) {
+                const rect = moreBtnRef.current.getBoundingClientRect();
+                const menuWidth = window.innerWidth <= 768 ? 140 : 165;
+                setMenuPosition({
+                    top: rect.bottom + 6,
+                    left: Math.max(10, rect.right - menuWidth),
+                });
+            }
+        };
+
         const handleClickOutside = (event) => {
             const clickedMenu = event.target.closest('.post-floating-menu');
             const clickedBtn = moreBtnRef.current && moreBtnRef.current.contains(event.target);
@@ -450,10 +463,15 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
             document.addEventListener('touchstart', handleClickOutside);
         }, 0);
 
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+
         return () => {
             clearTimeout(timer);
             document.removeEventListener('click', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
         };
     }, [showMenu]);
 

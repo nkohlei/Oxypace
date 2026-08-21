@@ -101,18 +101,31 @@ const PostDetail = () => {
         setIsMenuOpen(prev => {
             if (!prev && menuBtnRef.current) {
                 const rect = menuBtnRef.current.getBoundingClientRect();
+                const menuWidth = window.innerWidth <= 768 ? 140 : 165;
                 setMenuPosition({
                     top: rect.bottom + 6,
-                    left: Math.max(10, rect.right - 165),
+                    left: Math.max(10, rect.right - menuWidth),
                 });
             }
             return !prev;
         });
     };
 
-    // Menu Click outside listener
+    // Menu Click outside & scroll/resize listener
     useEffect(() => {
         if (!isMenuOpen) return;
+
+        const updatePosition = () => {
+            if (menuBtnRef.current) {
+                const rect = menuBtnRef.current.getBoundingClientRect();
+                const menuWidth = window.innerWidth <= 768 ? 140 : 165;
+                setMenuPosition({
+                    top: rect.bottom + 6,
+                    left: Math.max(10, rect.right - menuWidth),
+                });
+            }
+        };
+
         const handleClickOutside = (event) => {
             const clickedMenu = event.target.closest('.pd-dropdown-menu');
             const clickedBtn = menuBtnRef.current && menuBtnRef.current.contains(event.target);
@@ -126,10 +139,15 @@ const PostDetail = () => {
             document.addEventListener('touchstart', handleClickOutside);
         }, 0);
 
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+
         return () => {
             clearTimeout(timer);
             document.removeEventListener('click', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
         };
     }, [isMenuOpen]);
 
