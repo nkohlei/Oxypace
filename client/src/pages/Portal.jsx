@@ -332,6 +332,13 @@ const Portal = () => {
     const scrollRafRef = useRef(null);
     const lenisRef = useRef(null);
 
+    // Ensure Lenis updates its scroll limits whenever posts or DOM resize
+    useEffect(() => {
+        if (lenisRef.current) {
+            lenisRef.current.resize();
+        }
+    }, [posts, loadingMore]);
+
     // Initialize Lenis Momentum Smooth Scrolling on Feed Container
     useEffect(() => {
         const wrapper = feedRef.current;
@@ -339,6 +346,7 @@ const Portal = () => {
 
         let lenis = null;
         let rafId = null;
+        let resizeObserver = null;
 
         try {
             lenis = new Lenis({
@@ -357,6 +365,14 @@ const Portal = () => {
 
             lenisRef.current = lenis;
 
+            // Automatically resize Lenis on any DOM content height change
+            resizeObserver = new ResizeObserver(() => {
+                if (lenisRef.current) {
+                    lenisRef.current.resize();
+                }
+            });
+            resizeObserver.observe(wrapper);
+
             const onRaf = (time) => {
                 if (lenisRef.current) {
                     lenisRef.current.raf(time);
@@ -370,13 +386,14 @@ const Portal = () => {
         }
 
         return () => {
+            if (resizeObserver) resizeObserver.disconnect();
             if (rafId) cancelAnimationFrame(rafId);
             if (lenis) {
                 lenis.destroy();
             }
             lenisRef.current = null;
         };
-    }, [id, currentChannel, loading, contentLoading]);
+    }, [id, currentChannel]);
 
     const handleScroll = useCallback((e) => {
         const el = e.target;
