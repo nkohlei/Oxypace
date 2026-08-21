@@ -118,6 +118,13 @@ const PostDetail = () => {
         const updatePosition = () => {
             if (menuBtnRef.current) {
                 const rect = menuBtnRef.current.getBoundingClientRect();
+                
+                // If post has scrolled behind top header or off-screen, auto-close
+                if (rect.bottom < 80 || rect.top > window.innerHeight - 20) {
+                    setIsMenuOpen(false);
+                    return;
+                }
+
                 const menuWidth = window.innerWidth <= 768 ? 140 : 165;
                 setMenuPosition({
                     top: rect.bottom + 6,

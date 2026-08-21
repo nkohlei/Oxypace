@@ -442,6 +442,13 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
         const updatePosition = () => {
             if (moreBtnRef.current) {
                 const rect = moreBtnRef.current.getBoundingClientRect();
+                
+                // If post has scrolled behind top header/input area (approx top 120px) or off-screen, auto-close
+                if (rect.bottom < 110 || rect.top > window.innerHeight - 20) {
+                    setShowMenu(false);
+                    return;
+                }
+
                 const menuWidth = window.innerWidth <= 768 ? 140 : 165;
                 setMenuPosition({
                     top: rect.bottom + 6,
