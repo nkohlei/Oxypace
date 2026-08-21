@@ -6,9 +6,7 @@
     grid-template-columns: 52px 1fr;
     gap: 0;
     padding: 16px 20px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    background: rgba(13, 19, 38, 0.75);
     border-radius: 12px;
     margin: 12px 0;
     border: 1px solid var(--glass-border);
@@ -17,9 +15,8 @@
     cursor: default;
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     contain: layout style;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 160px;
 }
 
 /* Guaranteed Visible Separator */

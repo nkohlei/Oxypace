@@ -104,7 +104,7 @@
 /* Discord Feed Adaptation - This is the scrollable part */
 .discord-feed {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
     /* Scroll enabled here */
     overflow-x: hidden;
     padding: 12px 0;
@@ -118,9 +118,8 @@
     position: relative;
     overflow-anchor: auto;
     -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
     overscroll-behavior-y: contain;
-    contain: content;
+    will-change: scroll-position;
 }
 
 /* Search Bar Mini */
