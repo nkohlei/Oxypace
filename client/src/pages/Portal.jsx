@@ -386,14 +386,16 @@ const Portal = () => {
 
     const scrollToTop = () => {
         if (lenisRef.current) {
-            lenisRef.current.scrollTo(0, { immediate: false });
-        }
-        if (feedRef.current) {
+            lenisRef.current.scrollTo(0, {
+                duration: 1.4,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Exponential Out - Silky smooth & high FPS
+                lock: false,
+            });
+        } else if (feedRef.current) {
             feedRef.current.scrollTo({
                 top: 0,
                 behavior: 'smooth'
             });
-            feedRef.current.scrollTop = 0;
         }
     };
 
