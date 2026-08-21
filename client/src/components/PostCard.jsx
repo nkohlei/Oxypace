@@ -457,6 +457,15 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
             }
         };
 
+        let rafId = null;
+        const handleScrollOrResize = () => {
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                updatePosition();
+            });
+        };
+
         const handleClickOutside = (event) => {
             const clickedMenu = event.target.closest('.post-floating-menu');
             const clickedBtn = moreBtnRef.current && moreBtnRef.current.contains(event.target);
@@ -470,15 +479,16 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
             document.addEventListener('touchstart', handleClickOutside);
         }, 0);
 
-        window.addEventListener('scroll', updatePosition, true);
-        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', handleScrollOrResize, { passive: true, capture: true });
+        window.addEventListener('resize', handleScrollOrResize, { passive: true });
 
         return () => {
+            if (rafId) cancelAnimationFrame(rafId);
             clearTimeout(timer);
             document.removeEventListener('click', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
-            window.removeEventListener('scroll', updatePosition, true);
-            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+            window.removeEventListener('resize', handleScrollOrResize);
         };
     }, [showMenu]);
 
