@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspen
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import Lenis from 'lenis';
 import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 import { useUploadStore } from '../store/useUploadStore';
@@ -329,6 +330,41 @@ const Portal = () => {
     const [scrollProgress, setScrollProgress] = useState(0);
     const feedRef = useRef(null);
     const scrollRafRef = useRef(null);
+    const lenisRef = useRef(null);
+
+    // Initialize Lenis Momentum Smooth Scrolling on Feed Container
+    useEffect(() => {
+        const wrapper = feedRef.current;
+        if (!wrapper) return;
+
+        const lenis = new Lenis({
+            wrapper: wrapper,
+            content: wrapper,
+            lerp: 0.1, // Silky smooth interpolation
+            duration: 1.2,
+            orientation: 'vertical',
+            gestureOrientation: 'vertical',
+            smoothWheel: true,
+            wheelMultiplier: 1.1,
+            touchMultiplier: 1.5,
+            infinite: false,
+        });
+
+        lenisRef.current = lenis;
+
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+
+        const rafId = requestAnimationFrame(raf);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            lenis.destroy();
+            lenisRef.current = null;
+        };
+    }, [id, currentChannel]);
 
     const handleScroll = useCallback((e) => {
         const el = e.target;
@@ -349,7 +385,9 @@ const Portal = () => {
     }, []);
 
     const scrollToTop = () => {
-        if (feedRef.current) {
+        if (lenisRef.current) {
+            lenisRef.current.scrollTo(0, { duration: 1.2 });
+        } else if (feedRef.current) {
             feedRef.current.scrollTo({
                 top: 0,
                 behavior: 'smooth'
