@@ -447,7 +447,7 @@ const PostDetail = () => {
                                             position: 'fixed',
                                             top: menuPosition.top,
                                             left: menuPosition.left,
-                                            zIndex: 999999,
+                                            zIndex: 25,
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                     >
