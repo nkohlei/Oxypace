@@ -28,7 +28,7 @@ const VoiceChannel = lazy(() => import('../components/VoiceChannel'));
 const ConferenceChannel = lazy(() => import('../components/ConferenceChannel'));
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useSocket } from '../context/SocketContext';
-import { X, Youtube, Search } from 'lucide-react';
+import { X, Youtube, Search, Users, SendHorizontal } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
 import './Portal.css';
 
@@ -1469,23 +1469,7 @@ const Portal = () => {
                                                                                 : 'var(--text-muted)',
                                                                         }}
                                                                     >
-                                                                        <svg
-                                                                            viewBox="0 0 24 24"
-                                                                            fill="none"
-                                                                            stroke="currentColor"
-                                                                            strokeWidth="2"
-                                                                            strokeLinecap="round"
-                                                                            strokeLinejoin="round"
-                                                                            width="21"
-                                                                            height="21"
-                                                                        >
-                                                                            {/* Modern Cyber Hub / Community Nodes */}
-                                                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                                                                            <circle cx="9" cy="7" r="4" />
-                                                                            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                                                                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                                                                            <circle cx="19" cy="8" r="1.5" fill="currentColor" />
-                                                                        </svg>
+                                                                        <Users size={20} />
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -2047,20 +2031,7 @@ const Portal = () => {
                                                                                             </span>
                                                                                         </div>
                                                                                     ) : (
-                                                                                        <svg
-                                                                                            width="22"
-                                                                                            height="22"
-                                                                                            viewBox="0 0 24 24"
-                                                                                            fill="none"
-                                                                                            stroke="currentColor"
-                                                                                            strokeWidth="2.2"
-                                                                                            strokeLinecap="round"
-                                                                                            strokeLinejoin="round"
-                                                                                        >
-                                                                                            <path d="M5 12h14" />
-                                                                                            <path d="M12 5l7 7-7 7" />
-                                                                                            <path d="M5 6l4 6-4 6" opacity="0.4" />
-                                                                                        </svg>
+                                                                                        <SendHorizontal size={20} />
                                                                                     )}
                                                                                 </button>
                                                                             </div>
