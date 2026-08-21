@@ -325,68 +325,12 @@ const Portal = () => {
         setYoutubeUrl('');
     };
 
-    // Scroll To Top Logic - High Performance 60-120 FPS
+    // Scroll To Top Logic - 100% High FPS Smooth Animation
     const [showScrollTop, setShowScrollTop] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
     const feedRef = useRef(null);
     const scrollRafRef = useRef(null);
-    const lenisRef = useRef(null);
-
-    // Initialize Lenis Momentum Smooth Scrolling on Feed Container
-    useEffect(() => {
-        const wrapper = feedRef.current;
-        if (!wrapper) return;
-
-        let lenis = null;
-        let rafId = null;
-        let resizeObserver = null;
-
-        try {
-            lenis = new Lenis({
-                wrapper: wrapper,
-                content: wrapper,
-                lerp: 0.1,
-                duration: 1.2,
-                orientation: 'vertical',
-                gestureOrientation: 'vertical',
-                smoothWheel: true,
-                wheelMultiplier: 1.1,
-                touchMultiplier: 1.5,
-                infinite: false,
-                autoRaf: false,
-            });
-
-            lenisRef.current = lenis;
-
-            // Automatically resize Lenis on any DOM content height change
-            resizeObserver = new ResizeObserver(() => {
-                if (lenisRef.current) {
-                    lenisRef.current.resize();
-                }
-            });
-            resizeObserver.observe(wrapper);
-
-            const onRaf = (time) => {
-                if (lenisRef.current) {
-                    lenisRef.current.raf(time);
-                }
-                rafId = requestAnimationFrame(onRaf);
-            };
-
-            rafId = requestAnimationFrame(onRaf);
-        } catch (e) {
-            console.warn('Lenis init fallback', e);
-        }
-
-        return () => {
-            if (resizeObserver) resizeObserver.disconnect();
-            if (rafId) cancelAnimationFrame(rafId);
-            if (lenis) {
-                lenis.destroy();
-            }
-            lenisRef.current = null;
-        };
-    }, [id, currentChannel]);
+    const animationFrameRef = useRef(null);
 
     const handleScroll = useCallback((e) => {
         const el = e.target;
@@ -406,55 +350,49 @@ const Portal = () => {
         });
     }, []);
 
-    // 100% Reliable, 60-120 FPS High-Accuracy Easing Animated Scroll-To-Top
+    // 100% Guaranteed High-Performance 60-120 FPS Eased Scroll To Top
     const scrollToTop = useCallback((e) => {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
         }
 
-        const el = feedRef.current || document.querySelector('.discord-feed');
-        if (!el) return;
-
-        // If Lenis is active, trigger Lenis animated scroll
-        if (lenisRef.current) {
-            try {
-                lenisRef.current.scrollTo(0, {
-                    duration: 1.2,
-                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-                    lock: false,
-                    force: true,
-                });
-                return;
-            } catch (err) {
-                console.warn('Lenis scroll error, falling back to rAF animation', err);
-            }
+        // Cancel any previous running animation
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
         }
 
-        // Custom High-Performance 60/120 FPS Animated Scroll using requestAnimationFrame
+        const el = feedRef.current || document.querySelector('.discord-feed') || document.querySelector('.portal-feed-container');
+        if (!el) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
         const startTop = el.scrollTop;
         if (startTop <= 0) return;
 
-        const duration = 1000; // 1 second
+        const duration = 800; // 800ms ultra smooth
         const startTime = performance.now();
 
-        const easeOutExpo = (t) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+        // Quintic Out Easing Curve - extremely smooth deceleration
+        const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
 
-        const step = (currentTime) => {
+        const animateScroll = (currentTime) => {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            const ease = easeOutExpo(progress);
+            const ease = easeOutQuint(progress);
 
-            el.scrollTop = startTop * (1 - ease);
+            el.scrollTop = Math.round(startTop * (1 - ease));
 
             if (progress < 1) {
-                requestAnimationFrame(step);
+                animationFrameRef.current = requestAnimationFrame(animateScroll);
             } else {
                 el.scrollTop = 0;
+                animationFrameRef.current = null;
             }
         };
 
-        requestAnimationFrame(step);
+        animationFrameRef.current = requestAnimationFrame(animateScroll);
     }, []);
 
     const handleChannelSelect = (channelId) => {
@@ -1009,13 +947,6 @@ const Portal = () => {
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const observer = useRef();
-
-    // Ensure Lenis updates its scroll limits whenever posts or DOM resize
-    useEffect(() => {
-        if (lenisRef.current) {
-            lenisRef.current.resize();
-        }
-    }, [posts, loadingMore]);
 
     const lastPostElementRef = useCallback(node => {
         if (loadingMore) return;
