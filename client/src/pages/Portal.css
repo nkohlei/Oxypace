@@ -1225,7 +1225,7 @@
     width: 260px;
     background-color: var(--bg-secondary);
     border-left: 1px solid var(--border-subtle);
-    z-index: 100;
+    z-index: 2000 !important;
     overflow-y: auto;
     display: flex;
     flex-direction: column;

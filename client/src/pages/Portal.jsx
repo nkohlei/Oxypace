@@ -386,12 +386,14 @@ const Portal = () => {
 
     const scrollToTop = () => {
         if (lenisRef.current) {
-            lenisRef.current.scrollTo(0, { duration: 1.2 });
-        } else if (feedRef.current) {
+            lenisRef.current.scrollTo(0, { immediate: false });
+        }
+        if (feedRef.current) {
             feedRef.current.scrollTo({
                 top: 0,
                 behavior: 'smooth'
             });
+            feedRef.current.scrollTop = 0;
         }
     };
 
