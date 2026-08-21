@@ -15,11 +15,11 @@
     box-shadow: var(--glass-shadow);
     position: relative;
     cursor: default;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    /* NOTE: Do NOT add content-visibility: auto here.
-       It reserves only a fixed intrinsic height (e.g. 120px) for off-screen
-       cards. When a card with images/video enters the viewport the browser
-       recalculates the real height, causing layout shifts and scroll jumps. */
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    contain: layout style;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 /* Guaranteed Visible Separator */

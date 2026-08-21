@@ -116,10 +116,11 @@
     justify-content: flex-start;
     /* Separator between input and feed */
     position: relative;
-    /* CRITICAL: Let the browser's native scroll anchoring work.
-       Do NOT add transform or will-change here — they create a new
-       stacking context that breaks overflow-anchor in Chrome/Edge. */
     overflow-anchor: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior-y: contain;
+    contain: content;
 }
 
 /* Search Bar Mini */

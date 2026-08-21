@@ -324,23 +324,29 @@ const Portal = () => {
         setYoutubeUrl('');
     };
 
-    // Scroll To Top Logic
+    // Scroll To Top Logic - High Performance 60-120 FPS
     const [showScrollTop, setShowScrollTop] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
     const feedRef = useRef(null);
+    const scrollRafRef = useRef(null);
 
-    const handleScroll = (e) => {
+    const handleScroll = useCallback((e) => {
         const el = e.target;
-        if (el.scrollTop > 300) {
-            setShowScrollTop(true);
-        } else {
-            setShowScrollTop(false);
-        }
-        // Calculate scroll progress
-        const scrollHeight = el.scrollHeight - el.clientHeight;
-        const progress = scrollHeight > 0 ? (el.scrollTop / scrollHeight) * 100 : 0;
-        setScrollProgress(progress);
-    };
+        if (scrollRafRef.current) return;
+
+        scrollRafRef.current = requestAnimationFrame(() => {
+            scrollRafRef.current = null;
+            const scrollTop = el.scrollTop;
+            const shouldShow = scrollTop > 300;
+            setShowScrollTop(prev => prev !== shouldShow ? shouldShow : prev);
+
+            const scrollHeight = el.scrollHeight - el.clientHeight;
+            if (scrollHeight > 0) {
+                const progress = Math.round((scrollTop / scrollHeight) * 100);
+                setScrollProgress(prev => Math.abs(prev - progress) >= 2 ? progress : prev);
+            }
+        });
+    }, []);
 
     const scrollToTop = () => {
         if (feedRef.current) {
