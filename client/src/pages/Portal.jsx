@@ -337,34 +337,46 @@ const Portal = () => {
         const wrapper = feedRef.current;
         if (!wrapper) return;
 
-        const lenis = new Lenis({
-            wrapper: wrapper,
-            content: wrapper,
-            lerp: 0.1, // Silky smooth interpolation
-            duration: 1.2,
-            orientation: 'vertical',
-            gestureOrientation: 'vertical',
-            smoothWheel: true,
-            wheelMultiplier: 1.1,
-            touchMultiplier: 1.5,
-            infinite: false,
-        });
+        let lenis = null;
+        let rafId = null;
 
-        lenisRef.current = lenis;
+        try {
+            lenis = new Lenis({
+                wrapper: wrapper,
+                content: wrapper,
+                lerp: 0.1,
+                duration: 1.2,
+                orientation: 'vertical',
+                gestureOrientation: 'vertical',
+                smoothWheel: true,
+                wheelMultiplier: 1.1,
+                touchMultiplier: 1.5,
+                infinite: false,
+                autoRaf: false,
+            });
 
-        function raf(time) {
-            lenis.raf(time);
-            requestAnimationFrame(raf);
+            lenisRef.current = lenis;
+
+            const onRaf = (time) => {
+                if (lenisRef.current) {
+                    lenisRef.current.raf(time);
+                }
+                rafId = requestAnimationFrame(onRaf);
+            };
+
+            rafId = requestAnimationFrame(onRaf);
+        } catch (e) {
+            console.warn('Lenis init fallback', e);
         }
 
-        const rafId = requestAnimationFrame(raf);
-
         return () => {
-            cancelAnimationFrame(rafId);
-            lenis.destroy();
+            if (rafId) cancelAnimationFrame(rafId);
+            if (lenis) {
+                lenis.destroy();
+            }
             lenisRef.current = null;
         };
-    }, [id, currentChannel]);
+    }, [id, currentChannel, loading, contentLoading]);
 
     const handleScroll = useCallback((e) => {
         const el = e.target;
@@ -384,20 +396,56 @@ const Portal = () => {
         });
     }, []);
 
-    const scrollToTop = () => {
-        if (lenisRef.current) {
-            lenisRef.current.scrollTo(0, {
-                duration: 1.4,
-                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Exponential Out - Silky smooth & high FPS
-                lock: false,
-            });
-        } else if (feedRef.current) {
-            feedRef.current.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
+    // 100% Reliable, 60-120 FPS High-Accuracy Easing Animated Scroll-To-Top
+    const scrollToTop = useCallback((e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
-    };
+
+        const el = feedRef.current || document.querySelector('.discord-feed');
+        if (!el) return;
+
+        // If Lenis is active, trigger Lenis animated scroll
+        if (lenisRef.current) {
+            try {
+                lenisRef.current.scrollTo(0, {
+                    duration: 1.2,
+                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                    lock: false,
+                    force: true,
+                });
+                return;
+            } catch (err) {
+                console.warn('Lenis scroll error, falling back to rAF animation', err);
+            }
+        }
+
+        // Custom High-Performance 60/120 FPS Animated Scroll using requestAnimationFrame
+        const startTop = el.scrollTop;
+        if (startTop <= 0) return;
+
+        const duration = 1000; // 1 second
+        const startTime = performance.now();
+
+        const easeOutExpo = (t) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+
+        const step = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const ease = easeOutExpo(progress);
+
+            el.scrollTop = startTop * (1 - ease);
+
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            } else {
+                el.scrollTop = 0;
+            }
+        };
+
+        requestAnimationFrame(step);
+    }, []);
 
     const handleChannelSelect = (channelId) => {
         setCurrentChannel(channelId);
