@@ -106,7 +106,7 @@ function formatVelocityPercent(v) {
 }
 
 /* ════════════════════════════════════════════════════════════
-   CANVAS 1: RELATIVISTIC SPACECRAFT & WARP STARFIELD
+   CANVAS 1: PREMIUM RELATIVISTIC SPACECRAFT & MULTI-SPECTRAL WARP CANVAS
 ════════════════════════════════════════════════════════════ */
 function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
   const canvasRef = useRef(null);
@@ -117,22 +117,56 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
     const ctx = canvas.getContext("2d");
     let animationFrameId;
 
-    // Starfield particles
-    const starCount = 180;
-    const stars = [];
     const width = canvas.width;
     const height = canvas.height;
 
+    // Load High-Res Realistic White Spacecraft Image
+    const shipImg = new Image();
+    shipImg.src = "/images/spacecraft.png";
+    let imgLoaded = false;
+    shipImg.onload = () => {
+      imgLoaded = true;
+    };
+
+    // Multi-spectral starfield palette (Rich astrophysics spectrum: O-B-A-F-G-K-M star classes & Doppler shifted ions)
+    const starColors = [
+      { r: 255, g: 255, b: 255, name: "Class A White" },
+      { r: 147, g: 197, b: 253, name: "Class B Blue" },
+      { r: 96, g: 165, b: 250, name: "Class O Deep Blue" },
+      { r: 253, g: 224, b: 71, name: "Class G Yellow" },
+      { r: 251, g: 146, b: 60, name: "Class K Orange" },
+      { r: 248, g: 113, b: 113, name: "Class M Red Giant" },
+      { r: 216, g: 180, b: 254, name: "Ionized Purple" },
+      { r: 52, g: 211, b: 153, name: "Emerald Aurora" },
+      { r: 244, g: 114, b: 182, name: "Relativistic Magenta" },
+      { r: 34, g: 211, b: 238, name: "Cyan Pulsar" }
+    ];
+
+    const starCount = 260;
+    const stars = [];
+
     for (let i = 0; i < starCount; i++) {
+      const col = starColors[Math.floor(Math.random() * starColors.length)];
       stars.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        z: Math.random() * width,
-        baseSpeed: 0.4 + Math.random() * 0.8,
-        size: 0.8 + Math.random() * 1.5,
-        color: Math.random() > 0.4 ? "#ffffff" : Math.random() > 0.5 ? "#93c5fd" : "#c084fc"
+        baseSpeed: 0.3 + Math.random() * 1.2,
+        size: 0.6 + Math.random() * 1.8,
+        baseR: col.r,
+        baseG: col.g,
+        baseB: col.b,
+        pulseOffset: Math.random() * Math.PI * 2,
+        layer: Math.random() > 0.6 ? 2 : 1
       });
     }
+
+    // Dynamic Cosmic Dust / Nebula Clouds
+    const nebulas = [
+      { x: width * 0.2, y: height * 0.3, radius: 140, r: 147, g: 51, b: 234, alpha: 0.12 },
+      { x: width * 0.7, y: height * 0.7, radius: 180, r: 59, g: 130, b: 246, alpha: 0.10 },
+      { x: width * 0.5, y: height * 0.4, radius: 110, r: 236, g: 72, b: 153, alpha: 0.08 },
+      { x: width * 0.85, y: height * 0.2, radius: 150, r: 16, g: 185, b: 129, alpha: 0.07 }
+    ];
 
     let t = 0;
 
@@ -140,193 +174,253 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
       t += 0.02;
       ctx.clearRect(0, 0, width, height);
 
-      // Deep space backdrop
-      const grad = ctx.createLinearGradient(0, 0, width, height);
-      grad.addColorStop(0, "#060814");
-      grad.addColorStop(0.5, "#0b0f24");
-      grad.addColorStop(1, "#03040a");
-      ctx.fillStyle = grad;
+      // Deep space backdrop with dynamic galactic core gradient
+      const bgGrad = ctx.createRadialGradient(
+        width * 0.5 + Math.sin(t * 0.5) * 40, height * 0.5, 40,
+        width * 0.5, height * 0.5, width * 0.7
+      );
+      bgGrad.addColorStop(0, "#090d24");
+      bgGrad.addColorStop(0.4, "#050716");
+      bgGrad.addColorStop(0.8, "#02030a");
+      bgGrad.addColorStop(1, "#000002");
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // Relativistic warp multiplier
-      const warpSpeed = 1 + Math.pow(vFraction, 3) * 35;
-      const dopplerShiftBlue = Math.min(255, Math.round(vFraction * 240));
-      const dopplerShiftRed = Math.max(0, Math.round(220 - vFraction * 180));
+      // Render Ambient Nebula Glows with Doppler tint shift
+      for (const neb of nebulas) {
+        const nebX = (neb.x - (t * 10 * (1 + vFraction * 4)) % (width + neb.radius * 2));
+        const drawX = nebX < -neb.radius ? width + neb.radius : nebX;
+        const nebGrad = ctx.createRadialGradient(drawX, neb.y, 0, drawX, neb.y, neb.radius);
+        const shiftR = Math.max(0, Math.min(255, neb.r - vFraction * 80));
+        const shiftB = Math.max(0, Math.min(255, neb.b + vFraction * 90));
+        nebGrad.addColorStop(0, `rgba(${shiftR}, ${neb.g}, ${shiftB}, ${neb.alpha * (1 + vFraction * 0.5)})`);
+        nebGrad.addColorStop(0.6, `rgba(${shiftR}, ${neb.g}, ${shiftB}, ${neb.alpha * 0.3})`);
+        nebGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = nebGrad;
+        ctx.beginPath();
+        ctx.arc(drawX, neb.y, neb.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
-      // Draw Starfield (Streaking effect near c)
+      // Relativistic warp multiplier & chromatic aberration
+      const warpSpeed = 1 + Math.pow(vFraction, 3.2) * 42;
+      const isSpeedOfLight = vFraction >= 1.0;
+
+      // Draw Multi-Spectral Stars & Relativistic Light Trails
       for (let i = 0; i < stars.length; i++) {
         const star = stars[i];
         const currentSpeed = star.baseSpeed * warpSpeed;
-        const prevX = star.x;
         star.x -= currentSpeed;
 
-        if (star.x < 0) {
+        if (star.x < -40) {
           star.x = width + Math.random() * 40;
           star.y = Math.random() * height;
         }
 
-        // Relativistic aberration (stars compress toward direction of motion)
-        const streakLength = Math.max(2, (currentSpeed * 2.2) * (vFraction > 0.6 ? 2.5 : 1));
+        // Doppler Color Shift: Blue shift towards front (+x velocity), Red shift behind
+        // Stars dynamically transform their hues as velocity approaches c
+        let r = star.baseR;
+        let g = star.baseG;
+        let b = star.baseB;
 
-        ctx.beginPath();
-        if (vFraction > 0.2) {
-          const starGrad = ctx.createLinearGradient(star.x, star.y, star.x + streakLength, star.y);
-          starGrad.addColorStop(0, `rgba(${dopplerShiftRed}, 200, 255, 0.9)`);
-          starGrad.addColorStop(1, `rgba(${dopplerShiftRed}, 120, ${dopplerShiftBlue}, 0)`);
-          ctx.strokeStyle = starGrad;
-          ctx.lineWidth = vFraction > 0.8 ? 1.8 : 1.2;
+        if (vFraction > 0.05) {
+          // Relativistic Doppler Beaming
+          r = Math.max(20, Math.round(star.baseR * (1 - vFraction * 0.75) + 30 * vFraction));
+          g = Math.max(80, Math.round(star.baseG * (1 - vFraction * 0.3) + 160 * vFraction));
+          b = Math.min(255, Math.round(star.baseB * (1 - vFraction * 0.2) + 240 * vFraction));
+        }
+
+        const streakLength = isSpeedOfLight
+          ? width * 1.5
+          : Math.max(1.5, currentSpeed * 2.8 * (vFraction > 0.6 ? 2.2 : 1));
+
+        if (vFraction > 0.15 || isSpeedOfLight) {
+          // Relativistic Spectral Streak with Rainbow Corona
+          const streakGrad = ctx.createLinearGradient(star.x, star.y, star.x + streakLength, star.y);
+          streakGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 + Math.sin(t * 10 + star.pulseOffset) * 0.05})`);
+          streakGrad.addColorStop(0.25, `rgba(${r}, ${g}, ${b}, 0.85)`);
+          streakGrad.addColorStop(0.7, `rgba(${Math.round(r * 0.5)}, ${Math.round(g * 0.3)}, ${Math.round(b * 0.9)}, 0.4)`);
+          streakGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+          ctx.beginPath();
+          ctx.strokeStyle = streakGrad;
+          ctx.lineWidth = star.size * (vFraction > 0.8 ? 1.6 : 1.1);
           ctx.moveTo(star.x, star.y);
           ctx.lineTo(star.x + streakLength, star.y);
           ctx.stroke();
         } else {
-          ctx.fillStyle = star.color;
+          // Twinkling Multi-Spectral Star Point
+          const pulse = Math.sin(t * 4 + star.pulseOffset) * 0.3 + 0.7;
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${pulse})`;
           ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
           ctx.fill();
+
+          // Star glow
+          if (star.size > 1.2) {
+            ctx.beginPath();
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.25)`;
+            ctx.arc(star.x, star.y, star.size * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       }
 
-      // Draw Grid Distortion Lines (Spacetime fabric compression)
-      if (vFraction > 0.1) {
-        ctx.strokeStyle = `rgba(168, 85, 247, ${Math.min(0.35, vFraction * 0.4)})`;
-        ctx.lineWidth = 1;
-        const gridSpacing = 40 / Math.min(5, Math.max(1, gamma * 0.5));
+      // Spacetime Grid Curvature (Lorentz Metric Compression)
+      if (vFraction > 0.08 && !isSpeedOfLight) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(168, 85, 247, ${Math.min(0.3, vFraction * 0.35)})`;
+        ctx.lineWidth = 0.8;
+        const gridSpacing = 44 / Math.min(5, Math.max(1, gamma * 0.4));
         for (let gx = 0; gx < width; gx += gridSpacing) {
           ctx.beginPath();
           ctx.moveTo(gx, 0);
           ctx.lineTo(gx, height);
           ctx.stroke();
         }
+        ctx.restore();
       }
 
       // Spacecraft rendering with Lorentz Length Contraction
       const centerX = width * 0.52;
       const centerY = height * 0.5;
-      const originalLength = 160; // L₀
-      const originalHeight = 44;
-      const isSpeedOfLight = vFraction >= 1.0;
+      const originalLength = 175; // L₀
+      const originalHeight = 84;  // Proportionate to Interstellar Ranger aspect ratio
       // Length contraction: L = L0 / gamma (0 if c)
-      const contractedLength = isSpeedOfLight ? 0 : Math.max(14, originalLength / gamma);
+      const contractedLength = isSpeedOfLight ? 0 : Math.max(6, originalLength / gamma);
 
-      // If at exact Speed of Light (v = c): Draw Pure Photon Laser Beam & Hyper-Singularity Flash
+      // If at exact Speed of Light (v = c): Pure Photon Laser & Hyper-Singularity Flash
       if (isSpeedOfLight) {
-        // Hyperspace Flash along the line
+        // Hyperspace Flash Beam
         const beamGrad = ctx.createLinearGradient(0, centerY, width, centerY);
         beamGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-        beamGrad.addColorStop(0.3, "rgba(168, 85, 247, 0.6)");
+        beamGrad.addColorStop(0.25, "rgba(168, 85, 247, 0.7)");
         beamGrad.addColorStop(0.52, "rgba(255, 255, 255, 1)");
-        beamGrad.addColorStop(0.8, "rgba(56, 189, 248, 0.8)");
+        beamGrad.addColorStop(0.75, "rgba(56, 189, 248, 0.85)");
         beamGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
 
         ctx.save();
         ctx.strokeStyle = beamGrad;
-        ctx.lineWidth = 6 + Math.sin(t * 20) * 2;
+        ctx.lineWidth = 8 + Math.sin(t * 25) * 3;
         ctx.beginPath();
         ctx.moveTo(0, centerY);
         ctx.lineTo(width, centerY);
         ctx.stroke();
 
         // Core Photon Singularity Glow
-        const photonGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 55 + Math.sin(t * 15) * 8);
+        const photonGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 65 + Math.sin(t * 18) * 10);
         photonGlow.addColorStop(0, "#ffffff");
-        photonGlow.addColorStop(0.3, "rgba(192, 132, 252, 0.95)");
-        photonGlow.addColorStop(0.7, "rgba(56, 189, 248, 0.4)");
+        photonGlow.addColorStop(0.25, "rgba(255, 255, 255, 0.95)");
+        photonGlow.addColorStop(0.5, "rgba(192, 132, 252, 0.9)");
+        photonGlow.addColorStop(0.75, "rgba(56, 189, 248, 0.5)");
         photonGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
         ctx.fillStyle = photonGlow;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, 75, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else {
-        // Normal Spacecraft Plume & Hull
-        const thrustPulse = Math.sin(t * 15) * 6;
-        const thrustLength = (40 + vFraction * 140) + thrustPulse;
+        // Relativistic Ion Engines Thrust Exhaust
+        const thrustPulse = Math.sin(t * 18) * 5;
+        const thrustLength = (45 + vFraction * 160) + thrustPulse;
         const thrustX = centerX - contractedLength / 2;
 
         const plumeGrad = ctx.createRadialGradient(
           thrustX, centerY, 2,
-          thrustX - thrustLength, centerY, thrustLength * 0.8
+          thrustX - thrustLength, centerY, thrustLength * 0.85
         );
-        plumeGrad.addColorStop(0, `rgba(255, 255, 255, 0.95)`);
-        plumeGrad.addColorStop(0.2, `rgba(56, 189, 248, ${0.8 + vFraction * 0.2})`);
-        plumeGrad.addColorStop(0.6, `rgba(${168 + dopplerShiftBlue * 0.3}, 85, 247, 0.5)`);
-        plumeGrad.addColorStop(1, `rgba(147, 51, 234, 0)`);
+        plumeGrad.addColorStop(0, "rgba(255, 255, 255, 0.98)");
+        plumeGrad.addColorStop(0.15, `rgba(56, 189, 248, ${0.85 + vFraction * 0.15})`);
+        plumeGrad.addColorStop(0.5, `rgba(168, 85, 247, ${0.6 + vFraction * 0.3})`);
+        plumeGrad.addColorStop(0.85, "rgba(236, 72, 153, 0.2)");
+        plumeGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
         ctx.save();
         ctx.beginPath();
         ctx.fillStyle = plumeGrad;
-        ctx.moveTo(thrustX, centerY - 8);
-        ctx.lineTo(thrustX - thrustLength, centerY - 16 - vFraction * 8);
-        ctx.quadraticCurveTo(thrustX - thrustLength * 1.3, centerY, thrustX - thrustLength, centerY + 16 + vFraction * 8);
-        ctx.lineTo(thrustX, centerY + 8);
+        ctx.moveTo(thrustX, centerY - 14);
+        ctx.lineTo(thrustX - thrustLength, centerY - 24 - vFraction * 10);
+        ctx.quadraticCurveTo(thrustX - thrustLength * 1.35, centerY, thrustX - thrustLength, centerY + 24 + vFraction * 10);
+        ctx.lineTo(thrustX, centerY + 14);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
 
-        // Spacecraft Hull Shape
+        // Render Realistic White Spacecraft (Interstellar Ranger Lifting Body)
         ctx.save();
         ctx.translate(centerX, centerY);
 
-        // Hull Gradient
-        const hullGrad = ctx.createLinearGradient(-contractedLength / 2, -originalHeight / 2, contractedLength / 2, originalHeight / 2);
-        hullGrad.addColorStop(0, "#1e1b4b");
-        hullGrad.addColorStop(0.4, "#312e81");
-        hullGrad.addColorStop(0.7, "#4338ca");
-        hullGrad.addColorStop(1, "#c084fc");
-
-        // Main fuselage
-        ctx.beginPath();
-        ctx.fillStyle = hullGrad;
-        ctx.strokeStyle = `rgba(216, 180, 254, ${0.6 + vFraction * 0.4})`;
-        ctx.lineWidth = 1.5;
-
-        // Nose cone
-        ctx.moveTo(contractedLength / 2, 0);
-        // Top wing & hull
-        ctx.lineTo(contractedLength * 0.2, -originalHeight * 0.25);
-        ctx.lineTo(-contractedLength * 0.2, -originalHeight * 0.45);
-        ctx.lineTo(-contractedLength / 2, -originalHeight * 0.35);
-        // Engines
-        ctx.lineTo(-contractedLength / 2, originalHeight * 0.35);
-        // Bottom wing
-        ctx.lineTo(-contractedLength * 0.2, originalHeight * 0.45);
-        ctx.lineTo(contractedLength * 0.2, originalHeight * 0.25);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Cockpit Glow / Relativistic Shield
-        const shieldGrad = ctx.createRadialGradient(
-          contractedLength * 0.25, 0, 2,
-          contractedLength * 0.25, 0, 18
-        );
-        shieldGrad.addColorStop(0, "rgba(56, 189, 248, 0.9)");
-        shieldGrad.addColorStop(0.7, "rgba(168, 85, 247, 0.4)");
-        shieldGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-        ctx.fillStyle = shieldGrad;
-        ctx.beginPath();
-        ctx.ellipse(contractedLength * 0.25, 0, Math.max(3, 14 / gamma), 6, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Relativistic Shockwave Bow Wave (if v > 0.7c)
-        if (vFraction > 0.5) {
+        if (imgLoaded && shipImg.width > 0) {
+          // High-Resolution Image Rendering with dynamic length contraction (draw rotated horizontally)
+          ctx.save();
+          // The image is facing left, rotate 180 or draw flipped so nose points right (direction of travel)
+          ctx.rotate(-Math.PI / 2); // Rotate top-down ship so nose points right (+x direction)
+          // Draw contracted along horizontal axis (which corresponds to ship's longitudinal axis)
+          // Width in canvas corresponds to contracted length, height to width
+          ctx.drawImage(
+            shipImg,
+            -originalHeight / 2,
+            -contractedLength / 2,
+            originalHeight,
+            contractedLength
+          );
+          ctx.restore();
+        } else {
+          // Ultra-detailed Procedural Fallback of White Spacecraft if image is loading
+          // Hull Shape
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(244, 114, 182, ${Math.min(0.8, (vFraction - 0.4) * 1.5)})`;
-          ctx.lineWidth = 2;
-          ctx.arc(contractedLength / 2, 0, 28 + (1 - 1 / gamma) * 20, -Math.PI * 0.4, Math.PI * 0.4);
+          ctx.fillStyle = "#e2e8f0";
+          ctx.strokeStyle = "#94a3b8";
+          ctx.lineWidth = 1.5;
+          // Nose
+          ctx.moveTo(contractedLength / 2, 0);
+          ctx.lineTo(contractedLength * 0.15, -originalHeight * 0.35);
+          ctx.lineTo(-contractedLength * 0.3, -originalHeight * 0.48);
+          ctx.lineTo(-contractedLength / 2, -originalHeight * 0.4);
+          ctx.lineTo(-contractedLength / 2, originalHeight * 0.4);
+          ctx.lineTo(-contractedLength * 0.3, originalHeight * 0.48);
+          ctx.lineTo(contractedLength * 0.15, originalHeight * 0.35);
+          ctx.closePath();
+          ctx.fill();
           ctx.stroke();
+
+          // Black Cockpit Canopy Windows
+          ctx.fillStyle = "#0f172a";
+          ctx.strokeStyle = "#38bdf8";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(contractedLength * 0.18, 0, Math.max(2, 22 / gamma), 9, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Relativistic Plasma Shield / Bow Wave (Dynamic chromatic halo around hull)
+        if (vFraction > 0.3) {
+          const bowRadius = Math.max(16, (originalHeight * 0.6) / Math.sqrt(gamma));
+          const shieldGrad = ctx.createRadialGradient(
+            contractedLength / 2, 0, 4,
+            contractedLength / 2, 0, bowRadius + vFraction * 20
+          );
+          shieldGrad.addColorStop(0, "rgba(56, 189, 248, 0.7)");
+          shieldGrad.addColorStop(0.5, "rgba(168, 85, 247, 0.4)");
+          shieldGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+          ctx.fillStyle = shieldGrad;
+          ctx.beginPath();
+          ctx.ellipse(contractedLength / 2, 0, Math.max(4, 18 / gamma), bowRadius, 0, -Math.PI * 0.5, Math.PI * 0.5);
+          ctx.fill();
         }
 
         ctx.restore();
       }
 
-      // Dimension Arrow (L / L0 indicator)
+      // Dimension Indicator Arrow (L / L0 measurement)
       ctx.save();
-      const arrowY = centerY + originalHeight * 0.75 + 14;
+      const arrowY = centerY + originalHeight * 0.6 + 14;
       const arrowLeft = centerX - (isSpeedOfLight ? 1 : contractedLength / 2);
       const arrowRight = centerX + (isSpeedOfLight ? 1 : contractedLength / 2);
 
-      ctx.strokeStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(192, 132, 252, 0.8)";
-      ctx.fillStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(192, 132, 252, 0.8)";
+      ctx.strokeStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(192, 132, 252, 0.85)";
+      ctx.fillStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(192, 132, 252, 0.85)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.moveTo(arrowLeft, arrowY);
