@@ -43,6 +43,23 @@ const DEFAULT_CALCULATORS = [
     },
     accentColor: "#818cf8",
   },
+  {
+    id: "lorentz-factor",
+    toolId: "lorentz-factor",
+    slug: "/calculations/lorentz-factor",
+    category: "SPECIAL RELATIVITY & KINEMATICS",
+    type: "INTERACTIVE SIMULATOR",
+    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+    title: {
+      tr: "Özel Görelilik & Lorentz Faktörü Simülatörü",
+      en: "Special Relativity & Lorentz Factor Simulator",
+    },
+    excerpt: {
+      tr: "Işık hızına yaklaştıkça uzay-zamanın bükülmesini, Lorentz faktörünü (γ), zaman genleşmesini, boy kısalmasını ve göreli enerji artışını dinamik görsel simülasyonla inceleyin.",
+      en: "Interactively simulate space-time warping, Lorentz factor (γ), relativistic time dilation, length contraction, and energy scaling near light speed.",
+    },
+    accentColor: "#a855f7",
+  },
 ];
 
 export default function CalculationsPage() {
