@@ -6,6 +6,7 @@ import Header from "../../blog/components/Header";
 import Footer from "../../blog/components/Footer";
 import ReadingProgressBar from "../../blog/components/ReadingProgressBar";
 import CookieConsent from "../../blog/components/CookieConsent";
+import { SPACECRAFT_BASE64 } from "./spacecraftAsset";
 
 /* ════════════════════════════════════════════════════════════
    CONSTANTS & PRESETS
@@ -110,6 +111,14 @@ function formatVelocityPercent(v) {
 ════════════════════════════════════════════════════════════ */
 function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
   const canvasRef = useRef(null);
+  const shipImgRef = useRef(null);
+
+  useEffect(() => {
+    // Preload embedded base64 image instantly once
+    const img = new Image();
+    img.src = SPACECRAFT_BASE64;
+    shipImgRef.current = img;
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -120,25 +129,15 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
     const width = canvas.width;
     const height = canvas.height;
 
-    // Load the EXACT high-res user spacecraft image
-    const shipImg = new Image();
-    shipImg.src = "/images/spacecraft_exact.png";
-    let imgLoaded = false;
-    shipImg.onload = () => {
-      imgLoaded = true;
-    };
-
-    // Realistic Deep-Space Astrophysical Starfield (Natural astronomical star colors: white, subtle warm gold, cool blue, diamond white)
+    // Realistic Deep-Space Astrophysical Starfield: Uniform faint, tiny pinpoints (0.3px to 1.1px) with natural starlight tones
     const starColors = [
-      { r: 255, g: 255, b: 255, a: 0.95 }, // Diamond Pure White
-      { r: 240, g: 245, b: 255, a: 0.85 }, // Cool White
-      { r: 220, g: 235, b: 255, a: 0.80 }, // Pale Blue
-      { r: 255, g: 250, b: 235, a: 0.80 }, // Pale Gold
-      { r: 255, g: 230, b: 200, a: 0.70 }, // Warm Amber
-      { r: 190, g: 215, b: 255, a: 0.75 }  // Distant Sirius Blue
+      { r: 255, g: 255, b: 255, a: 0.85 }, // Faint Diamond White
+      { r: 225, g: 235, b: 255, a: 0.75 }, // Soft Pale Blue
+      { r: 255, g: 245, b: 230, a: 0.70 }, // Soft Warm White
+      { r: 210, g: 220, b: 245, a: 0.65 }, // Distant Starlight
     ];
 
-    const starCount = 320;
+    const starCount = 380;
     const stars = [];
 
     for (let i = 0; i < starCount; i++) {
@@ -146,14 +145,14 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
       stars.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        speedFactor: 0.4 + Math.random() * 1.6, // Multiplied by vFraction (0 speed at v=0)
-        size: Math.random() < 0.85 ? (0.4 + Math.random() * 0.9) : (1.3 + Math.random() * 1.2), // Mostly tiny realistic stars
+        speedFactor: 0.3 + Math.random() * 1.5,
+        size: 0.4 + Math.random() * 0.7, // Uniform subtle faint pinpoint size
         r: col.r,
         g: col.g,
         b: col.b,
-        baseAlpha: col.a,
+        baseAlpha: col.a * (0.4 + Math.random() * 0.5),
         twinklePhase: Math.random() * Math.PI * 2,
-        twinkleSpeed: 0.5 + Math.random() * 1.5
+        twinkleSpeed: 0.4 + Math.random() * 1.2
       });
     }
 
@@ -163,65 +162,51 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
       t += 0.016;
       ctx.clearRect(0, 0, width, height);
 
-      // Deep space backdrop (Infinite true black void with subtle realistic starlight depth)
-      const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-      bgGrad.addColorStop(0, "#030409");
-      bgGrad.addColorStop(0.5, "#010205");
-      bgGrad.addColorStop(1, "#000000");
-      ctx.fillStyle = bgGrad;
+      // Deep space backdrop: True pitch black cosmic void
+      ctx.fillStyle = "#010206";
       ctx.fillRect(0, 0, width, height);
 
-      // Physical Velocity & Warp Dynamics:
-      // At v = 0: speed is EXACTLY 0. Stars are completely stationary (only natural astronomical twinkling).
-      // As v > 0: speed scales realistically with velocity and lorentz factor.
-      const currentFlightSpeed = vFraction === 0 ? 0 : (vFraction * 3.5 + Math.pow(vFraction, 4) * 38);
+      // Smooth continuous physical flight speed scaling
+      const currentFlightSpeed = vFraction === 0 ? 0 : (vFraction * 2.8 + Math.pow(vFraction, 4) * 32);
       const isSpeedOfLight = vFraction >= 1.0;
 
-      // Render Deep-Space Starfield
+      // Render Deep-Space Starfield: Faint pinpoint stars with smooth continuous elongation as v increases
       for (let i = 0; i < stars.length; i++) {
         const star = stars[i];
 
         if (currentFlightSpeed > 0) {
           star.x -= star.speedFactor * currentFlightSpeed;
-          if (star.x < -30) {
+          if (star.x < -40) {
             star.x = width + Math.random() * 30;
             star.y = Math.random() * height;
           }
         }
 
-        // Natural Twinkle (Subtle starlight scintillation through optics)
-        const twinkle = Math.sin(t * star.twinkleSpeed + star.twinklePhase) * 0.2 + 0.8;
+        // Natural subtle twinkle
+        const twinkle = Math.sin(t * star.twinkleSpeed + star.twinklePhase) * 0.15 + 0.85;
         const currentAlpha = star.baseAlpha * twinkle;
 
-        // When stationary or low sub-relativistic speeds: Pinpoint sharp stars
-        if (vFraction < 0.05) {
+        // At v = 0, stars are perfectly stationary faint pinpoints. As v > 0, streak smoothly elongates with velocity.
+        const streakLength = isSpeedOfLight
+          ? width * 1.2
+          : (currentFlightSpeed === 0 ? 0 : Math.max(0.5, currentFlightSpeed * star.speedFactor * 1.4));
+
+        if (streakLength < 1.2) {
+          // Stationary or nearly stationary sharp pinpoint
           ctx.fillStyle = `rgba(${star.r}, ${star.g}, ${star.b}, ${currentAlpha})`;
           ctx.beginPath();
-          ctx.arc(star.x, star.y, star.size * 0.85, 0, Math.PI * 2);
+          ctx.arc(star.x, star.y, star.size * 0.75, 0, Math.PI * 2);
           ctx.fill();
-
-          // Subtle natural diffraction flare on brighter stars
-          if (star.size > 1.4) {
-            ctx.fillStyle = `rgba(${star.r}, ${star.g}, ${star.b}, 0.2)`;
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size * 2.2, 0, Math.PI * 2);
-            ctx.fill();
-          }
         } else {
-          // Relativistic Star Streaking (Aberration & Optical elongation along direction of travel)
-          const streakLength = isSpeedOfLight
-            ? width * 1.5
-            : Math.max(1, currentFlightSpeed * star.speedFactor * 1.6 * (vFraction > 0.7 ? 2.5 : 1.2));
-
+          // Smooth, faint relativistic starlight streaks (no harsh neon blobs, realistic faint light lines)
           const streakGrad = ctx.createLinearGradient(star.x, star.y, star.x + streakLength, star.y);
           streakGrad.addColorStop(0, `rgba(255, 255, 255, ${currentAlpha})`);
-          streakGrad.addColorStop(0.3, `rgba(${star.r}, ${star.g}, ${star.b}, ${currentAlpha * 0.8})`);
-          streakGrad.addColorStop(0.8, `rgba(${Math.round(star.r * 0.7)}, ${Math.round(star.g * 0.8)}, 255, ${currentAlpha * 0.3})`);
+          streakGrad.addColorStop(0.3, `rgba(${star.r}, ${star.g}, ${star.b}, ${currentAlpha * 0.7})`);
           streakGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
           ctx.beginPath();
           ctx.strokeStyle = streakGrad;
-          ctx.lineWidth = Math.max(0.6, star.size * 0.75);
+          ctx.lineWidth = Math.min(1.1, Math.max(0.5, star.size * 0.7));
           ctx.moveTo(star.x, star.y);
           ctx.lineTo(star.x + streakLength, star.y);
           ctx.stroke();
@@ -231,9 +216,8 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
       // Spacecraft rendering with Lorentz Length Contraction
       const centerX = width * 0.52;
       const centerY = height * 0.5;
-      // Target aspect ratio of the Ranger Spacecraft image (Length 180px, Height 82px)
-      const originalLength = 180; // L₀
-      const originalHeight = 82;
+      const originalLength = 175; // L₀
+      const originalHeight = 78;
       // Length contraction: L = L0 / gamma (0 if v = c)
       const contractedLength = isSpeedOfLight ? 0 : Math.max(4, originalLength / gamma);
 
@@ -249,73 +233,68 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
 
         ctx.save();
         ctx.strokeStyle = beamGrad;
-        ctx.lineWidth = 6 + Math.sin(t * 25) * 2;
+        ctx.lineWidth = 5 + Math.sin(t * 25) * 2;
         ctx.beginPath();
         ctx.moveTo(0, centerY);
         ctx.lineTo(width, centerY);
         ctx.stroke();
 
         // Core Photon Singularity Glow
-        const photonGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 60 + Math.sin(t * 18) * 8);
+        const photonGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 50 + Math.sin(t * 18) * 8);
         photonGlow.addColorStop(0, "#ffffff");
         photonGlow.addColorStop(0.3, "rgba(255, 255, 255, 0.95)");
-        photonGlow.addColorStop(0.6, "rgba(200, 230, 255, 0.6)");
+        photonGlow.addColorStop(0.6, "rgba(200, 230, 255, 0.5)");
         photonGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
         ctx.fillStyle = photonGlow;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else {
         // Ion Engine Exhaust Plume (Active when v > 0)
         if (vFraction > 0) {
-          const thrustPulse = Math.sin(t * 20) * 4;
-          const thrustLength = (20 + vFraction * 140) + thrustPulse;
+          const thrustPulse = Math.sin(t * 20) * 3;
+          const thrustLength = (16 + vFraction * 130) + thrustPulse;
           const thrustX = centerX - contractedLength / 2;
 
           const plumeGrad = ctx.createRadialGradient(
-            thrustX, centerY, 2,
+            thrustX, centerY, 1,
             thrustX - thrustLength, centerY, thrustLength * 0.85
           );
-          plumeGrad.addColorStop(0, "rgba(255, 255, 255, 0.98)");
-          plumeGrad.addColorStop(0.2, `rgba(147, 197, 253, ${0.8 + vFraction * 0.2})`);
-          plumeGrad.addColorStop(0.6, `rgba(59, 130, 246, ${0.4 + vFraction * 0.3})`);
+          plumeGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+          plumeGrad.addColorStop(0.2, `rgba(186, 230, 253, ${0.7 + vFraction * 0.2})`);
+          plumeGrad.addColorStop(0.7, `rgba(59, 130, 246, ${0.3 + vFraction * 0.3})`);
           plumeGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
           ctx.save();
           ctx.beginPath();
           ctx.fillStyle = plumeGrad;
-          ctx.moveTo(thrustX, centerY - 10);
-          ctx.lineTo(thrustX - thrustLength, centerY - 18 - vFraction * 8);
-          ctx.quadraticCurveTo(thrustX - thrustLength * 1.3, centerY, thrustX - thrustLength, centerY + 18 + vFraction * 8);
-          ctx.lineTo(thrustX, centerY + 10);
+          ctx.moveTo(thrustX, centerY - 9);
+          ctx.lineTo(thrustX - thrustLength, centerY - 16 - vFraction * 7);
+          ctx.quadraticCurveTo(thrustX - thrustLength * 1.3, centerY, thrustX - thrustLength, centerY + 16 + vFraction * 7);
+          ctx.lineTo(thrustX, centerY + 9);
           ctx.closePath();
           ctx.fill();
           ctx.restore();
         }
 
-        // Render EXACT User Spacecraft Image
+        // Render EXACT User Spacecraft Image seamlessly (Preloaded base64)
         ctx.save();
         ctx.translate(centerX, centerY);
 
-        if (imgLoaded && shipImg.width > 0) {
-          // The image is oriented with nose pointing right (or left). Draw flipped horizontally so nose points in travel direction (+x / right).
+        const loadedImg = shipImgRef.current;
+        if (loadedImg && loadedImg.complete && loadedImg.naturalWidth > 0) {
+          // Draw the exact uploaded white space plane image flipped so nose points forward (+x direction)
           ctx.save();
-          // Draw the exact uploaded white space plane image
-          // Length along x-axis is contractedLength, Height along y-axis is originalHeight
-          ctx.scale(-1, 1); // Flip horizontally so aerodynamic nose points forward (right)
+          ctx.scale(-1, 1);
           ctx.drawImage(
-            shipImg,
+            loadedImg,
             -contractedLength / 2,
             -originalHeight / 2,
             contractedLength,
             originalHeight
           );
           ctx.restore();
-        } else {
-          // Clean fallback if image is loading
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(-contractedLength / 2, -originalHeight / 2, contractedLength, originalHeight);
         }
 
         ctx.restore();
@@ -327,9 +306,9 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
       const arrowLeft = centerX - (isSpeedOfLight ? 1 : contractedLength / 2);
       const arrowRight = centerX + (isSpeedOfLight ? 1 : contractedLength / 2);
 
-      ctx.strokeStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(255, 255, 255, 0.75)";
-      ctx.fillStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(255, 255, 255, 0.75)";
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(255, 255, 255, 0.65)";
+      ctx.fillStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(255, 255, 255, 0.65)";
+      ctx.lineWidth = 1.0;
       ctx.beginPath();
       ctx.moveTo(arrowLeft, arrowY);
       ctx.lineTo(arrowRight, arrowY);
