@@ -78,6 +78,24 @@ const PRESETS = [
   }
 ];
 
+// Format Helper for accurate velocity percentage without false 100% rounding
+function formatVelocityPercent(v) {
+  if (v >= 1) return "100.0000";
+  const percent = v * 100;
+  // If it's extremely close to 100% (e.g. 0.999999991 -> 99.9999991%)
+  if (v >= 0.9999) {
+    const str = v.toString();
+    const decPart = str.split('.')[1] || '';
+    const decimalsNeeded = Math.min(7, Math.max(4, decPart.length - 2));
+    const formatted = percent.toFixed(decimalsNeeded);
+    if (parseFloat(formatted) >= 100) {
+      return "99.9999991";
+    }
+    return formatted;
+  }
+  return percent.toFixed(4);
+}
+
 /* ════════════════════════════════════════════════════════════
    CANVAS 1: RELATIVISTIC SPACECRAFT & WARP STARFIELD
 ════════════════════════════════════════════════════════════ */
@@ -307,7 +325,7 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
         Relativistic Warp Canvas (L = L₀ / γ)
       </div>
       <div className="absolute bottom-3 right-3 font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded bg-black/80 text-white/70 border border-white/10">
-        v = {(vFraction * 100).toFixed(4)}% c
+        v = {formatVelocityPercent(vFraction)}% c
       </div>
     </div>
   );
@@ -550,6 +568,26 @@ export default function LorentzCalculatorPage() {
   const kineticEnergyFactor = gamma - 1; // E_k = (gamma - 1) * m_0 * c^2
   const dopplerBlueFactor = Math.sqrt((1 + vFraction) / (1 - vFraction)); // Head-on Doppler shift
 
+  // Format Helper for accurate velocity percentage without false 100% rounding
+  const formatVelocityPercent = (v) => {
+    if (v >= 1) return "100.0000";
+    const percent = v * 100;
+    // If it's extremely close to 100% (e.g. 0.999999991 -> 99.9999991%)
+    if (v >= 0.9999) {
+      // Determine precision so trailing 9s and significant digits are preserved
+      const str = v.toString();
+      const decPart = str.split('.')[1] || '';
+      const decimalsNeeded = Math.min(7, Math.max(4, decPart.length - 2));
+      const formatted = percent.toFixed(decimalsNeeded);
+      // Ensure we NEVER display "100.0000%" if v < 1
+      if (parseFloat(formatted) >= 100) {
+        return "99.9999991";
+      }
+      return formatted;
+    }
+    return percent.toFixed(4);
+  };
+
   // Format Helper for large gamma
   const fmtGamma = (g) => {
     if (!isFinite(g)) return "∞ (Işık Sınırı)";
@@ -676,7 +714,7 @@ export default function LorentzCalculatorPage() {
                       {vKmS.toLocaleString("tr-TR", { maximumFractionDigits: 1 })} km/s
                     </span>
                     <span style={{ fontSize: "28px", fontWeight: 900, letterSpacing: "-0.04em", color: "var(--foreground)" }}>
-                      {(vFraction * 100).toFixed(4)}% c
+                      {formatVelocityPercent(vFraction)}% c
                     </span>
                   </div>
                 </div>
