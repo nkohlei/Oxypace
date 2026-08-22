@@ -78,7 +78,28 @@ export default function CalculationsPage() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            setCalculators(data.map(item => ({
+            // Merge with DEFAULT_CALCULATORS to ensure any new local tool is guaranteed visible
+            const serverMap = new Map();
+            data.forEach(item => {
+              const id = item.toolId || item.id;
+              if (id) serverMap.set(id, item);
+            });
+
+            // Start with DEFAULT_CALCULATORS so order & new items are preserved, then override with DB customisations
+            const merged = DEFAULT_CALCULATORS.map(defTool => {
+              const dbItem = serverMap.get(defTool.id || defTool.toolId);
+              return dbItem ? { ...defTool, ...dbItem } : defTool;
+            });
+
+            // Include any additional DB items that might not be in defaults
+            data.forEach(item => {
+              const id = item.toolId || item.id;
+              if (!merged.some(m => (m.id || m.toolId) === id)) {
+                merged.push(item);
+              }
+            });
+
+            setCalculators(merged.map(item => ({
               ...item,
               id: item.toolId || item.id,
               title: typeof item.title === 'object' ? (item.title[lang] || item.title.tr) : item.title,

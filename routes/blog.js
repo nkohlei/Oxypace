@@ -685,9 +685,11 @@ const DEFAULT_CALCULATION_TOOLS = [
 
 async function seedCalculationToolsIfEmpty() {
     try {
-        const count = await CalculationTool.countDocuments();
-        if (count === 0) {
-            await CalculationTool.insertMany(DEFAULT_CALCULATION_TOOLS);
+        for (const defaultTool of DEFAULT_CALCULATION_TOOLS) {
+            const exists = await CalculationTool.findOne({ toolId: defaultTool.toolId });
+            if (!exists) {
+                await CalculationTool.create(defaultTool);
+            }
         }
     } catch (e) {
         console.error('Seed calculation tools error:', e);
