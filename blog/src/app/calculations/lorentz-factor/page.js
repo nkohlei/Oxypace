@@ -75,6 +75,15 @@ const PRESETS = [
     badgeEn: "Particle Accelerator",
     descTr: "Lorentz faktörü γ ≈ 7,450. Proton kütlesi 7 bin kat artar.",
     descEn: "Lorentz factor γ ≈ 7,450. Relativistic proton mass scales x7450."
+  },
+  {
+    nameTr: "🌟 Foton / Işık Hızı Sınırı (1.00c)",
+    nameEn: "🌟 Photon / Speed of Light (1.00c)",
+    vFraction: 1.0,
+    badge: "Foton Referansı (Zaman Donar)",
+    badgeEn: "Photon Frame (Time Freezes)",
+    descTr: "v = c. Lorentz faktörü sonsuzdur (γ = ∞). Foton için zaman donar (Δt₀ = 0), boyut sıfıra iner (L = 0).",
+    descEn: "v = c. Lorentz factor is infinite (γ = ∞). Time completely freezes (Δt₀ = 0) and length contracts to zero (L = 0)."
   }
 ];
 
@@ -194,98 +203,130 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
       const centerY = height * 0.5;
       const originalLength = 160; // L₀
       const originalHeight = 44;
-      // Length contraction: L = L0 / gamma
-      const contractedLength = Math.max(14, originalLength / gamma);
+      const isSpeedOfLight = vFraction >= 1.0;
+      // Length contraction: L = L0 / gamma (0 if c)
+      const contractedLength = isSpeedOfLight ? 0 : Math.max(14, originalLength / gamma);
 
-      // Exhaust Plume (Doppler blue shift as v -> c)
-      const thrustPulse = Math.sin(t * 15) * 6;
-      const thrustLength = (40 + vFraction * 140) + thrustPulse;
-      const thrustX = centerX - contractedLength / 2;
+      // If at exact Speed of Light (v = c): Draw Pure Photon Laser Beam & Hyper-Singularity Flash
+      if (isSpeedOfLight) {
+        // Hyperspace Flash along the line
+        const beamGrad = ctx.createLinearGradient(0, centerY, width, centerY);
+        beamGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+        beamGrad.addColorStop(0.3, "rgba(168, 85, 247, 0.6)");
+        beamGrad.addColorStop(0.52, "rgba(255, 255, 255, 1)");
+        beamGrad.addColorStop(0.8, "rgba(56, 189, 248, 0.8)");
+        beamGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
 
-      const plumeGrad = ctx.createRadialGradient(
-        thrustX, centerY, 2,
-        thrustX - thrustLength, centerY, thrustLength * 0.8
-      );
-      plumeGrad.addColorStop(0, `rgba(255, 255, 255, 0.95)`);
-      plumeGrad.addColorStop(0.2, `rgba(56, 189, 248, ${0.8 + vFraction * 0.2})`);
-      plumeGrad.addColorStop(0.6, `rgba(${168 + dopplerShiftBlue * 0.3}, 85, 247, 0.5)`);
-      plumeGrad.addColorStop(1, `rgba(147, 51, 234, 0)`);
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.fillStyle = plumeGrad;
-      ctx.moveTo(thrustX, centerY - 8);
-      ctx.lineTo(thrustX - thrustLength, centerY - 16 - vFraction * 8);
-      ctx.quadraticCurveTo(thrustX - thrustLength * 1.3, centerY, thrustX - thrustLength, centerY + 16 + vFraction * 8);
-      ctx.lineTo(thrustX, centerY + 8);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-
-      // Spacecraft Hull Shape
-      ctx.save();
-      ctx.translate(centerX, centerY);
-
-      // Hull Gradient
-      const hullGrad = ctx.createLinearGradient(-contractedLength / 2, -originalHeight / 2, contractedLength / 2, originalHeight / 2);
-      hullGrad.addColorStop(0, "#1e1b4b");
-      hullGrad.addColorStop(0.4, "#312e81");
-      hullGrad.addColorStop(0.7, "#4338ca");
-      hullGrad.addColorStop(1, "#c084fc");
-
-      // Main fuselage
-      ctx.beginPath();
-      ctx.fillStyle = hullGrad;
-      ctx.strokeStyle = `rgba(216, 180, 254, ${0.6 + vFraction * 0.4})`;
-      ctx.lineWidth = 1.5;
-
-      // Nose cone
-      ctx.moveTo(contractedLength / 2, 0);
-      // Top wing & hull
-      ctx.lineTo(contractedLength * 0.2, -originalHeight * 0.25);
-      ctx.lineTo(-contractedLength * 0.2, -originalHeight * 0.45);
-      ctx.lineTo(-contractedLength / 2, -originalHeight * 0.35);
-      // Engines
-      ctx.lineTo(-contractedLength / 2, originalHeight * 0.35);
-      // Bottom wing
-      ctx.lineTo(-contractedLength * 0.2, originalHeight * 0.45);
-      ctx.lineTo(contractedLength * 0.2, originalHeight * 0.25);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Cockpit Glow / Relativistic Shield
-      const shieldGrad = ctx.createRadialGradient(
-        contractedLength * 0.25, 0, 2,
-        contractedLength * 0.25, 0, 18
-      );
-      shieldGrad.addColorStop(0, "rgba(56, 189, 248, 0.9)");
-      shieldGrad.addColorStop(0.7, "rgba(168, 85, 247, 0.4)");
-      shieldGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-      ctx.fillStyle = shieldGrad;
-      ctx.beginPath();
-      ctx.ellipse(contractedLength * 0.25, 0, Math.max(3, 14 / gamma), 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Relativistic Shockwave Bow Wave (if v > 0.7c)
-      if (vFraction > 0.5) {
+        ctx.save();
+        ctx.strokeStyle = beamGrad;
+        ctx.lineWidth = 6 + Math.sin(t * 20) * 2;
         ctx.beginPath();
-        ctx.strokeStyle = `rgba(244, 114, 182, ${Math.min(0.8, (vFraction - 0.4) * 1.5)})`;
-        ctx.lineWidth = 2;
-        ctx.arc(contractedLength / 2, 0, 28 + (1 - 1 / gamma) * 20, -Math.PI * 0.4, Math.PI * 0.4);
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(width, centerY);
         ctx.stroke();
-      }
 
-      ctx.restore();
+        // Core Photon Singularity Glow
+        const photonGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 55 + Math.sin(t * 15) * 8);
+        photonGlow.addColorStop(0, "#ffffff");
+        photonGlow.addColorStop(0.3, "rgba(192, 132, 252, 0.95)");
+        photonGlow.addColorStop(0.7, "rgba(56, 189, 248, 0.4)");
+        photonGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = photonGlow;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        // Normal Spacecraft Plume & Hull
+        const thrustPulse = Math.sin(t * 15) * 6;
+        const thrustLength = (40 + vFraction * 140) + thrustPulse;
+        const thrustX = centerX - contractedLength / 2;
+
+        const plumeGrad = ctx.createRadialGradient(
+          thrustX, centerY, 2,
+          thrustX - thrustLength, centerY, thrustLength * 0.8
+        );
+        plumeGrad.addColorStop(0, `rgba(255, 255, 255, 0.95)`);
+        plumeGrad.addColorStop(0.2, `rgba(56, 189, 248, ${0.8 + vFraction * 0.2})`);
+        plumeGrad.addColorStop(0.6, `rgba(${168 + dopplerShiftBlue * 0.3}, 85, 247, 0.5)`);
+        plumeGrad.addColorStop(1, `rgba(147, 51, 234, 0)`);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.fillStyle = plumeGrad;
+        ctx.moveTo(thrustX, centerY - 8);
+        ctx.lineTo(thrustX - thrustLength, centerY - 16 - vFraction * 8);
+        ctx.quadraticCurveTo(thrustX - thrustLength * 1.3, centerY, thrustX - thrustLength, centerY + 16 + vFraction * 8);
+        ctx.lineTo(thrustX, centerY + 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Spacecraft Hull Shape
+        ctx.save();
+        ctx.translate(centerX, centerY);
+
+        // Hull Gradient
+        const hullGrad = ctx.createLinearGradient(-contractedLength / 2, -originalHeight / 2, contractedLength / 2, originalHeight / 2);
+        hullGrad.addColorStop(0, "#1e1b4b");
+        hullGrad.addColorStop(0.4, "#312e81");
+        hullGrad.addColorStop(0.7, "#4338ca");
+        hullGrad.addColorStop(1, "#c084fc");
+
+        // Main fuselage
+        ctx.beginPath();
+        ctx.fillStyle = hullGrad;
+        ctx.strokeStyle = `rgba(216, 180, 254, ${0.6 + vFraction * 0.4})`;
+        ctx.lineWidth = 1.5;
+
+        // Nose cone
+        ctx.moveTo(contractedLength / 2, 0);
+        // Top wing & hull
+        ctx.lineTo(contractedLength * 0.2, -originalHeight * 0.25);
+        ctx.lineTo(-contractedLength * 0.2, -originalHeight * 0.45);
+        ctx.lineTo(-contractedLength / 2, -originalHeight * 0.35);
+        // Engines
+        ctx.lineTo(-contractedLength / 2, originalHeight * 0.35);
+        // Bottom wing
+        ctx.lineTo(-contractedLength * 0.2, originalHeight * 0.45);
+        ctx.lineTo(contractedLength * 0.2, originalHeight * 0.25);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Cockpit Glow / Relativistic Shield
+        const shieldGrad = ctx.createRadialGradient(
+          contractedLength * 0.25, 0, 2,
+          contractedLength * 0.25, 0, 18
+        );
+        shieldGrad.addColorStop(0, "rgba(56, 189, 248, 0.9)");
+        shieldGrad.addColorStop(0.7, "rgba(168, 85, 247, 0.4)");
+        shieldGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = shieldGrad;
+        ctx.beginPath();
+        ctx.ellipse(contractedLength * 0.25, 0, Math.max(3, 14 / gamma), 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Relativistic Shockwave Bow Wave (if v > 0.7c)
+        if (vFraction > 0.5) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(244, 114, 182, ${Math.min(0.8, (vFraction - 0.4) * 1.5)})`;
+          ctx.lineWidth = 2;
+          ctx.arc(contractedLength / 2, 0, 28 + (1 - 1 / gamma) * 20, -Math.PI * 0.4, Math.PI * 0.4);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
 
       // Dimension Arrow (L / L0 indicator)
       ctx.save();
       const arrowY = centerY + originalHeight * 0.75 + 14;
-      const arrowLeft = centerX - contractedLength / 2;
-      const arrowRight = centerX + contractedLength / 2;
+      const arrowLeft = centerX - (isSpeedOfLight ? 1 : contractedLength / 2);
+      const arrowRight = centerX + (isSpeedOfLight ? 1 : contractedLength / 2);
 
-      ctx.strokeStyle = "rgba(192, 132, 252, 0.8)";
-      ctx.fillStyle = "rgba(192, 132, 252, 0.8)";
+      ctx.strokeStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(192, 132, 252, 0.8)";
+      ctx.fillStyle = isSpeedOfLight ? "rgba(239, 68, 68, 0.9)" : "rgba(192, 132, 252, 0.8)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.moveTo(arrowLeft, arrowY);
@@ -299,7 +340,11 @@ function RelativisticSpacecraftCanvas({ vFraction, gamma }) {
 
       ctx.font = "10px monospace";
       ctx.textAlign = "center";
-      ctx.fillText(`L = ${(100 / gamma).toFixed(1)}% L₀`, centerX, arrowY + 14);
+      ctx.fillText(
+        isSpeedOfLight ? "L = 0.00% L₀ (2D Düzlem / Tekillik)" : `L = ${(100 / gamma).toFixed(1)}% L₀`,
+        centerX,
+        arrowY + 14
+      );
       ctx.restore();
 
       animationFrameId = requestAnimationFrame(render);
@@ -478,7 +523,7 @@ function LorentzCurveChart({ vFraction, gamma }) {
 /* ════════════════════════════════════════════════════════════
    TWIN PARADOX DUAL CLOCKS SIMULATION
 ════════════════════════════════════════════════════════════ */
-function TwinParadoxClocks({ gamma, lang }) {
+function TwinParadoxClocks({ gamma, vFraction, lang }) {
   const [earthTime, setEarthTime] = useState(0);
 
   useEffect(() => {
@@ -488,7 +533,8 @@ function TwinParadoxClocks({ gamma, lang }) {
     return () => clearInterval(interval);
   }, []);
 
-  const shipTime = earthTime / (isFinite(gamma) && gamma > 0 ? gamma : 1);
+  const isSpeedOfLight = vFraction >= 1.0 || !isFinite(gamma);
+  const shipTime = isSpeedOfLight ? 0.0 : earthTime / (gamma > 0 ? gamma : 1);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -518,22 +564,40 @@ function TwinParadoxClocks({ gamma, lang }) {
       </div>
 
       {/* Traveler Clock */}
-      <div className="cockpit-panel p-5 rounded-xl border border-purple-500/30 bg-purple-950/10 flex flex-col justify-between">
+      <div className={`cockpit-panel p-5 rounded-xl border flex flex-col justify-between ${
+        isSpeedOfLight
+          ? "border-red-500/50 bg-red-950/20 shadow-lg shadow-red-500/10"
+          : "border-purple-500/30 bg-purple-950/10"
+      }`}>
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-purple-400 font-bold flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
-            {lang === "en" ? "Relativistic Traveler Frame (t₀)" : "Seyyah Öz Zamanı (t₀)"}
+          <span className={`font-mono text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5 ${
+            isSpeedOfLight ? "text-red-400" : "text-purple-400"
+          }`}>
+            <span className={`h-2 w-2 rounded-full ${isSpeedOfLight ? "bg-red-400" : "bg-purple-400 animate-pulse"}`} />
+            {isSpeedOfLight
+              ? (lang === "en" ? "Photon Frame (t₀ = 0)" : "Foton Referansı (t₀ = 0)")
+              : (lang === "en" ? "Relativistic Traveler Frame (t₀)" : "Seyyah Öz Zamanı (t₀)")}
           </span>
-          <span className="font-mono text-[9px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
-            γ = {gamma.toFixed(3)}
+          <span className={`font-mono text-[9px] px-2 py-0.5 rounded ${
+            isSpeedOfLight ? "bg-red-500/20 text-red-300" : "bg-purple-500/20 text-purple-300"
+          }`}>
+            γ = {isSpeedOfLight ? "∞" : gamma.toFixed(3)}
           </span>
         </div>
         <div className="my-4 text-center">
-          <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-purple-300">
-            {shipTime.toFixed(1)} <span className="text-sm font-normal text-purple-300/60">{lang === "en" ? "sec" : "san"}</span>
+          <div className={`text-3xl sm:text-4xl font-black font-mono tracking-tight ${
+            isSpeedOfLight ? "text-red-400" : "text-purple-300"
+          }`}>
+            {isSpeedOfLight ? "0.0" : shipTime.toFixed(1)} <span className="text-sm font-normal opacity-60">{lang === "en" ? "sec" : "san"}</span>
           </div>
-          <p className="text-[11px] text-purple-300/70 mt-1 font-mono">
-            {gamma > 1.05
+          <p className={`text-[11px] mt-1 font-mono font-bold ${
+            isSpeedOfLight ? "text-red-400" : "text-purple-300/70"
+          }`}>
+            {isSpeedOfLight
+              ? (lang === "en"
+                  ? "⚡ TIME IS FROZEN (Δt₀ = 0): For a photon, the entire lifetime of the universe passes in 0 seconds."
+                  : "⚡ ZAMAN DONDU (Δt₀ = 0): Bir foton için evrenin milyarlarca yıllık ömrü tam 0 saniyede geçer.")
+              : gamma > 1.05
               ? (lang === "en"
                   ? `Time flows ${gamma.toFixed(2)}x slower on spacecraft`
                   : `Uzay gemisinde zaman ${gamma.toFixed(2)} kat yavaş akıyor`)
@@ -542,8 +606,8 @@ function TwinParadoxClocks({ gamma, lang }) {
         </div>
         <div className="w-full bg-purple-950/40 h-1.5 rounded-full overflow-hidden">
           <div
-            className="bg-purple-400 h-full transition-all duration-100"
-            style={{ width: `${(shipTime % 10) * 10}%` }}
+            className={`h-full transition-all duration-100 ${isSpeedOfLight ? "bg-red-500 w-0" : "bg-purple-400"}`}
+            style={{ width: isSpeedOfLight ? "0%" : `${(shipTime % 10) * 10}%` }}
           />
         </div>
       </div>
@@ -724,7 +788,7 @@ export default function LorentzCalculatorPage() {
                   id="velocity-slider"
                   type="range"
                   min={0}
-                  max={0.999999}
+                  max={1.0}
                   step={0.0001}
                   value={vFraction}
                   onChange={(e) => setVFraction(parseFloat(e.target.value))}
@@ -740,7 +804,7 @@ export default function LorentzCalculatorPage() {
                   <span>0.5c</span>
                   <span>0.866c (γ = 2)</span>
                   <span>0.99c (γ = 7.1)</span>
-                  <span className="text-purple-400">0.999999c (c Sınırı)</span>
+                  <span className="text-purple-400 font-bold">1.00c (Işık Sınırı / Foton)</span>
                 </div>
               </div>
 
@@ -755,8 +819,8 @@ export default function LorentzCalculatorPage() {
                       key={idx}
                       onClick={() => setVFraction(p.vFraction)}
                       className={`p-2.5 rounded-xl border text-left transition-all ${
-                        Math.abs(vFraction - p.vFraction) < 0.001
-                          ? "bg-purple-600/30 border-purple-500 text-white shadow-lg"
+                        Math.abs(vFraction - p.vFraction) < 0.00000001
+                          ? "bg-purple-600/30 border-purple-500 text-white shadow-lg shadow-purple-500/20"
                           : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10"
                       }`}
                     >
@@ -789,7 +853,7 @@ export default function LorentzCalculatorPage() {
                   {fmtGamma(gamma)}
                 </p>
                 <p className="text-[11px] text-white/50 mt-1 font-mono">
-                  γ = 1 / √(1 - v²/c²)
+                  {vFraction >= 1.0 ? "γ → ∞ (Singularity / Tekillik)" : "γ = 1 / √(1 - v²/c²)"}
                 </p>
               </div>
 
@@ -799,11 +863,17 @@ export default function LorentzCalculatorPage() {
                   {lang === "en" ? "Time Dilation (Δt / Δt₀)" : "Zaman Genleşmesi (Δt)"}
                 </p>
                 <p className="text-3xl font-black font-mono tracking-tight text-white">
-                  {fmtGamma(gamma)}×
+                  {vFraction >= 1.0 ? "∞ (Zaman Durdu)" : `${fmtGamma(gamma)}×`}
                 </p>
                 <p className="text-[11px] text-white/50 mt-1 font-mono">
-                  {lang === "en" ? "1 sec in ship = " : "Gemide 1 sn = "}
-                  <strong className="text-blue-300">{fmtGamma(gamma)} sn</strong>
+                  {vFraction >= 1.0 ? (
+                    <strong className="text-red-400">Δt₀ = 0 (Öz Zaman Dondu)</strong>
+                  ) : (
+                    <>
+                      {lang === "en" ? "1 sec in ship = " : "Gemide 1 sn = "}
+                      <strong className="text-blue-300">{fmtGamma(gamma)} sn</strong>
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -813,10 +883,14 @@ export default function LorentzCalculatorPage() {
                   {lang === "en" ? "Contracted Length (L)" : "Daralan Uzunluk (L)"}
                 </p>
                 <p className="text-3xl font-black font-mono tracking-tight text-white">
-                  {lengthRatio.toFixed(2)}%
+                  {vFraction >= 1.0 ? "0.00%" : `${lengthRatio.toFixed(2)}%`}
                 </p>
                 <p className="text-[11px] text-white/50 mt-1 font-mono">
-                  L = L₀ / γ ({((1 - 1 / gamma) * 100).toFixed(1)}% {lang === "en" ? "shorter" : "kısalma"})
+                  {vFraction >= 1.0 ? (
+                    <strong className="text-red-400">L = 0 (Uzay 2D Düzlem Oldu)</strong>
+                  ) : (
+                    `L = L₀ / γ (${((1 - 1 / gamma) * 100).toFixed(1)}% ${lang === "en" ? "shorter" : "kısalma"})`
+                  )}
                 </p>
               </div>
 
@@ -826,10 +900,12 @@ export default function LorentzCalculatorPage() {
                   {lang === "en" ? "Relativistic Energy (E/E₀)" : "Göreli Enerji (E/E₀)"}
                 </p>
                 <p className="text-3xl font-black font-mono tracking-tight text-white">
-                  {fmtGamma(gamma)} E₀
+                  {vFraction >= 1.0 ? "∞ (Sonsuz Enerji)" : `${fmtGamma(gamma)} E₀`}
                 </p>
                 <p className="text-[11px] text-white/50 mt-1 font-mono">
-                  E_k = {kineticEnergyFactor > 1000 ? kineticEnergyFactor.toExponential(2) : kineticEnergyFactor.toFixed(3)} m₀c²
+                  {vFraction >= 1.0
+                    ? "Yalnızca m₀=0 Fotonlar Ulaşabilir"
+                    : `E_k = ${kineticEnergyFactor > 1000 ? kineticEnergyFactor.toExponential(2) : kineticEnergyFactor.toFixed(3)} m₀c²`}
                 </p>
               </div>
             </div>
@@ -849,7 +925,7 @@ export default function LorentzCalculatorPage() {
                   ? "According to special relativity, an observer traveling on a high-velocity spacecraft experiences time dilation relative to an Earth-bound twin. The clocks below demonstrate real-time elapsed seconds in both reference frames simultaneously."
                   : "Özel görelilik yasalarına göre; ışık hızına yakın seyreden bir uzay gemisindeki seyyahın biyolojik ve atomik saati, Dünya'da bekleyen ikizine göre yavaşlar. Aşağıdaki canlı göstergeler iki referans sisteminde geçen saniyeleri anlık kıyaslar."}
               </p>
-              <TwinParadoxClocks gamma={gamma} lang={lang} />
+              <TwinParadoxClocks gamma={gamma} vFraction={vFraction} lang={lang} />
             </div>
           </div>
         )}
