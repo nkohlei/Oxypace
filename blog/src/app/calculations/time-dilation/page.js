@@ -944,7 +944,7 @@ export default function TimeDilationPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
                 {/* Control 1: Black Hole Mass (Solar Masses M_sun) */}
                 <div>
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex justify-between items-center mb-1">
                     <span className="font-mono text-xs uppercase tracking-widest text-emerald-400 font-bold">
                       KÜTLE (M / M☉):
                     </span>
@@ -999,6 +999,21 @@ export default function TimeDilationPage() {
                       <span className="font-mono text-[10px] text-emerald-400 font-bold">M☉</span>
                     </div>
                   </div>
+
+                  {/* Live Event Horizon Size calculated from Mass */}
+                  <div className="flex justify-between items-center text-[10px] font-mono text-emerald-300/80 mb-2 px-1">
+                    <span>Olay Ufku Çapı (rₛ):</span>
+                    <span className="font-bold text-emerald-300">
+                      {rsKm >= 1e9
+                        ? `${(rsKm / 1e9).toFixed(3)} Milyar km`
+                        : rsKm >= 1e6
+                        ? `${(rsKm / 1e6).toFixed(2)} Milyon km`
+                        : rsKm >= 1e3
+                        ? `${(rsKm / 1e3).toFixed(1)} Bin km`
+                        : `${rsKm.toFixed(1)} km`}
+                    </span>
+                  </div>
+
                   <input
                     type="range"
                     min="1"
@@ -1023,6 +1038,9 @@ export default function TimeDilationPage() {
                       6.5B (M87*)
                     </span>
                   </div>
+                  <p className="font-mono text-[9.5px] text-emerald-300/70 mt-1.5 leading-tight">
+                    🌌 <strong>Etki:</strong> Kütle büyüdükçe olay ufku (rₛ) genişler ve gelgit spagettileşme kuvveti yumuşar.
+                  </p>
                 </div>
 
                 {/* Control 2: Radial Distance (r / r_s) with Live Physical KM */}
@@ -1118,7 +1136,7 @@ export default function TimeDilationPage() {
                     </span>
                   </div>
                   <p className="font-mono text-[9.5px] text-amber-300/70 mt-1.5 leading-tight">
-                    💡 <strong>Not:</strong> Zaman dilatasyonu olay ufkuna olan <em>orana ($r/r_s$)</em> bağlıdır; kütle değiştikçe bu oranın denk geldiği <em>fiziksel kilometre mesafesi</em> büyür/küçülür.
+                    💡 <strong>Not:</strong> Zaman dilatasyonu olay ufkuna olan <em>orana (r / rₛ)</em> bağlıdır; kütle değiştikçe bu oranın denk geldiği <em>fiziksel kilometre mesafesi</em> büyür/küçülür.
                   </p>
                 </div>
 
