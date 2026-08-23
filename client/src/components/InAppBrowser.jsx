@@ -14,14 +14,31 @@ const InAppBrowser = () => {
     const menuRef = useRef(null);
 
     useEffect(() => {
-        const handleOpen = (e) => {
+        const handleOpen = async (e) => {
             const targetUrl = e.detail?.url;
-            if (targetUrl) {
-                setUrl(targetUrl);
-                setIsOpen(true);
-                setTitle(targetUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]);
-                setShowMenu(false);
+            if (!targetUrl) return;
+
+            // On Native Android: Use Capacitor In-App Browser (Chrome Custom Tabs)
+            // This runs in-app, bypasses SAMEORIGIN iframe blocking, and respects system navigation
+            if (Capacitor.isNativePlatform()) {
+                try {
+                    await Browser.open({
+                        url: targetUrl,
+                        toolbarColor: '#000000',
+                        presentationStyle: 'fullscreen'
+                    });
+                } catch (err) {
+                    console.error('Failed to open in-app browser:', err);
+                    window.open(targetUrl, '_system');
+                }
+                return;
             }
+
+            // On Desktop/Web: Open in custom overlay
+            setUrl(targetUrl);
+            setIsOpen(true);
+            setTitle(targetUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]);
+            setShowMenu(false);
         };
 
         window.addEventListener('open-inapp-browser', handleOpen);

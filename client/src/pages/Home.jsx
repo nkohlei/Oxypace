@@ -229,6 +229,11 @@ const Home = () => {
     ];
 
     if (isNative) {
+        // If still loading session or already logged in, do not render welcome screen to prevent flash
+        if (loading || user) {
+            return <div className="app-wrapper advanced-home native-mobile-welcome" style={{ background: '#000000' }} />;
+        }
+
         return (
             <div className="app-wrapper advanced-home native-mobile-welcome">
                 <SEO

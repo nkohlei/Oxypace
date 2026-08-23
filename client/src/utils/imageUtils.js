@@ -44,7 +44,7 @@ export const getImageUrl = (path, sizeType = 'original') => {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
-    // 1. MOBILE NATIVE & DESKTOP FLOW: Route through backend API proxy
+    // 1. MOBILE NATIVE & DESKTOP FLOW: Direct R2 CDN load with optimizations
     if (isNative || isElectron) {
         let relativePath = cleanPath;
         if (relativePath.includes('/api/media/')) {
@@ -87,9 +87,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
         }
 
         if (relativePath.startsWith('http')) {
-            return `${baseUrl}/api/media/${encodeURIComponent(relativePath)}`;
+            return relativePath;
         }
-        return `${baseUrl}/api/media/${relativePath}`;
+        return `${r2Domain}/${relativePath}`;
     }
 
     // 2. WEB PRODUCTION FLOW: Fast Edge CDN via /r2-media/
