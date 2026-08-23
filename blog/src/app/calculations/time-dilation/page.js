@@ -901,15 +901,57 @@ export default function TimeDilationPage() {
                 </div>
               </div>
 
-              {/* Sliders Area: Distance and Spin */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-white/10">
-                {/* Slider 1: Distance Slider */}
+              {/* Sliders Area: Mass, Distance and Spin */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
+                {/* Slider 1: Black Hole Mass (Solar Masses M_sun) */}
+                <div>
+                  <div className="flex justify-between items-baseline mb-2">
+                    <span className="font-mono text-xs uppercase tracking-widest text-emerald-400 font-bold">
+                      KARA DELİK KÜTLESİ (M / M☉):
+                    </span>
+                    <span className="font-mono text-sm font-black text-emerald-300">
+                      {customMassSolar >= 1e9
+                        ? `${(customMassSolar / 1e9).toFixed(2)} Milyar M☉`
+                        : customMassSolar >= 1e6
+                        ? `${(customMassSolar / 1e6).toFixed(2)} Milyon M☉`
+                        : customMassSolar >= 1e3
+                        ? `${(customMassSolar / 1e3).toFixed(1)} Bin M☉`
+                        : `${customMassSolar.toFixed(1)} M☉`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="0.01"
+                    value={Math.log10(Math.max(1, customMassSolar))}
+                    onChange={(e) => {
+                      const newSolar = Math.pow(10, parseFloat(e.target.value));
+                      setCustomMassSolar(newSolar);
+                      setSelectedPreset(null);
+                    }}
+                    className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-white/10 accent-emerald-400"
+                  />
+                  <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
+                    <span className="cursor-pointer" onClick={() => { setCustomMassSolar(10); setSelectedPreset(null); }}>
+                      10 M☉ (Yıldızsal)
+                    </span>
+                    <span className="cursor-pointer" onClick={() => { setCustomMassSolar(4.154e6); setSelectedPreset(null); }}>
+                      4.15M (Sgr A*)
+                    </span>
+                    <span className="cursor-pointer text-emerald-400 font-bold" onClick={() => { setCustomMassSolar(6.5e9); setSelectedPreset(null); }}>
+                      6.5B M☉ (M87*)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Slider 2: Radial Distance Slider */}
                 <div>
                   <div className="flex justify-between items-baseline mb-2">
                     <span className="font-mono text-xs uppercase tracking-widest text-amber-400 font-bold">
                       RADYAL MESAFE (r / rₛ):
                     </span>
-                    <span className="font-mono text-lg font-black text-amber-300">
+                    <span className="font-mono text-sm font-black text-amber-300">
                       {isEventHorizon ? `r₊ = ${rPlus_Rs.toFixed(4)} rₛ (Olay Ufku)` : `${rOverRs.toFixed(4)} rₛ`}
                     </span>
                   </div>
@@ -924,7 +966,7 @@ export default function TimeDilationPage() {
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
                     <span className="text-red-400 font-bold cursor-pointer" onClick={() => setROverRs(rPlus_Rs)}>
-                      {rPlus_Rs.toFixed(2)} rₛ (Olay Ufku r₊)
+                      {rPlus_Rs.toFixed(2)} rₛ (r₊)
                     </span>
                     <span className="text-orange-400 font-bold cursor-pointer" onClick={() => setROverRs(1.0)}>
                       1.0 rₛ (Ergosfer)
@@ -938,13 +980,13 @@ export default function TimeDilationPage() {
                   </div>
                 </div>
 
-                {/* Slider 2: Kerr Spin Parameter a* (Disabled in Schwarzschild mode) */}
+                {/* Slider 3: Kerr Spin Parameter a* */}
                 <div className={metricMode === "schwarzschild" ? "opacity-40 pointer-events-none" : ""}>
                   <div className="flex justify-between items-baseline mb-2">
                     <span className="font-mono text-xs uppercase tracking-widest text-cyan-400 font-bold">
-                      AÇISAL MOMENTUM / SPIN (a* = Jc / GM²):
+                      SPIN / DÖNÜŞ (a* = Jc / GM²):
                     </span>
-                    <span className="font-mono text-lg font-black text-cyan-300">
+                    <span className="font-mono text-sm font-black text-cyan-300">
                       {metricMode === "schwarzschild" ? "0.000 (Statik)" : `${activeSpin.toFixed(3)}`}
                     </span>
                   </div>
@@ -962,9 +1004,9 @@ export default function TimeDilationPage() {
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
                     <span className="cursor-pointer" onClick={() => setSpin(0.0)}>0.0 (Dönmeyen)</span>
-                    <span className="cursor-pointer" onClick={() => setSpin(0.5)}>0.50 (Orta Spin)</span>
+                    <span className="cursor-pointer" onClick={() => setSpin(0.5)}>0.50</span>
                     <span className="text-cyan-400 font-bold cursor-pointer" onClick={() => setSpin(0.998)}>
-                      0.998 (Thorne Limiti - Gargantua)
+                      0.998 (Thorne)
                     </span>
                   </div>
                 </div>
