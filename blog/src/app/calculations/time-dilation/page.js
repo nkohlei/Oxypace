@@ -676,6 +676,27 @@ export default function TimeDilationPage() {
   // Radius expressed in units of r_s (Schwarzschild radius = 2M)
   const [rOverRs, setROverRs] = useState(1.000000002);
 
+  // Dedicated raw string inputs to allow natural live typing (e.g. typing "1." then "5" without getting stuck)
+  const [massInputStr, setMassInputStr] = useState("100000000");
+  const [rInputStr, setRInputStr] = useState("1.000000002");
+  const [spinInputStr, setSpinInputStr] = useState("0.998");
+
+  // Synchronize string states when slider or preset updates
+  const updateMass = (numVal) => {
+    setCustomMassSolar(numVal);
+    setMassInputStr(numVal.toString());
+  };
+
+  const updateROverRs = (numVal) => {
+    setROverRs(numVal);
+    setRInputStr(numVal.toString());
+  };
+
+  const updateSpin = (numVal) => {
+    setSpin(numVal);
+    setSpinInputStr(numVal.toString());
+  };
+
   // Compute Physics Values directly from authoritative customMassSolar
   const effectiveMassSolar = customMassSolar;
   const currentMassKg = effectiveMassSolar * M_SUN;
@@ -739,9 +760,9 @@ export default function TimeDilationPage() {
 
   const handleSelectPreset = (preset) => {
     setSelectedPreset(preset);
-    setCustomMassSolar(preset.massSolar);
-    setROverRs(preset.defaultR_Rs);
-    setSpin(preset.defaultSpin);
+    updateMass(preset.massSolar);
+    updateROverRs(preset.defaultR_Rs);
+    updateSpin(preset.defaultSpin);
     if (preset.defaultSpin === 0) setMetricMode("schwarzschild");
     else setMetricMode("kerr");
   };
@@ -931,7 +952,8 @@ export default function TimeDilationPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setCustomMassSolar((prev) => Math.max(1, prev / 2));
+                          const nextVal = Math.max(1, customMassSolar / 2);
+                          updateMass(nextVal);
                           setSelectedPreset(null);
                         }}
                         className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-emerald-500/20 text-emerald-300 font-mono text-xs font-black border border-emerald-500/30 transition-all"
@@ -942,13 +964,22 @@ export default function TimeDilationPage() {
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={customMassSolar}
+                        value={massInputStr}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(",", ".");
-                          const val = parseFloat(raw);
-                          if (!isNaN(val) && val > 0) {
-                            setCustomMassSolar(val);
+                          const text = e.target.value;
+                          setMassInputStr(text);
+                          const parsed = parseFloat(text.replace(",", "."));
+                          if (!isNaN(parsed) && parsed > 0) {
+                            setCustomMassSolar(parsed);
                             setSelectedPreset(null);
+                          }
+                        }}
+                        onBlur={() => {
+                          const parsed = parseFloat(massInputStr.replace(",", "."));
+                          if (isNaN(parsed) || parsed <= 0) {
+                            setMassInputStr(customMassSolar.toString());
+                          } else {
+                            setMassInputStr(parsed.toString());
                           }
                         }}
                         className="w-24 px-2 py-0.5 rounded-lg bg-black/70 border border-emerald-500/40 text-emerald-300 font-mono text-xs text-center font-black focus:outline-none focus:border-emerald-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -956,7 +987,8 @@ export default function TimeDilationPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setCustomMassSolar((prev) => Math.min(10000000000, prev * 2));
+                          const nextVal = Math.min(10000000000, customMassSolar * 2);
+                          updateMass(nextVal);
                           setSelectedPreset(null);
                         }}
                         className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-emerald-500/20 text-emerald-300 font-mono text-xs font-black border border-emerald-500/30 transition-all"
@@ -975,19 +1007,19 @@ export default function TimeDilationPage() {
                     value={Math.log10(Math.max(1, customMassSolar))}
                     onChange={(e) => {
                       const newSolar = Math.pow(10, parseFloat(e.target.value));
-                      setCustomMassSolar(newSolar);
+                      updateMass(newSolar);
                       setSelectedPreset(null);
                     }}
                     className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-white/10 accent-emerald-400"
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
-                    <span className="cursor-pointer hover:text-emerald-300" onClick={() => { setCustomMassSolar(10); setSelectedPreset(null); }}>
+                    <span className="cursor-pointer hover:text-emerald-300" onClick={() => { updateMass(10); setSelectedPreset(null); }}>
                       10 (Yıldız)
                     </span>
-                    <span className="cursor-pointer hover:text-emerald-300" onClick={() => { setCustomMassSolar(4.154e6); setSelectedPreset(null); }}>
+                    <span className="cursor-pointer hover:text-emerald-300" onClick={() => { updateMass(4.154e6); setSelectedPreset(null); }}>
                       4.15M (Sgr A*)
                     </span>
-                    <span className="cursor-pointer text-emerald-400 font-bold hover:underline" onClick={() => { setCustomMassSolar(6.5e9); setSelectedPreset(null); }}>
+                    <span className="cursor-pointer text-emerald-400 font-bold hover:underline" onClick={() => { updateMass(6.5e9); setSelectedPreset(null); }}>
                       6.5B (M87*)
                     </span>
                   </div>
@@ -1002,7 +1034,10 @@ export default function TimeDilationPage() {
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setROverRs((prev) => Math.max(0.5, prev - 0.1))}
+                        onClick={() => {
+                          const nextVal = Math.max(0.5, parseFloat((rOverRs - 0.1).toFixed(4)));
+                          updateROverRs(nextVal);
+                        }}
                         className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-500/30 transition-all"
                         title="Mesafeyi Yaklaştır"
                       >
@@ -1011,19 +1046,31 @@ export default function TimeDilationPage() {
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={rOverRs}
+                        value={rInputStr}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(",", ".");
-                          const val = parseFloat(raw);
-                          if (!isNaN(val) && val >= 0.5) {
-                            setROverRs(val);
+                          const text = e.target.value;
+                          setRInputStr(text);
+                          const parsed = parseFloat(text.replace(",", "."));
+                          if (!isNaN(parsed) && parsed >= 0.5) {
+                            setROverRs(parsed);
+                          }
+                        }}
+                        onBlur={() => {
+                          const parsed = parseFloat(rInputStr.replace(",", "."));
+                          if (isNaN(parsed) || parsed < 0.5) {
+                            setRInputStr(rOverRs.toString());
+                          } else {
+                            setRInputStr(parsed.toString());
                           }
                         }}
                         className="w-24 px-2 py-0.5 rounded-lg bg-black/70 border border-amber-500/40 text-amber-300 font-mono text-xs text-center font-black focus:outline-none focus:border-amber-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <button
                         type="button"
-                        onClick={() => setROverRs((prev) => Math.min(100, prev + 0.1))}
+                        onClick={() => {
+                          const nextVal = Math.min(100, parseFloat((rOverRs + 0.1).toFixed(4)));
+                          updateROverRs(nextVal);
+                        }}
                         className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-500/30 transition-all"
                         title="Mesafeyi Uzaklaştır"
                       >
@@ -1038,20 +1085,20 @@ export default function TimeDilationPage() {
                     max="10.0"
                     step="0.0001"
                     value={rOverRs}
-                    onChange={(e) => setROverRs(parseFloat(e.target.value))}
+                    onChange={(e) => updateROverRs(parseFloat(e.target.value))}
                     className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-white/10 accent-amber-400"
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
-                    <span className="text-red-400 font-bold cursor-pointer hover:underline" onClick={() => setROverRs(rPlus_Rs)}>
+                    <span className="text-red-400 font-bold cursor-pointer hover:underline" onClick={() => updateROverRs(rPlus_Rs)}>
                       {rPlus_Rs.toFixed(2)} rₛ (r₊)
                     </span>
-                    <span className="text-orange-400 font-bold cursor-pointer hover:underline" onClick={() => setROverRs(1.0)}>
+                    <span className="text-orange-400 font-bold cursor-pointer hover:underline" onClick={() => updateROverRs(1.0)}>
                       1.0 rₛ (Ergosfer)
                     </span>
-                    <span className="text-emerald-400 font-bold cursor-pointer hover:underline" onClick={() => setROverRs(iscoRadius_Rs)}>
+                    <span className="text-emerald-400 font-bold cursor-pointer hover:underline" onClick={() => updateROverRs(iscoRadius_Rs)}>
                       {iscoRadius_Rs.toFixed(1)} rₛ (ISCO)
                     </span>
-                    <span className="text-white/60 cursor-pointer hover:underline" onClick={() => setROverRs(10.0)}>
+                    <span className="text-white/60 cursor-pointer hover:underline" onClick={() => updateROverRs(10.0)}>
                       10.0 rₛ
                     </span>
                   </div>
@@ -1075,7 +1122,8 @@ export default function TimeDilationPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSpin((prev) => Math.max(0, parseFloat((prev - 0.05).toFixed(3))));
+                          const nextVal = Math.max(0, parseFloat((spin - 0.05).toFixed(3)));
+                          updateSpin(nextVal);
                           if (metricMode !== "kerr") setMetricMode("kerr");
                         }}
                         className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-cyan-500/20 text-cyan-300 font-mono text-xs font-black border border-cyan-500/30 transition-all"
@@ -1086,13 +1134,24 @@ export default function TimeDilationPage() {
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={activeSpin}
+                        value={spinInputStr}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(",", ".");
-                          const val = Math.min(0.998, Math.max(0.0, parseFloat(raw)));
-                          if (!isNaN(val)) {
-                            setSpin(val);
+                          const text = e.target.value;
+                          setSpinInputStr(text);
+                          const parsed = parseFloat(text.replace(",", "."));
+                          if (!isNaN(parsed)) {
+                            const clamped = Math.min(0.998, Math.max(0.0, parsed));
+                            setSpin(clamped);
                             if (metricMode !== "kerr") setMetricMode("kerr");
+                          }
+                        }}
+                        onBlur={() => {
+                          const parsed = parseFloat(spinInputStr.replace(",", "."));
+                          if (isNaN(parsed)) {
+                            setSpinInputStr(spin.toString());
+                          } else {
+                            const clamped = Math.min(0.998, Math.max(0.0, parsed));
+                            setSpinInputStr(clamped.toString());
                           }
                         }}
                         className="w-16 px-2 py-0.5 rounded-lg bg-black/70 border border-cyan-500/40 text-cyan-300 font-mono text-xs text-center font-black focus:outline-none focus:border-cyan-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -1100,7 +1159,8 @@ export default function TimeDilationPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSpin((prev) => Math.min(0.998, parseFloat((prev + 0.05).toFixed(3))));
+                          const nextVal = Math.min(0.998, parseFloat((spin + 0.05).toFixed(3)));
+                          updateSpin(nextVal);
                           if (metricMode !== "kerr") setMetricMode("kerr");
                         }}
                         className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-cyan-500/20 text-cyan-300 font-mono text-xs font-black border border-cyan-500/30 transition-all"
@@ -1117,15 +1177,15 @@ export default function TimeDilationPage() {
                     step="0.001"
                     value={activeSpin}
                     onChange={(e) => {
-                      setSpin(parseFloat(e.target.value));
+                      updateSpin(parseFloat(e.target.value));
                       if (metricMode !== "kerr") setMetricMode("kerr");
                     }}
                     className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-white/10 accent-cyan-400"
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
-                    <span className="cursor-pointer hover:text-cyan-300" onClick={() => setSpin(0.0)}>0.0 (Durgun)</span>
-                    <span className="cursor-pointer hover:text-cyan-300" onClick={() => setSpin(0.5)}>0.50</span>
-                    <span className="text-cyan-400 font-bold cursor-pointer hover:underline" onClick={() => setSpin(0.998)}>
+                    <span className="cursor-pointer hover:text-cyan-300" onClick={() => updateSpin(0.0)}>0.0 (Durgun)</span>
+                    <span className="cursor-pointer hover:text-cyan-300" onClick={() => updateSpin(0.5)}>0.50</span>
+                    <span className="text-cyan-400 font-bold cursor-pointer hover:underline" onClick={() => updateSpin(0.998)}>
                       0.998 (Thorne Limiti)
                     </span>
                   </div>
