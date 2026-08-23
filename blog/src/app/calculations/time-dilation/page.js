@@ -919,7 +919,7 @@ export default function TimeDilationPage() {
                 </div>
               </div>
 
-              {/* Sliders & Manual Numeric Inputs: Mass, Distance and Spin */}
+              {/* Sliders & Manual Inputs: Mass, Distance and Spin */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
                 {/* Control 1: Black Hole Mass (Solar Masses M_sun) */}
                 <div>
@@ -927,21 +927,43 @@ export default function TimeDilationPage() {
                     <span className="font-mono text-xs uppercase tracking-widest text-emerald-400 font-bold">
                       KÜTLE (M / M☉):
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomMassSolar((prev) => Math.max(1, prev / 2));
+                          setSelectedPreset(null);
+                        }}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-emerald-500/20 text-emerald-300 font-mono text-xs font-black border border-emerald-500/30 transition-all"
+                        title="Kütleyi Azalt"
+                      >
+                        -
+                      </button>
                       <input
-                        type="number"
-                        min="1"
-                        max="10000000000"
+                        type="text"
+                        inputMode="decimal"
                         value={customMassSolar}
                         onChange={(e) => {
-                          const val = parseFloat(e.target.value);
+                          const raw = e.target.value.replace(",", ".");
+                          const val = parseFloat(raw);
                           if (!isNaN(val) && val > 0) {
                             setCustomMassSolar(val);
                             setSelectedPreset(null);
                           }
                         }}
-                        className="w-28 px-2 py-0.5 rounded-lg bg-black/60 border border-emerald-500/40 text-emerald-300 font-mono text-xs text-right font-black focus:outline-none focus:border-emerald-400"
+                        className="w-24 px-2 py-0.5 rounded-lg bg-black/70 border border-emerald-500/40 text-emerald-300 font-mono text-xs text-center font-black focus:outline-none focus:border-emerald-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomMassSolar((prev) => Math.min(10000000000, prev * 2));
+                          setSelectedPreset(null);
+                        }}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-emerald-500/20 text-emerald-300 font-mono text-xs font-black border border-emerald-500/30 transition-all"
+                        title="Kütleyi Arttır"
+                      >
+                        +
+                      </button>
                       <span className="font-mono text-[10px] text-emerald-400 font-bold">M☉</span>
                     </div>
                   </div>
@@ -977,21 +999,36 @@ export default function TimeDilationPage() {
                     <span className="font-mono text-xs uppercase tracking-widest text-amber-400 font-bold">
                       MESAFE (r / rₛ):
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setROverRs((prev) => Math.max(0.5, prev - 0.1))}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-500/30 transition-all"
+                        title="Mesafeyi Yaklaştır"
+                      >
+                        -
+                      </button>
                       <input
-                        type="number"
-                        min={metricMode === "kerr" ? "0.5" : "1.0"}
-                        max="100.0"
-                        step="0.0001"
+                        type="text"
+                        inputMode="decimal"
                         value={rOverRs}
                         onChange={(e) => {
-                          const val = parseFloat(e.target.value);
+                          const raw = e.target.value.replace(",", ".");
+                          const val = parseFloat(raw);
                           if (!isNaN(val) && val >= 0.5) {
                             setROverRs(val);
                           }
                         }}
-                        className="w-24 px-2 py-0.5 rounded-lg bg-black/60 border border-amber-500/40 text-amber-300 font-mono text-xs text-right font-black focus:outline-none focus:border-amber-400"
+                        className="w-24 px-2 py-0.5 rounded-lg bg-black/70 border border-amber-500/40 text-amber-300 font-mono text-xs text-center font-black focus:outline-none focus:border-amber-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setROverRs((prev) => Math.min(100, prev + 0.1))}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-500/30 transition-all"
+                        title="Mesafeyi Uzaklaştır"
+                      >
+                        +
+                      </button>
                       <span className="font-mono text-[10px] text-amber-400 font-bold">rₛ</span>
                     </div>
                   </div>
@@ -1034,22 +1071,43 @@ export default function TimeDilationPage() {
                         ?
                       </span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSpin((prev) => Math.max(0, parseFloat((prev - 0.05).toFixed(3))));
+                          if (metricMode !== "kerr") setMetricMode("kerr");
+                        }}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-cyan-500/20 text-cyan-300 font-mono text-xs font-black border border-cyan-500/30 transition-all"
+                        title="Spini Azalt"
+                      >
+                        -
+                      </button>
                       <input
-                        type="number"
-                        min="0.0"
-                        max="0.998"
-                        step="0.001"
+                        type="text"
+                        inputMode="decimal"
                         value={activeSpin}
                         onChange={(e) => {
-                          const val = Math.min(0.998, Math.max(0.0, parseFloat(e.target.value)));
+                          const raw = e.target.value.replace(",", ".");
+                          const val = Math.min(0.998, Math.max(0.0, parseFloat(raw)));
                           if (!isNaN(val)) {
                             setSpin(val);
                             if (metricMode !== "kerr") setMetricMode("kerr");
                           }
                         }}
-                        className="w-20 px-2 py-0.5 rounded-lg bg-black/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs text-right font-black focus:outline-none focus:border-cyan-400"
+                        className="w-16 px-2 py-0.5 rounded-lg bg-black/70 border border-cyan-500/40 text-cyan-300 font-mono text-xs text-center font-black focus:outline-none focus:border-cyan-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSpin((prev) => Math.min(0.998, parseFloat((prev + 0.05).toFixed(3))));
+                          if (metricMode !== "kerr") setMetricMode("kerr");
+                        }}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-cyan-500/20 text-cyan-300 font-mono text-xs font-black border border-cyan-500/30 transition-all"
+                        title="Spini Arttır"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
                   <input
