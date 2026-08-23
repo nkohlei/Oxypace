@@ -421,10 +421,10 @@ function SpacetimeCurveCanvas({ rOverRs, spin, factor }) {
 
     const width = canvas.width;
     const height = canvas.height;
-    const padLeft = 46;
+    const padLeft = 44;
     const padRight = 24;
-    const padTop = 26;
-    const padBottom = 34;
+    const padTop = 48; // Generous top padding so curve and text never clip under badges
+    const padBottom = 42; // Generous bottom padding for all x-axis labels
 
     const plotWidth = width - padLeft - padRight;
     const plotHeight = height - padTop - padBottom;
@@ -455,8 +455,8 @@ function SpacetimeCurveCanvas({ rOverRs, spin, factor }) {
       ctx.fillText(`${yVal}x`, padLeft - 6, py + 3);
     });
 
-    // X-Axis Grid & Labels: Distance r (1.0 r_s to 6.0 r_s)
-    const xMin = 0.5; // Kerr horizon can be smaller than 1.0 Rs (down to 0.5 Rs for maximal spin)
+    // X-Axis Grid & Labels: Distance r (0.5 r_s to 6.0 r_s)
+    const xMin = 0.5;
     const xMax = 6.0;
     const xLabels = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0];
 
@@ -476,7 +476,7 @@ function SpacetimeCurveCanvas({ rOverRs, spin, factor }) {
       if (xVal === 3.0) label = "3.0 (ISCO)";
 
       ctx.fillStyle = xVal === 1.0 ? "#ef4444" : xVal === 1.5 ? "#f59e0b" : xVal === 3.0 ? "#22c55e" : "rgba(255,255,255,0.4)";
-      ctx.fillText(label, px, height - padBottom + 14);
+      ctx.fillText(label, px, height - padBottom + 16);
     });
 
     // Kerr Outer Horizon r_+ location: r_+ = (1 + sqrt(1 - a^2)) / 2  (in units of rs = 2M)
@@ -496,7 +496,7 @@ function SpacetimeCurveCanvas({ rOverRs, spin, factor }) {
     ctx.font = "8px monospace";
     ctx.fillStyle = "#ef4444";
     ctx.textAlign = "left";
-    ctx.fillText(`Olay Ufku r₊ = ${rPlus.toFixed(2)} rₛ`, xAsymptote + 4, padTop + 10);
+    ctx.fillText(`Olay Ufku r₊ = ${rPlus.toFixed(2)} rₛ`, Math.min(xAsymptote + 4, width - 120), padTop - 6);
 
     // Plot Theoretical Spacetime Curve (Kerr equatorial / Schwarzschild)
     ctx.beginPath();
@@ -506,7 +506,6 @@ function SpacetimeCurveCanvas({ rOverRs, spin, factor }) {
     const samples = 150;
     for (let i = 0; i <= samples; i++) {
       const rVal = (rPlus + 0.008) + (i / samples) * (xMax - (rPlus + 0.008));
-      // Kerr equatorial time dilation approximation: dt/dtau ~ 1 / sqrt(1 - 1/r + 2a*sqrt(1/r^3)/r...)
       const g00 = -(1 - 1 / rVal);
       const f = g00 < 0 ? 1 / Math.sqrt(Math.abs(g00)) : 10;
       const clampedF = Math.min(10, Math.max(1, f));
@@ -549,11 +548,11 @@ function SpacetimeCurveCanvas({ rOverRs, spin, factor }) {
     // Point Coordinates Label
     ctx.font = "9px monospace";
     ctx.fillStyle = spin > 0 ? "#38bdf8" : "#fbbf24";
-    ctx.textAlign = curXNorm > 0.7 ? "right" : "left";
+    ctx.textAlign = curXNorm > 0.65 ? "right" : "left";
     ctx.fillText(
       `r = ${rOverRs.toFixed(2)} rₛ (${!isFinite(factor) ? "∞" : factor.toFixed(2) + "x"})`,
-      ptX + (curXNorm > 0.7 ? -10 : 10),
-      ptY - 8
+      ptX + (curXNorm > 0.65 ? -10 : 10),
+      Math.max(padTop + 12, ptY - 8)
     );
   }, [rOverRs, spin, factor]);
 
@@ -566,10 +565,10 @@ function SpacetimeCurveCanvas({ rOverRs, spin, factor }) {
         className="w-full h-auto block"
         style={{ aspectRatio: "580/280" }}
       />
-      <div className="absolute top-3 left-3 font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-amber-300 border border-amber-500/30">
+      <div className="absolute top-2.5 left-3 font-mono text-[9px] uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-md text-amber-300 border border-white/10">
         UZAY-ZAMAN EĞRİSİ dt/dτ [KERR / SCHWARZSCHILD]
       </div>
-      <div className="absolute bottom-3 right-3 font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded bg-black/80 text-white/70 border border-white/10">
+      <div className="absolute top-2.5 right-3 font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded bg-black/80 text-white/70 border border-white/10">
         Faktör = {!isFinite(factor) ? "∞ (Tekillik)" : `${factor.toFixed(4)}x`}
       </div>
     </div>
