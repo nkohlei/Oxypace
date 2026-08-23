@@ -104,9 +104,9 @@ const BLACK_HOLE_PRESETS = [
 
 /* ════════════════════════════════════════════════════════════
    CANVAS 1: AUTHENTIC INTERSTELLAR GARGANTUA (KERR BLACK HOLE)
-   Physics-based Relativistic Raytraced Halo, Thin Photon Ring & Doppler Beaming
+   Physics-based Relativistic Raytraced Halo, Thin Photon Ring & Mass Dynamic Scaling
 ════════════════════════════════════════════════════════════ */
-function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphere, isPhotonSphere, isIsco }) {
+function RelativisticBlackHoleCanvas({ rOverRs, spin, massSolar, isEventHorizon, isErgosphere, isPhotonSphere, isIsco }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -135,7 +135,6 @@ function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphe
     }
 
     // Accretion disk matter filaments
-    const diskRings = 120;
     const diskRays = [];
     for (let i = 0; i < 550; i++) {
       diskRays.push({
@@ -157,10 +156,13 @@ function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphe
       ctx.fillStyle = "#010103";
       ctx.fillRect(0, 0, width, height);
 
-      // Apparent Visual Shadow Radius (Photon capture cross section)
-      // For a Schwarzschild black hole, R_shadow = 3*sqrt(3)*M ≈ 2.6 Rs / 2
+      // Dynamic Mass Scaling: Scaled logarithmically so small stellar holes are compact (28px) and supermassive giants grow to majestic (60px)
+      const massLog = Math.log10(Math.max(1, massSolar || 1e8));
+      const massScale = 0.65 + (Math.min(10, Math.max(1, massLog)) / 10) * 0.55; // Scales smoothly from 0.7x to 1.2x
+
+      // Apparent Visual Shadow Radius (Scaled by Mass & Kerr Spin)
       const spinShrink = Math.sqrt(Math.max(0, 1 - spin * spin));
-      const shadowRadius = 46 * (0.88 + 0.12 * spinShrink);
+      const shadowRadius = 44 * massScale * (0.88 + 0.12 * spinShrink);
       const innerDiskR = shadowRadius * 1.12;
       const outerDiskR = shadowRadius * 3.3;
 
@@ -387,7 +389,7 @@ function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphe
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [rOverRs, spin, isEventHorizon, isErgosphere, isPhotonSphere, isIsco]);
+  }, [rOverRs, spin, massSolar, isEventHorizon, isErgosphere, isPhotonSphere, isIsco]);
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
@@ -1249,6 +1251,7 @@ export default function TimeDilationPage() {
                 <RelativisticBlackHoleCanvas
                   rOverRs={rOverRs}
                   spin={activeSpin}
+                  massSolar={effectiveMassSolar}
                   isEventHorizon={isEventHorizon}
                   isErgosphere={isErgosphere}
                   isPhotonSphere={isInsidePhotonSphere || isPhotonSphere}
