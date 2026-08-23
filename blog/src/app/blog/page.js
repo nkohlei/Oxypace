@@ -39,8 +39,8 @@ const HERO_TEXT = {
 
 function BlogHomeContent() {
   const [lang, setLang] = useState("tr");
-  const [allPosts, setAllPosts] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [allPosts, setAllPosts] = useState(staticPosts);
+  const [loading, setLoading] = useState(false);
 
   const searchParams = useSearchParams();
   const categoryParam = searchParams ? searchParams.get("category") : null;
