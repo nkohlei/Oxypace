@@ -201,14 +201,6 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                 href="/blog/"
                                 className="event-horizon-nav-btn"
                                 title="EVENT HORIZON Blog"
-                                onClick={(e) => {
-                                    if (Capacitor.isNativePlatform()) {
-                                        e.preventDefault();
-                                        window.dispatchEvent(new CustomEvent('open-inapp-browser', {
-                                            detail: { url: 'https://oxypace.com.tr/blog' }
-                                        }));
-                                    }
-                                }}
                             >
                                 <span className="eh-line1">EVENT</span>
                                 <span className="eh-line2">HORIZON</span>
