@@ -24,6 +24,7 @@ const shuffleArray = (arr) => {
 const Home = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
+    const isNative = Capacitor.isNativePlatform();
     const [publicPortals, setPublicPortals] = useState([]);
     const [scrollY, setScrollY] = useState(0);
     const [revealedSections, setRevealedSections] = useState(new Set());
@@ -31,6 +32,27 @@ const Home = () => {
 
     const [isGoogleBot, setIsGoogleBot] = useState(false);
     const [botPosts, setBotPosts] = useState([]);
+
+    // Auto-redirect logged-in users on Native Mobile app directly to platform
+    useEffect(() => {
+        if (isNative && !loading && user) {
+            const pendingPortal = localStorage.getItem('oxypace_pending_portal');
+            if (pendingPortal) {
+                localStorage.removeItem('oxypace_pending_portal');
+                navigate(`/portal/${pendingPortal}`, { replace: true });
+                return;
+            }
+
+            if (user.joinedPortals && user.joinedPortals.length > 0) {
+                const firstPortalId = typeof user.joinedPortals[0] === 'string' 
+                    ? user.joinedPortals[0] 
+                    : user.joinedPortals[0]._id;
+                navigate(`/portal/${firstPortalId}`, { replace: true });
+            } else {
+                navigate('/messages', { replace: true });
+            }
+        }
+    }, [user, loading, navigate, isNative]);
 
     // Detect Googlebot and fetch the public portal posts (Global Feed)
     useEffect(() => {
@@ -53,16 +75,16 @@ const Home = () => {
         }
     }, []);
 
-    // Handle pending portal redirect after login if any
+    // Handle pending portal redirect after login if any (Web)
     useEffect(() => {
-        if (!loading && user) {
+        if (!isNative && !loading && user) {
             const pendingPortal = localStorage.getItem('oxypace_pending_portal');
             if (pendingPortal) {
                 localStorage.removeItem('oxypace_pending_portal');
                 navigate(`/portal/${pendingPortal}`);
             }
         }
-    }, [user, loading, navigate]);
+    }, [user, loading, navigate, isNative]);
 
     // Fetch portals and shuffle for randomized display
     useEffect(() => {
