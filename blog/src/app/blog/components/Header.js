@@ -31,6 +31,8 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
   const [scrolled,       setScrolled]       = useState(false);
   const [searchOpen,     setSearchOpen]     = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [searchQuery,    setSearchQuery]    = useState("");
   const [dropdownOpen,   setDropdownOpen]   = useState(false);
   const dropdownRef = useRef(null);
@@ -419,7 +421,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                 <span className="uppercase font-bold text-[11px]">{lang}</span>
               </button>
 
-              {/* Mobile Theme Toggle — Identical full SVG icon set as desktop */}
+              {/* Mobile Theme Toggle */}
               <button
                 id="mobile-theme-toggle-btn"
                 onClick={toggleTheme}
@@ -448,9 +450,159 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
                   </svg>
                 )}
               </button>
+
+              {/* Mobile Hamburger Menu Toggle Button */}
+              <button
+                id="mobile-menu-toggle-btn"
+                onClick={() => setMobileMenuOpen(prev => !prev)}
+                aria-label="Menüyü Aç/Kapat"
+                className="flex items-center justify-center rounded-lg transition-theme"
+                style={{
+                  width: "32px", height: "32px",
+                  border: "1px solid var(--border-color)",
+                  background: mobileMenuOpen ? "var(--glass-bg)" : "transparent",
+                  cursor: "pointer",
+                  color: mobileMenuOpen ? "var(--foreground)" : "var(--foreground-muted)",
+                }}
+              >
+                {mobileMenuOpen ? (
+                  /* Close Icon X */
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                ) : (
+                  /* Hamburger Icon */
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* =========================================================
+            3) MOBILE NAVIGATION PANEL (Analizler, Hesaplama Araçları, Kategoriler)
+           ========================================================= */}
+        {mobileMenuOpen && (
+          <div
+            className="mobile-header-only w-full border-t transition-theme animate-fade-in-up"
+            style={{
+              background: "var(--glass-bg)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              borderColor: "var(--border-color)",
+              padding: "16px 20px 24px 20px",
+            }}
+          >
+            <nav className="flex flex-col gap-2 w-full">
+              {/* 1. Analizler */}
+              <Link
+                href="/blog"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between p-3 rounded-xl transition-all"
+                style={{
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--foreground)",
+                  textDecoration: "none",
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base">📝</span>
+                  <span className="font-bold text-sm">{lang === "en" ? "Analyses & Articles" : "Analizler"}</span>
+                </div>
+                <span className="text-xs text-white/40">→</span>
+              </Link>
+
+              {/* 2. Hesaplama Araçları */}
+              <Link
+                href="/calculations"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between p-3 rounded-xl transition-all"
+                style={{
+                  background: "rgba(245, 158, 11, 0.08)",
+                  border: "1px solid rgba(245, 158, 11, 0.25)",
+                  color: "#fbbf24",
+                  textDecoration: "none",
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base">🧮</span>
+                  <span className="font-bold text-sm">{lang === "en" ? "Calculation Tools & Simulators" : "Hesaplama Araçları"}</span>
+                </div>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold">
+                  {lang === "en" ? "3 Tools" : "3 Araç"}
+                </span>
+              </Link>
+
+              {/* 3. Kategoriler Dropdown / Accordion */}
+              <div
+                className="rounded-xl transition-all overflow-hidden"
+                style={{
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid var(--border-color)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setMobileCategoriesOpen(prev => !prev)}
+                  className="w-full flex items-center justify-between p-3"
+                  style={{
+                    color: "var(--foreground)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-base">📂</span>
+                    <span className="font-bold text-sm">{t.categories}</span>
+                  </div>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    style={{
+                      transition: "transform 0.2s ease",
+                      transform: mobileCategoriesOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      color: "var(--foreground-muted)",
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {mobileCategoriesOpen && (
+                  <div className="flex flex-col gap-1 px-3 pb-3 pt-1 border-t border-white/5">
+                    {CATEGORIES_ITEMS.map((item) => (
+                      <Link
+                        key={item.key}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-all"
+                        style={{
+                          color: "var(--foreground-muted)",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <span className="text-sm">{item.icon}</span>
+                        <span>{lang === "en" ? item.en : item.tr}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* Mobile Floating Search Bar */}
