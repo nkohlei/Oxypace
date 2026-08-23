@@ -58,7 +58,6 @@ const Saved = lazyWithRetry(() => import('./pages/Saved'));
 const PostDetail = lazyWithRetry(() => import('./pages/PostDetail'));
 const CommentDetail = lazyWithRetry(() => import('./pages/CommentDetail'));
 const Notifications = lazyWithRetry(() => import('./pages/Notifications'));
-const Blog = lazyWithRetry(() => import('./pages/Blog'));
 const AdminDashboard = lazyWithRetry(() => import('./pages/AdminDashboard'));
 const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazyWithRetry(() => import('./pages/TermsOfService'));
@@ -568,8 +567,7 @@ const AppLayout = () => {
                         <Suspense fallback={<PageLoader />}>
                             <Routes>
                                 <Route path="/" element={<Home />} />
-                                <Route path="/blog" element={<Blog />} />
-                                <Route path="/blog/:slug" element={<Blog />} />
+                                <Route path="/blog" element={<Home />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
                                 <Route path="/forgot-password" element={<ForgotPassword />} />

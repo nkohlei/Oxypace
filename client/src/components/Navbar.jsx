@@ -201,7 +201,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             <button
                                 className="event-horizon-nav-btn"
                                 title="EVENT HORIZON Blog"
-                                onClick={() => navigate('/blog')}
+                                onClick={() => {
+                                    if (Capacitor.isNativePlatform()) {
+                                        window.location.href = '/blog/index.html';
+                                    } else {
+                                        window.location.href = '/blog';
+                                    }
+                                }}
                             >
                                 <span className="eh-line1">EVENT</span>
                                 <span className="eh-line2">HORIZON</span>
