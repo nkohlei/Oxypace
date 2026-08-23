@@ -258,11 +258,7 @@ const Home = () => {
                         </div>
 
                         {/* EVENT HORIZON Gateway */}
-                        <div className="native-pure-gateway-item" onClick={() => {
-                            window.dispatchEvent(new CustomEvent('open-inapp-browser', {
-                                detail: { url: 'https://oxypace.com.tr/blog' }
-                            }));
-                        }}>
+                        <div className="native-pure-gateway-item" onClick={() => navigate('/blog')}>
                             <div className="native-pure-eh-typography">
                                 <span className="eh-pure-line1">EVENT</span>
                                 <span className="eh-pure-line2">HORIZON</span>

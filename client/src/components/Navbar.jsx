@@ -198,22 +198,14 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                     <div className="nav-right">
                         {/* EVENT HORIZON Blog Button (Visible when logged in and in platform) */}
                         {user && !location.pathname.startsWith('/blog') && (
-                            <a
-                                href="/blog/"
+                            <button
                                 className="event-horizon-nav-btn"
                                 title="EVENT HORIZON Blog"
-                                onClick={(e) => {
-                                    if (Capacitor.isNativePlatform()) {
-                                        e.preventDefault();
-                                        window.dispatchEvent(new CustomEvent('open-inapp-browser', {
-                                            detail: { url: 'https://oxypace.com.tr/blog' }
-                                        }));
-                                    }
-                                }}
+                                onClick={() => navigate('/blog')}
                             >
                                 <span className="eh-line1">EVENT</span>
                                 <span className="eh-line2">HORIZON</span>
-                            </a>
+                            </button>
                         )}
 
                         {!hideThemeToggle && (
