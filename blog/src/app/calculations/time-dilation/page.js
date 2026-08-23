@@ -1025,9 +1025,9 @@ export default function TimeDilationPage() {
                   </div>
                 </div>
 
-                {/* Control 2: Radial Distance (r / r_s) */}
+                {/* Control 2: Radial Distance (r / r_s) with Live Physical KM */}
                 <div>
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex justify-between items-center mb-1">
                     <span className="font-mono text-xs uppercase tracking-widest text-amber-400 font-bold">
                       MESAFE (r / rₛ):
                     </span>
@@ -1079,6 +1079,21 @@ export default function TimeDilationPage() {
                       <span className="font-mono text-[10px] text-amber-400 font-bold">rₛ</span>
                     </div>
                   </div>
+
+                  {/* Live Physical Distance Badge (Shows exact KM calculated from current Mass) */}
+                  <div className="flex justify-between items-center text-[10px] font-mono text-amber-300/80 mb-2 px-1">
+                    <span>Fiziksel Uzaklık:</span>
+                    <span className="font-bold text-amber-300">
+                      {currentRadiusKm >= 1e9
+                        ? `${(currentRadiusKm / 1e9).toFixed(3)} Milyar km`
+                        : currentRadiusKm >= 1e6
+                        ? `${(currentRadiusKm / 1e6).toFixed(2)} Milyon km`
+                        : currentRadiusKm >= 1e3
+                        ? `${(currentRadiusKm / 1e3).toFixed(1)} Bin km`
+                        : `${currentRadiusKm.toFixed(1)} km`}
+                    </span>
+                  </div>
+
                   <input
                     type="range"
                     min={metricMode === "kerr" ? "0.5" : "1.0"}
@@ -1102,6 +1117,9 @@ export default function TimeDilationPage() {
                       10.0 rₛ
                     </span>
                   </div>
+                  <p className="font-mono text-[9.5px] text-amber-300/70 mt-1.5 leading-tight">
+                    💡 <strong>Not:</strong> Zaman dilatasyonu olay ufkuna olan <em>orana ($r/r_s$)</em> bağlıdır; kütle değiştikçe bu oranın denk geldiği <em>fiziksel kilometre mesafesi</em> büyür/küçülür.
+                  </p>
                 </div>
 
                 {/* Control 3: Kerr Spin Parameter a* with Thorne Limit Note */}
