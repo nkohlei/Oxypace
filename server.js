@@ -309,11 +309,11 @@ app.use('/api/blog', blogRoutes);
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '1.9.8',
-        versionCode: 198,
+        latestVersion: '1.9.9',
+        versionCode: 199,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: false,
-        changelog: '🔥 Oxypace 1.9.8 Sürümü: Yeni görsel bildirimler, canlı oda daveti geliştirmeleri ve arka plan optimizasyonları.',
+        changelog: '🔥 Oxypace 1.9.9 Sürümü: Yeni dinamik glassmorphism portal kartları, entegre EVENT HORIZON desteği ve Google OAuth geliştirmeleri.',
     });
 });
 

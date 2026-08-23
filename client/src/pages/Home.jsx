@@ -54,13 +54,23 @@ const Home = () => {
         }
     }, []);
 
-    // Handle pending portal redirect after login if any
+    // Auto-redirect logged-in users directly into the Oxypace platform
     useEffect(() => {
         if (!loading && user) {
             const pendingPortal = localStorage.getItem('oxypace_pending_portal');
             if (pendingPortal) {
                 localStorage.removeItem('oxypace_pending_portal');
-                navigate(`/portal/${pendingPortal}`);
+                navigate(`/portal/${pendingPortal}`, { replace: true });
+                return;
+            }
+
+            if (user.joinedPortals && user.joinedPortals.length > 0) {
+                const firstPortalId = typeof user.joinedPortals[0] === 'string' 
+                    ? user.joinedPortals[0] 
+                    : user.joinedPortals[0]._id;
+                navigate(`/portal/${firstPortalId}`, { replace: true });
+            } else {
+                navigate('/messages', { replace: true });
             }
         }
     }, [user, loading, navigate]);
@@ -222,15 +232,52 @@ const Home = () => {
                     <div className="hero-logo-mask-container">
                         <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" fetchpriority="high" loading="eager" decoding="async" />
                     </div>
-                    <div className="native-home-actions-row">
-                        <img src="/logo.png" alt="Oxypace" className="native-home-mini-logo" width="30" height="30" />
-                        <button className="native-home-btn primary" onClick={() => navigate('/login')}>
-                            Giriş Yap
-                        </button>
-                        <button className="native-home-btn secondary" onClick={() => navigate('/register')}>
-                            Kayıt Ol
-                        </button>
+
+                    {/* Dual Glassmorphism Portal Gateway Cards */}
+                    <div className="native-portals-gateway-container">
+                        {/* Oxypace Card */}
+                        <div className="native-portal-card" onClick={() => navigate('/login')}>
+                            <div className="native-card-glow oxypace-glow"></div>
+                            <div className="native-card-logo-box">
+                                <img src="/logo.png" alt="Oxypace" className="native-portal-logo-img" />
+                            </div>
+                            <div className="native-card-action-text">
+                                <span>Oxypace'e Gir</span>
+                                <span className="native-card-arrow">→</span>
+                            </div>
+                        </div>
+
+                        {/* EVENT HORIZON Card */}
+                        <div className="native-portal-card" onClick={() => {
+                            window.dispatchEvent(new CustomEvent('open-inapp-browser', {
+                                detail: { url: 'https://oxypace.com.tr/blog' }
+                            }));
+                        }}>
+                            <div className="native-card-glow eh-glow"></div>
+                            <div className="native-card-logo-box">
+                                <div className="native-eh-badge-logo">
+                                    <span className="eh-badge-word1">EVENT</span>
+                                    <span className="eh-badge-word2">HORIZON</span>
+                                </div>
+                            </div>
+                            <div className="native-card-action-text">
+                                <span>EVENT HORIZON'a Gir</span>
+                                <span className="native-card-arrow">→</span>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Ultra-Minimal Glassmorphism Legal Footer */}
+                    <footer className="native-minimal-footer">
+                        <div className="native-footer-legal-row">
+                            <span onClick={() => navigate('/privacy')}>Gizlilik</span>
+                            <span className="native-footer-dot">•</span>
+                            <span onClick={() => navigate('/terms')}>Şartlar</span>
+                            <span className="native-footer-dot">•</span>
+                            <span onClick={() => navigate('/contact')}>İletişim</span>
+                        </div>
+                        <p className="native-footer-copyright">© {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
+                    </footer>
                 </div>
             </div>
         );
