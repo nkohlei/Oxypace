@@ -35,19 +35,25 @@ function copyRecursive(src, dest) {
     }
 }
 
-// 1. Copy original blog static output into dist-mobile EXCEPT index.html (to keep React App as mobile root)
+// 1. Copy original blog static output into dist-mobile EXCEPT root index.html (to keep React App as mobile root)
 const blogEntries = fs.readdirSync(BLOG_OUT);
 for (const entry of blogEntries) {
     const srcPath = path.join(BLOG_OUT, entry);
     const destPath = path.join(MOBILE_DIST, entry);
     if (entry === 'index.html') {
-        // Copy original blog home as blog-home.html inside dist-mobile/blog/index.html
-        const blogHomeDest = path.join(MOBILE_DIST, 'blog', 'index.html');
-        fs.mkdirSync(path.join(MOBILE_DIST, 'blog'), { recursive: true });
-        fs.copyFileSync(srcPath, blogHomeDest);
+        // Skip root index.html because MOBILE_DIST has the React Single Page App index.html
+        continue;
     } else {
         copyRecursive(srcPath, destPath);
     }
+}
+
+// Ensure dist-mobile/blog/index.html is explicitly the real blog listing page from blog/out/blog/index.html
+const blogOutBlogIndex = path.join(BLOG_OUT, 'blog', 'index.html');
+const mobileDistBlogIndex = path.join(MOBILE_DIST, 'blog', 'index.html');
+if (fs.existsSync(blogOutBlogIndex)) {
+    fs.mkdirSync(path.join(MOBILE_DIST, 'blog'), { recursive: true });
+    fs.copyFileSync(blogOutBlogIndex, mobileDistBlogIndex);
 }
 
 console.log('✅ Mobile EVENT HORIZON original integration complete!');

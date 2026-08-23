@@ -309,11 +309,11 @@ app.use('/api/blog', blogRoutes);
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.0.0',
-        versionCode: 200,
+        latestVersion: '2.0.1',
+        versionCode: 201,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: false,
-        changelog: 'Oxypace 2.0.0: Dahili EVENT HORIZON arşivi, kusursuz medya ve avatar performansı.',
+        changelog: 'Oxypace 2.0.1: EVENT HORIZON mobil beyaz ekran düzeltmesi ve uygulama içi blog bağlantıları entegrasyonu.',
     });
 });
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { MessageCircle, Repeat, Heart } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import './LinkPreview.css';
 
 /**
@@ -247,23 +248,47 @@ const LinkPreview = ({ url, postId }) => {
         );
     }
 
-    // Generic OG preview card
-    if (!data.title) return null;
+    const getInternalBlogPath = (targetUrl) => {
+        if (!targetUrl) return null;
+        try {
+            const lower = targetUrl.toLowerCase();
+            if (lower.includes('oxypace.com.tr/blog') || lower.startsWith('/blog')) {
+                let path = targetUrl;
+                if (targetUrl.includes('oxypace.com.tr')) {
+                    const parts = targetUrl.split('oxypace.com.tr');
+                    path = parts[1] || '/blog';
+                }
+                let cleanPath = path.replace(/\/+$/, '');
+                if (!cleanPath.startsWith('/blog')) {
+                    cleanPath = '/blog' + (cleanPath ? '/' + cleanPath : '');
+                }
+                if (cleanPath === '/blog' || cleanPath === '') {
+                    return '/blog/index.html';
+                }
+                if (cleanPath.startsWith('/blog/')) {
+                    return cleanPath + '/index.html';
+                }
+                return '/blog/index.html';
+            }
+        } catch (_) {}
+        return null;
+    };
 
-    let domain;
-    try {
-        domain = new URL(data.url).hostname.replace('www.', '');
-    } catch {
-        domain = '';
-    }
+    const internalBlogPath = getInternalBlogPath(data.url);
 
     return (
         <a
             href={data.url}
-            target="_blank"
+            target={internalBlogPath && Capacitor.isNativePlatform() ? '_self' : '_blank'}
             rel="noopener noreferrer"
             className="link-preview-container"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+                e.stopPropagation();
+                if (internalBlogPath && Capacitor.isNativePlatform()) {
+                    e.preventDefault();
+                    window.location.href = internalBlogPath;
+                }
+            }}
         >
             <div className="link-preview-content">
                 {data.image && (

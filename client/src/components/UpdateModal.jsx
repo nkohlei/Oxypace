@@ -3,8 +3,8 @@ import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import './UpdateModal.css';
 
-// Current APK version — 1.9.9
-const CURRENT_VERSION = '1.9.9';
+// Current APK version — 2.0.1
+const CURRENT_VERSION = '2.0.1';
 
 /**
  * Compares two semver strings. Returns true if remote > local.
