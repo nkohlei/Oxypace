@@ -24,6 +24,7 @@ const shuffleArray = (arr) => {
 const Home = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
+    const isNative = Capacitor.isNativePlatform();
     const [publicPortals, setPublicPortals] = useState([]);
     const [scrollY, setScrollY] = useState(0);
     const [revealedSections, setRevealedSections] = useState(new Set());
@@ -206,6 +207,35 @@ const Home = () => {
         }
     ];
 
+    if (isNative) {
+        return (
+            <div className="app-wrapper advanced-home native-mobile-welcome">
+                <SEO
+                    title="Oxypace - Sosyal Medya Platformu"
+                    description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu."
+                />
+                <div className="native-hero-viewport">
+                    <div className="hero-gradient-glow"></div>
+                    <div className="hero-quote-animated">
+                        "The people who are crazy enough to think they can change the world are the ones who do."
+                    </div>
+                    <div className="hero-logo-mask-container">
+                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" fetchpriority="high" loading="eager" decoding="async" />
+                    </div>
+                    <div className="native-home-actions-row">
+                        <img src="/logo.png" alt="Oxypace" className="native-home-mini-logo" width="30" height="30" />
+                        <button className="native-home-btn primary" onClick={() => navigate('/login')}>
+                            Giriş Yap
+                        </button>
+                        <button className="native-home-btn secondary" onClick={() => navigate('/register')}>
+                            Kayıt Ol
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="app-wrapper advanced-home">
             <SEO
@@ -227,28 +257,22 @@ const Home = () => {
             <Navbar hideThemeToggle />
 
             <main className="advanced-home-content">
-                {/* HERO TITLE - User's Logo Image masked with an actual CSS Gradient overlay */}
                 <div className="hero-title-container" style={{
                     transform: `scale(${logoScale})`,
                     opacity: logoOpacity,
                     filter: `blur(${logoBlur}px)`
                 }}>
                     <div className="hero-gradient-glow"></div>
-                    
                     <div className="hero-quote-animated">
                         "The people who are crazy enough to think they can change the world are the ones who do."
                     </div>
-
                     <div className="hero-logo-mask-container">
                         <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" fetchpriority="high" loading="eager" decoding="async" />
                     </div>
                 </div>
 
-                {/* SCROLLABLE CONTENT */}
                 <div className="content-scroll-layer">
                     <section className="hero-empty-section"></section>
-
-                    {/* FEATURE SECTIONS */}
                     <div className="content-sections-wrapper">
                         {features.map((feat, i) => (
                             <section
@@ -320,7 +344,6 @@ const Home = () => {
                         ))}
                     </div>
 
-                    {/* PORTAL DISCOVERY - Randomized, clickable, no content */}
                     <section
                         id="discovery-section"
                         className={`portal-discovery-section slider-mode ${revealedSections.has('discovery') ? 'revealed' : ''}`}
@@ -375,7 +398,6 @@ const Home = () => {
                         </div>
                     </section>
 
-                    {/* GOOGLEBOT GLOBAL FEED */}
                     {isGoogleBot && botPosts.length > 0 && (
                         <section className="bot-feed-section" id="bot-feed-section" style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
                             <h2 style={{ fontSize: '2rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Global Akış</h2>
@@ -435,7 +457,6 @@ const Home = () => {
                         <AdUnit slot="1234567890" />
                     </div>
 
-                    {/* FOOTER */}
                     <footer className="home-advanced-footer">
                         <div className="footer-content">
                             <div className="footer-brand">
