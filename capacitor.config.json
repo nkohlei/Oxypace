@@ -1,7 +1,7 @@
 {
   "appId": "com.oxypace.app",
   "appName": "Oxypace",
-  "webDir": "client/dist",
+  "webDir": "client/dist-mobile",
   "android": {
     "adjustMarginsForEdgeToEdge": true
   },
