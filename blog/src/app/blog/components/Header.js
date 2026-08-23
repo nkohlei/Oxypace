@@ -485,123 +485,144 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
         </div>
 
         {/* =========================================================
-            3) MOBILE NAVIGATION PANEL (Analizler, Hesaplama Araçları, Kategoriler)
+            3) MINIMALIST FLOATING MOBILE DROPDOWN (Event Horizon Style)
            ========================================================= */}
         {mobileMenuOpen && (
-          <div
-            className="mobile-header-only w-full border-t transition-theme animate-fade-in-up"
-            style={{
-              background: "var(--glass-bg)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
-              borderColor: "var(--border-color)",
-              padding: "16px 20px 24px 20px",
-            }}
-          >
-            <nav className="flex flex-col gap-2 w-full">
-              {/* 1. Analizler */}
-              <Link
-                href="/blog"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between p-3 rounded-xl transition-all"
-                style={{
-                  background: "rgba(255, 255, 255, 0.04)",
-                  border: "1px solid var(--border-color)",
-                  color: "var(--foreground)",
-                  textDecoration: "none",
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-base">📝</span>
-                  <span className="font-bold text-sm">{lang === "en" ? "Analyses & Articles" : "Analizler"}</span>
-                </div>
-                <span className="text-xs text-white/40">→</span>
-              </Link>
+          <>
+            {/* Backdrop overlay */}
+            <div
+              className="mobile-header-only fixed inset-0 z-40"
+              style={{
+                background: "rgba(0, 0, 0, 0.6)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+              }}
+              onClick={() => setMobileMenuOpen(false)}
+            />
 
-              {/* 2. Hesaplama Araçları */}
-              <Link
-                href="/calculations"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between p-3 rounded-xl transition-all"
-                style={{
-                  background: "rgba(245, 158, 11, 0.08)",
-                  border: "1px solid rgba(245, 158, 11, 0.25)",
-                  color: "#fbbf24",
-                  textDecoration: "none",
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-base">🧮</span>
-                  <span className="font-bold text-sm">{lang === "en" ? "Calculation Tools & Simulators" : "Hesaplama Araçları"}</span>
-                </div>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold">
-                  {lang === "en" ? "3 Tools" : "3 Araç"}
-                </span>
-              </Link>
-
-              {/* 3. Kategoriler Dropdown / Accordion */}
+            {/* Floating Dropdown Card over the page */}
+            <div
+              className="mobile-header-only absolute top-[60px] left-0 right-0 z-50 transition-all duration-200"
+              style={{
+                padding: "8px 16px 16px 16px",
+              }}
+            >
               <div
-                className="rounded-xl transition-all overflow-hidden"
+                className="w-full rounded-2xl p-2.5 shadow-2xl transition-theme"
                 style={{
-                  background: "rgba(255, 255, 255, 0.04)",
+                  background: "var(--glass-bg)",
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
                   border: "1px solid var(--border-color)",
+                  boxShadow: "0 16px 40px rgba(0, 0, 0, 0.4)",
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setMobileCategoriesOpen(prev => !prev)}
-                  className="w-full flex items-center justify-between p-3"
-                  style={{
-                    color: "var(--foreground)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-base">📂</span>
-                    <span className="font-bold text-sm">{t.categories}</span>
-                  </div>
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
+                <nav className="flex flex-col gap-1 w-full">
+                  {/* 1. Analizler */}
+                  <Link
+                    href="/blog"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all"
                     style={{
-                      transition: "transform 0.2s ease",
-                      transform: mobileCategoriesOpen ? "rotate(180deg)" : "rotate(0deg)",
-                      color: "var(--foreground-muted)",
+                      color: "var(--foreground)",
+                      textDecoration: "none",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      letterSpacing: "-0.01em",
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--glass-bg)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                   >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
+                    <span>{lang === "en" ? "Analyses" : "Analizler"}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </Link>
 
-                {mobileCategoriesOpen && (
-                  <div className="flex flex-col gap-1 px-3 pb-3 pt-1 border-t border-white/5">
-                    {CATEGORIES_ITEMS.map((item) => (
-                      <Link
-                        key={item.key}
-                        href={item.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-all"
+                  {/* 2. Hesaplama Araçları */}
+                  <Link
+                    href="/calculations"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all"
+                    style={{
+                      color: "var(--foreground)",
+                      textDecoration: "none",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      letterSpacing: "-0.01em",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--glass-bg)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <span>{lang === "en" ? "Calculation Tools" : "Hesaplama Araçları"}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </Link>
+
+                  {/* 3. Kategoriler Accordion */}
+                  <div className="w-full">
+                    <button
+                      type="button"
+                      onClick={() => setMobileCategoriesOpen(prev => !prev)}
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all"
+                      style={{
+                        color: "var(--foreground)",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        letterSpacing: "-0.01em",
+                        fontFamily: "inherit",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--glass-bg)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <span>{t.categories}</span>
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
                         style={{
-                          color: "var(--foreground-muted)",
-                          textDecoration: "none",
+                          transition: "transform 0.2s ease",
+                          transform: mobileCategoriesOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          opacity: 0.4,
                         }}
                       >
-                        <span className="text-sm">{item.icon}</span>
-                        <span>{lang === "en" ? item.en : item.tr}</span>
-                      </Link>
-                    ))}
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+
+                    {mobileCategoriesOpen && (
+                      <div className="flex flex-col gap-0.5 pl-3 pr-1 py-1 mt-0.5 border-l border-white/10 ml-3.5">
+                        {CATEGORIES_ITEMS.map((item) => (
+                          <Link
+                            key={item.key}
+                            href={item.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="px-3 py-2 rounded-lg text-xs font-medium transition-all block"
+                            style={{
+                              color: "var(--foreground-muted)",
+                              textDecoration: "none",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--foreground-muted)"; }}
+                          >
+                            {lang === "en" ? item.en : item.tr}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                </nav>
               </div>
-            </nav>
-          </div>
+            </div>
+          </>
         )}
       </header>
 
