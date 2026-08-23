@@ -54,9 +54,9 @@ const Home = () => {
         }
     }, []);
 
-    // Auto-redirect logged-in users directly into the Oxypace platform
+    // Auto-redirect logged-in users directly into the Oxypace platform (Native Mobile Only)
     useEffect(() => {
-        if (!loading && user) {
+        if (isNative && !loading && user) {
             const pendingPortal = localStorage.getItem('oxypace_pending_portal');
             if (pendingPortal) {
                 localStorage.removeItem('oxypace_pending_portal');
@@ -72,8 +72,14 @@ const Home = () => {
             } else {
                 navigate('/messages', { replace: true });
             }
+        } else if (!isNative && !loading && user) {
+            const pendingPortal = localStorage.getItem('oxypace_pending_portal');
+            if (pendingPortal) {
+                localStorage.removeItem('oxypace_pending_portal');
+                navigate(`/portal/${pendingPortal}`);
+            }
         }
-    }, [user, loading, navigate]);
+    }, [user, loading, navigate, isNative]);
 
     // Fetch portals and shuffle for randomized display
     useEffect(() => {
