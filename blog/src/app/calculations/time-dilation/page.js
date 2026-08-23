@@ -103,8 +103,8 @@ const BLACK_HOLE_PRESETS = [
 ];
 
 /* ════════════════════════════════════════════════════════════
-   CANVAS 1: REALISTIC RELATIVISTIC BLACK HOLE (KERR / SCHWARZSCHILD)
-   Features Frame-Dragging Spacetime Swirl, Ergosphere, Doppler Beaming & Lensing
+   CANVAS 1: REALISTIC ASTROPHYSICAL BLACK HOLE (KERR / SCHWARZSCHILD)
+   Realistic Gravitational Lensing, Thermal Accretion Disk, Doppler Beaming & Shadow
 ════════════════════════════════════════════════════════════ */
 function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphere, isPhotonSphere, isIsco }) {
   const canvasRef = useRef(null);
@@ -120,237 +120,234 @@ function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphe
     const centerX = width * 0.48;
     const centerY = height * 0.5;
 
-    // Starfield for gravitational gravitational lensing & frame dragging backdrop
+    // Realistic Deep-Space Astrophysical Starfield (Uniform, faint, pinpoint stars)
     const bgStars = [];
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 340; i++) {
       bgStars.push({
         origX: Math.random() * width,
         origY: Math.random() * height,
-        size: Math.random() < 0.85 ? 0.5 + Math.random() * 0.6 : 1.2 + Math.random() * 0.8,
-        alpha: 0.35 + Math.random() * 0.55,
-        color: Math.random() > 0.3 ? "255,255,255" : Math.random() > 0.5 ? "220,235,255" : "255,240,220"
+        size: Math.random() < 0.88 ? 0.35 + Math.random() * 0.55 : 0.9 + Math.random() * 0.6,
+        alpha: 0.25 + Math.random() * 0.5,
+        r: 240 + Math.floor(Math.random() * 15),
+        g: 240 + Math.floor(Math.random() * 15),
+        b: 250 + Math.floor(Math.random() * 5)
       });
     }
 
-    // Accretion disk dust particles
+    // Realistic Accretion Disk Plasma Filaments (Thermal Planck Spectrum: White-Hot, Amber, Deep Crimson)
     const diskParticles = [];
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 480; i++) {
       diskParticles.push({
         angle: Math.random() * Math.PI * 2,
-        distFactor: 1.1 + Math.random() * 3.8, // multiple of shadow radius
-        baseSpeed: 0.01 + Math.random() * 0.018,
-        size: 0.7 + Math.random() * 1.5,
-        alpha: 0.3 + Math.random() * 0.7
+        distFactor: 1.15 + Math.random() * 3.4, // multiple of shadow radius
+        baseSpeed: 0.008 + Math.random() * 0.014,
+        size: 0.5 + Math.random() * 1.3,
+        alpha: 0.25 + Math.random() * 0.6,
+        tempKelvin: Math.random() // 1.0 = inner white hot, 0.0 = outer red cool
       });
     }
 
     let t = 0;
 
     const render = () => {
-      t += 0.02;
+      t += 0.016;
       ctx.clearRect(0, 0, width, height);
 
-      // Deep space void backdrop
-      ctx.fillStyle = "#010204";
+      // Deep space void backdrop: True pitch black cosmic void
+      ctx.fillStyle = "#010103";
       ctx.fillRect(0, 0, width, height);
 
-      // Shadow and Event Horizon Base Radii on Canvas (Scaled by Kerr Spin)
-      // For Kerr: r_+ = M + sqrt(M^2 - a^2) -> Horizon shrinks as spin increases
+      // Apparent Visual Shadow Radius (Photon capture cross section)
+      // For Schwarzschild: R_shadow = 3*sqrt(3)*M ≈ 2.6 Rs / 2 ≈ 1.3 Rs visual scale
       const spinShrink = Math.sqrt(Math.max(0, 1 - spin * spin));
-      const baseShadowRadius = 52 * (0.8 + 0.2 * spinShrink); // Visual shadow
-      const horizonRadius = baseShadowRadius * (0.45 * (1 + spinShrink));
-      const ergosphereRadiusX = baseShadowRadius * 0.95; // Ergosphere extends to 2M at equator
+      const baseShadowRadius = 48 * (0.85 + 0.15 * spinShrink);
+      const horizonRadius = baseShadowRadius * (0.42 * (1 + spinShrink));
+      const ergosphereRadiusX = baseShadowRadius * 0.94;
 
-      // 1. Draw Background Stars with Gravitational Lensing & Frame-Dragging Swirl
+      // 1. Draw Background Stars with Precise Gravitational Lensing Deflection & Frame Dragging
       for (const s of bgStars) {
         const dx = s.origX - centerX;
         const dy = s.origY - centerY;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < horizonRadius * 0.9) {
-          // Inside Black Hole Horizon - Completely dark
+        if (dist < baseShadowRadius * 0.94) {
+          // Inside Black Hole Apparent Shadow - Perfectly pitch black
           continue;
         }
 
-        // Deflection + Frame-Dragging Swirl (Lense-Thirring effect)
-        // Frame dragging angular velocity: omega = 2 a M r / (r^4 + a^2 r^2 + 2 a^2 M r)
-        const deflection = (baseShadowRadius * 36) / Math.max(15, dist);
-        const swirlAngle = (spin * 180) / Math.pow(Math.max(25, dist), 1.6);
-        const currentAngle = Math.atan2(dy, dx) + swirlAngle * 0.15;
+        // Einstein Gravitational Deflection alpha ~ 4GM / (c^2 b)
+        const deflection = (baseShadowRadius * 32) / Math.max(12, dist);
+        const swirlAngle = (spin * 140) / Math.pow(Math.max(20, dist), 1.5);
+        const currentAngle = Math.atan2(dy, dx) + swirlAngle * 0.12;
 
-        const lensedX = centerX + Math.cos(currentAngle) * (dist + deflection * 0.35);
-        const lensedY = centerY + Math.sin(currentAngle) * (dist + deflection * 0.35);
+        const lensedX = centerX + Math.cos(currentAngle) * (dist + deflection * 0.32);
+        const lensedY = centerY + Math.sin(currentAngle) * (dist + deflection * 0.32);
 
-        // Relativistic Einstein Ring Amplification near shadow boundary
-        const isNearRing = Math.abs(dist - baseShadowRadius * 1.3) < 8;
-        const alphaBoost = isNearRing ? 1.6 : 1.0;
+        // Einstein Ring Amplification near shadow boundary
+        const isNearRing = Math.abs(dist - baseShadowRadius * 1.28) < 6;
+        const alphaBoost = isNearRing ? 1.5 : 1.0;
 
-        ctx.fillStyle = `rgba(${s.color}, ${Math.min(1, s.alpha * alphaBoost)})`;
+        ctx.fillStyle = `rgba(${s.r}, ${s.g}, ${s.b}, ${Math.min(1, s.alpha * alphaBoost)})`;
         ctx.beginPath();
-        ctx.arc(lensedX, lensedY, s.size * (isNearRing ? 1.3 : 1.0), 0, Math.PI * 2);
+        ctx.arc(lensedX, lensedY, s.size * (isNearRing ? 1.25 : 1.0), 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // 2. Kerr Ergosphere Glow Region (Visible when spin > 0)
-      if (spin > 0.05) {
-        const ergoGrad = ctx.createRadialGradient(
-          centerX, centerY, horizonRadius,
-          centerX, centerY, ergosphereRadiusX * 1.1
-        );
-        ergoGrad.addColorStop(0, "rgba(239, 68, 68, 0.4)");
-        ergoGrad.addColorStop(0.5, `rgba(245, 158, 11, ${0.15 + spin * 0.25})`);
-        ergoGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-        ctx.save();
-        ctx.fillStyle = ergoGrad;
-        ctx.beginPath();
-        // Ergosphere has an oblate pumpkin shape (touches horizon at poles, extends to 2M at equator)
-        ctx.ellipse(centerX, centerY, ergosphereRadiusX, ergosphereRadiusX * (0.65 + 0.35 * (1 - spin)), 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // 3. Gravitational Lensing Glow / Photon Ring Background
+      // 2. Realistic Gravitational Lensing Glow / Thin Photon Ring
       const photonRingGrad = ctx.createRadialGradient(
-        centerX, centerY, baseShadowRadius * 0.85,
-        centerX, centerY, baseShadowRadius * 2.6
+        centerX, centerY, baseShadowRadius * 0.88,
+        centerX, centerY, baseShadowRadius * 2.3
       );
-      photonRingGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-      photonRingGrad.addColorStop(0.15, "rgba(251, 191, 36, 0.65)");
-      photonRingGrad.addColorStop(0.35, "rgba(249, 115, 22, 0.3)");
-      photonRingGrad.addColorStop(0.7, "rgba(168, 85, 247, 0.06)");
+      photonRingGrad.addColorStop(0, "rgba(255, 255, 255, 0.85)");
+      photonRingGrad.addColorStop(0.12, "rgba(254, 215, 170, 0.5)"); // Warm thermal gold
+      photonRingGrad.addColorStop(0.35, "rgba(194, 65, 12, 0.2)");  // Deep amber
+      photonRingGrad.addColorStop(0.7, "rgba(67, 20, 7, 0.05)");    // Faint infrared glow
       photonRingGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = photonRingGrad;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, baseShadowRadius * 2.6, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, baseShadowRadius * 2.3, 0, Math.PI * 2);
       ctx.fill();
 
-      // 4. Upper Lensed Accretion Disk Arc (Spacetime Curvature Light Ray Bending)
+      // 3. Upper Lensed Accretion Disk Arc (Light curved over top of the black hole)
       ctx.save();
       ctx.beginPath();
-      ctx.ellipse(centerX, centerY - 6, baseShadowRadius * 2.2, baseShadowRadius * 1.05, 0, Math.PI, 0);
-      const topArcGrad = ctx.createLinearGradient(centerX - 100, 0, centerX + 100, 0);
-      topArcGrad.addColorStop(0, "rgba(251, 146, 60, 0.1)");
-      topArcGrad.addColorStop(0.3, "rgba(255, 255, 255, 0.95)"); // Doppler blueshift approaching side
-      topArcGrad.addColorStop(0.6, "rgba(251, 191, 36, 0.65)");
-      topArcGrad.addColorStop(1, "rgba(239, 68, 68, 0.1)"); // Doppler redshift receding side
+      ctx.ellipse(centerX, centerY - 4, baseShadowRadius * 2.1, baseShadowRadius * 0.95, 0, Math.PI, 0);
+      const topArcGrad = ctx.createLinearGradient(centerX - 90, 0, centerX + 90, 0);
+      topArcGrad.addColorStop(0, "rgba(154, 52, 18, 0.15)"); // Redshifted receding side
+      topArcGrad.addColorStop(0.35, "rgba(255, 250, 240, 0.9)"); // Blueshifted approaching side
+      topArcGrad.addColorStop(0.65, "rgba(251, 146, 60, 0.5)");
+      topArcGrad.addColorStop(1, "rgba(124, 45, 18, 0.1)");
       ctx.strokeStyle = topArcGrad;
-      ctx.lineWidth = 12;
-      ctx.filter = "blur(3px)";
+      ctx.lineWidth = 9;
+      ctx.filter = "blur(2.5px)";
       ctx.stroke();
       ctx.filter = "none";
       ctx.restore();
 
-      // 5. Relativistic Accretion Disk Particles (Speed boosted by Kerr Frame Dragging)
+      // 4. Lower Lensed Accretion Disk Arc (Secondary image under the horizon)
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY + 4, baseShadowRadius * 1.6, baseShadowRadius * 0.45, 0, 0, Math.PI);
+      const bottomArcGrad = ctx.createLinearGradient(centerX - 70, 0, centerX + 70, 0);
+      bottomArcGrad.addColorStop(0.3, "rgba(255, 245, 230, 0.5)");
+      bottomArcGrad.addColorStop(0.7, "rgba(194, 65, 12, 0.2)");
+      ctx.strokeStyle = bottomArcGrad;
+      ctx.lineWidth = 5;
+      ctx.filter = "blur(2px)";
+      ctx.stroke();
+      ctx.filter = "none";
+      ctx.restore();
+
+      // 5. Thermal Plasma Accretion Disk (Rotated 74 deg perspective)
       for (const p of diskParticles) {
-        // Particles rotate faster when spin > 0 due to Lense-Thirring dragging
-        const speedBoost = 1 + (spin * 1.8) / Math.max(1, p.distFactor);
+        // Frame-dragging velocity boost
+        const speedBoost = 1 + (spin * 1.5) / Math.max(1, p.distFactor);
         p.angle += p.baseSpeed * speedBoost;
 
         const radX = baseShadowRadius * p.distFactor;
-        const radY = radX * 0.28; // 3D tilt
+        const radY = radX * 0.26; // 3D tilt perspective
 
         const px = centerX + Math.cos(p.angle) * radX;
         const py = centerY + Math.sin(p.angle) * radY;
 
-        // Relativistic Doppler Beaming
-        const dopplerFactor = (Math.cos(p.angle + Math.PI / 2) + 1) / 2;
+        // Relativistic Doppler Beaming: Approaching side (left) is amplified & white-hot; Receding side (right) is dimmed & dark red
+        const dopplerFactor = (Math.cos(p.angle + Math.PI / 2) + 1) / 2; // 1 = approaching, 0 = receding
 
-        let r = 255;
-        let g = Math.round(180 + dopplerFactor * 75);
-        let b = Math.round(80 + dopplerFactor * 175);
-        let a = (0.2 + dopplerFactor * 0.75) * p.alpha;
+        // Natural Planck Thermal Color Gradient
+        let r, g, b, a;
+        if (p.distFactor < 1.6) {
+          // Inner Hot ISCO Region: 10,000K+ White/Gold
+          r = 255;
+          g = Math.round(220 + dopplerFactor * 35);
+          b = Math.round(180 + dopplerFactor * 75);
+          a = (0.35 + dopplerFactor * 0.65) * p.alpha;
+        } else {
+          // Outer Cooler Disk: 3,000K - 6,000K Amber / Crimson
+          r = Math.round(200 + dopplerFactor * 55);
+          g = Math.round(90 + dopplerFactor * 90);
+          b = Math.round(30 + dopplerFactor * 50);
+          a = (0.2 + dopplerFactor * 0.6) * p.alpha;
+        }
 
         // Mask particles behind black hole shadow
-        const isBehind = Math.sin(p.angle) < 0 && Math.abs(px - centerX) < baseShadowRadius * 1.05;
+        const isBehind = Math.sin(p.angle) < 0 && Math.abs(px - centerX) < baseShadowRadius * 1.02;
         if (!isBehind) {
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
           ctx.beginPath();
-          ctx.arc(px, py, p.size * (1 + dopplerFactor * 0.5), 0, Math.PI * 2);
+          ctx.arc(px, py, p.size * (0.8 + dopplerFactor * 0.4), 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // 6. Black Hole Event Horizon Shadow (Obscured Singularity)
+      // 6. Black Hole Apparent Shadow (True Absolute Black)
       ctx.save();
       ctx.fillStyle = "#000000";
       ctx.beginPath();
-      // Kerr shadow becomes slightly asymmetric / D-shaped due to extreme spin
       if (spin > 0.5) {
-        ctx.ellipse(centerX - spin * 4, centerY, baseShadowRadius * 0.94, baseShadowRadius * 0.98, 0, 0, Math.PI * 2);
+        // Kerr shadow slight D-shape flattening on approaching side
+        ctx.ellipse(centerX - spin * 3, centerY, baseShadowRadius * 0.94, baseShadowRadius * 0.98, 0, 0, Math.PI * 2);
       } else {
         ctx.arc(centerX, centerY, baseShadowRadius * 0.96, 0, Math.PI * 2);
       }
       ctx.fill();
 
-      // Sharp Photon Sphere Luminous Edge Ring
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-      ctx.lineWidth = 1.2;
+      // Sharp Photon Ring Luminous Boundary
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+      ctx.lineWidth = 0.9;
       ctx.beginPath();
       ctx.arc(centerX, centerY, baseShadowRadius * 0.95, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Inner Event Horizon (r_+) Boundary
-      ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
-      ctx.lineWidth = 0.8;
+      // Inner Event Horizon Reference Ring (Subtle)
+      ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
+      ctx.lineWidth = 0.6;
       ctx.beginPath();
       ctx.arc(centerX, centerY, horizonRadius, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
 
       // 7. Observer Shuttle Orbit Trajectory Ring
-      const maxVisualRadius = width * 0.44;
+      const maxVisualRadius = width * 0.43;
       const minVisualRadius = baseShadowRadius * 0.95;
       const normalizedR = Math.min(10, Math.max(1.0, rOverRs));
       const visualProbeRadius = minVisualRadius + ((normalizedR - 1.0) / 9.0) * (maxVisualRadius - minVisualRadius);
 
-      const probeOrbitAngle = t * (0.3 + spin * 0.35); // Probe dragged by frame dragging
+      const probeOrbitAngle = t * (0.25 + spin * 0.3);
       const probeX = centerX + Math.cos(probeOrbitAngle) * visualProbeRadius;
-      const probeY = centerY + Math.sin(probeOrbitAngle) * (visualProbeRadius * 0.35);
+      const probeY = centerY + Math.sin(probeOrbitAngle) * (visualProbeRadius * 0.32);
 
       ctx.save();
       ctx.strokeStyle = isEventHorizon
         ? "rgba(239, 68, 68, 0.8)"
         : isErgosphere
-        ? "rgba(249, 115, 22, 0.8)"
+        ? "rgba(249, 115, 22, 0.75)"
         : isPhotonSphere
-        ? "rgba(245, 158, 11, 0.7)"
+        ? "rgba(245, 158, 11, 0.65)"
         : isIsco
-        ? "rgba(59, 130, 246, 0.7)"
-        : "rgba(255, 255, 255, 0.25)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
+        ? "rgba(147, 197, 253, 0.65)"
+        : "rgba(255, 255, 255, 0.2)";
+      ctx.lineWidth = 0.9;
+      ctx.setLineDash([3, 3]);
       ctx.beginPath();
-      ctx.ellipse(centerX, centerY, visualProbeRadius, visualProbeRadius * 0.35, 0, 0, Math.PI * 2);
+      ctx.ellipse(centerX, centerY, visualProbeRadius, visualProbeRadius * 0.32, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
 
-      // Observer Probe Beacon
+      // Observer Probe Point
       ctx.save();
-      const probePulse = Math.sin(t * 12) * 2;
-      const probeGlow = ctx.createRadialGradient(probeX, probeY, 1, probeX, probeY, 12 + probePulse);
-      probeGlow.addColorStop(0, "#ffffff");
-      probeGlow.addColorStop(0.3, isEventHorizon ? "#ef4444" : isErgosphere ? "#f97316" : isPhotonSphere ? "#f59e0b" : "#38bdf8");
-      probeGlow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = probeGlow;
-      ctx.beginPath();
-      ctx.arc(probeX, probeY, 12 + probePulse, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Probe Body Point
       ctx.fillStyle = "#ffffff";
       ctx.beginPath();
-      ctx.arc(probeX, probeY, 2.5, 0, Math.PI * 2);
+      ctx.arc(probeX, probeY, 2.2, 0, Math.PI * 2);
       ctx.fill();
 
       // Probe Label
       ctx.font = "9px monospace";
       ctx.fillStyle = isEventHorizon ? "#f87171" : isErgosphere ? "#fb923c" : "#e2e8f0";
       ctx.fillText(
-        isEventHorizon ? "⚡ GÖZLEMCİ (OLAY UFKUNDA)" : isErgosphere ? "🌀 ERGOSFERDE (FRAME-DRAGGING)" : `🛰️ r = ${rOverRs.toFixed(2)} rₛ`,
-        probeX + 8,
-        probeY - 6
+        isEventHorizon ? "⚡ GÖZLEMCİ (OLAY UFKUNDA)" : isErgosphere ? "🌀 ERGOSFERDE" : `🛰️ r = ${rOverRs.toFixed(2)} rₛ`,
+        probeX + 7,
+        probeY - 5
       );
       ctx.restore();
 
@@ -358,10 +355,10 @@ function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphe
       ctx.save();
       ctx.font = "9px monospace";
       ctx.fillStyle = "rgba(239, 68, 68, 0.85)";
-      ctx.fillText(`r₊: Dış Olay Ufku (${(1 + spinShrink).toFixed(2)} M)`, 14, height - 38);
-      ctx.fillStyle = spin > 0 ? "rgba(249, 115, 22, 0.9)" : "rgba(255, 255, 255, 0.4)";
+      ctx.fillText(`r₊: Olay Ufku (${(1 + spinShrink).toFixed(2)} M)`, 14, height - 38);
+      ctx.fillStyle = spin > 0 ? "rgba(249, 115, 22, 0.85)" : "rgba(255, 255, 255, 0.4)";
       ctx.fillText(`Ergosfer Sınırı (rₑ = 2M) ${spin > 0 ? "[AKTİF]" : "[YOK]"}`, 14, height - 24);
-      ctx.fillStyle = "rgba(34, 197, 94, 0.85)";
+      ctx.fillStyle = "rgba(147, 197, 253, 0.85)";
       ctx.fillText(`ISCO: ${spin > 0 ? (1 + Math.cbrt(1 - spin*spin)).toFixed(2) : "3.0"} rₛ`, 14, height - 10);
       ctx.restore();
 
@@ -384,7 +381,7 @@ function RelativisticBlackHoleCanvas({ rOverRs, spin, isEventHorizon, isErgosphe
         className="w-full h-auto block"
         style={{ aspectRatio: "580/280" }}
       />
-      <div className="absolute top-3 left-3 font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-amber-300 border border-amber-500/30">
+      <div className="absolute top-3 left-3 font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-amber-300 border border-white/10">
         {spin > 0 ? `KERR METRİĞİ (SPIN a* = ${spin.toFixed(3)})` : "SCHWARZSCHILD METRİĞİ (STATİK a* = 0)"}
       </div>
       <div className="absolute top-3 right-3 font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded bg-black/80 text-white/70 border border-white/10">
