@@ -206,6 +206,60 @@ const Home = () => {
         }
     ];
 
+    if (isNative) {
+        return (
+            <div className="app-wrapper advanced-home native-mobile-welcome">
+                <SEO
+                    title="Oxypace - Sosyal Medya Platformu"
+                    description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu."
+                />
+                <div className="native-hero-viewport">
+                    <div className="hero-gradient-glow"></div>
+                    <div className="hero-quote-animated">
+                        "The people who are crazy enough to think they can change the world are the ones who do."
+                    </div>
+                    <div className="hero-logo-mask-container">
+                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" fetchpriority="high" loading="eager" decoding="async" />
+                    </div>
+
+                    {/* Pure Minimal Gateway - No Boxes, No Neon, Pure Logos + Silver Arrow */}
+                    <div className="native-pure-portals-row">
+                        {/* Oxypace Gateway */}
+                        <div className="native-pure-gateway-item" onClick={() => navigate('/login')}>
+                            <img src="/logo.png" alt="Oxypace" className="native-pure-logo-img" />
+                            <span className="native-silver-arrow">→</span>
+                        </div>
+
+                        {/* EVENT HORIZON Gateway */}
+                        <div className="native-pure-gateway-item" onClick={() => {
+                            window.dispatchEvent(new CustomEvent('open-inapp-browser', {
+                                detail: { url: 'https://oxypace.com.tr/blog' }
+                            }));
+                        }}>
+                            <div className="native-pure-eh-typography">
+                                <span className="eh-pure-line1">EVENT</span>
+                                <span className="eh-pure-line2">HORIZON</span>
+                            </div>
+                            <span className="native-silver-arrow">→</span>
+                        </div>
+                    </div>
+
+                    {/* Ultra-Minimal Footer */}
+                    <footer className="native-minimal-footer">
+                        <div className="native-footer-legal-row">
+                            <span onClick={() => navigate('/privacy')}>Gizlilik</span>
+                            <span className="native-footer-dot">•</span>
+                            <span onClick={() => navigate('/terms')}>Şartlar</span>
+                            <span className="native-footer-dot">•</span>
+                            <span onClick={() => navigate('/contact')}>İletişim</span>
+                        </div>
+                        <p className="native-footer-copyright">© {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
+                    </footer>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="app-wrapper advanced-home">
             <SEO

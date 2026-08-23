@@ -592,3 +592,156 @@
     width: 100%;
   }
 }
+
+/* ========================================
+   NATIVE MOBILE WELCOME SCREEN (BOXLESS & NEON-FREE)
+   ======================================== */
+.advanced-home.native-mobile-welcome {
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  background: #000000;
+}
+
+.native-hero-viewport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Pure Portals Row - No Cards, No Boxes, No Neon */
+.native-pure-portals-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  margin-top: 48px;
+  z-index: 15;
+}
+
+.native-pure-gateway-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  user-select: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.native-pure-gateway-item:active {
+  transform: scale(0.92);
+  opacity: 0.75;
+}
+
+.native-pure-logo-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(255, 255, 255, 0.08));
+}
+
+.native-pure-eh-typography {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  text-align: center;
+}
+
+.eh-pure-line1 {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.eh-pure-line2 {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 3.5px;
+  color: #a0a0a0;
+  line-height: 1.2;
+}
+
+/* Minimal Silver Arrow */
+.native-silver-arrow {
+  color: #c0c0c0;
+  font-size: 1.15rem;
+  font-weight: 400;
+  opacity: 0.8;
+  transition: transform 0.2s ease, color 0.2s ease;
+  line-height: 1;
+}
+
+.native-pure-gateway-item:active .native-silver-arrow {
+  transform: translateX(4px);
+  color: #ffffff;
+}
+
+/* Ultra-Minimal Legal Footer */
+.native-minimal-footer {
+  position: absolute;
+  bottom: 28px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px;
+  z-index: 10;
+}
+
+.native-footer-legal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.3px;
+}
+
+.native-footer-legal-row span:not(.native-footer-dot) {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.native-footer-legal-row span:not(.native-footer-dot):active {
+  color: #ffffff;
+}
+
+.native-footer-dot {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 0.6rem;
+}
+
+.native-footer-copyright {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.25);
+  margin: 0;
+  letter-spacing: 0.2px;
+}
