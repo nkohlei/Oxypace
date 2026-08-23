@@ -52,17 +52,27 @@ function copyRecursive(src, dest) {
     }
 }
 
-// 1. Preserve Vite Portal SPA index.html as portal.html
+// 1. Preserve Vite Portal SPA index.html as portal.html and spa-index.html
 const portalHtmlSrc = path.join(CLIENT_DIST, 'index.html');
 const portalHtmlDest = path.join(CLIENT_DIST, 'portal.html');
+const spaIndexDest = path.join(CLIENT_DIST, 'spa-index.html');
+
+let spaHtmlContent = null;
 if (fs.existsSync(portalHtmlSrc)) {
-    console.log('📦 Preserving Portal SPA HTML as portal.html...');
-    fs.copyFileSync(portalHtmlSrc, portalHtmlDest);
+    console.log('📦 Preserving Portal SPA HTML as portal.html and spa-index.html...');
+    spaHtmlContent = fs.readFileSync(portalHtmlSrc, 'utf-8');
 }
 
 // 2. Copy Blog static files into client/dist (Blog index.html overrides root index.html)
 console.log('🌐 Copying Blog static export over dist root...');
 copyRecursive(BLOG_OUT, CLIENT_DIST);
+
+// 3. Ensure portal.html and spa-index.html remain strictly the Vite Portal SPA
+if (spaHtmlContent) {
+    fs.writeFileSync(portalHtmlDest, spaHtmlContent, 'utf-8');
+    fs.writeFileSync(spaIndexDest, spaHtmlContent, 'utf-8');
+    console.log('✨ Restored pure Portal SPA HTML to portal.html & spa-index.html');
+}
 
 console.log('\n✅ Merge complete!');
 console.log('   oxypace.com.tr/          → Blog (Next.js - index.html)');
