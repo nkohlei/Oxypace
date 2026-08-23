@@ -677,8 +677,9 @@ export default function TimeDilationPage() {
   // Radius expressed in units of r_s (Schwarzschild radius = 2M)
   const [rOverRs, setROverRs] = useState(1.000000002);
 
-  // Compute Physics Values
-  const currentMassKg = selectedPreset ? selectedPreset.massKg : customMassSolar * M_SUN;
+  // Compute Physics Values directly from authoritative customMassSolar
+  const effectiveMassSolar = customMassSolar;
+  const currentMassKg = effectiveMassSolar * M_SUN;
   const rsMeters = (2 * G * currentMassKg) / (C * C);
   const rsKm = rsMeters / 1000;
   const currentRadiusKm = rOverRs * rsKm;
@@ -731,8 +732,9 @@ export default function TimeDilationPage() {
     ? Math.min(299792, (activeSpin * C * 0.001) / Math.pow(rOverRs, 1.5))
     : 0;
 
-  // Tidal Acceleration Difference on 1.8m human
-  const rMeters = currentRadiusKm * 1000;
+  // Tidal Acceleration Difference on 1.8m human: Delta a = (2 * G * M * h) / r^3
+  // r in meters = rOverRs * rsMeters
+  const rMeters = Math.max(1, currentRadiusKm * 1000);
   const tidalAcceleration = (2 * G * currentMassKg * 1.8) / Math.pow(rMeters, 3);
   const tidalGForce = tidalAcceleration / 9.80665;
 
@@ -1063,56 +1065,77 @@ export default function TimeDilationPage() {
             </div>
 
             {/* Realtime Relativistic Output Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Metric 1: Time Dilation Factor */}
               <div className="cockpit-panel p-5 rounded-2xl border border-white/10 bg-black/40">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-amber-400 font-bold block mb-1">
-                  Zaman Genleşme Faktörü (dt / dτ)
+                  Zaman Faktörü (dt / dτ)
                 </span>
                 <span className="font-mono text-2xl font-black text-white">
                   {!isFinite(factor) ? "∞ TEKİLLİK" : `${factor.toFixed(4)}x`}
                 </span>
                 <p className="font-mono text-[10px] text-white/50 mt-2">
-                  Mekikte geçen 1 saniyeye karşılık Dünya'da geçen süre.
+                  Mekikteki 1 saniyeye karşılık Dünya'da geçen süre.
                 </p>
               </div>
 
-              {/* Metric 2: Frame Dragging Velocity */}
+              {/* Metric 2: Schwarzschild Radius (rs) & Orbital Distance in KM */}
+              <div className="cockpit-panel p-5 rounded-2xl border border-white/10 bg-black/40">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-emerald-400 font-bold block mb-1">
+                  Olay Ufku Yarıçapı (rₛ)
+                </span>
+                <span className="font-mono text-xl font-black text-white">
+                  {rsKm >= 1e6
+                    ? `${(rsKm / 1e6).toFixed(2)}M km`
+                    : rsKm >= 1e3
+                    ? `${(rsKm / 1e3).toFixed(1)}k km`
+                    : `${rsKm.toFixed(1)} km`}
+                </span>
+                <p className="font-mono text-[10px] text-white/50 mt-2">
+                  Yörünge: <strong className="text-emerald-300">{currentRadiusKm >= 1e6 ? `${(currentRadiusKm / 1e6).toFixed(2)}M km` : `${currentRadiusKm.toFixed(1)} km`}</strong>
+                </p>
+              </div>
+
+              {/* Metric 3: Frame Dragging Velocity */}
               <div className="cockpit-panel p-5 rounded-2xl border border-white/10 bg-black/40">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold block mb-1">
-                  Uzay Sürüklenme Hızı (Frame-Dragging)
+                  Uzay Sürüklenme Hızı
                 </span>
-                <span className="font-mono text-2xl font-black text-white">
+                <span className="font-mono text-xl font-black text-white">
                   {activeSpin === 0 ? "0 km/s (Statik)" : `~${frameDraggingKms.toFixed(0)} km/s`}
                 </span>
                 <p className="font-mono text-[10px] text-white/50 mt-2">
-                  Uzay-zaman dokusunun kara delik dönüşüyle girdap gibi sürüklenme hızı.
+                  Uzay-zamanın dönüş girdap hızı.
                 </p>
               </div>
 
-              {/* Metric 3: Gravitational Redshift */}
+              {/* Metric 4: Gravitational Redshift */}
               <div className="cockpit-panel p-5 rounded-2xl border border-white/10 bg-black/40">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-purple-400 font-bold block mb-1">
-                  Kütleçekimsel Kırmızıya Kayma (z)
+                  Kırmızıya Kayma (z)
                 </span>
-                <span className="font-mono text-2xl font-black text-white">
+                <span className="font-mono text-xl font-black text-white">
                   {!isFinite(redshiftZ) ? "∞ (Karanlık)" : `+${redshiftZ.toFixed(4)}`}
                 </span>
                 <p className="font-mono text-[10px] text-white/50 mt-2">
-                  Mekikten yayılan ışığın uzak gözlemciye ulaşırken kaybettiği enerji.
+                  Işığın enerji kaybı oranı.
                 </p>
               </div>
 
-              {/* Metric 4: Tidal Spaghettification */}
+              {/* Metric 5: Tidal Spaghettification */}
               <div className="cockpit-panel p-5 rounded-2xl border border-white/10 bg-black/40">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-rose-400 font-bold block mb-1">
-                  Gelgit Kuvveti (Spagettileşme)
+                  Gelgit Kuvveti (Spagetti)
                 </span>
-                <span className="font-mono text-2xl font-black text-white">
-                  {tidalGForce >= 1e6 ? `${(tidalGForce / 1e6).toFixed(1)}M G` : `${tidalGForce.toFixed(1)} G`}
+                <span className="font-mono text-xl font-black text-white">
+                  {tidalGForce >= 1e6
+                    ? `${(tidalGForce / 1e6).toFixed(1)}M G`
+                    : tidalGForce >= 1e3
+                    ? `${(tidalGForce / 1e3).toFixed(1)}k G`
+                    : `${tidalGForce.toFixed(2)} G`}
                 </span>
                 <p className="font-mono text-[10px] text-white/50 mt-2">
-                  Baş ve ayak arasındaki kütleçekim farkı (1.8m insan boyu için).
+                  1.8m insan boyundaki çekim farkı.
                 </p>
               </div>
             </div>
