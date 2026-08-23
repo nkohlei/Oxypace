@@ -919,23 +919,31 @@ export default function TimeDilationPage() {
                 </div>
               </div>
 
-              {/* Sliders Area: Mass, Distance and Spin */}
+              {/* Sliders & Manual Numeric Inputs: Mass, Distance and Spin */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
-                {/* Slider 1: Black Hole Mass (Solar Masses M_sun) */}
+                {/* Control 1: Black Hole Mass (Solar Masses M_sun) */}
                 <div>
-                  <div className="flex justify-between items-baseline mb-2">
+                  <div className="flex justify-between items-center mb-2">
                     <span className="font-mono text-xs uppercase tracking-widest text-emerald-400 font-bold">
-                      KARA DELİK KÜTLESİ (M / M☉):
+                      KÜTLE (M / M☉):
                     </span>
-                    <span className="font-mono text-sm font-black text-emerald-300">
-                      {customMassSolar >= 1e9
-                        ? `${(customMassSolar / 1e9).toFixed(2)} Milyar M☉`
-                        : customMassSolar >= 1e6
-                        ? `${(customMassSolar / 1e6).toFixed(2)} Milyon M☉`
-                        : customMassSolar >= 1e3
-                        ? `${(customMassSolar / 1e3).toFixed(1)} Bin M☉`
-                        : `${customMassSolar.toFixed(1)} M☉`}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max="10000000000"
+                        value={customMassSolar}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val) && val > 0) {
+                            setCustomMassSolar(val);
+                            setSelectedPreset(null);
+                          }
+                        }}
+                        className="w-28 px-2 py-0.5 rounded-lg bg-black/60 border border-emerald-500/40 text-emerald-300 font-mono text-xs text-right font-black focus:outline-none focus:border-emerald-400"
+                      />
+                      <span className="font-mono text-[10px] text-emerald-400 font-bold">M☉</span>
+                    </div>
                   </div>
                   <input
                     type="range"
@@ -951,27 +959,41 @@ export default function TimeDilationPage() {
                     className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-white/10 accent-emerald-400"
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
-                    <span className="cursor-pointer" onClick={() => { setCustomMassSolar(10); setSelectedPreset(null); }}>
-                      10 M☉ (Yıldızsal)
+                    <span className="cursor-pointer hover:text-emerald-300" onClick={() => { setCustomMassSolar(10); setSelectedPreset(null); }}>
+                      10 (Yıldız)
                     </span>
-                    <span className="cursor-pointer" onClick={() => { setCustomMassSolar(4.154e6); setSelectedPreset(null); }}>
+                    <span className="cursor-pointer hover:text-emerald-300" onClick={() => { setCustomMassSolar(4.154e6); setSelectedPreset(null); }}>
                       4.15M (Sgr A*)
                     </span>
-                    <span className="cursor-pointer text-emerald-400 font-bold" onClick={() => { setCustomMassSolar(6.5e9); setSelectedPreset(null); }}>
-                      6.5B M☉ (M87*)
+                    <span className="cursor-pointer text-emerald-400 font-bold hover:underline" onClick={() => { setCustomMassSolar(6.5e9); setSelectedPreset(null); }}>
+                      6.5B (M87*)
                     </span>
                   </div>
                 </div>
 
-                {/* Slider 2: Radial Distance Slider */}
+                {/* Control 2: Radial Distance (r / r_s) */}
                 <div>
-                  <div className="flex justify-between items-baseline mb-2">
+                  <div className="flex justify-between items-center mb-2">
                     <span className="font-mono text-xs uppercase tracking-widest text-amber-400 font-bold">
-                      RADYAL MESAFE (r / rₛ):
+                      MESAFE (r / rₛ):
                     </span>
-                    <span className="font-mono text-sm font-black text-amber-300">
-                      {isEventHorizon ? `r₊ = ${rPlus_Rs.toFixed(4)} rₛ (Olay Ufku)` : `${rOverRs.toFixed(4)} rₛ`}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={metricMode === "kerr" ? "0.5" : "1.0"}
+                        max="100.0"
+                        step="0.0001"
+                        value={rOverRs}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val) && val >= 0.5) {
+                            setROverRs(val);
+                          }
+                        }}
+                        className="w-24 px-2 py-0.5 rounded-lg bg-black/60 border border-amber-500/40 text-amber-300 font-mono text-xs text-right font-black focus:outline-none focus:border-amber-400"
+                      />
+                      <span className="font-mono text-[10px] text-amber-400 font-bold">rₛ</span>
+                    </div>
                   </div>
                   <input
                     type="range"
@@ -983,30 +1005,52 @@ export default function TimeDilationPage() {
                     className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-white/10 accent-amber-400"
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
-                    <span className="text-red-400 font-bold cursor-pointer" onClick={() => setROverRs(rPlus_Rs)}>
+                    <span className="text-red-400 font-bold cursor-pointer hover:underline" onClick={() => setROverRs(rPlus_Rs)}>
                       {rPlus_Rs.toFixed(2)} rₛ (r₊)
                     </span>
-                    <span className="text-orange-400 font-bold cursor-pointer" onClick={() => setROverRs(1.0)}>
+                    <span className="text-orange-400 font-bold cursor-pointer hover:underline" onClick={() => setROverRs(1.0)}>
                       1.0 rₛ (Ergosfer)
                     </span>
-                    <span className="text-emerald-400 font-bold cursor-pointer" onClick={() => setROverRs(iscoRadius_Rs)}>
+                    <span className="text-emerald-400 font-bold cursor-pointer hover:underline" onClick={() => setROverRs(iscoRadius_Rs)}>
                       {iscoRadius_Rs.toFixed(1)} rₛ (ISCO)
                     </span>
-                    <span className="text-white/60 cursor-pointer" onClick={() => setROverRs(10.0)}>
+                    <span className="text-white/60 cursor-pointer hover:underline" onClick={() => setROverRs(10.0)}>
                       10.0 rₛ
                     </span>
                   </div>
                 </div>
 
-                {/* Slider 3: Kerr Spin Parameter a* */}
+                {/* Control 3: Kerr Spin Parameter a* with Thorne Limit Note */}
                 <div className={metricMode === "schwarzschild" ? "opacity-40 pointer-events-none" : ""}>
-                  <div className="flex justify-between items-baseline mb-2">
-                    <span className="font-mono text-xs uppercase tracking-widest text-cyan-400 font-bold">
-                      SPIN / DÖNÜŞ (a* = Jc / GM²):
-                    </span>
-                    <span className="font-mono text-sm font-black text-cyan-300">
-                      {metricMode === "schwarzschild" ? "0.000 (Statik)" : `${activeSpin.toFixed(3)}`}
-                    </span>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs uppercase tracking-widest text-cyan-400 font-bold">
+                        SPIN (a*):
+                      </span>
+                      <span
+                        title="Neden %100 değil? Thorne Limiti (1974): Kara delik hızlandıkça akresyon diskinin zıt yönde yuttuğu fotonların frenleme etkisi (radiation back-reaction) ve Penrose Kozmik Sansür Hipotezi gereği dönüş hızı en fazla a* = 0.998 (%99.8) olabilir. Aksi halde olay ufku yok olur ve çıplak tekillik ortaya çıkar."
+                        className="cursor-help inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono text-[9px] font-bold border border-cyan-500/40"
+                      >
+                        ?
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0.0"
+                        max="0.998"
+                        step="0.001"
+                        value={activeSpin}
+                        onChange={(e) => {
+                          const val = Math.min(0.998, Math.max(0.0, parseFloat(e.target.value)));
+                          if (!isNaN(val)) {
+                            setSpin(val);
+                            if (metricMode !== "kerr") setMetricMode("kerr");
+                          }
+                        }}
+                        className="w-20 px-2 py-0.5 rounded-lg bg-black/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs text-right font-black focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
                   </div>
                   <input
                     type="range"
@@ -1021,12 +1065,15 @@ export default function TimeDilationPage() {
                     className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-white/10 accent-cyan-400"
                   />
                   <div className="flex justify-between font-mono text-[9px] mt-2 text-white/60">
-                    <span className="cursor-pointer" onClick={() => setSpin(0.0)}>0.0 (Dönmeyen)</span>
-                    <span className="cursor-pointer" onClick={() => setSpin(0.5)}>0.50</span>
-                    <span className="text-cyan-400 font-bold cursor-pointer" onClick={() => setSpin(0.998)}>
-                      0.998 (Thorne)
+                    <span className="cursor-pointer hover:text-cyan-300" onClick={() => setSpin(0.0)}>0.0 (Durgun)</span>
+                    <span className="cursor-pointer hover:text-cyan-300" onClick={() => setSpin(0.5)}>0.50</span>
+                    <span className="text-cyan-400 font-bold cursor-pointer hover:underline" onClick={() => setSpin(0.998)}>
+                      0.998 (Thorne Limiti)
                     </span>
                   </div>
+                  <p className="font-mono text-[9.5px] text-cyan-300/70 mt-1.5 leading-tight">
+                    ⚡ <strong>Neden Max %99.8?</strong> Akresyon diski foton freni (Thorne Limiti) ve çıplak tekilliği önleyen Kozmik Sansür kuralı.
+                  </p>
                 </div>
               </div>
             </div>
