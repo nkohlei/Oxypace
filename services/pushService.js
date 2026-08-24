@@ -70,13 +70,28 @@ export const sendPushNotification = async (tokens, payload) => {
 
     try {
         const absoluteImageUrl = payload.image ? constructNotifImageUrl(payload.image) : undefined;
+        const rawData = payload.data || {};
+        const sanitizedData = {};
+
+        for (const [key, val] of Object.entries(rawData)) {
+            if (val !== undefined && val !== null) {
+                if (key === 'senderAvatar' && typeof val === 'string' && val.length > 0) {
+                    sanitizedData[key] = constructNotifImageUrl(val) || val;
+                } else if (key === 'image' && typeof val === 'string' && val.length > 0) {
+                    sanitizedData[key] = constructNotifImageUrl(val) || val;
+                } else {
+                    sanitizedData[key] = String(val);
+                }
+            }
+        }
+
         const message = {
             // NO standard notification object so Android OS does not intercept it.
             // This guarantees our native OxypaceMessagingService.onMessageReceived receives it.
             data: {
                 title: String(payload.title || 'Oxypace'),
                 body: String(payload.body || ''),
-                ...(payload.data || {}),
+                ...sanitizedData,
                 ...(absoluteImageUrl && { 
                     image: absoluteImageUrl, 
                     bigPicture: absoluteImageUrl,
