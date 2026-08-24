@@ -3,8 +3,10 @@ import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import './UpdateModal.css';
 
-// Current APK version — 2.0.1
-const CURRENT_VERSION = '2.0.1';
+import { App as CapacitorApp } from '@capacitor/app';
+
+// Fallback APK version
+const CURRENT_VERSION = '2.0.2';
 
 /**
  * Compares two semver strings. Returns true if remote > local.
@@ -32,8 +34,18 @@ const UpdateModal = () => {
 
         const checkVersion = async () => {
             try {
+                let localVer = CURRENT_VERSION;
+                try {
+                    const appInfo = await CapacitorApp.getInfo();
+                    if (appInfo?.version) {
+                        localVer = appInfo.version;
+                    }
+                } catch (e) {
+                    console.warn('[UpdateModal] Could not get native app info, using fallback:', e);
+                }
+
                 const { data } = await axios.get('/api/app/version');
-                if (isNewerVersion(data?.latestVersion, CURRENT_VERSION)) {
+                if (isNewerVersion(data?.latestVersion, localVer)) {
                     setInfo(data);
                     setShow(true);
                 }
