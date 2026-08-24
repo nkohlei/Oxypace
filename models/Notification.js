@@ -85,18 +85,18 @@ notificationSchema.post('save', async function (doc) {
         if (doc.type === 'security_silent') return;
 
         let senderName = 'Oxypace';
-        let senderAvatar = null;
+        let senderAvatar = '';
         let senderUsername = '';
         if (doc.sender) {
              const sender = await User.findById(doc.sender).select('username profile.displayName profile.avatar profile.lowResAvatar');
              if (sender) {
-                 senderName = sender.profile?.displayName || sender.username;
-                 senderUsername = sender.username || '';
-                 senderAvatar = sender.profile?.avatar || sender.profile?.lowResAvatar || null;
+                 senderName = sender.profile?.displayName || sender.username || 'Oxypace';
+                 senderUsername = sender.username || senderName;
+                 senderAvatar = sender.profile?.avatar || sender.profile?.lowResAvatar || '';
              }
         }
 
-        let title = 'Yeni Bildirim';
+        let title = 'Oxypace';
         let body = 'Oxypace\'ten yeni bir bildiriminiz var.';
         let targetRoute = doc.link || '/';
 
@@ -110,7 +110,7 @@ notificationSchema.post('save', async function (doc) {
             case 'friend_connected': body = `${senderName} ile artık arkadaşsınız!`; break;
             case 'portal_post': body = `Portalında yeni bir paylaşım var.`; break;
             case 'message': 
-                title = senderName;
+                title = 'Oxypace';
                 body = doc.content || 'Sana bir mesaj gönderdi.';
                 targetRoute = `/inbox/${doc.sender}`;
                 break;
@@ -138,7 +138,7 @@ notificationSchema.post('save', async function (doc) {
                 senderId: doc.sender ? doc.sender.toString() : '',
                 senderName: senderName,
                 senderUsername: senderUsername,
-                senderAvatar: senderAvatar || '',
+                senderAvatar: senderAvatar,
                 notificationId: doc._id.toString()
             }
         });
