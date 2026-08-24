@@ -1,36 +1,17 @@
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 /**
  * Checks if a given URL is an internal EVENT HORIZON blog link.
  */
-const getInternalBlogPath = (url) => {
-    if (!url) return null;
+const isEventHorizonUrl = (url) => {
+    if (!url) return false;
     try {
         const lower = url.toLowerCase();
-        // Handles https://oxypace.com.tr/blog/..., http://oxypace.com.tr/blog/..., /blog/...
-        if (lower.includes('oxypace.com.tr/blog') || lower.startsWith('/blog')) {
-            let path = url;
-            if (url.includes('oxypace.com.tr')) {
-                const parts = url.split('oxypace.com.tr');
-                path = parts[1] || '/blog';
-            }
-            // Strip trailing slash
-            let cleanPath = path.replace(/\/+$/, '');
-            if (!cleanPath.startsWith('/blog')) {
-                cleanPath = '/blog' + (cleanPath ? '/' + cleanPath : '');
-            }
-            // If it's just /blog or /blog/
-            if (cleanPath === '/blog' || cleanPath === '') {
-                return '/blog/index.html';
-            }
-            // If it's a specific post /blog/<slug>
-            if (cleanPath.startsWith('/blog/')) {
-                return cleanPath + '/index.html';
-            }
-            return '/blog/index.html';
-        }
-    } catch (_) {}
-    return null;
+        return lower.includes('oxypace.com.tr/blog') || lower.startsWith('/blog');
+    } catch (_) {
+        return false;
+    }
 };
 
 /**
@@ -54,20 +35,28 @@ export const linkifyText = (text, urlToHide = null) => {
             // Reset regex lastIndex
             urlRegex.lastIndex = 0;
             const href = part.toLowerCase().startsWith('www.') ? `http://${part}` : part;
-            const internalBlogPath = getInternalBlogPath(href);
 
             return (
                 <a
                     key={index}
                     href={href}
-                    target={internalBlogPath && Capacitor.isNativePlatform() ? '_self' : '_blank'}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="linkified-url"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                         e.stopPropagation();
-                        if (internalBlogPath && Capacitor.isNativePlatform()) {
+                        if (Capacitor.isNativePlatform()) {
                             e.preventDefault();
-                            window.location.href = internalBlogPath;
+                            try {
+                                const fullUrl = href.startsWith('http') ? href : `https://${href}`;
+                                await Browser.open({
+                                    url: fullUrl,
+                                    toolbarColor: '#060913',
+                                    presentationStyle: 'fullscreen'
+                                });
+                            } catch (err) {
+                                window.open(href, '_system');
+                            }
                         }
                     }}
                 >

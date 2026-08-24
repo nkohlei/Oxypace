@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { MessageCircle, Repeat, Heart } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import './LinkPreview.css';
 
 /**
@@ -78,7 +79,22 @@ const LinkPreview = ({ url, postId }) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="tweet-card"
-                onClick={(e) => e.stopPropagation()}
+                onClick={async (e) => {
+                    e.stopPropagation();
+                    if (Capacitor.isNativePlatform()) {
+                        e.preventDefault();
+                        try {
+                            const targetUrl = data.url.startsWith('http') ? data.url : `https://${data.url}`;
+                            await Browser.open({
+                                url: targetUrl,
+                                toolbarColor: '#060913',
+                                presentationStyle: 'fullscreen'
+                            });
+                        } catch (err) {
+                            window.open(data.url, '_system');
+                        }
+                    }
+                }}
             >
                 {/* Tweet Header */}
                 <div className="tweet-card-header">
@@ -248,45 +264,26 @@ const LinkPreview = ({ url, postId }) => {
         );
     }
 
-    const getInternalBlogPath = (targetUrl) => {
-        if (!targetUrl) return null;
-        try {
-            const lower = targetUrl.toLowerCase();
-            if (lower.includes('oxypace.com.tr/blog') || lower.startsWith('/blog')) {
-                let path = targetUrl;
-                if (targetUrl.includes('oxypace.com.tr')) {
-                    const parts = targetUrl.split('oxypace.com.tr');
-                    path = parts[1] || '/blog';
-                }
-                let cleanPath = path.replace(/\/+$/, '');
-                if (!cleanPath.startsWith('/blog')) {
-                    cleanPath = '/blog' + (cleanPath ? '/' + cleanPath : '');
-                }
-                if (cleanPath === '/blog' || cleanPath === '') {
-                    return '/blog/index.html';
-                }
-                if (cleanPath.startsWith('/blog/')) {
-                    return cleanPath + '/index.html';
-                }
-                return '/blog/index.html';
-            }
-        } catch (_) {}
-        return null;
-    };
-
-    const internalBlogPath = getInternalBlogPath(data.url);
-
     return (
         <a
             href={data.url}
-            target={internalBlogPath && Capacitor.isNativePlatform() ? '_self' : '_blank'}
+            target="_blank"
             rel="noopener noreferrer"
             className="link-preview-container"
-            onClick={(e) => {
+            onClick={async (e) => {
                 e.stopPropagation();
-                if (internalBlogPath && Capacitor.isNativePlatform()) {
+                if (Capacitor.isNativePlatform()) {
                     e.preventDefault();
-                    window.location.href = internalBlogPath;
+                    try {
+                        const targetUrl = data.url.startsWith('http') ? data.url : `https://${data.url}`;
+                        await Browser.open({
+                            url: targetUrl,
+                            toolbarColor: '#060913',
+                            presentationStyle: 'fullscreen'
+                        });
+                    } catch (err) {
+                        window.open(data.url, '_system');
+                    }
                 }
             }}
         >
