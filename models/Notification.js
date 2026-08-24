@@ -85,15 +85,20 @@ notificationSchema.post('save', async function (doc) {
         if (doc.type === 'security_silent') return;
 
         let senderName = 'Oxypace';
+        let senderAvatar = null;
+        let senderUsername = '';
         if (doc.sender) {
-             const sender = await User.findById(doc.sender).select('username profile.displayName');
+             const sender = await User.findById(doc.sender).select('username profile.displayName profile.avatar profile.lowResAvatar');
              if (sender) {
                  senderName = sender.profile?.displayName || sender.username;
+                 senderUsername = sender.username || '';
+                 senderAvatar = sender.profile?.avatar || sender.profile?.lowResAvatar || null;
              }
         }
 
         let title = 'Yeni Bildirim';
         let body = 'Oxypace\'ten yeni bir bildiriminiz var.';
+        let targetRoute = doc.link || '/';
 
         // Map notification types to localized push messages
         switch(doc.type) {
@@ -107,6 +112,7 @@ notificationSchema.post('save', async function (doc) {
             case 'message': 
                 title = senderName;
                 body = doc.content || 'Sana bir mesaj gönderdi.';
+                targetRoute = `/inbox/${doc.sender}`;
                 break;
             case 'portal_invite': body = `${senderName} seni bir portala davet etti.`; break;
             case 'quote': body = `${senderName} gönderini alıntıladı.`; break;
@@ -126,7 +132,13 @@ notificationSchema.post('save', async function (doc) {
             body,
             image: doc.imageUrl,
             data: {
-                url: doc.link || '/',
+                url: targetRoute,
+                route: targetRoute,
+                type: doc.type || 'notification',
+                senderId: doc.sender ? doc.sender.toString() : '',
+                senderName: senderName,
+                senderUsername: senderUsername,
+                senderAvatar: senderAvatar || '',
                 notificationId: doc._id.toString()
             }
         });
