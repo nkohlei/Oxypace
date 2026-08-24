@@ -1,6 +1,6 @@
 import React, { Fragment, useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
 
@@ -46,6 +46,7 @@ const formatDateDivider = (dateStr) => {
 
 const Inbox = () => {
     const [searchParams] = useSearchParams();
+    const { userId: routeUserId } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
     const { socket } = useSocket();
@@ -149,11 +150,11 @@ const Inbox = () => {
     useEffect(() => {
         fetchConversations();
 
-        const username = searchParams.get('user');
-        if (username) {
-            fetchUserByUsername(username);
+        const targetUserParam = routeUserId || searchParams.get('user');
+        if (targetUserParam) {
+            fetchUserByUsername(targetUserParam);
         }
-    }, [searchParams]);
+    }, [searchParams, routeUserId]);
 
     const updateConversationInstant = useCallback((message, incrementUnread = false) => {
         setConversations((prevConvs) => {

@@ -1,6 +1,6 @@
 {
     "name": "globalmessage2",
-    "version": "2.0.4",
+    "version": "2.0.5",
     "description": "Social media platform backend",
     "main": "server.js",
     "type": "module",

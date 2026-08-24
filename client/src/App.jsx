@@ -584,6 +584,16 @@ const AppLayout = () => {
                                         <Inbox />
                                     </PrivateRoute>
                                 } />
+                                <Route path="/messages/:userId" element={
+                                    <PrivateRoute>
+                                        <Inbox />
+                                    </PrivateRoute>
+                                } />
+                                <Route path="/inbox/:userId" element={
+                                    <PrivateRoute>
+                                        <Inbox />
+                                    </PrivateRoute>
+                                } />
 
                                 {/* Portal Route */}
                                 <Route path="/portal/:id" element={<Portal />} />

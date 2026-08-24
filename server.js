@@ -309,11 +309,11 @@ app.use('/api/blog', blogRoutes);
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.0.4',
-        versionCode: 204,
+        latestVersion: '2.0.5',
+        versionCode: 205,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.0.4: Bildirim çubuğunda logo ikonu, mesaj bildirimlerinde avatar gösterimi, kişi bazlı mesaj gruplaması ve doğrudan mesaja gitme desteği.',
+        changelog: 'Oxypace 2.0.5: Bildirimlerde rozetli avatar, görsel mesaj önizleme, anlık bildirimden yanıtla (Direct Reply), zaman bilgisi ve doğrudan sohbete geçiş desteği.',
     });
 });
 

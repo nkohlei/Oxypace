@@ -513,11 +513,15 @@ router.delete('/devices/:deviceId', protect, async (req, res) => {
 });
 
 // @route   GET /api/users/:username
-// @desc    Get user profile by username
+// @desc    Get user profile by username or ObjectId
 // @access  Public (Optional Auth)
 router.get('/:username', optionalProtect, async (req, res) => {
     try {
-        const user = await User.findOne({ username: req.params.username })
+        const identifier = req.params.username;
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+        const query = isObjectId ? { $or: [{ _id: identifier }, { username: identifier }] } : { username: identifier };
+
+        const user = await User.findOne(query)
             .select(
                 'username profile.displayName profile.bio profile.avatar profile.lowResAvatar profile.coverImage followerCount followingCount createdAt settings verificationBadge customBadge joinedPortals following followers followRequests isDeleted'
             )

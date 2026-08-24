@@ -211,8 +211,15 @@ router.post(
             // Create Notification
             try {
                 let notificationContent = content || '';
-                if (!notificationContent && media) {
-                    notificationContent = '[Medya Dosyası]';
+                let notificationImage = undefined;
+                if (media) {
+                    const isImg = mediaType?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(media);
+                    if (isImg) {
+                        notificationImage = media;
+                        if (!notificationContent) notificationContent = '📷 Fotoğraf';
+                    } else if (!notificationContent) {
+                        notificationContent = '[Medya Dosyası]';
+                    }
                 } else if (!notificationContent && postId) {
                     notificationContent = '[Paylaşılan Gönderi]';
                 } else if (!notificationContent && portalId) {
@@ -224,6 +231,7 @@ router.post(
                     sender: req.user._id,
                     type: 'message',
                     content: notificationContent,
+                    imageUrl: notificationImage,
                 });
 
                 const io = req.app.get('io');

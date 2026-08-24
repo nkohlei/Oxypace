@@ -12,15 +12,21 @@ export const useAuth = () => {
     return context;
 };
 
+import { Capacitor, registerPlugin } from '@capacitor/core';
+const AuthSync = registerPlugin('AuthSync');
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
-    // Set axios default header
+    // Set axios default header & sync with native Android for notification direct replies
     useEffect(() => {
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            if (Capacitor.isNativePlatform()) {
+                AuthSync.syncAuth({ token, serverUrl: window.location.origin }).catch(() => {});
+            }
             // If user is already set (e.g. via login), don't re-fetch
             if (!user) {
                 fetchUser(token);
@@ -29,6 +35,9 @@ export const AuthProvider = ({ children }) => {
             }
         } else {
             setLoading(false);
+            if (Capacitor.isNativePlatform()) {
+                AuthSync.syncAuth({ token: '', serverUrl: window.location.origin }).catch(() => {});
+            }
         }
     }, [token, user]);
 
