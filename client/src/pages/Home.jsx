@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import AdUnit from '../components/AdUnit';
 import SEO from '../components/SEO';
 import axios from 'axios';
@@ -258,9 +259,18 @@ const Home = () => {
                         </div>
 
                         {/* EVENT HORIZON Gateway */}
-                        <div className="native-pure-gateway-item" onClick={() => {
+                        <div className="native-pure-gateway-item" onClick={async () => {
                             if (isNative) {
-                                window.location.href = '/blog/index.html';
+                                try {
+                                    await Browser.open({
+                                        url: 'https://oxypace.com.tr/blog',
+                                        toolbarColor: '#060913',
+                                        presentationStyle: 'fullscreen'
+                                    });
+                                } catch (err) {
+                                    console.error('Failed to open EVENT HORIZON in browser:', err);
+                                    window.open('https://oxypace.com.tr/blog', '_system');
+                                }
                             } else {
                                 window.location.href = '/blog';
                             }

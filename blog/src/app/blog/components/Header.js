@@ -147,6 +147,34 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
     setTheme(next);
   };
 
+  const navigateToOxypacePortal = (e) => {
+    e?.preventDefault?.();
+    try {
+      const token = localStorage.getItem("token");
+      const isLoggedIn = token &&
+        token !== "null" &&
+        token !== "undefined" &&
+        token !== "false" &&
+        typeof token === "string" &&
+        token.trim().length > 20;
+      const targetPath = isLoggedIn ? "/messages" : "/login";
+
+      // If opened in mobile environment, attempt deep linking to native app
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+      if (isMobileDevice) {
+        window.location.href = `oxypace://${isLoggedIn ? 'messages' : 'login'}`;
+        setTimeout(() => {
+          window.location.href = targetPath;
+        }, 600);
+        return;
+      }
+
+      window.location.href = targetPath;
+    } catch (_) {
+      window.location.href = "/login";
+    }
+  };
+
   const toggleLang = () => {
     const next = lang === "tr" ? "en" : "tr";
     onLangChange?.(next);
@@ -273,20 +301,7 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
             {/* Desktop Right */}
             <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => {
-                  try {
-                    const token = localStorage.getItem("token");
-                    const isLoggedIn = token &&
-                      token !== "null" &&
-                      token !== "undefined" &&
-                      token !== "false" &&
-                      typeof token === "string" &&
-                      token.trim().length > 20;
-                    window.location.href = isLoggedIn ? "/messages" : "/login";
-                  } catch (_) {
-                    window.location.href = "/login";
-                  }
-                }}
+                onClick={navigateToOxypacePortal}
                 className="mercury-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all"
                 style={{
                   background: "linear-gradient(135deg, #f8fafc 0%, #cbd5e1 35%, #94a3b8 70%, #e2e8f0 100%)",
@@ -387,23 +402,24 @@ export default function Header({ isArticle = false, lang = "tr", onLangChange })
             </Link>
 
             <div className="flex items-center gap-1.5 shrink-0">
-              <a
-                href="/login"
+              <button
+                type="button"
+                onClick={navigateToOxypacePortal}
                 className="mercury-btn flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-xs transition-all"
                 style={{
                   background: "linear-gradient(135deg, #f8fafc 0%, #cbd5e1 35%, #94a3b8 70%, #e2e8f0 100%)",
                   color: "#090d16",
-                  textDecoration: "none",
                   boxShadow: "0 4px 14px rgba(255, 255, 255, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.8), inset 0 -1px 2px rgba(0, 0, 0, 0.3)",
                   border: "1px solid rgba(255, 255, 255, 0.6)",
-                  fontFamily: "var(--font-geist-sans), system-ui, sans-serif"
+                  fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+                  cursor: "pointer",
                 }}
               >
                 <span className="font-extrabold text-[11px]">Oxypace</span>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                 </svg>
-              </a>
+              </button>
 
               <button
                 id="mobile-lang-btn"
