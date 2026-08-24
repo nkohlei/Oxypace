@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus } from 'lucide-react';
@@ -201,9 +202,18 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             <button
                                 className="event-horizon-nav-btn"
                                 title="EVENT HORIZON Blog"
-                                onClick={() => {
+                                onClick={async () => {
                                     if (Capacitor.isNativePlatform()) {
-                                        window.location.href = '/blog/index.html';
+                                        try {
+                                            await Browser.open({
+                                                url: 'https://oxypace.com.tr/blog',
+                                                toolbarColor: '#060913',
+                                                presentationStyle: 'fullscreen'
+                                            });
+                                        } catch (err) {
+                                            console.error('Failed to open EVENT HORIZON in browser:', err);
+                                            window.open('https://oxypace.com.tr/blog', '_system');
+                                        }
                                     } else {
                                         window.location.href = '/blog';
                                     }
