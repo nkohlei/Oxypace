@@ -22,10 +22,11 @@ export const AuthProvider = ({ children }) => {
 
     // Set axios default header & sync with native Android for notification direct replies
     useEffect(() => {
+        const prodServerUrl = 'https://oxypace.com.tr';
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             if (Capacitor.isNativePlatform()) {
-                AuthSync.syncAuth({ token, serverUrl: window.location.origin }).catch(() => {});
+                AuthSync.syncAuth({ token, serverUrl: prodServerUrl }).catch(() => {});
             }
             // If user is already set (e.g. via login), don't re-fetch
             if (!user) {
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         } else {
             setLoading(false);
             if (Capacitor.isNativePlatform()) {
-                AuthSync.syncAuth({ token: '', serverUrl: window.location.origin }).catch(() => {});
+                AuthSync.syncAuth({ token: '', serverUrl: prodServerUrl }).catch(() => {});
             }
         }
     }, [token, user]);
