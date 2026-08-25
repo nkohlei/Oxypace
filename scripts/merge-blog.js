@@ -60,6 +60,14 @@ if (fs.existsSync(portalHtmlSrc)) {
     fs.copyFileSync(portalHtmlSrc, portalHtmlDest);
 }
 
+// 1.1 Preserve downloads folder with oxypace.apk
+const downloadsSrc = path.join(ROOT, 'client', 'public', 'downloads');
+const downloadsDest = path.join(CLIENT_DIST, 'downloads');
+if (fs.existsSync(downloadsSrc)) {
+    console.log('📦 Preserving downloads folder with oxypace.apk...');
+    copyRecursive(downloadsSrc, downloadsDest);
+}
+
 // 2. Copy Blog static files into client/dist (Blog index.html overrides root index.html)
 console.log('🌐 Copying Blog static export over dist root...');
 copyRecursive(BLOG_OUT, CLIENT_DIST);

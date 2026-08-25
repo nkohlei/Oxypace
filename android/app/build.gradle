@@ -1,0 +1,111 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "com.oxypace.app"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.oxypace.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 205
+        versionName "2.0.5"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Directed sub-properties to control bundling of art files
+             // or other shared assets if needed.
+        }
+    }
+    splits {
+        abi {
+            enable false
+        }
+    }
+    signingConfigs {
+        release {
+            storeFile file("my-release-key.keystore")
+            storePassword "oxypace123"
+            keyAlias "alias_name"
+            keyPassword "oxypace123"
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.release
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/*.version', 'META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/NOTICE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE.txt']
+        }
+        jniLibs {
+            keepDebugSymbols = []
+        }
+    }
+
+    compileOptions {
+        // Support Java 8 desugaring APIs for WebRTC/LiveKit
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation project(':capacitor-android')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation 'com.google.firebase:firebase-messaging:24.1.0'
+
+    // LiveKit Android SDK and WebRTC dependencies
+    implementation "io.livekit:livekit-android:2.4.0"
+    
+    // Kotlin Coroutines for async room management in Java/Kotlin bridge
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3"
+
+    // Java 8 desugaring dependency
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
+}
+
+apply from: 'capacitor.build.gradle'
+
+// Enforce Pure React Portal SPA index.html before building APK
+tasks.register('enforcePortalSpaAssets') {
+    doLast {
+        def spaHtmlFile = file("../../client/dist/spa-index.html")
+        def targetIndex = file("src/main/assets/public/index.html")
+        if (spaHtmlFile.exists() && targetIndex.exists()) {
+            targetIndex.text = spaHtmlFile.text
+            println "✅ [Gradle] Enforced Pure React Portal SPA in android assets index.html"
+        }
+    }
+}
+
+preBuild.dependsOn enforcePortalSpaAssets
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. This is fine if you're not using Firebase.")
+}
+
