@@ -90,7 +90,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
     }
 
     private void showMessageNotification(java.util.Map<String, String> data, RemoteMessage.Notification notif) {
-        String channelId = "oxypace_messages_v1";
+        String channelId = "oxypace_messages_v2";
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
@@ -132,12 +132,17 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             avatarBitmap = createInitialAvatarWithBadge(senderName);
         }
 
+        androidx.core.graphics.drawable.IconCompat avatarIconCompat = null;
+        if (avatarBitmap != null) {
+            avatarIconCompat = androidx.core.graphics.drawable.IconCompat.createWithBitmap(avatarBitmap);
+        }
+
         androidx.core.app.Person.Builder personBuilder = new androidx.core.app.Person.Builder()
             .setName(senderName)
             .setKey(senderId);
 
-        if (avatarBitmap != null) {
-            personBuilder.setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(avatarBitmap));
+        if (avatarIconCompat != null) {
+            personBuilder.setIcon(avatarIconCompat);
         }
 
         androidx.core.app.Person senderPerson = personBuilder.build();
@@ -147,8 +152,34 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setName("Ben")
             .build();
 
-        // WhatsApp sets isGroupConversation = false so Android renders senderPerson name prominently in expanded view
+        // Dynamic Conversation Shortcut for Android 11+ (MIUI / HyperOS / OneUI Conversation Space)
+        String shortcutId = "conversation_" + senderId;
+        try {
+            Intent shortcutIntent = new Intent(this, MainActivity.class);
+            shortcutIntent.setAction("OPEN_ROUTE");
+            shortcutIntent.putExtra("route", route);
+            shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+            androidx.core.content.pm.ShortcutInfoCompat.Builder scBuilder = new androidx.core.content.pm.ShortcutInfoCompat.Builder(this, shortcutId)
+                .setShortLabel(senderName)
+                .setLongLabel(senderName)
+                .setPerson(senderPerson)
+                .setIntent(shortcutIntent)
+                .setLongLived(true);
+
+            if (avatarIconCompat != null) {
+                scBuilder.setIcon(avatarIconCompat);
+            }
+
+            androidx.core.content.pm.ShortcutManagerCompat.pushDynamicShortcut(this, scBuilder.build());
+        } catch (Exception scErr) {
+            // Ignore shortcut errors if not supported
+        }
+
+        // WhatsApp MessagingStyle Configuration:
+        // isGroupConversation is false, but setConversationTitle gives the expanded header context
         NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(userPerson)
+            .setConversationTitle(senderName)
             .setGroupConversation(false);
 
         synchronized (list) {
@@ -204,9 +235,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
+            .setSubText("Oxypace")
             .setContentTitle(senderName)
             .setContentText(messageBody)
             .setStyle(style)
+            .setShortcutId(shortcutId)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .addAction(replyAction)
