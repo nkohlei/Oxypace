@@ -27,10 +27,10 @@
   status = 301
   force = true
 
-# ── API Proxy → Koyeb ────────────────────────────
+# ── API Proxy → Oracle Cloud Backend ────────────────
 [[redirects]]
   from = "/api/*"
-  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/api/:splat"
+  to = "https://api.oxypace.com.tr/api/:splat"
   status = 200
   force = true
 
@@ -42,41 +42,41 @@
 
 [[redirects]]
   from = "/socket.io/*"
-  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/socket.io/:splat"
+  to = "https://api.oxypace.com.tr/socket.io/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/sitemap.xml"
-  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/sitemap.xml"
+  to = "https://api.oxypace.com.tr/sitemap.xml"
   status = 200
   force = true
 
 # ── OG Bot Proxy (Bot preview için) ──────────────
 [[redirects]]
   from = "/portal/post/*"
-  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/post/:splat"
+  to = "https://api.oxypace.com.tr/og/post/:splat"
   status = 200
   force = true
   conditions = {Role = ["bot"]}
 
 [[redirects]]
   from = "/portal/profile/*"
-  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/profile/:splat"
+  to = "https://api.oxypace.com.tr/og/profile/:splat"
   status = 200
   force = true
   conditions = {Role = ["bot"]}
 
 [[redirects]]
   from = "/portal/portal/*"
-  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/portal/:splat"
+  to = "https://api.oxypace.com.tr/og/portal/:splat"
   status = 200
   force = true
   conditions = {Role = ["bot"]}
 
 [[redirects]]
   from = "/blog/*"
-  to = "https://unlikely-rosamond-oxypace-e695aebb.koyeb.app/og/blog/:splat"
+  to = "https://api.oxypace.com.tr/og/blog/:splat"
   status = 200
   force = true
   conditions = {Role = ["bot"]}
