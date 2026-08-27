@@ -39,7 +39,7 @@ export const SocketProvider = ({ children }) => {
         }
 
         const newSocket = io(socketUrl, {
-            transports: isNative ? ['websocket', 'polling'] : ['polling', 'websocket'],
+            transports: ['websocket', 'polling'],
             upgrade: true,
             rememberUpgrade: true,
             forceNew: false, 
