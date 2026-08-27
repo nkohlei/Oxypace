@@ -465,34 +465,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 </button>
             )}
             <div className="vc-top-right-controls">
-                {isConnected && (
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        background: 'rgba(34, 197, 94, 0.12)',
-                        border: '1px solid rgba(34, 197, 94, 0.3)',
-                        borderRadius: '20px',
-                        color: '#4ade80',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        letterSpacing: '0.5px',
-                        boxShadow: '0 0 15px rgba(34, 197, 94, 0.15)',
-                        marginRight: '6px'
-                    }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: '#22c55e',
-                            boxShadow: '0 0 8px #22c55e',
-                            display: 'inline-block',
-                            animation: 'pulse 1.5s infinite'
-                        }}></span>
-                        <span>{formatDuration(callDuration)}</span>
-                    </div>
-                )}
                 <button 
                     className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`} 
                     onClick={() => { setIsInviteOpen(!isInviteOpen); setIsChatOpen(false); setIsVolumeOpen(false); }} 
