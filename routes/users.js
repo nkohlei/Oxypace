@@ -517,21 +517,23 @@ router.delete('/devices/:deviceId', protect, async (req, res) => {
 // @access  Private
 router.get('/me', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id)
-            .select('-password -verificationToken')
-            .populate('joinedPortals', 'name avatar lowResAvatar badges isVerified privacy members allowedUsers owner admins');
+        const [user, postCount] = await Promise.all([
+            User.findById(req.user._id)
+                .select('-password -verificationToken')
+                .populate('joinedPortals', 'name avatar lowResAvatar badges isVerified privacy members allowedUsers owner admins')
+                .lean(),
+            Post.countDocuments({ author: req.user._id })
+        ]);
 
         if (!user || user.isDeleted) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const userObj = user.toObject();
-        userObj.postCount = await Post.countDocuments({ author: user._id });
-
+        user.postCount = postCount;
         const followerIdSet = new Set((user.followers || []).filter(Boolean).map(id => id.toString()));
-        userObj.friendCount = (user.following || []).filter(id => id && followerIdSet.has(id.toString())).length;
+        user.friendCount = (user.following || []).filter(id => id && followerIdSet.has(id.toString())).length;
 
-        res.json(userObj);
+        res.json(user);
     } catch (error) {
         console.error('Get me error:', error);
         res.status(500).json({ message: 'Server error' });
