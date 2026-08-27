@@ -306,6 +306,37 @@ app.use('/api/preview', previewRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/blog', blogRoutes);
 
+import { exec } from 'child_process';
+import crypto from 'crypto';
+
+// GitHub Deploy Webhook
+app.post('/api/webhook/deploy', express.json(), (req, res) => {
+    const signature = req.headers['x-hub-signature-256'];
+    const secret = process.env.WEBHOOK_SECRET || process.env.JWT_SECRET;
+    
+    if (signature && secret) {
+        const hmac = crypto.createHmac('sha256', secret);
+        const digest = 'sha256=' + hmac.update(JSON.stringify(req.body)).digest('hex');
+        if (signature !== digest) {
+            return res.status(403).json({ error: 'Invalid signature' });
+        }
+    }
+
+    console.log('🚀 [AutoDeploy] GitHub push event received! Updating backend...');
+    res.status(200).json({ message: 'Deploy triggered successfully' });
+
+    // Arka planda git pull ve pm2 reload çalıştır
+    setTimeout(() => {
+        exec('cd /home/ubuntu/app && git pull origin main && npm install --omit=dev && pm2 restart oxypace-backend', (err, stdout, stderr) => {
+            if (err) {
+                console.error('❌ [AutoDeploy] Error:', err);
+                return;
+            }
+            console.log('✅ [AutoDeploy] Output:', stdout);
+        });
+    }, 1000);
+});
+
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
@@ -320,7 +351,6 @@ app.get('/api/app/version', (req, res) => {
 import contactRoutes from './routes/contact.js';
 import feedbackRoutes from './routes/feedback.js';
 
-// ...
 app.use('/api/contact', contactRoutes);
 app.use('/api/feedback', feedbackRoutes);
 
