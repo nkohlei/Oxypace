@@ -603,11 +603,9 @@ const cleanupExpiredTouristAdmins = async () => {
     }
 };
 
-// Start server
-// Start server only if run directly
-if (process.argv[1] === __filename) {
-    const PORT = process.env.PORT || 5000;
-    httpServer.listen(PORT, async () => {
+// Start server unconditionally
+const PORT = process.env.PORT || 5000;
+httpServer.listen(PORT, async () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📡 Socket.IO ready for real-time connections`);
         console.log('✅ Backend updated: v2.6 - Sitemap Integrated');
@@ -642,6 +640,5 @@ if (process.argv[1] === __filename) {
         });
 
     });
-}
 
 export default app;
