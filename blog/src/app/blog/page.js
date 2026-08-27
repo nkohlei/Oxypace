@@ -39,14 +39,15 @@ const HERO_TEXT = {
 
 function BlogHomeContent() {
   const [lang, setLang] = useState("tr");
-  const [allPosts, setAllPosts] = useState(staticPosts);
-  const [loading, setLoading] = useState(false);
+  const [allPosts, setAllPosts] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const searchParams = useSearchParams();
   const categoryParam = searchParams ? searchParams.get("category") : null;
 
   // Dinamik makaleleri API'den çek
   useEffect(() => {
+    let isMounted = true;
     const fetchPosts = async () => {
       try {
         const apiUrl = typeof window !== 'undefined'
@@ -55,26 +56,29 @@ function BlogHomeContent() {
         const res = await fetch(apiUrl);
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const formatted = data.map(p => ({
-              ...p,
-              id: p._id || p.id
-            }));
-            setAllPosts(formatted);
-          } else {
-            setAllPosts(staticPosts);
+          if (isMounted) {
+            if (Array.isArray(data) && data.length > 0) {
+              const formatted = data.map(p => ({
+                ...p,
+                id: p._id || p.id
+              }));
+              setAllPosts(formatted);
+            } else {
+              setAllPosts(staticPosts);
+            }
           }
-        } else {
+        } else if (isMounted) {
           setAllPosts(staticPosts);
         }
       } catch (e) {
         console.error('API blog posts fetch error, fallback to static:', e);
-        setAllPosts(staticPosts);
+        if (isMounted) setAllPosts(staticPosts);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchPosts();
+    return () => { isMounted = false; };
   }, []);
 
   const T = HERO_TEXT[lang];
