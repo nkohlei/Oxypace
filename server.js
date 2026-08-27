@@ -126,7 +126,15 @@ const io = new Server(httpServer, {
 });
 global.io = io;
 
-// Push Trigger: efee3de
+// Setup Redis adapter for multi-instance socket clustering
+setupRedisAdapter(io);
+
+// Initialize Socket event handlers and presence
+initializeSocket(io);
+
+// Setup MongoDB Change Streams
+setupChangeStreams(io);
+
 app.set('io', io);
 
 // Connect to MongoDB
