@@ -15,6 +15,23 @@ const isEventHorizonUrl = (url) => {
 };
 
 /**
+ * Extracts internal blog relative path from a URL.
+ */
+const getInternalBlogPath = (url) => {
+    if (!url) return null;
+    try {
+        if (url.startsWith('/blog')) return url;
+        if (url.includes('oxypace.com.tr/blog')) {
+            const pathIndex = url.indexOf('/blog');
+            return url.substring(pathIndex);
+        }
+        return null;
+    } catch (_) {
+        return null;
+    }
+};
+
+/**
  * Converts URLs in text to clickable links.
  * Returns an array of React elements (strings and <a> tags).
  */
