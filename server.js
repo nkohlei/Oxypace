@@ -345,6 +345,14 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     }, 1000);
 });
 
+// Loader.io Verification
+app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c', (req, res) => {
+    res.send('loaderio-246e78c59963b4c65ec8883b750b2d5c');
+});
+app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
+    res.send('loaderio-246e78c59963b4c65ec8883b750b2d5c');
+});
+
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
