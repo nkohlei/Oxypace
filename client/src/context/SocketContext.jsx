@@ -55,6 +55,12 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('connect', () => {
             setConnected(true);
+            // Re-join if user is already authenticated
+            if (user?._id) {
+                const isGhost = !!localStorage.getItem('admin_backup_token');
+                newSocket.emit('join', String(user._id), isGhost);
+                console.log(`[Socket] Connected & joined user: ${user._id}`);
+            }
         });
 
         newSocket.on('getOnlineUsers', (users) => {
