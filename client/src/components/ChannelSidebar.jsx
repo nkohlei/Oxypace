@@ -35,11 +35,14 @@ const ChannelSidebar = ({
     const { roomStartTime, activeRoom } = useVoice();
     const { socket, onlineUsers } = useSocket();
 
-    // Calculate real online count from portal.members and onlineUsers list
-    const onlineCount = (portal?.members || []).filter((member) => {
-        const memberId = member._id || member.id || member;
-        return onlineUsers.includes(String(memberId));
-    }).length;
+    // Calculate real online count from portal.members, portal.admins, portal.owner and onlineUsers list
+    const allMemberIds = new Set([
+        portal?.owner?._id || portal?.owner?.id || portal?.owner,
+        ...(portal?.admins || []).map(a => a?._id || a?.id || a),
+        ...(portal?.members || []).map(m => m?._id || m?.id || m)
+    ].filter(Boolean).map(id => String(id)));
+
+    const onlineCount = Array.from(allMemberIds).filter(id => onlineUsers.map(String).includes(id)).length;
 
     // Clear unread count for the active channel
     useEffect(() => {
