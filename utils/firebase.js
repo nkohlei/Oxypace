@@ -19,10 +19,12 @@ export const initFirebase = () => {
                 admin.initializeApp({
                     credential: admin.credential.cert(serviceAccount),
                 });
+                messaging = admin.messaging();
+                console.log('[Firebase] Admin initialized successfully.');
             }
+        } else {
+            messaging = admin.messaging();
         }
-        messaging = admin.messaging();
-        console.log('[Firebase] Admin initialized successfully.');
     } catch (err) {
         console.error('[Firebase] Failed to initialize admin:', err.message);
     }
