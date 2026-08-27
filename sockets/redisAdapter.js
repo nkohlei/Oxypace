@@ -8,8 +8,18 @@ let subClient = null;
 if (REDIS_URL) {
     try {
         pubClient = new Redis(REDIS_URL, {
-            maxRetriesPerRequest: 1,
-            retryStrategy: () => null // Prevent infinite reconnection loop if Redis is down
+            maxRetriesPerRequest: 20,
+            retryStrategy(times) {
+                const delay = Math.min(times * 100, 2000);
+                return delay;
+            },
+            reconnectOnError(err) {
+                const targetError = 'READONLY';
+                if (err.message.includes(targetError)) {
+                    return true;
+                }
+                return false;
+            }
         });
         subClient = pubClient.duplicate();
 
