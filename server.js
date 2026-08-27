@@ -619,26 +619,28 @@ httpServer.listen(PORT, async () => {
             console.error('⚠️ Boot DB connect/repair failed:', err.message);
         }
 
-        // Start Bot Loop (in background)
-        startBotLoop(io);
+        // Run background worker tasks (Bots & Cron) ONLY on primary cluster instance (Instance 0)
+        // This prevents 4x parallel duplicate scraping, socket spam, and database race conditions.
+        const isPrimaryInstance = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
+        if (isPrimaryInstance) {
+            console.log('👑 Primary Cluster Worker (Instance 0): Starting News Bot & System Cron Jobs...');
+            startBotLoop(io);
 
-        // Keep-Alive Cron Job
-        cron.schedule('*/10 * * * *', async () => {
-            try {
-                const port = process.env.PORT || 5000;
-                // Ping local health endpoint
-                await axios.get(`http://127.0.0.1:${port}/api/health`);
-                console.log('🔄 Self-ping successful to prevent sleep');
-            } catch (error) {
-                console.error('⚠️ Self-ping failed:', error.message);
-            }
-        });
+            // Keep-Alive Cron Job
+            cron.schedule('*/10 * * * *', async () => {
+                try {
+                    const port = process.env.PORT || 5000;
+                    await axios.get(`http://127.0.0.1:${port}/api/health`);
+                } catch (error) {
+                    console.error('⚠️ Self-ping failed:', error.message);
+                }
+            });
 
-        // Expired Tourist Admin Cleanup Cron Job (Runs every minute)
-        cron.schedule('* * * * *', async () => {
-            await cleanupExpiredTouristAdmins();
-        });
-
+            // Expired Tourist Admin Cleanup Cron Job (Runs every minute)
+            cron.schedule('* * * * *', async () => {
+                await cleanupExpiredTouristAdmins();
+            });
+        }
     });
 
 export default app;
