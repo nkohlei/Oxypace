@@ -63,7 +63,7 @@ export const initializeSocket = (io) => {
             if (!socket.isGhost) {
                 userSockets.set(socket.id, String(userId));
             }
-            socket.join(userId);
+            socket.join(String(userId));
             console.log(`👤 User ${userId} joined${socket.isGhost ? ' (Ghost/Hidden)' : ''}`);
 
             try {
