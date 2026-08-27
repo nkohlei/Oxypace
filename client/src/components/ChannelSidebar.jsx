@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
 import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import PortalInfoModal from './PortalInfoModal';
 
 const ChannelSidebar = ({
@@ -24,6 +25,7 @@ const ChannelSidebar = ({
     canManage,
     onShowPortalInfo,
 }) => {
+    const { user } = useAuth();
     const [showInviteModal, setShowInviteModal] = useState(false);
     const navigate = useNavigate();
     const uiContext = useUI();
@@ -33,16 +35,19 @@ const ChannelSidebar = ({
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();
-    const { socket, onlineUsers } = useSocket();
+    const { socket, onlineUsers, connected } = useSocket();
 
     // Calculate real online count from portal.members, portal.admins, portal.owner and onlineUsers list
-    const allMemberIds = new Set([
+    const allMemberIdSet = new Set([
         portal?.owner?._id || portal?.owner?.id || portal?.owner,
         ...(portal?.admins || []).map(a => a?._id || a?.id || a),
         ...(portal?.members || []).map(m => m?._id || m?.id || m)
     ].filter(Boolean).map(id => String(id)));
 
-    const onlineCount = Array.from(allMemberIds).filter(id => onlineUsers.map(String).includes(id)).length;
+    const onlineCountList = Array.from(allMemberIdSet).filter(id => onlineUsers.map(String).includes(String(id)));
+    // If current logged-in user is connected and belongs to this portal (or is viewing), ensure at least 1 online is shown
+    const isCurrentUserInPortal = user?._id && (allMemberIdSet.has(String(user._id)) || isMember || canManage || !portal?.privacy || portal?.privacy === 'public');
+    const onlineCount = Math.max(onlineCountList.length, (connected && isCurrentUserInPortal) ? 1 : 0);
 
     // Clear unread count for the active channel
     useEffect(() => {
