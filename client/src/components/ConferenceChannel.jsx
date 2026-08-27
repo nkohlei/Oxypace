@@ -92,12 +92,40 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState(null);
     const [lobbyCount, setLobbyCount] = useState(null);
+    const [callDuration, setCallDuration] = useState(0);
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
     const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
     const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    // Call duration timer
+    useEffect(() => {
+        let interval = null;
+        if (isConnected) {
+            setCallDuration(0);
+            interval = setInterval(() => {
+                setCallDuration(prev => prev + 1);
+            }, 1000);
+        } else {
+            setCallDuration(0);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isConnected]);
+
+    const formatDuration = (seconds) => {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        if (hrs > 0) {
+            return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+        return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
+
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [portalMembers, setPortalMembers] = useState([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
@@ -279,6 +307,34 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     return (
         <div className="vc-container glass-container">
             <div className="vc-top-right-controls">
+                {isConnected && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        background: 'rgba(34, 197, 94, 0.12)',
+                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                        borderRadius: '20px',
+                        color: '#4ade80',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        letterSpacing: '0.5px',
+                        boxShadow: '0 0 15px rgba(34, 197, 94, 0.15)',
+                        marginRight: '6px'
+                    }}>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: '#22c55e',
+                            boxShadow: '0 0 8px #22c55e',
+                            display: 'inline-block',
+                            animation: 'pulse 1.5s infinite'
+                        }}></span>
+                        <span>{formatDuration(callDuration)}</span>
+                    </div>
+                )}
                 {isAdmin && (
                     <button className={`vc-ctrl-btn ${isListenersOpen ? 'active' : ''}`} onClick={() => { setIsListenersOpen(!isListenersOpen); setIsChatOpen(false); setIsSettingsOpen(false); }}>
                         <Users size={18} />
