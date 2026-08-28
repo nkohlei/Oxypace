@@ -1,6 +1,7 @@
 import { initializeVoiceHandler } from './voiceHandler.js';
 import User from '../models/User.js';
 import { savePresence, removePresence, getActivePresences } from '../services/presenceService.js';
+import { pubClient } from './redisAdapter.js';
 
 let presenceInterval = null;
 
@@ -26,7 +27,7 @@ const startPresenceBroadcast = (io) => {
 };
 
 export const initializeSocket = (io) => {
-    // Store user socket connections (socket.id -> userId)
+    // Store local worker user socket connections (socket.id -> userId)
     const userSockets = new Map();
 
     // Store active typing states (recipientId -> Set of senderIds)
@@ -35,8 +36,21 @@ export const initializeSocket = (io) => {
     // Store active typing states (portalId -> Map of userId -> userDetails)
     const activeTypingPortals = new Map();
 
-    const getOnlineUsersList = () => {
-        return Array.from(new Set(userSockets.values()));
+    // Global online users retrieval using Redis across all PM2 cluster workers
+    const broadcastGlobalOnlineUsers = async () => {
+        try {
+            let onlineList = [];
+            if (pubClient) {
+                const keys = await pubClient.keys('socket:user:*');
+                onlineList = keys.map(k => k.replace('socket:user:', ''));
+            } else {
+                onlineList = Array.from(new Set(userSockets.values()));
+            }
+            io.emit('getOnlineUsers', onlineList);
+        } catch (err) {
+            console.error('Error broadcasting global online users:', err);
+            io.emit('getOnlineUsers', Array.from(new Set(userSockets.values())));
+        }
     };
 
     io.on('connection', (socket) => {
@@ -44,11 +58,13 @@ export const initializeSocket = (io) => {
 
         // User joins with their ID
         socket.on('join', async (userId, isGhost) => {
+            if (!userId) return;
+            const strUserId = String(userId);
             socket.isGhost = !!isGhost;
 
             // Kullanıcı profil ve gizlilik bilgilerini çekelim
             try {
-                const user = await User.findById(userId).select('username profile isAdmin settings');
+                const user = await User.findById(strUserId).select('username profile isAdmin settings');
                 if (user) {
                     socket.user = user;
                     // Eğer çevrimiçi durumu göster ayarı kapatılmışsa ghost olarak işaretle
@@ -61,25 +77,32 @@ export const initializeSocket = (io) => {
             }
 
             if (!socket.isGhost) {
-                userSockets.set(socket.id, String(userId));
+                userSockets.set(socket.id, strUserId);
+                if (pubClient) {
+                    try {
+                        await pubClient.sadd(`socket:user:${strUserId}`, socket.id);
+                    } catch (e) {
+                        console.error('Redis sadd socket user error:', e);
+                    }
+                }
             }
-            socket.join(String(userId));
-            console.log(`👤 User ${userId} joined${socket.isGhost ? ' (Ghost/Hidden)' : ''}`);
+            socket.join(strUserId);
+            console.log(`👤 User ${strUserId} joined${socket.isGhost ? ' (Ghost/Hidden)' : ''}`);
 
             try {
                 if (!socket.isGhost) {
-                    await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+                    await User.findByIdAndUpdate(strUserId, { lastActive: new Date() });
                 }
             } catch (err) {
                 console.error('Error updating lastActive on join:', err);
             }
 
             if (!socket.isGhost) {
-                io.emit('getOnlineUsers', getOnlineUsersList());
-                io.emit('user_status_change', { userId, status: 'online' });
+                await broadcastGlobalOnlineUsers();
+                io.emit('user_status_change', { userId: strUserId, status: 'online' });
 
                 // Send existing DM typers typing to this user
-                const dmTypers = activeTypingDMs.get(userId);
+                const dmTypers = activeTypingDMs.get(strUserId);
                 if (dmTypers) {
                     for (const senderId of dmTypers) {
                         socket.emit('dm_typing_update', { senderId, isTyping: true });
@@ -87,7 +110,18 @@ export const initializeSocket = (io) => {
                 }
             } else {
                 // If ghost/hidden, send online users list ONLY to this socket
-                socket.emit('getOnlineUsers', getOnlineUsersList());
+                let onlineList = [];
+                if (pubClient) {
+                    try {
+                        const keys = await pubClient.keys('socket:user:*');
+                        onlineList = keys.map(k => k.replace('socket:user:', ''));
+                    } catch (e) {
+                        onlineList = Array.from(new Set(userSockets.values()));
+                    }
+                } else {
+                    onlineList = Array.from(new Set(userSockets.values()));
+                }
+                socket.emit('getOnlineUsers', onlineList);
             }
         });
 
@@ -115,7 +149,24 @@ export const initializeSocket = (io) => {
                 userSockets.delete(socket.id);
                 console.log(`👋 Socket disconnected: ${socket.id} for user ${userId}`);
 
-                const isStillOnline = Array.from(userSockets.values()).includes(userId);
+                let isStillOnline = false;
+                if (pubClient) {
+                    try {
+                        await pubClient.srem(`socket:user:${userId}`, socket.id);
+                        const remaining = await pubClient.scard(`socket:user:${userId}`);
+                        if (remaining > 0) {
+                            isStillOnline = true;
+                        } else {
+                            await pubClient.del(`socket:user:${userId}`);
+                        }
+                    } catch (e) {
+                        console.error('Redis srem error:', e);
+                        isStillOnline = Array.from(userSockets.values()).includes(userId);
+                    }
+                } else {
+                    isStillOnline = Array.from(userSockets.values()).includes(userId);
+                }
+
                 if (!isStillOnline) {
                     console.log(`👋 User ${userId} is now fully offline`);
 
@@ -165,9 +216,11 @@ export const initializeSocket = (io) => {
                         console.error('Error updating status on disconnect:', err);
                     }
 
-                    // Broadcast online users and status change
-                    io.emit('getOnlineUsers', getOnlineUsersList());
+                    // Broadcast global online users and status change
+                    await broadcastGlobalOnlineUsers();
                     io.emit('user_status_change', { userId, status: 'offline', lastActive });
+                } else {
+                    await broadcastGlobalOnlineUsers();
                 }
             }
         });
