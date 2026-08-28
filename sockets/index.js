@@ -36,20 +36,32 @@ export const initializeSocket = (io) => {
     // Store active typing states (portalId -> Map of userId -> userDetails)
     const activeTypingPortals = new Map();
 
-    const getOnlineUserIds = () => {
-        return Array.from(activeUsersMap.keys());
+    const getOnlineUserIds = async () => {
+        const localSet = new Set(activeUsersMap.keys());
+        if (pubClient) {
+            try {
+                const redisMembers = await pubClient.smembers('online_user_ids');
+                if (Array.isArray(redisMembers)) {
+                    redisMembers.forEach(id => localSet.add(String(id)));
+                }
+            } catch (err) {
+                console.error('⚠️ Error getting online users from Redis:', err);
+            }
+        }
+        return Array.from(localSet);
     };
 
-    const broadcastGlobalOnlineUsers = () => {
-        const list = getOnlineUserIds();
+    const broadcastGlobalOnlineUsers = async () => {
+        const list = await getOnlineUserIds();
         io.emit('getOnlineUsers', list);
     };
 
-    io.on('connection', (socket) => {
+    io.on('connection', async (socket) => {
         console.log(`✅ Socket connected: ${socket.id}`);
 
         // Initial emit of online users to the freshly connected socket immediately
-        socket.emit('getOnlineUsers', getOnlineUserIds());
+        const initialList = await getOnlineUserIds();
+        socket.emit('getOnlineUsers', initialList);
 
         // User joins with their ID
         socket.on('join', async (userId, isGhost) => {
@@ -67,6 +79,11 @@ export const initializeSocket = (io) => {
                     prevSet.delete(socket.id);
                     if (prevSet.size === 0) {
                         activeUsersMap.delete(prevUserId);
+                        if (pubClient) {
+                            try {
+                                await pubClient.srem('online_user_ids', prevUserId);
+                            } catch (err) {}
+                        }
                         // Eski kullanıcı artık gerçekten offline — bildir
                         io.emit('user_status_change', { userId: prevUserId, status: 'offline', lastActive: new Date() });
                         console.log(`👋 User ${prevUserId} is now fully offline (account switch)`);
@@ -77,7 +94,7 @@ export const initializeSocket = (io) => {
                         }
                     } else {
                         // Başka aktif socket'leri var, sadece bu socket'i kaldır
-                        broadcastGlobalOnlineUsers();
+                        await broadcastGlobalOnlineUsers();
                     }
                 }
             }
@@ -93,6 +110,15 @@ export const initializeSocket = (io) => {
 
             userSockets.set(socket.id, strUserId);
             socket.join(strUserId);
+
+            if (pubClient) {
+                try {
+                    await pubClient.sadd('online_user_ids', strUserId);
+                } catch (err) {
+                    console.error('⚠️ Error adding user to Redis online set:', err);
+                }
+            }
+
             console.log(`👤 User ${strUserId} joined (active sockets: ${activeUsersMap.get(strUserId).size})`);
 
             try {
@@ -101,9 +127,9 @@ export const initializeSocket = (io) => {
                 console.error('Error updating lastActive on join:', err);
             }
 
-            const currentOnlineList = getOnlineUserIds();
+            const currentOnlineList = await getOnlineUserIds();
             socket.emit('getOnlineUsers', currentOnlineList);
-            broadcastGlobalOnlineUsers();
+            await broadcastGlobalOnlineUsers();
             io.emit('user_status_change', { userId: strUserId, status: 'online' });
 
             // Send existing DM typers typing to this user
@@ -192,6 +218,12 @@ export const initializeSocket = (io) => {
                         console.error('Error removing presence on disconnect:', err);
                     }
 
+                    if (pubClient) {
+                        try {
+                            await pubClient.srem('online_user_ids', strUserId);
+                        } catch (err) {}
+                    }
+
                     // Update the user's lastActive time in the database
                     const lastActive = new Date();
                     try {
@@ -200,10 +232,10 @@ export const initializeSocket = (io) => {
                         console.error('Error updating status on disconnect:', err);
                     }
 
-                    broadcastGlobalOnlineUsers();
+                    await broadcastGlobalOnlineUsers();
                     io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
                 } else {
-                    broadcastGlobalOnlineUsers();
+                    await broadcastGlobalOnlineUsers();
                 }
             }
         });
