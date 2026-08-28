@@ -2149,7 +2149,19 @@ const Portal = () => {
                                 </div>
 
                                 {/* Members Sidebar (Right Column) */}
-                                {showMembers && <MembersSidebar members={portal.members} onClose={() => setShowMembers(false)} />}
+                                {showMembers && (
+                                    <MembersSidebar
+                                        members={[
+                                            ...(portal.owner ? [{ ...portal.owner, role: 'owner' }] : []),
+                                            ...(portal.admins || []).map(a => ({ ...a, role: 'admin' })),
+                                            ...(portal.members || [])
+                                        ].filter((m, index, self) => {
+                                            const mId = String(m._id || m.id || m);
+                                            return m && self.findIndex(s => String(s._id || s.id || s) === mId) === index;
+                                        })}
+                                        onClose={() => setShowMembers(false)}
+                                    />
+                                )}
                             </>
                         );
                     })()}
