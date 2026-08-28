@@ -35,6 +35,8 @@ export const initializeSocket = (io) => {
     const activeTypingDMs = new Map();
     // Store active typing states (portalId -> Map of userId -> userDetails)
     const activeTypingPortals = new Map();
+    // Global map of disconnect grace timers (userId -> setTimeout)
+    const disconnectTimers = new Map();
 
     const getOnlineUserIds = async () => {
         const localSet = new Set(activeUsersMap.keys());
@@ -68,9 +70,13 @@ export const initializeSocket = (io) => {
             if (!userId) return;
             const strUserId = String(userId);
 
+            // Any pending disconnect timer for this user is cancelled immediately
+            if (disconnectTimers.has(strUserId)) {
+                clearTimeout(disconnectTimers.get(strUserId));
+                disconnectTimers.delete(strUserId);
+            }
+
             // --- Hayalet Temizliği: Aynı socket daha önce farklı bir userId ile kayıtlıysa temizle ---
-            // Bu; aynı tarayıcıda hesap değişimi yapıldığında eski userId'nin ölü giriş olarak
-            // activeUsersMap'te kalmasını önler.
             const prevUserId = userSockets.get(socket.id);
             if (prevUserId && prevUserId !== strUserId) {
                 console.log(`🔄 Socket ${socket.id} re-registering: ${prevUserId} → ${strUserId}. Cleaning up previous entry.`);
@@ -84,16 +90,11 @@ export const initializeSocket = (io) => {
                                 await pubClient.srem('online_user_ids', prevUserId);
                             } catch (err) {}
                         }
-                        // Eski kullanıcı artık gerçekten offline — bildir
                         io.emit('user_status_change', { userId: prevUserId, status: 'offline', lastActive: new Date() });
-                        console.log(`👋 User ${prevUserId} is now fully offline (account switch)`);
                         try {
                             await User.findByIdAndUpdate(prevUserId, { lastActive: new Date() });
-                        } catch (err) {
-                            console.error('Error updating lastActive on account switch:', err);
-                        }
+                        } catch (err) {}
                     } else {
-                        // Başka aktif socket'leri var, sadece bu socket'i kaldır
                         await broadcastGlobalOnlineUsers();
                     }
                 }
@@ -162,9 +163,6 @@ export const initializeSocket = (io) => {
             }
         });
 
-        // Store active disconnect timers to prevent rapid offline/online flickering
-        const disconnectTimers = new Map();
-
         // Handle disconnect
         socket.on('disconnect', async () => {
             const userId = socket.data?.userId || userSockets.get(socket.id);
@@ -174,26 +172,24 @@ export const initializeSocket = (io) => {
                 const strUserId = String(userId);
                 console.log(`👋 Socket disconnected: ${socket.id} for user ${strUserId}`);
 
-                if (activeUsersMap.has(strUserId)) {
-                    const userSocketsSet = activeUsersMap.get(strUserId);
+                const userSocketsSet = activeUsersMap.get(strUserId);
+                if (userSocketsSet) {
                     userSocketsSet.delete(socket.id);
-                    if (userSocketsSet.size === 0) {
-                        activeUsersMap.delete(strUserId);
-                    }
                 }
 
-                const isStillOnline = activeUsersMap.has(strUserId) && activeUsersMap.get(strUserId).size > 0;
+                const hasOtherSockets = userSocketsSet && userSocketsSet.size > 0;
 
-                if (!isStillOnline) {
-                    // Start a 5-second grace period before marking user fully offline
+                if (!hasOtherSockets) {
+                    // Start a 10-second grace period before marking user fully offline
                     if (disconnectTimers.has(strUserId)) {
                         clearTimeout(disconnectTimers.get(strUserId));
                     }
 
                     const timer = setTimeout(async () => {
                         disconnectTimers.delete(strUserId);
-                        const checkAgain = activeUsersMap.has(strUserId) && activeUsersMap.get(strUserId).size > 0;
-                        if (!checkAgain) {
+                        const latestSet = activeUsersMap.get(strUserId);
+                        if (!latestSet || latestSet.size === 0) {
+                            activeUsersMap.delete(strUserId);
                             console.log(`👋 User ${strUserId} is now fully offline after grace period`);
 
                             // Clean up typing indicators in DMs for this user
@@ -250,7 +246,7 @@ export const initializeSocket = (io) => {
                             await broadcastGlobalOnlineUsers();
                             io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
                         }
-                    }, 5000);
+                    }, 10000);
 
                     disconnectTimers.set(strUserId, timer);
                 } else {
