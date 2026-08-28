@@ -36,19 +36,21 @@ export const initializeSocket = (io) => {
     // Store active typing states (portalId -> Map of userId -> userDetails)
     const activeTypingPortals = new Map();
 
-    // Global online users retrieval using Redis across all PM2 cluster workers
+    // Global online users retrieval using Socket.IO Redis Adapter (Real-time live socket query across all workers)
     const broadcastGlobalOnlineUsers = async () => {
         try {
-            let onlineList = [];
-            if (pubClient) {
-                const keys = await pubClient.keys('socket:user:*');
-                onlineList = keys.map(k => k.replace('socket:user:', ''));
-            } else {
-                onlineList = Array.from(new Set(userSockets.values()));
+            // io.fetchSockets() queries all cluster workers via Redis adapter for currently active live sockets
+            const sockets = await io.fetchSockets();
+            const activeUserIds = new Set();
+            for (const s of sockets) {
+                if (s.data && s.data.userId && !s.data.isGhost) {
+                    activeUserIds.add(String(s.data.userId));
+                }
             }
+            const onlineList = Array.from(activeUserIds);
             io.emit('getOnlineUsers', onlineList);
         } catch (err) {
-            console.error('Error broadcasting global online users:', err);
+            console.error('Error broadcasting global online users via fetchSockets:', err);
             io.emit('getOnlineUsers', Array.from(new Set(userSockets.values())));
         }
     };
@@ -76,15 +78,12 @@ export const initializeSocket = (io) => {
                 console.error('Error fetching user on socket join:', err);
             }
 
+            // Store user info on socket instance for cluster-wide io.fetchSockets()
+            socket.data.userId = strUserId;
+            socket.data.isGhost = socket.isGhost;
+
             if (!socket.isGhost) {
                 userSockets.set(socket.id, strUserId);
-                if (pubClient) {
-                    try {
-                        await pubClient.sadd(`socket:user:${strUserId}`, socket.id);
-                    } catch (e) {
-                        console.error('Redis sadd socket user error:', e);
-                    }
-                }
             }
             socket.join(strUserId);
             console.log(`👤 User ${strUserId} joined${socket.isGhost ? ' (Ghost/Hidden)' : ''}`);
@@ -144,26 +143,17 @@ export const initializeSocket = (io) => {
                 return;
             }
             
-            const userId = userSockets.get(socket.id);
+            const userId = socket.data?.userId || userSockets.get(socket.id);
             if (userId) {
                 userSockets.delete(socket.id);
                 console.log(`👋 Socket disconnected: ${socket.id} for user ${userId}`);
 
+                // Check across the cluster if this user has any other active socket connection
                 let isStillOnline = false;
-                if (pubClient) {
-                    try {
-                        await pubClient.srem(`socket:user:${userId}`, socket.id);
-                        const remaining = await pubClient.scard(`socket:user:${userId}`);
-                        if (remaining > 0) {
-                            isStillOnline = true;
-                        } else {
-                            await pubClient.del(`socket:user:${userId}`);
-                        }
-                    } catch (e) {
-                        console.error('Redis srem error:', e);
-                        isStillOnline = Array.from(userSockets.values()).includes(userId);
-                    }
-                } else {
+                try {
+                    const activeSockets = await io.fetchSockets();
+                    isStillOnline = activeSockets.some(s => s.id !== socket.id && String(s.data?.userId) === String(userId));
+                } catch (e) {
                     isStillOnline = Array.from(userSockets.values()).includes(userId);
                 }
 
