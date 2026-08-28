@@ -29,16 +29,20 @@ const MembersSidebar = ({ members = [], onClose }) => {
         return `${Math.floor(diffMonths / 12)}y`;
     };
 
+    // Normalize online user IDs into a Set for fast and accurate lookups
+    const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
+
     // Filter members based on socket status
     const online = members.filter((m) => {
-        // Handle both string IDs (if not populated) and objects
-        const id = m._id || m.id || m;
-        return onlineUsers.includes(id);
+        if (!m) return false;
+        const id = String(m._id || m.id || m);
+        return onlineSet.has(id);
     });
 
     const offline = members.filter((m) => {
-        const id = m._id || m.id || m;
-        return !onlineUsers.includes(id);
+        if (!m) return false;
+        const id = String(m._id || m.id || m);
+        return !onlineSet.has(id);
     });
 
     return (

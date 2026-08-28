@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
@@ -12,6 +13,7 @@ import './Settings.css';
 
 const Settings = () => {
     const { logout, user, updateUser, loading: authLoading } = useAuth();
+    const { socket } = useSocket();
     const navigate = useNavigate();
 
     // Navigation State
@@ -313,6 +315,11 @@ const Settings = () => {
             setPrivacy((prev) => ({ ...prev, [setting]: newValue }));
         }
 
+        // Canlı socket güncellemesi
+        if (setting === 'showOnlineStatus' && socket) {
+            socket.emit('update_show_online_status', { showOnlineStatus: newValue });
+        }
+
         try {
             const payload =
                 type === 'notifications'
@@ -320,6 +327,18 @@ const Settings = () => {
                     : { privacy: { [setting]: newValue } };
 
             await axios.put('/api/users/settings', payload);
+            if (user) {
+                updateUser({
+                    ...user,
+                    settings: {
+                        ...user.settings,
+                        [type]: {
+                            ...(user.settings?.[type] || {}),
+                            [setting]: newValue
+                        }
+                    }
+                });
+            }
         } catch (error) {
             console.error('Failed to update settings:', error);
             // Revert on error
@@ -327,6 +346,9 @@ const Settings = () => {
                 setNotifications((prev) => ({ ...prev, [setting]: !newValue }));
             } else {
                 setPrivacy((prev) => ({ ...prev, [setting]: !newValue }));
+            }
+            if (setting === 'showOnlineStatus' && socket) {
+                socket.emit('update_show_online_status', { showOnlineStatus: !newValue });
             }
         }
     };

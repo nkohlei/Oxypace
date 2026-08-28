@@ -84,6 +84,8 @@ export const initializeSocket = (io) => {
 
             if (!socket.isGhost) {
                 userSockets.set(socket.id, strUserId);
+            } else {
+                userSockets.delete(socket.id);
             }
             socket.join(strUserId);
             console.log(`👤 User ${strUserId} joined${socket.isGhost ? ' (Ghost/Hidden)' : ''}`);
@@ -122,6 +124,38 @@ export const initializeSocket = (io) => {
                     socket.emit('getOnlineUsers', Array.from(new Set(userSockets.values())));
                 }
             }
+        });
+
+        // Canlı gizlilik ayarı güncellemesi (showOnlineStatus açık/kapalı)
+        socket.on('update_show_online_status', async ({ showOnlineStatus }) => {
+            const userId = socket.data?.userId || (socket.user?._id ? String(socket.user._id) : null);
+            if (!userId) return;
+            const strUserId = String(userId);
+
+            const isGhostNow = showOnlineStatus === false;
+            socket.isGhost = isGhostNow;
+            socket.data.isGhost = isGhostNow;
+
+            if (isGhostNow) {
+                userSockets.delete(socket.id);
+                // Eğer kullanıcının başka açık socketi yoksa offline yayını yap
+                let isStillOnline = false;
+                try {
+                    const activeSockets = await io.fetchSockets();
+                    isStillOnline = activeSockets.some(s => s.id !== socket.id && String(s.data?.userId) === strUserId && !s.data?.isGhost);
+                } catch (e) {
+                    isStillOnline = Array.from(userSockets.values()).includes(strUserId);
+                }
+                if (!isStillOnline) {
+                    const lastActive = new Date();
+                    io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
+                }
+            } else {
+                userSockets.set(socket.id, strUserId);
+                io.emit('user_status_change', { userId: strUserId, status: 'online' });
+            }
+
+            await broadcastGlobalOnlineUsers();
         });
 
         // Handle disconnecting to capture rooms before they are cleared

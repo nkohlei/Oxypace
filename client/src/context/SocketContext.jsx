@@ -64,7 +64,11 @@ export const SocketProvider = ({ children }) => {
         });
 
         newSocket.on('getOnlineUsers', (users) => {
-            setOnlineUsers(users);
+            if (Array.isArray(users)) {
+                setOnlineUsers(users.map(u => String(u._id || u.id || u)));
+            } else {
+                setOnlineUsers([]);
+            }
         });
 
         newSocket.on('maintenance_toggle', ({ active }) => {
