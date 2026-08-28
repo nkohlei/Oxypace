@@ -55,10 +55,10 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('connect', () => {
             setConnected(true);
+            newSocket.emit('get_online_users');
             // Re-join if user is already authenticated
             if (user?._id) {
-                const isGhost = !!localStorage.getItem('admin_backup_token');
-                newSocket.emit('join', String(user._id), isGhost);
+                newSocket.emit('join', String(user._id));
                 console.log(`[Socket] Connected & joined user: ${user._id}`);
             }
         });
@@ -116,9 +116,9 @@ export const SocketProvider = ({ children }) => {
     // 2. Handle User Join / State Changes on existing socket connection
     useEffect(() => {
         if (socket && connected && isAuthenticated && user?._id) {
-            const isGhost = !!localStorage.getItem('admin_backup_token');
-            socket.emit('join', user._id, isGhost);
-            console.log(`[Socket] Registered authentication for user ${user._id} (isGhost: ${isGhost})`);
+            socket.emit('join', String(user._id));
+            socket.emit('get_online_users');
+            console.log(`[Socket] Registered authentication for user ${user._id}`);
         }
     }, [socket, connected, isAuthenticated, user?._id]);
 
