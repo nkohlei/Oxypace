@@ -38,32 +38,44 @@ const PortalSidebar = () => {
         const targetIdStr = portalId.toString();
         const settings = user?.portalNotificationSettings?.find((s) => {
             if (!s || !s.portal) return false;
-            const pId = typeof s.portal === 'object' ? s.portal._id || s.portal : s.portal;
+            const pId = typeof s.portal === 'object' ? (s.portal._id || s.portal.id || s.portal) : s.portal;
             return pId?.toString() === targetIdStr;
         });
+
         if (settings?.isAllMuted) return 0;
 
         const allUnread = unreadPostsByPortal[targetIdStr] || [];
+        if (!allUnread.length) return 0;
+
         const mutedChannels = (settings?.mutedChannels || []).map(id => {
-            const chId = typeof id === 'object' ? id._id || id : id;
-            return chId?.toString();
-        });
+            if (!id) return '';
+            const chId = typeof id === 'object' ? (id._id || id.id || id) : id;
+            return chId?.toString() || '';
+        }).filter(Boolean);
 
         if (mutedChannels.length === 0) return allUnread.length;
 
+        const mutedSet = new Set(mutedChannels);
+
         const filtered = allUnread.filter(postId => {
-            // Check if this unread post belongs to any muted channel
+            const strPostId = postId?.toString();
+            // 1. Check direct unreadNotificationItems mapping
             const notifItem = unreadNotificationItems.find(
-                item => item.portalId === targetIdStr && item.postId === postId
+                item => item && item.portalId?.toString() === targetIdStr && item.postId?.toString() === strPostId
             );
-            if (notifItem && notifItem.channelId && mutedChannels.includes(notifItem.channelId)) {
+            if (notifItem && notifItem.channelId && mutedSet.has(notifItem.channelId.toString())) {
                 return false; // Exclude muted channel post
             }
 
-            const isMutedByChannelStore = mutedChannels.some(channelId =>
-                channelId && unreadPostsByChannel[channelId]?.includes(postId)
-            );
-            return !isMutedByChannelStore;
+            // 2. Check if this post ID is listed under any muted channel's unread list
+            for (const chId of mutedChannels) {
+                const channelPosts = unreadPostsByChannel[chId];
+                if (Array.isArray(channelPosts) && channelPosts.some(p => p?.toString() === strPostId)) {
+                    return false; // Exclude muted channel post
+                }
+            }
+
+            return true;
         });
 
         return filtered.length;

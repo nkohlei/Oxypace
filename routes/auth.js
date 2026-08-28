@@ -338,6 +338,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 username: user.username,
                 profile: user.profile,
                 joinedPortals: user.joinedPortals,
+                portalNotificationSettings: user.portalNotificationSettings || [],
                 isAdmin: user.isAdmin,
                 verificationBadge: user.verificationBadge,
                 customBadge: user.customBadge,
