@@ -405,10 +405,40 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     if (!isActiveRoom) {
         return (
             <div className="vc-container glass-container lobby-bg">
-                <div className="vc-lobby">
-                    <div className="vc-lobby-icon"><Mic size={40} /></div>
-                    <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
-                    <button className="vc-join-btn glass-join-btn action-btn-large" onClick={handleJoin} style={{ marginTop: '24px' }}>Aramaya Katıl</button>
+                <div className="vc-lobby-card">
+                    {/* Glowing Ambient Backdrop */}
+                    <div className="vc-lobby-glow" />
+
+                    {/* Channel & Live Status Badge */}
+                    <div className="vc-lobby-status-pill">
+                        <span className={`vc-status-dot ${lobbyCount > 0 ? 'online' : 'idle'}`} />
+                        <span className="vc-status-text">
+                            {lobbyCount > 0 ? `${lobbyCount} Kişi Canlı Yayında` : 'Oda Boş (İlk Katılan Sen Ol)'}
+                        </span>
+                    </div>
+
+                    {/* Animated Pulsing Icon */}
+                    <div className="vc-lobby-icon-wrapper">
+                        <div className="vc-lobby-icon-pulse" />
+                        <div className="vc-lobby-icon">
+                            <Mic size={36} color="#00a8fc" />
+                        </div>
+                    </div>
+
+                    {/* Room Titles & Info */}
+                    <div className="vc-lobby-info">
+                        <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
+                        <p className="vc-lobby-desc">
+                            Ultra düşük gecikmeli, kristal netliğinde ses ve HD ekran paylaşımıyla canlı sohbete katılın.
+                        </p>
+                    </div>
+
+                    {/* Interactive Join CTA */}
+                    <button className="vc-lobby-join-btn" onClick={handleJoin}>
+                        <Radio size={20} className="vc-join-btn-icon" />
+                        <span>Aramaya Katıl</span>
+                        <div className="vc-btn-shine" />
+                    </button>
                 </div>
             </div>
         );
