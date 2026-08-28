@@ -15,25 +15,45 @@ export const useGlobalStore = create(
 
             setIsMuted: (val) => set({ isMuted: val }),
 
-            addUnreadPost: (portalId, postId) => set((state) => {
+            addUnreadPost: (portalId, postId, channelId = null) => set((state) => {
                 const currentUnread = state.unreadPostsByPortal[portalId] || [];
-                if (currentUnread.includes(postId)) return state;
+                const currentItems = state.unreadNotificationItems || [];
+                const newItems = [...currentItems];
+                if (channelId && !newItems.some(i => i.portalId === portalId && i.postId === postId)) {
+                    newItems.push({ portalId, channelId, postId });
+                }
+
+                if (currentUnread.includes(postId)) {
+                    return { unreadNotificationItems: newItems };
+                }
+
                 return {
                     unreadPostsByPortal: {
                         ...state.unreadPostsByPortal,
                         [portalId]: [...currentUnread, postId]
-                    }
+                    },
+                    unreadNotificationItems: newItems
                 };
             }),
 
-            addUnreadChannelPost: (channelId, postId) => set((state) => {
+            addUnreadChannelPost: (channelId, postId, portalId = null) => set((state) => {
                 const currentUnread = state.unreadPostsByChannel[channelId] || [];
-                if (currentUnread.includes(postId)) return state;
+                const currentItems = state.unreadNotificationItems || [];
+                const newItems = [...currentItems];
+                if (portalId && !newItems.some(i => i.channelId === channelId && i.postId === postId)) {
+                    newItems.push({ portalId, channelId, postId });
+                }
+
+                if (currentUnread.includes(postId)) {
+                    return { unreadNotificationItems: newItems };
+                }
+
                 return {
                     unreadPostsByChannel: {
                         ...state.unreadPostsByChannel,
                         [channelId]: [...currentUnread, postId]
-                    }
+                    },
+                    unreadNotificationItems: newItems
                 };
             }),
 
