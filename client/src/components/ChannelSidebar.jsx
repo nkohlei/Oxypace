@@ -35,7 +35,7 @@ const ChannelSidebar = ({
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();
-    const { onlineUsers, onlineUsersReady } = useSocket();
+    const { onlineUsers } = useSocket();
 
     // Savunmacı ID çıkarma — populate edilmiş obje ya da raw string ID her ikisini de doğru işler.
     // portal.owner obje olduğunda String(portal.owner) → "[object Object]" olur, bu hatayı önler.
@@ -174,7 +174,7 @@ const ChannelSidebar = ({
                                 <div className="stat-dot" />
                                 <div className="stat-item">
                                     <div className="online-indicator-dot" />
-                                    <span>{onlineUsersReady ? onlineCount : '...'} Çevrimiçi</span>
+                                    <span>{onlineCount} Çevrimiçi</span>
                                 </div>
                             </div>
                         </div>

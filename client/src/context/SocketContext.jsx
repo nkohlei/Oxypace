@@ -5,19 +5,6 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 
-// ---
-// NOT: Bu dosyayı düzeltirken iki temel sorun eliminate edildi:
-//
-// 1. STALE CLOSURE: socket useEffect'i [] ile mount'ta çalışıyor,
-//    dolayısıyla connect handler içinde user her zaman null yakalıyor.
-//    Çözüm: userIdRef (güncel user._id) + socketRef (güncel socket nesnesi)
-//
-// 2. REACT BATCHING RACE: socket React state iken, ikinci useEffect'in
-//    [socket, connected, isAuthenticated, user._id] bağımlılığı çok karmaşık
-//    bir timing gerektiriyor. Bunun yerine socket bir ref'te tutularak
-//    user._id değiştiğinde doğrudan emit yapılıyor.
-// ---
-
 const SocketContext = createContext();
 
 export const useSocket = () => {
@@ -32,60 +19,63 @@ export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState([]);
-    const [onlineUsersReady, setOnlineUsersReady] = useState(false);
-
     const { user, isAuthenticated, updateUser } = useAuth();
     const navigate = useNavigate();
     const navigateRef = useRef(navigate);
-    useEffect(() => { navigateRef.current = navigate; }, [navigate]);
+    useEffect(() => {
+        navigateRef.current = navigate;
+    }, [navigate]);
 
-    // Güncel userId'yi tutan ref — stale closure'ı önler
+    // Her zaman güncel userId'yi tutan ref.
+    // connect handler [] bağımlılıkla mount'ta yaratıldığından
+    // user'ı stale closure olarak yakalar. Ref bunu çözer.
     const userIdRef = useRef(null);
-    // Güncel socket nesnesini tutan ref — React state bağımlılığı race'ini önler
-    const socketRef = useRef(null);
-
-    // user._id her değiştiğinde ref'i güncelle
     useEffect(() => {
         userIdRef.current = user?._id ? String(user._id) : null;
     }, [user?._id]);
 
-    // 1. Socket bağlantısını mount'ta bir kez kur
+    // 1. Establish Socket Connection ONCE on mount
     useEffect(() => {
-        let socketUrl = (import.meta.env.VITE_API_BASE_URL ||
-            (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : 'http://localhost:5000'));
+        const isNative = Capacitor.isNativePlatform();
+        let socketUrl = (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : 'http://localhost:5000'));
 
-        if (socketUrl.endsWith('/api')) socketUrl = socketUrl.slice(0, -4);
-        if (socketUrl.endsWith('/')) socketUrl = socketUrl.slice(0, -1);
+        if (socketUrl.endsWith('/api')) {
+            socketUrl = socketUrl.slice(0, -4);
+        }
+        if (socketUrl.endsWith('/')) {
+            socketUrl = socketUrl.slice(0, -1);
+        }
 
         const newSocket = io(socketUrl, {
-            transports: ['websocket', 'polling'],
+            transports: isNative ? ['websocket', 'polling'] : ['polling', 'websocket'],
+            upgrade: true,
+            rememberUpgrade: true,
+            forceNew: false,
+            multiplex: true,
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            reconnectionAttempts: Infinity,
-            timeout: 20000,
+            reconnectionAttempts: isNative ? 5 : Infinity,
+            timeout: isNative ? 10000 : 20000,
             withCredentials: true,
+            secure: true,
         });
-
-        socketRef.current = newSocket;
-        setSocket(newSocket);
 
         newSocket.on('connect', () => {
             setConnected(true);
-            // userIdRef.current: stale closure yok, her zaman güncel userId
-            if (userIdRef.current) {
-                newSocket.emit('join', userIdRef.current);
+            // userIdRef: stale closure olmadan güncel userId
+            // Reconnect, uyku sonrası uyanma, Chrome açılışı — hepsinde join gönderilir
+            const uid = userIdRef.current;
+            if (uid) {
+                const isGhost = !!localStorage.getItem('admin_backup_token');
+                newSocket.emit('join', uid, isGhost);
+                console.log(`[Socket] Connected & joined: ${uid}`);
             }
             newSocket.emit('get_online_users');
         });
 
         newSocket.on('getOnlineUsers', (users) => {
-            if (Array.isArray(users)) {
-                setOnlineUsers(users.map(u => String(u._id || u.id || u)));
-            } else {
-                setOnlineUsers([]);
-            }
-            setOnlineUsersReady(true);
+            setOnlineUsers(users);
         });
 
         newSocket.on('user_status_change', ({ userId, status }) => {
@@ -103,14 +93,17 @@ export const SocketProvider = ({ children }) => {
         });
 
         newSocket.on('maintenance_toggle', ({ active }) => {
-            if (active) window.location.reload();
+            if (active) {
+                window.location.reload();
+            }
         });
 
         newSocket.on('user_banned', ({ reason, expiresAt }) => {
             let message = 'Erişiminiz Engellendi!\n\n';
             message += `Gerekçe: ${reason || 'Belirtilmedi'}\n`;
             if (expiresAt) {
-                message += `Bitiş Tarihi: ${new Date(expiresAt).toLocaleString()}`;
+                const date = new Date(expiresAt);
+                message += `Bitiş Tarihi: ${date.toLocaleString()}`;
             } else {
                 message += 'Bitiş Tarihi: Süresiz (Kalıcı)';
             }
@@ -119,7 +112,7 @@ export const SocketProvider = ({ children }) => {
             window.location.reload();
         });
 
-        newSocket.on('tourist_admin_revoked', () => {
+        newSocket.on('tourist_admin_revoked', ({ message }) => {
             useGlobalStore.setState({ isTouristAdmin: false });
             updateUser({ isTouristAdmin: false });
             if (window.location.pathname.startsWith('/admin')) {
@@ -129,29 +122,24 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('disconnect', () => {
             setConnected(false);
-            // Bağlantı koparsa '...' göster, stale 0 gösterme
-            setOnlineUsersReady(false);
         });
 
-        // Sekme görünürlük değişimi: uyku, Chrome açılış, mobil app switch
+        setSocket(newSocket);
+
+        // Sekme tekrar görünür olduğunda (uyku, Chrome açılış, mobil geçiş)
+        // join + online listesini tazele
         const handleVisibilityChange = () => {
             if (document.visibilityState !== 'visible') return;
-            const sock = socketRef.current;
-            if (!sock) return;
-
-            if (sock.connected) {
-                // Her durumda listeyi tazele
-                sock.emit('get_online_users');
-                if (userIdRef.current) {
-                    sock.emit('join', userIdRef.current);
-                    console.log('[Socket] Tab visible — re-joining and refreshing presence');
-                } else {
-                    console.log('[Socket] Tab visible — list refreshed, join pending auth');
+            const uid = userIdRef.current;
+            if (newSocket.connected) {
+                newSocket.emit('get_online_users');
+                if (uid) {
+                    const isGhost = !!localStorage.getItem('admin_backup_token');
+                    newSocket.emit('join', uid, isGhost);
+                    console.log('[Socket] Tab visible — re-joining');
                 }
             } else {
-                // Socket kopuksa yeniden bağlan; connect eventi join'i tetikler
-                console.log('[Socket] Tab visible but disconnected — reconnecting');
-                sock.connect();
+                newSocket.connect();
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -159,32 +147,24 @@ export const SocketProvider = ({ children }) => {
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             newSocket.close();
-            socketRef.current = null;
         };
-    }, []); // Only on mount
+    }, []); // Only run on mount
 
-    // 2. user._id her değiştiğinde (auth tamamlandığında) join gönder
-    //    socket artık React state değil ref — timing race ortadan kalktı
+    // 2. Auth tamamlanınca (user._id gelince) join gönder
     useEffect(() => {
-        if (!user?._id) return;
-        const sock = socketRef.current;
-        if (!sock) return;
-
-        const userId = String(user._id);
-
-        if (sock.connected) {
-            // Zaten bağlı → hemen join gönder
-            sock.emit('join', userId);
-            sock.emit('get_online_users');
-            console.log(`[Socket] Auth ready — joining as ${userId}`);
-        } else {
-            // Henüz bağlı değil → bağlanınca connect handler gönderecek
-            // userIdRef zaten güncel, connect tetiklendiğinde join gidecek
-            console.log(`[Socket] Auth ready but socket not yet connected — join will fire on connect`);
+        if (socket && connected && isAuthenticated && user?._id) {
+            const isGhost = !!localStorage.getItem('admin_backup_token');
+            socket.emit('join', user._id, isGhost);
+            socket.emit('get_online_users');
+            console.log(`[Socket] Auth ready — joined as ${user._id}`);
         }
-    }, [user?._id]);
+    }, [socket, connected, isAuthenticated, user?._id]);
 
-    const value = { socket, connected, onlineUsers, onlineUsersReady };
+    const value = {
+        socket,
+        connected,
+        onlineUsers,
+    };
 
     return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 };
