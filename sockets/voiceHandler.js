@@ -63,8 +63,9 @@ export const initializeVoiceHandler = (io) => {
                     console.log(`[Voice Room] Graceful cleanup timer cancelled for ${roomName} due to user rejoin.`);
                 }
             }
+            const sUserId = String(userId);
             const roomData = voiceRooms.get(roomName);
-            roomData.participants.set(userId, {
+            roomData.participants.set(sUserId, {
                 socketId: socket.id,
                 username,
                 avatar: avatar || '',
@@ -73,7 +74,7 @@ export const initializeVoiceHandler = (io) => {
                 isCameraOn: false,
                 isScreenSharing: false
             });
-            console.log(`[Backend Debug] voice:join registration: userId: ${userId} successfully mapped to socketId: ${socket.id} in room: ${roomName}`);
+            console.log(`[Backend Debug] voice:join registration: userId: ${sUserId} successfully mapped to socketId: ${socket.id} in room: ${roomName}`);
 
             // Send voice chat history to the newly joined client
             socket.emit('voice:chat-history', roomData.chatHistory || []);
@@ -81,7 +82,7 @@ export const initializeVoiceHandler = (io) => {
             // Store room info on socket for cleanup on disconnect
             if (!socket._voiceRooms) socket._voiceRooms = new Set();
             socket._voiceRooms.add(roomName);
-            socket._voiceUserId = userId;
+            socket._voiceUserId = sUserId;
 
             // Broadcast updated participant list and room start time
             const participants = getParticipantList(roomName);
@@ -338,9 +339,10 @@ export const initializeVoiceHandler = (io) => {
 // ─── Helper Functions ───
 
 async function removeParticipant(io, roomName, userId) {
+    const sUserId = String(userId);
     if (pubClient) {
         try {
-            await pubClient.hdel(`voiceroom:${roomName}`, String(userId));
+            await pubClient.hdel(`voiceroom:${roomName}`, sUserId);
             const count = await pubClient.hlen(`voiceroom:${roomName}`);
             if (count === 0) {
                 await pubClient.del(`voiceroom:${roomName}`);
@@ -353,8 +355,35 @@ async function removeParticipant(io, roomName, userId) {
     const roomData = voiceRooms.get(roomName);
     if (!roomData) return;
 
-    const participant = roomData.participants.get(userId);
-    roomData.participants.delete(userId);
+    let participant = roomData.participants.get(sUserId) || roomData.participants.get(userId);
+    if (!participant) {
+        for (const [key, val] of roomData.participants.entries()) {
+            if (String(key) === sUserId || String(val.userId) === sUserId) {
+                participant = val;
+                roomData.participants.delete(key);
+                break;
+            }
+        }
+    } else {
+        roomData.participants.delete(sUserId);
+        roomData.participants.delete(userId);
+    }
+
+    // Always broadcast updated participant list to all clients in the room
+    const participants = getParticipantList(roomName);
+    io.to(`voice:${roomName}`).emit('voice:participants', {
+        roomName,
+        participants,
+        startedAt: roomData.startedAt,
+        serverNow: Date.now(),
+        watchParty: roomData.watchParty || null
+    });
+
+    // Emit explicit leave event
+    io.to(`voice:${roomName}`).emit('voice:user-left', {
+        userId: sUserId,
+        username: participant ? participant.username : '',
+    });
 
     // Cleanup empty rooms (with a 20s grace period for socket reconnects)
     if (roomData.participants.size === 0) {
@@ -366,24 +395,6 @@ async function removeParticipant(io, roomName, userId) {
                 console.log(`[Voice Room] Empty room ${roomName} deleted after grace period.`);
             }
         }, 20000);
-    } else {
-        // Broadcast updated participant list
-        const participants = getParticipantList(roomName);
-        io.to(`voice:${roomName}`).emit('voice:participants', {
-            roomName,
-            participants,
-            startedAt: roomData.startedAt,
-            serverNow: Date.now(),
-            watchParty: roomData.watchParty || null
-        });
-
-        // Emit explicit leave event for notifications
-        if (participant) {
-            io.to(`voice:${roomName}`).emit('voice:user-left', {
-                userId,
-                username: participant.username,
-            });
-        }
     }
 
     if (participant) {

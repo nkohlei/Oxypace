@@ -518,9 +518,17 @@ export const VoiceProvider = ({ children }) => {
             }
         };
 
-        // Monitor ICE Connection State Changes
+        // Monitor ICE & Connection State Changes
         pc.oniceconnectionstatechange = () => {
-            console.log(`[WebRTC Log] ICE Connection State değişti for ${targetUserId}: ${pc.iceConnectionState}`);
+            console.log(`[WebRTC Log] ICE Connection State changed for ${targetUserId}: ${pc.iceConnectionState}`);
+        };
+
+        pc.onconnectionstatechange = () => {
+            console.log(`[WebRTC Log] Peer connection state for ${targetUserId}: ${pc.connectionState}`);
+            if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
+                remoteTracksRef.current.delete(targetUserId);
+                updateParticipantList();
+            }
         };
 
         // ICE candidate handler
@@ -750,8 +758,36 @@ export const VoiceProvider = ({ children }) => {
                 }
             }
 
+            const incomingParticipants = (data.participants || []).map(p => ({
+                ...p,
+                userId: String(p.userId)
+            }));
+            rawParticipantsRef.current = incomingParticipants;
 
-            rawParticipantsRef.current = data.participants || [];
+            // Prune stale peer connections, tracks and states of users who left
+            const activeUserIds = new Set(incomingParticipants.map(p => p.userId));
+            const localUserId = user?._id?.toString();
+            for (const uid of Array.from(peerConnectionsRef.current.keys())) {
+                if (!activeUserIds.has(uid) && uid !== localUserId) {
+                    try {
+                        peerConnectionsRef.current.get(uid)?.close();
+                    } catch (e) {}
+                    peerConnectionsRef.current.delete(uid);
+                    remoteTracksRef.current.delete(uid);
+                    remoteStatesRef.current.delete(uid);
+                    candidateQueuesRef.current.delete(uid);
+                }
+            }
+            for (const uid of Array.from(remoteStatesRef.current.keys())) {
+                if (!activeUserIds.has(uid) && uid !== localUserId) {
+                    remoteStatesRef.current.delete(uid);
+                }
+            }
+            for (const uid of Array.from(remoteTracksRef.current.keys())) {
+                if (!activeUserIds.has(uid) && uid !== localUserId) {
+                    remoteTracksRef.current.delete(uid);
+                }
+            }
             
             if (data.watchParty) {
                 const wp = { ...data.watchParty };
@@ -766,10 +802,10 @@ export const VoiceProvider = ({ children }) => {
             
             // Map initial states for remote users
             rawParticipantsRef.current.forEach(p => {
-                if (p.userId !== user?._id?.toString()) {
+                if (p.userId !== localUserId) {
                     remoteStatesRef.current.set(p.userId, {
                         isMuted: p.isMuted === true,
-                        isCameraOn: p.isCameraOn === true,   // Fixed: was !== false which incorrectly set to true
+                        isCameraOn: p.isCameraOn === true,
                         isScreenSharing: !!p.isScreenSharing
                     });
                 }
@@ -777,7 +813,6 @@ export const VoiceProvider = ({ children }) => {
             
             // Initiate WebRTC offers deterministically to prevent glare collisions
             rawParticipantsRef.current.forEach(async (p) => {
-                const localUserId = user?._id?.toString();
                 if (p.userId !== localUserId && !peerConnectionsRef.current.has(p.userId)) {
                     const isOfferCreator = localUserId.localeCompare(p.userId) < 0;
                     if (isOfferCreator) {
@@ -814,25 +849,28 @@ export const VoiceProvider = ({ children }) => {
 
         const handleUserJoined = (data) => {
             console.log(`[Socket] voice:user-joined: ${data.username} (${data.userId})`);
-            if (data.userId !== user?._id?.toString()) {
+            if (String(data.userId) !== user?._id?.toString()) {
                 playInteractionSound('join');
             }
         };
 
         const handleUserLeft = (data) => {
-            console.log(`[Socket] voice:user-left: (${data.userId})`);
-            if (data.userId !== user?._id?.toString()) {
+            const targetId = String(data.userId);
+            console.log(`[Socket] voice:user-left: (${targetId})`);
+            if (targetId !== user?._id?.toString()) {
                 playInteractionSound('leave');
                 
-                // Cleanup connection
-                if (peerConnectionsRef.current.has(data.userId)) {
-                    peerConnectionsRef.current.get(data.userId).close();
-                    peerConnectionsRef.current.delete(data.userId);
+                // Cleanup connection & tracks
+                if (peerConnectionsRef.current.has(targetId)) {
+                    try {
+                        peerConnectionsRef.current.get(targetId).close();
+                    } catch (e) {}
+                    peerConnectionsRef.current.delete(targetId);
                 }
-                remoteTracksRef.current.delete(data.userId);
-                remoteStatesRef.current.delete(data.userId);
-                candidateQueuesRef.current.delete(data.userId);
-                rawParticipantsRef.current = rawParticipantsRef.current.filter(p => p.userId !== data.userId);
+                remoteTracksRef.current.delete(targetId);
+                remoteStatesRef.current.delete(targetId);
+                candidateQueuesRef.current.delete(targetId);
+                rawParticipantsRef.current = rawParticipantsRef.current.filter(p => String(p.userId) !== targetId);
                 updateParticipantList();
             }
         };
