@@ -127,11 +127,35 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('disconnect', () => {
             setConnected(false);
+            // Baglanti kesilince listeyi "hazir degil" olarak isaretle.
+            // Bu sayede PC uyku modundan donunce veya kisaca internet kesilince
+            // yaniltici 0 gostermek yerine yeniden baglanana kadar '...' gosterilir.
+            setOnlineUsersReady(false);
         });
 
         setSocket(newSocket);
 
+        // --- Uyku/Uyanis Senaryosu: visibilitychange ---
+        // PC uyku modundan cikinca veya baska sekmeden geri donunce
+        // tarayici sekmesi tekrar gorunur hale gelir. Bu noktada socket
+        // zaten yeniden baglanmis olabilir, ama join gondermemis olabilir.
+        // Zorla join + get_online_users gondererek aninda tazele.
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                if (userIdRef.current && newSocket.connected) {
+                    newSocket.emit('join', userIdRef.current);
+                    newSocket.emit('get_online_users');
+                    console.log('[Socket] Tab became visible — refreshing presence');
+                } else if (!newSocket.connected) {
+                    // Socket hala baglanmamissa elle baglanmaya zorla
+                    newSocket.connect();
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             newSocket.close();
         };
     }, []); // Only run on mount
