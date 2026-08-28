@@ -101,6 +101,8 @@ export const initializeSocket = (io) => {
                 console.error('Error updating lastActive on join:', err);
             }
 
+            const currentOnlineList = getOnlineUserIds();
+            socket.emit('getOnlineUsers', currentOnlineList);
             broadcastGlobalOnlineUsers();
             io.emit('user_status_change', { userId: strUserId, status: 'online' });
 

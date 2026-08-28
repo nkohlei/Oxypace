@@ -1,10 +1,12 @@
 import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 
 const MembersSidebar = ({ members = [], onClose }) => {
     const { onlineUsers } = useSocket();
+    const { user: currentUser } = useAuth();
 
     // Helper to format last active time
     const formatTimeAgo = (date) => {
@@ -29,20 +31,31 @@ const MembersSidebar = ({ members = [], onClose }) => {
         return `${Math.floor(diffMonths / 12)}y`;
     };
 
+    const extractId = (v) => {
+        if (!v) return null;
+        if (typeof v === 'string') return v;
+        const id = v._id || v.id;
+        return id ? String(id) : null;
+    };
+
     // Normalize online user IDs into a Set for fast and accurate lookups
     const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
+    const currentUserId = currentUser?._id ? String(currentUser._id) : null;
+    if (currentUserId) {
+        onlineSet.add(currentUserId);
+    }
 
     // Filter members based on socket status
     const online = members.filter((m) => {
         if (!m) return false;
-        const id = String(m._id || m.id || m);
-        return onlineSet.has(id);
+        const id = extractId(m);
+        return id && onlineSet.has(id);
     });
 
     const offline = members.filter((m) => {
         if (!m) return false;
-        const id = String(m._id || m.id || m);
-        return !onlineSet.has(id);
+        const id = extractId(m);
+        return id && !onlineSet.has(id);
     });
 
     return (

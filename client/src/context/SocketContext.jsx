@@ -63,27 +63,35 @@ export const SocketProvider = ({ children }) => {
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            reconnectionAttempts: isNative ? 5 : Infinity,
-            timeout: isNative ? 10000 : 20000,
+            reconnectionAttempts: Infinity,
+            timeout: 20000,
             withCredentials: true,
             secure: true,
         });
 
+        const syncPresence = () => {
+            const uid = userIdRef.current || (user?._id ? String(user._id) : null);
+            if (newSocket.connected) {
+                if (uid) {
+                    const isGhost = !!localStorage.getItem('admin_backup_token');
+                    newSocket.emit('join', uid, isGhost);
+                    console.log(`[Socket] SyncPresence — joined: ${uid}`);
+                }
+                newSocket.emit('get_online_users');
+            } else if (!newSocket.connected) {
+                newSocket.connect();
+            }
+        };
+
         newSocket.on('connect', () => {
             setConnected(true);
-            // userIdRef: stale closure olmadan güncel userId
-            // Reconnect, uyku sonrası uyanma, Chrome açılışı — hepsinde join gönderilir
-            const uid = userIdRef.current;
-            if (uid) {
-                const isGhost = !!localStorage.getItem('admin_backup_token');
-                newSocket.emit('join', uid, isGhost);
-                console.log(`[Socket] Connected & joined: ${uid}`);
-            }
-            newSocket.emit('get_online_users');
+            syncPresence();
         });
 
         newSocket.on('getOnlineUsers', (users) => {
-            setOnlineUsers(users);
+            if (Array.isArray(users)) {
+                setOnlineUsers(users.map(String));
+            }
         });
 
         newSocket.on('user_status_change', ({ userId, status }) => {
@@ -134,44 +142,53 @@ export const SocketProvider = ({ children }) => {
 
         setSocket(newSocket);
 
-        // Sekme tekrar görünür olduğunda (uyku, Chrome açılış, mobil geçiş)
-        // join + online listesini tazele
-        const handleVisibilityChange = () => {
-            if (document.visibilityState !== 'visible') return;
-            const uid = userIdRef.current;
-            if (newSocket.connected) {
-                newSocket.emit('get_online_users');
-                if (uid) {
-                    const isGhost = !!localStorage.getItem('admin_backup_token');
-                    newSocket.emit('join', uid, isGhost);
-                    console.log('[Socket] Tab visible — re-joining');
-                }
-            } else {
-                newSocket.connect();
+        // Mobil ve masaüstü tarayıcı yaşam döngüsü event'leri
+        // (Ekran kilidi açılınca, sekme öne gelince, ağ geri gelince)
+        const handleLifecycleEvent = () => {
+            if (document.visibilityState === 'visible') {
+                syncPresence();
             }
         };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        document.addEventListener('visibilitychange', handleLifecycleEvent);
+        window.addEventListener('focus', handleLifecycleEvent);
+        window.addEventListener('pageshow', handleLifecycleEvent);
+        window.addEventListener('online', handleLifecycleEvent);
 
         return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            document.removeEventListener('visibilitychange', handleLifecycleEvent);
+            window.removeEventListener('focus', handleLifecycleEvent);
+            window.removeEventListener('pageshow', handleLifecycleEvent);
+            window.removeEventListener('online', handleLifecycleEvent);
             newSocket.close();
         };
     }, []); // Only run on mount
 
-    // 2. Auth tamamlanınca (user._id gelince) join gönder
+    // 2. Auth tamamlanınca veya kullanıcı değişince join gönder
     useEffect(() => {
         if (socket && connected && isAuthenticated && user?._id) {
             const isGhost = !!localStorage.getItem('admin_backup_token');
-            socket.emit('join', user._id, isGhost);
+            const uid = String(user._id);
+            socket.emit('join', uid, isGhost);
             socket.emit('get_online_users');
-            console.log(`[Socket] Auth ready — joined as ${user._id}`);
+            console.log(`[Socket] Auth ready — joined as ${uid}`);
         }
     }, [socket, connected, isAuthenticated, user?._id]);
+
+    // Aktif oturum açmış kullanıcı varsa ve socket bağlıysa,
+    // kendi ID'sinin onlineUsers listesinde yer almasını sağla
+    const effectiveOnlineUsers = (() => {
+        const set = new Set((onlineUsers || []).map(String));
+        if (user?._id && connected) {
+            set.add(String(user._id));
+        }
+        return Array.from(set);
+    })();
 
     const value = {
         socket,
         connected,
-        onlineUsers,
+        onlineUsers: effectiveOnlineUsers,
     };
 
     return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
