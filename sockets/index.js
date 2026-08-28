@@ -108,19 +108,19 @@ export const initializeSocket = (io) => {
                     }
                 }
             } else {
-                // If ghost/hidden, send online users list ONLY to this socket
-                let onlineList = [];
-                if (pubClient) {
-                    try {
-                        const keys = await pubClient.keys('socket:user:*');
-                        onlineList = keys.map(k => k.replace('socket:user:', ''));
-                    } catch (e) {
-                        onlineList = Array.from(new Set(userSockets.values()));
+                // If ghost/hidden, send current live online users list ONLY to this socket
+                try {
+                    const sockets = await io.fetchSockets();
+                    const activeUserIds = new Set();
+                    for (const s of sockets) {
+                        if (s.data && s.data.userId && !s.data.isGhost) {
+                            activeUserIds.add(String(s.data.userId));
+                        }
                     }
-                } else {
-                    onlineList = Array.from(new Set(userSockets.values()));
+                    socket.emit('getOnlineUsers', Array.from(activeUserIds));
+                } catch (e) {
+                    socket.emit('getOnlineUsers', Array.from(new Set(userSockets.values())));
                 }
-                socket.emit('getOnlineUsers', onlineList);
             }
         });
 
