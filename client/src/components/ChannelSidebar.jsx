@@ -36,6 +36,7 @@ const ChannelSidebar = ({
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();
     const { onlineUsers } = useSocket();
+    const { user } = useAuth();
 
     // Savunmacı ID çıkarma — populate edilmiş obje ya da raw string ID her ikisini de doğru işler.
     // portal.owner obje olduğunda String(portal.owner) → "[object Object]" olur, bu hatayı önler.
@@ -63,6 +64,15 @@ const ChannelSidebar = ({
 
     // onlineUsers → SocketContext'ten gelen, sunucunun getOnlineUsers event'iyle güncellenen liste
     const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
+
+    // Optimistik varlık: Kullanıcı bu portala bakıyorsa, join henüz sunucuya
+    // ulaşmamış olsa bile kendisini online olarak say.
+    // Socket timing sorunlarını (Chrome açılış, uyku sonrası) kullanıcıya hissettirmez.
+    const currentUserId = user?._id ? String(user._id) : null;
+    if (currentUserId && portalMemberIds.has(currentUserId)) {
+        onlineSet.add(currentUserId);
+    }
+
     let onlineCount = 0;
     portalMemberIds.forEach(id => {
         if (onlineSet.has(id)) onlineCount++;
