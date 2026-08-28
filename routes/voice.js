@@ -3,7 +3,7 @@ import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { protect } from '../middleware/auth.js';
 import Portal from '../models/Portal.js';
 import User from '../models/User.js';
-import { getVoiceRoomData } from '../sockets/voiceHandler.js';
+import { getVoiceRoomData, getVoiceRoomParticipantsFromRedis } from '../sockets/voiceHandler.js';
 import Notification from '../models/Notification.js';
 import { sendPushNotification } from '../utils/firebase.js';
 
@@ -177,24 +177,27 @@ router.get('/rooms/:portalId/:channelId/participants', protect, async (req, res)
             console.warn('[Livekit listParticipants fallback to socket]:', err.message);
         }
 
-        // Merge with socket room participants if LiveKit list is empty or syncing
-        const socketRoomData = getVoiceRoomData(roomName);
-        if (socketRoomData && socketRoomData.participants && socketRoomData.participants.size > 0) {
-            const socketParticipants = Array.from(socketRoomData.participants.entries()).map(([userId, data]) => ({
-                identity: userId,
-                name: data.username,
-                metadata: { avatar: data.avatar },
-                isSpeaking: false,
-                joinedAt: data.joinedAt,
-            }));
-
-            // Deduplicate by identity
-            const existingIds = new Set(participantsList.map(p => String(p.identity)));
-            for (const sp of socketParticipants) {
-                if (!existingIds.has(String(sp.identity))) {
-                    participantsList.push(sp);
+        // Merge with Redis-synchronized voice room participants
+        try {
+            const redisParticipants = await getVoiceRoomParticipantsFromRedis(roomName);
+            if (Array.isArray(redisParticipants) && redisParticipants.length > 0) {
+                const existingIds = new Set(participantsList.map(p => String(p.identity)));
+                for (const rp of redisParticipants) {
+                    const rpId = String(rp.userId || rp.identity);
+                    if (!existingIds.has(rpId)) {
+                        participantsList.push({
+                            identity: rpId,
+                            name: rp.username || 'User',
+                            metadata: { avatar: rp.avatar || '' },
+                            isSpeaking: false,
+                            joinedAt: rp.joinedAt || Date.now()
+                        });
+                        existingIds.add(rpId);
+                    }
                 }
             }
+        } catch (redisErr) {
+            console.error('Error merging Redis voice room participants:', redisErr);
         }
 
         res.json({ participants: participantsList, roomName });

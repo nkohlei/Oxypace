@@ -12,17 +12,43 @@
 // voiceRooms = new Map([
 //    ["roomA", { participants: Map<userId, data>, startedAt: timestamp }]
 // ])
+import { pubClient } from './redisAdapter.js';
+
+// Track voice channel participants: roomName -> Map<userId, { socketId, username, avatar }>
+// Structure:
+// voiceRooms = new Map([
+//    ["roomA", { participants: Map<userId, data>, startedAt: timestamp }]
+// ])
 const voiceRooms = new Map();
 
 export const initializeVoiceHandler = (io) => {
     io.on('connection', (socket) => {
         // ─── Join Voice Channel ───
-        socket.on('voice:join', ({ roomName, userId, username, avatar }) => {
+        socket.on('voice:join', async ({ roomName, userId, username, avatar }) => {
             if (!roomName || !userId) return;
 
             socket.join(`voice:${roomName}`);
 
-            // Track participant
+            // Track in Redis for multi-worker synchronization
+            if (pubClient) {
+                try {
+                    await pubClient.hset(
+                        `voiceroom:${roomName}`,
+                        String(userId),
+                        JSON.stringify({
+                            userId: String(userId),
+                            socketId: socket.id,
+                            username,
+                            avatar: avatar || '',
+                            joinedAt: Date.now()
+                        })
+                    );
+                } catch (err) {
+                    console.error('Redis voiceroom join error:', err);
+                }
+            }
+
+            // Track participant in local worker memory
             if (!voiceRooms.has(roomName)) {
                 voiceRooms.set(roomName, {
                     participants: new Map(),
@@ -311,7 +337,19 @@ export const initializeVoiceHandler = (io) => {
 
 // ─── Helper Functions ───
 
-function removeParticipant(io, roomName, userId) {
+async function removeParticipant(io, roomName, userId) {
+    if (pubClient) {
+        try {
+            await pubClient.hdel(`voiceroom:${roomName}`, String(userId));
+            const count = await pubClient.hlen(`voiceroom:${roomName}`);
+            if (count === 0) {
+                await pubClient.del(`voiceroom:${roomName}`);
+            }
+        } catch (err) {
+            console.error('Redis voiceroom remove error:', err);
+        }
+    }
+
     const roomData = voiceRooms.get(roomName);
     if (!roomData) return;
 
@@ -371,4 +409,19 @@ function getParticipantList(roomName) {
 // Export for external access (e.g., from routes)
 export const getVoiceRoomData = (roomName) => voiceRooms.get(roomName);
 export const getVoiceRoomParticipants = (roomName) => getParticipantList(roomName);
+export const getVoiceRoomParticipantsFromRedis = async (roomName) => {
+    if (pubClient) {
+        try {
+            const hashData = await pubClient.hgetall(`voiceroom:${roomName}`);
+            if (hashData && Object.keys(hashData).length > 0) {
+                return Object.values(hashData).map(str => {
+                    try { return JSON.parse(str); } catch (e) { return null; }
+                }).filter(Boolean);
+            }
+        } catch (err) {
+            console.error('Error fetching voiceroom from Redis:', err);
+        }
+    }
+    return getParticipantList(roomName);
+};
 export const getActiveVoiceRooms = () => Array.from(voiceRooms.keys());
