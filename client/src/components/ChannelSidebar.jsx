@@ -56,9 +56,15 @@ const ChannelSidebar = ({
     const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
     let onlineCount = Array.from(portalMemberIds).filter(id => onlineSet.has(id)).length;
     
-    // If the logged in user is viewing the portal and connected, they must count as at least 1 online
-    if (user?._id && onlineSet.has(String(user._id)) && onlineCount === 0 && (isMember || canManage || portalMemberIds.has(String(user._id)))) {
-        onlineCount = Math.max(1, onlineCount);
+    // If the authenticated user is connected, they are actively online right now
+    if (user?._id) {
+        const myId = String(user._id);
+        // If myId is in onlineSet OR we are connected to socket, guarantee we are counted
+        if (connected || onlineSet.has(myId)) {
+            if (onlineCount === 0) {
+                onlineCount = 1;
+            }
+        }
     }
 
     // Clear unread count for the active channel
