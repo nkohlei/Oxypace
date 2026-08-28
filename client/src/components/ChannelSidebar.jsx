@@ -37,15 +37,29 @@ const ChannelSidebar = ({
     const { roomStartTime, activeRoom } = useVoice();
     const { socket, onlineUsers, connected } = useSocket();
 
-    // Calculate real online count ONLY from registered portal members (owner, admins, members)
-    const portalMemberIds = new Set([
-        portal?.owner?._id || portal?.owner?.id || portal?.owner,
-        ...(portal?.admins || []).map(a => a?._id || a?.id || a),
-        ...(portal?.members || []).map(m => m?._id || m?.id || m)
-    ].filter(Boolean).map(id => String(id)));
+    // Calculate real online count from registered portal members (owner, admins, members)
+    const portalMemberIds = new Set();
+    
+    if (portal?.owner) {
+        const ownerId = portal.owner._id || portal.owner.id || portal.owner;
+        if (ownerId) portalMemberIds.add(String(ownerId));
+    }
+    (portal?.admins || []).forEach(a => {
+        const aId = a?._id || a?.id || a;
+        if (aId) portalMemberIds.add(String(aId));
+    });
+    (portal?.members || []).forEach(m => {
+        const mId = m?._id || m?.id || m;
+        if (mId) portalMemberIds.add(String(mId));
+    });
 
-    // Strictly count how many members of this portal are currently online in the socket network
-    const onlineCount = Array.from(portalMemberIds).filter(id => onlineUsers.map(String).includes(String(id))).length;
+    const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
+    let onlineCount = Array.from(portalMemberIds).filter(id => onlineSet.has(id)).length;
+    
+    // If the logged in user is viewing the portal and connected, they must count as at least 1 online
+    if (user?._id && onlineSet.has(String(user._id)) && onlineCount === 0 && (isMember || canManage || portalMemberIds.has(String(user._id)))) {
+        onlineCount = Math.max(1, onlineCount);
+    }
 
     // Clear unread count for the active channel
     useEffect(() => {
