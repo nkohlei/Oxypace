@@ -40,26 +40,19 @@ export const SocketProvider = ({ children }) => {
 
         const newSocket = io(socketUrl, {
             transports: ['websocket', 'polling'],
-            upgrade: true,
-            rememberUpgrade: true,
-            forceNew: false, 
-            multiplex: true, 
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            reconnectionAttempts: isNative ? 5 : Infinity,
-            timeout: isNative ? 10000 : 20000,
+            reconnectionAttempts: Infinity,
+            timeout: 20000,
             withCredentials: true,
-            secure: true,
         });
 
         newSocket.on('connect', () => {
             setConnected(true);
             newSocket.emit('get_online_users');
-            // Re-join if user is already authenticated
             if (user?._id) {
                 newSocket.emit('join', String(user._id));
-                console.log(`[Socket] Connected & joined user: ${user._id}`);
             }
         });
 

@@ -54,18 +54,16 @@ const ChannelSidebar = ({
     });
 
     const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
-    let onlineCount = Array.from(portalMemberIds).filter(id => onlineSet.has(id)).length;
-    
-    // If the authenticated user is connected, they are actively online right now
-    if (user?._id) {
-        const myId = String(user._id);
-        // If myId is in onlineSet OR we are connected to socket, guarantee we are counted
-        if (connected || onlineSet.has(myId)) {
-            if (onlineCount === 0) {
-                onlineCount = 1;
-            }
+    let memberOnlineMatches = 0;
+    portalMemberIds.forEach(id => {
+        if (onlineSet.has(id)) {
+            memberOnlineMatches++;
         }
-    }
+    });
+
+    // Anlık olarak bağlı olan kullanıcı bu portalın bir üyesi, sahibi veya şu an bu portala bakıyorsa
+    const isCurrentUserConnected = !!(user?._id && (connected || onlineSet.has(String(user._id))));
+    const onlineCount = Math.max(memberOnlineMatches, isCurrentUserConnected ? 1 : 0);
 
     // Clear unread count for the active channel
     useEffect(() => {
