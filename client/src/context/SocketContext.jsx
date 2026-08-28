@@ -41,6 +41,7 @@ export const SocketProvider = ({ children }) => {
         // Logout'ta cache'i temizleme — socket olmadan gereksiz
     }, [user?._id]);
 
+    const socketRef = useRef(null);
 
     // 1. Establish Socket Connection ONCE on mount
     useEffect(() => {
@@ -69,6 +70,9 @@ export const SocketProvider = ({ children }) => {
             secure: true,
         });
 
+        socketRef.current = newSocket;
+        setSocket(newSocket);
+
         const syncPresence = () => {
             const uid = userIdRef.current || (user?._id ? String(user._id) : null);
             if (newSocket.connected) {
@@ -86,6 +90,10 @@ export const SocketProvider = ({ children }) => {
         newSocket.on('connect', () => {
             setConnected(true);
             syncPresence();
+        });
+
+        newSocket.on('disconnect', () => {
+            setConnected(false);
         });
 
         newSocket.on('getOnlineUsers', (users) => {
@@ -118,14 +126,13 @@ export const SocketProvider = ({ children }) => {
             let message = 'Erişiminiz Engellendi!\n\n';
             message += `Gerekçe: ${reason || 'Belirtilmedi'}\n`;
             if (expiresAt) {
-                const date = new Date(expiresAt);
-                message += `Bitiş Tarihi: ${date.toLocaleString()}`;
+                message += `Bitiş Tarihi: ${new Date(expiresAt).toLocaleString('tr-TR')}`;
             } else {
-                message += 'Bitiş Tarihi: Süresiz (Kalıcı)';
+                message += 'Süre: Süresiz';
             }
             alert(message);
-            localStorage.removeItem('token');
-            window.location.reload();
+            updateUser(null);
+            navigateRef.current('/login');
         });
 
         newSocket.on('tourist_admin_revoked', ({ message }) => {
@@ -136,16 +143,10 @@ export const SocketProvider = ({ children }) => {
             }
         });
 
-        newSocket.on('disconnect', () => {
-            setConnected(false);
-        });
-
-        setSocket(newSocket);
-
         // Mobil ve masaüstü tarayıcı yaşam döngüsü event'leri
         // (Ekran kilidi açılınca, sekme öne gelince, ağ geri gelince)
         const handleLifecycleEvent = () => {
-            if (document.visibilityState === 'visible') {
+            if (document.visibilityState === 'visible' || document.hasFocus()) {
                 syncPresence();
             }
         };
@@ -166,11 +167,12 @@ export const SocketProvider = ({ children }) => {
 
     // 2. Auth tamamlanınca veya kullanıcı değişince join gönder
     useEffect(() => {
-        if (socket && connected && isAuthenticated && user?._id) {
+        const s = socketRef.current || socket;
+        const uid = user?._id ? String(user._id) : userIdRef.current;
+        if (s && connected && uid) {
             const isGhost = !!localStorage.getItem('admin_backup_token');
-            const uid = String(user._id);
-            socket.emit('join', uid, isGhost);
-            socket.emit('get_online_users');
+            s.emit('join', uid, isGhost);
+            s.emit('get_online_users');
             console.log(`[Socket] Auth ready — joined as ${uid}`);
         }
     }, [socket, connected, isAuthenticated, user?._id]);

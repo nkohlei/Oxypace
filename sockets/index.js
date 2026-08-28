@@ -122,7 +122,10 @@ export const initializeSocket = (io) => {
             console.log(`👤 User ${strUserId} joined (active sockets: ${activeUsersMap.get(strUserId).size})`);
 
             try {
-                await User.findByIdAndUpdate(strUserId, { lastActive: new Date() });
+                const userDoc = await User.findByIdAndUpdate(strUserId, { lastActive: new Date() }, { new: true });
+                if (userDoc) {
+                    socket.user = userDoc;
+                }
             } catch (err) {
                 console.error('Error updating lastActive on join:', err);
             }
