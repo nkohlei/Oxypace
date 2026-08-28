@@ -35,35 +35,38 @@ const ChannelSidebar = ({
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();
-    const { socket, onlineUsers, connected } = useSocket();
+    const { onlineUsers } = useSocket();
 
-    // Calculate real online count from registered portal members (owner, admins, members)
+    // Savunmacı ID çıkarma — populate edilmiş obje ya da raw string ID her ikisini de doğru işler.
+    // portal.owner obje olduğunda String(portal.owner) → "[object Object]" olur, bu hatayı önler.
+    const extractId = (v) => {
+        if (!v) return null;
+        if (typeof v === 'string') return v;
+        const id = v._id || v.id;
+        return id ? String(id) : null;
+    };
+
+    // Gerçek çevrimiçi sayımı: sadece bu portalın kayıtlı üyeleri (sahip + adminler + üyeler)
     const portalMemberIds = new Set();
-    
-    if (portal?.owner) {
-        const ownerId = portal.owner._id || portal.owner.id || portal.owner;
-        if (ownerId) portalMemberIds.add(String(ownerId));
-    }
+
+    const ownerId = extractId(portal?.owner);
+    if (ownerId) portalMemberIds.add(ownerId);
+
     (portal?.admins || []).forEach(a => {
-        const aId = a?._id || a?.id || a;
-        if (aId) portalMemberIds.add(String(aId));
+        const aId = extractId(a);
+        if (aId) portalMemberIds.add(aId);
     });
     (portal?.members || []).forEach(m => {
-        const mId = m?._id || m?.id || m;
-        if (mId) portalMemberIds.add(String(mId));
+        const mId = extractId(m);
+        if (mId) portalMemberIds.add(mId);
     });
 
+    // onlineUsers → SocketContext'ten gelen, sunucunun getOnlineUsers event'iyle güncellenen liste
     const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
-    let memberOnlineMatches = 0;
+    let onlineCount = 0;
     portalMemberIds.forEach(id => {
-        if (onlineSet.has(id)) {
-            memberOnlineMatches++;
-        }
+        if (onlineSet.has(id)) onlineCount++;
     });
-
-    // Anlık olarak bağlı olan kullanıcı bu portalın bir üyesi, sahibi veya şu an bu portala bakıyorsa
-    const isCurrentUserConnected = !!(user?._id && (connected || onlineSet.has(String(user._id))));
-    const onlineCount = Math.max(memberOnlineMatches, isCurrentUserConnected ? 1 : 0);
 
     // Clear unread count for the active channel
     useEffect(() => {
