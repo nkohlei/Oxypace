@@ -55,6 +55,34 @@ export const initializeSocket = (io) => {
         socket.on('join', async (userId, isGhost) => {
             if (!userId) return;
             const strUserId = String(userId);
+
+            // --- Hayalet Temizliği: Aynı socket daha önce farklı bir userId ile kayıtlıysa temizle ---
+            // Bu; aynı tarayıcıda hesap değişimi yapıldığında eski userId'nin ölü giriş olarak
+            // activeUsersMap'te kalmasını önler.
+            const prevUserId = userSockets.get(socket.id);
+            if (prevUserId && prevUserId !== strUserId) {
+                console.log(`🔄 Socket ${socket.id} re-registering: ${prevUserId} → ${strUserId}. Cleaning up previous entry.`);
+                const prevSet = activeUsersMap.get(prevUserId);
+                if (prevSet) {
+                    prevSet.delete(socket.id);
+                    if (prevSet.size === 0) {
+                        activeUsersMap.delete(prevUserId);
+                        // Eski kullanıcı artık gerçekten offline — bildir
+                        io.emit('user_status_change', { userId: prevUserId, status: 'offline', lastActive: new Date() });
+                        console.log(`👋 User ${prevUserId} is now fully offline (account switch)`);
+                        try {
+                            await User.findByIdAndUpdate(prevUserId, { lastActive: new Date() });
+                        } catch (err) {
+                            console.error('Error updating lastActive on account switch:', err);
+                        }
+                    } else {
+                        // Başka aktif socket'leri var, sadece bu socket'i kaldır
+                        broadcastGlobalOnlineUsers();
+                    }
+                }
+            }
+            // -----------------------------------------------------------------------------------------
+
             socket.data.userId = strUserId;
             socket.data.isGhost = !!isGhost;
 
