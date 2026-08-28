@@ -19,12 +19,23 @@ export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState([]);
+    // true olunca en az bir getOnlineUsers yanıtı alındı — 0 flash'ını önler
+    const [onlineUsersReady, setOnlineUsersReady] = useState(false);
     const { user, isAuthenticated, updateUser } = useAuth();
     const navigate = useNavigate();
     const navigateRef = useRef(navigate);
     useEffect(() => {
         navigateRef.current = navigate;
     }, [navigate]);
+
+    // Her zaman güncel userId'yi tutan ref — stale closure sorununu çözer.
+    // Socket mount'ta [] bağımlılıkla yaratıldığı için connect handler'daki user
+    // o anki anlık değeri değil, mount sırasındaki değeri yakalar (genellikle null).
+    // Bu ref sayesinde socket reconnect olduğunda her zaman doğru userId gönderilir.
+    const userIdRef = useRef(null);
+    useEffect(() => {
+        userIdRef.current = user?._id ? String(user._id) : null;
+    }, [user?._id]);
 
     // 1. Establish Socket Connection ONCE on mount
     useEffect(() => {
@@ -50,10 +61,13 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('connect', () => {
             setConnected(true);
-            newSocket.emit('get_online_users');
-            if (user?._id) {
-                newSocket.emit('join', String(user._id));
+            // userIdRef.current ile stale closure problemi olmadan güncel userId kullanılır.
+            // Bu kritik: sayfa yenilendiğinde veya kısa kopukluk sonrasında socket
+            // yeniden bağlandığında join anında doğru userId ile gönderilir.
+            if (userIdRef.current) {
+                newSocket.emit('join', userIdRef.current);
             }
+            newSocket.emit('get_online_users');
         });
 
         newSocket.on('getOnlineUsers', (users) => {
@@ -62,6 +76,8 @@ export const SocketProvider = ({ children }) => {
             } else {
                 setOnlineUsers([]);
             }
+            // İlk yanıt alındı — artık liste sunucudan gelen gerçek veri
+            setOnlineUsersReady(true);
         });
 
         newSocket.on('user_status_change', ({ userId, status }) => {
@@ -133,6 +149,7 @@ export const SocketProvider = ({ children }) => {
         socket,
         connected,
         onlineUsers,
+        onlineUsersReady,
     };
 
     return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

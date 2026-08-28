@@ -198,6 +198,10 @@ const Portal = () => {
         socket.emit('join_portal', id);
         console.log(`🔌 Joining portal room: ${id}`);
 
+        // Portal odasına katılınca online listesini de tazele — bu sayede portal
+        // sayfası açılır açılmaz doğru çevrimiçi sayısı görüntülenir.
+        socket.emit('get_online_users');
+
         // Join Channel Room if present
         if (currentChannel) {
             socket.emit('join_channel', currentChannel);
@@ -294,6 +298,7 @@ const Portal = () => {
             socket.off('portal_typing_update', handlePortalTypingUpdate);
         };
     }, [socket, connected, id, currentChannel, user?._id]);
+
 
     // Helper to extract YouTube ID
     const getYoutubeId = (url) => {
