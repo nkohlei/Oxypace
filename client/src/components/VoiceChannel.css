@@ -1189,49 +1189,52 @@
     color: #0f172a;
 }
 
-/* Minimalist Bright Silver Join Button */
+/* Minimalist Bright Silver Rectangular Join Button */
 .vc-lobby-join-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    max-width: 220px;
-    padding: 11px 22px;
-    border-radius: 6px;
-    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
-    color: #090b10;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    border: 1px solid #ffffff;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12), 0 2px 6px rgba(0, 0, 0, 0.4);
-    transition: all 0.18s ease;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    max-width: 240px !important;
+    height: 44px !important;
+    padding: 0 24px !important;
+    border-radius: 6px !important; /* Net dikdörtgen, sadece 6px hafif kavisli köşe */
+    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%) !important;
+    color: #090b10 !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3px !important;
+    border: 1px solid #ffffff !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+    transition: all 0.18s ease !important;
+    text-decoration: none !important;
+    outline: none !important;
 }
 
 .vc-lobby-join-btn:hover {
-    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%);
-    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.5);
-    transform: translateY(-1px);
-    color: #000000;
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+    transform: translateY(-1px) !important;
+    color: #000000 !important;
 }
 
 .vc-lobby-join-btn:active {
-    transform: translateY(1px);
-    background: #cbd5e1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transform: translateY(1px) !important;
+    background: #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
 [data-theme='light'] .vc-lobby-join-btn {
-    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-    color: #ffffff;
-    border: 1px solid #334155;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 [data-theme='light'] .vc-lobby-join-btn:hover {
-    background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
-    border-color: #475569;
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+    border-color: #475569 !important;
 }
 
 
