@@ -144,38 +144,60 @@ router.get('/rooms/:portalId/:channelId/participants', protect, async (req, res)
 
         const roomService = new RoomServiceClient(LIVEKIT_HTTP_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
+        let participantsList = [];
+
         try {
             const participants = await roomService.listParticipants(roomName);
-            const mapped = participants.map((p) => {
-                let parsedMeta = {};
-                if (p.metadata) {
-                    try {
-                        parsedMeta = JSON.parse(p.metadata);
-                    } catch (e) {
-                        parsedMeta = { raw: p.metadata };
+            if (Array.isArray(participants)) {
+                participantsList = participants.map((p) => {
+                    let parsedMeta = {};
+                    if (p.metadata) {
+                        try {
+                            parsedMeta = JSON.parse(p.metadata);
+                        } catch (e) {
+                            parsedMeta = { raw: p.metadata };
+                        }
                     }
-                }
 
-                return {
-                    identity: p.identity,
-                    name: p.name,
-                    metadata: parsedMeta,
-                    isSpeaking: p.isSpeaking,
-                    joinedAt: p.joinedAt,
-                    tracks: p.tracks?.map((t) => ({
-                        source: t.source,
-                        type: t.type,
-                        muted: t.muted,
-                    })),
-                };
-            });
-
-            res.json({ participants: mapped, roomName });
+                    return {
+                        identity: p.identity,
+                        name: p.name,
+                        metadata: parsedMeta,
+                        isSpeaking: p.isSpeaking,
+                        joinedAt: p.joinedAt,
+                        tracks: p.tracks?.map((t) => ({
+                            source: t.source,
+                            type: t.type,
+                            muted: t.muted,
+                        })),
+                    };
+                });
+            }
         } catch (err) {
-            // Log the error but don't crash the request
-            console.error('[Livekit listParticipants failed]:', err.message);
-            return res.json({ participants: [], roomName, error: 'LiveKit sync failed' });
+            console.warn('[Livekit listParticipants fallback to socket]:', err.message);
         }
+
+        // Merge with socket room participants if LiveKit list is empty or syncing
+        const socketRoomData = getVoiceRoomData(roomName);
+        if (socketRoomData && socketRoomData.participants && socketRoomData.participants.size > 0) {
+            const socketParticipants = Array.from(socketRoomData.participants.entries()).map(([userId, data]) => ({
+                identity: userId,
+                name: data.username,
+                metadata: { avatar: data.avatar },
+                isSpeaking: false,
+                joinedAt: data.joinedAt,
+            }));
+
+            // Deduplicate by identity
+            const existingIds = new Set(participantsList.map(p => String(p.identity)));
+            for (const sp of socketParticipants) {
+                if (!existingIds.has(String(sp.identity))) {
+                    participantsList.push(sp);
+                }
+            }
+        }
+
+        res.json({ participants: participantsList, roomName });
     } catch (error) {
         console.error('List participants outer error:', error);
         res.json({ participants: [], roomName: 'unknown' });

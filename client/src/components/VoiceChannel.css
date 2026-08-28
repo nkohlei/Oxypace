@@ -1080,14 +1080,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   PREMIUM MODERN LOBBY SCREEN (Voice & Conference)
+   PREMIUM DARK SILVER MINIMALIST LOBBY (Voice & Conference)
    ═══════════════════════════════════════════════════════════ */
 .lobby-bg {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     position: relative !important;
-    background: radial-gradient(circle at 50% 40%, rgba(0, 168, 252, 0.06) 0%, transparent 70%) !important;
+    background: transparent !important;
 }
 
 .vc-lobby-card {
@@ -1096,50 +1096,22 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    max-width: 480px;
+    max-width: 420px;
     width: 90%;
-    padding: 40px 32px;
-    border-radius: 28px;
-    background: rgba(13, 16, 26, 0.65);
-    backdrop-filter: blur(28px) saturate(190%);
-    -webkit-backdrop-filter: blur(28px) saturate(190%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 36px 28px;
+    border-radius: 14px;
+    background: rgba(14, 16, 22, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
     z-index: 10;
-    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
 }
 
 [data-theme='light'] .vc-lobby-card {
-    background: rgba(255, 255, 255, 0.75);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.vc-lobby-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 168, 252, 0.1);
-}
-
-.vc-lobby-card.conf:hover {
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7), 0 0 40px rgba(139, 92, 246, 0.15);
-}
-
-/* Ambient Inner Glow */
-.vc-lobby-glow {
-    position: absolute;
-    top: -30%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 240px;
-    height: 160px;
-    background: radial-gradient(ellipse, rgba(0, 168, 252, 0.35), transparent 70%);
-    filter: blur(40px);
-    pointer-events: none;
-    z-index: -1;
-}
-
-.vc-lobby-glow.conf {
-    background: radial-gradient(ellipse, rgba(139, 92, 246, 0.4), transparent 70%);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
 }
 
 /* Status Pill Badge */
@@ -1147,12 +1119,11 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 14px;
-    border-radius: 100px;
+    padding: 5px 12px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 24px;
-    backdrop-filter: blur(12px);
+    margin-bottom: 20px;
 }
 
 [data-theme='light'] .vc-lobby-status-pill {
@@ -1161,171 +1132,106 @@
 }
 
 .vc-status-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
 }
 
 .vc-status-dot.online {
     background: #22c55e;
-    box-shadow: 0 0 10px #22c55e;
-    animation: vcPulse 2s infinite;
 }
 
 .vc-status-dot.idle {
-    background: #94a3b8;
-    box-shadow: 0 0 6px rgba(148, 163, 184, 0.4);
+    background: #64748b;
 }
 
 .vc-status-text {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    color: var(--text-secondary, #94a3b8);
-    letter-spacing: 0.2px;
+    color: #cbd5e1;
+    letter-spacing: 0.3px;
 }
 
-/* Animated Icon Section */
-.vc-lobby-icon-wrapper {
-    position: relative;
-    width: 88px;
-    height: 88px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
+[data-theme='light'] .vc-status-text {
+    color: #475569;
 }
 
-.vc-lobby-icon-pulse {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: rgba(0, 168, 252, 0.15);
-    border: 1px solid rgba(0, 168, 252, 0.3);
-    animation: vcRipple 2.5s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.vc-lobby-icon-pulse.conf {
-    background: rgba(139, 92, 246, 0.15);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-}
-
+/* Minimalist Icon */
 .vc-lobby-icon {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(0, 168, 252, 0.18), rgba(0, 168, 252, 0.05));
-    border: 1px solid rgba(0, 168, 252, 0.3);
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 24px rgba(0, 168, 252, 0.2);
-    z-index: 2;
+    color: #e2e8f0;
+    margin-bottom: 16px;
+    transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.vc-lobby-icon.conf {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.06));
-    border: 1px solid rgba(139, 92, 246, 0.35);
-    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.25);
-}
-
-/* Info & Descriptions */
-.vc-lobby-info {
-    margin-bottom: 28px;
+[data-theme='light'] .vc-lobby-icon {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: #1e293b;
 }
 
 .vc-lobby-title {
-    font-size: 26px;
-    font-weight: 800;
-    color: var(--text-primary, #ffffff);
-    margin: 0 0 8px 0;
-    letter-spacing: -0.5px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 24px 0;
+    letter-spacing: -0.3px;
 }
 
-.vc-lobby-desc {
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--text-secondary, #94a3b8);
-    margin: 0;
-    max-width: 360px;
+[data-theme='light'] .vc-lobby-title {
+    color: #0f172a;
 }
 
-/* Join Button */
+/* Minimalist Silver Dark Join Button */
 .vc-lobby-join-btn {
-    position: relative;
-    overflow: hidden;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
     width: 100%;
-    max-width: 280px;
-    padding: 14px 28px;
-    border-radius: 100px;
-    background: linear-gradient(135deg, #00a8fc, #0284c7);
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    border: none;
+    max-width: 240px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    background: #1e222d;
+    color: #f1f5f9;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
     cursor: pointer;
-    box-shadow: 0 10px 30px rgba(0, 168, 252, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    transition: all 0.25s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    transition: all 0.2s ease;
 }
 
 .vc-lobby-join-btn:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 14px 38px rgba(0, 168, 252, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    background: #282d3c;
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    transform: translateY(-1px);
 }
 
 .vc-lobby-join-btn:active {
-    transform: translateY(1px) scale(0.98);
+    transform: translateY(1px);
+    background: #171922;
 }
 
-.vc-lobby-join-btn.conf {
-    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+[data-theme='light'] .vc-lobby-join-btn {
+    background: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.vc-lobby-join-btn.conf:hover {
-    box-shadow: 0 14px 38px rgba(139, 92, 246, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+[data-theme='light'] .vc-lobby-join-btn:hover {
+    background: #e2e8f0;
+    border-color: rgba(0, 0, 0, 0.25);
 }
 
-.vc-join-btn-icon {
-    transition: transform 0.2s ease;
-}
-
-.vc-lobby-join-btn:hover .vc-join-btn-icon {
-    transform: scale(1.15);
-}
-
-/* Button Shine Effect */
-.vc-btn-shine {
-    position: absolute;
-    top: -50%;
-    left: -60%;
-    width: 40px;
-    height: 200%;
-    background: rgba(255, 255, 255, 0.2);
-    transform: rotate(30deg);
-    transition: none;
-}
-
-.vc-lobby-join-btn:hover .vc-btn-shine {
-    left: 140%;
-    transition: left 0.75s ease-in-out;
-}
-
-@keyframes vcPulse {
-    0% { transform: scale(0.95); opacity: 0.8; }
-    50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 6px #22c55e); }
-    100% { transform: scale(0.95); opacity: 0.8; }
-}
-
-@keyframes vcRipple {
-    0% { transform: scale(0.9); opacity: 0.8; }
-    50% { transform: scale(1.25); opacity: 0.3; }
-    100% { transform: scale(1.4); opacity: 0; }
-}
 
 

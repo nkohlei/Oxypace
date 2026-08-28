@@ -279,39 +279,26 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     if (!isActiveRoom) {
         return (
             <div className="vc-container glass-container lobby-bg">
-                <div className="vc-lobby-card conf">
-                    {/* Glowing Ambient Backdrop */}
-                    <div className="vc-lobby-glow conf" />
-
-                    {/* Channel & Live Status Badge */}
-                    <div className="vc-lobby-status-pill conf">
+                <div className="vc-lobby-card">
+                    {/* Live Status Badge */}
+                    <div className="vc-lobby-status-pill">
                         <span className={`vc-status-dot ${lobbyCount > 0 ? 'online' : 'idle'}`} />
                         <span className="vc-status-text">
-                            {lobbyCount > 0 ? `${lobbyCount} Kişi Salonda` : 'Sahne Boş (İlk Katılan Sen Ol)'}
+                            {lobbyCount > 0 ? `${lobbyCount} Çevrimiçi` : 'Sahne Boş'}
                         </span>
                     </div>
 
-                    {/* Animated Pulsing Icon */}
-                    <div className="vc-lobby-icon-wrapper conf">
-                        <div className="vc-lobby-icon-pulse conf" />
-                        <div className="vc-lobby-icon conf">
-                            <Users size={36} color="#8b5cf6" />
-                        </div>
+                    {/* Minimalist Silver Users Icon */}
+                    <div className="vc-lobby-icon">
+                        <Users size={28} />
                     </div>
 
-                    {/* Room Titles & Info */}
-                    <div className="vc-lobby-info">
-                        <h2 className="vc-lobby-title">{channelName || 'Seminer Odası'}</h2>
-                        <p className="vc-lobby-desc">
-                            Geniş katılımlı sahne ve interaktif seminer salonu. Söz hakkı alarak veya izleyici olarak katılın.
-                        </p>
-                    </div>
+                    {/* Room Title */}
+                    <h2 className="vc-lobby-title">{channelName || 'Seminer Odası'}</h2>
 
-                    {/* Interactive Join CTA */}
-                    <button className="vc-lobby-join-btn conf" onClick={handleJoin}>
-                        <Radio size={20} className="vc-join-btn-icon" />
+                    {/* Minimalist Silver Dark Join CTA */}
+                    <button className="vc-lobby-join-btn" onClick={handleJoin}>
                         <span>Salona Geçiş Yap</span>
-                        <div className="vc-btn-shine" />
                     </button>
                 </div>
             </div>
