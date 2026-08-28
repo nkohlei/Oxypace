@@ -236,8 +236,33 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [isVolumeOpen, setIsVolumeOpen] = useState(false);
     const [portalMembers, setPortalMembers] = useState([]);
-    const [invitedUserIds, setInvitedUserIds] = useState([]);
+    const [inviteCooldowns, setInviteCooldowns] = useState({});
     const [loadingMembers, setLoadingMembers] = useState(false);
+
+    // Cooldown decrement timer for invitations
+    useEffect(() => {
+        const hasActiveCooldown = Object.values(inviteCooldowns).some(cd => cd > 0);
+        if (!hasActiveCooldown) return;
+
+        const interval = setInterval(() => {
+            setInviteCooldowns(prev => {
+                let changed = false;
+                const next = { ...prev };
+                Object.keys(next).forEach(id => {
+                    if (next[id] > 1) {
+                        next[id] -= 1;
+                        changed = true;
+                    } else if (next[id] === 1) {
+                        delete next[id];
+                        changed = true;
+                    }
+                });
+                return changed ? next : prev;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [inviteCooldowns]);
 
     const volumeCloseTimerRef = useRef(null);
 
@@ -318,13 +343,14 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     }, [isInviteOpen, portalId, user]);
 
     const handleSendInvite = async (targetUserId) => {
+        if (inviteCooldowns[targetUserId]) return;
+        setInviteCooldowns(prev => ({ ...prev, [targetUserId]: 30 }));
         try {
             await axios.post('/api/voice/invite', {
                 portalId,
                 channelId,
                 targetUserIds: [targetUserId]
             });
-            setInvitedUserIds(prev => [...prev, targetUserId]);
         } catch (error) {
             console.error("Failed to send call invitation:", error);
         }
@@ -885,30 +911,48 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                         <X size={20} />
                     </button>
                 </div>
-                <div className="chat-messages custom-scrollbar" style={{ padding: '16px' }}>
+                <div className="chat-messages custom-scrollbar" style={{ padding: '14px 12px' }}>
+                    <div className="vc-invite-hint">
+                        Kullanıcılara dokunarak davet gönderebilirsiniz.
+                    </div>
                     {loadingMembers ? (
                         <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Yükleniyor...</div>
                     ) : portalMembers.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Davet edilebilecek üye bulunamadı.</div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className="vc-invite-grid">
                             {portalMembers.map(m => {
-                                const isInvited = invitedUserIds.includes(m._id);
+                                const cooldown = inviteCooldowns[m._id] || 0;
+                                const isInvited = cooldown > 0;
+                                const displayName = m.profile?.displayName || m.username;
+                                const avatarSrc = getImageUrl(m.profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}`;
+
                                 return (
-                                    <div key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <img src={getImageUrl(m.profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.profile?.displayName || m.username)}`} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                                            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.profile?.displayName || m.username}</span>
+                                    <button 
+                                        key={m._id}
+                                        type="button"
+                                        disabled={isInvited}
+                                        onClick={() => handleSendInvite(m._id)}
+                                        className={`vc-invite-user-card ${isInvited ? 'invited' : ''}`}
+                                        title={isInvited ? `${cooldown}s sonra tekrar davet edilebilir` : `${displayName} davet et`}
+                                    >
+                                        <div className="vc-invite-avatar-wrapper">
+                                            <img 
+                                                src={avatarSrc} 
+                                                alt={displayName} 
+                                                className="vc-invite-avatar" 
+                                            />
+                                            {isInvited && (
+                                                <div className="vc-invite-badge">
+                                                    <Check size={14} strokeWidth={3} />
+                                                    <span className="vc-invite-timer">{cooldown}s</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        <button 
-                                            disabled={isInvited}
-                                            onClick={() => handleSendInvite(m._id)}
-                                            className={`chat-send-btn glass-btn ${isInvited ? '' : 'active'}`}
-                                            style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '20px' }}
-                                        >
-                                            {isInvited ? 'Davet Edildi' : 'Davet Et'}
-                                        </button>
-                                    </div>
+                                        <span className="vc-invite-username">
+                                            {displayName}
+                                        </span>
+                                    </button>
                                 );
                             })}
                         </div>
