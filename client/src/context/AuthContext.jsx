@@ -97,6 +97,7 @@ export const AuthProvider = ({ children }) => {
         try {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
+            localStorage.removeItem('_oxypace_uid'); // presence cache temizle
             sessionStorage.clear();
             document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         } catch (e) {}
@@ -106,6 +107,7 @@ export const AuthProvider = ({ children }) => {
         // Reset unread counts and other portal state
         useGlobalStore.getState().resetStore();
     };
+
 
     const updateUser = (userData) => {
         setUser(prevUser => {

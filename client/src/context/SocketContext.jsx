@@ -26,13 +26,21 @@ export const SocketProvider = ({ children }) => {
         navigateRef.current = navigate;
     }, [navigate]);
 
-    // Her zaman güncel userId'yi tutan ref.
-    // connect handler [] bağımlılıkla mount'ta yaratıldığından
-    // user'ı stale closure olarak yakalar. Ref bunu çözer.
-    const userIdRef = useRef(null);
+    // userId'yi localStorage'da cache'le.
+    // Chrome açılınca veya sekme restore edilince auth API cevabı gelmeden önce
+    // socket bağlanabilir. userIdRef'i localStorage'daki önceki değerle başlatarak
+    // join'i anında gönderiyoruz — auth API'yı beklemeye gerek kalmıyor.
+    const cachedUserId = localStorage.getItem('_oxypace_uid');
+    const userIdRef = useRef(cachedUserId || null);
     useEffect(() => {
-        userIdRef.current = user?._id ? String(user._id) : null;
+        if (user?._id) {
+            const uid = String(user._id);
+            userIdRef.current = uid;
+            localStorage.setItem('_oxypace_uid', uid); // Bir sonraki açılış için cache
+        }
+        // Logout'ta cache'i temizleme — socket olmadan gereksiz
     }, [user?._id]);
+
 
     // 1. Establish Socket Connection ONCE on mount
     useEffect(() => {
