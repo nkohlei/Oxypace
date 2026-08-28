@@ -135,24 +135,37 @@ export const SocketProvider = ({ children }) => {
 
         setSocket(newSocket);
 
-        // --- Uyku/Uyanis Senaryosu: visibilitychange ---
-        // PC uyku modundan cikinca veya baska sekmeden geri donunce
-        // tarayici sekmesi tekrar gorunur hale gelir. Bu noktada socket
-        // zaten yeniden baglanmis olabilir, ama join gondermemis olabilir.
-        // Zorla join + get_online_users gondererek aninda tazele.
+        // --- Sekme Gorunurluk Degisimi: uyku, Chrome acilis, mobil app switch ---
+        // Sekme tekrar gorunur oldugunda varlik bilgisini ve online listeyi tazele.
+        //
+        // 3 senaryo:
+        //   1. Socket bagli + userId hazir  → join + get_online_users (tam tazele)
+        //   2. Socket bagli + userId yok    → sadece get_online_users (auth bekleniyor;
+        //                                     join, auth bitince 2. useEffect ile gelir)
+        //   3. Socket bagli degil           → connect() zorla; connect eventi
+        //                                     tetiklenince join + get_online_users gider
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                if (userIdRef.current && newSocket.connected) {
+            if (document.visibilityState !== 'visible') return;
+
+            if (newSocket.connected) {
+                // Her durumda listeyi tazele — en azından diger kullanicilari gosterir
+                newSocket.emit('get_online_users');
+                if (userIdRef.current) {
+                    // Kendi varligi da kaydedilsin
                     newSocket.emit('join', userIdRef.current);
-                    newSocket.emit('get_online_users');
-                    console.log('[Socket] Tab became visible — refreshing presence');
-                } else if (!newSocket.connected) {
-                    // Socket hala baglanmamissa elle baglanmaya zorla
-                    newSocket.connect();
+                    console.log('[Socket] Tab visible — re-joining and refreshing presence');
+                } else {
+                    // Auth henuz bitmedi; join 2. useEffect ile gelecek
+                    console.log('[Socket] Tab visible — refreshing online list (auth pending)');
                 }
+            } else {
+                // Socket kopuk — yeniden baglan; connect() eventi join'i tetikler
+                console.log('[Socket] Tab visible but socket disconnected — reconnecting');
+                newSocket.connect();
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
+
 
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
