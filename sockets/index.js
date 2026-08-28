@@ -29,6 +29,12 @@ const startPresenceBroadcast = (io) => {
 export const initializeSocket = (io) => {
     // Map of userId -> Set of socket.ids
     const activeUsersMap = new Map();
+    // Map of socket.id -> userId
+    const userSockets = new Map();
+    // Store active typing states (recipientId -> Set of senderIds)
+    const activeTypingDMs = new Map();
+    // Store active typing states (portalId -> Map of userId -> userDetails)
+    const activeTypingPortals = new Map();
 
     const getOnlineUserIds = () => {
         return Array.from(activeUsersMap.keys());

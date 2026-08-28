@@ -71,6 +71,20 @@ export const SocketProvider = ({ children }) => {
             }
         });
 
+        newSocket.on('user_status_change', ({ userId, status }) => {
+            if (!userId) return;
+            const strId = String(userId);
+            setOnlineUsers(prev => {
+                const prevList = (prev || []).map(String);
+                if (status === 'online') {
+                    return prevList.includes(strId) ? prevList : [...prevList, strId];
+                } else if (status === 'offline') {
+                    return prevList.filter(id => id !== strId);
+                }
+                return prevList;
+            });
+        });
+
         newSocket.on('maintenance_toggle', ({ active }) => {
             if (active) {
                 // Read fresh admin status from storage or local context safely
