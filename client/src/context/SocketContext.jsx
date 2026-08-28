@@ -144,23 +144,38 @@ export const SocketProvider = ({ children }) => {
         });
 
         // Mobil ve masaüstü tarayıcı yaşam döngüsü event'leri
-        // (Ekran kilidi açılınca, sekme öne gelince, ağ geri gelince)
+        // (Ekran kilidi açılınca, sekme öne gelince, ağ geri gelince, app arka plandan dönünce)
         const handleLifecycleEvent = () => {
             if (document.visibilityState === 'visible' || document.hasFocus()) {
                 syncPresence();
             }
         };
 
+        newSocket.io.on('reconnect', () => {
+            setConnected(true);
+            syncPresence();
+        });
+
         document.addEventListener('visibilitychange', handleLifecycleEvent);
         window.addEventListener('focus', handleLifecycleEvent);
         window.addEventListener('pageshow', handleLifecycleEvent);
         window.addEventListener('online', handleLifecycleEvent);
+        window.addEventListener('resume', handleLifecycleEvent);
+        window.addEventListener('pointerdown', handleLifecycleEvent, { passive: true, once: false });
+
+        // Mobilde bağlantının uyumaması için 25 saniyelik periyodik canlılık nabzı (heartbeat)
+        const heartbeatInterval = setInterval(() => {
+            syncPresence();
+        }, 25000);
 
         return () => {
+            clearInterval(heartbeatInterval);
             document.removeEventListener('visibilitychange', handleLifecycleEvent);
             window.removeEventListener('focus', handleLifecycleEvent);
             window.removeEventListener('pageshow', handleLifecycleEvent);
             window.removeEventListener('online', handleLifecycleEvent);
+            window.removeEventListener('resume', handleLifecycleEvent);
+            window.removeEventListener('pointerdown', handleLifecycleEvent);
             newSocket.close();
         };
     }, []); // Only run on mount
