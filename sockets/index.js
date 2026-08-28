@@ -142,8 +142,9 @@ export const initializeSocket = (io) => {
         });
 
         // Request online users list on demand
-        socket.on('get_online_users', () => {
-            socket.emit('getOnlineUsers', getOnlineUserIds());
+        socket.on('get_online_users', async () => {
+            const list = await getOnlineUserIds();
+            socket.emit('getOnlineUsers', list);
         });
 
         // Handle disconnecting to capture rooms before they are cleared
@@ -157,6 +158,9 @@ export const initializeSocket = (io) => {
                 }
             }
         });
+
+        // Store active disconnect timers to prevent rapid offline/online flickering
+        const disconnectTimers = new Map();
 
         // Handle disconnect
         socket.on('disconnect', async () => {
@@ -178,62 +182,74 @@ export const initializeSocket = (io) => {
                 const isStillOnline = activeUsersMap.has(strUserId) && activeUsersMap.get(strUserId).size > 0;
 
                 if (!isStillOnline) {
-                    console.log(`👋 User ${strUserId} is now fully offline`);
+                    // Start a 5-second grace period before marking user fully offline
+                    if (disconnectTimers.has(strUserId)) {
+                        clearTimeout(disconnectTimers.get(strUserId));
+                    }
 
-                    // Clean up typing indicators in DMs for this user
-                    for (const [recipientId, senderSet] of activeTypingDMs.entries()) {
-                        if (senderSet.has(strUserId)) {
-                            senderSet.delete(strUserId);
-                            io.to(recipientId).emit('dm_typing_update', { senderId: strUserId, isTyping: false });
-                            if (senderSet.size === 0) {
-                                activeTypingDMs.delete(recipientId);
+                    const timer = setTimeout(async () => {
+                        disconnectTimers.delete(strUserId);
+                        const checkAgain = activeUsersMap.has(strUserId) && activeUsersMap.get(strUserId).size > 0;
+                        if (!checkAgain) {
+                            console.log(`👋 User ${strUserId} is now fully offline after grace period`);
+
+                            // Clean up typing indicators in DMs for this user
+                            for (const [recipientId, senderSet] of activeTypingDMs.entries()) {
+                                if (senderSet.has(strUserId)) {
+                                    senderSet.delete(strUserId);
+                                    io.to(recipientId).emit('dm_typing_update', { senderId: strUserId, isTyping: false });
+                                    if (senderSet.size === 0) {
+                                        activeTypingDMs.delete(recipientId);
+                                    }
+                                }
                             }
-                        }
-                    }
 
-                    // Clean up typing indicators in portals for this user
-                    for (const [portalId, typersMap] of activeTypingPortals.entries()) {
-                        if (typersMap.has(strUserId)) {
-                            typersMap.delete(strUserId);
-                            io.to(`portal:${portalId}`).emit('portal_typing_update', {
-                                portalId,
-                                userId: strUserId,
-                                isTyping: false
-                            });
-                            if (typersMap.size === 0) {
-                                activeTypingPortals.delete(portalId);
+                            // Clean up typing indicators in portals for this user
+                            for (const [portalId, typersMap] of activeTypingPortals.entries()) {
+                                if (typersMap.has(strUserId)) {
+                                    typersMap.delete(strUserId);
+                                    io.to(`portal:${portalId}`).emit('portal_typing_update', {
+                                        portalId,
+                                        userId: strUserId,
+                                        isTyping: false
+                                    });
+                                    if (typersMap.size === 0) {
+                                        activeTypingPortals.delete(portalId);
+                                    }
+                                }
                             }
+
+                            // Remove presence record and notify admins
+                            try {
+                                await removePresence(strUserId);
+                                const adminPresenceRoom = io.sockets.adapter.rooms.get('admin_presence');
+                                if (adminPresenceRoom && adminPresenceRoom.size > 0) {
+                                    const activeUsers = await getActivePresences();
+                                    io.to('admin_presence').emit('admin_presence_update', activeUsers);
+                                }
+                            } catch (err) {
+                                console.error('Error removing presence on disconnect:', err);
+                            }
+
+                            if (pubClient) {
+                                try {
+                                    await pubClient.srem('online_user_ids', strUserId);
+                                } catch (err) {}
+                            }
+
+                            const lastActive = new Date();
+                            try {
+                                await User.findByIdAndUpdate(strUserId, { lastActive });
+                            } catch (err) {
+                                console.error('Error updating status on disconnect:', err);
+                            }
+
+                            await broadcastGlobalOnlineUsers();
+                            io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
                         }
-                    }
+                    }, 5000);
 
-                    // Remove presence record and notify admins
-                    try {
-                        await removePresence(strUserId);
-                        const adminPresenceRoom = io.sockets.adapter.rooms.get('admin_presence');
-                        if (adminPresenceRoom && adminPresenceRoom.size > 0) {
-                            const activeUsers = await getActivePresences();
-                            io.to('admin_presence').emit('admin_presence_update', activeUsers);
-                        }
-                    } catch (err) {
-                        console.error('Error removing presence on disconnect:', err);
-                    }
-
-                    if (pubClient) {
-                        try {
-                            await pubClient.srem('online_user_ids', strUserId);
-                        } catch (err) {}
-                    }
-
-                    // Update the user's lastActive time in the database
-                    const lastActive = new Date();
-                    try {
-                        await User.findByIdAndUpdate(strUserId, { lastActive });
-                    } catch (err) {
-                        console.error('Error updating status on disconnect:', err);
-                    }
-
-                    await broadcastGlobalOnlineUsers();
-                    io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
+                    disconnectTimers.set(strUserId, timer);
                 } else {
                     await broadcastGlobalOnlineUsers();
                 }
