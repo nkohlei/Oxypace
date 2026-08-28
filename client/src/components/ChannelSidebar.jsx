@@ -36,7 +36,6 @@ const ChannelSidebar = ({
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom } = useVoice();
     const { onlineUsers } = useSocket();
-    const { user } = useAuth();
 
     // Savunmacı ID çıkarma — populate edilmiş obje ya da raw string ID her ikisini de doğru işler.
     // portal.owner obje olduğunda String(portal.owner) → "[object Object]" olur, bu hatayı önler.
