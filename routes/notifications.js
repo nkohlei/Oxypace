@@ -53,14 +53,30 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.get('/portal-unreads', protect, async (req, res) => {
     try {
-        const notifications = await Notification.find({
-            recipient: req.user.id,
-            type: 'portal_post',
-            read: false
-        }).populate({
-            path: 'portal',
-            select: 'members channels'
-        });
+        const [user, notifications] = await Promise.all([
+            User.findById(req.user.id).select('portalNotificationSettings').lean(),
+            Notification.find({
+                recipient: req.user.id,
+                type: 'portal_post',
+                read: false
+            }).populate({
+                path: 'portal',
+                select: 'members channels'
+            })
+        ]);
+
+        const portalSettingsMap = new Map();
+        if (user && Array.isArray(user.portalNotificationSettings)) {
+            for (const s of user.portalNotificationSettings) {
+                if (s && s.portal) {
+                    const pIdStr = s.portal.toString();
+                    portalSettingsMap.set(pIdStr, {
+                        isAllMuted: !!s.isAllMuted,
+                        mutedChannels: new Set((s.mutedChannels || []).map(id => id.toString()))
+                    });
+                }
+            }
+        }
         
         const validNotifications = [];
         const orphanIds = [];
@@ -72,6 +88,7 @@ router.get('/portal-unreads', protect, async (req, res) => {
             if (!n.portal) {
                 isOrphan = true;
             } else {
+                const portalIdStr = n.portal._id.toString();
                 // 2. Check if user is still a member of the portal
                 const isMember = n.portal.members.some(
                     (memberId) => memberId.toString() === req.user.id
@@ -85,6 +102,17 @@ router.get('/portal-unreads', protect, async (req, res) => {
                     );
                     if (!channelExists) {
                         isOrphan = true;
+                    }
+                }
+
+                // 4. Check if portal or channel is muted by user
+                const pSetting = portalSettingsMap.get(portalIdStr);
+                if (pSetting) {
+                    if (pSetting.isAllMuted) {
+                        continue; // Skip entirely, user muted this entire portal
+                    }
+                    if (n.channel && pSetting.mutedChannels.has(n.channel.toString())) {
+                        continue; // Skip, user muted this specific channel
                     }
                 }
             }
