@@ -85,8 +85,8 @@ export const initializeVoiceHandler = (io) => {
             socket._voiceRooms.add(roomName);
             socket._voiceUserId = sUserId;
 
-            // Broadcast updated participant list and room start time
-            const participants = getParticipantList(roomName);
+            // Broadcast updated participant list and room start time from Redis across all cluster workers
+            const participants = await getVoiceRoomParticipantsFromRedis(roomName);
             io.to(`voice:${roomName}`).emit('voice:participants', {
                 roomName,
                 participants,
@@ -97,7 +97,7 @@ export const initializeVoiceHandler = (io) => {
 
             // Emit explicit join event for notifications
             io.to(`voice:${roomName}`).emit('voice:user-joined', {
-                userId,
+                userId: sUserId,
                 username,
                 avatar: avatar || '',
             });
@@ -106,9 +106,9 @@ export const initializeVoiceHandler = (io) => {
         });
 
         // ─── Leave Voice Channel ───
-        socket.on('voice:leave', ({ roomName, userId }) => {
+        socket.on('voice:leave', async ({ roomName, userId }) => {
             if (!roomName || !userId) return;
-            removeParticipant(io, roomName, userId);
+            await removeParticipant(io, roomName, userId);
             socket.leave(`voice:${roomName}`);
         });
 
@@ -160,19 +160,35 @@ export const initializeVoiceHandler = (io) => {
         });
 
         // ─── Broadcast Participant State (Mute/Camera/Screen) ───
-        socket.on('voice:state-update', ({ roomName, userId, isMuted, isCameraOn, isScreenSharing }) => {
+        socket.on('voice:state-update', async ({ roomName, userId, isMuted, isCameraOn, isScreenSharing }) => {
             if (!roomName || !userId) return;
+            const sUserId = String(userId);
             
             const roomData = voiceRooms.get(roomName);
-            const participant = roomData?.participants?.get(userId);
+            const participant = roomData?.participants?.get(sUserId);
             if (participant) {
                 participant.isMuted = isMuted;
                 participant.isCameraOn = isCameraOn;
                 participant.isScreenSharing = isScreenSharing;
             }
 
+            if (pubClient) {
+                try {
+                    const raw = await pubClient.hget(`voiceroom:${roomName}`, sUserId);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        parsed.isMuted = isMuted;
+                        parsed.isCameraOn = isCameraOn;
+                        parsed.isScreenSharing = isScreenSharing;
+                        await pubClient.hset(`voiceroom:${roomName}`, sUserId, JSON.stringify(parsed));
+                    }
+                } catch (err) {
+                    console.error('Error updating state in Redis:', err);
+                }
+            }
+
             io.to(`voice:${roomName}`).emit('voice:state-update', {
-                userId,
+                userId: sUserId,
                 isMuted,
                 isCameraOn,
                 isScreenSharing
@@ -359,8 +375,8 @@ async function removeParticipant(io, roomName, userId) {
         roomData.participants.delete(userId);
     }
 
-    // Always broadcast updated participant list to all clients in the room
-    const participants = getParticipantList(roomName);
+    // Always broadcast updated participant list to all clients in the room from Redis
+    const participants = await getVoiceRoomParticipantsFromRedis(roomName);
     io.to(`voice:${roomName}`).emit('voice:participants', {
         roomName,
         participants,
@@ -409,14 +425,26 @@ function getParticipantList(roomName) {
 
 // Export for external access (e.g., from routes)
 export const getVoiceRoomData = (roomName) => voiceRooms.get(roomName);
-export const getVoiceRoomParticipants = (roomName) => getParticipantList(roomName);
 export const getVoiceRoomParticipantsFromRedis = async (roomName) => {
     if (pubClient) {
         try {
             const hashData = await pubClient.hgetall(`voiceroom:${roomName}`);
             if (hashData && Object.keys(hashData).length > 0) {
                 return Object.values(hashData).map(str => {
-                    try { return JSON.parse(str); } catch (e) { return null; }
+                    try {
+                        const parsed = JSON.parse(str);
+                        return {
+                            userId: String(parsed.userId),
+                            username: parsed.username,
+                            avatar: parsed.avatar || '',
+                            joinedAt: parsed.joinedAt,
+                            isMuted: parsed.isMuted !== false,
+                            isCameraOn: !!parsed.isCameraOn,
+                            isScreenSharing: !!parsed.isScreenSharing
+                        };
+                    } catch (e) {
+                        return null;
+                    }
                 }).filter(Boolean);
             }
         } catch (err) {
