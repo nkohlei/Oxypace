@@ -161,11 +161,10 @@
 @media (max-width: 768px) {
     #watch-party-portal-placeholder.watch-party-target-hero {
         position: absolute;
-        top: 8px;
+        top: 60px;
         left: 8px;
         width: calc(100% - 16px);
-        height: calc(100% - 16px);
-        padding-bottom: 90px;
+        height: calc(100% - 180px);
         box-sizing: border-box;
     }
     
@@ -577,14 +576,14 @@
         left: 0 !important;
         width: 100vw !important;
         height: 100dvh !important;
-        z-index: 999 !important;
+        z-index: 10 !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: var(--bg-dark, #060913) !important;
+        background: transparent !important;
     }
 
     [data-theme='light'] .vc-container {
-        background: var(--bg-dark, #ffffff) !important;
+        background: transparent !important;
     }
 
     /* Back button style positioned at the very top left */
@@ -674,7 +673,7 @@
         align-items: center !important;
         flex-wrap: wrap !important;
         gap: 10px !important;
-        z-index: 10 !important;
+        z-index: 950 !important;
         background: transparent !important;
         height: auto !important;
         max-height: 150px !important;

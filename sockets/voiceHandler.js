@@ -85,6 +85,20 @@ export const initializeVoiceHandler = (io) => {
             socket._voiceRooms.add(roomName);
             socket._voiceUserId = sUserId;
 
+            // Get active watchParty from Redis to ensure new users joining do not wipe out active streams
+            let activeWatchParty = roomData.watchParty || null;
+            if (pubClient) {
+                try {
+                    const wpStr = await pubClient.get(`voiceroom:${roomName}:watchparty`);
+                    if (wpStr) {
+                        activeWatchParty = JSON.parse(wpStr);
+                        roomData.watchParty = activeWatchParty;
+                    }
+                } catch (err) {
+                    console.error('Error fetching watchParty from Redis:', err);
+                }
+            }
+
             // Broadcast updated participant list and room start time from Redis across all cluster workers
             const participants = await getVoiceRoomParticipantsFromRedis(roomName);
             io.to(`voice:${roomName}`).emit('voice:participants', {
@@ -92,7 +106,7 @@ export const initializeVoiceHandler = (io) => {
                 participants,
                 startedAt: roomData.startedAt,
                 serverNow: Date.now(),
-                watchParty: roomData.watchParty || null
+                watchParty: activeWatchParty
             });
 
             // Emit explicit join event for notifications
@@ -221,65 +235,113 @@ export const initializeVoiceHandler = (io) => {
         });
 
         // ─── Watch Party (YouTube / Stream Sync) ───
-        socket.on('voice:watch-start', ({ roomName, url, isLive }) => {
+        socket.on('voice:watch-start', async ({ roomName, url, isLive }) => {
             if (!roomName) return;
+            const watchPartyState = {
+                url,
+                isPlaying: false,
+                currentTime: 0,
+                lastUpdated: Date.now(),
+                isLive: !!isLive
+            };
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
-                roomData.watchParty = {
-                    url,
-                    isPlaying: false,
-                    currentTime: 0,
-                    lastUpdated: Date.now(),
-                    isLive: !!isLive
-                };
-                io.to(`voice:${roomName}`).emit('voice:watch-state', roomData.watchParty);
-                console.log(`[Watch Party] started in ${roomName} with URL: ${url} (isLive: ${isLive})`);
+                roomData.watchParty = watchPartyState;
             }
+            if (pubClient) {
+                try {
+                    await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(watchPartyState));
+                } catch (err) {
+                    console.error('Error saving watchParty to Redis:', err);
+                }
+            }
+            io.to(`voice:${roomName}`).emit('voice:watch-state', watchPartyState);
+            console.log(`[Watch Party] started in ${roomName} with URL: ${url} (isLive: ${isLive})`);
         });
 
-        socket.on('voice:watch-play', ({ roomName, time }) => {
+        socket.on('voice:watch-play', async ({ roomName, time }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
             if (roomData && roomData.watchParty) {
                 roomData.watchParty.isPlaying = true;
                 roomData.watchParty.currentTime = time;
                 roomData.watchParty.lastUpdated = Date.now();
-                socket.to(`voice:${roomName}`).emit('voice:watch-play', { time });
-                console.log(`[Watch Party] play event in ${roomName} at time: ${time}`);
             }
+            if (pubClient) {
+                try {
+                    const currentStr = await pubClient.get(`voiceroom:${roomName}:watchparty`);
+                    if (currentStr) {
+                        const wp = JSON.parse(currentStr);
+                        wp.isPlaying = true;
+                        wp.currentTime = time;
+                        wp.lastUpdated = Date.now();
+                        await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
+                    }
+                } catch (err) {}
+            }
+            socket.to(`voice:${roomName}`).emit('voice:watch-play', { time });
+            console.log(`[Watch Party] play event in ${roomName} at time: ${time}`);
         });
 
-        socket.on('voice:watch-pause', ({ roomName, time }) => {
+        socket.on('voice:watch-pause', async ({ roomName, time }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
             if (roomData && roomData.watchParty) {
                 roomData.watchParty.isPlaying = false;
                 roomData.watchParty.currentTime = time;
                 roomData.watchParty.lastUpdated = Date.now();
-                socket.to(`voice:${roomName}`).emit('voice:watch-pause', { time });
-                console.log(`[Watch Party] pause event in ${roomName} at time: ${time}`);
             }
+            if (pubClient) {
+                try {
+                    const currentStr = await pubClient.get(`voiceroom:${roomName}:watchparty`);
+                    if (currentStr) {
+                        const wp = JSON.parse(currentStr);
+                        wp.isPlaying = false;
+                        wp.currentTime = time;
+                        wp.lastUpdated = Date.now();
+                        await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
+                    }
+                } catch (err) {}
+            }
+            socket.to(`voice:${roomName}`).emit('voice:watch-pause', { time });
+            console.log(`[Watch Party] pause event in ${roomName} at time: ${time}`);
         });
 
-        socket.on('voice:watch-seek', ({ roomName, time }) => {
+        socket.on('voice:watch-seek', async ({ roomName, time }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
             if (roomData && roomData.watchParty) {
                 roomData.watchParty.currentTime = time;
                 roomData.watchParty.lastUpdated = Date.now();
-                socket.to(`voice:${roomName}`).emit('voice:watch-seek', { time });
-                console.log(`[Watch Party] seek event in ${roomName} to time: ${time}`);
             }
+            if (pubClient) {
+                try {
+                    const currentStr = await pubClient.get(`voiceroom:${roomName}:watchparty`);
+                    if (currentStr) {
+                        const wp = JSON.parse(currentStr);
+                        wp.currentTime = time;
+                        wp.lastUpdated = Date.now();
+                        await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
+                    }
+                } catch (err) {}
+            }
+            socket.to(`voice:${roomName}`).emit('voice:watch-seek', { time });
+            console.log(`[Watch Party] seek event in ${roomName} to time: ${time}`);
         });
 
-        socket.on('voice:watch-stop', ({ roomName }) => {
+        socket.on('voice:watch-stop', async ({ roomName }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
                 roomData.watchParty = null;
-                io.to(`voice:${roomName}`).emit('voice:watch-stop');
-                console.log(`[Watch Party] stopped in ${roomName}`);
             }
+            if (pubClient) {
+                try {
+                    await pubClient.del(`voiceroom:${roomName}:watchparty`);
+                } catch (err) {}
+            }
+            io.to(`voice:${roomName}`).emit('voice:watch-stop');
+            console.log(`[Watch Party] stopped in ${roomName}`);
         });
 
         // ─── WebRTC Signaling ───
@@ -375,14 +437,25 @@ async function removeParticipant(io, roomName, userId) {
         roomData.participants.delete(userId);
     }
 
+    // Get active watchParty from Redis
+    let activeWatchParty = roomData ? (roomData.watchParty || null) : null;
+    if (pubClient) {
+        try {
+            const wpStr = await pubClient.get(`voiceroom:${roomName}:watchparty`);
+            if (wpStr) {
+                activeWatchParty = JSON.parse(wpStr);
+            }
+        } catch (err) {}
+    }
+
     // Always broadcast updated participant list to all clients in the room from Redis
     const participants = await getVoiceRoomParticipantsFromRedis(roomName);
     io.to(`voice:${roomName}`).emit('voice:participants', {
         roomName,
         participants,
-        startedAt: roomData.startedAt,
+        startedAt: roomData ? roomData.startedAt : Date.now(),
         serverNow: Date.now(),
-        watchParty: roomData.watchParty || null
+        watchParty: activeWatchParty
     });
 
     // Emit explicit leave event
