@@ -31,6 +31,7 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
         if (!window.desktopAPI || !track) return; // Allow both local and remote feeds
 
         let active = true;
+        let timer = null;
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
@@ -38,27 +39,28 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
             if (!active || !videoEl.current) return;
             const video = videoEl.current;
 
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
+            // Only capture if document is visible and video has valid dimensions
+            if (!document.hidden && video.videoWidth > 0 && video.videoHeight > 0) {
                 canvas.width = 160;
                 canvas.height = 90;
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
                 try {
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
                     window.desktopAPI.sendVideoFrame({ identity, frame: dataUrl });
                 } catch (e) {
                     console.error("Frame capture error:", e);
                 }
             }
-            // Capture frame at regular interval
-            setTimeout(captureFrame, 80);
+            // Capture frame at optimized 150ms interval (~6.6 fps for lightweight overlay thumbnails)
+            timer = setTimeout(captureFrame, 150);
         };
 
-        // Start capturing immediately (the video tag has autoPlay)
         captureFrame();
 
         return () => {
             active = false;
+            if (timer) clearTimeout(timer);
             window.desktopAPI.sendVideoFrame({ identity, frame: null });
         };
     }, [track, identity]);

@@ -478,11 +478,12 @@ const WatchPartyPlayer = () => {
                 if (typeof currentTime !== 'number') return;
 
                 if (lastPolledTimeRef.current !== null && !isSyncingRef.current) {
-                    const expectedProgress = watchParty?.isPlaying ? 0.4 : 0;
+                    const expectedProgress = watchParty?.isPlaying ? 1.0 : 0;
                     const diff = Math.abs(currentTime - lastPolledTimeRef.current - expectedProgress);
 
-                    if (diff > 1.5) {
-                        console.log(`[Watch Party] Manual seek detected: ${lastPolledTimeRef.current}s -> ${currentTime}s`);
+                    // Only trigger manual seek if difference exceeds 3.0s (avoids false-positive buffer stalls)
+                    if (diff > 3.0) {
+                        console.log(`[Watch Party] User manual seek detected: ${lastPolledTimeRef.current}s -> ${currentTime}s`);
                         sendWatchSeek(currentTime);
                     }
                 }
@@ -490,7 +491,7 @@ const WatchPartyPlayer = () => {
             } catch (err) {
                 console.error("Error polling player time:", err);
             }
-        }, 400);
+        }, 1000);
 
         return () => clearInterval(interval);
     }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isStream]);
@@ -509,7 +510,7 @@ const WatchPartyPlayer = () => {
         const timeDiff = Math.abs(localTime - expectedTime);
 
         const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
-        const threshold = isPlayTransition ? 0.1 : (watchParty.isPlaying ? 0.8 : 0.3);
+        const threshold = isPlayTransition ? 0.2 : (watchParty.isPlaying ? 1.2 : 0.5);
 
         if (timeDiff > threshold) {
             isSyncingRef.current = true;
@@ -518,7 +519,7 @@ const WatchPartyPlayer = () => {
             playerRef.current.seekTo(expectedTime, 'seconds');
             setTimeout(() => {
                 isSyncingRef.current = false;
-            }, 500);
+            }, 1000);
         }
 
         prevIsPlayingRef.current = watchParty.isPlaying;
@@ -543,7 +544,7 @@ const WatchPartyPlayer = () => {
 
         if (lastProgrammaticSeekTimeRef.current !== null) {
             const diff = Math.abs(e - lastProgrammaticSeekTimeRef.current);
-            if (diff < 1.5) {
+            if (diff < 2.0) {
                 lastProgrammaticSeekTimeRef.current = null;
                 return;
             }
@@ -606,7 +607,7 @@ const WatchPartyPlayer = () => {
     const onPlaying = () => {
         setIsNativePlaying(true);
         if (isSyncingRef.current) return;
-        if (videoRef.current && isNativeVOD) {
+        if (videoRef.current && isNativeVOD && !watchParty?.isPlaying) {
             sendWatchPlay(videoRef.current.currentTime);
         }
     };
@@ -614,13 +615,20 @@ const WatchPartyPlayer = () => {
     const onPaused = () => {
         setIsNativePlaying(false);
         if (isSyncingRef.current) return;
-        if (videoRef.current && isNativeVOD) {
+        if (videoRef.current && isNativeVOD && watchParty?.isPlaying) {
             sendWatchPause(videoRef.current.currentTime);
         }
     };
 
     const onSeeked = () => {
         if (isSyncingRef.current) return;
+        if (lastProgrammaticSeekTimeRef.current !== null && videoRef.current) {
+            const diff = Math.abs(videoRef.current.currentTime - lastProgrammaticSeekTimeRef.current);
+            if (diff < 2.0) {
+                lastProgrammaticSeekTimeRef.current = null;
+                return;
+            }
+        }
         if (videoRef.current && isNativeVOD) {
             sendWatchSeek(videoRef.current.currentTime);
         }
@@ -641,14 +649,16 @@ const WatchPartyPlayer = () => {
         const timeDiff = Math.abs(localTime - expectedTime);
 
         const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
-        const threshold = isPlayTransition ? 0.2 : (watchParty.isPlaying ? 1.0 : 0.4);
+        const threshold = isPlayTransition ? 0.2 : (watchParty.isPlaying ? 1.2 : 0.5);
 
         if (timeDiff > threshold) {
             isSyncingRef.current = true;
+            lastProgrammaticSeekTimeRef.current = expectedTime;
+            lastPolledTimeRef.current = expectedTime;
             video.currentTime = expectedTime;
             setTimeout(() => {
                 isSyncingRef.current = false;
-            }, 500);
+            }, 1000);
         }
 
         if (watchParty.isPlaying && video.paused) {
@@ -656,13 +666,13 @@ const WatchPartyPlayer = () => {
             video.play().catch(err => console.warn("Native video play failed", err));
             setTimeout(() => {
                 isSyncingRef.current = false;
-            }, 500);
+            }, 800);
         } else if (!watchParty.isPlaying && !video.paused) {
             isSyncingRef.current = true;
             video.pause();
             setTimeout(() => {
                 isSyncingRef.current = false;
-            }, 500);
+            }, 800);
         }
 
         prevIsPlayingRef.current = watchParty.isPlaying;
@@ -677,10 +687,10 @@ const WatchPartyPlayer = () => {
             try {
                 const cur = video.currentTime;
                 if (lastPolledTimeRef.current !== null && !isSyncingRef.current) {
-                    const expectedProgress = watchParty?.isPlaying ? 0.4 : 0;
+                    const expectedProgress = watchParty?.isPlaying ? 1.0 : 0;
                     const diff = Math.abs(cur - lastPolledTimeRef.current - expectedProgress);
 
-                    if (diff > 1.8) {
+                    if (diff > 3.0) {
                         console.log(`[Watch Party] Native Manual seek detected: ${lastPolledTimeRef.current}s -> ${cur}s`);
                         sendWatchSeek(cur);
                     }
@@ -689,7 +699,7 @@ const WatchPartyPlayer = () => {
             } catch (err) {
                 console.error("Error polling native video time:", err);
             }
-        }, 400);
+        }, 1000);
 
         return () => clearInterval(interval);
     }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isNativeVOD]);

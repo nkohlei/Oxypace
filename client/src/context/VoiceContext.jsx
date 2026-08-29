@@ -467,7 +467,7 @@ export const VoiceProvider = ({ children }) => {
                             params.encodings = [{}];
                         }
                         params.encodings.forEach(enc => {
-                            enc.maxBitrate = 5000000; // 5 Mbps for high quality
+                            enc.maxBitrate = 2000000; // Balanced 2 Mbps for smooth high quality without network congestion
                             enc.priority = 'high';
                             enc.networkPriority = 'high';
                         });
@@ -943,6 +943,23 @@ export const VoiceProvider = ({ children }) => {
             console.log(`[Socket] video-offer alındı from user: ${senderId}`);
             const pc = getOrCreatePC(senderId, false);
             try {
+                const localUserId = user?._id?.toString() || '';
+                const isPolite = localUserId ? (localUserId.localeCompare(String(senderId)) > 0) : true;
+                const offerCollision = pc.signalingState !== 'stable';
+
+                if (offerCollision) {
+                    if (!isPolite) {
+                        console.log(`[WebRTC Perfect Negotiation] Impolite peer ignoring colliding offer from ${senderId}`);
+                        return;
+                    }
+                    console.log(`[WebRTC Perfect Negotiation] Polite peer rolling back colliding local offer for ${senderId}`);
+                    try {
+                        await pc.setLocalDescription({ type: 'rollback' });
+                    } catch (rollbackErr) {
+                        console.warn("[WebRTC Perfect Negotiation] Rollback warning:", rollbackErr);
+                    }
+                }
+
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
                 console.log(`[WebRTC] setRemoteDescription completed for offer from ${senderId}`);
 
@@ -973,6 +990,10 @@ export const VoiceProvider = ({ children }) => {
             const pc = peerConnectionsRef.current.get(senderId);
             if (pc) {
                 try {
+                    if (pc.signalingState !== 'have-local-offer') {
+                        console.warn(`[WebRTC] Ignoring video answer from ${senderId} because signalingState is ${pc.signalingState}`);
+                        return;
+                    }
                     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
                     console.log(`[WebRTC] Successfully set remote answer for peer ${senderId}`);
 
@@ -1557,7 +1578,6 @@ export const VoiceProvider = ({ children }) => {
         <VoiceContext.Provider value={value}>
             {children}
             <GlobalAudioRenderer participants={participants} isDeafened={localState.isDeafened} userVolume={userVolume} />
-            <GlobalVideoRenderer participants={participants} localState={localState} />
         </VoiceContext.Provider>
     );
 };
@@ -1571,42 +1591,6 @@ const GlobalAudioRenderer = ({ participants, isDeafened, userVolume }) => {
             ))}
         </div>
     );
-};
-
-// Global Video Component to keep WebRTC decoders and camera warm/active during cross-navigation
-const GlobalVideoRenderer = ({ participants, localState }) => {
-    const localParticipant = participants.find(p => p.isLocal);
-    const localVideoTrackObj = localParticipant?.videoTrack;
-
-    return (
-        <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-            {/* Local Video Keep-Alive */}
-            {localState.isCameraOn && localVideoTrackObj && (
-                <VideoTrackPlayer key="global-local-video" trackObj={localVideoTrackObj} isLocal={true} />
-            )}
-            {/* Remote Video Keep-Alive (keeps decoders running in background) */}
-            {participants.filter(p => !p.isLocal && (p.videoTrack || p.screenShareTrack)).map(p => (
-                <VideoTrackPlayer key={`global-video-${p.identity}`} trackObj={p.videoTrack || p.screenShareTrack} isLocal={false} />
-            ))}
-        </div>
-    );
-};
-
-const VideoTrackPlayer = ({ trackObj, isLocal }) => {
-    const videoEl = useRef(null);
-    useEffect(() => {
-        const el = videoEl.current;
-        if (el && trackObj) {
-            trackObj.attach(el);
-        }
-        return () => {
-            if (trackObj && el) {
-                trackObj.detach(el);
-            }
-        };
-    }, [trackObj]);
-
-    return <video ref={videoEl} autoPlay muted={true} playsInline style={{ width: '1px', height: '1px' }} />;
 };
 
 const AudioTrackPlayer = ({ track, muted, volume }) => {

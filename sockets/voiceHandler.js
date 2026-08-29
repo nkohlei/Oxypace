@@ -27,16 +27,18 @@ export const initializeVoiceHandler = (io) => {
         socket.on('voice:join', async ({ roomName, userId, username, avatar }) => {
             if (!roomName || !userId) return;
 
+            const sUserId = String(userId);
             socket.join(`voice:${roomName}`);
+            socket.join(sUserId); // Ensure socket is joined to its own userId room for direct cross-worker signaling
 
             // Track in Redis for multi-worker synchronization
             if (pubClient) {
                 try {
                     await pubClient.hset(
                         `voiceroom:${roomName}`,
-                        String(userId),
+                        sUserId,
                         JSON.stringify({
-                            userId: String(userId),
+                            userId: sUserId,
                             socketId: socket.id,
                             username,
                             avatar: avatar || '',
@@ -63,7 +65,6 @@ export const initializeVoiceHandler = (io) => {
                     console.log(`[Voice Room] Graceful cleanup timer cancelled for ${roomName} due to user rejoin.`);
                 }
             }
-            const sUserId = String(userId);
             const roomData = voiceRooms.get(roomName);
             roomData.participants.set(sUserId, {
                 socketId: socket.id,
@@ -203,7 +204,7 @@ export const initializeVoiceHandler = (io) => {
             });
         });
 
-        // ─── Watch Party (YouTube Sync) ───
+        // ─── Watch Party (YouTube / Stream Sync) ───
         socket.on('voice:watch-start', ({ roomName, url, isLive }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
@@ -268,61 +269,50 @@ export const initializeVoiceHandler = (io) => {
         // ─── WebRTC Signaling ───
         socket.on('voice:video-offer', ({ roomName, targetUserId, sdp }) => {
             if (!roomName || !targetUserId) return;
-            console.log(`[Socket Backend] video-offer received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+            const sTargetId = String(targetUserId);
+            const senderId = socket._voiceUserId || socket.id;
+            console.log(`[Socket Backend] video-offer from ${senderId} to ${sTargetId} in room ${roomName}`);
             
-            const roomData = voiceRooms.get(roomName);
-            const targetParticipant = roomData?.participants?.get(targetUserId);
-            const destination = targetParticipant?.socketId || targetUserId;
-            
-            io.to(destination).emit('voice:video-offer', {
-                senderId: socket._voiceUserId || socket.id,
+            // Broadcast to the target user's direct room (works across all cluster workers via Redis)
+            io.to(sTargetId).emit('voice:video-offer', {
+                senderId,
                 sdp
             });
-            console.log(`[Socket Backend] video-offer forwarded to ${destination}`);
         });
 
         socket.on('voice:video-answer', ({ roomName, targetUserId, sdp }) => {
             if (!roomName || !targetUserId) return;
-            console.log(`[Socket Backend] video-answer received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+            const sTargetId = String(targetUserId);
+            const senderId = socket._voiceUserId || socket.id;
+            console.log(`[Socket Backend] video-answer from ${senderId} to ${sTargetId} in room ${roomName}`);
             
-            const roomData = voiceRooms.get(roomName);
-            const targetParticipant = roomData?.participants?.get(targetUserId);
-            const destination = targetParticipant?.socketId || targetUserId;
-            
-            io.to(destination).emit('voice:video-answer', {
-                senderId: socket._voiceUserId || socket.id,
+            io.to(sTargetId).emit('voice:video-answer', {
+                senderId,
                 sdp
             });
-            console.log(`[Socket Backend] video-answer forwarded to ${destination}`);
         });
 
         socket.on('voice:new-ice-candidate', ({ roomName, targetUserId, candidate }) => {
             if (!roomName || !targetUserId) return;
-            console.log(`[Socket Backend] new-ice-candidate received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+            const sTargetId = String(targetUserId);
+            const senderId = socket._voiceUserId || socket.id;
+            console.log(`[Socket Backend] new-ice-candidate from ${senderId} to ${sTargetId} in room ${roomName}`);
             
-            const roomData = voiceRooms.get(roomName);
-            const targetParticipant = roomData?.participants?.get(targetUserId);
-            const destination = targetParticipant?.socketId || targetUserId;
-            
-            io.to(destination).emit('voice:new-ice-candidate', {
-                senderId: socket._voiceUserId || socket.id,
+            io.to(sTargetId).emit('voice:new-ice-candidate', {
+                senderId,
                 candidate
             });
-            console.log(`[Socket Backend] new-ice-candidate forwarded to ${destination}`);
         });
 
         socket.on('voice:ice-restart-request', ({ roomName, targetUserId }) => {
             if (!roomName || !targetUserId) return;
-            console.log(`[Socket Backend] ice-restart-request received from ${socket._voiceUserId || socket.id} for user ${targetUserId} in room ${roomName}`);
+            const sTargetId = String(targetUserId);
+            const senderId = socket._voiceUserId || socket.id;
+            console.log(`[Socket Backend] ice-restart-request from ${senderId} to ${sTargetId} in room ${roomName}`);
 
-            const roomData = voiceRooms.get(roomName);
-            const targetParticipant = roomData?.participants?.get(targetUserId);
-            const destination = targetParticipant?.socketId || targetUserId;
-
-            io.to(destination).emit('voice:ice-restart-request', {
-                senderId: socket._voiceUserId || socket.id
+            io.to(sTargetId).emit('voice:ice-restart-request', {
+                senderId
             });
-            console.log(`[Socket Backend] ice-restart-request forwarded to ${destination}`);
         });
 
         // ─── Cleanup on Disconnect ───
