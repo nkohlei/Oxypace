@@ -413,7 +413,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             {[...adminSpeakers, ...guestSpeakers].map(p => renderSpeakerCard(p))}
                         </div>
                         <div className="vc-hero" style={{ maxWidth: '800px' }}>
-                            <div id="watch-party-portal-target" style={{ width: '100%', height: '100%' }}></div>
+                            <div id="watch-party-portal-placeholder" className="watch-party-target-hero" style={{ width: '100%', height: '100%' }}></div>
                         </div>
                     </>
                 ) : (

@@ -163,6 +163,12 @@
 
 /* Position on Mobile vs Desktop */
 @media (max-width: 768px) {
+    .watch-party-player-wrapper {
+        min-height: 0 !important;
+        height: 100% !important;
+        border-radius: 12px !important;
+    }
+
     .watch-party-volume-container-modern {
         top: 52px; /* Directly under the CANLI badge */
         left: 16px;

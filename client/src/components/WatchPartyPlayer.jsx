@@ -231,9 +231,11 @@ const WatchPartyPlayer = () => {
     const [isNativePlaying, setIsNativePlaying] = useState(false);
     const [controlsVisible, setControlsVisible] = useState(true);
     const controlsTimeoutRef = useRef(null);
+    const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 768 || !!window.Capacitor?.isNativePlatform?.());
     const [localMuted, setLocalMuted] = useState(() => {
         const saved = localStorage.getItem('watchPartyMuted');
-        return saved !== null ? saved === 'true' : false; // Default to unmuted (false)
+        if (saved !== null) return saved === 'true';
+        return isMobileDevice; // On mobile, start muted by default to respect browser autoplay policies
     });
     const [volume, setVolume] = useState(() => {
         const saved = localStorage.getItem('watchPartyVolume');
@@ -910,7 +912,7 @@ export const GlobalWatchPartyWrapper = () => {
         }
 
         const updateCoords = () => {
-            const placeholder = document.getElementById('watch-party-portal-placeholder');
+            const placeholder = document.getElementById('watch-party-portal-placeholder') || document.getElementById('watch-party-portal-target');
             if (placeholder) {
                 const rect = placeholder.getBoundingClientRect();
                 setCoords({
@@ -953,7 +955,7 @@ export const GlobalWatchPartyWrapper = () => {
         width: `${coords.width}px`,
         height: `${coords.height}px`,
         display: coords.display,
-        zIndex: 900,
+        zIndex: 1001,
         pointerEvents: 'auto',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     } : { display: 'none' };
