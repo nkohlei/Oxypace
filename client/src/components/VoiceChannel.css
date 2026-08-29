@@ -161,11 +161,17 @@
 @media (max-width: 768px) {
     #watch-party-portal-placeholder.watch-party-target-hero {
         position: absolute;
-        top: 60px;
-        left: 8px;
-        width: calc(100% - 16px);
-        height: calc(100% - 180px);
+        top: 64px;
+        left: 12px;
+        right: 12px;
+        width: calc(100% - 24px);
+        max-width: 520px;
+        aspect-ratio: 16 / 9;
+        height: auto;
+        margin: 0 auto;
         box-sizing: border-box;
+        border-radius: 16px;
+        overflow: hidden;
     }
     
     #watch-party-portal-placeholder.watch-party-target-carousel {

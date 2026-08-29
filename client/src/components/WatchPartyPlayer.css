@@ -163,15 +163,37 @@
 
 /* Position on Mobile vs Desktop */
 @media (max-width: 768px) {
+    .watch-party-player-wrapper {
+        min-height: 0 !important;
+        height: 100% !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    .watch-party-header {
+        padding: 8px 12px !important;
+    }
+
+    .watch-party-title {
+        font-size: 12px !important;
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .watch-party-volume-container-modern {
-        top: 52px; /* Directly under the CANLI badge */
-        left: 16px;
+        bottom: 12px !important;
+        left: 12px !important;
+        top: auto !important;
     }
     
     .watch-party-fullscreen-container-modern {
         position: absolute;
-        top: 110px; /* Under the chat & chevron menu trigger on the right */
-        right: 16px;
+        bottom: 12px !important;
+        right: 12px !important;
+        top: auto !important;
         z-index: 100;
     }
 }
