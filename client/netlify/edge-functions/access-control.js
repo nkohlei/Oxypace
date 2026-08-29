@@ -31,27 +31,39 @@ async function getMaintenanceStatus() {
 function isBot(userAgent) {
   if (!userAgent) return false;
   const ua = userAgent.toLowerCase();
+
+  // 1. WhatsApp In-App Browser (WebView) tespiti:
+  // Kullanıcı WhatsApp içinde linke tıkladığında gelen gerçek tarayıcı isteğidir.
+  // Bu isteklerin bot sayılmaması ve normal SPA/uygulamaya yönlendirilmesi gerekir.
+  const isWhatsAppWebView = ua.includes('whatsapp') && (ua.includes('mozilla') || ua.includes('safari') || ua.includes('chrome') || ua.includes('applewebkit'));
+  if (isWhatsAppWebView && !ua.includes('facebookexternalhit') && !ua.includes('bot')) {
+    return false;
+  }
+
+  // 2. Diğer In-App Browser'lar (Instagram, Facebook, Telegram vb. mobil dahili tarayıcılar)
+  const isGenericInAppBrowser = (ua.includes('instagram') || ua.includes('fban') || ua.includes('fbav') || ua.includes('line/')) && (ua.includes('mozilla') || ua.includes('safari') || ua.includes('chrome') || ua.includes('applewebkit'));
+  if (isGenericInAppBrowser && !ua.includes('facebookexternalhit') && !ua.includes('bot')) {
+    return false;
+  }
+
+  // 3. WhatsApp crawler (salt WhatsApp/ sürüm bilgisi içerip tarayıcı motoru içermeyen bot istekleri)
+  if (ua.startsWith('whatsapp/') || (ua.includes('whatsapp') && !ua.includes('mozilla'))) {
+    return true;
+  }
+
+  // 4. Gerçek Link Önizleme Botları ve Arama Motoru Botları
   const botPatterns = [
-    "whatsapp",
     "facebookexternalhit",
     "facebot",
-    "facebook",
     "twitterbot",
-    "twitter",
     "telegrambot",
-    "telegram",
     "linkedinbot",
-    "linkedin",
     "slackbot",
-    "slack",
     "discordbot",
-    "discord",
     "pinterest",
     "vkshare",
     "skype",
     "viber",
-    "instagram",
-    "line/",
     "snapchat",
     "kakaotalk",
     "googlebot",
@@ -83,10 +95,10 @@ function isBot(userAgent) {
  * /portal/:id         → /og/portal/:id
  */
 const OG_PATTERNS = [
-  { regex: /^\/post\/([a-f0-9]{24})$/i, path: (m) => `/og/post/${m[1]}` },
-  { regex: /^\/profile\/([a-zA-Z0-9_.]{1,50})$/, path: (m) => `/og/profile/${m[1]}` },
-  { regex: /^\/portal\/([a-f0-9]{24})$/i, path: (m) => `/og/portal/${m[1]}` },
-  { regex: /^\/blog\/([a-zA-Z0-9_-]+)$/i, path: (m) => `/og/blog/${m[1]}` },
+  { regex: /^\/post\/([a-f0-9]{24})\/?$/i, path: (m) => `/og/post/${m[1]}` },
+  { regex: /^\/profile\/([a-zA-Z0-9_.]{1,50})\/?$/, path: (m) => `/og/profile/${m[1]}` },
+  { regex: /^\/portal\/([a-f0-9]{24})\/?$/i, path: (m) => `/og/portal/${m[1]}` },
+  { regex: /^\/blog\/([a-zA-Z0-9_-]+)\/?$/i, path: (m) => `/og/blog/${m[1]}` },
 ];
 
 async function verifyJwt(token, secret) {

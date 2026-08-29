@@ -90,6 +90,12 @@
 
 # ── Portal SPA Routes Fallback ─────────────────────
 [[redirects]]
+  from = "/portal"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
   from = "/portal/*"
   to = "/portal.html"
   status = 200
@@ -103,6 +109,18 @@
 
 [[redirects]]
   from = "/messages/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/inbox"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/inbox/*"
   to = "/portal.html"
   status = 200
   force = false
@@ -126,6 +144,12 @@
   force = false
 
 [[redirects]]
+  from = "/profile"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
   from = "/profile/*"
   to = "/portal.html"
   status = 200
@@ -138,13 +162,97 @@
   force = false
 
 [[redirects]]
+  from = "/comment/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/search"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/search/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/explore"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/explore/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
   from = "/settings"
   to = "/portal.html"
   status = 200
   force = false
 
 [[redirects]]
+  from = "/settings/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
   from = "/notifications"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/notifications/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/saved"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/create"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/map"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/admin"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/feedback"
+  to = "/portal.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/desktop-overlay"
   to = "/portal.html"
   status = 200
   force = false
