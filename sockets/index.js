@@ -180,17 +180,28 @@ export const initializeSocket = (io) => {
                 const hasOtherSockets = userSocketsSet && userSocketsSet.size > 0;
 
                 if (!hasOtherSockets) {
-                    // Start a 10-second grace period before marking user fully offline
+                    // Start a 10-second grace period before checking cluster-wide sockets
                     if (disconnectTimers.has(strUserId)) {
                         clearTimeout(disconnectTimers.get(strUserId));
                     }
 
                     const timer = setTimeout(async () => {
                         disconnectTimers.delete(strUserId);
-                        const latestSet = activeUsersMap.get(strUserId);
-                        if (!latestSet || latestSet.size === 0) {
+                        
+                        // CRITICAL CLUSTER FIX: Before removing from Redis and broadcasting offline,
+                        // query ALL PM2 cluster workers via Redis adapter to confirm if user has ANY live socket anywhere!
+                        let isStillOnlineAnywhere = false;
+                        try {
+                            const allSockets = await io.fetchSockets();
+                            isStillOnlineAnywhere = allSockets.some(s => s.data && String(s.data.userId) === strUserId);
+                        } catch (err) {
+                            const latestSet = activeUsersMap.get(strUserId);
+                            isStillOnlineAnywhere = !!(latestSet && latestSet.size > 0);
+                        }
+
+                        if (!isStillOnlineAnywhere) {
                             activeUsersMap.delete(strUserId);
-                            console.log(`👋 User ${strUserId} is now fully offline after grace period`);
+                            console.log(`👋 User ${strUserId} is confirmed fully offline across entire cluster`);
 
                             // Clean up typing indicators in DMs for this user
                             for (const [recipientId, senderSet] of activeTypingDMs.entries()) {
@@ -245,6 +256,8 @@ export const initializeSocket = (io) => {
 
                             await broadcastGlobalOnlineUsers();
                             io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
+                        } else {
+                            console.log(`🛡️ Preserved online status for ${strUserId}: active socket found on another cluster worker`);
                         }
                     }, 10000);
 
