@@ -199,76 +199,42 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const lastProgrammaticSeekTimeRef = useRef(null);
   const isSyncingRef = useRef(false);
-  const prevIsPlayingRef = useRef(false);
 
   useEffect(() => {
     if (!watchParty) return;
-    const el = getActiveEl();
-    if (!el) return;
+    const activeEl = getActiveEl();
+    if (!activeEl) return;
 
-    let interval = null;
+    const targetTime = typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0;
 
-    const performSync = () => {
-      const activeEl = getActiveEl();
-      if (!activeEl || !watchParty) return;
-
-      const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated || Date.now();
-      const elapsed = watchParty.isPlaying ? Math.max(0, (Date.now() - referenceTime) / 1000) : 0;
-      const expectedTime = watchParty.currentTime + elapsed;
-      const localTime = activeEl.currentTime;
-      const drift = expectedTime - localTime;
-      const absDrift = Math.abs(drift);
-
-      // 1. Play / Pause state synchronization
-      if (watchParty.isPlaying && activeEl.paused) {
+    if (watchParty.isPlaying) {
+      if (activeEl.paused) {
         isSyncingRef.current = true;
         activeEl.play().catch(() => {});
         setIsPaused(false);
-        setTimeout(() => { isSyncingRef.current = false; }, 400);
-      } else if (!watchParty.isPlaying && !activeEl.paused) {
+        setTimeout(() => { isSyncingRef.current = false; }, 300);
+      }
+      const timeDiff = Math.abs(activeEl.currentTime - targetTime);
+      if (timeDiff > 2.0) {
+        isSyncingRef.current = true;
+        activeEl.currentTime = targetTime;
+        setTimeout(() => { isSyncingRef.current = false; }, 300);
+      }
+    } else {
+      if (!activeEl.paused) {
         isSyncingRef.current = true;
         activeEl.pause();
         setIsPaused(true);
-        setTimeout(() => { isSyncingRef.current = false; }, 400);
+        setTimeout(() => { isSyncingRef.current = false; }, 300);
       }
-
-      if (!watchParty.isPlaying) {
-        activeEl.playbackRate = 1.0;
-        if (absDrift > 0.3) {
-          isSyncingRef.current = true;
-          activeEl.currentTime = expectedTime;
-          setTimeout(() => { isSyncingRef.current = false; }, 400);
-        }
-        return;
-      }
-
-      // 2. High-precision Drift Correction
-      if (absDrift > 1.5) {
+      const timeDiff = Math.abs(activeEl.currentTime - targetTime);
+      if (timeDiff > 0.3) {
         isSyncingRef.current = true;
-        lastProgrammaticSeekTimeRef.current = expectedTime;
-        activeEl.currentTime = expectedTime;
-        activeEl.playbackRate = 1.0;
-        setTimeout(() => { isSyncingRef.current = false; }, 500);
-      } else if (drift > 0.08) {
-        activeEl.playbackRate = Math.min(1.08, 1.0 + (drift * 0.05));
-      } else if (drift < -0.08) {
-        activeEl.playbackRate = Math.max(0.92, 1.0 + (drift * 0.05));
-      } else {
-        if (activeEl.playbackRate !== 1.0) {
-          activeEl.playbackRate = 1.0;
-        }
+        activeEl.currentTime = targetTime;
+        setTimeout(() => { isSyncingRef.current = false; }, 300);
       }
-    };
-
-    performSync();
-    interval = setInterval(performSync, 500);
-
-    return () => {
-      if (interval) clearInterval(interval);
-      const activeEl = getActiveEl();
-      if (activeEl) activeEl.playbackRate = 1.0;
-    };
-  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo]);
+    }
+  }, [watchParty?.currentTime, watchParty?.isPlaying, activeVideo]);
 
   // --- URL resolution helper to prevent double resolution/proxying ---
   const resolveVideoUrl = (url) => {
@@ -1090,7 +1056,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         </div>
       )}
 
-      {isWaiting && (
+      {!watchParty && isWaiting && (
         <div className="native-loader-overlay">
           <div className="pro-spinner" />
         </div>
