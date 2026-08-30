@@ -697,7 +697,8 @@
         align-items: center !important;
         flex-wrap: nowrap !important;
         gap: 10px !important;
-        z-index: 950 !important;
+        z-index: 1000 !important;
+        pointer-events: auto !important;
         background: transparent !important;
         height: auto !important;
         max-height: 150px !important;
@@ -736,16 +737,28 @@
     }
 
     .vc-card.role-carousel .vc-card-info {
-        padding: 2px 6px !important;
-        bottom: 4px !important;
-        left: 4px !important;
+        padding: 2px 5px !important;
+        bottom: 3px !important;
+        left: 3px !important;
         border-radius: 4px !important;
-        max-width: calc(100% - 8px) !important;
+        max-width: calc(100% - 6px) !important;
+        gap: 3px !important;
     }
 
     .vc-card.role-carousel .vc-card-name { 
-        font-size: 0.7rem !important; 
+        font-size: 0.65rem !important; 
         font-weight: 500 !important; 
+        max-width: 48px !important;
+    }
+
+    .vc-card.role-carousel .vc-indicator {
+        width: 14px !important;
+        height: 14px !important;
+    }
+
+    .vc-card.role-carousel .vc-indicator svg {
+        width: 9px !important;
+        height: 9px !important;
     }
 
     .vc-controls {
@@ -760,13 +773,14 @@
         bottom: 12px !important;
         right: 16px !important;
         left: auto !important;
-        transform: translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0) scale(var(--drag-scale, 0.8)) !important;
+        transform: translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0) scale(var(--drag-scale, 0.75)) !important;
         transform-origin: bottom right !important;
         flex-direction: row !important;
         gap: 6px !important;
         max-height: calc(100% - 24px) !important;
         width: auto !important;
-        z-index: 950 !important;
+        z-index: 1000 !important;
+        pointer-events: auto !important;
         touch-action: none !important;
         user-select: none !important;
         cursor: grab !important;
@@ -774,14 +788,36 @@
     }
 
     .vc-card.role-carousel {
-        width: 56px !important;
-        height: 56px !important;
+        width: 68px !important;
+        height: 68px !important;
         border-radius: 10px !important;
     }
 
     .vc-card.role-carousel .vc-card-avatar {
-        width: 24px !important;
-        height: 24px !important;
+        width: 28px !important;
+        height: 28px !important;
+    }
+
+    .vc-card.role-carousel .vc-card-info {
+        padding: 1px 4px !important;
+        bottom: 2px !important;
+        left: 2px !important;
+        gap: 2px !important;
+    }
+
+    .vc-card.role-carousel .vc-card-name {
+        font-size: 0.55rem !important;
+        max-width: 38px !important;
+    }
+
+    .vc-card.role-carousel .vc-indicator {
+        width: 12px !important;
+        height: 12px !important;
+    }
+
+    .vc-card.role-carousel .vc-indicator svg {
+        width: 8px !important;
+        height: 8px !important;
     }
 
     .vc-controls {
