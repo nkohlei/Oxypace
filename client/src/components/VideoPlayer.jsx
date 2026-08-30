@@ -205,36 +205,80 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const activeEl = getActiveEl();
     if (!activeEl) return;
 
-    const targetTime = typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0;
+    let syncInterval = null;
 
-    if (watchParty.isPlaying) {
-      if (activeEl.paused) {
+    const alignVideo = (forceImmediate = false) => {
+      const el = getActiveEl();
+      if (!el || !watchParty) return;
+
+      const serverNow = Date.now();
+      const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
+      const elapsed = watchParty.isPlaying ? Math.max(0, (serverNow - reference) / 1000) : 0;
+      const targetTime = (typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0) + elapsed;
+      const localTime = el.currentTime;
+      const drift = targetTime - localTime; // positive means local is behind
+      const absDrift = Math.abs(drift);
+
+      // 1. Play / Pause state synchronization
+      if (watchParty.isPlaying && el.paused) {
         isSyncingRef.current = true;
-        activeEl.play().catch(() => {});
+        el.play().catch(() => {});
         setIsPaused(false);
         setTimeout(() => { isSyncingRef.current = false; }, 300);
-      }
-      const timeDiff = Math.abs(activeEl.currentTime - targetTime);
-      if (timeDiff > 2.0) {
+      } else if (!watchParty.isPlaying && !el.paused) {
         isSyncingRef.current = true;
-        activeEl.currentTime = targetTime;
-        setTimeout(() => { isSyncingRef.current = false; }, 300);
-      }
-    } else {
-      if (!activeEl.paused) {
-        isSyncingRef.current = true;
-        activeEl.pause();
+        el.pause();
         setIsPaused(true);
         setTimeout(() => { isSyncingRef.current = false; }, 300);
       }
-      const timeDiff = Math.abs(activeEl.currentTime - targetTime);
-      if (timeDiff > 0.3) {
-        isSyncingRef.current = true;
-        activeEl.currentTime = targetTime;
-        setTimeout(() => { isSyncingRef.current = false; }, 300);
+
+      // 2. When Paused: Keep exactly aligned
+      if (!watchParty.isPlaying) {
+        el.playbackRate = 1.0;
+        if (absDrift > 0.25) {
+          isSyncingRef.current = true;
+          el.currentTime = targetTime;
+          setTimeout(() => { isSyncingRef.current = false; }, 300);
+        }
+        return;
       }
-    }
-  }, [watchParty?.currentTime, watchParty?.isPlaying, activeVideo]);
+
+      // 3. When Playing: Continuous Smart Pacer (Discord / Teleparty Engine)
+      if (forceImmediate || absDrift > 2.0) {
+        // Severe drift (e.g. from network delay or screen lock): snap directly to live time
+        isSyncingRef.current = true;
+        lastProgrammaticSeekTimeRef.current = targetTime;
+        el.currentTime = targetTime;
+        el.playbackRate = 1.0;
+        setTimeout(() => { isSyncingRef.current = false; }, 400);
+      } else if (drift > 0.25) {
+        // Behind by 0.25s - 2.0s: imperceptibly accelerate to 1.05x to catch up seamlessly
+        el.playbackRate = 1.05;
+      } else if (drift < -0.25) {
+        // Ahead by 0.25s: imperceptibly decelerate to 0.95x until room catches up
+        el.playbackRate = 0.95;
+      } else if (absDrift <= 0.12) {
+        // Within 120ms: perfect sync, maintain normal 1.0x rate
+        if (el.playbackRate !== 1.0) {
+          el.playbackRate = 1.0;
+        }
+      }
+    };
+
+    // Run alignment immediately on state change
+    alignVideo(true);
+
+    // Continuous smart pacer every 1.5 seconds (prevents drift from accumulating!)
+    syncInterval = setInterval(() => {
+      alignVideo(false);
+    }, 1500);
+
+    return () => {
+      if (syncInterval) clearInterval(syncInterval);
+      const el = getActiveEl();
+      if (el) el.playbackRate = 1.0;
+    };
+  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo]);
 
   // --- URL resolution helper to prevent double resolution/proxying ---
   const resolveVideoUrl = (url) => {

@@ -652,41 +652,80 @@ const WatchPartyPlayer = () => {
         }
     };
 
-    // Native Video Synchronization Engine (Smooth & Stutter-Free)
+    // Native Video Synchronization Engine (Master Clock Smart Pacer)
     useEffect(() => {
         const video = videoRef.current;
         if (!watchParty || !video || !isReady || hasError || !isNativeVOD) return;
 
-        const targetTime = typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0;
+        let syncInterval = null;
 
-        if (watchParty.isPlaying) {
-            if (video.paused) {
+        const alignNativeVideo = (forceImmediate = false) => {
+            if (!video || !watchParty) return;
+
+            const serverNow = Date.now();
+            const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
+            const elapsed = watchParty.isPlaying ? Math.max(0, (serverNow - reference) / 1000) : 0;
+            const targetTime = (typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0) + elapsed;
+            const localTime = video.currentTime;
+            const drift = targetTime - localTime;
+            const absDrift = Math.abs(drift);
+
+            // 1. Play / Pause State Synchronization
+            if (watchParty.isPlaying && video.paused) {
                 isSyncingRef.current = true;
                 video.play().catch(err => console.warn("[WatchParty] Auto-play resume catch:", err));
                 setTimeout(() => { isSyncingRef.current = false; }, 300);
-            }
-            const timeDiff = Math.abs(video.currentTime - targetTime);
-            if (timeDiff > 2.0) {
-                isSyncingRef.current = true;
-                lastProgrammaticSeekTimeRef.current = targetTime;
-                video.currentTime = targetTime;
-                setTimeout(() => { isSyncingRef.current = false; }, 300);
-            }
-        } else {
-            if (!video.paused) {
+            } else if (!watchParty.isPlaying && !video.paused) {
                 isSyncingRef.current = true;
                 video.pause();
                 setTimeout(() => { isSyncingRef.current = false; }, 300);
             }
-            const timeDiff = Math.abs(video.currentTime - targetTime);
-            if (timeDiff > 0.3) {
+
+            // 2. When Paused: Keep exactly aligned
+            if (!watchParty.isPlaying) {
+                video.playbackRate = 1.0;
+                if (absDrift > 0.25) {
+                    isSyncingRef.current = true;
+                    lastProgrammaticSeekTimeRef.current = targetTime;
+                    video.currentTime = targetTime;
+                    setTimeout(() => { isSyncingRef.current = false; }, 300);
+                }
+                return;
+            }
+
+            // 3. When Playing: Continuous Smart Pacer (Discord / Teleparty Engine)
+            if (forceImmediate || absDrift > 2.0) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 video.currentTime = targetTime;
-                setTimeout(() => { isSyncingRef.current = false; }, 300);
+                video.playbackRate = 1.0;
+                setTimeout(() => { isSyncingRef.current = false; }, 400);
+            } else if (drift > 0.25) {
+                // Behind: gently speed up to 1.05x to catch up seamlessly with 0 lag
+                video.playbackRate = 1.05;
+            } else if (drift < -0.25) {
+                // Ahead: gently slow down to 0.95x until room catches up
+                video.playbackRate = 0.95;
+            } else if (absDrift <= 0.12) {
+                if (video.playbackRate !== 1.0) {
+                    video.playbackRate = 1.0;
+                }
             }
-        }
-    }, [watchParty?.currentTime, watchParty?.isPlaying, isReady, hasError, isNativeVOD]);
+        };
+
+        // Align immediately on state change
+        alignNativeVideo(true);
+
+        // Continuous smart pacer every 1.5 seconds
+        syncInterval = setInterval(() => {
+            alignNativeVideo(false);
+        }, 1500);
+
+        return () => {
+            if (syncInterval) clearInterval(syncInterval);
+            if (video) video.playbackRate = 1.0;
+        };
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD]);
 
     // Native Video Polling for manual seek detection (distinguish user seeks from sync seeks)
     useEffect(() => {

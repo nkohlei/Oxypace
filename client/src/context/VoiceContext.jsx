@@ -218,6 +218,33 @@ export const VoiceProvider = ({ children }) => {
     // ICE candidate queue to prevent early candidate addition error before setRemoteDescription completes
     const candidateQueuesRef = useRef(new Map()); // userId -> [RTCIceCandidate]
 
+    // NTP Server Clock Offset Ref (ms)
+    const serverOffsetRef = useRef(0);
+
+    const syncServerTime = useCallback(() => {
+        if (!socket || !socket.connected) return;
+        const t0 = Date.now();
+        socket.emit('voice:time-ping', t0, (res) => {
+            if (res && res.serverTime) {
+                const t1 = Date.now();
+                const rtt = Math.max(0, t1 - res.clientSendTime);
+                const offset = (res.serverTime + rtt / 2) - t1;
+                serverOffsetRef.current = offset;
+            }
+        });
+    }, [socket]);
+
+    useEffect(() => {
+        if (!socket) return;
+        syncServerTime();
+        const interval = setInterval(syncServerTime, 10000);
+        return () => clearInterval(interval);
+    }, [socket, syncServerTime]);
+
+    const getServerNow = useCallback(() => {
+        return Date.now() + (serverOffsetRef.current || 0);
+    }, []);
+
     // Local Sound Helper
     const playInteractionSound = useCallback((type) => {
         try {
@@ -1482,24 +1509,27 @@ export const VoiceProvider = ({ children }) => {
 
     const sendWatchPlay = useCallback((time) => {
         if (activeRoom) {
+            const now = getServerNow();
             safeEmit('voice:watch-play', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, isPlaying: true, currentTime: time, lastUpdated: Date.now() } : null);
+            setWatchParty(prev => prev ? { ...prev, isPlaying: true, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, safeEmit, getServerNow]);
 
     const sendWatchPause = useCallback((time) => {
         if (activeRoom) {
+            const now = getServerNow();
             safeEmit('voice:watch-pause', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, isPlaying: false, currentTime: time, lastUpdated: Date.now() } : null);
+            setWatchParty(prev => prev ? { ...prev, isPlaying: false, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, safeEmit, getServerNow]);
 
     const sendWatchSeek = useCallback((time) => {
         if (activeRoom) {
+            const now = getServerNow();
             safeEmit('voice:watch-seek', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: Date.now() } : null);
+            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, safeEmit, getServerNow]);
 
     // Trigger update on state change
     useEffect(() => {
@@ -1531,32 +1561,49 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [participants, activeRoom, localState]);
 
-    // Handle overlay IPC control actions (mic/cam/screen/leave toggles)
+    // Global Key Listener for Push to Talk
     useEffect(() => {
-        if (window.desktopAPI && window.desktopAPI.onOverlayControlAction) {
-            const removeListener = window.desktopAPI.onOverlayControlAction((action) => {
-                switch(action) {
-                    case 'toggle-mic':
-                        toggleMicrophone();
-                        break;
-                    case 'toggle-camera':
-                        toggleCamera();
-                        break;
-                    case 'toggle-screen':
-                        toggleScreenShare();
-                        break;
-                    case 'leave':
-                        disconnectFromChannel();
-                        break;
-                    default:
-                        break;
+        const handleKeyDown = (e) => {
+            if (activeRoom && isPushToTalk && e.code === pushToTalkKey) {
+                if (localState.isMuted) {
+                    toggleMicrophone();
+                }
+            }
+        };
+
+        const handleKeyUp = (e) => {
+            if (activeRoom && isPushToTalk && e.code === pushToTalkKey) {
+                if (!localState.isMuted) {
+                    toggleMicrophone();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [activeRoom, isPushToTalk, pushToTalkKey, localState.isMuted, toggleMicrophone]);
+
+    // Listen to overlay command broadcasts
+    useEffect(() => {
+        if (window.desktopAPI?.onOverlayAction) {
+            const removeListener = window.desktopAPI.onOverlayAction((action) => {
+                if (action === 'toggleMute') {
+                    toggleMicrophone();
+                } else if (action === 'toggleCamera') {
+                    toggleCamera();
+                } else if (action === 'toggleScreenShare') {
+                    toggleScreenShare();
+                } else if (action === 'disconnect') {
+                    disconnectFromChannel();
                 }
             });
             return removeListener;
         }
     }, [activeRoom, toggleMicrophone, toggleCamera, toggleScreenShare, disconnectFromChannel]);
-
-
 
     const value = {
         room: { localParticipant: { identity: user?._id?.toString() } },
@@ -1595,6 +1642,8 @@ export const VoiceProvider = ({ children }) => {
         sendWatchPlay,
         sendWatchPause,
         sendWatchSeek,
+        getServerNow,
+        serverOffsetRef,
         isChatOpen,
         setIsChatOpen,
         unreadCount,

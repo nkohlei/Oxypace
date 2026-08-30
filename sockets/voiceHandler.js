@@ -356,6 +356,13 @@ export const initializeVoiceHandler = (io) => {
             console.log(`[Watch Party] stopped in ${roomName}`);
         });
 
+        // ─── High-Precision NTP Clock Sync ───
+        socket.on('voice:time-ping', (clientSendTime, callback) => {
+            if (typeof callback === 'function') {
+                callback({ clientSendTime, serverTime: Date.now() });
+            }
+        });
+
         // ─── WebRTC Signaling ───
         socket.on('voice:video-offer', ({ roomName, targetUserId, sdp }) => {
             if (!roomName || !targetUserId) return;
