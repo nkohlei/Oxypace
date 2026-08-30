@@ -13,7 +13,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import Post from '../models/Post.js';
-import { resolveStreamUrl } from '../services/playwrightResolver.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -872,7 +871,7 @@ router.post('/validate-stream', auth, async (req, res) => {
 
 /**
  * @route   POST /api/media/resolve-stream
- * @desc    Resolve web video stream URL using embedded Playwright or fallback microservice
+ * @desc    Resolve web video stream URL via stream-resolver service
  * @access  Private
  */
 router.post('/resolve-stream', auth, async (req, res) => {
@@ -882,61 +881,42 @@ router.post('/resolve-stream', auth, async (req, res) => {
             return res.status(400).json({ success: false, error: 'URL gereklidir.' });
         }
 
-        const resolveTimeout = timeout ? Math.min(parseInt(timeout, 10), 60000) : 30000;
-        console.log(`[StreamResolver] Processing URL: ${url} (timeout: ${resolveTimeout}ms)`);
+        const resolveTimeout = timeout ? Math.min(parseInt(timeout, 10), 60000) : 35000;
+        const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
 
-        // 1. First try native embedded resolver directly in Oxypace
-        try {
-            const result = await resolveStreamUrl(url, { timeout: resolveTimeout });
-            if (result && result.streamUrl) {
-                console.log(`[StreamResolver] ✅ Resolved natively: ${result.streamUrl}`);
-                return res.json({
-                    success: true,
-                    streamUrl: result.streamUrl,
-                    type: result.type,
-                    headers: result.headers,
-                    pageTitle: result.pageTitle || ''
-                });
-            }
-        } catch (nativeErr) {
-            console.warn('[StreamResolver] Native resolution exception:', nativeErr.message);
-        }
+        console.log(`[StreamResolverForwarder] Resolving ${url} via ${resolverBaseUrl}`);
 
-        // 2. Fallback to external resolver microservice if running on port 3001
-        try {
-            const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
-            const response = await axios.post(`${resolverBaseUrl}/api/resolve-stream`, {
-                url,
-                timeout: resolveTimeout
-            }, {
-                timeout: 65000
-            });
-
-            if (response.data && response.data.streamUrl) {
-                return res.json(response.data);
-            }
-        } catch (externalErr) {
-            console.warn('[StreamResolver] Fallback microservice failed:', externalErr.message);
-        }
-
-        return res.status(404).json({
-            success: false,
-            error: 'Bu sayfada oynatılabilir bir video akışı bulunamadı veya sayfa yanıt vermedi.',
-            code: 'STREAM_NOT_FOUND'
+        const response = await axios.post(`${resolverBaseUrl}/api/resolve-stream`, {
+            url,
+            timeout: resolveTimeout
+        }, {
+            timeout: resolveTimeout + 10000,
+            validateStatus: () => true
         });
-    } catch (globalErr) {
-        console.error('[StreamResolver] Unexpected error in /resolve-stream:', globalErr);
-        return res.status(500).json({
+
+        if (response.status >= 200 && response.status < 300 && response.data && response.data.streamUrl) {
+            return res.json(response.data);
+        }
+
+        const errMsg = response.data?.error || 'Bu sayfada oynatılabilir bir video akışı bulunamadı.';
+        return res.status(response.status >= 400 && response.status < 500 ? response.status : 404).json({
             success: false,
-            error: 'Sunucuda video çözülürken bir hata oluştu: ' + globalErr.message,
-            code: 'INTERNAL_ERROR'
+            error: errMsg,
+            code: response.data?.code || 'STREAM_NOT_FOUND'
+        });
+    } catch (err) {
+        console.error('[StreamResolverForwarder] Service communication error:', err.message);
+        return res.status(503).json({
+            success: false,
+            error: 'Video çözücü servisine ulaşılamadı. Lütfen resolver servisinin çalıştığından emin olun.',
+            code: 'RESOLVER_UNAVAILABLE'
         });
     }
 });
 
 /**
  * @route   GET /api/media/proxy OR /api/proxy
- * @desc    Native CORS & Referer bypassing stream proxy
+ * @desc    Stream proxy route for bypassing CORS and Referer restrictions
  * @access  Public
  */
 router.get('/proxy', async (req, res) => {
