@@ -47,9 +47,8 @@ const HlsStreamResolverModal = ({ isOpen, onClose, onStreamResolved }) => {
                 const refererHeader = headers?.referer || headers?.Referer || '';
                 const originHeader = headers?.origin || headers?.Origin || '';
                 
-                // Construct stream proxy URL (stream resolver proxy running locally/hosted)
-                const streamResolverBase = (import.meta.env.VITE_STREAM_RESOLVER_URL || 'http://localhost:3001').replace(/\/$/, '');
-                const finalStreamUrl = `${streamResolverBase}/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(refererHeader)}&origin=${encodeURIComponent(originHeader)}`;
+                // Construct stream proxy URL through the platform's backend proxy
+                const finalStreamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(refererHeader)}&origin=${encodeURIComponent(originHeader)}`;
 
                 setResolvedData({
                     streamUrl: finalStreamUrl,

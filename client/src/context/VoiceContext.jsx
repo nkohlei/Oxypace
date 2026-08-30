@@ -1509,7 +1509,7 @@ export const VoiceProvider = ({ children }) => {
                 console.warn('[WatchParty] Validation failed, falling back to local detection:', err);
                 const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
                 const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
-                const detectedLive = !isStaticVideo && (isLive || cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/'));
+                const detectedLive = !isStaticVideo && (isLive || cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || url.includes('/api/proxy') || url.includes('.txt') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/'));
                 safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive });
             }
         }

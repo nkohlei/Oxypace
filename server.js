@@ -305,6 +305,10 @@ app.use('/api/follow', followRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/media', mediaRoutes);
+app.get('/api/proxy', (req, res, next) => {
+    req.url = '/proxy' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
+    return mediaRoutes(req, res, next);
+});
 app.use('/api/badges', badgeRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/translate', translateRoutes);

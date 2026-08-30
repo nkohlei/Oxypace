@@ -899,5 +899,40 @@ router.post('/resolve-stream', auth, async (req, res) => {
     }
 });
 
+/**
+ * @route   GET /api/media/proxy OR /api/proxy
+ * @desc    Forward stream playback requests through the stream resolver proxy
+ * @access  Public
+ */
+router.get('/proxy', async (req, res) => {
+    try {
+        const { url, referer, origin } = req.query;
+        if (!url) {
+            return res.status(400).json({ error: 'URL parametresi gereklidir.' });
+        }
+
+        const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://localhost:3001').replace(/\/$/, '');
+        const targetProxyUrl = `${resolverBaseUrl}/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}${origin ? `&origin=${encodeURIComponent(origin)}` : ''}`;
+
+        const response = await axios({
+            method: 'get',
+            url: targetProxyUrl,
+            responseType: 'stream',
+            validateStatus: () => true,
+            timeout: 30000
+        });
+
+        // Forward headers
+        const contentType = response.headers['content-type'];
+        if (contentType) res.setHeader('Content-Type', contentType);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        response.data.pipe(res);
+    } catch (error) {
+        console.error('[StreamProxyForwarder] Proxy error:', error.message);
+        res.status(500).json({ error: 'Yayın proxy iletilemedi.' });
+    }
+});
+
 export default router;
 

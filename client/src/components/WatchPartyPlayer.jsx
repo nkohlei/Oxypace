@@ -43,11 +43,12 @@ const loadDash = () => {
 
 const isHls = (url) => {
   if (!url) return false;
-  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  const lowerUrl = url.toLowerCase();
+  const cleanUrl = lowerUrl.split('?')[0].split('#')[0];
   if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
     return false;
   }
-  return cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/');
+  return cleanUrl.endsWith('.m3u8') || lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/') || lowerUrl.includes('/api/proxy') || lowerUrl.includes('.txt') || lowerUrl.includes('manifest') || lowerUrl.includes('master');
 };
 
 const isDash = (url) => {
