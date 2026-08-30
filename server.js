@@ -343,9 +343,9 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     }
 
     isDeploying = true;
-    // Arka planda git pull ve pm2 reload çalıştır
+    // Arka planda git pull, playwright chromium kurulumu ve pm2 reload çalıştır
     setTimeout(() => {
-        exec('cd /home/ubuntu/app && git pull origin main && npm install --omit=dev && pm2 restart oxypace-backend', (err, stdout, stderr) => {
+        exec('cd /home/ubuntu/app && git pull origin main && npm install --omit=dev && npx playwright install chromium --with-deps && pm2 restart oxypace-backend', (err, stdout, stderr) => {
             isDeploying = false;
             if (err) {
                 console.error('❌ [AutoDeploy] Error:', err);
