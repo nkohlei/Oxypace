@@ -13,6 +13,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import Post from '../models/Post.js';
+import { resolveStreamUrl } from '../services/playwrightResolver.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -868,8 +869,6 @@ router.post('/validate-stream', auth, async (req, res) => {
         res.json({ isLive: isManifest, type: 'fallback', error: error.message });
     }
 });
-
-import { resolveStreamUrl } from '../services/playwrightResolver.js';
 
 /**
  * @route   POST /api/media/resolve-stream
