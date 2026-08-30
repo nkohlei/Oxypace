@@ -16,12 +16,28 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
 
     React.useEffect(() => {
         const el = videoEl.current;
-        if (el && track) {
+        if (!el || !track) return;
+
+        if (typeof track.attach === 'function') {
             track.attach(el);
+        } else if (track instanceof MediaStream) {
+            el.srcObject = track;
+        } else if (track instanceof MediaStreamTrack) {
+            el.srcObject = new MediaStream([track]);
+        } else if (track.mediaStreamTrack) {
+            el.srcObject = new MediaStream([track.mediaStreamTrack]);
         }
+
+        const playPromise = el.play?.();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+        }
+
         return () => {
-            if (track) {
-                track.detach();
+            if (typeof track.detach === 'function') {
+                track.detach(el);
+            } else if (el) {
+                el.srcObject = null;
             }
         };
     }, [track]);

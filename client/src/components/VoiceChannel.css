@@ -188,16 +188,18 @@
 @media (max-width: 900px) and (orientation: landscape), (max-height: 520px) {
     #watch-party-portal-placeholder.watch-party-target-hero {
         position: absolute !important;
-        top: 50% !important;
+        top: calc(50% - 8px) !important;
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
-        width: min(calc(100vw - 24px), calc((100vh - 24px) * 16 / 9)) !important;
-        height: min(calc(100vh - 24px), calc((100vw - 24px) * 9 / 16)) !important;
+        height: calc(100dvh - 56px) !important;
+        width: calc((100dvh - 56px) * 16 / 9) !important;
+        max-width: calc(100vw - 24px) !important;
         aspect-ratio: 16 / 9 !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
         box-sizing: border-box !important;
         border-radius: 12px !important;
         overflow: hidden !important;
+        z-index: 5 !important;
     }
 }
 
@@ -859,43 +861,22 @@
         max-width: 38px !important;
     }
 
-    .vc-card.role-carousel .vc-indicator {
-        width: 12px !important;
-        height: 12px !important;
-    }
-
-    .vc-card.role-carousel .vc-indicator svg {
-        width: 8px !important;
-        height: 8px !important;
-    }
-
     .vc-controls {
-        bottom: 10px !important;
+        bottom: 8px !important;
+        left: 50% !important;
         transform: translateX(-50%) scale(0.85) !important;
         transform-origin: bottom center !important;
-        z-index: 1100 !important;
-    }
-
-    /* Float Controls: remove background wrappers */
-    .vc-ctrl-section.glass-controls {
-        background: transparent !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        gap: 8px !important;
-    }
-    
-    .vc-controls {
+        z-index: 1200 !important;
+        pointer-events: auto !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         background: rgba(0, 0, 0, 0.2) !important;
         backdrop-filter: blur(8px) !important;
         -webkit-backdrop-filter: blur(8px) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 30px !important;
         padding: 6px 16px !important;
-        bottom: 16px !important;
-        gap: 12px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
