@@ -686,7 +686,13 @@
         pointer-events: auto !important;
     }
 
-    .vc-lobby {
+    .vc-container.lobby-bg,
+    .vc-lobby,
+    .vc-lobby-card,
+    .vc-lobby-join-btn,
+    .vc-join-btn,
+    .vc-invite-grid,
+    .vc-invite-user-card {
         pointer-events: auto !important;
     }
 
