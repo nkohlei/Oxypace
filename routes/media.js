@@ -869,74 +869,181 @@ router.post('/validate-stream', auth, async (req, res) => {
     }
 });
 
+import { resolveStreamUrl } from '../services/playwrightResolver.js';
+
 /**
  * @route   POST /api/media/resolve-stream
- * @desc    Forward web film/series page URL to the local stream-resolver microservice
+ * @desc    Resolve web video stream URL using embedded Playwright or fallback microservice
  * @access  Private
  */
 router.post('/resolve-stream', auth, async (req, res) => {
+    const { url, timeout } = req.body;
+    if (!url) {
+        return res.status(400).json({ success: false, error: 'URL gereklidir.' });
+    }
+
+    const resolveTimeout = timeout ? Math.min(parseInt(timeout, 10), 60000) : 30000;
+    console.log(`[StreamResolver] Processing URL: ${url} (timeout: ${resolveTimeout}ms)`);
+
+    // 1. First try native embedded resolver directly in Oxypace
     try {
-        const { url, timeout } = req.body;
-        if (!url) {
-            return res.status(400).json({ success: false, error: 'URL gereklidir.' });
+        const result = await resolveStreamUrl(url, { timeout: resolveTimeout });
+        if (result && result.streamUrl) {
+            console.log(`[StreamResolver] ✅ Resolved natively: ${result.streamUrl}`);
+            return res.json({
+                success: true,
+                streamUrl: result.streamUrl,
+                type: result.type,
+                headers: result.headers,
+                pageTitle: result.pageTitle || ''
+            });
         }
+    } catch (nativeErr) {
+        console.warn('[StreamResolver] Native resolution failed, trying fallback microservice:', nativeErr.message);
+    }
 
-        const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://localhost:3001').replace(/\/$/, '');
-        console.log(`[StreamResolverForwarder] Resolving url: ${url} via ${resolverBaseUrl}`);
-
+    // 2. Fallback to external resolver microservice if defined or running on port 3001
+    try {
+        const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
         const response = await axios.post(`${resolverBaseUrl}/api/resolve-stream`, {
             url,
-            timeout: timeout || 30000
+            timeout: resolveTimeout
         }, {
             timeout: 65000
         });
 
         return res.json(response.data);
     } catch (error) {
-        console.error('[StreamResolverForwarder] Error resolving stream:', error.response?.data || error.message);
-        const status = error.response?.status || 500;
-        return res.status(status).json({
+        console.error('[StreamResolver] Resolution completely failed:', error.response?.data || error.message);
+        return res.status(404).json({
             success: false,
-            error: error.response?.data?.error || 'Video akışı çözümlenemedi veya servis yanıt vermedi.',
-            code: error.response?.data?.code || 'RESOLVER_ERROR'
+            error: 'Bu sayfada oynatılabilir bir video akışı bulunamadı veya sayfa yanıt vermedi.',
+            code: 'STREAM_NOT_FOUND'
         });
     }
 });
 
 /**
  * @route   GET /api/media/proxy OR /api/proxy
- * @desc    Forward stream playback requests through the stream resolver proxy
+ * @desc    Native CORS & Referer bypassing stream proxy
  * @access  Public
  */
 router.get('/proxy', async (req, res) => {
+    const targetUrl = req.query.url;
+    const referer = req.query.referer || '';
+    const origin = req.query.origin || '';
+    const userAgent = req.query['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+    if (!targetUrl) {
+        return res.status(400).send('Missing url parameter');
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     try {
-        const { url, referer, origin } = req.query;
-        if (!url) {
-            return res.status(400).json({ error: 'URL parametresi gereklidir.' });
+        let effectiveReferer = referer;
+        if (!effectiveReferer || effectiveReferer === 'about:blank') {
+            if (targetUrl.includes('rapidvid') || targetUrl.includes('fullhdfilmizlesene')) {
+                effectiveReferer = 'https://rapidvid.net/';
+            } else if (targetUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
+                effectiveReferer = 'https://closeload.filmmakinesi.to/';
+            } else if (targetUrl.includes('playmix') || targetUrl.includes('hdfilmcehennemi')) {
+                effectiveReferer = 'https://hdfilmcehennemi.mobi/';
+            }
         }
 
-        const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://localhost:3001').replace(/\/$/, '');
-        const targetProxyUrl = `${resolverBaseUrl}/api/proxy?url=${encodeURIComponent(url)}${referer ? `&referer=${encodeURIComponent(referer)}` : ''}${origin ? `&origin=${encodeURIComponent(origin)}` : ''}`;
+        const effectiveOrigin = origin || (() => {
+            try { return new URL(effectiveReferer).origin; } catch { return ''; }
+        })();
 
-        const response = await axios({
-            method: 'get',
-            url: targetProxyUrl,
-            responseType: 'stream',
-            validateStatus: () => true,
-            timeout: 30000
-        });
+        const fetchHeaders = {
+            'User-Agent': userAgent,
+        };
+        if (effectiveReferer) fetchHeaders['Referer'] = effectiveReferer;
+        if (effectiveOrigin) fetchHeaders['Origin'] = effectiveOrigin;
 
-        // Forward headers
-        const contentType = response.headers['content-type'];
-        if (contentType) res.setHeader('Content-Type', contentType);
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        let response = await fetch(targetUrl, { headers: fetchHeaders });
 
-        response.data.pipe(res);
-    } catch (error) {
-        console.error('[StreamProxyForwarder] Proxy error:', error.message);
-        res.status(500).json({ error: 'Yayın proxy iletilemedi.' });
+        if (!response.ok && (response.status === 403 || response.status === 404)) {
+            const fallbackReferers = [
+                'https://rapidvid.net/',
+                'https://closeload.filmmakinesi.to/',
+                'https://hdfilmcehennemi.mobi/',
+                '',
+            ];
+            for (const fbRef of fallbackReferers) {
+                if (fbRef === effectiveReferer) continue;
+                const fbHeaders = { 'User-Agent': userAgent };
+                if (fbRef) fbHeaders['Referer'] = fbRef;
+                const fbRes = await fetch(targetUrl, { headers: fbHeaders });
+                if (fbRes.ok) {
+                    response = fbRes;
+                    effectiveReferer = fbRef;
+                    break;
+                }
+            }
+        }
+
+        if (!response.ok) {
+            return res.status(response.status).send(`Proxy fetch failed with status ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        const isManifest = targetUrl.includes('.m3u8') || targetUrl.includes('.txt') || contentType.includes('mpegurl') || contentType.includes('mpegURL') || contentType.includes('text/plain');
+
+        if (isManifest) {
+            const text = await response.text();
+            if (text.includes('#EXTM3U') || targetUrl.endsWith('.m3u8') || targetUrl.endsWith('.txt')) {
+                const baseUrl = new URL(targetUrl);
+                const lines = text.split('\n');
+                const rewrittenLines = lines.map((line) => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return line;
+                    if (trimmed.startsWith('#')) {
+                        if (trimmed.includes('URI="')) {
+                            return line.replace(/URI="([^"]+)"/g, (match, uri) => {
+                                try {
+                                    const absoluteUri = new URL(uri, baseUrl).href;
+                                    const proxiedUri = `/api/proxy?url=${encodeURIComponent(absoluteUri)}&referer=${encodeURIComponent(effectiveReferer)}&origin=${encodeURIComponent(effectiveOrigin)}`;
+                                    return `URI="${proxiedUri}"`;
+                                } catch {
+                                    return match;
+                                }
+                            });
+                        }
+                        return line;
+                    }
+                    try {
+                        const absoluteSegmentUrl = new URL(trimmed, baseUrl).href;
+                        return `/api/proxy?url=${encodeURIComponent(absoluteSegmentUrl)}&referer=${encodeURIComponent(effectiveReferer)}&origin=${encodeURIComponent(effectiveOrigin)}`;
+                    } catch {
+                        return line;
+                    }
+                });
+
+                res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+                return res.send(rewrittenLines.join('\n'));
+            } else {
+                res.setHeader('Content-Type', contentType || 'application/octet-stream');
+                return res.send(text);
+            }
+        } else {
+            res.setHeader('Content-Type', contentType || 'video/mp2t');
+            const arrayBuffer = await response.arrayBuffer();
+            return res.send(Buffer.from(arrayBuffer));
+        }
+    } catch (err) {
+        console.error(`[Proxy] Error fetching ${targetUrl}:`, err.message);
+        return res.status(500).send('Proxy internal error');
     }
 });
 
 export default router;
+
 
