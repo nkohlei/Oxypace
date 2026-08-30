@@ -876,48 +876,60 @@ router.post('/validate-stream', auth, async (req, res) => {
  * @access  Private
  */
 router.post('/resolve-stream', auth, async (req, res) => {
-    const { url, timeout } = req.body;
-    if (!url) {
-        return res.status(400).json({ success: false, error: 'URL gereklidir.' });
-    }
-
-    const resolveTimeout = timeout ? Math.min(parseInt(timeout, 10), 60000) : 30000;
-    console.log(`[StreamResolver] Processing URL: ${url} (timeout: ${resolveTimeout}ms)`);
-
-    // 1. First try native embedded resolver directly in Oxypace
     try {
-        const result = await resolveStreamUrl(url, { timeout: resolveTimeout });
-        if (result && result.streamUrl) {
-            console.log(`[StreamResolver] ✅ Resolved natively: ${result.streamUrl}`);
-            return res.json({
-                success: true,
-                streamUrl: result.streamUrl,
-                type: result.type,
-                headers: result.headers,
-                pageTitle: result.pageTitle || ''
-            });
+        const { url, timeout } = req.body;
+        if (!url) {
+            return res.status(400).json({ success: false, error: 'URL gereklidir.' });
         }
-    } catch (nativeErr) {
-        console.warn('[StreamResolver] Native resolution failed, trying fallback microservice:', nativeErr.message);
-    }
 
-    // 2. Fallback to external resolver microservice if defined or running on port 3001
-    try {
-        const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
-        const response = await axios.post(`${resolverBaseUrl}/api/resolve-stream`, {
-            url,
-            timeout: resolveTimeout
-        }, {
-            timeout: 65000
-        });
+        const resolveTimeout = timeout ? Math.min(parseInt(timeout, 10), 60000) : 30000;
+        console.log(`[StreamResolver] Processing URL: ${url} (timeout: ${resolveTimeout}ms)`);
 
-        return res.json(response.data);
-    } catch (error) {
-        console.error('[StreamResolver] Resolution completely failed:', error.response?.data || error.message);
+        // 1. First try native embedded resolver directly in Oxypace
+        try {
+            const result = await resolveStreamUrl(url, { timeout: resolveTimeout });
+            if (result && result.streamUrl) {
+                console.log(`[StreamResolver] ✅ Resolved natively: ${result.streamUrl}`);
+                return res.json({
+                    success: true,
+                    streamUrl: result.streamUrl,
+                    type: result.type,
+                    headers: result.headers,
+                    pageTitle: result.pageTitle || ''
+                });
+            }
+        } catch (nativeErr) {
+            console.warn('[StreamResolver] Native resolution exception:', nativeErr.message);
+        }
+
+        // 2. Fallback to external resolver microservice if running on port 3001
+        try {
+            const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
+            const response = await axios.post(`${resolverBaseUrl}/api/resolve-stream`, {
+                url,
+                timeout: resolveTimeout
+            }, {
+                timeout: 65000
+            });
+
+            if (response.data && response.data.streamUrl) {
+                return res.json(response.data);
+            }
+        } catch (externalErr) {
+            console.warn('[StreamResolver] Fallback microservice failed:', externalErr.message);
+        }
+
         return res.status(404).json({
             success: false,
             error: 'Bu sayfada oynatılabilir bir video akışı bulunamadı veya sayfa yanıt vermedi.',
             code: 'STREAM_NOT_FOUND'
+        });
+    } catch (globalErr) {
+        console.error('[StreamResolver] Unexpected error in /resolve-stream:', globalErr);
+        return res.status(500).json({
+            success: false,
+            error: 'Sunucuda video çözülürken bir hata oluştu: ' + globalErr.message,
+            code: 'INTERNAL_ERROR'
         });
     }
 });
