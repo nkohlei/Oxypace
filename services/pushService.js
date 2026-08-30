@@ -86,11 +86,8 @@ export const sendPushNotification = async (tokens, payload) => {
         }
 
         const message = {
-            notification: {
-                title: String(payload.title || 'Oxypace'),
-                body: String(payload.body || ''),
-                ...(absoluteImageUrl && { imageUrl: absoluteImageUrl })
-            },
+            // NO standard notification object so Android OS does not intercept it.
+            // This guarantees our native OxypaceMessagingService.onMessageReceived receives it.
             data: {
                 title: String(payload.title || 'Oxypace'),
                 body: String(payload.body || ''),
@@ -104,14 +101,7 @@ export const sendPushNotification = async (tokens, payload) => {
                 }),
             },
             android: {
-                priority: 'high',
-                notification: {
-                    channelId: 'oxypace_messages_v2',
-                    priority: 'high',
-                    defaultSound: true,
-                    defaultVibrateTimings: true,
-                    ...(absoluteImageUrl && { imageUrl: absoluteImageUrl })
-                }
+                priority: 'high'
             },
             tokens: tokens, // Multicast message
         };

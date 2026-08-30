@@ -239,15 +239,19 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setContentTitle(senderName)
             .setContentText(messageBody)
             .setStyle(style)
-            .setShortcutId(shortcutId)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .addAction(replyAction)
             .setShowWhen(true)
             .setWhen(now)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setDefaults(NotificationCompat.DEFAULT_ALL);
+
+        if (shortcutId != null) {
+            builder.setShortcutId(shortcutId);
+        }
 
         if (avatarBitmap != null) {
             builder.setLargeIcon(avatarBitmap);
