@@ -231,6 +231,22 @@ const WatchPartyPlayer = () => {
     const [isNativePlaying, setIsNativePlaying] = useState(false);
     const [controlsVisible, setControlsVisible] = useState(true);
     const controlsTimeoutRef = useRef(null);
+
+    const toggleControls = (e) => {
+        if (e && e.target && (e.target.closest('button') || e.target.closest('input') || e.target.closest('.watch-party-header') || e.target.closest('.watch-party-volume-container-modern') || e.target.closest('.watch-party-fullscreen-container-modern'))) {
+            return;
+        }
+        setControlsVisible(prev => !prev);
+    };
+
+    const triggerControlsTemporary = () => {
+        setControlsVisible(true);
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = setTimeout(() => {
+            setControlsVisible(false);
+        }, 4000);
+    };
+
     const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 768 || !!window.Capacitor?.isNativePlatform?.());
     const [localMuted, setLocalMuted] = useState(() => {
         const saved = localStorage.getItem('watchPartyMuted');
@@ -741,7 +757,14 @@ const WatchPartyPlayer = () => {
 
     return (
         <div className="watch-party-player-wrapper" ref={containerRef}>
-            <div className="watch-party-header">
+            <div 
+                className="watch-party-header"
+                style={{
+                    opacity: controlsVisible ? 1 : 0,
+                    pointerEvents: controlsVisible ? 'auto' : 'none',
+                    transition: 'opacity 0.25s ease'
+                }}
+            >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="watch-party-title">{(isLive || isStream) ? (isNativeVOD ? 'Birlikte Video İzle (HLS)' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
                     {(isLive || isStream) && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
@@ -752,7 +775,12 @@ const WatchPartyPlayer = () => {
                     </button>
                 </div>
             </div>
-            <div className="watch-party-player-container">
+            <div 
+                className="watch-party-player-container"
+                onClick={toggleControls}
+                onMouseMove={triggerControlsTemporary}
+                onTouchStart={triggerControlsTemporary}
+            >
                 
                 <video
                     ref={videoRef}
@@ -779,6 +807,11 @@ const WatchPartyPlayer = () => {
                         {/* Collapsible Vertical Volume Control */}
                         <div 
                             className="watch-party-volume-container-modern"
+                            style={{
+                                opacity: controlsVisible ? 1 : 0,
+                                pointerEvents: controlsVisible ? 'auto' : 'none',
+                                transition: 'opacity 0.25s ease'
+                            }}
                             onMouseEnter={() => window.innerWidth > 768 && setVolumeOpen(true)}
                             onMouseLeave={() => window.innerWidth > 768 && setVolumeOpen(false)}
                         >
@@ -819,7 +852,16 @@ const WatchPartyPlayer = () => {
                         </div>
 
                         {/* Repositioned Fullscreen Button */}
-                        <div className="watch-party-fullscreen-container-modern" style={{ display: 'flex', gap: '8px' }}>
+                        <div 
+                            className="watch-party-fullscreen-container-modern" 
+                            style={{ 
+                                display: 'flex', 
+                                gap: '8px',
+                                opacity: controlsVisible ? 1 : 0,
+                                pointerEvents: controlsVisible ? 'auto' : 'none',
+                                transition: 'opacity 0.25s ease'
+                            }}
+                        >
                             <button 
                                 className="watch-party-fullscreen-btn-modern"
                                 onClick={() => {

@@ -603,6 +603,7 @@
         margin: 0 !important;
         padding: 0 !important;
         background: transparent !important;
+        pointer-events: none !important; /* Passes taps on the video player below */
     }
 
     [data-theme='light'] .vc-container {
@@ -625,7 +626,7 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        z-index: 1100 !important;
+        z-index: 1200 !important;
         cursor: pointer !important;
         pointer-events: auto !important;
     }
@@ -644,7 +645,7 @@
         display: flex !important;
         flex-direction: column !important;
         gap: 8px !important;
-        z-index: 1100 !important;
+        z-index: 1200 !important;
         pointer-events: auto !important;
     }
 
@@ -655,6 +656,7 @@
         width: 100% !important;
         flex: 1 !important;
         position: relative !important;
+        pointer-events: none !important;
     }
 
     /* Pinned Layout: Main video starting from absolute 0, 0 and covering 100% */
@@ -662,6 +664,7 @@
         position: relative !important;
         width: 100% !important;
         height: 100% !important;
+        pointer-events: none !important;
     }
 
     .layout-spotlight .vc-hero {
@@ -676,6 +679,19 @@
         box-sizing: border-box !important;
         z-index: 1 !important;
         border-radius: 12px !important;
+        pointer-events: none !important;
+    }
+
+    .vc-card {
+        pointer-events: auto !important;
+    }
+
+    .vc-lobby {
+        pointer-events: auto !important;
+    }
+
+    .vc-more-dropdown {
+        pointer-events: auto !important;
     }
 
     .layout-spotlight .vc-hero .vc-card.role-hero {
