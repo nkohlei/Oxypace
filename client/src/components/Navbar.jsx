@@ -155,6 +155,11 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     }, [showMenu]);
 
     const handleLogout = () => {
+        if (socket) {
+            try {
+                socket.emit('logout');
+            } catch (e) {}
+        }
         logout();
         setTimeout(() => {
             window.location.replace('/');

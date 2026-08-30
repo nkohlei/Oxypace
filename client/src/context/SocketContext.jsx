@@ -193,11 +193,14 @@ export const SocketProvider = ({ children }) => {
     }, [socket, connected, isAuthenticated, user?._id]);
 
     // Aktif oturum açmış kullanıcı varsa ve socket bağlıysa,
-    // kendi ID'sinin onlineUsers listesinde yer almasını sağla
+    // gizlilik ayarına (showOnlineStatus) göre kendi ID'sinin onlineUsers listesinde yer almasını sağla
     const effectiveOnlineUsers = (() => {
         const set = new Set((onlineUsers || []).map(String));
-        if (user?._id && connected) {
+        const showMyOnline = user?.settings?.privacy?.showOnlineStatus !== false;
+        if (user?._id && connected && showMyOnline) {
             set.add(String(user._id));
+        } else if (user?._id && !showMyOnline) {
+            set.delete(String(user._id));
         }
         return Array.from(set);
     })();

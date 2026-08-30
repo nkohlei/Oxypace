@@ -414,6 +414,11 @@ const Settings = () => {
     };
 
     const handleLogout = () => {
+        if (socket) {
+            try {
+                socket.emit('logout');
+            } catch (e) {}
+        }
         logout();
         navigate('/login');
     };

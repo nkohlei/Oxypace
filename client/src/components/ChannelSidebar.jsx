@@ -68,8 +68,11 @@ const ChannelSidebar = ({
     // ulaşmamış olsa bile kendisini online olarak say.
     // Socket timing sorunlarını (Chrome açılış, uyku sonrası) kullanıcıya hissettirmez.
     const currentUserId = user?._id ? String(user._id) : null;
-    if (currentUserId && portalMemberIds.has(currentUserId)) {
+    const showMyOnline = user?.settings?.privacy?.showOnlineStatus !== false;
+    if (currentUserId && portalMemberIds.has(currentUserId) && showMyOnline) {
         onlineSet.add(currentUserId);
+    } else if (currentUserId && !showMyOnline) {
+        onlineSet.delete(currentUserId);
     }
 
     let onlineCount = 0;

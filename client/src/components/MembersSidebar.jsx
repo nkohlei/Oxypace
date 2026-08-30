@@ -41,8 +41,11 @@ const MembersSidebar = ({ members = [], onClose }) => {
     // Normalize online user IDs into a Set for fast and accurate lookups
     const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
     const currentUserId = currentUser?._id ? String(currentUser._id) : null;
-    if (currentUserId) {
+    const showMyOnline = currentUser?.settings?.privacy?.showOnlineStatus !== false;
+    if (currentUserId && showMyOnline) {
         onlineSet.add(currentUserId);
+    } else if (currentUserId && !showMyOnline) {
+        onlineSet.delete(currentUserId);
     }
 
     // Filter members based on socket status

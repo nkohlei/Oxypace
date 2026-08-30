@@ -104,26 +104,12 @@ export const initializeSocket = (io) => {
             socket.data.userId = strUserId;
             socket.data.isGhost = !!isGhost;
 
-            if (!activeUsersMap.has(strUserId)) {
-                activeUsersMap.set(strUserId, new Set());
-            }
-            activeUsersMap.get(strUserId).add(socket.id);
-
             userSockets.set(socket.id, strUserId);
             socket.join(strUserId);
 
-            if (pubClient) {
-                try {
-                    await pubClient.sadd('online_user_ids', strUserId);
-                } catch (err) {
-                    console.error('⚠️ Error adding user to Redis online set:', err);
-                }
-            }
-
-            console.log(`👤 User ${strUserId} joined (active sockets: ${activeUsersMap.get(strUserId).size})`);
-
+            let userDoc = null;
             try {
-                const userDoc = await User.findByIdAndUpdate(strUserId, { lastActive: new Date() }, { new: true });
+                userDoc = await User.findByIdAndUpdate(strUserId, { lastActive: new Date() }, { new: true });
                 if (userDoc) {
                     socket.user = userDoc;
                 }
@@ -131,10 +117,41 @@ export const initializeSocket = (io) => {
                 console.error('Error updating lastActive on join:', err);
             }
 
+            const isGhostMode = !!isGhost;
+            const showOnline = !isGhostMode && userDoc?.settings?.privacy?.showOnlineStatus !== false;
+            socket.data.showOnlineStatus = showOnline;
+
+            if (showOnline) {
+                if (!activeUsersMap.has(strUserId)) {
+                    activeUsersMap.set(strUserId, new Set());
+                }
+                activeUsersMap.get(strUserId).add(socket.id);
+
+                if (pubClient) {
+                    try {
+                        await pubClient.sadd('online_user_ids', strUserId);
+                    } catch (err) {
+                        console.error('⚠️ Error adding user to Redis online set:', err);
+                    }
+                }
+
+                await broadcastGlobalOnlineUsers();
+                io.emit('user_status_change', { userId: strUserId, status: 'online' });
+                console.log(`👤 User ${strUserId} joined visible (active sockets: ${activeUsersMap.get(strUserId).size})`);
+            } else {
+                activeUsersMap.delete(strUserId);
+                if (pubClient) {
+                    try {
+                        await pubClient.srem('online_user_ids', strUserId);
+                    } catch (err) {}
+                }
+                await broadcastGlobalOnlineUsers();
+                io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
+                console.log(`👤 User ${strUserId} joined in hidden/invisible mode`);
+            }
+
             const currentOnlineList = await getOnlineUserIds();
             socket.emit('getOnlineUsers', currentOnlineList);
-            await broadcastGlobalOnlineUsers();
-            io.emit('user_status_change', { userId: strUserId, status: 'online' });
 
             // Send existing DM typers typing to this user
             const dmTypers = activeTypingDMs.get(strUserId);
@@ -145,10 +162,80 @@ export const initializeSocket = (io) => {
             }
         });
 
+        // Toggle showOnlineStatus privacy setting live
+        socket.on('update_show_online_status', async ({ showOnlineStatus }) => {
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (!userId) return;
+            const strUserId = String(userId);
+            const shouldShow = !!showOnlineStatus;
+            socket.data.showOnlineStatus = shouldShow;
+
+            try {
+                await User.findByIdAndUpdate(strUserId, { 'settings.privacy.showOnlineStatus': shouldShow });
+            } catch (err) {
+                console.error('Error updating showOnlineStatus in DB:', err);
+            }
+
+            if (!shouldShow) {
+                activeUsersMap.delete(strUserId);
+                if (pubClient) {
+                    try {
+                        await pubClient.srem('online_user_ids', strUserId);
+                    } catch (err) {}
+                }
+                io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
+                await broadcastGlobalOnlineUsers();
+                console.log(`👤 User ${strUserId} hid online status (invisible mode)`);
+            } else {
+                if (!activeUsersMap.has(strUserId)) {
+                    activeUsersMap.set(strUserId, new Set());
+                }
+                activeUsersMap.get(strUserId).add(socket.id);
+                if (pubClient) {
+                    try {
+                        await pubClient.sadd('online_user_ids', strUserId);
+                    } catch (err) {}
+                }
+                io.emit('user_status_change', { userId: strUserId, status: 'online' });
+                await broadcastGlobalOnlineUsers();
+                console.log(`👤 User ${strUserId} unhid online status (visible mode)`);
+            }
+        });
+
         // Request online users list on demand
         socket.on('get_online_users', async () => {
             const list = await getOnlineUserIds();
             socket.emit('getOnlineUsers', list);
+        });
+
+        // Immediate logout event to clear presence instantly
+        socket.on('logout', async () => {
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (!userId) return;
+            const strUserId = String(userId);
+            console.log(`👋 Immediate logout received for user ${strUserId}`);
+
+            if (disconnectTimers.has(strUserId)) {
+                clearTimeout(disconnectTimers.get(strUserId));
+                disconnectTimers.delete(strUserId);
+            }
+
+            activeUsersMap.delete(strUserId);
+            userSockets.delete(socket.id);
+
+            if (pubClient) {
+                try {
+                    await pubClient.srem('online_user_ids', strUserId);
+                } catch (err) {}
+            }
+
+            const lastActive = new Date();
+            try {
+                await User.findByIdAndUpdate(strUserId, { lastActive });
+            } catch (err) {}
+
+            io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
+            await broadcastGlobalOnlineUsers();
         });
 
         // Handle disconnecting to capture rooms before they are cleared
@@ -180,7 +267,7 @@ export const initializeSocket = (io) => {
                 const hasOtherSockets = userSocketsSet && userSocketsSet.size > 0;
 
                 if (!hasOtherSockets) {
-                    // Start a 10-second grace period before checking cluster-wide sockets
+                    // Fast 1.5-second debounce period before checking cluster-wide sockets
                     if (disconnectTimers.has(strUserId)) {
                         clearTimeout(disconnectTimers.get(strUserId));
                     }
@@ -188,12 +275,11 @@ export const initializeSocket = (io) => {
                     const timer = setTimeout(async () => {
                         disconnectTimers.delete(strUserId);
                         
-                        // CRITICAL CLUSTER FIX: Before removing from Redis and broadcasting offline,
-                        // query ALL PM2 cluster workers via Redis adapter to confirm if user has ANY live socket anywhere!
+                        // Query ALL PM2 cluster workers via Redis adapter to confirm if user has ANY live socket anywhere
                         let isStillOnlineAnywhere = false;
                         try {
                             const allSockets = await io.fetchSockets();
-                            isStillOnlineAnywhere = allSockets.some(s => s.data && String(s.data.userId) === strUserId);
+                            isStillOnlineAnywhere = allSockets.some(s => s.data && String(s.data.userId) === strUserId && s.data.showOnlineStatus !== false);
                         } catch (err) {
                             const latestSet = activeUsersMap.get(strUserId);
                             isStillOnlineAnywhere = !!(latestSet && latestSet.size > 0);
@@ -259,7 +345,7 @@ export const initializeSocket = (io) => {
                         } else {
                             console.log(`🛡️ Preserved online status for ${strUserId}: active socket found on another cluster worker`);
                         }
-                    }, 10000);
+                    }, 1500);
 
                     disconnectTimers.set(strUserId, timer);
                 } else {
