@@ -652,51 +652,79 @@ const WatchPartyPlayer = () => {
         }
     };
 
-    // Native Video Synchronization (only for manifests that are actually VODs)
+    // Native Video Synchronization Engine (Smooth Drift Steering & Buffer Resilience)
     useEffect(() => {
         const video = videoRef.current;
         if (!watchParty || !video || !isReady || hasError || !isNativeVOD) return;
 
-        let expectedTime = watchParty.currentTime;
-        if (watchParty.isPlaying && watchParty.lastUpdated) {
-            const elapsed = (Date.now() - watchParty.lastUpdated) / 1000;
-            expectedTime += elapsed;
-        }
+        let interval = null;
 
-        const localTime = video.currentTime;
-        const timeDiff = Math.abs(localTime - expectedTime);
+        const performSync = () => {
+            if (!video || !watchParty) return;
 
-        const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
-        const threshold = isPlayTransition ? 0.2 : (watchParty.isPlaying ? 1.2 : 0.5);
+            const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated || Date.now();
+            const elapsed = watchParty.isPlaying ? Math.max(0, (Date.now() - referenceTime) / 1000) : 0;
+            const expectedTime = watchParty.currentTime + elapsed;
+            const localTime = video.currentTime;
+            const drift = expectedTime - localTime;
+            const absDrift = Math.abs(drift);
 
-        if (timeDiff > threshold) {
-            isSyncingRef.current = true;
-            lastProgrammaticSeekTimeRef.current = expectedTime;
-            lastPolledTimeRef.current = expectedTime;
-            video.currentTime = expectedTime;
-            setTimeout(() => {
-                isSyncingRef.current = false;
-            }, 1000);
-        }
+            // 1. Play / Pause state synchronization
+            if (watchParty.isPlaying && video.paused) {
+                isSyncingRef.current = true;
+                video.play().catch(err => console.warn("[WatchParty] Auto-play resume catch:", err));
+                setTimeout(() => { isSyncingRef.current = false; }, 500);
+            } else if (!watchParty.isPlaying && !video.paused) {
+                isSyncingRef.current = true;
+                video.pause();
+                setTimeout(() => { isSyncingRef.current = false; }, 500);
+            }
 
-        if (watchParty.isPlaying && video.paused) {
-            isSyncingRef.current = true;
-            video.play().catch(err => console.warn("Native video play failed", err));
-            setTimeout(() => {
-                isSyncingRef.current = false;
-            }, 800);
-        } else if (!watchParty.isPlaying && !video.paused) {
-            isSyncingRef.current = true;
-            video.pause();
-            setTimeout(() => {
-                isSyncingRef.current = false;
-            }, 800);
-        }
+            if (!watchParty.isPlaying) {
+                video.playbackRate = 1.0;
+                if (absDrift > 0.3) {
+                    isSyncingRef.current = true;
+                    video.currentTime = expectedTime;
+                    setTimeout(() => { isSyncingRef.current = false; }, 500);
+                }
+                return;
+            }
 
-        prevIsPlayingRef.current = watchParty.isPlaying;
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isNativeVOD, duration]);
+            // 2. High-precision Drift Correction
+            if (absDrift > 1.5) {
+                // Major drift (after network lag / buffer stall): perform instant programmatic jump
+                isSyncingRef.current = true;
+                lastProgrammaticSeekTimeRef.current = expectedTime;
+                video.currentTime = expectedTime;
+                video.playbackRate = 1.0;
+                setTimeout(() => { isSyncingRef.current = false; }, 600);
+            } else if (drift > 0.08) {
+                // Behind room time: smoothly accelerate playback rate to catch up with 0 distortion
+                video.playbackRate = Math.min(1.08, 1.0 + (drift * 0.05));
+            } else if (drift < -0.08) {
+                // Ahead of room time: smoothly decelerate playback rate to let room catch up
+                video.playbackRate = Math.max(0.92, 1.0 + (drift * 0.05));
+            } else {
+                // In tight sync (< 80ms): normal playback rate
+                if (video.playbackRate !== 1.0) {
+                    video.playbackRate = 1.0;
+                }
+            }
+        };
 
-    // Native Video Polling for manual seek detection
+        // Initial sync on state change
+        performSync();
+
+        // Continuous high-precision drift monitor loop (every 500ms)
+        interval = setInterval(performSync, 500);
+
+        return () => {
+            if (interval) clearInterval(interval);
+            if (video) video.playbackRate = 1.0;
+        };
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD]);
+
+    // Native Video Polling for manual seek detection (distinguish user seeks from sync seeks)
     useEffect(() => {
         const video = videoRef.current;
         if (!isReady || hasError || !video || !isNativeVOD) return;
@@ -709,7 +737,7 @@ const WatchPartyPlayer = () => {
                     const diff = Math.abs(cur - lastPolledTimeRef.current - expectedProgress);
 
                     if (diff > 3.0) {
-                        console.log(`[Watch Party] Native Manual seek detected: ${lastPolledTimeRef.current}s -> ${cur}s`);
+                        console.log(`[Watch Party] Native manual seek detected: ${lastPolledTimeRef.current}s -> ${cur}s`);
                         sendWatchSeek(cur);
                     }
                 }
@@ -720,7 +748,7 @@ const WatchPartyPlayer = () => {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isNativeVOD]);
+    }, [isReady, hasError, watchParty?.isPlaying, sendWatchSeek, isNativeVOD]);
 
     // Keep live stream playing constantly (never pause)
     useEffect(() => {

@@ -206,35 +206,69 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const el = getActiveEl();
     if (!el) return;
 
-    if (watchParty.isPlaying && el.paused) {
-      el.play().catch(() => {});
-      setIsPaused(false);
-    } else if (!watchParty.isPlaying && !el.paused) {
-      el.pause();
-      setIsPaused(true);
-    }
+    let interval = null;
 
-    let expectedTime = watchParty.currentTime;
-    if (watchParty.isPlaying && watchParty.lastUpdated) {
-        const elapsed = (Date.now() - watchParty.lastUpdated) / 1000;
-        expectedTime += elapsed;
-    }
+    const performSync = () => {
+      const activeEl = getActiveEl();
+      if (!activeEl || !watchParty) return;
 
-    const timeDiff = Math.abs(el.currentTime - expectedTime);
-    const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
-    const threshold = isPlayTransition ? 0.1 : (watchParty.isPlaying ? 0.8 : 0.3);
+      const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated || Date.now();
+      const elapsed = watchParty.isPlaying ? Math.max(0, (Date.now() - referenceTime) / 1000) : 0;
+      const expectedTime = watchParty.currentTime + elapsed;
+      const localTime = activeEl.currentTime;
+      const drift = expectedTime - localTime;
+      const absDrift = Math.abs(drift);
 
-    if (timeDiff > threshold) {
+      // 1. Play / Pause state synchronization
+      if (watchParty.isPlaying && activeEl.paused) {
+        isSyncingRef.current = true;
+        activeEl.play().catch(() => {});
+        setIsPaused(false);
+        setTimeout(() => { isSyncingRef.current = false; }, 400);
+      } else if (!watchParty.isPlaying && !activeEl.paused) {
+        isSyncingRef.current = true;
+        activeEl.pause();
+        setIsPaused(true);
+        setTimeout(() => { isSyncingRef.current = false; }, 400);
+      }
+
+      if (!watchParty.isPlaying) {
+        activeEl.playbackRate = 1.0;
+        if (absDrift > 0.3) {
+          isSyncingRef.current = true;
+          activeEl.currentTime = expectedTime;
+          setTimeout(() => { isSyncingRef.current = false; }, 400);
+        }
+        return;
+      }
+
+      // 2. High-precision Drift Correction
+      if (absDrift > 1.5) {
         isSyncingRef.current = true;
         lastProgrammaticSeekTimeRef.current = expectedTime;
-        el.currentTime = expectedTime;
-        setTimeout(() => {
-            isSyncingRef.current = false;
-        }, 500);
-    }
+        activeEl.currentTime = expectedTime;
+        activeEl.playbackRate = 1.0;
+        setTimeout(() => { isSyncingRef.current = false; }, 500);
+      } else if (drift > 0.08) {
+        activeEl.playbackRate = Math.min(1.08, 1.0 + (drift * 0.05));
+      } else if (drift < -0.08) {
+        activeEl.playbackRate = Math.max(0.92, 1.0 + (drift * 0.05));
+      } else {
+        if (activeEl.playbackRate !== 1.0) {
+          activeEl.playbackRate = 1.0;
+        }
+      }
+    };
 
-    prevIsPlayingRef.current = watchParty.isPlaying;
-  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.lastUpdated, activeVideo]);
+    performSync();
+    interval = setInterval(performSync, 500);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      const activeEl = getActiveEl();
+      if (activeEl) activeEl.playbackRate = 1.0;
+    };
+  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo]);
 
   // --- URL resolution helper to prevent double resolution/proxying ---
   const resolveVideoUrl = (url) => {

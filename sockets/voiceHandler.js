@@ -237,12 +237,15 @@ export const initializeVoiceHandler = (io) => {
         // ─── Watch Party (YouTube / Stream Sync) ───
         socket.on('voice:watch-start', async ({ roomName, url, isLive }) => {
             if (!roomName) return;
+            const now = Date.now();
             const watchPartyState = {
                 url,
                 isPlaying: false,
                 currentTime: 0,
-                lastUpdated: Date.now(),
-                isLive: !!isLive
+                lastUpdated: now,
+                serverTimestamp: now,
+                isLive: !!isLive,
+                senderId: socket.userId
             };
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
@@ -261,11 +264,13 @@ export const initializeVoiceHandler = (io) => {
 
         socket.on('voice:watch-play', async ({ roomName, time }) => {
             if (!roomName) return;
+            const now = Date.now();
             const roomData = voiceRooms.get(roomName);
             if (roomData && roomData.watchParty) {
                 roomData.watchParty.isPlaying = true;
                 roomData.watchParty.currentTime = time;
-                roomData.watchParty.lastUpdated = Date.now();
+                roomData.watchParty.lastUpdated = now;
+                roomData.watchParty.serverTimestamp = now;
             }
             if (pubClient) {
                 try {
@@ -274,22 +279,25 @@ export const initializeVoiceHandler = (io) => {
                         const wp = JSON.parse(currentStr);
                         wp.isPlaying = true;
                         wp.currentTime = time;
-                        wp.lastUpdated = Date.now();
+                        wp.lastUpdated = now;
+                        wp.serverTimestamp = now;
                         await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
                     }
                 } catch (err) {}
             }
-            socket.to(`voice:${roomName}`).emit('voice:watch-play', { time });
+            socket.to(`voice:${roomName}`).emit('voice:watch-play', { time, serverTimestamp: now, senderId: socket.userId });
             console.log(`[Watch Party] play event in ${roomName} at time: ${time}`);
         });
 
         socket.on('voice:watch-pause', async ({ roomName, time }) => {
             if (!roomName) return;
+            const now = Date.now();
             const roomData = voiceRooms.get(roomName);
             if (roomData && roomData.watchParty) {
                 roomData.watchParty.isPlaying = false;
                 roomData.watchParty.currentTime = time;
-                roomData.watchParty.lastUpdated = Date.now();
+                roomData.watchParty.lastUpdated = now;
+                roomData.watchParty.serverTimestamp = now;
             }
             if (pubClient) {
                 try {
@@ -298,21 +306,24 @@ export const initializeVoiceHandler = (io) => {
                         const wp = JSON.parse(currentStr);
                         wp.isPlaying = false;
                         wp.currentTime = time;
-                        wp.lastUpdated = Date.now();
+                        wp.lastUpdated = now;
+                        wp.serverTimestamp = now;
                         await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
                     }
                 } catch (err) {}
             }
-            socket.to(`voice:${roomName}`).emit('voice:watch-pause', { time });
+            socket.to(`voice:${roomName}`).emit('voice:watch-pause', { time, serverTimestamp: now, senderId: socket.userId });
             console.log(`[Watch Party] pause event in ${roomName} at time: ${time}`);
         });
 
         socket.on('voice:watch-seek', async ({ roomName, time }) => {
             if (!roomName) return;
+            const now = Date.now();
             const roomData = voiceRooms.get(roomName);
             if (roomData && roomData.watchParty) {
                 roomData.watchParty.currentTime = time;
-                roomData.watchParty.lastUpdated = Date.now();
+                roomData.watchParty.lastUpdated = now;
+                roomData.watchParty.serverTimestamp = now;
             }
             if (pubClient) {
                 try {
@@ -320,12 +331,13 @@ export const initializeVoiceHandler = (io) => {
                     if (currentStr) {
                         const wp = JSON.parse(currentStr);
                         wp.currentTime = time;
-                        wp.lastUpdated = Date.now();
+                        wp.lastUpdated = now;
+                        wp.serverTimestamp = now;
                         await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
                     }
                 } catch (err) {}
             }
-            socket.to(`voice:${roomName}`).emit('voice:watch-seek', { time });
+            socket.to(`voice:${roomName}`).emit('voice:watch-seek', { time, serverTimestamp: now, senderId: socket.userId });
             console.log(`[Watch Party] seek event in ${roomName} to time: ${time}`);
         });
 

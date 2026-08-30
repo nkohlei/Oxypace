@@ -884,26 +884,57 @@ export const VoiceProvider = ({ children }) => {
         const handleWatchState = (wp) => {
             if (wp && wp.url) {
                 const updatedWp = { ...wp };
-                if (updatedWp.isPlaying && updatedWp.lastUpdated) {
-                    const elapsed = (Date.now() - updatedWp.lastUpdated) / 1000;
+                const referenceTime = updatedWp.serverTimestamp || updatedWp.lastUpdated;
+                if (updatedWp.isPlaying && referenceTime) {
+                    const elapsed = Math.max(0, (Date.now() - referenceTime) / 1000);
                     updatedWp.currentTime += elapsed;
                 }
+                updatedWp.lastUpdated = Date.now();
                 setWatchParty(updatedWp);
             } else {
                 setWatchParty(null);
             }
         };
 
-        const handleWatchPlay = ({ time }) => {
-            setWatchParty(prev => prev ? { ...prev, isPlaying: true, currentTime: time, lastUpdated: Date.now() } : null);
+        const handleWatchPlay = ({ time, serverTimestamp, senderId }) => {
+            const now = Date.now();
+            const elapsed = serverTimestamp ? Math.max(0, (now - serverTimestamp) / 1000) : 0;
+            const targetTime = time + elapsed;
+            setWatchParty(prev => prev ? { 
+                ...prev, 
+                isPlaying: true, 
+                currentTime: targetTime, 
+                lastUpdated: now,
+                serverTimestamp: serverTimestamp || now,
+                lastActionBy: senderId
+            } : null);
         };
 
-        const handleWatchPause = ({ time }) => {
-            setWatchParty(prev => prev ? { ...prev, isPlaying: false, currentTime: time, lastUpdated: Date.now() } : null);
+        const handleWatchPause = ({ time, serverTimestamp, senderId }) => {
+            const now = Date.now();
+            setWatchParty(prev => prev ? { 
+                ...prev, 
+                isPlaying: false, 
+                currentTime: time, 
+                lastUpdated: now,
+                serverTimestamp: serverTimestamp || now,
+                lastActionBy: senderId
+            } : null);
         };
 
-        const handleWatchSeek = ({ time }) => {
-            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: Date.now() } : null);
+        const handleWatchSeek = ({ time, serverTimestamp, senderId }) => {
+            const now = Date.now();
+            setWatchParty(prev => {
+                if (!prev) return null;
+                const elapsed = (prev.isPlaying && serverTimestamp) ? Math.max(0, (now - serverTimestamp) / 1000) : 0;
+                return { 
+                    ...prev, 
+                    currentTime: time + elapsed, 
+                    lastUpdated: now,
+                    serverTimestamp: serverTimestamp || now,
+                    lastActionBy: senderId
+                };
+            });
         };
 
         const handleWatchStop = () => {
