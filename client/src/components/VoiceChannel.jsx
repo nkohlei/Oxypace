@@ -368,6 +368,55 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         }
     }, [watchParty?.url]);
 
+    // Mobile Touch Drag & Pinch-to-Scale for floating camera cards in spotlight / watchparty mode
+    const [carouselOffset, setCarouselOffset] = useState({ x: 0, y: 0 });
+    const [carouselScale, setCarouselScale] = useState(1);
+    const touchStartRef = useRef(null);
+
+    const handleCarouselTouchStart = (e) => {
+        if (!isMobile) return;
+        if (e.touches.length === 1) {
+            const touch = e.touches[0];
+            touchStartRef.current = {
+                type: 'drag',
+                startX: touch.clientX - carouselOffset.x,
+                startY: touch.clientY - carouselOffset.y
+            };
+        } else if (e.touches.length === 2) {
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            touchStartRef.current = {
+                type: 'pinch',
+                startDist: dist,
+                initialScale: carouselScale
+            };
+        }
+    };
+
+    const handleCarouselTouchMove = (e) => {
+        if (!touchStartRef.current || !isMobile) return;
+        if (touchStartRef.current.type === 'drag' && e.touches.length === 1) {
+            const touch = e.touches[0];
+            const newX = touch.clientX - touchStartRef.current.startX;
+            const newY = touch.clientY - touchStartRef.current.startY;
+            setCarouselOffset({ x: newX, y: newY });
+        } else if (touchStartRef.current.type === 'pinch' && e.touches.length === 2) {
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const scaleChange = currentDist / touchStartRef.current.startDist;
+            const newScale = Math.min(Math.max(touchStartRef.current.initialScale * scaleChange, 0.45), 1.5);
+            setCarouselScale(newScale);
+        }
+    };
+
+    const handleCarouselTouchEnd = () => {
+        touchStartRef.current = null;
+    };
+
     const renderParticipantCard = (p, role = 'grid', onClickOverride = null) => {
         const isShowingScreen = p.isScreenSharing;
         const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
@@ -638,7 +687,17 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
 
                 {watchParty && watchParty.url ? (
                     <>
-                        <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
+                        <div 
+                            className={`vc-carousel custom-scrollbar ${carouselClass}`}
+                            onTouchStart={handleCarouselTouchStart}
+                            onTouchMove={handleCarouselTouchMove}
+                            onTouchEnd={handleCarouselTouchEnd}
+                            style={isMobile ? {
+                                transform: `translateX(-50%) translate3d(${carouselOffset.x}px, ${carouselOffset.y}px, 0) scale(${carouselScale})`,
+                                transformOrigin: 'center bottom',
+                                touchAction: 'none'
+                            } : undefined}
+                        >
                             {focusedParticipant && (
                                 <div 
                                     className="watch-party-placeholder-card" 
@@ -658,7 +717,17 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 ) : (
                     <>
                         {focusedParticipant && (
-                            <div className={`vc-carousel custom-scrollbar ${carouselClass}`}>
+                            <div 
+                                className={`vc-carousel custom-scrollbar ${carouselClass}`}
+                                onTouchStart={handleCarouselTouchStart}
+                                onTouchMove={handleCarouselTouchMove}
+                                onTouchEnd={handleCarouselTouchEnd}
+                                style={isMobile ? {
+                                    transform: `translateX(-50%) translate3d(${carouselOffset.x}px, ${carouselOffset.y}px, 0) scale(${carouselScale})`,
+                                    transformOrigin: 'center bottom',
+                                    touchAction: 'none'
+                                } : undefined}
+                            >
                                 {participants.filter(p => p.identity !== activeFocusIdentity).map(p => 
                                     renderParticipantCard(p, 'carousel', () => handleFocus(p.identity))
                                 )}
