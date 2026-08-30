@@ -169,11 +169,18 @@ public class MainActivity extends BridgeActivity {
             settings.setDatabaseEnabled(true);
             settings.setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             
-            // Critical settings for playing media/videos smoothly in WebViews
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setAllowFileAccess(true);
             settings.setAllowContentAccess(true);
             
+            // WebChromeClient for HTML5 Video & Media in WebView
+            webView.setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(getBridge()) {
+                @Override
+                public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+                    runOnUiThread(() -> request.grant(request.getResources()));
+                }
+            });
+
             // Enable hardware acceleration at the WebSettings level if supported
             try {
                 android.webkit.CookieManager cookieManager = android.webkit.CookieManager.getInstance();
