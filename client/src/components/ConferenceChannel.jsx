@@ -8,7 +8,7 @@ import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
-import { HlsTesterModal } from './HlsTesterModal';
+import HlsStreamResolverModal from './HlsStreamResolverModal';
 import './VoiceChannel.css';
 
 const VideoRenderer = ({ track, isLocal, className }) => {
@@ -693,14 +693,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 </button>
                             </div>
 
-                            <HlsTesterModal
-                                isOpen={isHlsModalOpen}
-                                onClose={() => setIsHlsModalOpen(false)}
-                                onStartWatchParty={(streamUrl) => {
-                                    startWatchParty(streamUrl, false);
-                                }}
-                            />
-
                             {/* Desktop Specific for Conference */}
                             {!isMobile && (
                                 <>
@@ -715,6 +707,15 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                     <button className="vc-ctrl-btn danger leave" onClick={handleLeave}><PhoneOff size={22} /></button>
                 </div>
             )}
+
+            {/* HLS Video Oynatıcı & Stream Çözücü Modalı */}
+            <HlsStreamResolverModal 
+                isOpen={isHlsModalOpen}
+                onClose={() => setIsHlsModalOpen(false)}
+                onStreamResolved={(streamUrl, isLive) => {
+                    startWatchParty(streamUrl, isLive);
+                }}
+            />
         </div>
     );
 };

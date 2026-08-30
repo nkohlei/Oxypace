@@ -174,6 +174,7 @@ const isPlatformUrl = (url) => {
 
 const getProxiedUrl = (url) => {
   if (!url) return '';
+  if (url.includes('/api/proxy?') || url.includes('/api/proxy')) return url;
   if (!url.startsWith('http')) return url;
   
   const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();

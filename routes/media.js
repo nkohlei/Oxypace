@@ -865,4 +865,39 @@ router.post('/validate-stream', auth, async (req, res) => {
     }
 });
 
+/**
+ * @route   POST /api/media/resolve-stream
+ * @desc    Forward web film/series page URL to the local stream-resolver microservice
+ * @access  Private
+ */
+router.post('/resolve-stream', auth, async (req, res) => {
+    try {
+        const { url, timeout } = req.body;
+        if (!url) {
+            return res.status(400).json({ success: false, error: 'URL gereklidir.' });
+        }
+
+        const resolverBaseUrl = (process.env.STREAM_RESOLVER_URL || 'http://localhost:3001').replace(/\/$/, '');
+        console.log(`[StreamResolverForwarder] Resolving url: ${url} via ${resolverBaseUrl}`);
+
+        const response = await axios.post(`${resolverBaseUrl}/api/resolve-stream`, {
+            url,
+            timeout: timeout || 30000
+        }, {
+            timeout: 65000
+        });
+
+        return res.json(response.data);
+    } catch (error) {
+        console.error('[StreamResolverForwarder] Error resolving stream:', error.response?.data || error.message);
+        const status = error.response?.status || 500;
+        return res.status(status).json({
+            success: false,
+            error: error.response?.data?.error || 'Video akışı çözümlenemedi veya servis yanıt vermedi.',
+            code: error.response?.data?.code || 'RESOLVER_ERROR'
+        });
+    }
+});
+
 export default router;
+

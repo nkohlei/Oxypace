@@ -34,9 +34,7 @@ import voiceRoutes from './routes/voice.js';
 import translateRoutes from './routes/translate.js';
 import previewRoutes from './routes/preview.js';
 import reportRoutes from './routes/reports.js';
-import blogRoutes from './routes/blog.js';
 import ogRoutes from './routes/og.js';
-import hlsProxyRoutes from './routes/hlsProxy.js';
 import { initFirebase } from './utils/firebase.js';
 
 // Initialize Firebase Admin SDK for FCM push notifications
@@ -295,7 +293,6 @@ app.use('/og', ogRoutes);
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Routes
-app.use('/api', hlsProxyRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);

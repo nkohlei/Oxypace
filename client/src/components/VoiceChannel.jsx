@@ -7,7 +7,7 @@ import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
-import { HlsTesterModal } from './HlsTesterModal';
+import HlsStreamResolverModal from './HlsStreamResolverModal';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
 
@@ -963,14 +963,6 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             )}
                         </div>
 
-                        <HlsTesterModal
-                            isOpen={isHlsModalOpen}
-                            onClose={() => setIsHlsModalOpen(false)}
-                            onStartWatchParty={(streamUrl) => {
-                                startWatchParty(streamUrl, false);
-                            }}
-                        />
-
                         {/* Desktop Specific Controls (Screen Share & Deafen) */}
                         {!isMobile && (
                             <>
@@ -1072,11 +1064,12 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                 isOpen={isChatOpen}
             />
 
-            <HlsTesterModal
+            {/* HLS Video Oynatıcı & Stream Çözücü Modalı */}
+            <HlsStreamResolverModal 
                 isOpen={isHlsModalOpen}
                 onClose={() => setIsHlsModalOpen(false)}
-                onStartWatchParty={(streamUrl) => {
-                    startWatchParty(streamUrl, false);
+                onStreamResolved={(streamUrl, isLive) => {
+                    startWatchParty(streamUrl, isLive);
                 }}
             />
         </div>
