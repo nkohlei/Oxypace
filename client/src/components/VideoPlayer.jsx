@@ -680,26 +680,30 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   // ─── Auto-quality stall handling ────────────────────────────────────────
   const handleWaiting = useCallback(() => {
-    setIsWaiting(true);
-    if (qualityMode !== 'auto') return;
     if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
 
     waitingTimerRef.current = setTimeout(() => {
+      setIsWaiting(true);
       const activeEl = getActiveEl();
       if (!activeEl || activeEl.paused) return;
 
-      // Drop straight to lowest quality for instant continuous playback
-      const lowestSrc = src144 || src360 || src;
-      if (lowestSrc && activeEl.src !== lowestSrc && activeEl.currentSrc !== lowestSrc) {
-        console.log('[VideoPlayer] Auto: stall → dropping to lowest quality immediately');
-        initiateQualitySwap(lowestSrc);
+      if (qualityMode === 'auto') {
+        // Drop straight to lowest quality for instant continuous playback
+        const lowestSrc = src144 || src360 || src;
+        if (lowestSrc && activeEl.src !== lowestSrc && activeEl.currentSrc !== lowestSrc) {
+          console.log('[VideoPlayer] Auto: stall → dropping to lowest quality immediately');
+          initiateQualitySwap(lowestSrc);
+        }
       }
-    }, 600);
+    }, 450);
   }, [qualityMode, src144, src360, src, initiateQualitySwap]);
 
   const handlePlaying = useCallback(() => {
+    if (waitingTimerRef.current) { 
+      clearTimeout(waitingTimerRef.current); 
+      waitingTimerRef.current = null; 
+    }
     setIsWaiting(false);
-    if (waitingTimerRef.current) { clearTimeout(waitingTimerRef.current); waitingTimerRef.current = null; }
   }, []);
 
   // ─── Manual quality selector ──────────────────────────────────────────
@@ -1109,9 +1113,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onCanPlay={activeVideo === 'A' ? handlePlaying : undefined}
         onEnded={activeVideo === 'A' ? handleVideoEnded : undefined}
         onError={activeVideo === 'A' ? handleVideoError : undefined}
-        onSeeking={activeVideo === 'A' ? () => setIsWaiting(true) : undefined}
-        onSeeked={activeVideo === 'A' ? () => setIsWaiting(false) : undefined}
-        onLoadStart={activeVideo === 'A' ? () => setIsWaiting(true) : undefined}
       />
 
       {/* VIDEO B */}
@@ -1131,9 +1132,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onCanPlay={activeVideo === 'B' ? handlePlaying : undefined}
         onEnded={activeVideo === 'B' ? handleVideoEnded : undefined}
         onError={activeVideo === 'B' ? handleVideoError : undefined}
-        onSeeking={activeVideo === 'B' ? () => setIsWaiting(true) : undefined}
-        onSeeked={activeVideo === 'B' ? () => setIsWaiting(false) : undefined}
-        onLoadStart={activeVideo === 'B' ? () => setIsWaiting(true) : undefined}
       />
 
       {isAdPlaying && (

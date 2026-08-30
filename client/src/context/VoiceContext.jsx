@@ -898,12 +898,10 @@ export const VoiceProvider = ({ children }) => {
 
         const handleWatchPlay = ({ time, serverTimestamp, senderId }) => {
             const now = Date.now();
-            const elapsed = serverTimestamp ? Math.max(0, (now - serverTimestamp) / 1000) : 0;
-            const targetTime = time + elapsed;
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: true, 
-                currentTime: targetTime, 
+                currentTime: time, 
                 lastUpdated: now,
                 serverTimestamp: serverTimestamp || now,
                 lastActionBy: senderId
