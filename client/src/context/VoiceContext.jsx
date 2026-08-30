@@ -245,9 +245,23 @@ export const VoiceProvider = ({ children }) => {
         return Date.now() + (serverOffsetRef.current || 0);
     }, []);
 
-    // Local Sound Helper
+    // Local Sound Helper with anti-overlap debouncing
+    const lastSoundTimesRef = useRef({ join: 0, leave: 0, message: 0, general: 0 });
+
     const playInteractionSound = useCallback((type) => {
         try {
+            const now = Date.now();
+            const lastTypeTime = lastSoundTimesRef.current[type] || 0;
+            const lastGeneralTime = lastSoundTimesRef.current.general || 0;
+
+            // Anti-overlap: Prevent duplicate sound effects within 1.2s and audio collision within 600ms
+            if (now - lastTypeTime < 1200 || now - lastGeneralTime < 600) {
+                return;
+            }
+
+            lastSoundTimesRef.current[type] = now;
+            lastSoundTimesRef.current.general = now;
+
             const soundFile = `/sounds/${type}.mp3`;
             const audio = new Audio(soundFile);
             audio.volume = type === 'message' ? 0.2 : 0.4;

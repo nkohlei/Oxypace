@@ -66,6 +66,7 @@ export const initializeVoiceHandler = (io) => {
                 }
             }
             const roomData = voiceRooms.get(roomName);
+            const isNewJoin = !roomData.participants.has(sUserId);
             roomData.participants.set(sUserId, {
                 socketId: socket.id,
                 username,
@@ -109,12 +110,14 @@ export const initializeVoiceHandler = (io) => {
                 watchParty: activeWatchParty
             });
 
-            // Emit explicit join event for notifications
-            io.to(`voice:${roomName}`).emit('voice:user-joined', {
-                userId: sUserId,
-                username,
-                avatar: avatar || '',
-            });
+            // Emit explicit join event only for genuine new participants (not socket reconnects)
+            if (isNewJoin) {
+                io.to(`voice:${roomName}`).emit('voice:user-joined', {
+                    userId: sUserId,
+                    username,
+                    avatar: avatar || '',
+                });
+            }
 
             console.log(`🎙️ User ${username} joined voice room ${roomName} (${participants.length} participants)`);
         });
@@ -124,6 +127,9 @@ export const initializeVoiceHandler = (io) => {
             if (!roomName || !userId) return;
             await removeParticipant(io, roomName, userId);
             socket.leave(`voice:${roomName}`);
+            if (socket._voiceRooms) {
+                socket._voiceRooms.delete(roomName);
+            }
         });
 
         {/* ─── Raise Hand (Stage Mode) ─── */ }
@@ -456,6 +462,23 @@ async function removeParticipant(io, roomName, userId) {
         roomData.participants.delete(userId);
     }
 
+    // Guard: If the user was not an active participant in this room, do not emit phantom leave events
+    if (!participant) {
+        return;
+    }
+
+    if (pubClient) {
+        try {
+            await pubClient.hdel(`voiceroom:${roomName}`, sUserId);
+            const count = await pubClient.hlen(`voiceroom:${roomName}`);
+            if (count === 0) {
+                await pubClient.del(`voiceroom:${roomName}`);
+            }
+        } catch (err) {
+            console.error('Redis voiceroom remove error:', err);
+        }
+    }
+
     // Get active watchParty from Redis
     let activeWatchParty = roomData ? (roomData.watchParty || null) : null;
     if (pubClient) {
@@ -477,10 +500,10 @@ async function removeParticipant(io, roomName, userId) {
         watchParty: activeWatchParty
     });
 
-    // Emit explicit leave event
+    // Emit explicit leave event exactly once
     io.to(`voice:${roomName}`).emit('voice:user-left', {
         userId: sUserId,
-        username: participant ? participant.username : '',
+        username: participant.username || '',
     });
 
     // Cleanup empty rooms (with a 20s grace period for socket reconnects)
