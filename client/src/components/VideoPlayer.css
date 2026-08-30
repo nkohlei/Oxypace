@@ -210,38 +210,63 @@
     opacity: 0.9;
 }
 
-/* Fullscreen special styles */
-.native-player-container:fullscreen {
-    width: 100vw;
-    height: 100vh;
-    background: transparent !important;
-    background-color: transparent !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* Fullscreen special styles - GPU Accelerated & Layout-Locked */
+.native-player-container:fullscreen,
+.native-player-container:-webkit-full-screen,
+.native-player-container:-moz-full-screen,
+.native-player-container:-ms-fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    aspect-ratio: auto !important;
+    background: #000000 !important;
+    background-color: #000000 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transform: translateZ(0) !important;
+    will-change: transform !important;
+    contain: strict !important;
 }
 
 .native-player-container::backdrop {
-    background: #000 !important;
+    background: #000000 !important;
 }
 
 .native-player-container::-webkit-backdrop {
-    background: #000 !important;
+    background: #000000 !important;
 }
 
-.native-player-container:fullscreen .native-video-element {
-    width: 100%;
-    height: 100%;
-    max-height: 100vh;
-    object-fit: contain;
+.native-player-container:fullscreen .native-video-element,
+.native-player-container:-webkit-full-screen .native-video-element,
+.native-player-container:-moz-full-screen .native-video-element,
+.native-player-container:-ms-fullscreen .native-video-element {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    object-fit: contain !important;
+    transform: translateZ(0) !important;
+    will-change: transform !important;
+    backface-visibility: hidden !important;
 }
 
-.native-player-container:fullscreen .native-controls-ui {
+.native-player-container:fullscreen .native-controls-ui,
+.native-player-container:-webkit-full-screen .native-controls-ui,
+.native-player-container:-moz-full-screen .native-controls-ui,
+.native-player-container:-ms-fullscreen .native-controls-ui {
     bottom: 0;
     padding: 30px 30px 20px;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
+    transform: translateZ(0) !important;
 }
 
 .native-time-sep {

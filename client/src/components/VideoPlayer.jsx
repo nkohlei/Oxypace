@@ -141,9 +141,6 @@ if (typeof window !== 'undefined') {
   window.addEventListener('resize', handleGlobalScroll);
   const onFullscreenChange = (e) => {
     handleGlobalScroll(e);
-    if (!document.fullscreenElement && !Capacitor.isNativePlatform()) {
-      setTimeout(() => { window.scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }, 10);
-    }
     if (Capacitor.isNativePlatform()) {
       try {
         const isFs = !!document.fullscreenElement;
@@ -1004,24 +1001,41 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, [activeVideo]);
 
   const handleMouseMove = useCallback((e) => {
-    if (isSettingsOpen || isQualityMenuOpen) { setShowControls(true); return; }
+    if (isSettingsOpen || isQualityMenuOpen) {
+      if (!showControls) setShowControls(true);
+      return;
+    }
     const el = getActiveEl();
-    if (el?.paused) { setShowControls(true); return; }
+    if (el?.paused) {
+      if (!showControls) setShowControls(true);
+      return;
+    }
     const isFs = !!document.fullscreenElement;
     if (isFs) {
       const t = 10;
       if (e.clientX <= t || e.clientX >= window.innerWidth - t || e.clientY <= t || e.clientY >= window.innerHeight - t) {
-        setShowControls(false); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); return;
+        if (showControls) setShowControls(false);
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        return;
       }
     }
-    setShowControls(true); startControlsTimeout(1500);
-  }, [isSettingsOpen, isQualityMenuOpen, startControlsTimeout, activeVideo]);
+    if (!showControls) {
+      setShowControls(true);
+    }
+    startControlsTimeout(2000);
+  }, [isSettingsOpen, isQualityMenuOpen, showControls, startControlsTimeout, activeVideo]);
 
   const handleMouseEnter = useCallback(() => {
     const el = getActiveEl();
-    if (el?.paused) { setShowControls(true); return; }
-    setShowControls(true); startControlsTimeout(1500);
-  }, [startControlsTimeout, activeVideo]);
+    if (el?.paused) {
+      if (!showControls) setShowControls(true);
+      return;
+    }
+    if (!showControls) {
+      setShowControls(true);
+    }
+    startControlsTimeout(2000);
+  }, [showControls, startControlsTimeout, activeVideo]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -1081,7 +1095,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       opacity: isActive ? 1 : 0,
       pointerEvents: isActive ? 'auto' : 'none',
       zIndex: isActive ? 1 : 0,
-      transition: 'opacity 0.08s linear'   // near-instant: just prevents 1-frame black flash
+      transition: 'opacity 0.08s linear',
+      transform: 'translateZ(0)',
+      willChange: 'transform',
+      backfaceVisibility: 'hidden',
     };
   };
 
