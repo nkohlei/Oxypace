@@ -822,7 +822,11 @@ router.post('/validate-stream', auth, async (req, res) => {
             return res.json({ isLive: false, type: 'platform' });
         }
 
-        const isHls = cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/');
+        if (url.includes('/api/proxy') || url.includes('/api/media/proxy')) {
+            return res.json({ isLive: true, type: 'hls_proxy', streamUrl: url });
+        }
+
+        const isHls = cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt');
         const isDash = cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/');
 
         if (!isHls && !isDash) {
