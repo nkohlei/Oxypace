@@ -12,6 +12,7 @@ import { constructProxiedUrl } from '../utils/mediaConfig.js';
 import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
 import Comment from '../models/Comment.js';
 import Portal from '../models/Portal.js';
+import { pubClient } from '../sockets/redisAdapter.js';
 
 const router = express.Router();
 
@@ -1055,6 +1056,10 @@ router.put('/settings', protect, async (req, res) => {
         const { notifications, privacy, video } = req.body;
         const user = await User.findById(req.user._id);
 
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
         if (!user.settings) {
             user.settings = {};
         }
@@ -1070,14 +1075,56 @@ router.put('/settings', protect, async (req, res) => {
 
         if (notifications) {
             user.settings.notifications = { ...user.settings.notifications, ...notifications };
+            user.markModified('settings.notifications');
         }
         if (privacy) {
             user.settings.privacy = { ...user.settings.privacy, ...privacy };
+            user.markModified('settings.privacy');
+
+            // Handle live real-time showOnlineStatus toggle across cluster & all clients
+            if (typeof privacy.showOnlineStatus === 'boolean') {
+                const io = req.app.get('io');
+                const strUserId = String(user._id);
+                if (!privacy.showOnlineStatus) {
+                    if (pubClient) {
+                        try {
+                            await pubClient.sadd('hidden_user_ids', strUserId);
+                            await pubClient.srem('online_user_ids', strUserId);
+                        } catch (err) {}
+                    }
+                    if (io) {
+                        io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
+                        try {
+                            const redisMembers = pubClient ? await pubClient.smembers('online_user_ids') : [];
+                            const hiddenMembers = pubClient ? await pubClient.smembers('hidden_user_ids') : [];
+                            const hiddenSet = new Set(hiddenMembers.map(String));
+                            const filtered = (redisMembers || []).filter(id => !hiddenSet.has(String(id)));
+                            io.emit('getOnlineUsers', filtered);
+                        } catch (err) {}
+                    }
+                } else {
+                    if (pubClient) {
+                        try {
+                            await pubClient.srem('hidden_user_ids', strUserId);
+                            await pubClient.sadd('online_user_ids', strUserId);
+                        } catch (err) {}
+                    }
+                    if (io) {
+                        io.emit('user_status_change', { userId: strUserId, status: 'online' });
+                        try {
+                            const redisMembers = pubClient ? await pubClient.smembers('online_user_ids') : [];
+                            io.emit('getOnlineUsers', redisMembers || []);
+                        } catch (err) {}
+                    }
+                }
+            }
         }
         if (video) {
             user.settings.video = { ...user.settings.video, ...video };
+            user.markModified('settings.video');
         }
 
+        user.markModified('settings');
         await user.save();
         res.json({ message: 'Settings updated', settings: user.settings });
     } catch (error) {

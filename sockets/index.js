@@ -39,18 +39,38 @@ export const initializeSocket = (io) => {
     const disconnectTimers = new Map();
 
     const getOnlineUserIds = async () => {
-        const localSet = new Set(activeUsersMap.keys());
+        let redisMembers = [];
+        let hiddenMembers = [];
         if (pubClient) {
             try {
-                const redisMembers = await pubClient.smembers('online_user_ids');
-                if (Array.isArray(redisMembers)) {
-                    redisMembers.forEach(id => localSet.add(String(id)));
-                }
+                const [rOnline, rHidden] = await Promise.all([
+                    pubClient.smembers('online_user_ids'),
+                    pubClient.smembers('hidden_user_ids')
+                ]);
+                if (Array.isArray(rOnline)) redisMembers = rOnline;
+                if (Array.isArray(rHidden)) hiddenMembers = rHidden;
             } catch (err) {
-                console.error('⚠️ Error getting online users from Redis:', err);
+                console.error('⚠️ Error getting online/hidden users from Redis:', err);
             }
         }
-        return Array.from(localSet);
+        const hiddenSet = new Set(hiddenMembers.map(String));
+        const onlineSet = new Set();
+
+        redisMembers.forEach(id => {
+            const sId = String(id);
+            if (!hiddenSet.has(sId)) {
+                onlineSet.add(sId);
+            }
+        });
+
+        for (const [userId, sockets] of activeUsersMap.entries()) {
+            const sId = String(userId);
+            if (sockets && sockets.size > 0 && !hiddenSet.has(sId)) {
+                onlineSet.add(sId);
+            }
+        }
+
+        return Array.from(onlineSet);
     };
 
     const broadcastGlobalOnlineUsers = async () => {
@@ -118,36 +138,37 @@ export const initializeSocket = (io) => {
             }
 
             const isGhostMode = !!isGhost;
-            const showOnline = !isGhostMode && userDoc?.settings?.privacy?.showOnlineStatus !== false;
-            socket.data.showOnlineStatus = showOnline;
+            const isUserHidden = isGhostMode || (userDoc?.settings?.privacy?.showOnlineStatus === false);
+            socket.data.showOnlineStatus = !isUserHidden;
 
-            if (showOnline) {
-                if (!activeUsersMap.has(strUserId)) {
-                    activeUsersMap.set(strUserId, new Set());
-                }
-                activeUsersMap.get(strUserId).add(socket.id);
-
+            if (isUserHidden) {
+                activeUsersMap.delete(strUserId);
                 if (pubClient) {
                     try {
+                        await pubClient.sadd('hidden_user_ids', strUserId);
+                        await pubClient.srem('online_user_ids', strUserId);
+                    } catch (err) {}
+                }
+                io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
+                await broadcastGlobalOnlineUsers();
+                console.log(`👤 User ${strUserId} joined in hidden/invisible mode`);
+            } else {
+                if (pubClient) {
+                    try {
+                        await pubClient.srem('hidden_user_ids', strUserId);
                         await pubClient.sadd('online_user_ids', strUserId);
                     } catch (err) {
                         console.error('⚠️ Error adding user to Redis online set:', err);
                     }
                 }
-
-                await broadcastGlobalOnlineUsers();
-                io.emit('user_status_change', { userId: strUserId, status: 'online' });
-                console.log(`👤 User ${strUserId} joined visible (active sockets: ${activeUsersMap.get(strUserId).size})`);
-            } else {
-                activeUsersMap.delete(strUserId);
-                if (pubClient) {
-                    try {
-                        await pubClient.srem('online_user_ids', strUserId);
-                    } catch (err) {}
+                if (!activeUsersMap.has(strUserId)) {
+                    activeUsersMap.set(strUserId, new Set());
                 }
+                activeUsersMap.get(strUserId).add(socket.id);
+
+                io.emit('user_status_change', { userId: strUserId, status: 'online' });
                 await broadcastGlobalOnlineUsers();
-                io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
-                console.log(`👤 User ${strUserId} joined in hidden/invisible mode`);
+                console.log(`👤 User ${strUserId} joined visible (active sockets: ${activeUsersMap.get(strUserId).size})`);
             }
 
             const currentOnlineList = await getOnlineUserIds();
@@ -180,6 +201,7 @@ export const initializeSocket = (io) => {
                 activeUsersMap.delete(strUserId);
                 if (pubClient) {
                     try {
+                        await pubClient.sadd('hidden_user_ids', strUserId);
                         await pubClient.srem('online_user_ids', strUserId);
                     } catch (err) {}
                 }
@@ -187,15 +209,16 @@ export const initializeSocket = (io) => {
                 await broadcastGlobalOnlineUsers();
                 console.log(`👤 User ${strUserId} hid online status (invisible mode)`);
             } else {
+                if (pubClient) {
+                    try {
+                        await pubClient.srem('hidden_user_ids', strUserId);
+                        await pubClient.sadd('online_user_ids', strUserId);
+                    } catch (err) {}
+                }
                 if (!activeUsersMap.has(strUserId)) {
                     activeUsersMap.set(strUserId, new Set());
                 }
                 activeUsersMap.get(strUserId).add(socket.id);
-                if (pubClient) {
-                    try {
-                        await pubClient.sadd('online_user_ids', strUserId);
-                    } catch (err) {}
-                }
                 io.emit('user_status_change', { userId: strUserId, status: 'online' });
                 await broadcastGlobalOnlineUsers();
                 console.log(`👤 User ${strUserId} unhid online status (visible mode)`);
