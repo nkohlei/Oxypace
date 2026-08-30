@@ -149,9 +149,20 @@ const requestNativePermissions = async () => {
             }
 
             // Listeners
-            await PushNotifications.addListener('registration', (token) => {
-                // Save token locally to be sent when user logs in
+            await PushNotifications.addListener('registration', async (token) => {
                 localStorage.setItem('fcm_token', token.value);
+                const userToken = localStorage.getItem('token');
+                if (userToken) {
+                    try {
+                        const { default: axios } = await import('axios');
+                        await axios.post('/api/users/fcm-token', { token: token.value }, {
+                            headers: { Authorization: `Bearer ${userToken}` }
+                        });
+                        console.log('✅ FCM Token synced instantly upon registration');
+                    } catch (e) {
+                        console.error('FCM sync error on registration:', e);
+                    }
+                }
             });
 
             await PushNotifications.addListener('registrationError', (error) => {
