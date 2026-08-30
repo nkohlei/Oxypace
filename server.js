@@ -317,6 +317,8 @@ app.use('/api/blog', blogRoutes);
 import { exec } from 'child_process';
 import crypto from 'crypto';
 
+let isDeploying = false;
+
 // GitHub Deploy Webhook
 app.post('/api/webhook/deploy', express.json(), (req, res) => {
     const signature = req.headers['x-hub-signature-256'];
@@ -333,16 +335,23 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     console.log('🚀 [AutoDeploy] GitHub push event received! Updating backend...');
     res.status(200).json({ message: 'Deploy triggered successfully' });
 
+    if (isDeploying) {
+        console.log('⏳ [AutoDeploy] Another deployment is already in progress, skipping duplicate.');
+        return;
+    }
+
+    isDeploying = true;
     // Arka planda git pull ve pm2 reload çalıştır
     setTimeout(() => {
         exec('cd /home/ubuntu/app && git pull origin main && npm install --omit=dev && pm2 restart oxypace-backend', (err, stdout, stderr) => {
+            isDeploying = false;
             if (err) {
                 console.error('❌ [AutoDeploy] Error:', err);
                 return;
             }
             console.log('✅ [AutoDeploy] Output:', stdout);
         });
-    }, 1000);
+    }, 2000);
 });
 
 // Loader.io Verification
