@@ -34,6 +34,7 @@ import voiceRoutes from './routes/voice.js';
 import translateRoutes from './routes/translate.js';
 import previewRoutes from './routes/preview.js';
 import reportRoutes from './routes/reports.js';
+import blogRoutes from './routes/blog.js';
 import ogRoutes from './routes/og.js';
 import { initFirebase } from './utils/firebase.js';
 
