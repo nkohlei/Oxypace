@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Users, Info, Calendar, ShieldCheck, Globe, Lock, Shield } from 'lucide-react';
+import { X } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
 import './PortalInfoModal.css';
@@ -49,26 +49,11 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
     const isPrivate = portal.privacy === 'private' || portal.isPrivate === true;
     const isRestricted = portal.privacy === 'restricted';
 
-    const getPrivacyInfo = () => {
-        if (isPrivate) {
-            return {
-                label: 'Gizli',
-                icon: <Lock size={18} className="stat-icon" />
-            };
-        }
-        if (isRestricted) {
-            return {
-                label: 'Kısıtlı',
-                icon: <Shield size={18} className="stat-icon" />
-            };
-        }
-        return {
-            label: 'Kamu',
-            icon: <Globe size={18} className="stat-icon" />
-        };
+    const getPrivacyLabel = () => {
+        if (isPrivate) return 'Gizli';
+        if (isRestricted) return 'Kısıtlı';
+        return 'Kamu';
     };
-
-    const privacyInfo = getPrivacyInfo();
 
     const content = (
         <div className="portal-info-container">
@@ -96,16 +81,14 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
 
                 <div className="portal-info-stats-grid">
                     <div className="portal-info-stat-card">
-                        <Users size={18} className="stat-icon" />
                         <div className="stat-data">
                             <span className="stat-value">{portal.membersCount || portal.members?.length || 0}</span>
                             <span className="stat-label">Üye</span>
                         </div>
                     </div>
                     <div className="portal-info-stat-card">
-                        {privacyInfo.icon}
                         <div className="stat-data">
-                            <span className="stat-value">{privacyInfo.label}</span>
+                            <span className="stat-value">{getPrivacyLabel()}</span>
                             <span className="stat-label">Görünürlük</span>
                         </div>
                     </div>
@@ -113,15 +96,12 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
 
                 <div className="portal-info-details">
                     <div className="detail-item">
-                        <Calendar size={18} />
                         <span>Oluşturulma: <strong>{formattedDate}</strong></span>
                     </div>
                     <div className="detail-item">
-                        <ShieldCheck size={18} />
-                        <span>{portal.isVerified || (portal.badges && portal.badges.length > 0) ? 'Doğrulanmış Portal' : 'Standart Portal'}</span>
+                        <span>Durum: <strong>{portal.isVerified || (portal.badges && portal.badges.length > 0) ? 'Doğrulanmış Portal' : 'Standart Portal'}</strong></span>
                     </div>
                     <div className="detail-item">
-                        <Info size={18} />
                         <span>Kategori: <strong>{portal.category || 'Genel'}</strong></span>
                     </div>
                 </div>
