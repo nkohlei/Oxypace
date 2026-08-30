@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Users, Info, Calendar, ShieldCheck, Globe } from 'lucide-react';
+import { X, Users, Info, Calendar, ShieldCheck, Globe, Lock, Shield } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
 import './PortalInfoModal.css';
@@ -46,6 +46,30 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
         day: 'numeric'
     });
 
+    const isPrivate = portal.privacy === 'private' || portal.isPrivate === true;
+    const isRestricted = portal.privacy === 'restricted';
+
+    const getPrivacyInfo = () => {
+        if (isPrivate) {
+            return {
+                label: 'Gizli',
+                icon: <Lock size={18} className="stat-icon" />
+            };
+        }
+        if (isRestricted) {
+            return {
+                label: 'Kısıtlı',
+                icon: <Shield size={18} className="stat-icon" />
+            };
+        }
+        return {
+            label: 'Kamu',
+            icon: <Globe size={18} className="stat-icon" />
+        };
+    };
+
+    const privacyInfo = getPrivacyInfo();
+
     const content = (
         <div className="portal-info-container">
             <div className="portal-info-banner">
@@ -79,9 +103,9 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                         </div>
                     </div>
                     <div className="portal-info-stat-card">
-                        <Globe size={18} className="stat-icon" />
+                        {privacyInfo.icon}
                         <div className="stat-data">
-                            <span className="stat-value">Kamu</span>
+                            <span className="stat-value">{privacyInfo.label}</span>
                             <span className="stat-label">Görünürlük</span>
                         </div>
                     </div>
@@ -94,7 +118,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                     </div>
                     <div className="detail-item">
                         <ShieldCheck size={18} />
-                        <span>Doğrulanmış Portal</span>
+                        <span>{portal.isVerified || (portal.badges && portal.badges.length > 0) ? 'Doğrulanmış Portal' : 'Standart Portal'}</span>
                     </div>
                     <div className="detail-item">
                         <Info size={18} />
