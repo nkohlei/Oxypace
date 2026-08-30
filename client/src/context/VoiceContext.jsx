@@ -1561,44 +1561,25 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [participants, activeRoom, localState]);
 
-    // Global Key Listener for Push to Talk
+    // Handle overlay IPC control actions (mic/cam/screen/leave toggles)
     useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (activeRoom && isPushToTalk && e.code === pushToTalkKey) {
-                if (localState.isMuted) {
-                    toggleMicrophone();
-                }
-            }
-        };
-
-        const handleKeyUp = (e) => {
-            if (activeRoom && isPushToTalk && e.code === pushToTalkKey) {
-                if (!localState.isMuted) {
-                    toggleMicrophone();
-                }
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keyup', handleKeyUp);
-        };
-    }, [activeRoom, isPushToTalk, pushToTalkKey, localState.isMuted, toggleMicrophone]);
-
-    // Listen to overlay command broadcasts
-    useEffect(() => {
-        if (window.desktopAPI?.onOverlayAction) {
-            const removeListener = window.desktopAPI.onOverlayAction((action) => {
-                if (action === 'toggleMute') {
-                    toggleMicrophone();
-                } else if (action === 'toggleCamera') {
-                    toggleCamera();
-                } else if (action === 'toggleScreenShare') {
-                    toggleScreenShare();
-                } else if (action === 'disconnect') {
-                    disconnectFromChannel();
+        if (window.desktopAPI && window.desktopAPI.onOverlayControlAction) {
+            const removeListener = window.desktopAPI.onOverlayControlAction((action) => {
+                switch(action) {
+                    case 'toggle-mic':
+                        toggleMicrophone();
+                        break;
+                    case 'toggle-camera':
+                        toggleCamera();
+                        break;
+                    case 'toggle-screen':
+                        toggleScreenShare();
+                        break;
+                    case 'leave':
+                        disconnectFromChannel();
+                        break;
+                    default:
+                        break;
                 }
             });
             return removeListener;
