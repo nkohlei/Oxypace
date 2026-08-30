@@ -343,9 +343,9 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     }
 
     isDeploying = true;
-    // Arka planda git pull, playwright chromium kurulumu ve pm2 reload çalıştır
+    // Arka planda git pull, stream-resolver kurulumu ve pm2 reload çalıştır
     setTimeout(() => {
-        exec('cd /home/ubuntu/app && git pull origin main && npm install --omit=dev && npx playwright install chromium --with-deps && pm2 restart oxypace-backend', (err, stdout, stderr) => {
+        exec('cd /home/ubuntu/app && git pull origin main && npm install --omit=dev && cd stream-resolver && npm install && npx playwright install chromium --with-deps && cd .. && pm2 restart oxypace-backend', (err, stdout, stderr) => {
             isDeploying = false;
             if (err) {
                 console.error('❌ [AutoDeploy] Error:', err);
@@ -646,12 +646,26 @@ httpServer.listen(PORT, async () => {
             console.error('⚠️ Boot DB connect/repair failed:', err.message);
         }
 
-        // Run background worker tasks (Bots & Cron) ONLY on primary cluster instance (Instance 0)
+        // Run background worker tasks (Bots, Cron & Stream Resolver) ONLY on primary cluster instance (Instance 0)
         // This prevents 4x parallel duplicate scraping, socket spam, and database race conditions.
         const isPrimaryInstance = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
         if (isPrimaryInstance) {
             console.log('👑 Primary Cluster Worker (Instance 0): Starting News Bot & System Cron Jobs...');
             startBotLoop(io);
+
+            // Auto-start embedded Stream Resolver microservice on port 3001
+            try {
+                const resolverDir = path.join(__dirname, 'stream-resolver');
+                if (fs.existsSync(resolverDir)) {
+                    console.log('🎬 [StreamResolver] Starting background resolver process from:', resolverDir);
+                    const resolverProcess = exec('npm start', { cwd: resolverDir });
+                    resolverProcess.stdout?.on('data', (d) => console.log(`[StreamResolver stdout] ${d.toString().trim()}`));
+                    resolverProcess.stderr?.on('data', (d) => console.warn(`[StreamResolver stderr] ${d.toString().trim()}`));
+                    resolverProcess.on('error', (err) => console.error('[StreamResolver] Process error:', err.message));
+                }
+            } catch (resErr) {
+                console.error('[StreamResolver] Auto-start failed:', resErr.message);
+            }
 
             // Keep-Alive Cron Job
             cron.schedule('*/10 * * * *', async () => {

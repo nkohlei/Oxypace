@@ -1,0 +1,62 @@
+========================================================================
+🚀 CANLI .COM SUNUCUSU İÇİN EN KOLAY KURULUM VE ENTEGRASYON REHBERİ
+========================================================================
+
+Canlıda çalışan .com'lu bir web sitesine (Oxypace) bu servisi bağlamak için 2 aşama vardır:
+
+------------------------------------------------------------------------
+1. AŞAMA: SUNUCUYA KURULUM (DOCKER VEYA PM2 İLE TEK KOMUT)
+------------------------------------------------------------------------
+
+Sunucuyu (Linux VPS / VDS) kuran kişinin elinde 2 çok kolay seçenek vardır:
+
+▶ SEÇENEK A (EN EN KOLAYI - DOCKER İLE TEK KOMUT):
+  Sunucuda Docker varsa, hiç Node.js veya tarayıcı yüklemeyle uğraşmadan
+  zip klasörü içinde şu tek komutu çalıştırması yeterlidir:
+
+     docker compose up -d
+
+  (Docker tüm tarayıcıları, Node.js'i ve ayarları arka planda 1 saniyede otomatik kurar ve 7/24 çalıştırır).
+
+▶ SEÇENEK B (NORMAL NODE.JS KURULUMU):
+  Sunucu terminalinde zip klasörü içinde:
+     1. npm install
+     2. npx playwright install chromium --with-deps
+     3. pm2 start server.js --name "oxypace-stream"
+
+------------------------------------------------------------------------
+2. AŞAMA: .COM DOMAIN & SSL (HTTPS) BAĞLAMA (NGINX)
+------------------------------------------------------------------------
+
+Siteniz https://oxypace.com gibi SSL (.com) kullandığı için, servise bir alt domain (Örn: https://stream.oxypace.com) tanımlamak Nginx ile çok kolaydır:
+
+Örnek Nginx Ayarı:
+------------------
+server {
+    server_name stream.oxypace.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+------------------------------------------------------------------------
+3. AŞAMA: OXYPACE SİTESİNE EKLEME (Sadece Tek Satır Kodu!)
+------------------------------------------------------------------------
+
+Arkadaşınız sitenin film gösterilen sayfasına veya React/HTML bileşenine SADECE şu tek satır iFrame kodunu koyacaktır:
+
+<iframe src="https://stream.oxypace.com/player?url=FILM_LINKI_BURAYA" width="100%" height="500px" frameborder="0" allowfullscreen></iframe>
+
+VEYA (Widget Script Yöntemi):
+Sitenin <head> kısmına:
+<script src="https://stream.oxypace.com/embed.js"></script>
+
+Filmin çıkacağı yere:
+<div class="oxypace-player" data-url="FILM_LINKI_BURAYA"></div>
+
+Bu kadar! Hiçbir ekstra kütüphane veya kod yazmaya gerek kalmaz.
