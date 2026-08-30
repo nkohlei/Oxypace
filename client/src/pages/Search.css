@@ -374,8 +374,31 @@
     gap: 6px;
 }
 
-.private-badge {
-    font-size: 0.8rem;
+.oxypace-privacy-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+:root[data-theme='light'] .oxypace-privacy-pill,
+[data-theme='light'] .oxypace-privacy-pill {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #64748b;
+}
+
+.oxypace-privacy-pill svg {
+    color: inherit;
 }
 
 .card-desc {

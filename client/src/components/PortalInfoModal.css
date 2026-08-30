@@ -128,10 +128,15 @@
     background: #181a22 !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 14px;
-    padding: 16px;
+    padding: 14px 16px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.portal-info-stat-card:hover {
+    border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 :root[data-theme='light'] .portal-info-stat-card,
@@ -140,8 +145,24 @@
     border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-.stat-icon {
-    color: var(--primary-cyan);
+.portal-stat-icon-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    flex-shrink: 0;
+}
+
+:root[data-theme='light'] .portal-stat-icon-box,
+[data-theme='light'] .portal-stat-icon-box {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #64748b;
 }
 
 .stat-data {
@@ -153,20 +174,22 @@
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--text-primary);
+    line-height: 1.2;
 }
 
 .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-top: 2px;
 }
 
 .portal-info-details {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding-top: 24px;
+    padding-top: 20px;
     border-top: 1px solid var(--glass-border);
 }
 
@@ -174,12 +197,28 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     color: var(--text-secondary);
 }
 
-.detail-item svg {
-    color: var(--text-tertiary);
+.detail-icon-pill {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8e95a5;
+    flex-shrink: 0;
+}
+
+:root[data-theme='light'] .detail-icon-pill,
+[data-theme='light'] .detail-icon-pill {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.06);
+    color: #64748b;
 }
 
 .detail-item strong {
