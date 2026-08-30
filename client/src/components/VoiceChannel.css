@@ -762,8 +762,30 @@
     }
 
     .vc-controls {
+        bottom: 12px !important;
+        gap: 8px !important;
         z-index: 1100 !important;
         pointer-events: auto !important;
+    }
+
+    .vc-ctrl-section {
+        padding: 6px 12px !important;
+        gap: 8px !important;
+        border-radius: 100px !important;
+    }
+
+    .leave-section {
+        padding: 6px !important;
+    }
+
+    .vc-ctrl-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .vc-ctrl-btn svg {
+        width: 15px !important;
+        height: 15px !important;
     }
 
     /* Mobile Portrait: Stack user windows vertically (üst üste) when Watch Party / Spotlight is OFF */
