@@ -160,19 +160,17 @@
 
 @media (max-width: 768px) {
     #watch-party-portal-placeholder.watch-party-target-hero {
-        position: absolute;
-        top: calc(50% - 30px);
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: calc(100% - 24px);
-        max-width: 520px;
-        aspect-ratio: 16 / 9;
-        height: auto;
-        max-height: calc(100% - 160px);
-        margin: 0 auto;
-        box-sizing: border-box;
-        border-radius: 16px;
-        overflow: hidden;
+        position: absolute !important;
+        top: calc(50% - 30px) !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(calc(100vw - 24px), 540px) !important;
+        height: calc(min(calc(100vw - 24px), 540px) * 9 / 16) !important;
+        aspect-ratio: 16 / 9 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        border-radius: 16px !important;
+        overflow: hidden !important;
     }
     
     #watch-party-portal-placeholder.watch-party-target-carousel {
@@ -193,12 +191,13 @@
         top: 50% !important;
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
-        height: calc(100% - 16px) !important;
-        width: auto !important;
+        width: min(calc(100vw - 24px), calc((100vh - 24px) * 16 / 9)) !important;
+        height: min(calc(100vh - 24px), calc((100vw - 24px) * 9 / 16)) !important;
         aspect-ratio: 16 / 9 !important;
-        max-width: calc(100vw - 32px) !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
         border-radius: 12px !important;
+        overflow: hidden !important;
     }
 }
 
@@ -688,26 +687,27 @@
         position: absolute !important;
         bottom: 95px !important;
         left: 50% !important;
-        transform: translateX(-50%) !important;
-        width: calc(100% - 16px) !important;
+        transform: translateX(-50%) translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0) scale(var(--drag-scale, 1)) !important;
+        transform-origin: center bottom !important;
+        width: auto !important;
         max-width: calc(100% - 16px) !important;
         display: flex !important;
         flex-direction: row !important;
         justify-content: center !important;
         align-items: center !important;
-        flex-wrap: wrap !important;
+        flex-wrap: nowrap !important;
         gap: 10px !important;
         z-index: 950 !important;
         background: transparent !important;
         height: auto !important;
         max-height: 150px !important;
-        padding: 0 !important;
+        padding: 4px !important;
         margin-top: 0 !important;
-        overflow-y: visible !important;
-        overflow-x: visible !important;
+        overflow: visible !important;
         touch-action: none !important;
         user-select: none !important;
         cursor: grab !important;
+        will-change: transform !important;
     }
 
     .layout-spotlight .vc-carousel:active {
@@ -724,6 +724,7 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
         margin: 0 !important;
         transition: transform 0.15s ease;
+        touch-action: none !important;
     }
 
     .vc-card.role-carousel .vc-card-avatar {
@@ -759,11 +760,17 @@
         bottom: 12px !important;
         right: 16px !important;
         left: auto !important;
-        transform: none !important;
-        flex-direction: column !important;
+        transform: translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0) scale(var(--drag-scale, 0.8)) !important;
+        transform-origin: bottom right !important;
+        flex-direction: row !important;
         gap: 6px !important;
         max-height: calc(100% - 24px) !important;
         width: auto !important;
+        z-index: 950 !important;
+        touch-action: none !important;
+        user-select: none !important;
+        cursor: grab !important;
+        will-change: transform !important;
     }
 
     .vc-card.role-carousel {

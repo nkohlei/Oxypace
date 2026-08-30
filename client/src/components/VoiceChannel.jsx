@@ -372,15 +372,19 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [carouselOffset, setCarouselOffset] = useState({ x: 0, y: 0 });
     const [carouselScale, setCarouselScale] = useState(1);
     const touchStartRef = useRef(null);
+    const isDraggingRef = useRef(false);
 
     const handleCarouselTouchStart = (e) => {
         if (!isMobile) return;
+        isDraggingRef.current = false;
         if (e.touches.length === 1) {
             const touch = e.touches[0];
             touchStartRef.current = {
                 type: 'drag',
                 startX: touch.clientX - carouselOffset.x,
-                startY: touch.clientY - carouselOffset.y
+                startY: touch.clientY - carouselOffset.y,
+                originX: touch.clientX,
+                originY: touch.clientY
             };
         } else if (e.touches.length === 2) {
             const dist = Math.hypot(
@@ -399,10 +403,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
         if (!touchStartRef.current || !isMobile) return;
         if (touchStartRef.current.type === 'drag' && e.touches.length === 1) {
             const touch = e.touches[0];
+            const dx = touch.clientX - touchStartRef.current.originX;
+            const dy = touch.clientY - touchStartRef.current.originY;
+            if (Math.hypot(dx, dy) > 4) {
+                isDraggingRef.current = true;
+            }
             const newX = touch.clientX - touchStartRef.current.startX;
             const newY = touch.clientY - touchStartRef.current.startY;
             setCarouselOffset({ x: newX, y: newY });
         } else if (touchStartRef.current.type === 'pinch' && e.touches.length === 2) {
+            isDraggingRef.current = true;
             const currentDist = Math.hypot(
                 e.touches[0].clientX - e.touches[1].clientX,
                 e.touches[0].clientY - e.touches[1].clientY
@@ -418,13 +428,18 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     };
 
     const renderParticipantCard = (p, role = 'grid', onClickOverride = null) => {
+        const handleCardClick = () => {
+            if (isDraggingRef.current) return;
+            if (onClickOverride) onClickOverride();
+            else handleFocus(p.identity);
+        };
         const isShowingScreen = p.isScreenSharing;
         const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
         const shouldAttachVideo = !isShowingScreen || p.isLocal || watchStreamAccepted;
 
         return (
-            <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={onClickOverride || (() => handleFocus(p.identity))}>
+            <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={handleCardClick}>
                 <div className="vc-card-video-area">
                     <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
                     {trackToRender && shouldAttachVideo ? (
@@ -693,8 +708,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                             onTouchMove={handleCarouselTouchMove}
                             onTouchEnd={handleCarouselTouchEnd}
                             style={isMobile ? {
-                                transform: `translateX(-50%) translate3d(${carouselOffset.x}px, ${carouselOffset.y}px, 0) scale(${carouselScale})`,
-                                transformOrigin: 'center bottom',
+                                '--drag-x': `${carouselOffset.x}px`,
+                                '--drag-y': `${carouselOffset.y}px`,
+                                '--drag-scale': `${carouselScale}`,
                                 touchAction: 'none'
                             } : undefined}
                         >
@@ -723,8 +739,9 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                                 onTouchMove={handleCarouselTouchMove}
                                 onTouchEnd={handleCarouselTouchEnd}
                                 style={isMobile ? {
-                                    transform: `translateX(-50%) translate3d(${carouselOffset.x}px, ${carouselOffset.y}px, 0) scale(${carouselScale})`,
-                                    transformOrigin: 'center bottom',
+                                    '--drag-x': `${carouselOffset.x}px`,
+                                    '--drag-y': `${carouselOffset.y}px`,
+                                    '--drag-scale': `${carouselScale}`,
                                     touchAction: 'none'
                                 } : undefined}
                             >
