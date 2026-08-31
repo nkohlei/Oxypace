@@ -204,7 +204,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         if (processingInfoTimeoutRef.current) clearTimeout(processingInfoTimeoutRef.current);
         processingInfoTimeoutRef.current = setTimeout(() => {
           setShowProcessingInfo(false);
-        }, 3000);
+        }, 1500);
       }
       return next;
     });
@@ -217,9 +217,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const handleInfoMouseLeave = () => {
     if (processingInfoTimeoutRef.current) clearTimeout(processingInfoTimeoutRef.current);
-    processingInfoTimeoutRef.current = setTimeout(() => {
-      setShowProcessingInfo(false);
-    }, 1500);
+    setShowProcessingInfo(false);
   };
 
   const lastProgrammaticSeekTimeRef = useRef(null);

@@ -28,20 +28,20 @@
     cursor: pointer;
 }
 
-/* Colorless Glassmorphism Minimal Processing Badge */
+/* Colorless Glassmorphism Minimal Processing Badge (Borderless & Soft-Rectangular) */
 .processing-badge-minimal {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
   backdrop-filter: blur(12px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  border-radius: 20px !important;
-  padding: 4px 10px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
   display: flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
   font-size: 11px !important;
   font-weight: 600 !important;
   color: #ffffff !important;
@@ -49,52 +49,53 @@
   z-index: 15 !important;
   cursor: pointer !important;
   user-select: none !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
   transition: all 0.2s ease !important;
 }
 
 .processing-badge-minimal:hover {
-  background: rgba(255, 255, 255, 0.25) !important;
-  transform: translateY(-1px) scale(1.02);
+  background: rgba(255, 255, 255, 0.26) !important;
+  transform: translateY(-1px);
 }
 
 .processing-info-icon {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 15px !important;
-  height: 15px !important;
+  width: 13px !important;
+  height: 13px !important;
   border-radius: 50% !important;
-  border: 1.5px solid currentColor !important;
+  border: 1.2px solid currentColor !important;
   font-family: serif, sans-serif !important;
-  font-size: 10px !important;
+  font-size: 9px !important;
   font-weight: 700 !important;
   line-height: 1 !important;
   font-style: italic !important;
 }
 
 .processing-info-values {
-  letter-spacing: 0.3px !important;
+  letter-spacing: 0.2px !important;
   white-space: nowrap !important;
+  font-size: 11px !important;
 }
 
 .processing-info-tooltip {
   position: absolute !important;
-  top: calc(100% + 6px) !important;
+  top: calc(100% + 5px) !important;
   left: 0 !important;
-  background: rgba(15, 15, 18, 0.92) !important;
+  background: rgba(15, 15, 18, 0.95) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border: none !important;
   color: #ffffff !important;
   mix-blend-mode: normal !important;
-  padding: 6px 10px !important;
-  border-radius: 8px !important;
-  font-size: 11px !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 9.5px !important;
   font-weight: 500 !important;
   white-space: nowrap !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
-  animation: tooltipFadeIn 0.2s ease-out forwards !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45) !important;
+  animation: tooltipFadeIn 0.15s ease-out forwards !important;
   pointer-events: none !important;
   z-index: 20 !important;
 }
@@ -102,11 +103,39 @@
 @keyframes tooltipFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-3px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Mobile optimizations for processing badge */
+@media (max-width: 768px) {
+  .processing-badge-minimal {
+    top: 8px;
+    left: 8px;
+    padding: 3px 6px !important;
+    border-radius: 4px !important;
+    gap: 4px !important;
+    font-size: 9.5px !important;
+  }
+
+  .processing-info-icon {
+    width: 11px !important;
+    height: 11px !important;
+    font-size: 8px !important;
+    border-width: 1px !important;
+  }
+
+  .processing-info-values {
+    font-size: 9.5px !important;
+  }
+
+  .processing-info-tooltip {
+    font-size: 9px !important;
+    padding: 3px 6px !important;
   }
 }
 
