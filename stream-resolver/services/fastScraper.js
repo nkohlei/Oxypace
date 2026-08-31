@@ -97,35 +97,56 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
   const apiKey = process.env.SCRAPER_API_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
   };
   if (referer) headers['Referer'] = referer;
 
-  // 1. Direct fetch attempt
+  // 1. Doğrudan İstek Denemesi
   try {
     const res = await fetch(targetUrl, { headers, redirect: 'follow' });
     if (res.ok) {
       const text = await res.text();
-      if (!text.includes('error code: 1005') && !text.includes('Attention Required! | Cloudflare') && !text.includes('Access denied')) {
+      if (!text.includes('error code: 1005') && !text.includes('Attention Required! | Cloudflare') && !text.includes('Access denied') && !text.includes('403 Forbidden')) {
         return text;
       }
     }
   } catch (e) {
-    // Continue to proxy
+    // Proxy fallback'e geç
   }
 
-  // 2. ScraperAPI Bypass (Ultra Premium / Keep Headers for Cloudflare Protected movie sites)
+  // 2. ScraperAPI Standart Bypass
   if (apiKey) {
     try {
       const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
       const res = await fetch(proxyUrl, { headers });
       if (res.ok) {
         const text = await res.text();
-        if (text && text.length > 200) return text;
+        if (text && text.length > 200 && !text.includes('Request failed. You will not be charged')) {
+          return text;
+        }
       }
     } catch (err) {
-      logger.warn(`[FastScraper] Proxy fetch failed: ${err.message}`);
+      logger.warn(`[FastScraper] Standard proxy fetch failed: ${err.message}`);
+    }
+
+    // 3. ScraperAPI Ultra-Premium / Render Mode (Cloudflare Korumalı Siteler İçin)
+    try {
+      const ultraProxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&ultra_premium=true&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(ultraProxyUrl, { headers });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text.length > 200 && !text.includes('Request failed. You will not be charged')) {
+          return text;
+        }
+      }
+    } catch (err) {
+      logger.warn(`[FastScraper] Ultra premium proxy fetch failed: ${err.message}`);
     }
   }
 

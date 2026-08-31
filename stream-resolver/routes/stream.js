@@ -55,8 +55,8 @@ router.post(
   async (req, res) => {
     const { url, timeout } = req.body;
     const resolveTimeout = timeout
-      ? Math.min(parseInt(timeout, 10), 60000) // Maksimum 60 saniye
-      : parseInt(process.env.DEFAULT_TIMEOUT, 10) || 30000;
+      ? Math.min(parseInt(timeout, 10), 28000) // 504 Gateway Timeout'u önlemek için max 28s
+      : parseInt(process.env.DEFAULT_TIMEOUT, 10) || 25000;
 
     logger.info(`[Route] Yeni istek — URL: ${url} | Timeout: ${resolveTimeout}ms`);
     const startTime = Date.now();

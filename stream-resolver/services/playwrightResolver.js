@@ -135,6 +135,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       logger.debug(`[Playwright] Havuzdan yeni oturum oluşturuluyor...`);
 
       context = await browser.newContext({
+        ignoreHTTPSErrors: true,
         userAgent: DEFAULT_USER_AGENT,
         extraHTTPHeaders: {
           'sec-ch-ua': '"Chromium";v="124", "Not-A.Brand";v="99", "Google Chrome";v="124"',
