@@ -3,7 +3,7 @@
  *
  * Cloudflare ve ASN engellerini aşan hibrit Scraper & Stream Extractor motoru.
  * ScraperAPI (veya doğrudan HTTP) kullanarak sayfadaki gizlenmiş iframe,
- * packer/eval scriptleri ve doğrudan .m3u8/.mp4/master.txt akışlarını ayıklar.
+ * packer/eval scriptleri, dc_ fonksiyonu şifrelemesi ve doğrudan .m3u8/.mp4/master.txt akışlarını ayıklar.
  */
 
 const logger = require('../utils/logger');
@@ -15,10 +15,64 @@ const FAST_STREAM_PATTERNS = [
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/txt\/master\.txt[^"'\s\\<>{}|^`[\]]*)/i,
 ];
 
-const IFRAME_PATTERNS = [
-  /<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi,
-  /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch|v)\/[^"'\s\\<>{}|^`[\]]*)/gi,
-];
+/**
+ * Decodes Closeload / Rapidrame / HDfilmcehennemi dc_ obfuscated stream URLs
+ */
+function decodeDcFunction(html) {
+  try {
+    // 1. Look for dc_ function call with array of parts: dc_xxxx(["part1", "part2", ...])
+    const callMatch = html.match(/dc_[a-zA-Z0-9_]+\s*\(\s*(\[[^\]]+\])\s*\)/);
+    if (!callMatch) return null;
+
+    let parts = [];
+    try {
+      parts = JSON.parse(callMatch[1].replace(/'/g, '"'));
+    } catch (e) {
+      const arrayString = callMatch[1];
+      const items = arrayString.match(/"([^"]+)"|'([^']+)'/g);
+      if (items) {
+        parts = items.map((s) => s.replace(/['"]/g, ''));
+      }
+    }
+
+    if (!parts || !parts.length) return null;
+
+    // Check if the dc_ function definition uses custom acc or standard acc = 33 / 6
+    let accInitial = 33;
+    let accStep = 6;
+    const defMatch = html.match(/function\s+dc_[a-zA-Z0-9_]+\s*\([^)]*\)\s*\{([\s\S]*?)\}/);
+    if (defMatch) {
+      const fnBody = defMatch[1];
+      const accMatch = fnBody.match(/acc\s*=\s*(\d+)/);
+      if (accMatch) accInitial = parseInt(accMatch[1], 10);
+      const stepMatch = fnBody.match(/acc\s*=\s*\(\s*acc\s*\+\s*(\d+)\s*\)/);
+      if (stepMatch) accStep = parseInt(stepMatch[1], 10);
+    }
+
+    // Decode: reverse -> base64 decode -> reverse -> base64 decode -> XOR unmix
+    let value = parts.join('');
+    let r1 = Buffer.from(value.split('').reverse().join(''), 'base64').toString('binary');
+    let r2 = Buffer.from(r1.split('').reverse().join(''), 'base64').toString('binary');
+
+    let acc = accInitial;
+    let unmix = '';
+    for (let i = 0; i < r2.length; i++) {
+      let b = r2.charCodeAt(i);
+      acc = (acc + accStep) % 256;
+      let plain = b ^ acc;
+      acc = (acc + b) % 256;
+      unmix += String.fromCharCode(plain);
+    }
+
+    if (unmix && (unmix.startsWith('http://') || unmix.startsWith('https://'))) {
+      logger.info(`[FastScraper] 🔓 dc_ fonksiyonundan asıl gizli akış çözüldü: ${unmix}`);
+      return unmix;
+    }
+  } catch (err) {
+    logger.debug(`[FastScraper] dc_ decode hatası: ${err.message}`);
+  }
+  return null;
+}
 
 /**
  * Unpacks P.A.C.K.E.R. obfuscated code
@@ -99,12 +153,27 @@ async function fastResolve(targetUrl, options = {}) {
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-    // 1. Direct stream in main page
+    // 1. Check dc_ decoded stream in main page
+    const decodedFromMain = decodeDcFunction(html);
+    if (decodedFromMain) {
+      return {
+        streamUrl: decodedFromMain,
+        type: 'm3u8',
+        headers: {
+          referer: 'https://hdfilmcehennemi.mobi/',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          origin: 'https://hdfilmcehennemi.mobi',
+        },
+        pageTitle,
+      };
+    }
+
+    // 2. Direct stream pattern in main page
     for (const pattern of FAST_STREAM_PATTERNS) {
       const match = html.match(pattern);
       if (match && match[1]) {
         const streamUrl = match[1].replace(/\\/g, '');
-        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js')) {
+        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno')) {
           logger.info(`[FastScraper] ✅ Doğrudan akış bulundu: ${streamUrl}`);
           return {
             streamUrl,
@@ -120,7 +189,7 @@ async function fastResolve(targetUrl, options = {}) {
       }
     }
 
-    // 2. Extract Embed iFrames (e.g. closeload, rapidrame, playmix, vidmoly)
+    // 3. Extract Embed iFrames
     const embedUrls = new Set();
     let ifrMatch;
     const ifrRegex = /<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi;
@@ -130,7 +199,6 @@ async function fastResolve(targetUrl, options = {}) {
       if (src.startsWith('http')) embedUrls.add(src);
     }
 
-    // Also look for closeload / rapidrame URLs inside javascript strings
     const embedScriptRegex = /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch)\/[^"'\s\\<>{}|^`[\]]*)/gi;
     let sMatch;
     while ((sMatch = embedScriptRegex.exec(html)) !== null) {
@@ -146,21 +214,56 @@ async function fastResolve(targetUrl, options = {}) {
       const embedHtml = await fetchHtmlWithBypass(embedUrl, targetUrl);
       if (!embedHtml) continue;
 
+      // Check dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix Player)
+      const decodedStream = decodeDcFunction(embedHtml);
+      if (decodedStream) {
+        let effectiveReferer = 'https://closeload.filmmakinesi.to/';
+        if (embedUrl.includes('hdfilmcehennemi') || decodedStream.includes('cdnimages') || decodedStream.includes('playmix')) {
+          effectiveReferer = 'https://hdfilmcehennemi.mobi/';
+        } else if (embedUrl.includes('rapidvid')) {
+          effectiveReferer = 'https://rapidvid.net/';
+        }
+
+        return {
+          streamUrl: decodedStream,
+          type: decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
+          headers: {
+            referer: effectiveReferer,
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            origin: new URL(effectiveReferer).origin,
+          },
+          pageTitle: pageTitle || 'Film / Dizi Akışı',
+        };
+      }
+
       // Check unpacked JS / Packer eval
       let searchCorpus = embedHtml;
       if (embedHtml.includes('eval(function(p,a,c,k,e,')) {
         const unpacked = unpackJs(embedHtml);
         if (unpacked) {
           searchCorpus += '\n' + unpacked;
+          const unpackedDecoded = decodeDcFunction(unpacked);
+          if (unpackedDecoded) {
+            return {
+              streamUrl: unpackedDecoded,
+              type: 'm3u8',
+              headers: {
+                referer: 'https://hdfilmcehennemi.mobi/',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                origin: 'https://hdfilmcehennemi.mobi',
+              },
+              pageTitle: pageTitle || 'Film / Dizi Akışı',
+            };
+          }
         }
       }
 
-      // Check direct stream patterns in embed
+      // Check direct stream patterns in embed (excluding bogus schema meta tags)
       for (const pattern of FAST_STREAM_PATTERNS) {
         const match = searchCorpus.match(pattern);
         if (match && match[1]) {
           const streamUrl = match[1].replace(/\\/g, '');
-          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js')) {
+          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno')) {
             logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
             let effectiveReferer = 'https://closeload.filmmakinesi.to/';
             if (embedUrl.includes('hdfilmcehennemi') || streamUrl.includes('cdnimages') || streamUrl.includes('playmix')) {
@@ -181,24 +284,6 @@ async function fastResolve(targetUrl, options = {}) {
             };
           }
         }
-      }
-
-      // Special Closeload / Hdfilmcehennemi CDN Master construct pattern
-      const fileSlugMatch = searchCorpus.match(/([a-zA-Z0-9_-]+\.mp4)/i);
-      const cdnHostMatch = searchCorpus.match(/(https?:\/\/srv\d+\.[^/]+)/i);
-      if (fileSlugMatch && cdnHostMatch) {
-        const constructedMasterUrl = `${cdnHostMatch[1]}/hls/${fileSlugMatch[1]}/txt/master.txt`;
-        logger.info(`[FastScraper] ✅ Oluşturulan Master CDN akışı: ${constructedMasterUrl}`);
-        return {
-          streamUrl: constructedMasterUrl,
-          type: 'm3u8',
-          headers: {
-            referer: 'https://hdfilmcehennemi.mobi/',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            origin: 'https://hdfilmcehennemi.mobi',
-          },
-          pageTitle: pageTitle || 'Film / Dizi Akışı',
-        };
       }
     }
 
