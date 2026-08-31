@@ -389,18 +389,27 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         for (const embedUrl of embedUrls) {
           logger.info(`[FastResolver] Embed sayfası çekiliyor: ${embedUrl}`);
           const embedApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(embedUrl)}&country_code=tr&keep_headers=true`;
+          
+          let originHeader = targetUrl;
+          try { originHeader = new URL(targetUrl).origin; } catch {}
+
           const embedHtml = await new Promise((resolve) => {
-            http.get(embedApiUrl, {
+            const req = http.get(embedApiUrl, {
               headers: {
                 'User-Agent': DEFAULT_USER_AGENT,
                 'Referer': targetUrl,
-                'Origin': new URL(targetUrl).origin,
+                'Origin': originHeader,
               },
+              timeout: 15000,
             }, (res) => {
               let d = ''; res.on('data', c => d += c);
               res.on('end', () => resolve(d));
-            }).on('error', () => resolve(''));
+            });
+            req.on('error', (err) => { logger.info(`[FastResolver] Req error: ${err.message}`); resolve(''); });
+            req.on('timeout', () => { req.destroy(); resolve(''); });
           });
+
+          logger.info(`[FastResolver] Embed HTML yanıtı: ${embedHtml.length} bayt`);
 
           if (embedHtml && embedHtml.length > 200) {
             const decodedStream = deobfuscateHtmlBody(embedHtml, embedUrl, null);
@@ -420,7 +429,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
                 headers: {
                   referer: ref,
                   'user-agent': DEFAULT_USER_AGENT,
-                  origin: new URL(ref).origin,
+                  origin: ref,
                 },
                 pageTitle,
               };
@@ -429,7 +438,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         }
       }
     } catch (e) {
-      logger.warn(`[FastResolver] Hızlı çözümleme uyarısı: ${e.message}`);
+      logger.info(`[FastResolver] Hızlı çözümleme uyarısı: ${e.message}`);
     }
   }
 
