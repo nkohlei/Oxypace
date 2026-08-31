@@ -344,15 +344,17 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     isDeploying = true;
     // Arka planda git fetch + reset ve pm2 reload çalıştır
     setTimeout(() => {
-        exec('cd /home/ubuntu/app && git fetch origin main && git reset --hard origin/main && npm install --omit=dev && pm2 restart oxypace-backend', (err, stdout, stderr) => {
+        const deployCmd = 'git fetch origin main && git reset --hard origin/main && npm install --omit=dev && pm2 restart oxypace-backend || pm2 restart all';
+        exec(deployCmd, { cwd: '/home/ubuntu/app', env: process.env }, (err, stdout, stderr) => {
             isDeploying = false;
             if (err) {
-                console.error('❌ [AutoDeploy] Error:', err);
+                console.error('❌ [AutoDeploy] Execution Error:', err.message);
+                console.error('❌ [AutoDeploy] Stderr:', stderr);
                 return;
             }
             console.log('✅ [AutoDeploy] Output:', stdout);
         });
-    }, 2000);
+    }, 1000);
 });
 
 // Loader.io Verification
