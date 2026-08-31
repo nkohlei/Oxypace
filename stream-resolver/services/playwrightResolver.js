@@ -12,7 +12,112 @@
 
 const { chromium } = require('playwright');
 const vm = require('vm');
+const https = require('https');
+const http = require('http');
 const logger = require('../utils/logger');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public Proxy aracılığıyla HTML çekip embed URL ayıklama
+// (Cloudflare'ın Oracle datacenter IP'sini bloklaması durumunda kullanılır)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * allorigins.win veya benzer bir public proxy üzerinden URL'nin HTML içeriğini çeker.
+ * @param {string} targetUrl
+ * @returns {Promise<string|null>}
+ */
+async function fetchHtmlViaPublicProxy(targetUrl) {
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+  ];
+
+  for (const proxyUrl of proxies) {
+    try {
+      const html = await new Promise((resolve, reject) => {
+        const lib = proxyUrl.startsWith('https') ? https : http;
+        const req = lib.get(proxyUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
+          },
+          timeout: 12000,
+        }, (res) => {
+          if (res.statusCode !== 200) { res.resume(); return reject(new Error(`Status ${res.statusCode}`)); }
+          let data = '';
+          res.setEncoding('utf8');
+          res.on('data', chunk => { data += chunk; if (data.length > 500000) { res.destroy(); resolve(data); } });
+          res.on('end', () => resolve(data));
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      });
+      if (html && html.length > 500) {
+        logger.info(`[PreFetch] HTML alındı: ${html.length} bayt (proxy: ${proxyUrl.substring(0, 50)})`);
+        return html;
+      }
+    } catch (e) {
+      logger.debug(`[PreFetch] Proxy başarısız (${proxyUrl.substring(0, 50)}): ${e.message}`);
+    }
+  }
+  return null;
+}
+
+/**
+ * HTML içeriğinden iframe/embed URL'lerini ayıklar.
+ * @param {string} html
+ * @param {string} baseUrl
+ * @returns {string[]}
+ */
+function extractEmbedUrlsFromHtml(html, baseUrl) {
+  const results = new Set();
+
+  // iframe src
+  const iframeSrcRegex = /<iframe[^>]+src=["']([^"']+)["']/gi;
+  let m;
+  while ((m = iframeSrcRegex.exec(html)) !== null) {
+    const src = m[1].trim();
+    if (src && src.startsWith('http') && !src.includes('google') && !src.includes('facebook') && !src.includes('twitter') && !src.includes('doubleclick')) {
+      results.add(src);
+    } else if (src && src.startsWith('//')) {
+      results.add('https:' + src);
+    }
+  }
+
+  // data-src, data-embed, data-url in iframes
+  const dataAttrRegex = /<(?:iframe|div|section)[^>]+data-(?:src|embed|url|video|link)=["']([^"']+)["']/gi;
+  while ((m = dataAttrRegex.exec(html)) !== null) {
+    const src = m[1].trim();
+    if (src && src.startsWith('http')) results.add(src);
+  }
+
+  // Embedded JS player URLs (source:, file:, playerUrl:)
+  const jsUrlRegex = /(?:source|file|playerUrl|embed_url|video_url|stream_url)["\s]*:[\s]*["']([^"'\s]+\.(?:m3u8|mp4|txt)[^"'\s]*)["']/gi;
+  while ((m = jsUrlRegex.exec(html)) !== null) {
+    if (m[1].startsWith('http')) results.add(m[1]);
+  }
+
+  // Direct m3u8/mp4 URL in page
+  const streamRegex = /(https?:\/\/[^"'\s<>{}|]+\.(?:m3u8|txt|mp4)[^"'\s<>{}|]*)/gi;
+  while ((m = streamRegex.exec(html)) !== null) {
+    const u = m[1];
+    if (!u.includes('sample') && !u.includes('theme') && !u.includes('placeholder')) {
+      results.add(u);
+    }
+  }
+
+  logger.info(`[PreFetch] Ayıklanan embed URL'ler: ${results.size}`);
+  [...results].forEach(u => logger.debug(`[PreFetch]   → ${u.substring(0, 100)}`));
+  return [...results];
+}
+
+/** Cloudflare tarafından engellenen bilinen domain'ler */
+const CLOUDFLARE_BLOCKED_DOMAINS = [
+  'hdfilmcehennemi', 'fullhdfilmizlesene', 'filmmakinesi', 'turkanime',
+  'dizipal', 'animeler', 'anizm', 'hdfilmcehennemi', 'izlemax',
+  'fullhdfilmizle', 'yabancidizi', 'dizibox',
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sabitler
@@ -370,31 +475,74 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       });
     }
 
-    // ── Ana Sayfa ──────────────────────────────────────────────────────────────
+    // ── Ön-Adım: Cloudflare Engeli Olan Domain'lerde HTML'yi Public Proxy Üzerinden Çek ──
+    const isBlockedDomain = CLOUDFLARE_BLOCKED_DOMAINS.some(d => targetUrl.toLowerCase().includes(d));
+    let prefetchedEmbedUrls = [];
+    let pageTitle = '';
 
+    if (isBlockedDomain) {
+      logger.info(`[PreFetch] Cloudflare engeli tespit edildi. allorigins proxy ile HTML çekiliyor: ${targetUrl}`);
+      const html = await fetchHtmlViaPublicProxy(targetUrl);
+      if (html) {
+        // Hemen m3u8/mp4 URL var mı kontrol et
+        const directStreams = extractEmbedUrlsFromHtml(html, targetUrl);
+        for (const u of directStreams) {
+          if (u.includes('.m3u8') || u.includes('.txt') || u.includes('master')) {
+            checkAndSaveStream(u, {}, targetUrl);
+            if (foundStream) {
+              logger.info(`[PreFetch] ✅ Direct stream bulundu HTML içinde: ${u}`);
+              return { ...foundStream, pageTitle };
+            }
+          }
+        }
+        // Title çek
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) pageTitle = titleMatch[1].trim();
+        // Embed URL'lerini topla, Playwright bunlara gidecek
+        prefetchedEmbedUrls = directStreams.filter(u =>
+          !u.includes('.m3u8') && !u.includes('.mp4') &&
+          (u.includes('rapidvid') || u.includes('closeload') || u.includes('vidmoly') ||
+           u.includes('vidoza') || u.includes('fembed') || u.includes('dood') ||
+           u.includes('mixdrop') || u.includes('streamtape') || u.includes('player') ||
+           u.includes('embed') || u.includes('/v/') || u.includes('/e/'))
+        );
+        logger.info(`[PreFetch] ${prefetchedEmbedUrls.length} embed URL bulundu, Playwright'a yönlendiriliyor.`);
+      }
+    }
+
+    // ── Ana Sayfa (Engellenmiyorsa doğrudan aç) ───────────────────────────────
     const page = await context.newPage();
     attachListeners(page, 'MAIN');
 
-    logger.debug(`[Playwright] Navigating → ${targetUrl}`);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: Math.min(timeout, 30000) });
-    await page.waitForTimeout(4000);
+    if (!isBlockedDomain || prefetchedEmbedUrls.length === 0) {
+      logger.debug(`[Playwright] Navigating → ${targetUrl}`);
+      try {
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: Math.min(timeout, 25000) });
+        await page.waitForTimeout(4000);
+        if (!pageTitle) pageTitle = await page.title().catch(() => '');
+        logger.debug(`[Playwright] Başlık: "${pageTitle}"`);
 
-    const pageTitle = await page.title().catch(() => '');
-    logger.debug(`[Playwright] Başlık: "${pageTitle}"`);
+        if (foundStream) return { ...foundStream, pageTitle };
+        await checkVideoSrcFromDOM(page, checkAndSaveStream);
+        if (foundStream) return { ...foundStream, pageTitle };
 
-    if (foundStream) return { ...foundStream, pageTitle };
+        logger.debug(`[Playwright] Play butonları deneniyor...`);
+        await tryClickPlayButton(page, PLAY_SELECTORS);
+        await page.waitForTimeout(5000);
+        if (foundStream) return { ...foundStream, pageTitle };
+        await checkVideoSrcFromDOM(page, checkAndSaveStream);
+        if (foundStream) return { ...foundStream, pageTitle };
+      } catch (navErr) {
+        logger.warn(`[Playwright] Ana sayfa navigasyon hatası: ${navErr.message}`);
+      }
+    } else {
+      logger.info(`[Playwright] Engelli domain — ana sayfa atlanıyor, embed URL'lerine doğrudan gidiliyor.`);
+    }
 
-    // DOM'dan video src kontrol et
-    await checkVideoSrcFromDOM(page, checkAndSaveStream);
-    if (foundStream) return { ...foundStream, pageTitle };
-
-    // ── Play Butonuna Tıkla ───────────────────────────────────────────────────
-    logger.debug(`[Playwright] Play butonları deneniyor...`);
-    await tryClickPlayButton(page, PLAY_SELECTORS);
-    await page.waitForTimeout(5000);
-    if (foundStream) return { ...foundStream, pageTitle };
-    await checkVideoSrcFromDOM(page, checkAndSaveStream);
-    if (foundStream) return { ...foundStream, pageTitle };
+    // PreFetch embed URL'lerini doğrudan iFrame listesine ekle
+    if (prefetchedEmbedUrls.length > 0) {
+      logger.info(`[PreFetch] ${prefetchedEmbedUrls.length} embed URL Playwright embed kuyruğuna ekleniyor.`);
+    }
 
     // ── iFrame Stratejisi ──────────────────────────────────────────────────────
     logger.debug(`[Playwright] iFrame'ler taranıyor...`);
@@ -403,6 +551,9 @@ async function resolveStreamUrl(targetUrl, options = {}) {
 
     /** @type {Set<string>} */
     const embedUrls = new Set();
+
+    // PreFetch'ten gelen embed URL'lerini kuyruğa ekle (bunlar engellenmemiş)
+    prefetchedEmbedUrls.forEach(u => embedUrls.add(u));
 
     // DOM'daki lazy-load iframe ve embed URL'lerini topla (data-src, data-url vb.)
     try {
