@@ -11,16 +11,16 @@ import ffmpegPath from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 
 // Configure fluent-ffmpeg to use static binaries or system binaries safely
-if (ffmpegPath) {
+if (ffmpegPath && fs.existsSync(ffmpegPath)) {
     ffmpeg.setFfmpegPath(ffmpegPath);
 } else {
-    ffmpeg.setFfmpegPath('ffmpeg');
+    ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');
 }
 
-if (ffprobeStatic && ffprobeStatic.path) {
+if (ffprobeStatic && ffprobeStatic.path && fs.existsSync(ffprobeStatic.path)) {
     ffmpeg.setFfprobePath(ffprobeStatic.path);
 } else {
-    ffmpeg.setFfprobePath('ffprobe');
+    ffmpeg.setFfprobePath('/usr/bin/ffprobe');
 }
 console.log('[VideoTranscoder] Configured ffmpeg/ffprobe binaries.');
 
