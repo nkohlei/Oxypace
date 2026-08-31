@@ -69,7 +69,11 @@ router.get('/proxy', async (req, res) => {
 
     let contentType = response.headers.get('Content-Type') || 'application/x-mpegURL';
     const lowerUrl = targetUrl.toLowerCase();
+
+    // Check if body starts with #EXTM3U
+    const sampleHeader = new TextDecoder('utf-8').decode(responseBody.slice(0, 15));
     const isPlaylist =
+      sampleHeader.includes('#EXTM3U') ||
       lowerUrl.endsWith('.m3u8') ||
       lowerUrl.endsWith('.txt') ||
       lowerUrl.includes('master.txt') ||
