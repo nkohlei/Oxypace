@@ -95,6 +95,7 @@ const EMBED_URL_PARAM_PATTERNS = [
 
 /** Video oynatıcı play butonu CSS seçicileri @type {string[]} */
 const PLAY_SELECTORS = [
+  '#play-video', '.video-play-button', '.player-alan', '.player-box',
   '[aria-label*="Play" i]', '[title*="Play" i]', '[data-plyr="play"]',
   'button[class*="play" i]', 'div[class*="play-button" i]', 'span[class*="play-button" i]',
   '[class*="play-btn" i]', '[class*="playBtn" i]', '[id*="play-button" i]',
