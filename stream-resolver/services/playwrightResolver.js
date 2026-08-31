@@ -28,16 +28,23 @@ const logger = require('../utils/logger');
  * Cloudflare korumalı sayfanın HTML'ini çekmek için birden fazla yöntemi dener.
  * Öncelik sırası: ScraperAPI → ZenRows → Apify → public proxy'ler
  * @param {string} targetUrl
+ * @param {{ referer?: string, country?: string }} [options]
  * @returns {Promise<string|null>}
  */
-async function fetchHtmlViaScrapingService(targetUrl) {
+async function fetchHtmlViaScrapingService(targetUrl, options = {}) {
   const attempts = [];
+  const { referer = '', country = 'tr' } = options;
 
   // 1. ScraperAPI (ücretsiz: 5.000 istek/ay — scraperapi.com)
   if (process.env.SCRAPER_API_KEY) {
+    const key = process.env.SCRAPER_API_KEY.trim();
     attempts.push({
       name: 'ScraperAPI',
-      url: `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(targetUrl)}&render=false`,
+      url: `http://api.scraperapi.com?api_key=${key}&url=${encodeURIComponent(targetUrl)}&country_code=${country}&keep_headers=true`,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        ...(referer ? { 'Referer': referer, 'Origin': new URL(referer).origin } : {}),
+      },
     });
   }
 
@@ -46,6 +53,7 @@ async function fetchHtmlViaScrapingService(targetUrl) {
     attempts.push({
       name: 'ZenRows',
       url: `https://api.zenrows.com/v1/?apikey=${process.env.ZENROWS_API_KEY}&url=${encodeURIComponent(targetUrl)}`,
+      headers: {},
     });
   }
 
@@ -54,6 +62,7 @@ async function fetchHtmlViaScrapingService(targetUrl) {
     attempts.push({
       name: 'ScrapingBee',
       url: `https://app.scrapingbee.com/api/v1/?api_key=${process.env.SCRAPINGBEE_API_KEY}&url=${encodeURIComponent(targetUrl)}&render_js=false`,
+      headers: {},
     });
   }
 
@@ -62,10 +71,12 @@ async function fetchHtmlViaScrapingService(targetUrl) {
     {
       name: 'allorigins',
       url: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+      headers: {},
     },
     {
       name: 'corsproxy',
       url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+      headers: {},
     }
   );
 
@@ -79,13 +90,14 @@ async function fetchHtmlViaScrapingService(targetUrl) {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
+            ...(attempt.headers || {}),
           },
-          timeout: 18000,
+          timeout: 20000,
         }, (res) => {
           if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
           let data = '';
           res.setEncoding('utf8');
-          res.on('data', chunk => { data += chunk; if (data.length > 600000) { res.destroy(); resolve(data); } });
+          res.on('data', chunk => { data += chunk; if (data.length > 800000) { res.destroy(); resolve(data); } });
           res.on('end', () => resolve(data));
         });
         req.on('error', reject);
@@ -266,27 +278,67 @@ const DEFAULT_USER_AGENT =
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * @typedef {{
- *   streamUrl: string,
- *   type: 'm3u8' | 'mp4',
- *   headers: { referer: string, 'user-agent': string, origin: string },
- *   pageTitle: string
- * }} StreamResult
+ * Verilen HTML veya JS metninden şifrelenmiş veya doğrudan HLS / MP4 stream URL'lerini çözer.
+ * @param {string} html
+ * @param {string} frameUrl
+ * @param {Function} checkFn
  */
+function deobfuscateHtmlBody(html, frameUrl, checkFn) {
+  if (!html || typeof html !== 'string') return;
 
-/**
- * @param {string} targetUrl
- * @param {{ timeout?: number }} options
- * @returns {Promise<StreamResult | null>}
- */
-const PROXY_SERVERS = [
-  'http://51.159.115.233:3128',
-  'http://157.245.97.60:80',
-  'http://185.199.229.156:7492',
-  'http://198.199.86.11:80',
-  'http://45.79.207.135:80',
-  'http://143.244.166.243:80'
-];
+  // 1. dc_* VM deobfuscation (Turkish video hosts)
+  const dcMatches = [...html.matchAll(/(function\s+dc_[a-zA-Z0-9_]+\s*\([^)]*\)\s*\{[\s\S]*?\})\s*;\s*(?:var|let|const)?\s*[a-zA-Z0-9_]+\s*=\s*(dc_[a-zA-Z0-9_]+\s*\(\s*(\[[^\]]+\])\s*\))/g)];
+  for (const match of dcMatches) {
+    try {
+      const fnCode = match[1];
+      const callCode = match[2];
+      const sandbox = {
+        atob: (str) => Buffer.from(str, 'base64').toString('binary'),
+        String: String,
+        Array: Array,
+      };
+      const script = new vm.Script(`${fnCode}; ${callCode};`);
+      const result = script.runInNewContext(sandbox, { timeout: 1000 });
+      if (typeof result === 'string' && (result.includes('.m3u8') || result.includes('.txt') || result.includes('.mp4'))) {
+        logger.info(`[FastDeobfuscate] 🔓 VM ile şifreli stream çözüldü: ${result}`);
+        checkFn(result, {}, frameUrl);
+        return;
+      }
+    } catch {}
+  }
+
+  // 2. Packed JS eval
+  const packedMatches = [...html.matchAll(/eval\(function\(p,a,c,k,e,d\)[\s\S]*?\((['"][^'"]+['"])\.split\(['"]\|['"]\)/g)];
+  for (const match of packedMatches) {
+    try {
+      const unpacked = vm.runInNewContext('(' + match[1] + ')');
+      if (typeof unpacked === 'string') {
+        const m3u8Matches = [...unpacked.matchAll(/(https?:\/\/[^"'\s\\<>{}|^`[\]]+\.(?:m3u8|txt|mp4)[^"'\s\\<>{}|^`[\]]*)/gi)];
+        for (const [, u] of m3u8Matches) {
+          if (u && !IGNORE_PATTERNS.some((p) => p.test(u))) {
+            logger.info(`[FastDeobfuscate] 🔓 Packed JS içinden stream çözüldü: ${u}`);
+            checkFn(u, {}, frameUrl);
+            return;
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Doğrudan m3u8 / txt / mp4 URL regex
+  const streamRegex = /(https?:\/\/[^"'\s<>{}|]+\.(?:m3u8|txt|mp4)[^"'\s<>{}|]*)/gi;
+  let m;
+  while ((m = streamRegex.exec(html)) !== null) {
+    const u = m[1];
+    if (u.includes('master') || u.includes('hls') || u.includes('cdnimages') || u.includes('playmix') || u.includes('rapidvid') || u.includes('closeload')) {
+      if (!IGNORE_PATTERNS.some((p) => p.test(u))) {
+        logger.info(`[FastDeobfuscate] 🔓 Doğrudan stream bulundu: ${u}`);
+        checkFn(u, {}, frameUrl);
+        return;
+      }
+    }
+  }
+}
 
 async function resolveStreamUrl(targetUrl, options = {}) {
   const { timeout = 30000 } = options;
@@ -541,38 +593,42 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       });
     }
 
-    // ── Ön-Adım: Cloudflare Engeli Olan Domain'lerde HTML'yi Scraping Servisi Üzerinden Çek ──
+    // ── Ön-Adım: Scraping Servisi ile Hızlı / Cloudflare Bypasli Çözümleme ──
     const isBlockedDomain = CLOUDFLARE_BLOCKED_DOMAINS.some(d => targetUrl.toLowerCase().includes(d));
     let prefetchedEmbedUrls = [];
     let pageTitle = '';
 
-    if (isBlockedDomain) {
-      logger.info(`[PreFetch] Cloudflare engeli tespit edildi, scraping servisi deneniyor: ${targetUrl}`);
+    if (isBlockedDomain || process.env.SCRAPER_API_KEY) {
+      logger.info(`[PreFetch] Scraping servisi ile hızlı çözümleme deneniyor: ${targetUrl}`);
       const html = await fetchHtmlViaScrapingService(targetUrl);
       if (html) {
-        // Hemen m3u8/mp4 URL var mı kontrol et
-        const directStreams = extractEmbedUrlsFromHtml(html, targetUrl);
-        for (const u of directStreams) {
-          if (u.includes('.m3u8') || u.includes('.txt') || u.includes('master')) {
-            checkAndSaveStream(u, {}, targetUrl);
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) pageTitle = titleMatch[1].trim();
+
+        // 1. Ana sayfadan doğrudan stream deobfuscate et
+        deobfuscateHtmlBody(html, targetUrl, checkAndSaveStream);
+        if (foundStream) {
+          logger.info(`[PreFetch] ⚡ Ana sayfadan anında stream çözüldü: ${foundStream.streamUrl}`);
+          return { ...foundStream, pageTitle };
+        }
+
+        // 2. Embed URL'lerini topla ve sayfalarını çek
+        const directEmbeds = extractEmbedUrlsFromHtml(html, targetUrl);
+        prefetchedEmbedUrls = directEmbeds.filter(u =>
+          !u.includes('.m3u8') && !u.includes('.mp4')
+        );
+
+        for (const embedUrl of prefetchedEmbedUrls) {
+          logger.info(`[PreFetch] Embed sayfası çekiliyor: ${embedUrl}`);
+          const embedHtml = await fetchHtmlViaScrapingService(embedUrl, { referer: targetUrl });
+          if (embedHtml) {
+            deobfuscateHtmlBody(embedHtml, embedUrl, checkAndSaveStream);
             if (foundStream) {
-              logger.info(`[PreFetch] ✅ Direct stream bulundu HTML içinde: ${u}`);
+              logger.info(`[PreFetch] ⚡ Embed sayfasından anında stream çözüldü: ${foundStream.streamUrl}`);
               return { ...foundStream, pageTitle };
             }
           }
         }
-        // Title çek
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        if (titleMatch) pageTitle = titleMatch[1].trim();
-        // Embed URL'lerini topla, Playwright bunlara gidecek
-        prefetchedEmbedUrls = directStreams.filter(u =>
-          !u.includes('.m3u8') && !u.includes('.mp4') &&
-          (u.includes('rapidvid') || u.includes('closeload') || u.includes('vidmoly') ||
-           u.includes('vidoza') || u.includes('fembed') || u.includes('dood') ||
-           u.includes('mixdrop') || u.includes('streamtape') || u.includes('player') ||
-           u.includes('embed') || u.includes('/v/') || u.includes('/e/'))
-        );
-        logger.info(`[PreFetch] ${prefetchedEmbedUrls.length} embed URL bulundu, Playwright'a yönlendiriliyor.`);
       }
     }
 
