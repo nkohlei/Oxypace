@@ -212,6 +212,25 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
     return res.status(400).json({ success: false, error: 'Geçersiz veya eksik URL parametresi.' });
   }
 
+  const trimmedUrl = url.trim();
+  const lower = trimmedUrl.toLowerCase();
+
+  // Instant fast-path for direct stream URLs (.m3u8, master.txt, .mp4)
+  if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
+    const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(trimmedUrl)}`;
+    return res.status(200).json({
+      success: true,
+      status: 'success',
+      streamUrl: trimmedUrl,
+      playableStreamUrl,
+      type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
+      headers: {},
+      pageTitle: 'Doğrudan Akış Kaynağı',
+      cached: false,
+      resolvedIn: 1,
+    });
+  }
+
   const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
   const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
 
