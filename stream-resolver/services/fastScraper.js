@@ -145,7 +145,7 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
   // 1. Python TLS Chrome Impersonation + Residential/Tor Routing (En Yüksek Başarı Oranı)
   try {
     const tlsHtml = await fetchWithTlsImpersonation(targetUrl, referer);
-    if (tlsHtml && tlsHtml.length > 200 && !tlsHtml.includes('error code: 1005') && !tlsHtml.includes('Attention Required! | Cloudflare')) {
+    if (tlsHtml && tlsHtml.length > 0 && !tlsHtml.includes('error code: 1005') && !tlsHtml.includes('Attention Required! | Cloudflare')) {
       logger.info(`[FastScraper] 🛡️ TLS Impersonation ile sayfa başarıyla çekildi (${tlsHtml.length} byte): ${targetUrl}`);
       return tlsHtml;
     }
