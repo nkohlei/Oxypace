@@ -193,6 +193,34 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [isAdPlaying, setIsAdPlaying] = useState(adsConfig.enableAds && !watchParty);
   const [canSkipAd, setCanSkipAd] = useState(false);
   const [adCountdown, setAdCountdown] = useState(5);
+  const [showProcessingInfo, setShowProcessingInfo] = useState(false);
+  const processingInfoTimeoutRef = useRef(null);
+
+  const toggleProcessingInfo = (e) => {
+    e.stopPropagation();
+    setShowProcessingInfo(prev => {
+      const next = !prev;
+      if (next) {
+        if (processingInfoTimeoutRef.current) clearTimeout(processingInfoTimeoutRef.current);
+        processingInfoTimeoutRef.current = setTimeout(() => {
+          setShowProcessingInfo(false);
+        }, 3000);
+      }
+      return next;
+    });
+  };
+
+  const handleInfoMouseEnter = () => {
+    if (processingInfoTimeoutRef.current) clearTimeout(processingInfoTimeoutRef.current);
+    setShowProcessingInfo(true);
+  };
+
+  const handleInfoMouseLeave = () => {
+    if (processingInfoTimeoutRef.current) clearTimeout(processingInfoTimeoutRef.current);
+    processingInfoTimeoutRef.current = setTimeout(() => {
+      setShowProcessingInfo(false);
+    }, 1500);
+  };
 
   const lastProgrammaticSeekTimeRef = useRef(null);
   const isSyncingRef = useRef(false);
@@ -1111,9 +1139,20 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onMouseEnter={handleMouseEnter}
     >
       {isProcessing && (
-        <div className="processing-overlay-orange">
-          <span className="processing-dot-orange" />
-          <span>⚡ Kaliteler Hazırlanıyor (%{processingProgress}) - Kalan: {estimatedTime}</span>
+        <div
+          className="processing-badge-minimal"
+          onClick={toggleProcessingInfo}
+          onMouseEnter={handleInfoMouseEnter}
+          onMouseLeave={handleInfoMouseLeave}
+        >
+          <span className="processing-info-icon" title="Bilgi">i</span>
+          <span className="processing-info-values">%{processingProgress} • {estimatedTime}</span>
+
+          {showProcessingInfo && (
+            <div className="processing-info-tooltip">
+              Arka planda kalite ayrıştırma işlemi
+            </div>
+          )}
         </div>
       )}
 
