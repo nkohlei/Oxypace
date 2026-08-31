@@ -296,6 +296,7 @@ app.use('/og', ogRoutes);
 
 // Routes
 app.use('/api', hlsProxyRoutes);
+app.use('/api/media', hlsProxyRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
@@ -341,9 +342,9 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     }
 
     isDeploying = true;
-    // Arka planda git pull ve pm2 reload çalıştır
+    // Arka planda git fetch + reset ve pm2 reload çalıştır
     setTimeout(() => {
-        exec('cd /home/ubuntu/app && git pull origin main && npm install --omit=dev && pm2 restart oxypace-backend', (err, stdout, stderr) => {
+        exec('cd /home/ubuntu/app && git fetch origin main && git reset --hard origin/main && npm install --omit=dev && pm2 restart oxypace-backend', (err, stdout, stderr) => {
             isDeploying = false;
             if (err) {
                 console.error('❌ [AutoDeploy] Error:', err);
