@@ -284,7 +284,7 @@ const DEFAULT_USER_AGENT =
  * @param {Function} checkFn
  */
 function deobfuscateHtmlBody(html, frameUrl, checkFn) {
-  if (!html || typeof html !== 'string') return;
+  if (!html || typeof html !== 'string') return null;
 
   // 1. dc_* VM deobfuscation (Turkish video hosts)
   const dcMatches = [...html.matchAll(/(function\s+dc_[a-zA-Z0-9_]+\s*\([^)]*\)\s*\{[\s\S]*?\})\s*;\s*(?:var|let|const)?\s*[a-zA-Z0-9_]+\s*=\s*(dc_[a-zA-Z0-9_]+\s*\(\s*(\[[^\]]+\])\s*\))/g)];
@@ -299,12 +299,14 @@ function deobfuscateHtmlBody(html, frameUrl, checkFn) {
       };
       const script = new vm.Script(`${fnCode}; ${callCode};`);
       const result = script.runInNewContext(sandbox, { timeout: 1000 });
-      if (typeof result === 'string' && (result.includes('.m3u8') || result.includes('.txt') || result.includes('.mp4'))) {
+      if (typeof result === 'string' && (result.includes('.m3u8') || result.includes('.txt') || result.includes('.mp4') || result.includes('http'))) {
         logger.info(`[FastDeobfuscate] 🔓 VM ile şifreli stream çözüldü: ${result}`);
-        checkFn(result, {}, frameUrl);
-        return;
+        if (checkFn) checkFn(result, {}, frameUrl, true);
+        return result;
       }
-    } catch {}
+    } catch (e) {
+      logger.debug(`[FastDeobfuscate] VM hatası: ${e.message}`);
+    }
   }
 
   // 2. Packed JS eval
@@ -317,8 +319,8 @@ function deobfuscateHtmlBody(html, frameUrl, checkFn) {
         for (const [, u] of m3u8Matches) {
           if (u && !IGNORE_PATTERNS.some((p) => p.test(u))) {
             logger.info(`[FastDeobfuscate] 🔓 Packed JS içinden stream çözüldü: ${u}`);
-            checkFn(u, {}, frameUrl);
-            return;
+            if (checkFn) checkFn(u, {}, frameUrl, true);
+            return u;
           }
         }
       }
@@ -333,11 +335,13 @@ function deobfuscateHtmlBody(html, frameUrl, checkFn) {
     if (u.includes('master') || u.includes('hls') || u.includes('cdnimages') || u.includes('playmix') || u.includes('rapidvid') || u.includes('closeload')) {
       if (!IGNORE_PATTERNS.some((p) => p.test(u))) {
         logger.info(`[FastDeobfuscate] 🔓 Doğrudan stream bulundu: ${u}`);
-        checkFn(u, {}, frameUrl);
-        return;
+        if (checkFn) checkFn(u, {}, frameUrl, true);
+        return u;
       }
     }
   }
+
+  return null;
 }
 
 async function resolveStreamUrl(targetUrl, options = {}) {
@@ -622,10 +626,31 @@ async function resolveStreamUrl(targetUrl, options = {}) {
           logger.info(`[PreFetch] Embed sayfası çekiliyor: ${embedUrl}`);
           const embedHtml = await fetchHtmlViaScrapingService(embedUrl, { referer: targetUrl });
           if (embedHtml) {
-            deobfuscateHtmlBody(embedHtml, embedUrl, checkAndSaveStream);
+            const decoded = deobfuscateHtmlBody(embedHtml, embedUrl, checkAndSaveStream);
             if (foundStream) {
               logger.info(`[PreFetch] ⚡ Embed sayfasından anında stream çözüldü: ${foundStream.streamUrl}`);
               return { ...foundStream, pageTitle };
+            }
+            if (decoded) {
+              logger.info(`[PreFetch] ⚡ Doğrudan çözülen stream: ${decoded}`);
+              let ref = targetUrl;
+              if (targetUrl.includes('hdfilmcehennemi') || embedUrl.includes('hdfilmcehennemi') || decoded.includes('cdnimages') || decoded.includes('playmix')) {
+                ref = 'https://hdfilmcehennemi.mobi/';
+              } else if (targetUrl.includes('filmmakinesi') || embedUrl.includes('closeload')) {
+                ref = 'https://closeload.filmmakinesi.to/';
+              } else if (targetUrl.includes('fullhdfilmizlesene') || embedUrl.includes('rapidvid')) {
+                ref = 'https://rapidvid.net/';
+              }
+              return {
+                streamUrl: decoded,
+                type: 'm3u8',
+                headers: {
+                  referer: ref,
+                  'user-agent': DEFAULT_USER_AGENT,
+                  origin: new URL(ref).origin,
+                },
+                pageTitle,
+              };
             }
           }
         }
