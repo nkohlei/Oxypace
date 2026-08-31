@@ -90,8 +90,26 @@ function unpackJs(packedJs) {
   }
 }
 
+const { execFile } = require('child_process');
+const path = require('path');
+
 /**
- * Fetches HTML directly or via ScraperAPI if Cloudflare blocked
+ * Fetches HTML using native Python curl_cffi Chrome TLS impersonation (Bypasses Cloudflare ASN 444/403 blocks)
+ */
+function fetchWithTlsImpersonation(targetUrl, referer = '') {
+  return new Promise((resolve) => {
+    const scriptPath = path.join(__dirname, 'tlsFetcher.py');
+    execFile('python3', [scriptPath, targetUrl, referer], { timeout: 15000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+      if (err || !stdout || stdout.length < 200) {
+        return resolve('');
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+/**
+ * Fetches HTML directly, via TLS Impersonator, or via ScraperAPI if Cloudflare blocked
  */
 async function fetchHtmlWithBypass(targetUrl, referer = '') {
   const apiKey = process.env.SCRAPER_API_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
@@ -107,7 +125,18 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
   };
   if (referer) headers['Referer'] = referer;
 
-  // 1. Doğrudan İstek Denemesi
+  // 1. Python TLS Chrome Impersonation + Residential/Tor Routing (En Yüksek Başarı Oranı)
+  try {
+    const tlsHtml = await fetchWithTlsImpersonation(targetUrl, referer);
+    if (tlsHtml && tlsHtml.length > 200 && !tlsHtml.includes('error code: 1005') && !tlsHtml.includes('Attention Required! | Cloudflare')) {
+      logger.info(`[FastScraper] 🛡️ TLS Impersonation ile sayfa başarıyla çekildi (${tlsHtml.length} byte): ${targetUrl}`);
+      return tlsHtml;
+    }
+  } catch (e) {
+    logger.debug(`[FastScraper] TLS fetcher error: ${e.message}`);
+  }
+
+  // 2. Doğrudan İstek Denemesi
   try {
     const res = await fetch(targetUrl, { headers, redirect: 'follow' });
     if (res.ok) {
@@ -117,10 +146,10 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
       }
     }
   } catch (e) {
-    // Proxy fallback'e geç
+    // Fallback
   }
 
-  // 2. ScraperAPI Standart Bypass
+  // 3. ScraperAPI Standart Bypass
   if (apiKey) {
     try {
       const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
@@ -133,20 +162,6 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
       }
     } catch (err) {
       logger.warn(`[FastScraper] Standard proxy fetch failed: ${err.message}`);
-    }
-
-    // 3. ScraperAPI Ultra-Premium / Render Mode (Cloudflare Korumalı Siteler İçin)
-    try {
-      const ultraProxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&ultra_premium=true&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
-      const res = await fetch(ultraProxyUrl, { headers });
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.length > 200 && !text.includes('Request failed. You will not be charged')) {
-          return text;
-        }
-      }
-    } catch (err) {
-      logger.warn(`[FastScraper] Ultra premium proxy fetch failed: ${err.message}`);
     }
   }
 

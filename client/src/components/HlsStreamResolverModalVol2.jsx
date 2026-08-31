@@ -105,7 +105,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       clearInterval(timerRef.current);
       const serverErr = err.response?.data?.error || err.message;
       if (err.response?.status === 404) {
-        setErrorMsg('Bu sayfada oynatılabilir bir video akışı bulunamadı. Lütfen farklı bir kaynak veya oynatıcı seçin.');
+        setErrorMsg('Bu film sayfasında otomatik video ayrıştırılamadı. Sitedeki oynatıcının üzerine sağ tıklayıp "Çerçeve Bağlantısını Kopyala" (Embed URL) yaparak doğrudan oynatıcı linkini yapıştırabilirsiniz.');
       } else if (err.code === 'ECONNABORTED' || err.response?.status === 408) {
         setErrorMsg('Sayfa yanıt vermedi (zaman aşımı). Lütfen bağlantıyı kontrol edin.');
       } else {
