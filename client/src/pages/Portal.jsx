@@ -249,9 +249,9 @@ const Portal = () => {
 
         const handleUpdatePost = (updatedPost) => {
             const updatedPortalId = updatedPost.portal?._id || updatedPost.portal;
-            const isTargetPortal = String(updatedPortalId) === String(id);
+            const isTargetPortal = !updatedPortalId || String(updatedPortalId) === String(id);
             if (isTargetPortal) {
-                setPosts((prev) => prev.map(p => p._id === updatedPost._id ? updatedPost : p));
+                setPosts((prev) => prev.map(p => String(p._id) === String(updatedPost._id) ? updatedPost : p));
             }
         };
 
@@ -552,6 +552,7 @@ const Portal = () => {
             optimisticMediaType = mediaFile.type.startsWith('video') ? 'video' : (mediaFile.type.includes('gif') ? 'gif' : 'image');
         }
 
+        const isVideoUpload = optimisticMediaType === 'video';
         const optimisticPost = {
             _id: tempId,
             content: messageText,
@@ -563,6 +564,9 @@ const Portal = () => {
             likeCount: 0,
             isOptimistic: true, // Flag for styling
             quotedPost: quotedPost, // Inject full deeply-populated quotedPost
+            isProcessing: isVideoUpload ? true : false,
+            processingProgress: 0,
+            estimatedTime: isVideoUpload ? 'Hesaplanıyor...' : ''
         };
 
         // Add to feed immediately
