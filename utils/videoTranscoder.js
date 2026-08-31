@@ -10,16 +10,19 @@ import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 
-// Configure fluent-ffmpeg to use system binaries in production, static in development
-if (process.env.NODE_ENV === 'production') {
-    ffmpeg.setFfmpegPath('ffmpeg');
-    ffmpeg.setFfprobePath('ffprobe');
-    console.log('[VideoTranscoder] Configured to use system ffmpeg/ffprobe binaries.');
-} else {
+// Configure fluent-ffmpeg to use static binaries or system binaries safely
+if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath);
-    ffmpeg.setFfprobePath(ffprobeStatic.path);
-    console.log('[VideoTranscoder] Configured to use static ffmpeg/ffprobe binaries.');
+} else {
+    ffmpeg.setFfmpegPath('ffmpeg');
 }
+
+if (ffprobeStatic && ffprobeStatic.path) {
+    ffmpeg.setFfprobePath(ffprobeStatic.path);
+} else {
+    ffmpeg.setFfprobePath('ffprobe');
+}
+console.log('[VideoTranscoder] Configured ffmpeg/ffprobe binaries.');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RAM-SAFE UPLOAD: stream file directly to R2 instead of readFileSync.
@@ -155,7 +158,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             });
         });
 
-        const videoStream = metadata.streams.find(s => s.codec_type === 'video');
+        const videoStream = (metadata.streams || []).find(s => s.codec_type === 'video');
         const srcHeight = videoStream ? parseInt(videoStream.height, 10) : 0;
         const srcWidth  = videoStream ? parseInt(videoStream.width,  10) : 0;
         console.log(`[VideoTranscoder] Source dimensions: ${srcWidth}x${srcHeight}`);
@@ -198,21 +201,24 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         initialQualities[maxField] = urlOriginal;
 
         const initialUpdates = {
-            videoUrl:       urlOriginal,
-            media:          urlOriginal,
-            videoQualities: initialQualities
+            videoUrl:           urlOriginal,
+            media:              urlOriginal,
+            videoQualities:     initialQualities,
+            isProcessing:       true,
+            processingProgress: 0,
+            estimatedTime:      formatEstimatedTime(totalEstimatedTimeSeconds)
         };
         initialUpdates[maxRootField] = urlOriginal;
 
-        await Post.findByIdAndUpdate(postId, initialUpdates);
+        const postAfterOriginal = await Post.findByIdAndUpdate(postId, initialUpdates, { new: true })
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
+            .populate('portal');
+
         console.log(`[VideoTranscoder] ✅ Original quality (${maxLabel}) saved to DB. Video is immediately playable.`);
 
         // Broadcast original update to client via Socket.IO
-        if (global.io) {
-            const updatedPost = await Post.findById(postId)
-                .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
-                .populate('portal');
-            global.io.emit('post:updated', updatedPost);
+        if (global.io && postAfterOriginal) {
+            global.io.emit('post:updated', postAfterOriginal);
         }
 
         // ── Step 5: Sequential low-memory transcoding queue ───────────────────
@@ -245,20 +251,21 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                 bufsize:      job.bufsize,
                 onProgress: async (percent) => {
                     const overallPercent = Math.min(99, Math.round(((jobIndex + (percent / 100)) / jobs.length) * 100));
-                    // Update DB every 20% progress interval
-                    if (overallPercent - lastUpdatedProgress >= 20) {
+                    // Update DB every 10% progress interval
+                    if (overallPercent - lastUpdatedProgress >= 10) {
                         lastUpdatedProgress = overallPercent;
                         const remainingSeconds = Math.max(1, Math.ceil(totalEstimatedTimeSeconds * (1 - overallPercent / 100)));
                         const formattedRemaining = formatEstimatedTime(remainingSeconds);
 
                         const updatedPost = await Post.findByIdAndUpdate(postId, {
+                            isProcessing: true,
                             processingProgress: overallPercent,
                             estimatedTime: formattedRemaining
                         }, { new: true })
                         .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
                         .populate('portal');
 
-                        if (global.io) {
+                        if (global.io && updatedPost) {
                             global.io.emit('post:updated', updatedPost);
                         }
                         console.log(`[VideoTranscoder] ⏳ Progress update: ${overallPercent}% - Kalan: ${formattedRemaining}`);
@@ -272,7 +279,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                     await uploadFileToR2(outputPath, r2Key, bucketName);
                     const url = constructProxiedUrl(r2Key);
 
-                    finalQualities[job.field]  = url;
+                    finalQualities[job.field] = url;
 
                     const overallPercent = Math.min(99, Math.round(((jobIndex + 1) / jobs.length) * 100));
                     lastUpdatedProgress = overallPercent;
@@ -283,13 +290,14 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                     const updatedPost = await Post.findByIdAndUpdate(postId, {
                         videoQualities: { ...finalQualities },
                         [job.rootField]: url,
+                        isProcessing: true,
                         processingProgress: overallPercent,
                         estimatedTime: formattedRemaining
                     }, { new: true })
                     .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
                     .populate('portal');
 
-                    if (global.io) {
+                    if (global.io && updatedPost) {
                         global.io.emit('post:updated', updatedPost);
                     }
                     console.log(`[VideoTranscoder] ✅ ${job.label} written to DB & emitted.`);
@@ -322,7 +330,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
         .populate('portal');
 
-        if (global.io) {
+        if (global.io && updatedPost) {
             global.io.emit('post:updated', updatedPost);
         }
 
@@ -340,7 +348,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
             .populate('portal');
 
-            if (global.io) {
+            if (global.io && updatedPost) {
                 global.io.emit('post:updated', updatedPost);
             }
         } catch (dbErr) {

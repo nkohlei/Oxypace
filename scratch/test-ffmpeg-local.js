@@ -9,32 +9,34 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 const FFMPEG_RAM_SAFE_FLAGS = [
-    '-threads 1',
-    '-frame-threads 1',
-    '-tile-columns 0',
-    '-preset ultrafast',
-    '-tune fastdecode',
-    '-pix_fmt yuv420p'
+    '-threads', '1',
+    '-preset', 'ultrafast',
+    '-tune', 'fastdecode',
+    '-pix_fmt', 'yuv420p'
 ];
 
 async function run() {
-    const url = 'https://www.w3schools.com/html/mov_bbb.mp4';
-    const localInputPath = path.join(process.cwd(), 'temp_media', 'test.mp4');
+    const localInputPath = path.join(process.cwd(), 'temp_media', 'generated-test.mp4');
     fs.mkdirSync(path.dirname(localInputPath), { recursive: true });
 
-    console.log('Downloading sample video...');
-    const writer = fs.createWriteStream(localInputPath);
-    const response = await axios({
-        method: 'get',
-        url: url,
-        responseType: 'stream'
-    });
-    response.data.pipe(writer);
+    console.log('Generating 3-second test video with FFmpeg...');
     await new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
+        ffmpeg()
+            .input('color=c=blue:s=1280x720:d=3')
+            .inputFormat('lavfi')
+            .output(localInputPath)
+            .videoCodec('libx264')
+            .outputOptions(['-pix_fmt yuv420p', '-t 3'])
+            .on('end', () => {
+                console.log('Test video generated at:', localInputPath);
+                resolve();
+            })
+            .on('error', (err) => {
+                console.error('Video generation error:', err);
+                reject(err);
+            })
+            .run();
     });
-    console.log('Sample video downloaded to:', localInputPath);
 
     const metadata = await new Promise((resolve, reject) => {
         ffmpeg.ffprobe(localInputPath, (err, data) => {
