@@ -21,38 +21,44 @@ const FAST_STREAM_PATTERNS = [
  */
 function decodeDcFunction(html) {
   try {
-    // Match the exact function definition: function dc_xxxxx(value_parts) { ... }
-    const fnMatch = html.match(/function\s+(dc_[a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{[\s\S]*?\n\s*\}/);
-    // Match the exact variable assignment: var s_xxxxx = dc_yyyyy([...]);
-    const varMatch = html.match(/var\s+(s_[a-zA-Z0-9_]+)\s*=\s*(dc_[a-zA-Z0-9_]+\s*\(\s*\[[\s\S]*?\]\s*\));/);
+    const fnStart = html.indexOf('function dc_');
+    if (fnStart === -1) return null;
 
-    if (fnMatch && varMatch) {
-      const sandbox = {
-        atob: (str) => Buffer.from(str, 'base64').toString('binary'),
-        btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
-        Math,
-        String,
-        Array,
-        parseInt,
-        parseFloat,
-        encodeURIComponent,
-        decodeURIComponent,
-      };
+    const fnEnd = html.indexOf('\n}\n', fnStart) !== -1 ? html.indexOf('\n}\n', fnStart) + 2 : html.indexOf('}', fnStart);
+    if (fnEnd === -1) return null;
 
-      vm.createContext(sandbox);
-      const executionScript = `
-        ${fnMatch[0]}
-        ${varMatch[0]}
-        var __final_decoded_url__ = ${varMatch[1]};
-      `;
+    const fnBody = html.substring(fnStart, fnEnd + 1);
 
-      vm.runInContext(executionScript, sandbox, { timeout: 1000 });
+    const varStart = html.indexOf('var s_', fnEnd);
+    if (varStart === -1) return null;
 
-      const decodedUrl = sandbox.__final_decoded_url__;
-      if (decodedUrl && typeof decodedUrl === 'string' && (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://'))) {
-        logger.info(`[FastScraper] 🔓 VM ile asıl gizli CDN stream linki çözüldü: ${decodedUrl}`);
-        return decodedUrl;
-      }
+    const varEnd = html.indexOf(';', varStart);
+    if (varEnd === -1) return null;
+
+    const varStatement = html.substring(varStart, varEnd + 1);
+    const callExprMatch = varStatement.match(/=\s*([^;]+);/);
+    if (!callExprMatch) return null;
+
+    const sandbox = {
+      atob: (str) => Buffer.from(str, 'base64').toString('binary'),
+      btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
+      Math,
+      String,
+      Array,
+      parseInt,
+      parseFloat,
+      encodeURIComponent,
+      decodeURIComponent,
+    };
+
+    vm.createContext(sandbox);
+    const script = `${fnBody}\n${varStatement}\n__final_stream__ = ${callExprMatch[1]};`;
+    vm.runInContext(script, sandbox, { timeout: 1000 });
+
+    const decoded = sandbox.__final_stream__;
+    if (decoded && typeof decoded === 'string' && (decoded.startsWith('http://') || decoded.startsWith('https://'))) {
+      logger.info(`[FastScraper] 🔓 VM ile gizli akış linki başarıyla çözüldü: ${decoded}`);
+      return decoded;
     }
   } catch (err) {
     logger.debug(`[FastScraper] VM dc_ decode hatası: ${err.message}`);
