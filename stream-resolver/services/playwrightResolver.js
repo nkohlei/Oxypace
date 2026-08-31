@@ -40,11 +40,8 @@ async function fetchHtmlViaScrapingService(targetUrl, options = {}) {
     const key = process.env.SCRAPER_API_KEY.trim();
     attempts.push({
       name: 'ScraperAPI',
-      url: `http://api.scraperapi.com?api_key=${key}&url=${encodeURIComponent(targetUrl)}&country_code=${country}&keep_headers=true`,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        ...(referer ? { 'Referer': referer, 'Origin': new URL(referer).origin } : {}),
-      },
+      url: `http://api.scraperapi.com?api_key=${key}&url=${encodeURIComponent(targetUrl)}`,
+      headers: {},
     });
   }
 
@@ -367,10 +364,10 @@ async function resolveStreamUrl(targetUrl, options = {}) {
     try {
       logger.info(`[FastResolver] 🚀 ScraperAPI ile anında çözümleme deneniyor: ${targetUrl}`);
       const apiKey = process.env.SCRAPER_API_KEY.trim();
-      const mainUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&country_code=tr&keep_headers=true`;
-      const mainHtml = await httpGet(mainUrl, { 'User-Agent': DEFAULT_USER_AGENT });
+      const mainUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+      const mainHtml = await httpGet(mainUrl);
 
-      if (mainHtml && mainHtml.length > 500) {
+      if (mainHtml && mainHtml.length > 500 && !mainHtml.includes('Request failed')) {
         const titleMatch = mainHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
         const pageTitle = titleMatch ? titleMatch[1].trim() : '';
 
@@ -397,20 +394,12 @@ async function resolveStreamUrl(targetUrl, options = {}) {
 
         for (const embedUrl of embedUrls) {
           logger.info(`[FastResolver] Embed sayfası çekiliyor: ${embedUrl}`);
-          const embedApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(embedUrl)}&country_code=tr&keep_headers=true`;
-          
-          let originHeader = targetUrl;
-          try { originHeader = new URL(targetUrl).origin; } catch {}
-
-          const embedHtml = await httpGet(embedApiUrl, {
-            'User-Agent': DEFAULT_USER_AGENT,
-            'Referer': targetUrl,
-            'Origin': originHeader,
-          });
+          const embedApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(embedUrl)}`;
+          const embedHtml = await httpGet(embedApiUrl);
 
           logger.info(`[FastResolver] Embed HTML yanıtı: ${embedHtml.length} bayt`);
 
-          if (embedHtml && embedHtml.length > 200) {
+          if (embedHtml && embedHtml.length > 200 && !embedHtml.includes('Request failed')) {
             const decodedStream = deobfuscateHtmlBody(embedHtml, embedUrl, null);
             if (decodedStream) {
               logger.info(`[FastResolver] ⚡ Embed sayfasından anında stream çözüldü: ${decodedStream}`);
