@@ -8,6 +8,7 @@
 
 const vm = require('vm');
 const logger = require('../utils/logger');
+const browserPool = require('./browserPool');
 
 const FAST_STREAM_PATTERNS = [
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\.m3u8[^"'\s\\<>{}|^`[\]]*)/i,
@@ -319,23 +320,44 @@ async function fastResolve(targetUrl, options = {}) {
       const rapidMatch = html.match(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/i);
       if (rapidMatch) {
         addEmbed(rapidMatch[0]);
-      }
-      // Check data-source or atom sources
-      const scxMatch = html.match(/var\s+scx\s*=\s*(\{[\s\S]*?\});/);
-      if (scxMatch) {
+      } else {
         try {
-          const scxData = JSON.parse(scxMatch[1]);
-          for (const k in scxData) {
-            if (scxData[k] && scxData[k].sx && scxData[k].sx.t) {
-              for (const enc of scxData[k].sx.t) {
-                // If encrypted URL found
-                if (typeof enc === 'string' && enc.startsWith('http')) {
-                  addEmbed(enc);
+          logger.info('[FastScraper] ⚡ Fullhdfilmizlesene dinamik oynatıcı iframe yakalanıyor...');
+          const rapidIfr = await browserPool.acquire(async (browser) => {
+            let context = null;
+            try {
+              context = await browser.newContext({
+                ignoreHTTPSErrors: true,
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+              });
+              const page = await context.newPage();
+              let rapidUrl = null;
+              page.on('response', (res) => {
+                const u = res.url();
+                if (u.includes('rapidvid.net/vx/') || u.includes('/ifr/vod/')) {
+                  rapidUrl = u;
                 }
+              });
+              await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+              await page.waitForTimeout(1000);
+              const playBtn = await page.$('.video-play-button, #play-video, .player-alan');
+              if (playBtn) await playBtn.click().catch(() => {});
+              for (let i = 0; i < 15; i++) {
+                if (rapidUrl) break;
+                await page.waitForTimeout(200);
               }
+              return rapidUrl;
+            } finally {
+              if (context) await context.close().catch(() => {});
             }
+          });
+          if (rapidIfr) {
+            logger.info(`[FastScraper] 🎯 Dynamic RapidVid iframe yakalandı: ${rapidIfr}`);
+            addEmbed(rapidIfr);
           }
-        } catch (e) {}
+        } catch (e) {
+          logger.debug(`[FastScraper] Fullhd dynamic iframe capture error: ${e.message}`);
+        }
       }
     }
 
