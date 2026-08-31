@@ -11,12 +11,12 @@
  *   npm run setup  → Bağımlılıkları yükle + Chromium indir
  */
 
-// Ortam değişkenlerini yükle (.env dosyasından)
-require('dotenv').config();
+const path = require('path');
+// Ortam değişkenlerini yükle (.env dosyasından - mutlak yol ile)
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const logger = require('./utils/logger');
 const streamRoutes = require('./routes/stream');
 

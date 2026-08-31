@@ -10,6 +10,9 @@
  *   - Özel domain kuralları (closeload.filmmakinesi.to, hdfilmcehennemi.mobi, rapidvid.net)
  */
 
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
 const { chromium } = require('playwright');
 const vm = require('vm');
 const https = require('https');
@@ -96,7 +99,7 @@ async function fetchHtmlViaScrapingService(targetUrl) {
         logger.debug(`[PreFetch] ${attempt.name} yetersiz yanıt (${html?.length ?? 0} bayt)`);
       }
     } catch (e) {
-      logger.debug(`[PreFetch] Proxy başarısız (${proxyUrl.substring(0, 50)}): ${e.message}`);
+      logger.debug(`[PreFetch] ${attempt.name} başarısız: ${e.message}`);
     }
   }
   return null;
@@ -123,11 +126,20 @@ function extractEmbedUrlsFromHtml(html, baseUrl) {
     }
   }
 
-  // data-src, data-embed, data-url in iframes
+  // data-src, data-embed, data-url in iframes / divs
   const dataAttrRegex = /<(?:iframe|div|section)[^>]+data-(?:src|embed|url|video|link)=["']([^"']+)["']/gi;
   while ((m = dataAttrRegex.exec(html)) !== null) {
-    const src = m[1].trim();
+    let src = m[1].trim();
+    if (src.startsWith('//')) src = 'https:' + src;
     if (src && src.startsWith('http')) results.add(src);
+  }
+
+  // Generic video/embed src/data-src regex
+  const allEmbedRegex = /(?:data-src|data-url|data-embed|data-video|data-frame|src)=["']([^"']*(?:embed|video|player|rapid|close|vidoza|vidmoly|fembed|dood|mixdrop|streamtape|\/v\/|\/e\/)[^"']*)["']/gi;
+  while ((m = allEmbedRegex.exec(html)) !== null) {
+    let src = m[1].trim();
+    if (src.startsWith('//')) src = 'https:' + src;
+    if (src && src.startsWith('http') && !src.includes('google') && !src.includes('facebook')) results.add(src);
   }
 
   // Embedded JS player URLs (source:, file:, playerUrl:)
@@ -283,14 +295,18 @@ async function resolveStreamUrl(targetUrl, options = {}) {
   try {
     logger.debug(`[Playwright] Chromium başlatılıyor...`);
 
-    // Proxy belirle: env var → Tor SOCKS5 → proxy yok
-    let proxyServer = process.env.HTTP_PROXY || process.env.HTTPS_PROXY || null;
-    if (!proxyServer) {
-      // Tor aktifse otomatik kullan
-      proxyServer = 'socks5://127.0.0.1:9050';
-      logger.debug(`[Playwright] Tor SOCKS5 proxy kullanılıyor (127.0.0.1:9050)`);
-    } else {
-      logger.debug(`[Playwright] Env proxy kullanılıyor: ${proxyServer}`);
+    // Proxy belirle: ScraperAPI proxy → HTTP/HTTPS proxy → proxy yok
+    let proxyConfig = null;
+    if (process.env.SCRAPER_API_KEY) {
+      proxyConfig = {
+        server: 'http://proxy-server.scraperapi.com:8001',
+        username: 'scraperapi',
+        password: process.env.SCRAPER_API_KEY.trim(),
+      };
+      logger.info(`[Playwright] 🚀 ScraperAPI residential proxy devrede`);
+    } else if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
+      proxyConfig = { server: process.env.HTTP_PROXY || process.env.HTTPS_PROXY };
+      logger.debug(`[Playwright] Env proxy kullanılıyor: ${JSON.stringify(proxyConfig)}`);
     }
 
     const launchOptions = {
@@ -300,9 +316,13 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         '--disable-gpu', '--disable-extensions',
         '--disable-blink-features=AutomationControlled',
         '--disable-features=IsolateOrigins,site-per-process',
+        '--ignore-certificate-errors',
       ],
-      proxy: { server: proxyServer },
     };
+
+    if (proxyConfig) {
+      launchOptions.proxy = proxyConfig;
+    }
 
     browser = await chromium.launch(launchOptions);
 
