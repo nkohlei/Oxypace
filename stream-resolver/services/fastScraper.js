@@ -68,26 +68,43 @@ function decodeDcFunction(html) {
 }
 
 /**
- * Unpacks P.A.C.K.E.R. obfuscated code
+ * Unpacks P.A.C.K.E.R. obfuscated code using isolated Node.js VM context
  */
 function unpackJs(packedJs) {
+  let output = '';
   try {
-    const match = packedJs.match(/eval\(function\(p,a,c,k,e,[rd]\)\{.*\}\('(.*)',\s*(\d+),\s*(\d+),\s*'(.*?)'\.split\('\|'\)/);
-    if (!match) return '';
-    let [ , p, a, c, k ] = match;
-    a = parseInt(a, 10);
-    c = parseInt(c, 10);
-    const kArray = k.split('|');
-    const eFunc = (c) => (c < a ? '' : eFunc(parseInt(c / a, 10))) + ((c = c % a) > 35 ? String.fromCharCode(c + 29) : c.toString(36));
-    while (c--) {
-      if (kArray[c]) {
-        p = p.replace(new RegExp('\\b' + eFunc(c) + '\\b', 'g'), kArray[c]);
+    let cursor = 0;
+    while (cursor < packedJs.length) {
+      const evalIdx = packedJs.indexOf('eval(function(p,a,c,k,e,', cursor);
+      if (evalIdx === -1) break;
+
+      let depth = 1;
+      let i = evalIdx + 5; // right after 'eval('
+      while (i < packedJs.length && depth > 0) {
+        if (packedJs[i] === '(') depth++;
+        else if (packedJs[i] === ')') depth--;
+        i++;
       }
+
+      if (depth === 0) {
+        const innerCode = packedJs.substring(evalIdx + 5, i - 1);
+        try {
+          const unpacked = vm.runInNewContext('(' + innerCode + ')', {
+            String, Array, Math, parseInt, parseFloat
+          }, { timeout: 1000 });
+          if (typeof unpacked === 'string' && unpacked.length > 0) {
+            output += '\n' + unpacked;
+          }
+        } catch (e) {
+          // ignore single unpack failure
+        }
+      }
+      cursor = evalIdx + 1;
     }
-    return p;
   } catch (err) {
-    return '';
+    // ignore
   }
+  return output;
 }
 
 const { execFile } = require('child_process');
@@ -307,7 +324,7 @@ async function fastResolve(targetUrl, options = {}) {
 
       // Check unpacked JS / Packer eval
       let searchCorpus = embedHtml;
-      if (embedHtml.includes('eval(function(p,a,c,k,e,')) {
+      if (embedHtml.includes('eval(function(p,a,c,k,e,') || embedHtml.includes('eval(function(')) {
         const unpacked = unpackJs(embedHtml);
         if (unpacked) {
           searchCorpus += '\n' + unpacked;
@@ -348,6 +365,26 @@ async function fastResolve(targetUrl, options = {}) {
               pageTitle: pageTitle || 'Film / Dizi Akışı',
             };
           }
+        }
+      }
+
+      // Check JSON sources config e.g. "file": "https://..."
+      const fileMatch = searchCorpus.match(/["']file["']\s*:\s*["'](https?:[^"']+)["']/i);
+      if (fileMatch && fileMatch[1]) {
+        const streamUrl = fileMatch[1].replace(/\\/g, '');
+        if (!streamUrl.includes('blank.mp4') && !streamUrl.endsWith('.js')) {
+          logger.info(`[FastScraper] ✅ JSON config içinden akış bulundu: ${streamUrl}`);
+          const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
+          return {
+            streamUrl,
+            type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
+            headers: {
+              referer,
+              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              origin,
+            },
+            pageTitle: pageTitle || 'Film / Dizi Akışı',
+          };
         }
       }
     }
