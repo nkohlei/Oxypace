@@ -306,6 +306,23 @@ async function fastResolve(targetUrl, options = {}) {
         }
       }
 
+      // Check FirePlayer embed endpoints (e.g. myplayersvideo.xyz/fireplayer/video/ID)
+      if (embedUrl.includes('/fireplayer/video/')) {
+        try {
+          const getVideoUrl = embedUrl.split('?')[0] + '?do=getVideo';
+          const videoDataRaw = await fetchHtmlWithBypass(getVideoUrl, embedUrl);
+          if (videoDataRaw && videoDataRaw.includes('videoSrc')) {
+            const videoData = JSON.parse(videoDataRaw);
+            if (videoData.videoSrc && !embedUrls.has(videoData.videoSrc)) {
+              logger.info(`[FastScraper] 🎯 FirePlayer videoSrc bulundu: ${videoData.videoSrc}`);
+              embedUrls.add(videoData.videoSrc);
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
       // Check dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix Player)
       const decodedStream = decodeDcFunction(embedHtml);
       if (decodedStream) {
