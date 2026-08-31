@@ -899,14 +899,14 @@ router.post('/resolve-stream', auth, async (req, res) => {
         }
 
         const errMsg = response.data?.error || 'Bu sayfada oynatılabilir bir video akışı bulunamadı.';
-        return res.status(response.status >= 400 && response.status < 500 ? response.status : 404).json({
+        return res.status(200).json({
             success: false,
             error: errMsg,
             code: response.data?.code || 'STREAM_NOT_FOUND'
         });
     } catch (err) {
         console.error('[StreamResolverForwarder] Service communication error:', err.message);
-        return res.status(503).json({
+        return res.status(200).json({
             success: false,
             error: 'Video çözücü servisine ulaşılamadı. Lütfen resolver servisinin çalıştığından emin olun.',
             code: 'RESOLVER_UNAVAILABLE'
