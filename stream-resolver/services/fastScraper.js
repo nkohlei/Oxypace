@@ -65,6 +65,32 @@ function decodeDcFunction(html) {
     logger.debug(`[FastScraper] VM dc_ decode hatası: ${err.message}`);
   }
   return null;
+/**
+ * Decrypts RapidVid _p8 custom encrypted payload
+ */
+function decodeRapidVid(html) {
+  try {
+    const p8Match = html.match(/window\._p8\s*=\s*['"]([^'"]+)['"]/);
+    if (!p8Match) return null;
+    const p8 = p8Match[1];
+    let e = Buffer.from(String(p8 || '').split('').reverse().join(''), 'base64').toString('latin1');
+    let n = '';
+    for (let t = 0; t < e.length; t++) {
+      let a = 'K9L'[t % 3];
+      let i = e.charCodeAt(t) - (a.charCodeAt(0) % 5 + 1);
+      n += String.fromCharCode(i);
+    }
+    const decodedJsonStr = Buffer.from(n, 'base64').toString('utf8');
+    const obj = JSON.parse(decodedJsonStr);
+    const stream = obj.cm || obj.tm || (obj.sources && obj.sources[0] && obj.sources[0].file);
+    if (stream && typeof stream === 'string' && stream.startsWith('http')) {
+      logger.info(`[FastScraper] 🔓 RapidVid akışı başarıyla çözüldü: ${stream}`);
+      return stream;
+    }
+  } catch (err) {
+    logger.debug(`[FastScraper] RapidVid decode hatası: ${err.message}`);
+  }
+  return null;
 }
 
 /**
@@ -286,13 +312,39 @@ async function fastResolve(targetUrl, options = {}) {
       }
     }
 
+    // 2.5 Extract Fullhdfilmizlesene specific player sources (scx / atom / rapidvid)
+    if (targetUrl.includes('fullhdfilmizlesene')) {
+      const rapidMatch = html.match(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/i);
+      if (rapidMatch) {
+        addEmbed(rapidMatch[0]);
+      }
+      // Check data-source or atom sources
+      const scxMatch = html.match(/var\s+scx\s*=\s*(\{[\s\S]*?\});/);
+      if (scxMatch) {
+        try {
+          const scxData = JSON.parse(scxMatch[1]);
+          for (const k in scxData) {
+            if (scxData[k] && scxData[k].sx && scxData[k].sx.t) {
+              for (const enc of scxData[k].sx.t) {
+                // If encrypted URL found
+                if (typeof enc === 'string' && enc.startsWith('http')) {
+                  addEmbed(enc);
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 3. Extract Embed iFrames and Players
     let ifrMatch;
     const ifrRegex = /<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi;
     while ((ifrMatch = ifrRegex.exec(html)) !== null) {
       addEmbed(ifrMatch[1]);
     }
 
-    const embedScriptRegex = /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch|url|fireplayer|hiveplayer|play)\/[^"'\s\\<>{}|^`[\]]*)/gi;
+    const embedScriptRegex = /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch|url|fireplayer|hiveplayer|play|rapidvid|vx)\/[^"'\s\\<>{}|^`[\]]*)/gi;
     let sMatch;
     while ((sMatch = embedScriptRegex.exec(html)) !== null) {
       addEmbed(sMatch[1]);
@@ -307,6 +359,22 @@ async function fastResolve(targetUrl, options = {}) {
       logger.info(`[FastScraper] Embed taranıyor: ${embedUrl}`);
       const embedHtml = await fetchHtmlWithBypass(embedUrl, targetUrl);
       if (!embedHtml) continue;
+
+      // Check RapidVid _p8 decrypter
+      const rapidStream = decodeRapidVid(embedHtml);
+      if (rapidStream) {
+        const { referer, origin } = determineRefererAndOrigin(rapidStream, embedUrl, targetUrl);
+        return {
+          streamUrl: rapidStream,
+          type: rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
+          headers: {
+            referer,
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            origin,
+          },
+          pageTitle: pageTitle || 'Film / Dizi Akışı',
+        };
+      }
 
       // Check nested iframes inside embed (e.g. HivePlayer -> FirePlayer / VidMoly)
       const nestedIfr = embedHtml.match(/src\s*=\s*["'](https?:\\\/\\\/[^"']+|https?:\/\/[^"']+)["']/i);
