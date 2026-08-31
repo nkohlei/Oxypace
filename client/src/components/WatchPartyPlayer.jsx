@@ -73,6 +73,16 @@ const isPlayableExternalUrl = (url) => {
   return true;
 };
 
+const isWebPageUrl = (url) => {
+  if (!url) return false;
+  if (!url.startsWith('http')) return false;
+  const clean = url.split('?')[0].split('#')[0].toLowerCase();
+  if (clean.endsWith('.mp4') || clean.endsWith('.m4v') || clean.endsWith('.webm') || clean.endsWith('.m3u8') || clean.endsWith('.mpd')) {
+    return false;
+  }
+  return true;
+};
+
 const isIframePlatform = (url) => {
   if (!url) return false;
   const lower = url.toLowerCase();
@@ -929,10 +939,9 @@ const WatchPartyPlayer = () => {
                              height="100%"
                              frameBorder="0"
                              allowFullScreen
-                             allow="autoplay; encrypted-media; picture-in-picture"
+                             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                              style={{ border: 'none', background: '#000', borderRadius: '12px', width: '100%', height: '100%' }}
                              onLoad={() => setIsReady(true)}
-                             referrerPolicy="strict-origin-when-cross-origin"
                          />
                       ) : isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
@@ -954,6 +963,17 @@ const WatchPartyPlayer = () => {
                                     playerVars: { autoplay: 1, disablekb: 0 }
                                 }
                             }}
+                        />
+                    ) : isWebPageUrl(watchParty?.url) ? (
+                        <iframe
+                            src={watchParty.url}
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            allowFullScreen
+                            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                            style={{ border: 'none', background: '#000', borderRadius: '12px', width: '100%', height: '100%' }}
+                            onLoad={() => setIsReady(true)}
                         />
                     ) : (
                         <VideoPlayer
