@@ -3,9 +3,10 @@
  *
  * Cloudflare ve ASN engellerini aşan hibrit Scraper & Stream Extractor motoru.
  * ScraperAPI (veya doğrudan HTTP) kullanarak sayfadaki gizlenmiş iframe,
- * packer/eval scriptleri, dc_ fonksiyonu şifrelemesi ve doğrudan .m3u8/.mp4/master.txt akışlarını ayıklar.
+ * packer/eval scriptleri, dinamik dc_ şifre çözücü VM ve doğrudan .m3u8/.mp4/master.txt akışlarını ayıklar.
  */
 
+const vm = require('vm');
 const logger = require('../utils/logger');
 
 const FAST_STREAM_PATTERNS = [
@@ -16,60 +17,45 @@ const FAST_STREAM_PATTERNS = [
 ];
 
 /**
- * Decodes Closeload / Rapidrame / HDfilmcehennemi dc_ obfuscated stream URLs
+ * Safely executes the embed page's exact dc_ decoder function in an isolated Node.js VM context
  */
 function decodeDcFunction(html) {
   try {
-    // 1. Look for dc_ function call with array of parts: dc_xxxx(["part1", "part2", ...])
-    const callMatch = html.match(/dc_[a-zA-Z0-9_]+\s*\(\s*(\[[^\]]+\])\s*\)/);
-    if (!callMatch) return null;
+    // Match the exact function definition: function dc_xxxxx(value_parts) { ... }
+    const fnMatch = html.match(/function\s+(dc_[a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{[\s\S]*?\n\s*\}/);
+    // Match the exact variable assignment: var s_xxxxx = dc_yyyyy([...]);
+    const varMatch = html.match(/var\s+(s_[a-zA-Z0-9_]+)\s*=\s*(dc_[a-zA-Z0-9_]+\s*\(\s*\[[\s\S]*?\]\s*\));/);
 
-    let parts = [];
-    try {
-      parts = JSON.parse(callMatch[1].replace(/'/g, '"'));
-    } catch (e) {
-      const arrayString = callMatch[1];
-      const items = arrayString.match(/"([^"]+)"|'([^']+)'/g);
-      if (items) {
-        parts = items.map((s) => s.replace(/['"]/g, ''));
+    if (fnMatch && varMatch) {
+      const sandbox = {
+        atob: (str) => Buffer.from(str, 'base64').toString('binary'),
+        btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
+        Math,
+        String,
+        Array,
+        parseInt,
+        parseFloat,
+        encodeURIComponent,
+        decodeURIComponent,
+      };
+
+      vm.createContext(sandbox);
+      const executionScript = `
+        ${fnMatch[0]}
+        ${varMatch[0]}
+        var __final_decoded_url__ = ${varMatch[1]};
+      `;
+
+      vm.runInContext(executionScript, sandbox, { timeout: 1000 });
+
+      const decodedUrl = sandbox.__final_decoded_url__;
+      if (decodedUrl && typeof decodedUrl === 'string' && (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://'))) {
+        logger.info(`[FastScraper] 🔓 VM ile asıl gizli CDN stream linki çözüldü: ${decodedUrl}`);
+        return decodedUrl;
       }
     }
-
-    if (!parts || !parts.length) return null;
-
-    // Check if the dc_ function definition uses custom acc or standard acc = 33 / 6
-    let accInitial = 33;
-    let accStep = 6;
-    const defMatch = html.match(/function\s+dc_[a-zA-Z0-9_]+\s*\([^)]*\)\s*\{([\s\S]*?)\}/);
-    if (defMatch) {
-      const fnBody = defMatch[1];
-      const accMatch = fnBody.match(/acc\s*=\s*(\d+)/);
-      if (accMatch) accInitial = parseInt(accMatch[1], 10);
-      const stepMatch = fnBody.match(/acc\s*=\s*\(\s*acc\s*\+\s*(\d+)\s*\)/);
-      if (stepMatch) accStep = parseInt(stepMatch[1], 10);
-    }
-
-    // Decode: reverse -> base64 decode -> reverse -> base64 decode -> XOR unmix
-    let value = parts.join('');
-    let r1 = Buffer.from(value.split('').reverse().join(''), 'base64').toString('binary');
-    let r2 = Buffer.from(r1.split('').reverse().join(''), 'base64').toString('binary');
-
-    let acc = accInitial;
-    let unmix = '';
-    for (let i = 0; i < r2.length; i++) {
-      let b = r2.charCodeAt(i);
-      acc = (acc + accStep) % 256;
-      let plain = b ^ acc;
-      acc = (acc + b) % 256;
-      unmix += String.fromCharCode(plain);
-    }
-
-    if (unmix && (unmix.startsWith('http://') || unmix.startsWith('https://'))) {
-      logger.info(`[FastScraper] 🔓 dc_ fonksiyonundan asıl gizli akış çözüldü: ${unmix}`);
-      return unmix;
-    }
   } catch (err) {
-    logger.debug(`[FastScraper] dc_ decode hatası: ${err.message}`);
+    logger.debug(`[FastScraper] VM dc_ decode hatası: ${err.message}`);
   }
   return null;
 }
