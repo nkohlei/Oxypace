@@ -31,6 +31,7 @@ const STREAM_PATTERNS = [
   { regex: /\/hls\/.*\.m3u8(\?[^"'\s<>]*)?/i,         type: 'm3u8' },
   { regex: /\/stream\/.*\.m3u8(\?[^"'\s<>]*)?/i,      type: 'm3u8' },
   { regex: /\.m3u8(\?[^"'\s<>]*)?/i,                  type: 'm3u8' },
+  { regex: /\.m3u8/i,                                 type: 'm3u8' },
   // ── Popüler CDN / Provider desenleri ────────────────────────────────────
   { regex: /rapidvid\.net.*\.m3u8/i,                  type: 'm3u8' },
   { regex: /closeload.*\.m3u8/i,                      type: 'm3u8' },
@@ -43,6 +44,7 @@ const STREAM_PATTERNS = [
   { regex: /cloudfront\.net.*\.m3u8/i,                 type: 'm3u8' },
   { regex: /akamaized\.net.*\.m3u8/i,                  type: 'm3u8' },
   { regex: /\/video\/hls\//i,                          type: 'm3u8' },
+  { regex: /storage\.googleapis\.com.*\.m3u8/i,        type: 'm3u8' },
   // ── Popüler Genel Video Hostları / Oynatıcılar ─────────────────────────
   { regex: /vidmoly\.[a-z]+\/.*\.m3u8/i,              type: 'm3u8' },
   { regex: /vidoza\.[a-z]+\/.*\.m3u8/i,               type: 'm3u8' },
@@ -359,8 +361,8 @@ async function resolveStreamUrl(targetUrl, options = {}) {
     attachListeners(page, 'MAIN');
 
     logger.debug(`[Playwright] Navigating → ${targetUrl}`);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout });
-    await page.waitForTimeout(3000);
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: Math.min(timeout, 30000) });
+    await page.waitForTimeout(4000);
 
     const pageTitle = await page.title().catch(() => '');
     logger.debug(`[Playwright] Başlık: "${pageTitle}"`);
@@ -372,19 +374,14 @@ async function resolveStreamUrl(targetUrl, options = {}) {
     if (foundStream) return { ...foundStream, pageTitle };
 
     // ── Play Butonuna Tıkla ───────────────────────────────────────────────────
-
     logger.debug(`[Playwright] Play butonları deneniyor...`);
-    const clicked = await tryClickPlayButton(page, PLAY_SELECTORS);
-    if (clicked) {
-      logger.debug(`[Playwright] Play tıklandı — 6s bekleniyor...`);
-      await page.waitForTimeout(6000);
-      if (foundStream) return { ...foundStream, pageTitle };
-      await checkVideoSrcFromDOM(page, checkAndSaveStream);
-      if (foundStream) return { ...foundStream, pageTitle };
-    }
+    await tryClickPlayButton(page, PLAY_SELECTORS);
+    await page.waitForTimeout(5000);
+    if (foundStream) return { ...foundStream, pageTitle };
+    await checkVideoSrcFromDOM(page, checkAndSaveStream);
+    if (foundStream) return { ...foundStream, pageTitle };
 
     // ── iFrame Stratejisi ──────────────────────────────────────────────────────
-
     logger.debug(`[Playwright] iFrame'ler taranıyor...`);
     const frames = page.frames();
     logger.debug(`[Playwright] ${frames.length} frame bulundu.`);
@@ -412,7 +409,6 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         return [...new Set(found)];
       });
       domEmbedUrls.forEach((u) => embedUrls.add(u));
-      logger.debug(`[Playwright] ${domEmbedUrls.length} adet lazy-load embed URL'si bulundu.`);
     } catch {}
 
     for (const frame of frames) {
@@ -430,7 +426,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       logger.debug(`[Playwright] iFrame taranıyor: ${frameUrl}`);
 
       await tryClickPlayButton(frame, PLAY_SELECTORS);
-      await page.waitForTimeout(4000);
+      await page.waitForTimeout(3000);
       if (foundStream) return { ...foundStream, pageTitle };
 
       await checkVideoSrcFromDOM(frame, checkAndSaveStream);
