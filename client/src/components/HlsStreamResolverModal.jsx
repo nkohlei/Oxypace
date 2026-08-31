@@ -21,12 +21,11 @@ const HlsStreamResolverModal = ({ isOpen, onClose, onStreamResolved }) => {
         setResolvedData(null);
 
         try {
-            // 1. Direct HLS or MP4 check
+            // 1. Direct HLS, MP4 or known embed check
             const cleanUrl = trimmed.split('?')[0].split('#')[0].toLowerCase();
             const isDirectMedia = cleanUrl.endsWith('.m3u8') || cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.mpd') || cleanUrl.includes('.m3u8') || cleanUrl.includes('/hls/');
 
             if (isDirectMedia) {
-                // Direct stream link, no scraping needed
                 if (onStreamResolved) {
                     onStreamResolved(trimmed, cleanUrl.endsWith('.m3u8') || cleanUrl.includes('.m3u8') || cleanUrl.includes('/hls/'));
                 }
@@ -34,38 +33,34 @@ const HlsStreamResolverModal = ({ isOpen, onClose, onStreamResolved }) => {
                 return;
             }
 
-            // 2. Call backend Stream Resolver proxy endpoint
-            const response = await axios.post('/api/media/resolve-stream', {
-                url: trimmed,
-                timeout: 35000
-            });
-
-            if (response.data && response.data.success && response.data.streamUrl) {
-                const { streamUrl, headers, type, pageTitle } = response.data;
-                
-                // Form proxy URL for CORS / Referer bypass if needed
-                const refererHeader = headers?.referer || headers?.Referer || '';
-                const originHeader = headers?.origin || headers?.Origin || '';
-                
-                // Construct stream proxy URL through the platform's backend proxy
-                const finalStreamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(refererHeader)}&origin=${encodeURIComponent(originHeader)}`;
-
-                setResolvedData({
-                    streamUrl: finalStreamUrl,
-                    rawUrl: streamUrl,
-                    pageTitle: pageTitle || 'Video Akışı',
-                    type: type || 'm3u8'
+            // 2. Try fast server resolver first; if blocked by Cloudflare (404/503), immediately fallback to universal embed player
+            try {
+                const response = await axios.post('/api/media/resolve-stream', {
+                    url: trimmed,
+                    timeout: 20000
                 });
 
-                // Trigger Watch Party
-                if (onStreamResolved) {
-                    onStreamResolved(finalStreamUrl, true);
+                if (response.data && response.data.success && response.data.streamUrl) {
+                    const { streamUrl, headers, type, pageTitle } = response.data;
+                    const refererHeader = headers?.referer || headers?.Referer || '';
+                    const originHeader = headers?.origin || headers?.Origin || '';
+                    const finalStreamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(refererHeader)}&origin=${encodeURIComponent(originHeader)}`;
+
+                    if (onStreamResolved) {
+                        onStreamResolved(finalStreamUrl, true);
+                    }
+                    onClose();
+                    return;
                 }
-                
-                onClose();
-            } else {
-                setError(response.data?.error || 'Sayfada oynatılabilir bir video akışı bulunamadı.');
+            } catch (resolveErr) {
+                console.warn('[HlsStreamResolverModal] Microservice resolve missed, applying smart direct launch fallback:', resolveErr.message);
             }
+
+            // 3. Smart Universal Fallback: Launch directly in room
+            if (onStreamResolved) {
+                onStreamResolved(trimmed, false);
+            }
+            onClose();
         } catch (err) {
             console.error('[HlsStreamResolverModal] Error resolving stream:', err);
             const errMsg = err.response?.data?.error || err.message || 'Stream çözülürken bir hata oluştu. Lütfen bağlantıyı kontrol edin.';
