@@ -378,8 +378,13 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         }
 
         // Embed iframe linklerini bul
-        const embedMatches = [...mainHtml.matchAll(/https:\/\/[^"'\s<>{}|]*(?:embed|video|player|rapid|close|vidoza|vidmoly)[^"'\s<>{}|]*/gi)];
-        const embedUrls = [...new Set(embedMatches.map(m => m[0]))].filter(u => !u.includes('.webp') && !u.includes('.jpg') && !u.includes('.png'));
+        const embedUrls = extractEmbedUrlsFromHtml(mainHtml, targetUrl).filter(u =>
+          !u.includes('.webp') && !u.includes('.jpg') && !u.includes('.png') && !u.includes('.m3u8') && !u.includes('.mp4')
+        );
+        const directEmbedMatch = mainHtml.match(/https:\/\/[^"'\s<>{}|]*embed[^"'\s<>{}|]*/i);
+        if (directEmbedMatch && !embedUrls.includes(directEmbedMatch[0])) {
+          embedUrls.unshift(directEmbedMatch[0]);
+        }
 
         for (const embedUrl of embedUrls) {
           logger.info(`[FastResolver] Embed sayfası çekiliyor: ${embedUrl}`);
