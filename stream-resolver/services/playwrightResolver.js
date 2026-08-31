@@ -575,38 +575,29 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       }
     }
 
-    // ── Ana Sayfa (Engellenmiyorsa doğrudan aç) ───────────────────────────────
+    // ── Ana Sayfa Navigasyonu ───────────────────────────────────────────────
     const page = await context.newPage();
     attachListeners(page, 'MAIN');
 
-    if (!isBlockedDomain || prefetchedEmbedUrls.length === 0) {
-      logger.debug(`[Playwright] Navigating → ${targetUrl}`);
-      try {
-        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: Math.min(timeout, 25000) });
-        await page.waitForTimeout(4000);
-        if (!pageTitle) pageTitle = await page.title().catch(() => '');
-        logger.debug(`[Playwright] Başlık: "${pageTitle}"`);
+    logger.debug(`[Playwright] Navigating → ${targetUrl}`);
+    try {
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: Math.min(timeout, 30000) });
+      await page.waitForTimeout(4000);
+      if (!pageTitle) pageTitle = await page.title().catch(() => '');
+      logger.debug(`[Playwright] Başlık: "${pageTitle}"`);
 
-        if (foundStream) return { ...foundStream, pageTitle };
-        await checkVideoSrcFromDOM(page, checkAndSaveStream);
-        if (foundStream) return { ...foundStream, pageTitle };
+      if (foundStream) return { ...foundStream, pageTitle };
+      await checkVideoSrcFromDOM(page, checkAndSaveStream);
+      if (foundStream) return { ...foundStream, pageTitle };
 
-        logger.debug(`[Playwright] Play butonları deneniyor...`);
-        await tryClickPlayButton(page, PLAY_SELECTORS);
-        await page.waitForTimeout(5000);
-        if (foundStream) return { ...foundStream, pageTitle };
-        await checkVideoSrcFromDOM(page, checkAndSaveStream);
-        if (foundStream) return { ...foundStream, pageTitle };
-      } catch (navErr) {
-        logger.warn(`[Playwright] Ana sayfa navigasyon hatası: ${navErr.message}`);
-      }
-    } else {
-      logger.info(`[Playwright] Engelli domain — ana sayfa atlanıyor, embed URL'lerine doğrudan gidiliyor.`);
-    }
-
-    // PreFetch embed URL'lerini doğrudan iFrame listesine ekle
-    if (prefetchedEmbedUrls.length > 0) {
-      logger.info(`[PreFetch] ${prefetchedEmbedUrls.length} embed URL Playwright embed kuyruğuna ekleniyor.`);
+      logger.debug(`[Playwright] Play butonları deneniyor...`);
+      await tryClickPlayButton(page, PLAY_SELECTORS);
+      await page.waitForTimeout(5000);
+      if (foundStream) return { ...foundStream, pageTitle };
+      await checkVideoSrcFromDOM(page, checkAndSaveStream);
+      if (foundStream) return { ...foundStream, pageTitle };
+    } catch (navErr) {
+      logger.warn(`[Playwright] Ana sayfa navigasyon uyarısı: ${navErr.message}`);
     }
 
     // ── iFrame Stratejisi ──────────────────────────────────────────────────────
