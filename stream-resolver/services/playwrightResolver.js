@@ -124,6 +124,15 @@ const DEFAULT_USER_AGENT =
  * @param {{ timeout?: number }} options
  * @returns {Promise<StreamResult | null>}
  */
+const PROXY_SERVERS = [
+  'http://51.159.115.233:3128',
+  'http://157.245.97.60:80',
+  'http://185.199.229.156:7492',
+  'http://198.199.86.11:80',
+  'http://45.79.207.135:80',
+  'http://143.244.166.243:80'
+];
+
 async function resolveStreamUrl(targetUrl, options = {}) {
   const { timeout = 30000 } = options;
   let browser = null;
@@ -131,7 +140,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
   try {
     logger.debug(`[Playwright] Chromium başlatılıyor...`);
 
-    browser = await chromium.launch({
+    const launchOptions = {
       headless: true,
       args: [
         '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
@@ -139,7 +148,13 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         '--disable-blink-features=AutomationControlled',
         '--disable-features=IsolateOrigins,site-per-process',
       ],
-    });
+    };
+
+    if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
+      launchOptions.proxy = { server: process.env.HTTP_PROXY || process.env.HTTPS_PROXY };
+    }
+
+    browser = await chromium.launch(launchOptions);
 
     const context = await browser.newContext({
       userAgent: DEFAULT_USER_AGENT,
