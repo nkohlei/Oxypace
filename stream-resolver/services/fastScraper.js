@@ -314,15 +314,30 @@ async function fastResolve(targetUrl, options = {}) {
         addEmbed(nestedIfr[1]);
       }
 
-      // Check FirePlayer embed endpoints (e.g. myplayersvideo.xyz/fireplayer/video/ID)
-      if (embedUrl.includes('/fireplayer/video/')) {
+      // Check Video API endpoints (FirePlayer, Matrudas, BeezPlayer, JW Custom endpoints)
+      if (embedUrl.includes('/video/') || embedUrl.includes('/fireplayer/') || embedUrl.includes('/player/')) {
         try {
           const getVideoUrl = embedUrl.split('?')[0] + '?do=getVideo';
           const videoDataRaw = await fetchHtmlWithBypass(getVideoUrl, embedUrl);
-          if (videoDataRaw && videoDataRaw.includes('videoSrc')) {
+          if (videoDataRaw && (videoDataRaw.includes('videoSrc') || videoDataRaw.includes('videoSource') || videoDataRaw.includes('securedLink'))) {
             const videoData = JSON.parse(videoDataRaw);
+            const foundDirectStream = videoData.securedLink || videoData.videoSource;
+            if (foundDirectStream) {
+              logger.info(`[FastScraper] 🎯 API üzerinden doğrudan stream bulundu: ${foundDirectStream}`);
+              const { referer, origin } = determineRefererAndOrigin(foundDirectStream, embedUrl, targetUrl);
+              return {
+                streamUrl: foundDirectStream,
+                type: foundDirectStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
+                headers: {
+                  referer,
+                  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                  origin,
+                },
+                pageTitle: pageTitle || 'Film / Dizi Akışı',
+              };
+            }
             if (videoData.videoSrc) {
-              logger.info(`[FastScraper] 🎯 FirePlayer videoSrc bulundu: ${videoData.videoSrc}`);
+              logger.info(`[FastScraper] 🎯 Nested videoSrc bulundu: ${videoData.videoSrc}`);
               addEmbed(videoData.videoSrc);
             }
           }
