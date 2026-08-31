@@ -245,6 +245,16 @@ async function resolveStreamUrl(targetUrl, options = {}) {
   try {
     logger.debug(`[Playwright] Chromium başlatılıyor...`);
 
+    // Proxy belirle: env var → Tor SOCKS5 → proxy yok
+    let proxyServer = process.env.HTTP_PROXY || process.env.HTTPS_PROXY || null;
+    if (!proxyServer) {
+      // Tor aktifse otomatik kullan
+      proxyServer = 'socks5://127.0.0.1:9050';
+      logger.debug(`[Playwright] Tor SOCKS5 proxy kullanılıyor (127.0.0.1:9050)`);
+    } else {
+      logger.debug(`[Playwright] Env proxy kullanılıyor: ${proxyServer}`);
+    }
+
     const launchOptions = {
       headless: true,
       args: [
@@ -253,11 +263,8 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         '--disable-blink-features=AutomationControlled',
         '--disable-features=IsolateOrigins,site-per-process',
       ],
+      proxy: { server: proxyServer },
     };
-
-    if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
-      launchOptions.proxy = { server: process.env.HTTP_PROXY || process.env.HTTPS_PROXY };
-    }
 
     browser = await chromium.launch(launchOptions);
 
