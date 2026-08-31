@@ -22,40 +22,78 @@ const logger = require('../utils/logger');
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * allorigins.win veya benzer bir public proxy üzerinden URL'nin HTML içeriğini çeker.
+ * Cloudflare korumalı sayfanın HTML'ini çekmek için birden fazla yöntemi dener.
+ * Öncelik sırası: ScraperAPI → ZenRows → Apify → public proxy'ler
  * @param {string} targetUrl
  * @returns {Promise<string|null>}
  */
-async function fetchHtmlViaPublicProxy(targetUrl) {
-  const proxies = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-  ];
+async function fetchHtmlViaScrapingService(targetUrl) {
+  const attempts = [];
 
-  for (const proxyUrl of proxies) {
+  // 1. ScraperAPI (ücretsiz: 5.000 istek/ay — scraperapi.com)
+  if (process.env.SCRAPER_API_KEY) {
+    attempts.push({
+      name: 'ScraperAPI',
+      url: `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(targetUrl)}&render=false`,
+    });
+  }
+
+  // 2. ZenRows (ücretsiz: 1.000 istek/ay — zenrows.com)
+  if (process.env.ZENROWS_API_KEY) {
+    attempts.push({
+      name: 'ZenRows',
+      url: `https://api.zenrows.com/v1/?apikey=${process.env.ZENROWS_API_KEY}&url=${encodeURIComponent(targetUrl)}`,
+    });
+  }
+
+  // 3. ScrapingBee (ücretsiz: 1.000 istek — scrapingbee.com)
+  if (process.env.SCRAPINGBEE_API_KEY) {
+    attempts.push({
+      name: 'ScrapingBee',
+      url: `https://app.scrapingbee.com/api/v1/?api_key=${process.env.SCRAPINGBEE_API_KEY}&url=${encodeURIComponent(targetUrl)}&render_js=false`,
+    });
+  }
+
+  // 4. Public proxy fallback'leri (ücretsiz ama güvensiz)
+  attempts.push(
+    {
+      name: 'allorigins',
+      url: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    },
+    {
+      name: 'corsproxy',
+      url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+    }
+  );
+
+  for (const attempt of attempts) {
     try {
+      logger.debug(`[PreFetch] Deneniyor: ${attempt.name}`);
       const html = await new Promise((resolve, reject) => {
-        const lib = proxyUrl.startsWith('https') ? https : http;
-        const req = lib.get(proxyUrl, {
+        const lib = attempt.url.startsWith('https') ? https : http;
+        const req = lib.get(attempt.url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
           },
-          timeout: 12000,
+          timeout: 18000,
         }, (res) => {
-          if (res.statusCode !== 200) { res.resume(); return reject(new Error(`Status ${res.statusCode}`)); }
+          if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
           let data = '';
           res.setEncoding('utf8');
-          res.on('data', chunk => { data += chunk; if (data.length > 500000) { res.destroy(); resolve(data); } });
+          res.on('data', chunk => { data += chunk; if (data.length > 600000) { res.destroy(); resolve(data); } });
           res.on('end', () => resolve(data));
         });
         req.on('error', reject);
         req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
       });
-      if (html && html.length > 500) {
-        logger.info(`[PreFetch] HTML alındı: ${html.length} bayt (proxy: ${proxyUrl.substring(0, 50)})`);
+
+      if (html && html.length > 1000 && !html.includes('error code:') && !html.includes('Just a moment')) {
+        logger.info(`[PreFetch] ✅ HTML alındı: ${html.length} bayt (${attempt.name})`);
         return html;
+      } else {
+        logger.debug(`[PreFetch] ${attempt.name} yetersiz yanıt (${html?.length ?? 0} bayt)`);
       }
     } catch (e) {
       logger.debug(`[PreFetch] Proxy başarısız (${proxyUrl.substring(0, 50)}): ${e.message}`);
@@ -482,14 +520,14 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       });
     }
 
-    // ── Ön-Adım: Cloudflare Engeli Olan Domain'lerde HTML'yi Public Proxy Üzerinden Çek ──
+    // ── Ön-Adım: Cloudflare Engeli Olan Domain'lerde HTML'yi Scraping Servisi Üzerinden Çek ──
     const isBlockedDomain = CLOUDFLARE_BLOCKED_DOMAINS.some(d => targetUrl.toLowerCase().includes(d));
     let prefetchedEmbedUrls = [];
     let pageTitle = '';
 
     if (isBlockedDomain) {
-      logger.info(`[PreFetch] Cloudflare engeli tespit edildi. allorigins proxy ile HTML çekiliyor: ${targetUrl}`);
-      const html = await fetchHtmlViaPublicProxy(targetUrl);
+      logger.info(`[PreFetch] Cloudflare engeli tespit edildi, scraping servisi deneniyor: ${targetUrl}`);
+      const html = await fetchHtmlViaScrapingService(targetUrl);
       if (html) {
         // Hemen m3u8/mp4 URL var mı kontrol et
         const directStreams = extractEmbedUrlsFromHtml(html, targetUrl);
