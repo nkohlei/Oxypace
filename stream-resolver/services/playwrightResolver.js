@@ -344,6 +344,21 @@ function deobfuscateHtmlBody(html, frameUrl, checkFn) {
   return null;
 }
 
+function httpGet(url, headers = {}) {
+  return new Promise((resolve) => {
+    const lib = url.startsWith('https') ? https : http;
+    const req = lib.get(url, { headers }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', (e) => { logger.debug(`[httpGet Error] ${e.message}`); resolve(''); });
+    req.on('timeout', () => { req.destroy(); resolve(''); });
+    req.setTimeout(25000);
+  });
+}
+
 async function resolveStreamUrl(targetUrl, options = {}) {
   const { timeout = 30000 } = options;
 
@@ -353,13 +368,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       logger.info(`[FastResolver] 🚀 ScraperAPI ile anında çözümleme deneniyor: ${targetUrl}`);
       const apiKey = process.env.SCRAPER_API_KEY.trim();
       const mainUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&country_code=tr&keep_headers=true`;
-
-      const mainHtml = await new Promise((resolve) => {
-        http.get(mainUrl, { headers: { 'User-Agent': DEFAULT_USER_AGENT } }, (res) => {
-          let d = ''; res.on('data', c => d += c);
-          res.on('end', () => resolve(d));
-        }).on('error', () => resolve(''));
-      });
+      const mainHtml = await httpGet(mainUrl, { 'User-Agent': DEFAULT_USER_AGENT });
 
       if (mainHtml && mainHtml.length > 500) {
         const titleMatch = mainHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
@@ -393,20 +402,10 @@ async function resolveStreamUrl(targetUrl, options = {}) {
           let originHeader = targetUrl;
           try { originHeader = new URL(targetUrl).origin; } catch {}
 
-          const embedHtml = await new Promise((resolve) => {
-            const req = http.get(embedApiUrl, {
-              headers: {
-                'User-Agent': DEFAULT_USER_AGENT,
-                'Referer': targetUrl,
-                'Origin': originHeader,
-              },
-              timeout: 15000,
-            }, (res) => {
-              let d = ''; res.on('data', c => d += c);
-              res.on('end', () => resolve(d));
-            });
-            req.on('error', (err) => { logger.info(`[FastResolver] Req error: ${err.message}`); resolve(''); });
-            req.on('timeout', () => { req.destroy(); resolve(''); });
+          const embedHtml = await httpGet(embedApiUrl, {
+            'User-Agent': DEFAULT_USER_AGENT,
+            'Referer': targetUrl,
+            'Origin': originHeader,
           });
 
           logger.info(`[FastResolver] Embed HTML yanıtı: ${embedHtml.length} bayt`);
