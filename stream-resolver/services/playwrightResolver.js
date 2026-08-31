@@ -299,6 +299,33 @@ async function resolveStreamUrl(targetUrl, options = {}) {
           }
         }
 
+        // 2.5 RapidVid _p8 Decrypter
+        if (body.includes('_p8') || resUrl.includes('rapidvid')) {
+          const p8Match = body.match(/window\._p8\s*=\s*['"]([^'"]+)['"]/);
+          if (p8Match) {
+            try {
+              const p8 = p8Match[1];
+              let e = Buffer.from(String(p8 || '').split('').reverse().join(''), 'base64').toString('latin1');
+              let n = '';
+              for (let t = 0; t < e.length; t++) {
+                let a = 'K9L'[t % 3];
+                let i = e.charCodeAt(t) - (a.charCodeAt(0) % 5 + 1);
+                n += String.fromCharCode(i);
+              }
+              const decodedJsonStr = Buffer.from(n, 'base64').toString('utf8');
+              const obj = JSON.parse(decodedJsonStr);
+              const stream = obj.cm || obj.tm || (obj.sources && obj.sources[0] && obj.sources[0].file);
+              if (stream && typeof stream === 'string' && stream.startsWith('http')) {
+                logger.info(`[BodyScan] 🔓 RapidVid akışı Playwright içinde çözüldü: ${stream}`);
+                checkAndSaveStream(stream, {}, 'https://rapidvid.net/');
+                if (foundStream) return;
+              }
+            } catch (err) {
+              logger.debug(`[BodyScan] RapidVid decode error: ${err.message}`);
+            }
+          }
+        }
+
         // 3. Packed JS (Dean Edwards eval(function(p,a,c,k,e,d)...)) Unpacker
         if (body.includes('eval(function(p,a,c,k,e,d)')) {
           const packedMatches = [...body.matchAll(/eval\s*\(\s*(function\s*\([^)]*\)\s*\{[\s\S]*?\.split\(['"]\|['"]\)\s*\))\s*\)/gi)];
