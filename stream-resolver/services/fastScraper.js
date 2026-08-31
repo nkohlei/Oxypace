@@ -14,6 +14,7 @@ const FAST_STREAM_PATTERNS = [
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+master\.txt[^"'\s\\<>{}|^`[\]]*)/i,
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/hls\/[^"'\s\\<>{}|^`[\]]*)/i,
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/txt\/master\.txt[^"'\s\\<>{}|^`[\]]*)/i,
+  /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/playlist\.m3u8[^"'\s\\<>{}|^`[\]]*)/i,
 ];
 
 /**
@@ -106,7 +107,7 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
     const res = await fetch(targetUrl, { headers, redirect: 'follow' });
     if (res.ok) {
       const text = await res.text();
-      if (!text.includes('error code: 1005') && !text.includes('Attention Required! | Cloudflare')) {
+      if (!text.includes('error code: 1005') && !text.includes('Attention Required! | Cloudflare') && !text.includes('Access denied')) {
         return text;
       }
     }
@@ -114,13 +115,14 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
     // Continue to proxy
   }
 
-  // 2. ScraperAPI Bypass
+  // 2. ScraperAPI Bypass (Ultra Premium / Keep Headers for Cloudflare Protected movie sites)
   if (apiKey) {
     try {
       const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
       const res = await fetch(proxyUrl, { headers });
       if (res.ok) {
-        return await res.text();
+        const text = await res.text();
+        if (text && text.length > 200) return text;
       }
     } catch (err) {
       logger.warn(`[FastScraper] Proxy fetch failed: ${err.message}`);
@@ -128,6 +130,40 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
   }
 
   return '';
+}
+
+/**
+ * Determines the best Referer and Origin for playback of a given stream / embed URL
+ */
+function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
+  let referer = targetUrl;
+  
+  if (streamUrl.includes('cdnimages') || streamUrl.includes('playmix') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi')) {
+    referer = 'https://hdfilmcehennemi.mobi/';
+  } else if (streamUrl.includes('closeload') || embedUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
+    referer = 'https://closeload.filmmakinesi.to/';
+  } else if (streamUrl.includes('rapidvid') || embedUrl.includes('rapidvid') || targetUrl.includes('fullhdfilmizlesene')) {
+    referer = 'https://rapidvid.net/';
+  } else if (streamUrl.includes('vidmoly') || embedUrl.includes('vidmoly')) {
+    referer = 'https://vidmoly.to/';
+  } else if (streamUrl.includes('vidoza') || embedUrl.includes('vidoza')) {
+    referer = 'https://vidoza.net/';
+  } else if (streamUrl.includes('filemoon') || embedUrl.includes('filemoon')) {
+    referer = 'https://filemoon.sx/';
+  } else if (streamUrl.includes('dood') || embedUrl.includes('dood')) {
+    referer = 'https://doodstream.com/';
+  } else if (embedUrl && /^https?:\/\//i.test(embedUrl)) {
+    referer = embedUrl;
+  }
+
+  let origin = referer;
+  try {
+    origin = new URL(referer).origin;
+  } catch (e) {
+    origin = targetUrl;
+  }
+
+  return { referer, origin };
 }
 
 /**
@@ -148,13 +184,14 @@ async function fastResolve(targetUrl, options = {}) {
     // 1. Check dc_ decoded stream in main page
     const decodedFromMain = decodeDcFunction(html);
     if (decodedFromMain) {
+      const { referer, origin } = determineRefererAndOrigin(decodedFromMain, '', targetUrl);
       return {
         streamUrl: decodedFromMain,
         type: 'm3u8',
         headers: {
-          referer: 'https://hdfilmcehennemi.mobi/',
+          referer,
           'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          origin: 'https://hdfilmcehennemi.mobi',
+          origin,
         },
         pageTitle,
       };
@@ -165,15 +202,16 @@ async function fastResolve(targetUrl, options = {}) {
       const match = html.match(pattern);
       if (match && match[1]) {
         const streamUrl = match[1].replace(/\\/g, '');
-        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno')) {
+        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4')) {
           logger.info(`[FastScraper] ✅ Doğrudan akış bulundu: ${streamUrl}`);
+          const { referer, origin } = determineRefererAndOrigin(streamUrl, '', targetUrl);
           return {
             streamUrl,
             type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
             headers: {
-              referer: targetUrl,
+              referer,
               'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              origin: new URL(targetUrl).origin,
+              origin,
             },
             pageTitle,
           };
@@ -181,7 +219,7 @@ async function fastResolve(targetUrl, options = {}) {
       }
     }
 
-    // 3. Extract Embed iFrames
+    // 3. Extract Embed iFrames and Players
     const embedUrls = new Set();
     let ifrMatch;
     const ifrRegex = /<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi;
@@ -191,7 +229,7 @@ async function fastResolve(targetUrl, options = {}) {
       if (src.startsWith('http')) embedUrls.add(src);
     }
 
-    const embedScriptRegex = /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch)\/[^"'\s\\<>{}|^`[\]]*)/gi;
+    const embedScriptRegex = /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch|url|fireplayer|hiveplayer|play)\/[^"'\s\\<>{}|^`[\]]*)/gi;
     let sMatch;
     while ((sMatch = embedScriptRegex.exec(html)) !== null) {
       embedUrls.add(sMatch[1]);
@@ -200,29 +238,32 @@ async function fastResolve(targetUrl, options = {}) {
     logger.info(`[FastScraper] Bulunan embed URL sayısı: ${embedUrls.size}`);
 
     for (const embedUrl of embedUrls) {
-      if (embedUrl.includes('google') || embedUrl.includes('doubleclick') || embedUrl.includes('recaptcha')) continue;
+      if (embedUrl.includes('google') || embedUrl.includes('doubleclick') || embedUrl.includes('recaptcha') || embedUrl.includes('facebook') || embedUrl.includes('wargamings')) continue;
 
       logger.info(`[FastScraper] Embed taranıyor: ${embedUrl}`);
       const embedHtml = await fetchHtmlWithBypass(embedUrl, targetUrl);
       if (!embedHtml) continue;
 
+      // Check nested iframes inside embed (e.g. HivePlayer -> FirePlayer / VidMoly)
+      const nestedIfr = embedHtml.match(/src\s*=\s*["'](https?:\\\/\\\/[^"']+|https?:\/\/[^"']+)["']/i);
+      if (nestedIfr) {
+        let nestedUrl = nestedIfr[1].replace(/\\\//g, '/');
+        if (nestedUrl.startsWith('http') && !embedUrls.has(nestedUrl)) {
+          embedUrls.add(nestedUrl);
+        }
+      }
+
       // Check dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix Player)
       const decodedStream = decodeDcFunction(embedHtml);
       if (decodedStream) {
-        let effectiveReferer = 'https://closeload.filmmakinesi.to/';
-        if (embedUrl.includes('hdfilmcehennemi') || decodedStream.includes('cdnimages') || decodedStream.includes('playmix')) {
-          effectiveReferer = 'https://hdfilmcehennemi.mobi/';
-        } else if (embedUrl.includes('rapidvid')) {
-          effectiveReferer = 'https://rapidvid.net/';
-        }
-
+        const { referer, origin } = determineRefererAndOrigin(decodedStream, embedUrl, targetUrl);
         return {
           streamUrl: decodedStream,
           type: decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
           headers: {
-            referer: effectiveReferer,
+            referer,
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            origin: new URL(effectiveReferer).origin,
+            origin,
           },
           pageTitle: pageTitle || 'Film / Dizi Akışı',
         };
@@ -236,13 +277,14 @@ async function fastResolve(targetUrl, options = {}) {
           searchCorpus += '\n' + unpacked;
           const unpackedDecoded = decodeDcFunction(unpacked);
           if (unpackedDecoded) {
+            const { referer, origin } = determineRefererAndOrigin(unpackedDecoded, embedUrl, targetUrl);
             return {
               streamUrl: unpackedDecoded,
               type: 'm3u8',
               headers: {
-                referer: 'https://hdfilmcehennemi.mobi/',
+                referer,
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                origin: 'https://hdfilmcehennemi.mobi',
+                origin,
               },
               pageTitle: pageTitle || 'Film / Dizi Akışı',
             };
@@ -250,27 +292,22 @@ async function fastResolve(targetUrl, options = {}) {
         }
       }
 
-      // Check direct stream patterns in embed (excluding bogus schema meta tags)
+      // Check direct stream patterns in embed (excluding bogus schema meta tags and blank placeholders)
       for (const pattern of FAST_STREAM_PATTERNS) {
         const match = searchCorpus.match(pattern);
         if (match && match[1]) {
           const streamUrl = match[1].replace(/\\/g, '');
-          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno')) {
+          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4')) {
             logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
-            let effectiveReferer = 'https://closeload.filmmakinesi.to/';
-            if (embedUrl.includes('hdfilmcehennemi') || streamUrl.includes('cdnimages') || streamUrl.includes('playmix')) {
-              effectiveReferer = 'https://hdfilmcehennemi.mobi/';
-            } else if (embedUrl.includes('rapidvid')) {
-              effectiveReferer = 'https://rapidvid.net/';
-            }
+            const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
 
             return {
               streamUrl,
               type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
               headers: {
-                referer: effectiveReferer,
+                referer,
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                origin: new URL(effectiveReferer).origin,
+                origin,
               },
               pageTitle: pageTitle || 'Film / Dizi Akışı',
             };
@@ -286,4 +323,4 @@ async function fastResolve(targetUrl, options = {}) {
   }
 }
 
-module.exports = { fastResolve };
+module.exports = { fastResolve, determineRefererAndOrigin };
