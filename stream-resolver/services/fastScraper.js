@@ -117,7 +117,7 @@ function fetchWithTlsImpersonation(targetUrl, referer = '') {
   return new Promise((resolve) => {
     const scriptPath = path.join(__dirname, 'tlsFetcher.py');
     execFile('python3', [scriptPath, targetUrl, referer], { timeout: 15000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
-      if (err || !stdout || stdout.length < 200) {
+      if (err || !stdout || stdout.length === 0) {
         return resolve('');
       }
       resolve(stdout);
