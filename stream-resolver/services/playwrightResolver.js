@@ -246,8 +246,8 @@ const EMBED_URL_PARAM_PATTERNS = [
   /[?&]file=([^&]+)/i,
 ];
 
-/** Video oynatıcı play butonu CSS seçicileri @type {string[]} */
 const PLAY_SELECTORS = [
+  '.play-that-video', '.play-icon', '.video-player-container-here', 'button.alternative-link',
   '[aria-label*="Play" i]', '[title*="Play" i]', '[data-plyr="play"]',
   'button[class*="play" i]', 'div[class*="play-button" i]', 'span[class*="play-button" i]',
   '[class*="play-btn" i]', '[class*="playBtn" i]', '[id*="play-button" i]',
@@ -255,7 +255,7 @@ const PLAY_SELECTORS = [
   '.vjs-big-play-button', '.video-js .vjs-play-control',
   '.plyr__control--overlaid', '.fp-play', '.fp-ui',
   '.dplayer-play-icon', '.dplayer-mask', '.play-wrapper',
-  '.video-overlay', '.player-overlay', '.cover-play',
+  '.video-overlay', '.player-overlay', '.cover-play', '.hdmv-play-container',
 ];
 
 const DEFAULT_USER_AGENT =
@@ -579,10 +579,23 @@ async function resolveStreamUrl(targetUrl, options = {}) {
     const page = await context.newPage();
     attachListeners(page, 'MAIN');
 
+    // Ağır resim, font ve analytics isteklerini iptal et — sayfa 2 saniyede yüklensin
+    await page.route('**/*', (route) => {
+      const resType = route.request().resourceType();
+      const u = route.request().url().toLowerCase();
+      if (['image', 'font', 'media'].includes(resType) && !u.includes('.m3u8') && !u.includes('.mp4')) {
+        return route.abort().catch(() => {});
+      }
+      if (u.includes('google-analytics') || u.includes('googletagmanager') || u.includes('doubleclick') || u.includes('facebook')) {
+        return route.abort().catch(() => {});
+      }
+      return route.continue().catch(() => {});
+    });
+
     logger.debug(`[Playwright] Navigating → ${targetUrl}`);
     try {
-      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: Math.min(timeout, 30000) });
-      await page.waitForTimeout(4000);
+      await page.goto(targetUrl, { waitUntil: 'commit', timeout: Math.min(timeout, 30000) });
+      await page.waitForTimeout(3000);
       if (!pageTitle) pageTitle = await page.title().catch(() => '');
       logger.debug(`[Playwright] Başlık: "${pageTitle}"`);
 
@@ -592,7 +605,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
 
       logger.debug(`[Playwright] Play butonları deneniyor...`);
       await tryClickPlayButton(page, PLAY_SELECTORS);
-      await page.waitForTimeout(5000);
+      await page.waitForTimeout(4000);
       if (foundStream) return { ...foundStream, pageTitle };
       await checkVideoSrcFromDOM(page, checkAndSaveStream);
       if (foundStream) return { ...foundStream, pageTitle };
@@ -736,6 +749,17 @@ async function checkVideoSrcFromDOM(page, checkFn) {
   try {
     const srcs = await page.evaluate(() => {
       const results = [];
+      // Lazy iframe data-src'lerini tetikle
+      document.querySelectorAll('iframe[data-src]').forEach((iframe) => {
+        const dSrc = iframe.getAttribute('data-src');
+        if (dSrc && (!iframe.src || iframe.src === 'about:blank')) {
+          iframe.src = dSrc;
+        }
+      });
+      // Play butonlarına tıkla
+      const playBtn = document.querySelector('.play-that-video, .play-icon, .video-player-container-here, .jw-display-icon-display, .vjs-big-play-button');
+      if (playBtn) playBtn.click();
+
       document.querySelectorAll('video').forEach((v) => {
         if (v.src)        results.push(v.src);
         if (v.currentSrc) results.push(v.currentSrc);
