@@ -815,9 +815,10 @@ const WatchPartyPlayer = () => {
                 
                 <video
                     ref={videoRef}
-                    className={`watch-party-native-video ${isLive ? '' : 'hidden'}`}
+                    className={`watch-party-native-video ${(isLive || isStream) ? '' : 'hidden'}`}
                     controls={false}
                     playsInline
+                    webkit-playsinline="true"
                     autoPlay
                     muted={localMuted}
                     onTimeUpdate={onTimeUpdate}
@@ -827,13 +828,13 @@ const WatchPartyPlayer = () => {
                     onSeeked={onSeeked}
                 />
 
-                {isLive && !isReady && !hasError && (
+                {(isLive || isStream) && !isReady && !hasError && (
                     <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
                         <div className="pro-spinner" />
                     </div>
                 )}
 
-                 {isLive && (
+                 {(isLive || isStream) && (
                     <>
                         {/* Collapsible Vertical Volume Control */}
                         <div 
@@ -919,7 +920,7 @@ const WatchPartyPlayer = () => {
                     </>
                  )}
 
-                  {!isLive && (
+                  {(!isLive && !isStream) && (
                       isIframePlatform(watchParty?.url) ? (
                          <iframe
                              src={getEmbedUrl(watchParty.url)}
