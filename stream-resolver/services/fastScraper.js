@@ -273,24 +273,35 @@ async function fastResolve(targetUrl, options = {}) {
     }
 
     // 3. Extract Embed iFrames and Players
-    const embedUrls = new Set();
+    const embedQueue = [];
+    const visitedEmbeds = new Set();
+
+    function addEmbed(u) {
+      if (!u || typeof u !== 'string') return;
+      let clean = u.replace(/\\\//g, '/').trim();
+      if (clean.startsWith('//')) clean = 'https:' + clean;
+      if (clean.startsWith('http') && !visitedEmbeds.has(clean)) {
+        visitedEmbeds.add(clean);
+        embedQueue.push(clean);
+      }
+    }
+
     let ifrMatch;
     const ifrRegex = /<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi;
     while ((ifrMatch = ifrRegex.exec(html)) !== null) {
-      let src = ifrMatch[1];
-      if (src.startsWith('//')) src = 'https:' + src;
-      if (src.startsWith('http')) embedUrls.add(src);
+      addEmbed(ifrMatch[1]);
     }
 
     const embedScriptRegex = /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch|url|fireplayer|hiveplayer|play)\/[^"'\s\\<>{}|^`[\]]*)/gi;
     let sMatch;
     while ((sMatch = embedScriptRegex.exec(html)) !== null) {
-      embedUrls.add(sMatch[1]);
+      addEmbed(sMatch[1]);
     }
 
-    logger.info(`[FastScraper] Bulunan embed URL sayısı: ${embedUrls.size}`);
+    logger.info(`[FastScraper] Bulunan embed URL sayısı: ${embedQueue.length}`);
 
-    for (const embedUrl of embedUrls) {
+    while (embedQueue.length > 0) {
+      const embedUrl = embedQueue.shift();
       if (embedUrl.includes('google') || embedUrl.includes('doubleclick') || embedUrl.includes('recaptcha') || embedUrl.includes('facebook') || embedUrl.includes('wargamings')) continue;
 
       logger.info(`[FastScraper] Embed taranıyor: ${embedUrl}`);
@@ -300,10 +311,7 @@ async function fastResolve(targetUrl, options = {}) {
       // Check nested iframes inside embed (e.g. HivePlayer -> FirePlayer / VidMoly)
       const nestedIfr = embedHtml.match(/src\s*=\s*["'](https?:\\\/\\\/[^"']+|https?:\/\/[^"']+)["']/i);
       if (nestedIfr) {
-        let nestedUrl = nestedIfr[1].replace(/\\\//g, '/');
-        if (nestedUrl.startsWith('http') && !embedUrls.has(nestedUrl)) {
-          embedUrls.add(nestedUrl);
-        }
+        addEmbed(nestedIfr[1]);
       }
 
       // Check FirePlayer embed endpoints (e.g. myplayersvideo.xyz/fireplayer/video/ID)
@@ -313,9 +321,9 @@ async function fastResolve(targetUrl, options = {}) {
           const videoDataRaw = await fetchHtmlWithBypass(getVideoUrl, embedUrl);
           if (videoDataRaw && videoDataRaw.includes('videoSrc')) {
             const videoData = JSON.parse(videoDataRaw);
-            if (videoData.videoSrc && !embedUrls.has(videoData.videoSrc)) {
+            if (videoData.videoSrc) {
               logger.info(`[FastScraper] 🎯 FirePlayer videoSrc bulundu: ${videoData.videoSrc}`);
-              embedUrls.add(videoData.videoSrc);
+              addEmbed(videoData.videoSrc);
             }
           }
         } catch (e) {
