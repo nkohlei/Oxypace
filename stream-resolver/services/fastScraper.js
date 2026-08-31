@@ -65,6 +65,8 @@ function decodeDcFunction(html) {
     logger.debug(`[FastScraper] VM dc_ decode hatası: ${err.message}`);
   }
   return null;
+}
+
 /**
  * Decrypts RapidVid _p8 custom encrypted payload
  */
