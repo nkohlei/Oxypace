@@ -300,10 +300,10 @@ async function resolveStreamUrl(targetUrl, options = {}) {
     if (process.env.SCRAPER_API_KEY) {
       proxyConfig = {
         server: 'http://proxy-server.scraperapi.com:8001',
-        username: 'scraperapi',
+        username: 'scraperapi.country_code=tr',
         password: process.env.SCRAPER_API_KEY.trim(),
       };
-      logger.info(`[Playwright] 🚀 ScraperAPI residential proxy devrede`);
+      logger.info(`[Playwright] 🚀 ScraperAPI residential proxy (TR) devrede`);
     } else if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
       proxyConfig = { server: process.env.HTTP_PROXY || process.env.HTTPS_PROXY };
       logger.debug(`[Playwright] Env proxy kullanılıyor: ${JSON.stringify(proxyConfig)}`);
