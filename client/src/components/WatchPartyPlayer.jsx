@@ -964,17 +964,6 @@ const WatchPartyPlayer = () => {
                                 }
                             }}
                         />
-                    ) : isWebPageUrl(watchParty?.url) ? (
-                        <iframe
-                            src={watchParty.url}
-                            width="100%"
-                            height="100%"
-                            frameBorder="0"
-                            allowFullScreen
-                            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                            style={{ border: 'none', background: '#000', borderRadius: '12px', width: '100%', height: '100%' }}
-                            onLoad={() => setIsReady(true)}
-                        />
                     ) : (
                         <VideoPlayer
                             src={isPlayableExternalUrl(watchParty?.url) ? (isStream ? getProxiedUrl(watchParty.url) : watchParty.url) : getImageUrl(watchParty?.url)}
