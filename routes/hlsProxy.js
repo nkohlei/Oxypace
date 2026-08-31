@@ -205,4 +205,71 @@ router.get('/resolve', async (req, res) => {
   }
 });
 
+// POST /api/resolve-stream (Stream Resolver Microservice Bridge)
+router.post('/resolve-stream', express.json(), async (req, res) => {
+  const { url, timeout } = req.body || {};
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ success: false, error: 'Geçersiz veya eksik URL parametresi.' });
+  }
+
+  const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
+  const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
+
+  try {
+    const fetchTimeout = Math.min(parseInt(timeout, 10) || 35000, 60000);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), fetchTimeout + 5000);
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
+
+    const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ url: url.trim(), timeout: fetchTimeout }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    const data = await microResponse.json().catch(() => null);
+
+    if (!microResponse.ok || !data || (!data.success && data.status !== 'success')) {
+      const errMsg = data?.error?.message || data?.error || 'Stream çözülemedi veya kaynak bulunamadı.';
+      return res.status(microResponse.status || 500).json({
+        success: false,
+        error: errMsg,
+        code: data?.code || 'STREAM_NOT_FOUND',
+      });
+    }
+
+    const payload = data.data || data;
+    const streamUrl = payload.streamUrl || data.streamUrl;
+    const streamHeaders = payload.headers || data.headers || {};
+    const pageTitle = payload.pageTitle || data.pageTitle || '';
+    const type = payload.type || data.type || 'm3u8';
+    const resolvedIn = payload.resolvedIn || data.resolvedIn || 0;
+
+    const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+
+    return res.status(200).json({
+      success: true,
+      status: 'success',
+      streamUrl,
+      playableStreamUrl,
+      type,
+      headers: streamHeaders,
+      pageTitle,
+      cached: Boolean(data.cached),
+      resolvedIn,
+    });
+  } catch (err) {
+    const isTimeout = err.name === 'AbortError' || err.message?.toLowerCase().includes('timeout');
+    return res.status(isTimeout ? 408 : 500).json({
+      success: false,
+      error: isTimeout ? 'Çözümleyici mikroservisi zaman aşımına uğradı.' : `Mikroservis bağlantı hatası: ${err.message}`,
+      code: isTimeout ? 'TIMEOUT' : 'RESOLVER_UNAVAILABLE',
+    });
+  }
+});
+
 export default router;

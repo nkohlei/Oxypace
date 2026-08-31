@@ -6,9 +6,10 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture, Film } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
+import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
 import './VoiceChannel.css';
 
 const VideoRenderer = ({ track, isLocal, className }) => {
@@ -95,6 +96,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     const [callDuration, setCallDuration] = useState(0);
     const [isWatchInputOpen, setIsWatchInputOpen] = useState(false);
     const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
+    const [isHlsVol2ModalOpen, setIsHlsVol2ModalOpen] = useState(false);
     const [watchUrl, setWatchUrl] = useState('');
     const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
@@ -353,6 +355,16 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                 )}
                 <button className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`} onClick={() => { setIsInviteOpen(!isInviteOpen); setIsChatOpen(false); setIsListenersOpen(false); setIsSettingsOpen(false); }} title="Davet Et"><UserPlus size={18} /></button>
                 <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} onClick={() => { setIsChatOpen(!isChatOpen); setIsListenersOpen(false); setIsInviteOpen(false); setIsSettingsOpen(false); }} title="Sohbet"><MessageCircle size={18} /></button>
+                
+                {/* HLS Video Oynatıcı Vol 2 (Microservice Stream Resolver) */}
+                <button 
+                    className={`vc-ctrl-btn ${isHlsVol2ModalOpen ? 'active' : ''}`} 
+                    onClick={() => { setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsListenersOpen(false); setIsSettingsOpen(false); }} 
+                    title="HLS Video Oynatıcı Vol 2 (Stream Resolver)"
+                    style={{ background: isHlsVol2ModalOpen ? 'rgba(56, 139, 253, 0.25)' : 'rgba(255, 255, 255, 0.05)', borderColor: isHlsVol2ModalOpen ? '#58a6ff' : 'rgba(255, 255, 255, 0.12)' }}
+                >
+                    <Film size={18} color={isHlsVol2ModalOpen ? '#58a6ff' : '#c9d1d9'} />
+                </button>
                 
                 {/* More Menu (Arrow on Mobile, Settings on Desktop) */}
                 <div style={{ position: 'relative' }}>
@@ -691,11 +703,27 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                                 >
                                     <Radio size={22} color={isHlsModalOpen ? '#ffffff' : '#a855f7'} />
                                 </button>
+                                <button 
+                                    className={`vc-ctrl-btn ${isHlsVol2ModalOpen ? 'active' : ''}`} 
+                                    onClick={() => setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen)} 
+                                    title="HLS Video Oynatıcı Vol 2 (Stream Resolver)"
+                                    style={{ background: isHlsVol2ModalOpen ? 'rgba(56, 139, 253, 0.3)' : undefined }}
+                                >
+                                    <Film size={22} color={isHlsVol2ModalOpen ? '#58a6ff' : '#94a3b8'} />
+                                </button>
                             </div>
 
                             <HlsTesterModal
                                 isOpen={isHlsModalOpen}
                                 onClose={() => setIsHlsModalOpen(false)}
+                                onStartWatchParty={(streamUrl) => {
+                                    startWatchParty(streamUrl, false);
+                                }}
+                            />
+
+                            <HlsStreamResolverModalVol2
+                                isOpen={isHlsVol2ModalOpen}
+                                onClose={() => setIsHlsVol2ModalOpen(false)}
                                 onStartWatchParty={(streamUrl) => {
                                     startWatchParty(streamUrl, false);
                                 }}

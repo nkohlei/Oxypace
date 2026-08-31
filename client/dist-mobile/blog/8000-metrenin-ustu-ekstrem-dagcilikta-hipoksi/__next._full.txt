@@ -1,0 +1,62 @@
+1:"$Sreact.fragment"
+3:I[7989,["177","static/chunks/app/layout-9df323ac7a159213.js"],"default"]
+4:I[7121,[],""]
+5:I[4581,[],""]
+c:I[7123,[],"default",1]
+:HL["/_next/static/css/f2b8aefcdb4997e5.css","style"]
+2:T5c3,
+              try {
+                var isFirstVisitOfSession = !sessionStorage.getItem('hasVisitedThisSession');
+                sessionStorage.setItem('hasVisitedThisSession', 'true');
+
+                var pathname = window.location.pathname;
+                var isBlogPath = pathname.indexOf('/blog') === 0;
+
+                var t = localStorage.getItem('token');
+                var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 20;
+
+                // Yönlendirme SADECE ilk girişte ve SADECE ana URL ('/') adresindeyken yapılır.
+                // Eğer girilen URL bir blog linki ise (/blog/...) ASLA yönlendirme yapılmaz.
+                if (isFirstVisitOfSession && isLoggedIn && !isBlogPath && (pathname === '/' || pathname === '')) {
+                  window.location.replace('/messages');
+                }
+
+                var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+                if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.setAttribute('data-theme', 'light');
+                }
+              } catch (_) {}
+            0:{"P":null,"c":["","blog","8000-metrenin-ustu-ekstrem-dagcilikta-hipoksi",""],"q":"","i":false,"f":[[["",{"children":["blog",{"children":[["slug","8000-metrenin-ustu-ekstrem-dagcilikta-hipoksi","d",null],{"children":["__PAGE__",{}]}]}]},"$undefined","$undefined",16],[["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/f2b8aefcdb4997e5.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"tr","className":"__variable_246ccd __variable_c29908 h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}],["$","script",null,{"async":true,"src":"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107","crossorigin":"anonymous"}],["$","script",null,{"async":true,"type":"application/javascript","src":"https://news.google.com/swg/js/v1/swg-basic.js"}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"\n              try {\n                var lastShown = localStorage.getItem('swg_last_shown_time');\n                var now = Date.now();\n                var ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 saat\n\n                if (!lastShown || (now - parseInt(lastShown, 10)) > ONE_DAY_MS) {\n                  (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {\n                    basicSubscriptions.init({\n                      type: \"NewsArticle\",\n                      isPartOfType: [\"Product\"],\n                      isPartOfProductId: \"CAowz_nMDA:openaccess\",\n                      clientOptions: { theme: \"light\", lang: \"tr\" },\n                    });\n                    localStorage.setItem('swg_last_shown_time', now.toString());\n                  });\n                }\n              } catch (_) {}\n            "}}]]}],["$","body",null,{"className":"min-h-full flex flex-col transition-colors duration-300","children":[["$","$L3",null,{}],["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$L6","forbidden":"$undefined","unauthorized":"$undefined"}]]}]]}]]}],{"children":["$L7",{"children":["$L8",{"children":["$L9",{},null,false,null]},null,false,"$@a"]},null,false,"$@a"]},null,false,null],"$Lb",false]],"m":"$undefined","G":["$c",[]],"S":true,"h":null,"s":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"W0uom8KI2LuxFi9pMD2Os"}
+e:I[484,[],"OutletBoundary"]
+f:"$Sreact.suspense"
+12:I[484,[],"ViewportBoundary"]
+14:I[484,[],"MetadataBoundary"]
+6:[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]
+7:["$","$1","c",{"children":[null,["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+8:["$","$1","c",{"children":[null,["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+9:["$","$1","c",{"children":["$Ld",null,["$","$Le",null,{"children":["$","$f",null,{"name":"Next.MetadataOutlet","children":"$@10"}]}]]}]
+11:[]
+a:"$W11"
+b:["$","$1","h",{"children":[null,["$","$L12",null,{"children":"$L13"}],["$","div",null,{"hidden":true,"children":["$","$L14",null,{"children":["$","$f",null,{"name":"Next.Metadata","children":"$L15"}]}]}],null]}]
+16:I[8013,["257","static/chunks/257-a3913a9a898aeef4.js","686","static/chunks/686-84ed069c0059a347.js","13","static/chunks/13-fc04d544a539df52.js","953","static/chunks/app/blog/%5Bslug%5D/page-b9881672a3af81e5.js"],"default"]
+17:T7e5,
+      <p class="lead text-lg text-zinc-300 mb-6">Yeryüzündeki 8000 metreyi aşan 14 zirve, dağcılar için sadece fiziksel bir engel değil, aynı zamanda sınırları zorlayan fizyolojik bir laboratuvardır. Bu yüksekliklerde atmosfer basıncı deniz seviyesindekinin yaklaşık üçte birine düşer. Bu durum, havadaki oksijen oranının azalmasından değil, atmosfer basıncının düşmesiyle oksijenin kısmi basıncının azalmasından kaynaklanır.</p>
+      
+      <h2 class="text-2xl font-bold text-white mt-8 mb-4">Ölüm Bölgesi ve Hipoksi</h2>
+      <p class="text-zinc-300 mb-4">Fizyolojide 8000 metrenin üzeri 'Ölüm Bölgesi' (Death Zone) olarak tanımlanır. Bu irtifada insan vücudu kendini yenileyemez ve tüketim hızı üretim hızını aşar. Kısmi basınç farkı azaldığı için akciğer alveollerinden kana oksijen geçişi kritik düzeyde yavaşlar. Bu duruma hipoksi (oksijen yetmezliği) denir. Hücreler aerobik solunumdan anaerobik solunuma geçtikçe laktik asit birikir, beyin ve akciğer ödemi riski katlanarak artar.</p>
+      
+      <blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">
+        "8000 metrede atılan her adım, fiziksel yerçekimi kuvvetiyle birlikte, kandaki hemoglobin doygunluğunun sınırlarına karşı verilen biyokimyasal bir savaştır."
+      </blockquote>
+
+      <h2 class="text-2xl font-bold text-white mt-8 mb-4">Aklimatizasyonun Biyofiziksel Süreci</h2>
+      <p class="text-zinc-300 mb-4">İnsan vücudu bu ekstrem koşullara uyum sağlamak için aklimatizasyon (iklimleştirme) adı verilen biyofiziksel süreçleri devreye sokar. Böbreklerden salgılanan eritropoietin (EPO) hormonu kemik iliğini uyararak alyuvar (kırmızı kan hücresi) üretimini artırır. Kanın viskozitesi (akışkanlığa karşı direnci) artar, solunum derinleşir ve kalp debisi yükselir. Ancak bu adaptasyonların bile bir sınırı vardır ve ölüm bölgesinde geçirilen her dakika hücre ömründen çalmaya devam eder.</p>
+    d:["$","$L16",null,{"initialPost":{"id":2,"title":"8000 Metrenin Üstü: Ekstrem Dağcılıkta Hipoksi ve Aklimatizasyon Fiziği","slug":"8000-metrenin-ustu-ekstrem-dagcilikta-hipoksi","excerpt":"Ölüm Bölgesi olarak adlandırılan ekstrem irtifalarda insan vücudundaki kısmi oksijen basıncının düşüşü, hücresel solunum fiziğini ve aklimatizasyon mekanizmalarını nasıl etkiler?","category":"Ekstrem Doğa Fiziği","readTime":"10 dk okuma","date":"12 Temmuz 2026","image":"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80","content":"$17"},"slug":"8000-metrenin-ustu-ekstrem-dagcilikta-hipoksi"}]
+13:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+18:I[6869,[],"IconMark"]
+10:null
+15:[["$","title","0",{"children":"8000 Metrenin Üstü: Ekstrem Dağcılıkta Hipoksi ve Aklimatizasyon Fiziği | Oxypace Blog"}],["$","meta","1",{"name":"description","content":"Ölüm Bölgesi olarak adlandırılan ekstrem irtifalarda insan vücudundaki kısmi oksijen basıncının düşüşü, hücresel solunum fiziğini ve aklimatizasyon mekanizmalar"}],["$","meta","2",{"property":"og:title","content":"8000 Metrenin Üstü: Ekstrem Dağcılıkta Hipoksi ve Aklimatizasyon Fiziği"}],["$","meta","3",{"property":"og:description","content":"Ölüm Bölgesi olarak adlandırılan ekstrem irtifalarda insan vücudundaki kısmi oksijen basıncının düşüşü, hücresel solunum fiziğini ve aklimatizasyon mekanizmalar"}],["$","meta","4",{"property":"og:url","content":"https://oxypace.com.tr/blog/8000-metrenin-ustu-ekstrem-dagcilikta-hipoksi/"}],["$","meta","5",{"property":"og:site_name","content":"Oxypace Blog"}],["$","meta","6",{"property":"og:image","content":"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80"}],["$","meta","7",{"property":"og:image:width","content":"1200"}],["$","meta","8",{"property":"og:image:height","content":"630"}],["$","meta","9",{"property":"og:image:alt","content":"8000 Metrenin Üstü: Ekstrem Dağcılıkta Hipoksi ve Aklimatizasyon Fiziği"}],["$","meta","10",{"property":"og:type","content":"article"}],["$","meta","11",{"property":"article:published_time","content":"12 Temmuz 2026"}],["$","meta","12",{"property":"article:author","content":"Oxypace"}],["$","meta","13",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","14",{"name":"twitter:creator","content":"@oxypace"}],["$","meta","15",{"name":"twitter:title","content":"8000 Metrenin Üstü: Ekstrem Dağcılıkta Hipoksi ve Aklimatizasyon Fiziği"}],["$","meta","16",{"name":"twitter:description","content":"Ölüm Bölgesi olarak adlandırılan ekstrem irtifalarda insan vücudundaki kısmi oksijen basıncının düşüşü, hücresel solunum fiziğini ve aklimatizasyon mekanizmalar"}],["$","meta","17",{"name":"twitter:image","content":"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80"}],["$","link","18",{"rel":"icon","href":"/favicon.ico?603d046c9a6fdfbb","type":"image/x-icon","sizes":"16x16"}],["$","$L18","19",{}]]

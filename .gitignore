@@ -43,3 +43,6 @@ blog/out/
 blog/.git/
 
 client/src/blog_app/
+stream-resolver/node_modules/
+stream-resolver/logs/
+stream-resolver/.env

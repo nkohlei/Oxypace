@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stream Resolver — Oxypace Demo</title>
+  <meta name="description" content="Film sitelerinden HLS/MP4 akış URL'si çözen servis demosu" />
+
+  <!-- hls.js — HLS stream'lerini tarayıcıda oynatmak için -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── Design Tokens ──────────────────────────────────────────────────── */
+    :root {
+      --bg-primary:     #0d0f14;
+      --bg-secondary:   #13161e;
+      --bg-card:        rgba(255, 255, 255, 0.04);
+      --bg-card-hover:  rgba(255, 255, 255, 0.07);
+      --border:         rgba(255, 255, 255, 0.08);
+      --border-focus:   rgba(139, 92, 246, 0.6);
+      --accent:         #8b5cf6;
+      --accent-light:   #a78bfa;
+      --accent-glow:    rgba(139, 92, 246, 0.3);
+      --text-primary:   #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted:     #64748b;
+      --success:        #10b981;
+      --warning:        #f59e0b;
+      --error:          #ef4444;
+      --radius-sm:      8px;
+      --radius-md:      12px;
+      --radius-lg:      16px;
+      --radius-xl:      24px;
+      --shadow-glow:    0 0 40px rgba(139, 92, 246, 0.15);
+    }
+
+    /* ─── Reset & Base ───────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Animated Background ────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 10%, rgba(139, 92, 246, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 80% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Layout ─────────────────────────────────────────────────────────── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* ─── Header ─────────────────────────────────────────────────────────── */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeInDown 0.6s ease-out;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), #3b82f6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .logo-text {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-light), #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ─── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+      border-color: rgba(139, 92, 246, 0.2);
+      box-shadow: var(--shadow-glow);
+    }
+
+    /* ─── Form ───────────────────────────────────────────────────────────── */
+    .form-card {
+      margin-bottom: 24px;
+      animation: fadeInUp 0.6s ease-out 0.1s both;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .url-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    .url-input::placeholder { color: var(--text-muted); }
+
+    .url-input:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .resolve-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 14px 24px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+    }
+
+    .resolve-btn:hover:not(:disabled) {
+      opacity: 0.9;
+      box-shadow: 0 4px 25px rgba(139, 92, 246, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .resolve-btn:active:not(:disabled) { transform: translateY(0); }
+
+    .resolve-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .resolve-btn.loading .btn-spinner { display: block; }
+    .resolve-btn.loading .btn-text { display: none; }
+
+    /* ─── Status & Progress ──────────────────────────────────────────────── */
+    #status-area {
+      margin-top: 16px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+    .status-dot.success { background: var(--success); }
+    .status-dot.error   { background: var(--error); }
+
+    /* ─── Result Card ─────────────────────────────────────────────────────── */
+    #result-card {
+      display: none;
+      margin-bottom: 24px;
+      animation: fadeInUp 0.4s ease-out;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .result-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .badge-m3u8 { background: rgba(139, 92, 246, 0.2); color: var(--accent-light); border: 1px solid rgba(139, 92, 246, 0.3); }
+    .badge-mp4  { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    /* ─── Stream URL Display ──────────────────────────────────────────────── */
+    .stream-url-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stream-url-text {
+      flex: 1;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--accent-light);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .copy-btn {
+      flex-shrink: 0;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: var(--accent-light);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .copy-btn:hover { background: rgba(139, 92, 246, 0.3); }
+    .copy-btn.copied { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+
+    /* ─── Headers Display ─────────────────────────────────────────────────── */
+    .headers-section { margin-bottom: 20px; }
+
+    .headers-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .header-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 12px;
+    }
+
+    .header-row:last-child { border-bottom: none; }
+
+    .header-key {
+      flex-shrink: 0;
+      width: 90px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .header-value {
+      color: var(--text-secondary);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    /* ─── Meta Info ───────────────────────────────────────────────────────── */
+    .meta-row {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .meta-item { display: flex; align-items: center; gap: 5px; }
+
+    /* ─── Video Player ────────────────────────────────────────────────────── */
+    #player-card {
+      display: none;
+      animation: fadeInUp 0.5s ease-out;
+    }
+
+    .player-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .player-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .player-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      aspect-ratio: 16/9;
+    }
+
+    #video-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: var(--radius-md);
+    }
+
+    .video-loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.7);
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .video-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(139, 92, 246, 0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ─── CORS Warning ────────────────────────────────────────────────────── */
+    .cors-notice {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      color: #fbbf24;
+      line-height: 1.5;
+    }
+
+    .cors-notice strong { font-weight: 600; }
+
+    /* ─── Error Card ──────────────────────────────────────────────────────── */
+    #error-card {
+      display: none;
+      background: rgba(239, 68, 68, 0.06);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      text-align: center;
+      animation: fadeInUp 0.4s ease-out;
+    }
+
+    .error-icon { font-size: 40px; margin-bottom: 12px; }
+
+    .error-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fca5a5;
+      margin-bottom: 8px;
+    }
+
+    .error-message { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+    .error-code { font-family: monospace; color: #f87171; font-size: 12px; margin-top: 8px; }
+
+    /* ─── How It Works ────────────────────────────────────────────────────── */
+    .how-section {
+      margin-top: 40px;
+      animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .step:hover { border-color: rgba(139, 92, 246, 0.3); transform: translateY(-2px); }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .step-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ─── Animations ──────────────────────────────────────────────────────── */
+    @keyframes fadeIn        { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp      { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeInDown    { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin          { to { transform: rotate(360deg); } }
+    @keyframes pulse         { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* ─── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .input-group { flex-direction: column; }
+      .resolve-btn { width: 100%; justify-content: center; }
+      .stream-url-box { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">🎬</div>
+      <span class="logo-text">Oxypace</span>
+    </div>
+    <h1>Stream Resolver</h1>
+    <p>Film/dizi sitesi URL'sini gir, HLS akış linkini ve oynatıcı bilgilerini al.</p>
+  </header>
+
+  <!-- ── Input Form ───────────────────────────────────────────────────────── -->
+  <div class="card form-card">
+    <label class="form-label" for="url-input">Film / Dizi Sayfası URL'si</label>
+    <div class="input-group">
+      <input
+        id="url-input"
+        class="url-input"
+        type="url"
+        placeholder="https://www.hdfilmcehennemi.nl/batman-kara-sovalye-hd-film-izle/"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="resolve-btn" class="resolve-btn" onclick="resolveStream()">
+        <span class="btn-spinner"></span>
+        <span class="btn-text">🔍 Çöz</span>
+      </button>
+    </div>
+
+    <!-- Durum çubuğu -->
+    <div id="status-area">
+      <div class="status-bar">
+        <div id="status-dot" class="status-dot loading"></div>
+        <span id="status-text">Sayfa yükleniyor, ağ trafiği izleniyor...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Hata Kartı ───────────────────────────────────────────────────────── -->
+  <div id="error-card">
+    <div class="error-icon">😕</div>
+    <div class="error-title">Stream Bulunamadı</div>
+    <div id="error-message" class="error-message"></div>
+    <div id="error-code" class="error-code"></div>
+  </div>
+
+  <!-- ── Sonuç Kartı ──────────────────────────────────────────────────────── -->
+  <div id="result-card" class="card">
+    <div class="result-header">
+      <div>
+        <div class="result-title">✅ Stream Bulundu</div>
+        <div id="page-title" style="font-size:12px; color:var(--text-muted); margin-top:4px;"></div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span id="stream-type-badge" class="badge badge-m3u8">HLS</span>
+        <span id="resolved-time" style="font-size:12px; color:var(--text-muted);"></span>
+      </div>
+    </div>
+
+    <!-- Stream URL -->
+    <div style="margin-bottom:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted);">Stream URL</div>
+    <div class="stream-url-box">
+      <div id="stream-url" class="stream-url-text"></div>
+      <button id="copy-btn" class="copy-btn" onclick="copyStreamUrl()">Kopyala</button>
+    </div>
+
+    <!-- HTTP Headers -->
+    <div class="headers-section">
+      <div class="headers-title">HTTP Başlıkları (Referer Engeli İçin Gerekli)</div>
+      <div id="headers-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Video Oynatıcı ───────────────────────────────────────────────────── -->
+  <div id="player-card" class="card">
+    <div class="player-header">
+      <div>
+        <div class="player-title">🎬 Video Oynatıcı</div>
+        <div class="player-subtitle">hls.js ile HTML5 player</div>
+      </div>
+      <button onclick="destroyPlayer()" style="background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text-secondary); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; font-family:inherit;">✕ Kapat</button>
+    </div>
+
+    <div class="video-wrapper">
+      <video id="video-player" controls playsinline></video>
+      <div id="video-loading" class="video-loading-overlay">
+        <div class="video-spinner"></div>
+        <span>Stream yükleniyor...</span>
+      </div>
+    </div>
+
+    <!-- CORS Uyarısı -->
+    <div class="cors-notice">
+      ⚠️ <strong>CORS Notu:</strong> Bazı stream URL'leri <code>Referer</code> header doğrulaması gerektirir.
+      Direkt oynatma çalışmazsa, yakalanan header bilgileriyle bir <strong>proxy endpoint</strong> kullanmanız gerekebilir.
+    </div>
+  </div>
+
+  <!-- ── Nasıl Çalışır ────────────────────────────────────────────────────── -->
+  <div class="how-section">
+    <div class="section-title">Nasıl Çalışır?</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-title">Sayfa Açılır</div>
+        <div class="step-desc">Playwright headless Chromium ile hedef URL açılır, bot tespiti atlatılır.</div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-title">Trafik İzlenir</div>
+        <div class="step-desc">Tüm ağ istekleri gerçek zamanlı izlenir, .m3u8 / .mp4 URL'leri yakalanır.</div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-title">Oynatıcı Tıklanır</div>
+        <div class="step-desc">Stream bulunamazsa play butonlarına ve iFrame'lere otomatik tıklanır.</div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div class="step-title">Header'lar Döner</div>
+        <div class="step-desc">Stream URL'si + Referer/Origin başlıkları Oxypace'e iletilir.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── JavaScript ──────────────────────────────────────────────────────────── -->
+<script>
+  // ── Yapılandırma ──────────────────────────────────────────────────────────
+  /**
+   * API base URL — Geliştirme ortamında aynı sunucu, production'da değiştir.
+   * Oxypace'e entegre ederken bu değeri kendi API domain'inle değiştir.
+   * Örnek: 'https://api.oxypace.com'
+   */
+  const API_BASE_URL = window.STREAM_RESOLVER_API || '';
+
+  let hlsInstance = null;
+  let currentStreamUrl = null;
+
+  // ── Durum Yönetimi ────────────────────────────────────────────────────────
+
+  function setStatus(message, type = 'loading') {
+    const area = document.getElementById('status-area');
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+
+    area.style.display = 'block';
+    dot.className = `status-dot ${type}`;
+    text.textContent = message;
+  }
+
+  function hideStatus() {
+    document.getElementById('status-area').style.display = 'none';
+  }
+
+  function showError(message, code) {
+    document.getElementById('result-card').style.display = 'none';
+    document.getElementById('player-card').style.display = 'none';
+
+    const card = document.getElementById('error-card');
+    document.getElementById('error-message').textContent = message;
+    document.getElementById('error-code').textContent = code ? `Kod: ${code}` : '';
+    card.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('error-card').style.display = 'none';
+  }
+
+  // ── Ana Fonksiyon: Stream Çöz ─────────────────────────────────────────────
+
+  async function resolveStream() {
+    const urlInput = document.getElementById('url-input');
+    const btn      = document.getElementById('resolve-btn');
+    const url      = urlInput.value.trim();
+
+    // Basit URL validasyonu
+    if (!url) {
+      urlInput.focus();
+      urlInput.style.borderColor = 'var(--error)';
+      setTimeout(() => { urlInput.style.borderColor = ''; }, 2000);
+      return;
+    }
+
+    // UI'ı yükleme moduna al
+    btn.classList.add('loading');
+    btn.disabled = true;
+    hideError();
+    document.getElementById('result-card').style.display = 'none';
+    document.getElementById('player-card').style.display = 'none';
+    destroyPlayer();
+
+    setStatus('Headless tarayıcı başlatılıyor...', 'loading');
+
+    // 3 saniye sonra mesajı güncelle
+    const statusTimer = setTimeout(() => {
+      setStatus('Sayfa yükleniyor ve ağ trafiği izleniyor...', 'loading');
+    }, 3000);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/resolve-stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      clearTimeout(statusTimer);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setStatus(data.error || 'Stream bulunamadı.', 'error');
+        setTimeout(() => {
+          hideStatus();
+          showError(data.error || 'Stream bulunamadı.', data.code);
+        }, 1000);
+        return;
+      }
+
+      // Başarılı! Sonuçları göster
+      setStatus('Stream başarıyla bulundu! ✅', 'success');
+      setTimeout(hideStatus, 2000);
+
+      displayResult(data);
+      initPlayer(data.streamUrl, data.type, data.headers);
+
+    } catch (err) {
+      clearTimeout(statusTimer);
+      setStatus('Bağlantı hatası. Sunucu çalışıyor mu?', 'error');
+      setTimeout(() => {
+        hideStatus();
+        showError(
+          'API sunucusuna bağlanılamadı. Lütfen sunucunun çalıştığından emin olun.',
+          'CONNECTION_ERROR'
+        );
+      }, 1000);
+      console.error('[StreamResolver] Fetch hatası:', err);
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Sonuçları Göster ──────────────────────────────────────────────────────
+
+  function displayResult(data) {
+    currentStreamUrl = data.streamUrl;
+
+    // Stream türü badge
+    const badge = document.getElementById('stream-type-badge');
+    badge.textContent = data.type === 'm3u8' ? 'HLS' : 'MP4';
+    badge.className = `badge badge-${data.type}`;
+
+    // Sayfa başlığı
+    if (data.pageTitle) {
+      document.getElementById('page-title').textContent = `📄 ${data.pageTitle}`;
+    }
+
+    // Çözme süresi
+    document.getElementById('resolved-time').textContent =
+      `⚡ ${(data.resolvedIn / 1000).toFixed(1)}s`;
+
+    // Stream URL
+    document.getElementById('stream-url').textContent = data.streamUrl;
+
+    // HTTP Başlıkları
+    const headersList = document.getElementById('headers-list');
+    headersList.innerHTML = '';
+    const headers = data.headers || {};
+
+    Object.entries(headers).forEach(([key, value]) => {
+      if (!value) return;
+      const row = document.createElement('div');
+      row.className = 'header-row';
+      row.innerHTML = `
+        <span class="header-key">${escapeHtml(key)}</span>
+        <span class="header-value">${escapeHtml(value)}</span>
+      `;
+      headersList.appendChild(row);
+    });
+
+    document.getElementById('result-card').style.display = 'block';
+  }
+
+  // ── HLS / MP4 Oynatıcı ────────────────────────────────────────────────────
+
+  function initPlayer(streamUrl, type, headers = {}) {
+    const playerCard  = document.getElementById('player-card');
+    const video       = document.getElementById('video-player');
+    const loadingOverlay = document.getElementById('video-loading');
+
+    playerCard.style.display = 'block';
+    loadingOverlay.style.display = 'flex';
+
+    destroyPlayer(); // Önceki instance'ı temizle
+
+    video.addEventListener('canplay', () => {
+      loadingOverlay.style.display = 'none';
+    }, { once: true });
+
+    // Referer / CORS engellerini aşmak için proxy URL'sini kullan
+    const referer = headers.referer || '';
+    const origin = headers.origin || '';
+    const proxiedUrl = `${API_BASE_URL}/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`;
+
+    if (type === 'm3u8' && Hls.isSupported()) {
+      // HLS — hls.js ile
+      hlsInstance = new Hls({
+        debug: false,
+        enableWorker: true,
+        startLevel: -1, // Otomatik kalite seçimi
+      });
+
+      hlsInstance.loadSource(proxiedUrl);
+      hlsInstance.attachMedia(video);
+
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {
+          // Autoplay politikası — kullanıcı tıklaması gerekebilir
+          loadingOverlay.innerHTML = '<div style="font-size:13px; color:var(--text-secondary);">▶ Oynatmak için tıklayın</div>';
+        });
+      });
+
+      hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          console.error('[HLS] Fatal error:', data);
+          loadingOverlay.innerHTML = `
+            <div style="font-size:13px; color:#f87171; text-align:center;">
+              ⚠️ Stream yüklenemedi<br>
+              <span style="font-size:11px; color:var(--text-muted);">${escapeHtml(data.details || 'Referer/CORS engeli')}</span>
+            </div>
+          `;
+        }
+      });
+
+    } else if (type === 'm3u8' && video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      video.src = proxiedUrl;
+      video.play().catch(() => {});
+
+    } else if (type === 'mp4') {
+      // MP4 — native HTML5
+      video.src = proxiedUrl;
+      video.play().catch(() => {});
+
+    } else {
+      loadingOverlay.innerHTML = `<div style="font-size:13px; color:#fbbf24;">Bu tarayıcı HLS'i desteklemiyor.</div>`;
+    }
+  }
+
+  function destroyPlayer() {
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+    const video = document.getElementById('video-player');
+    if (video) {
+      video.pause();
+      video.src = '';
+      video.load();
+    }
+  }
+
+  // ── Kopyala ───────────────────────────────────────────────────────────────
+
+  async function copyStreamUrl() {
+    if (!currentStreamUrl) return;
+    try {
+      await navigator.clipboard.writeText(currentStreamUrl);
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = '✓ Kopyalandı';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Kopyala';
+        btn.classList.remove('copied');
+      }, 2000);
+    } catch {
+      console.warn('Kopyalama başarısız.');
+    }
+  }
+
+  // ── Yardımcı ──────────────────────────────────────────────────────────────
+
+  function escapeHtml(str) {
+    const el = document.createElement('div');
+    el.appendChild(document.createTextNode(str));
+    return el.innerHTML;
+  }
+
+  // Enter tuşuyla submit
+  document.getElementById('url-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') resolveStream();
+  });
+</script>
+
+</body>
+</html>

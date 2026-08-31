@@ -5,9 +5,10 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
+import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
 import { useUI } from '../context/UIContext';
 import './VoiceChannel.css';
 
@@ -164,6 +165,7 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
     const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
+    const [isHlsVol2ModalOpen, setIsHlsVol2ModalOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
@@ -670,6 +672,16 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
                     <Radio size={18} color="#c084fc" />
                 </button>
 
+                {/* HLS Video Oynatıcı Vol 2 (Microservice Stream Resolver) */}
+                <button 
+                    className={`vc-ctrl-btn ${isHlsVol2ModalOpen ? 'active' : ''}`} 
+                    onClick={() => { setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsVolumeOpen(false); }} 
+                    title="HLS Video Oynatıcı Vol 2 (Stream Resolver)"
+                    style={{ background: isHlsVol2ModalOpen ? 'rgba(56, 139, 253, 0.25)' : 'rgba(255, 255, 255, 0.05)', borderColor: isHlsVol2ModalOpen ? '#58a6ff' : 'rgba(255, 255, 255, 0.12)' }}
+                >
+                    <Film size={18} color={isHlsVol2ModalOpen ? '#58a6ff' : '#c9d1d9'} />
+                </button>
+
                 {/* Mobile More Menu Trigger (Arrow) */}
                 {isMobile && (
                     <div style={{ position: 'relative' }}>
@@ -1075,6 +1087,14 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
             <HlsTesterModal
                 isOpen={isHlsModalOpen}
                 onClose={() => setIsHlsModalOpen(false)}
+                onStartWatchParty={(streamUrl) => {
+                    startWatchParty(streamUrl, false);
+                }}
+            />
+
+            <HlsStreamResolverModalVol2
+                isOpen={isHlsVol2ModalOpen}
+                onClose={() => setIsHlsVol2ModalOpen(false)}
                 onStartWatchParty={(streamUrl) => {
                     startWatchParty(streamUrl, false);
                 }}
