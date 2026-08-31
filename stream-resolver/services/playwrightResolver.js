@@ -346,6 +346,88 @@ function deobfuscateHtmlBody(html, frameUrl, checkFn) {
 
 async function resolveStreamUrl(targetUrl, options = {}) {
   const { timeout = 30000 } = options;
+
+  // ── 1. Hızlı Scraping & Doğrudan Çözümleme (Chromium başlatmadan anında çöz) ──
+  if (process.env.SCRAPER_API_KEY) {
+    try {
+      logger.info(`[FastResolver] 🚀 ScraperAPI ile anında çözümleme deneniyor: ${targetUrl}`);
+      const apiKey = process.env.SCRAPER_API_KEY.trim();
+      const mainUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&country_code=tr&keep_headers=true`;
+
+      const mainHtml = await new Promise((resolve) => {
+        http.get(mainUrl, { headers: { 'User-Agent': DEFAULT_USER_AGENT } }, (res) => {
+          let d = ''; res.on('data', c => d += c);
+          res.on('end', () => resolve(d));
+        }).on('error', () => resolve(''));
+      });
+
+      if (mainHtml && mainHtml.length > 500) {
+        const titleMatch = mainHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const pageTitle = titleMatch ? titleMatch[1].trim() : '';
+
+        // Doğrudan ana sayfada stream var mı?
+        const directStream = deobfuscateHtmlBody(mainHtml, targetUrl, null);
+        if (directStream) {
+          logger.info(`[FastResolver] ⚡ Ana sayfadan anında stream çözüldü: ${directStream}`);
+          return {
+            streamUrl: directStream,
+            type: 'm3u8',
+            headers: { referer: targetUrl, 'user-agent': DEFAULT_USER_AGENT, origin: new URL(targetUrl).origin },
+            pageTitle,
+          };
+        }
+
+        // Embed iframe linklerini bul
+        const embedMatches = [...mainHtml.matchAll(/https:\/\/[^"'\s<>{}|]*(?:embed|video|player|rapid|close|vidoza|vidmoly)[^"'\s<>{}|]*/gi)];
+        const embedUrls = [...new Set(embedMatches.map(m => m[0]))].filter(u => !u.includes('.webp') && !u.includes('.jpg') && !u.includes('.png'));
+
+        for (const embedUrl of embedUrls) {
+          logger.info(`[FastResolver] Embed sayfası çekiliyor: ${embedUrl}`);
+          const embedApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(embedUrl)}&country_code=tr&keep_headers=true`;
+          const embedHtml = await new Promise((resolve) => {
+            http.get(embedApiUrl, {
+              headers: {
+                'User-Agent': DEFAULT_USER_AGENT,
+                'Referer': targetUrl,
+                'Origin': new URL(targetUrl).origin,
+              },
+            }, (res) => {
+              let d = ''; res.on('data', c => d += c);
+              res.on('end', () => resolve(d));
+            }).on('error', () => resolve(''));
+          });
+
+          if (embedHtml && embedHtml.length > 200) {
+            const decodedStream = deobfuscateHtmlBody(embedHtml, embedUrl, null);
+            if (decodedStream) {
+              logger.info(`[FastResolver] ⚡ Embed sayfasından anında stream çözüldü: ${decodedStream}`);
+              let ref = targetUrl;
+              if (targetUrl.includes('hdfilmcehennemi') || embedUrl.includes('hdfilmcehennemi') || decodedStream.includes('cdnimages') || decodedStream.includes('playmix')) {
+                ref = 'https://hdfilmcehennemi.mobi/';
+              } else if (targetUrl.includes('filmmakinesi') || embedUrl.includes('closeload')) {
+                ref = 'https://closeload.filmmakinesi.to/';
+              } else if (targetUrl.includes('fullhdfilmizlesene') || embedUrl.includes('rapidvid')) {
+                ref = 'https://rapidvid.net/';
+              }
+              return {
+                streamUrl: decodedStream,
+                type: 'm3u8',
+                headers: {
+                  referer: ref,
+                  'user-agent': DEFAULT_USER_AGENT,
+                  origin: new URL(ref).origin,
+                },
+                pageTitle,
+              };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn(`[FastResolver] Hızlı çözümleme uyarısı: ${e.message}`);
+    }
+  }
+
   let browser = null;
 
   try {
