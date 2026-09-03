@@ -207,7 +207,8 @@ const WatchPartyPlayer = () => {
         stopWatchParty, 
         sendWatchPlay, 
         sendWatchPause, 
-        sendWatchSeek
+        sendWatchSeek,
+        getServerNow
     } = useVoice();
 
     const playerRef = useRef(null);
